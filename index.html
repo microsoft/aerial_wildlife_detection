@@ -9,6 +9,15 @@
     <!-- <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
     <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script> -->
     <script type="text/javascript" src="openseadragon.min.js"></script>
+
+    <style type="text/css">
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 5vw);
+            grid-gap: 15px;
+        }
+    </style>
 </head>
 
 <body>
@@ -46,17 +55,27 @@
             <p>The display below shows some pictures of animals. The column to the right shows some ways to interact with the image display.</p>
         </div>
 
-        <!-- Image Display -->
-        <div class="containter-fluid">
-            <div class="row">
-                <div class="col-md-9">
-                    <div class="openseadragon-container">
-
-                    </div>
+        <!-- Tool Area -->
+        <div class="container-fluid">
+            <div class="row center">
+                <!-- Image Display -->
+                <div class="col-xl-8 col-lg-12">
+                    <!-- <img style="width: 100%; height: auto; object-fit: contain" src="https://cdn-images-1.medium.com/max/1600/1*VGXm5NW6h29NXvk2qmHqNQ.gif"> -->
+                    <div class="gallery"></div>
                 </div>
-
-                <div class="col-md-3">
-                    <p>Placeholder 2</p>
+                
+                <!-- Widgets -->
+                <div class="col-xl-4">
+                    <div class="card">
+                        <div class="card-header">
+                            Actions
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title">Stuff You Can Do</h5>
+                            <p class="card-text">Instructions</p>
+                            <a href="#" class="btn btn-primary">Do Something</a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
