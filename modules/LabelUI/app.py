@@ -5,79 +5,64 @@
 '''
 
 import os
-from bottle import Bottle, static_file
+from bottle import static_file
+from .backend.middleware import DBMiddleware
 
 
-class LabelUI:
+class LabelUI():
 
-    def __init__(self, config):
-        self.host = config['LABELUI']['host']
-        self.port = config['LABELUI']['port']
-        self.staticDir = config['LABELUI']['staticfiles_dir']
+    def __init__(self, config, app):
+        self.config = config
+        self.app = app
+        self.staticDir = self.config.getProperty(self, 'staticfiles_dir')
+        self.middleware = DBMiddleware(config)
 
         self._initBottle()
 
 
     def _initBottle(self):
 
-        app = Bottle()
-
         ''' static routings '''
-        @app.route('/')
+        @self.app.route('/')
         def index():
-            # print('INDEX.HTML')
             return static_file("index.html", root=os.path.join(self.staticDir, 'html'))
 
-        @app.route('/<filename:re:.*\.html>')
-        def send_html(filename):
-            return static_file(filename, root=os.path.join(self.staticDir, 'html'))
 
-        @app.route('/<filename:re:.*\.css>')
-        def send_css(filename):
-            # print('SOME CSS')
-            # print(filename)
-            return static_file(filename, root=os.path.join(self.staticDir, 'css'))
-            # return bottle.static_file(filename, root=dirname+'/static')
+        @self.app.route('/interface')
+        def index():
+            return static_file("interface.html", root=os.path.join(self.staticDir, 'html'))
 
-        @app.route('/<filename:re:openseadragon\.min\.js$>')
-        def send_osd(filename):
-            print('OPENSEADRAGON.MIN.JS')
-            print(filename)
-            return static_file(filename, root=os.path.join(self.staticDir, 'lib/openseadragon'))
-        #     # return bottle.static_file(filename, root=dirname+'/openseadragon')
 
-        @app.route('/<filename:re:image-picker\.min\.js$>')
-        def send_imgpkr(filename):
-            print('IMAGE-PICKER.MIN.JS')
-            print(filename)
-            return static_file(filename, root=os.path.join(self.staticDir, 'js'))
-        #     # return bottle.static_file(filename, root=dirname+'/openseadragon')
-
-        @app.route('/<filename:re:image-picker-masonry\.js$>')
-        def send_imgpkrmasonry(filename):
-            print('IMAGE-PICKER-MASONRY.JS')
-            print(filename)
-            return static_file(filename, root=os.path.join(self.staticDir, 'js'))
-
-        @app.route('/<filename:re:.*_IMG_.*\.JPG$>')
+        @self.app.route('/<filename:re:.*_IMG_.*\.JPG$>')
         def send_img(filename):
-            print('IMAGE FILE')
-            print(filename)
             return static_file(filename, root=os.path.join(self.staticDir, 'img'))
+
+        
+        @self.app.route('/<filename:re:.*>')
+        def send_static(filename):
+            return static_file(filename, root=self.staticDir)
 
 
         ''' dynamic routings '''
+        @self.app.get('/getLatestImages')
+        def get_latest_images():
+            json = self.middleware.getNextBatch(ignoreLabeled=True, limit=12)
+            return json
+
         #TODO: need the following components:
         # - query latest images (call middleware for that)
+        # - send labels
 
 
-        app.run(host=self.host, port=self.port)
 
 
-
-''' Convenience for debugging '''
+''' Convenience launcher (FOR DEBUGGING ONLY) '''
 if __name__ == '__main__':
-    from configparser import ConfigParser
-    config = ConfigParser()
-    config.read('config/settings.ini')
-    LabelUI(config)
+    
+    import argparse
+    from runserver import Launcher
+
+    parser = argparse.ArgumentParser(description='Run CV4Wildlife AL Service.')
+    parser.add_argument('--instance', type=str, default='LabelUI', const=1, nargs='?')
+    args = parser.parse_args()
+    Launcher(args)

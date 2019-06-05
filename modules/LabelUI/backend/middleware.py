@@ -5,13 +5,14 @@
 '''
 
 import psycopg2
-from util.dbConnection import DBConnector
+from modules.Database.app import Database
 
 
 class DBMiddleware():
 
     def __init__(self, config):
-        self.dbConnector = DBConnector(config)
+        self.config = config
+        self.dbConnector = Database(config)
 
     
     def getNextBatch(self, ignoreLabeled=True, limit=None):
@@ -27,7 +28,26 @@ class DBMiddleware():
         # 3. Load images from folder (TODO: better use dedicated image server, needs to be accessible by AITrainer as well...), using image paths defined in DB
         # 4. Call customizable method to reorder or post-process images and labels
         # 5. Return data in standardized format
-        pass
+        
+
+        #TODO: for now we just use a dummy function that returns a random batch of local images
+        import os
+        import numpy as np
+        localFiles = os.listdir(self.config.getProperty('FileServer', 'staticfiles_dir'))
+        numFiles = (limit if limit is not None else 16)
+
+        selected = np.random.choice(len(localFiles), numFiles, replace=False)
+
+        response = {}
+
+        # simulate labels
+        for s in selected:
+            response[str(s)] = {
+                'filePath': localFiles[s],
+                'label': np.random.randint(10),     #TODO: numClasses in settings.ini file?
+                'confidence': np.random.rand()
+            }
+        return response
 
 
     def submitAnnotations(self, imageIDs, annotations, metadata=None):

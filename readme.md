@@ -22,6 +22,12 @@ TODO: steps:
 
 ## Launching an instance
 
-To start a server, run the "manage.py" script with the appropriate argument for the desired type of instance (i.e., labeling UI frontend or AI trainer).
+To start an instance, run the "runserver.py" script with the appropriate argument for the desired type of module (i.e., one of: "LabelUI", "AITrainer", "FileServer").
 Example: the following command would start a labeling UI frontend on the current machine, using the parameters specified in the `config` directory:
-`python manage.py --instance=frontend`
+
+`python runserver.py --instance=LabelUI`
+
+
+It is also possible to run multiple modules on the same instance by providing comma-separated module names as an argument:
+
+`python runserver.py --instance=LabelUI,AITrainer`

@@ -4,17 +4,13 @@
     <title>fine-tuna</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-
     <link type="text/css" href="css/bootstrap.min.css" rel="stylesheet">
-    <!-- <link type="text/css" href="image-picker.css" rel="stylesheet"> -->
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
     <script src="https://code.jquery.com/ui/1.12.0/jquery-ui.min.js" integrity="sha256-eGE6blurk5sHj+rmkfsGYeKyZx3M4bG+ZlFyA7Kns7E=" crossorigin="anonymous"></script>
     <script type="text/javascript" src="lib/openseadragon/openseadragon.min.js"></script>
-    <!-- <script type="text/javascript" src="image-picker.min.js"></script> -->
-    <!-- <script type="text/javascript" src="image-picker-masonry.js"></script> -->
-    <!-- <script src="https://unpkg.com/imagesloaded@4/imagesloaded.pkgd.min.js"></script> -->
-    
-    <!-- <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script> -->
+
+    <script type="text/javascript" src="js/configuration.js"></script>
+    <script type="text/javascript" src="js/dataEntry.js"></script>
     
     <style type="text/css">
         .gallery {
@@ -75,26 +71,18 @@
         
         <!-- Tool Description -->
         <div class="container-fluid">
-            <h1 class="mt-4">Species Classification Fine-Tuning Tool</h1>
-            <p>The display on the left shows some an embedding of classes learned by the classifier model.
-                The central display shows a set of camera trap images corresponding to a selected subregion of the embedding. These images can be selected by
-                clicking (multiple selections possibly using Ctrl-click). The widget on the right includes some buttons to perform some actions, e.g.
-                1) a dropdown with classes and a 'label' button to label the set of selected images, 2) a button to re-draw the embedding visualization (since t-SNE)
-                produces different 2d representations each time it is run, 3) a retrain button
-            </p>
+            <h1 class="mt-4">CV4Wildlife something rather</h1>
+            <p>TODO: Description</p>
         </div>
 
         <!-- Tool Area -->
         <div class="container-fluid">
             <div class="row center">
-                <!-- Embedding Display -->
-                <div class="col-xl-5 col-lg-6">
-                    <img style="width: 100%; height: auto; object-fit: contain" src="https://cdn-images-1.medium.com/max/1600/1*VGXm5NW6h29NXvk2qmHqNQ.gif">
-                </div>
+
                 <!-- Image Display -->
                 <div class="col-xl-5 col-lg-6">
-                    <div class="gallery selectable-1">
-                        <figure class="gallery__item gallery__item--1 ui-widget-content"><img src="SEQ84581_IMG_0002.JPG" class="gallery__img" alt="Image 1"></figure>
+                    <div id="gallery" class="gallery selectable-1">
+                        <!-- <figure class="gallery__item gallery__item--1 ui-widget-content"><img src="SEQ84581_IMG_0002.JPG" class="gallery__img" alt="Image 1"></figure>
                         <figure class="gallery__item gallery__item--2 ui-widget-content"><img src="SEQ83460_IMG_0005.JPG" class="gallery__img" alt="Image 2"></figure>
                         <figure class="gallery__item gallery__item--3 ui-widget-content"><img src="SEQ81952_IMG_0015.JPG" class="gallery__img" alt="Image 3"></figure>
                         <figure class="gallery__item gallery__item--4 ui-widget-content"><img src="SEQ76215_IMG_0005.JPG" class="gallery__img" alt="Image 4"></figure>
@@ -122,8 +110,9 @@
                         <figure class="gallery__item gallery__item--11 ui-widget-content"><img src="SEQ88168_IMG_0008.JPG" class="gallery__img" alt="Image 11"></figure>
                         <figure class="gallery__item gallery__item--11 ui-widget-content"><img src="SEQ83487_IMG_0002.JPG" class="gallery__img" alt="Image 11"></figure>
                         <figure class="gallery__item gallery__item--11 ui-widget-content"><img src="SEQ80177_IMG_0001.JPG" class="gallery__img" alt="Image 11"></figure>
-                        <figure class="gallery__item gallery__item--11 ui-widget-content"><img src="SEQ82637_IMG_0003.JPG" class="gallery__img" alt="Image 11"></figure>
+                        <figure class="gallery__item gallery__item--11 ui-widget-content"><img src="SEQ82637_IMG_0003.JPG" class="gallery__img" alt="Image 11"></figure> -->
                     </div>
+                    <div id="gallery"></div>
                 </div>
                 
                 <!-- Widgets -->
@@ -141,41 +130,27 @@
                 </div>
             </div>
         </div>
-
     </div>
     <!-- /#page-content-wrapper -->
 
     <!-- JavaScript -->
     <script type="text/javascript">
+        //TODO: example
+        $(document).ready(function() {
+            $.getJSON('getLatestImages', function(data) {
+                for(var d in data) {
+                    console.log(data[d])
+                    entry = new ClassificationEntry(d, data[d]['filePath'], data[d]['label'], data[d]['confidence'])
+                    $('#gallery').append(entry.markup)
+                }
+            })
+        })
+    </script>
+    <!-- <script type="text/javascript">
         $(function() {
             $(".selectable-1").selectable();
-            // $(".selectable").selectable({
-            //     selected: function() {
-            //         var selectedItemList = $("#selected-item-list").empty();
-            //         $(".selectable img").each(function(index) {
-            //             if ($(this).hasClass("ui-selected")) {
-            //                 selectedItemList.append((index + 1) + ", ");
-            //             }
-            //         });
-            //     }
-            // });
         });
-
-        // $(document).ready(function () {
-        //     $("#selectImage").imagepicker({
-        //         hide_select: true
-        //     });
-
-        //     var $container = $('.image_picker_selector');
-        //     // initialize
-        //     $container.imagesLoaded(function () {
-        //         $container.masonry({
-        //             columnWidth: 30,
-        //             itemSelector: '.thumbnail'
-        //         });
-        //     });
-        // });
-    </script>
+    </script> -->
 
 </body>
 
