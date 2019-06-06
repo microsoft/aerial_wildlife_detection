@@ -49,9 +49,12 @@ class LabelUI():
             json = self.middleware.getNextBatch(ignoreLabeled=True, limit=12)
             return json
 
-        #TODO: need the following components:
-        # - query latest images (call middleware for that)
-        # - send labels
+
+        @self.app.post('/submitAnnotations')
+        def submit_annotations():
+            #TODO: parse data
+            response = self.middleware.submitAnnotations(imageIDs=None, annotations=None, metadata=None)
+            return response
 
 
 

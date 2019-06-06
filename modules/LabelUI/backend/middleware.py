@@ -4,15 +4,35 @@
     2019 Benjamin Kellenberger
 '''
 
+from collections import namedtuple
 import psycopg2
 from modules.Database.app import Database
 
 
 class DBMiddleware():
 
+    ClassEntry = namedtuple('Class', ['name', 'index', 'color'])
+
     def __init__(self, config):
         self.config = config
         self.dbConnector = Database(config)
+
+        self._getProjectSettings()
+
+
+    def _getProjectSettings(self):
+        '''
+            Queries the database for general project-specific metadata, such as:
+            - Classes: names, indices, default colors
+            - Annotation type: one of {class labels, positions, bboxes}
+        '''
+
+        #TODO: dummy for now; implement to query db
+        self.projectSettings = {
+            'classes': [],
+            'annotationType': 'classification'      #TODO: make enum?
+        }
+
 
     
     def getNextBatch(self, ignoreLabeled=True, limit=None):
@@ -42,10 +62,15 @@ class DBMiddleware():
 
         # simulate labels
         for s in selected:
+            if np.random.rand() > 0.5:
+                userLabel = None
+            else:
+                userLabel = np.random.randint(10)
             response[str(s)] = {
                 'filePath': localFiles[s],
-                'label': np.random.randint(10),     #TODO: numClasses in settings.ini file?
-                'confidence': np.random.rand()
+                'predictedLabel': np.random.randint(10),     #TODO: numClasses in settings.ini file?
+                'predictedConfidence': np.random.rand(),
+                'userLabel': userLabel
             }
         return response
 
@@ -64,4 +89,5 @@ class DBMiddleware():
         # 3. Submit data to DB
         # 4. Return statistics
         # TODO: need customizable method here too?
-        pass
+        
+        return 'Not yet implemented.'

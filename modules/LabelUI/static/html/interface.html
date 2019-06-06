@@ -11,6 +11,7 @@
 
     <script type="text/javascript" src="js/configuration.js"></script>
     <script type="text/javascript" src="js/dataEntry.js"></script>
+    <script type="text/javascript" src="js/dataHandler.js"></script>
     
     <style type="text/css">
         .gallery {
@@ -20,7 +21,7 @@
             grid-gap: 15px;
             padding: 20px 50px 10px 50px;
         }
-        .gallery__img{
+        .gallery img{
             width: 100%;
             height: 100%;
             object-fit: cover;
@@ -82,38 +83,10 @@
                 <!-- Image Display -->
                 <div class="col-xl-5 col-lg-6">
                     <div id="gallery" class="gallery selectable-1">
-                        <!-- <figure class="gallery__item gallery__item--1 ui-widget-content"><img src="SEQ84581_IMG_0002.JPG" class="gallery__img" alt="Image 1"></figure>
-                        <figure class="gallery__item gallery__item--2 ui-widget-content"><img src="SEQ83460_IMG_0005.JPG" class="gallery__img" alt="Image 2"></figure>
-                        <figure class="gallery__item gallery__item--3 ui-widget-content"><img src="SEQ81952_IMG_0015.JPG" class="gallery__img" alt="Image 3"></figure>
-                        <figure class="gallery__item gallery__item--4 ui-widget-content"><img src="SEQ76215_IMG_0005.JPG" class="gallery__img" alt="Image 4"></figure>
-                        <figure class="gallery__item gallery__item--5 ui-widget-content"><img src="SEQ76061_IMG_0003.JPG" class="gallery__img" alt="Image 5"></figure>
-                        
-                        <figure class="gallery__item gallery__item--6 ui-widget-content"><img src="SEQ75631_IMG_0002.JPG" class="gallery__img" alt="Image 6"></figure>
-                        <figure class="gallery__item gallery__item--7 ui-widget-content"><img src="SEQ75583_IMG_0001.JPG" class="gallery__img" alt="Image 7"></figure>
-                        <figure class="gallery__item gallery__item--8 ui-widget-content"><img src="SEQ75458_IMG_0001.JPG" class="gallery__img" alt="Image 8"></figure>
-                        <figure class="gallery__item gallery__item--9 ui-widget-content"><img src="SEQ75294_IMG_0003.JPG" class="gallery__img" alt="Image 9"></figure>
-                        <figure class="gallery__item gallery__item--10 ui-widget-content"><img src="SEQ75115_IMG_0008.JPG" class="gallery__img" alt="Image 10"></figure>
-
-                        <figure class="gallery__item gallery__item--11 ui-widget-content"><img src="SEQ75111_IMG_0001.JPG" class="gallery__img" alt="Image 11"></figure>
-                        <figure class="gallery__item gallery__item--12 ui-widget-content"><img src="SEQ75057_IMG_0001.JPG" class="gallery__img" alt="Image 12"></figure>
-                        <figure class="gallery__item gallery__item--13 ui-widget-content"><img src="SEQ75023_IMG_0001.JPG" class="gallery__img" alt="Image 13"></figure>
-                        <figure class="gallery__item gallery__item--14 ui-widget-content"><img src="SEQ75016_IMG_0001.JPG" class="gallery__img" alt="Image 14"></figure>
-                        <figure class="gallery__item gallery__item--15 ui-widget-content"><img src="SEQ75713_IMG_0003.JPG" class="gallery__img" alt="Image 15"></figure>
-
-                        <figure class="gallery__item gallery__item--11 ui-widget-content"><img src="SEQ75179_IMG_0001.JPG" class="gallery__img" alt="Image 11"></figure>
-                        <figure class="gallery__item gallery__item--11 ui-widget-content"><img src="SEQ75140_IMG_0001.JPG" class="gallery__img" alt="Image 11"></figure>
-                        <figure class="gallery__item gallery__item--11 ui-widget-content"><img src="SEQ77501_IMG_0010.JPG" class="gallery__img" alt="Image 11"></figure>
-                        <figure class="gallery__item gallery__item--11 ui-widget-content"><img src="SEQ79668_IMG_0005.JPG" class="gallery__img" alt="Image 11"></figure>
-                        <figure class="gallery__item gallery__item--11 ui-widget-content"><img src="SEQ76222_IMG_0005.JPG" class="gallery__img" alt="Image 11"></figure>
-
-                        <figure class="gallery__item gallery__item--11 ui-widget-content"><img src="SEQ85142_IMG_0001.JPG" class="gallery__img" alt="Image 11"></figure>
-                        <figure class="gallery__item gallery__item--11 ui-widget-content"><img src="SEQ88168_IMG_0008.JPG" class="gallery__img" alt="Image 11"></figure>
-                        <figure class="gallery__item gallery__item--11 ui-widget-content"><img src="SEQ83487_IMG_0002.JPG" class="gallery__img" alt="Image 11"></figure>
-                        <figure class="gallery__item gallery__item--11 ui-widget-content"><img src="SEQ80177_IMG_0001.JPG" class="gallery__img" alt="Image 11"></figure>
-                        <figure class="gallery__item gallery__item--11 ui-widget-content"><img src="SEQ82637_IMG_0003.JPG" class="gallery__img" alt="Image 11"></figure> -->
                     </div>
                     <div id="gallery"></div>
                 </div>
+                <button class="btn btn-primary" onclick='window.dataHandler.submitAnnotations()'>Next</button>
                 
                 <!-- Widgets -->
                 <div class="col-xl-2">
@@ -135,15 +108,9 @@
 
     <!-- JavaScript -->
     <script type="text/javascript">
-        //TODO: example
         $(document).ready(function() {
-            $.getJSON('getLatestImages', function(data) {
-                for(var d in data) {
-                    console.log(data[d])
-                    entry = new ClassificationEntry(d, data[d]['filePath'], data[d]['label'], data[d]['confidence'])
-                    $('#gallery').append(entry.markup)
-                }
-            })
+            window.dataHandler = new DataHandler($('#gallery'));
+            window.dataHandler.loadNextBatch();
         })
     </script>
     <!-- <script type="text/javascript">

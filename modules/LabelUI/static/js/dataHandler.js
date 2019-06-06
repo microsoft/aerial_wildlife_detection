@@ -1,0 +1,61 @@
+/*
+    Maintains the data entries currently on display.
+
+    2019 Benjamin Kellenberger
+*/
+
+class DataHandler {
+
+    constructor(parentDiv) {
+        this.parentDiv = parentDiv;
+        this.dataEntries = {};
+    }
+
+    loadNextBatch() {
+        var self = this;
+
+        // clear current entries
+        this.parentDiv.empty()
+        this.dataEntries = []
+
+        $.getJSON('getLatestImages', function(data) {
+            for(var d in data) {
+                // create new data entry
+                switch(String(window.labelType)) {
+                    case 'classification':
+                        var entry = new ClassificationEntry(d, data[d]['filePath'], data[d]['predictedLabel'], data[d]['predictedConfidence'], data[d]['userLabel'])
+                    default:
+                        break;
+                }
+
+                // append
+                self.parentDiv.append(entry.markup)
+                self.dataEntries.push(entry)
+            }
+        });
+    }
+
+
+    _entriesToJSON() {
+        var entries = {};
+        for(var e=0; e<this.dataEntries.length; e++) {
+            entries[this.dataEntries[e].entryID] = this.dataEntries[e].getProperties();
+        }
+
+        return JSON.stringify({
+            'entries': entries
+        })
+    }
+
+
+    submitAnnotations() {
+        var self = this;
+        var entries = this._entriesToJSON();
+        $.post('submitAnnotations', entries, function(response) {
+            console.log(response);
+
+            // next batch
+            self.loadNextBatch();
+        })
+    }
+}

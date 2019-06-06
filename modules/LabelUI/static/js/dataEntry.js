@@ -21,6 +21,12 @@
         this.image.height = '300'
         this.image.src = window.dataServerURI + this.fileName;
     }
+
+    getProperties() {
+        return {
+            'fileName': this.fileName
+        }
+    }
  }
 
 
@@ -41,13 +47,20 @@
         colored w.r.t. the user-selected class. A second click removes the user
         label again.
      */
-    constructor(entryID, fileName, predictedLabel, predictedConfidence) {
+    constructor(entryID, fileName, predictedLabel, predictedConfidence, userLabel) {
         super(entryID, fileName);
         this.predictedLabel = predictedLabel;
         this.predictedConfidence = predictedConfidence;
-        this.userLabel = null;
+        this.userLabel = userLabel;
 
         this._setup_markup();
+    }
+
+    getProperties() {
+        var props = super.getProperties();
+        props['userLabel'] = this.userLabel;
+
+        return props;
     }
 
     _setup_markup() {
@@ -61,13 +74,15 @@
 
         // image
         this.markup.append(this.image);
+
+        this._set_border_style();
     }
 
     _set_border_style() {
         // specify border decoration
         var style = 'none';
         if(this.userLabel!=null) {
-            style = '4px solid ' + window.classColors[this.userLabel];
+            style = '6px solid ' + window.classColors[this.userLabel];
         } else if(this.predictedLabel!=null) {
             style = '2px solid ' + window.classColors[this.predictedLabel];
         }
