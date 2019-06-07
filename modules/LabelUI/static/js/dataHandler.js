@@ -15,22 +15,25 @@ class DataHandler {
         var self = this;
 
         // clear current entries
-        this.parentDiv.empty()
-        this.dataEntries = []
+        this.parentDiv.empty();
+        this.dataEntries = [];
 
-        $.getJSON('getLatestImages', function(data) {
+        $.getJSON('getLatestImages?limit=1', function(data) {
             for(var d in data) {
                 // create new data entry
-                switch(String(window.labelType)) {
-                    case 'classification':
-                        var entry = new ClassificationEntry(d, data[d]['filePath'], data[d]['predictedLabel'], data[d]['predictedConfidence'], data[d]['userLabel'])
+                switch(String(window.annotationType)) {
+                    case 'labels':
+                        var entry = new ClassificationEntry(d, data[d]);
+                        break;
+                    case 'points':
+                        var entry = new PointAnnotationEntry(d, data[d]);
                     default:
                         break;
                 }
 
                 // append
-                self.parentDiv.append(entry.markup)
-                self.dataEntries.push(entry)
+                self.parentDiv.append(entry.markup);
+                self.dataEntries.push(entry);
             }
         });
     }

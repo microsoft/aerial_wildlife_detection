@@ -4,15 +4,19 @@
     2019 Benjamin Kellenberger
 '''
 
+import psycopg2
+
+
 class Database():
 
     def __init__(self, config):
         self.config = config
 
         # get DB parameters
+        self.database = config.getProperty(self, 'name').lower()
         self.host = config.getProperty(self, 'host')
         self.port = config.getProperty(self, 'port')
-        self.user = config.getProperty(self, 'user')
+        self.user = config.getProperty(self, 'user').lower()
         self.password = config.getProperty(self, 'password')
 
         self._createConnection()
@@ -20,7 +24,9 @@ class Database():
 
     def _createConnection(self):
         try:
-            self.conn = psycopg2.connect(database=self.host,
+            self.conn = psycopg2.connect(host=self.host,
+                                        database=self.database,
+                                        port=self.port,
                                         user=self.user,
                                         password=self.password)
         except:

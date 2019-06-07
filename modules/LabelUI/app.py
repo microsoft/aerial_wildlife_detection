@@ -5,7 +5,7 @@
 '''
 
 import os
-from bottle import static_file
+from bottle import request, static_file
 from .backend.middleware import DBMiddleware
 
 
@@ -29,7 +29,7 @@ class LabelUI():
 
 
         @self.app.route('/interface')
-        def index():
+        def interface():
             return static_file("interface.html", root=os.path.join(self.staticDir, 'html'))
 
 
@@ -44,9 +44,36 @@ class LabelUI():
 
 
         ''' dynamic routings '''
+        @self.app.get('/getProjectSettings')
+        def get_project_settings():
+            settings = {
+                'settings': self.middleware.getProjectSettings()
+            }
+            return settings
+
+        @self.app.get('/getClassDefinitions')
+        def get_class_definitions():
+            classDefs = {
+                'classes': self.middleware.getClassDefinitions()
+            }
+            return classDefs
+
+
+        @self.app.post('/getImages')
+        def get_images():
+            postData = request.body.read()
+            dataIDs = postData['imageIDs']
+            json = self.middleware.getBatch(dataIDs)
+            return json
+
+
         @self.app.get('/getLatestImages')
         def get_latest_images():
-            json = self.middleware.getNextBatch(ignoreLabeled=True, limit=12)
+            try:
+                limit = int(request.query['limit'])
+            except:
+                limit = None
+            json = self.middleware.getNextBatch(ignoreLabeled=True, limit=limit)
             return json
 
 

@@ -4,35 +4,68 @@
     2019 Benjamin Kellenberger
 '''
 
-from collections import namedtuple
 import psycopg2
 from modules.Database.app import Database
 
 
 class DBMiddleware():
 
-    ClassEntry = namedtuple('Class', ['name', 'index', 'color'])
-
     def __init__(self, config):
         self.config = config
         self.dbConnector = Database(config)
 
-        self._getProjectSettings()
+        self._fetchProjectSettings()
 
 
-    def _getProjectSettings(self):
+    def _fetchProjectSettings(self):
+        self.projectSettings = {
+            'dataServerURI': self.config.getProperty('LabelUI', 'dataServer_uri'),
+            'classes': self.getClassDefinitions(),
+            'annotationType': self.config.getProperty('LabelUI', 'annotationType'),
+            'numImages_x': self.config.getProperty('LabelUI', 'numImages_x', 3),
+            'numImages_y': self.config.getProperty('LabelUI', 'numImages_y', 2),
+            'defaultImage_w': self.config.getProperty('LabelUI', 'defaultImage_w', 800),
+            'defaultImage_h': self.config.getProperty('LabelUI', 'defaultImage_h', 600),
+        }
+
+
+    def getProjectSettings(self):
         '''
             Queries the database for general project-specific metadata, such as:
             - Classes: names, indices, default colors
             - Annotation type: one of {class labels, positions, bboxes}
         '''
+        return self.projectSettings
 
-        #TODO: dummy for now; implement to query db
-        self.projectSettings = {
-            'classes': [],
-            'annotationType': 'classification'      #TODO: make enum?
+
+
+    def getClassDefinitions(self):
+        '''
+            Returns a dictionary with entries for all classes in the project.
+        '''
+
+        #TODO: dummy for now; create dedicated Python class for class labels that also serves the AITrainer (TODO: needed?)
+        return {
+            '1': {
+                'name': 'Elephant',
+                'index': 0,
+                'color': '#0000FF'
+            },
+            '2': {
+                'name': 'Livestock',
+                'index': 1,
+                'color': '#00FF00'
+            },
         }
 
+
+    def getAnnotations(self, data):
+        '''
+            Returns entries from the database based on the list of data entry identifiers specified.
+        '''
+        #TODO
+        print(data)
+        pass
 
     
     def getNextBatch(self, ignoreLabeled=True, limit=None):
@@ -52,26 +85,38 @@ class DBMiddleware():
 
         #TODO: for now we just use a dummy function that returns a random batch of local images
         import os
-        import numpy as np
+        import random
         localFiles = os.listdir(self.config.getProperty('FileServer', 'staticfiles_dir'))
         numFiles = (limit if limit is not None else 16)
-
-        selected = np.random.choice(len(localFiles), numFiles, replace=False)
 
         response = {}
 
         # simulate labels
-        for s in selected:
-            if np.random.rand() > 0.5:
-                userLabel = None
-            else:
-                userLabel = np.random.randint(10)
-            response[str(s)] = {
-                'filePath': localFiles[s],
-                'predictedLabel': np.random.randint(10),     #TODO: numClasses in settings.ini file?
-                'predictedConfidence': np.random.rand(),
-                'userLabel': userLabel
-            }
+        for s in range(numFiles):
+            if self.projectSettings['annotationType'] == 'classLabels':
+                if random.random() > 0.5:
+                    userLabel = None
+                else:
+                    userLabel = random.choice(list(self.projectSettings['classes'].keys()))
+                predLabel = random.choice(list(self.projectSettings['classes'].keys()))
+                response[str(s)] = {
+                    'fileName': localFiles[s],
+                    'predictedLabel': predLabel,     #TODO: numClasses in settings.ini file?
+                    'predictedConfidence': random.random(),
+                    'userLabel': userLabel
+                }
+            elif self.projectSettings['annotationType'] == 'points':
+                response[str(s)] = {
+                    'fileName': localFiles[s],
+                    'pointAnnotations': {
+                        'point_0': {
+                            'x': 150,
+                            'y': 80,
+                            'predictedLabel': random.choice(list(self.projectSettings['classes'].keys())),
+                            'predictedConfidence': random.random()
+                        }
+                    }
+                }
         return response
 
 

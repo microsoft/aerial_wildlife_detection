@@ -5,6 +5,7 @@
     - &owner
     - &user
     - &password
+    - etc.
 
     TODO: just here for orientation; needs massive restructuring to actually work.
     Probably has tons of bugs as well; need to try out...
@@ -14,19 +15,6 @@
 
 /* extensions and trigger functions */
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
-
-
-/* database (TODO: will not run within script) */
-CREATE DATABASE &dbName
-    WITH OWNER &owner
-    CONNECTION LIMIT -1;
-
-
-/* access role */
-CREATE USER &user WITH
-    NOCREATEDB NOCREATEUSER
-    PASSWORD '&password';
 
 
 /* schema */
@@ -43,36 +31,39 @@ CREATE TABLE IF NOT EXISTS &schema.IMAGE (
     PRIMARY KEY (id)
 );
 
+CREATE TABLE IF NOT EXISTS &schema.LABELCLASS (
+    id uuid DEFAULT uuid_generate_v4(),
+    name VARCHAR NOT NULL,
+    PRIMARY KEY (id)
+);
+
 CREATE TABLE IF NOT EXISTS &schema.ANNOTATION (
     id uuid DEFAULT uuid_generate_v4(),
     imageID uuid NOT NULL,
     timeCreated TIMESTAMP NOT NULL DEFAULT NOW(),
-    annotation VARCHAR,
+    timeRequired BIGINT,
+    labelClass uuid NOT NULL,
+    &annotationFields
     PRIMARY KEY (id),
-    FOREIGN KEY (imageID) REFERENCES &schema.IMAGE(id)
+    FOREIGN KEY (imageID) REFERENCES &schema.IMAGE(id),
+    FOREIGN KEY (labelClass) REFERENCES &schema.LABELCLASS(id)
 );
 
 CREATE TABLE IF NOT EXISTS &schema.PREDICTION (
     id uuid DEFAULT uuid_generate_v4(),
     imageID uuid NOT NULL,
     timeCreated TIMESTAMP NOT NULL DEFAULT NOW(),
-    prediction VARCHAR,
-    priority REAL,
+    &predictionFields
+    priority real,
     PRIMARY KEY (id),
     FOREIGN KEY (imageID) REFERENCES &schema.IMAGE(id)
-)
-
-CREATE TABLE IF NOT EXISTS &schema.LABELCLASS (
-    id uuid DEFAULT uuid_generate_v4(),
-    name VARCHAR NOT NULL,
-    PRIMARY KEY (id)
-)
+);
 
 CREATE TABLE IF NOT EXISTS &schema.CNN (
     id uuid DEFAULT uuid_generate_v4(),
     name VARCHAR NOT NULL,
     PRIMARY KEY (id)
-)
+);
 
 CREATE TABLE IF NOT EXISTS &schema.CNN_LABELCLASS (
     cnnID uuid NOT NULL,
@@ -81,7 +72,7 @@ CREATE TABLE IF NOT EXISTS &schema.CNN_LABELCLASS (
     PRIMARY KEY (cnnID, labelclassID),
     FOREIGN KEY (cnnID) REFERENCES &schema.CNN(id),
     FOREIGN KEY (labelclassID) REFERENCES &schema.LABELCLASS(id)
-)
+);
 
 CREATE TABLE IF NOT EXISTS &schema.CNNSTATE (
     id uuid DEFAULT uuid_generate_v4(),
@@ -90,6 +81,7 @@ CREATE TABLE IF NOT EXISTS &schema.CNNSTATE (
     stateDict bytea NOT NULL,
     PRIMARY KEY (id),
     FOREIGN KEY (cnnID) REFERENCES &schema.CNN(id)
-)
+);
 
 /* TODO: integrate user account tables, reference from annotation table */
+

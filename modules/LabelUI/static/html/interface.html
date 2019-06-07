@@ -8,36 +8,25 @@
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
     <script src="https://code.jquery.com/ui/1.12.0/jquery-ui.min.js" integrity="sha256-eGE6blurk5sHj+rmkfsGYeKyZx3M4bG+ZlFyA7Kns7E=" crossorigin="anonymous"></script>
     <script type="text/javascript" src="lib/openseadragon/openseadragon.min.js"></script>
-
+    <script type="text/javascript" src="js/annotationPrimitives.js"></script>
     <script type="text/javascript" src="js/configuration.js"></script>
+    <script type="text/javascript" src="js/labelClassHandler.js"></script>
     <script type="text/javascript" src="js/dataEntry.js"></script>
     <script type="text/javascript" src="js/dataHandler.js"></script>
-    
+    <script type="text/javascript" src="js/init.js"></script>
     <style type="text/css">
         .gallery {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            grid-template-rows: repeat(5, 5vw);
+            /* grid-template-columns: repeat(5, 1fr);
+            grid-template-rows: repeat(5, 5vw); */
             grid-gap: 15px;
             padding: 20px 50px 10px 50px;
         }
-        .gallery img{
+        .gallery img,canvas {
             width: 100%;
             height: 100%;
             object-fit: cover;
         }
-        .selectable-1 .ui-selected{
-            border: 2px solid #ff0000;
-        }
-        .selectable img {
-            /* margin: 9px; */
-            padding: 2px 2px 2px 2px;
-            /* border: 2px solid #ffffff; */
-        }
-        /* .selected-items {
-            border: 1px solid #ff0000;
-            line-height: 32px;
-        } */
     </style>
 </head>
 
@@ -95,9 +84,9 @@
                             Actions
                         </div>
                         <div class="card-body">
-                            <h5 class="card-title">Stuff You Can Do</h5>
-                            <p class="card-text">Instructions</p>
-                            <a href="#" class="btn btn-primary">Do Something</a>
+                            <h5 class="card-title">Legend</h5>
+                            <p class="card-text">Click on a label or press its number (if 1-9) to activate it.</p>
+                            <div class='legend-entries'></div>
                         </div>
                     </div>
                 </div>
@@ -105,20 +94,6 @@
         </div>
     </div>
     <!-- /#page-content-wrapper -->
-
-    <!-- JavaScript -->
-    <script type="text/javascript">
-        $(document).ready(function() {
-            window.dataHandler = new DataHandler($('#gallery'));
-            window.dataHandler.loadNextBatch();
-        })
-    </script>
-    <!-- <script type="text/javascript">
-        $(function() {
-            $(".selectable-1").selectable();
-        });
-    </script> -->
-
 </body>
 
 </html>

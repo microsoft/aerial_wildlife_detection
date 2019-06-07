@@ -57,7 +57,6 @@ class Launcher:
         host = self.config.getProperty('Server', 'host')
         port = self.config.getProperty('Server', 'port')
         app.run(host=host, port=port)
-
         
 
 if __name__ == '__main__':
@@ -66,6 +65,5 @@ if __name__ == '__main__':
     parser.add_argument('--instance', type=str, default='FileServer, LabelUI', const=1, nargs='?',
                     help='Instance type(s) to run on this host. Accepts multiple keywords, comma-separated (default: "LabelUI").')
     args = parser.parse_args()
-
 
     Launcher(args)
