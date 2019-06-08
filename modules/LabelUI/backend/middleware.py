@@ -22,6 +22,7 @@ class DBMiddleware():
             'dataServerURI': self.config.getProperty('LabelUI', 'dataServer_uri'),
             'classes': self.getClassDefinitions(),
             'annotationType': self.config.getProperty('LabelUI', 'annotationType'),
+            'predictionType': self.config.getProperty('AITrainer', 'annotationType'),
             'numImages_x': self.config.getProperty('LabelUI', 'numImages_x', 3),
             'numImages_y': self.config.getProperty('LabelUI', 'numImages_y', 2),
             'defaultImage_w': self.config.getProperty('LabelUI', 'defaultImage_w', 800),
@@ -93,7 +94,7 @@ class DBMiddleware():
 
         # simulate labels
         for s in range(numFiles):
-            if self.projectSettings['annotationType'] == 'classLabels':
+            if self.projectSettings['predictionType'] == 'labels':
                 if random.random() > 0.5:
                     userLabel = None
                 else:
@@ -101,19 +102,34 @@ class DBMiddleware():
                 predLabel = random.choice(list(self.projectSettings['classes'].keys()))
                 response[str(s)] = {
                     'fileName': localFiles[s],
-                    'predictedLabel': predLabel,     #TODO: numClasses in settings.ini file?
-                    'predictedConfidence': random.random(),
-                    'userLabel': userLabel
+                    'predictions': {
+                        'pred_0': {
+                            'label': predLabel,     #TODO: numClasses in settings.ini file?
+                            'confidence': random.random(),
+                        }
+                    },
+                    'annotations': {
+                        'anno_0': {
+                            'label': userLabel
+                        }
+                    }
                 }
-            elif self.projectSettings['annotationType'] == 'points':
+            elif self.projectSettings['predictionType'] == 'points':
                 response[str(s)] = {
                     'fileName': localFiles[s],
-                    'pointAnnotations': {
+                    'predictions': {
                         'point_0': {
+                            'x': 220,
+                            'y': 100,
+                            'label': random.choice(list(self.projectSettings['classes'].keys())),
+                            'confidence': random.random()
+                        }
+                    },
+                    'annotations': {
+                        'point_1': {
                             'x': 150,
                             'y': 80,
-                            'predictedLabel': random.choice(list(self.projectSettings['classes'].keys())),
-                            'predictedConfidence': random.random()
+                            'label': random.choice(list(self.projectSettings['classes'].keys()))
                         }
                     }
                 }

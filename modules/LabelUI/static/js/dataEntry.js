@@ -13,17 +13,45 @@
         this.fileName = properties['fileName'];
 
         this._createImage();
+        this._parseLabels(properties);
     }
 
-    _setup_markup() {
-        var markup = $('<div class="entry"></div>');
-        return markup;
+    _parseLabels(properties) {
+        /*
+            Iterates through properties object's entries "predictions" and "annotations"
+            and creates new primitive instances each.
+        */
+        this.predictions = {};
+        this.annotations = {};
+
+        if(properties.hasOwnProperty('predictions')) {
+            for(var key in properties['predictions']) {
+                //TODO: make failsafe?
+                this.predictions[key] = window.parseAnnotation(key, properties['predictions'][key], 'prediction');
+            }
+        }
+        if(properties.hasOwnProperty('annotations')) {
+            for(var key in properties['annotations']) {
+                //TODO: make failsafe?
+                this.annotations[key] = window.parseAnnotation(key, properties['annotations'][key], 'annotation');
+            }
+        }
     }
 
     _createImage() {
         this.image = new Image();
         this.image.width = window.defaultImage_w;
         this.image.height = window.defaultImage_h;
+    }
+
+    _setup_markup() {
+        this.markup = $('<div class="entry"></div>');
+
+        // define canvas
+        this.canvas = $('<canvas id="'+this.canvasID+'" width="'+window.defaultImage_w+'" height="'+window.defaultImage_h+'"></canvas>');
+        this.canvas.css('cursor', 'crosshair');
+        this.markup.append(this.canvas);
+        this.ctx = this.canvas[0].getContext('2d');
     }
 
     loadImage() {
@@ -34,10 +62,20 @@
         return window.dataServerURI + this.fileName + '?' + Date.now();
     }
 
-    getProperties() {
-        return {
-            'fileName': this.fileName
-        };
+    getProperties(minimal) {
+        var props = { 'id': this.entryID };
+        props['annotations'] = {};
+        for(var key in this.annotations) {
+            props['annotations'][key] = this.annotations[key].getProperties(minimal);
+        }
+        if(!minimal) {
+            props['fileName'] = this.fileName;
+            props['predictions'] = {};
+            for(var key in this.predictions) {
+                props['predictions'][key] = this.predictions[key].getProperties(minimal);
+            }
+        }
+        return props;
     }
 
 
@@ -68,6 +106,10 @@
         }
     }
 
+    _convertToCanvasScale(coords) {
+        return this._convertCoordinates(coords, 'scaled');
+    }
+
     _drawHoverText() {
         //TODO: switch text position to left if too close to right side (top if too close to bottom)
         if(this.hoverPos != null) {
@@ -83,6 +125,26 @@
             this.ctx.font = window.styles.hoverText.text.font;
             this.ctx.fillText(this.hoverText, offsetH+this.hoverPos[0], this.hoverPos[1]);
         }
+    }
+
+
+    render() {
+        var canvasSize = this._convertToCanvasScale([this.canvas.width(), this.canvas.height()]);
+        this.ctx.fillStyle = window.styles.background;
+        this.ctx.fillRect(0, 0, canvasSize[0], canvasSize[1]);
+        var self = this;
+        var rescale = function(coords) {
+            return self._convertToCanvasScale(coords);
+        }
+        for(var key in this.predictions) {
+            this.predictions[key].draw(this.ctx, this.canvas, rescale);
+        }
+        for(var key in this.annotations) {
+            this.annotations[key].draw(this.ctx, this.canvas, rescale);
+        }
+
+        // show hover message
+        this._drawHoverText();
     }
  }
 
@@ -107,57 +169,75 @@
      */
     constructor(entryID, properties) {
         super(entryID, properties);
-        this.predictedLabel = properties['predictedLabel'];
-        this.predictedConfidence = properties['predictedConfidence'];
-        this.userLabel = properties['userLabel'];
+
+        // setup label instances
+        this.labelInstance = null;  // will be set by the user
+        this.noLabel = false;       // will be set to true if user explicitly de-clicks the image (to avoid carry-over of existing annotations or predictions)
+        this.defaultLabelInstance = this._getDefaultLabelInstance();
 
         this._setup_markup();
     }
 
-    getProperties() {
-        var props = super.getProperties();
-        props['userLabel'] = this.userLabel;
+    _getDefaultLabelInstance() {
+        for(var key in this.annotations) {
+            if(this.annotations[key].label != null) {
+                return this.annotations[key];
+            }
+        }
 
-        return props;
+        // no annotation found, fallback for predictions
+        for(var key in this.predictions) {
+            if(this.predictions[key].label != null) {
+                return this.predictions[key];
+            }
+        }
+        return null;
     }
 
     _setup_markup() {
         var self = this;
-        super.loadImage();
-        this.markup = super._setup_markup();
+        super._setup_markup();
+        $(this.canvas).css('cursor', 'pointer');
 
         // click handler
-        this.markup.click(function() {
-            self.toggleUserLabel()
+        this.markup.click(function(event) {
+            self.toggleUserLabel(event.altKey);
         });
-
+        
         // image
-        this.markup.append(this.image);
-
-        this._set_border_style();
+        this.image.onload = function() {
+            self.render();
+        };
+        super.loadImage();
     }
 
-    _set_border_style() {
-        // specify border decoration
-        var style = 'none';
-        if(this.userLabel!=null) {
-            style = '6px solid ' + window.classes[this.userLabel]['color'];
-        } else if(this.predictedLabel!=null) {
-            style = '2px solid ' + window.classes[this.predictedLabel]['color'];
-        }
-        this.markup.css('border', style);
-    }
+    toggleUserLabel(removeLabel) {
+        if(removeLabel) {
+            this.labelInstance = null;
+            this.noLabel = true;
+            this.defaultLabelInstance = null;
 
-    toggleUserLabel() {
-        if(this.userLabel!=null) {
-            this.userLabel = null;
         } else {
-            // get ID from currently active label class
-            var activeClass = window.labelClassHandler.getActiveClass();
-            this.userLabel = activeClass['classID'];
-            // this.userLabel = Object.keys()[Math.floor(Math.random() * window.classes.length)];
+            // set label instance to current label class
+            this.labelInstance = new LabelAnnotation(this.entryID+'_anno', {'label':window.labelClassHandler.getActiveClassID()}, 'userAnnotation');
         }
-        this._set_border_style();
+        this.render();
+    }
+
+    render() {
+        var canvasSize = this._convertToCanvasScale([this.canvas.width(), this.canvas.height()]);
+        this.ctx.fillStyle = window.styles.background;
+        this.ctx.fillRect(0, 0, canvasSize[0], canvasSize[1]);
+        this.ctx.drawImage(this.image, 0, 0, canvasSize[0], canvasSize[1]);
+        var self = this;
+        var rescale = function(coords) {
+            return self._convertToCanvasScale(coords);
+        }
+        if(this.labelInstance != null) {
+            this.labelInstance.draw(this.ctx, this.canvas, rescale);
+        } else if(this.defaultLabelInstance != null) {
+            this.defaultLabelInstance.draw(this.ctx, this.canvas, rescale);
+        }
     }
  }
 
@@ -188,28 +268,12 @@ class PointAnnotationEntry extends AbstractDataEntry {
         super(entryID, properties);
         this.annotations = {};
         this.canvasID = entryID + '_canvas';
-        this._parsePoints(properties);
         this._setup_markup();
-    }
-
-    _parsePoints(properties) {
-        if(properties.hasOwnProperty('pointAnnotations')) {
-            for(var key in properties['pointAnnotations']) {
-                var pointAnno = new PointAnnotation(key, properties['pointAnnotations'][key]);
-                this.annotations[key] = pointAnno;
-            }
-        }
     }
 
     _setup_markup() {
         var self = this;
         this.markup = super._setup_markup();
-
-        // define canvas
-        this.canvas = $('<canvas id="'+this.canvasID+'" width="'+window.defaultImage_w+'" height="'+window.defaultImage_h+'"></canvas>');
-        this.canvas.css('cursor', 'crosshair');
-        this.markup.append(this.canvas);
-        this.ctx = this.canvas[0].getContext('2d');
 
         // interaction handlers
         this.canvas.mousemove(function(event) {
@@ -241,19 +305,31 @@ class PointAnnotationEntry extends AbstractDataEntry {
             distance to the provided coordinates, if within a default
             tolerance threshold. Otherwise returns null.
         */
-       var tolerance = 20;      //TODO: make user-adjustable; adjust for canvas scale?
+        var tolerance = 20;      //TODO: make user-adjustable; adjust for canvas scale?
 
-       var minDist = 1e9;
-       var argMin = null;
+        var minDist = 1e9;
+        var argMin = null;
 
-       for(var key in this.annotations) {
-           var dist = this.annotations[key].euclideanDistance(coordinates[0], coordinates[1]);
-           if((dist < minDist) && (dist <= tolerance)) {
-               minDist = dist;
-               argMin = this.annotations[key];
-           }
-       }
-       return argMin;
+        for(var key in this.predictions) {
+            if(this.predictions[key] instanceof PointAnnotation) {
+                var dist = this.predictions[key].euclideanDistance(coordinates[0], coordinates[1]);
+                if((dist < minDist) && (dist <= tolerance)) {
+                    minDist = dist;
+                    argMin = this.predictions[key];
+                }
+            }
+        }
+
+        for(var key in this.annotations) {
+            if(this.annotations[key] instanceof PointAnnotation) {
+                var dist = this.annotations[key].euclideanDistance(coordinates[0], coordinates[1]);
+                if((dist < minDist) && (dist <= tolerance)) {
+                    minDist = dist;
+                    argMin = this.annotations[key];
+                }
+            }
+        }
+        return argMin;
     }
 
     _canvas_mousein(event) {
@@ -269,7 +345,7 @@ class PointAnnotationEntry extends AbstractDataEntry {
             if(event.altKey) {
                 this.hoverText = 'remove point';
                 this.hoverPos = coords_scaled;
-            } else if(closest['userLabel'] != window.labelClassHandler.getActiveClassID() && closest['predictedLabel'] != window.labelClassHandler.getActiveClassID()) {
+            } else if(closest['label'] != window.labelClassHandler.getActiveClassID()) {
                 this.hoverText = 'change to "' + window.labelClassHandler.getActiveClassName() + '"';
                 this.hoverPos = coords_scaled;
             }
@@ -294,9 +370,9 @@ class PointAnnotationEntry extends AbstractDataEntry {
             if(event.altKey) {
                 // remove point
                 delete this.annotations[closest.annotationID];     //TODO: undo history?
-            } else if(closest['userLabel'] != window.labelClassHandler.getActiveClassID()) {
+            } else if(closest['label'] != window.labelClassHandler.getActiveClassID()) {
                 // change label of closest point
-                closest['userLabel'] = window.labelClassHandler.getActiveClassID();
+                closest['label'] = window.labelClassHandler.getActiveClassID();
             }
         } else {
             // no point in proximity; add new
@@ -304,34 +380,11 @@ class PointAnnotationEntry extends AbstractDataEntry {
             var props = {
                 'x': coords[0],
                 'y': coords[1],
-                'userLabel': window.labelClassHandler.getActiveClassID()
+                'label': window.labelClassHandler.getActiveClassID()
             };
-            this.annotations[key] = new PointAnnotation(key, props);
+            this.annotations[key] = new PointAnnotation(key, props, 'annotation');
         }
 
         this.render();
-    }
-
-
-    render() {
-        this.ctx.drawImage(this.image, 0, 0);
-        for(var key in this.annotations) {
-            this.annotations[key].draw(this.ctx, this.canvas);
-        }
-
-        // show hover message
-        super._drawHoverText();
-    }
-
-    getProperties() {
-        var props = super.getProperties();
-
-        // append points
-        var pointProps = {};
-        for(var key in this.annotations) {
-            pointProps[key] = this.annotations[key].getProperties();
-        }
-        props['points'] = pointProps;
-        return props;
     }
 }

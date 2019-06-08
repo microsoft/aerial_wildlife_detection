@@ -39,10 +39,10 @@ class DataHandler {
     }
 
 
-    _entriesToJSON() {
+    _entriesToJSON(minimal) {
         var entries = {};
         for(var e=0; e<this.dataEntries.length; e++) {
-            entries[this.dataEntries[e].entryID] = this.dataEntries[e].getProperties();
+            entries[this.dataEntries[e].entryID] = this.dataEntries[e].getProperties(minimal);
         }
 
         return JSON.stringify({
@@ -53,7 +53,7 @@ class DataHandler {
 
     submitAnnotations() {
         var self = this;
-        var entries = this._entriesToJSON();
+        var entries = this._entriesToJSON(true);
         $.post('submitAnnotations', entries, function(response) {
             console.log(response);
 
