@@ -41,8 +41,21 @@ class Database():
         return
 
     
-    def execute(self, sql):
-        #TODO: return values, separate sql from data, etc.
+    def execute(self, sql, arguments, numReturn=None):
         cursor = self.conn.cursor()
-        cursor.execute(sql)
+        cursor.execute(sql, arguments)
+        self.conn.commit()
+
+        if numReturn is None:
+            cursor.close()
+            return
+
+        returnValues = []
+        for n in range(numReturn):
+            rv = cursor.fetchone()
+            if rv is None:
+                return returnValues
+            returnValues.append(rv)
+ 
         cursor.close()
+        return returnValues

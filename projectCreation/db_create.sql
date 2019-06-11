@@ -13,9 +13,6 @@
     2019 Benjamin Kellenberger
 */
 
-/* extensions and trigger functions */
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
 
 /* schema */
 CREATE SCHEMA IF NOT EXISTS &schema
@@ -39,24 +36,24 @@ CREATE TABLE IF NOT EXISTS &schema.LABELCLASS (
 
 CREATE TABLE IF NOT EXISTS &schema.ANNOTATION (
     id uuid DEFAULT uuid_generate_v4(),
-    imageID uuid NOT NULL,
+    image uuid NOT NULL,
     timeCreated TIMESTAMP NOT NULL DEFAULT NOW(),
     timeRequired BIGINT,
-    labelClass uuid NOT NULL,
+    
     &annotationFields
     PRIMARY KEY (id),
-    FOREIGN KEY (imageID) REFERENCES &schema.IMAGE(id),
+    FOREIGN KEY (image) REFERENCES &schema.IMAGE(id),
     FOREIGN KEY (labelClass) REFERENCES &schema.LABELCLASS(id)
 );
 
 CREATE TABLE IF NOT EXISTS &schema.PREDICTION (
     id uuid DEFAULT uuid_generate_v4(),
-    imageID uuid NOT NULL,
+    image uuid NOT NULL,
     timeCreated TIMESTAMP NOT NULL DEFAULT NOW(),
     &predictionFields
     priority real,
     PRIMARY KEY (id),
-    FOREIGN KEY (imageID) REFERENCES &schema.IMAGE(id)
+    FOREIGN KEY (image) REFERENCES &schema.IMAGE(id)
 );
 
 CREATE TABLE IF NOT EXISTS &schema.CNN (
@@ -66,21 +63,21 @@ CREATE TABLE IF NOT EXISTS &schema.CNN (
 );
 
 CREATE TABLE IF NOT EXISTS &schema.CNN_LABELCLASS (
-    cnnID uuid NOT NULL,
-    labelclassID uuid NOT NULL,
+    cnn uuid NOT NULL,
+    labelclass uuid NOT NULL,
     labelNumber BIGINT NOT NULL,
-    PRIMARY KEY (cnnID, labelclassID),
-    FOREIGN KEY (cnnID) REFERENCES &schema.CNN(id),
-    FOREIGN KEY (labelclassID) REFERENCES &schema.LABELCLASS(id)
+    PRIMARY KEY (cnn, labelclass),
+    FOREIGN KEY (cnn) REFERENCES &schema.CNN(id),
+    FOREIGN KEY (labelclass) REFERENCES &schema.LABELCLASS(id)
 );
 
 CREATE TABLE IF NOT EXISTS &schema.CNNSTATE (
     id uuid DEFAULT uuid_generate_v4(),
-    cnnID uuid NOT NULL,
+    cnn uuid NOT NULL,
     timeCreated TIMESTAMP NOT NULL DEFAULT NOW(),
     stateDict bytea NOT NULL,
     PRIMARY KEY (id),
-    FOREIGN KEY (cnnID) REFERENCES &schema.CNN(id)
+    FOREIGN KEY (cnn) REFERENCES &schema.CNN(id)
 );
 
 /* TODO: integrate user account tables, reference from annotation table */

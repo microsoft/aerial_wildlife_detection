@@ -34,6 +34,12 @@ AIlabelTool uses [PostGreSQL](https://www.postgresql.org/) to store labels, pred
 
     //TODO: change peer to md5 in /etc/postgresql/10/main/pg_hba.conf
 
+    //TODO
+    sudo sed -e "s/#[ ]*listen_addresses = 'localhost'/listen_addresses = '\*'/g" /etc/postgresql/10/main/postgresql.conf
+
+    //TODO: also need to replace the local IP address with "all" in pg_hba.conf (EXTREMELY UNSAFE)
+    sudo echo "host    all             all             0.0.0.0/0               md5" >> /etc/postgresql/10/main/pg_hba.conf
+
     sudo service postgresql restart
     sudo systemctl enable postgresql
 ```
@@ -44,6 +50,10 @@ AIlabelTool uses [PostGreSQL](https://www.postgresql.org/) to store labels, pred
     sudo -u postgres psql -c "CREATE USER $(python util/configDef.py --section=Database --parameter=user) WITH PASSWORD '$(python util/configDef.py --section=Database --parameter=user)';"
     sudo -u postgres psql -c "CREATE DATABASE $(python util/configDef.py --section=Database --parameter=name) WITH OWNER $(python util/configDef.py --section=Database --parameter=user) CONNECTION LIMIT -1;"
     sudo -u postgres psql -c "GRANT CONNECT ON DATABASE $(python util/configDef.py --section=Database --parameter=name) TO $(python util/configDef.py --section=Database --parameter=user);"
+    sudo -u postgres psql -d $(python util/configDef.py --section=Database --parameter=name) -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
+
+    //TODO: needs to run after init
+    sudo -u postgres psql -d (python util/configDef.py --section=Database --parameter=name) -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO (python util/configDef.py --section=Database --parameter=user);"
 ```
 
 3. Setup the database schema. We do that using the newly created user account instead of the postgres user:

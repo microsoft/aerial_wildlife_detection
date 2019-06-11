@@ -84,6 +84,10 @@ class LabelClassHandler {
         return this.activeClass['name'];
     }
 
+    getActiveColor() {
+        return this.activeClass['color'];
+    }
+
     getColor(classID) {
         return this.labelClasses[classID]['color'];
     }

@@ -26,29 +26,29 @@ def _constructAnnotationFields(annoType, table):
 
     if annoType == 'classLabels':
         annoFields = '''
-            labelclassID uuid NOT NULL,
+            labelclass uuid NOT NULL,
             confidence real,
-            FOREIGN KEY (labelclassID) REFERENCES &schema.LABELCLASS(id),
+            FOREIGN KEY (labelclass) REFERENCES &schema.LABELCLASS(id),
         '''
     
     elif annoType == 'points':
         annoFields = '''
-            labelclassID uuid NOT NULL,
+            labelclass uuid NOT NULL,
             confidence real,
             x integer,
             y integer,
-            FOREIGN KEY (labelclassID) REFERENCES &schema.LABELCLASS(id),
+            FOREIGN KEY (labelclass) REFERENCES &schema.LABELCLASS(id),
         '''
 
     elif annoType == 'boundingBoxes':
         annoFields = '''
-            labelclassID uuid NOT NULL,
+            labelclass uuid NOT NULL,
             confidence real,
             x integer,
             y integer,
             width integer,
             height integer,
-            FOREIGN KEY (labelclassID) REFERENCES &schema.LABELCLASS(id),
+            FOREIGN KEY (labelclass) REFERENCES &schema.LABELCLASS(id),
         '''
 
     elif annoType == 'segmentationMasks':
@@ -101,4 +101,4 @@ if __name__ == '__main__':
 
 
     # run SQL
-    dbConn.execute(sql)
+    dbConn.execute(sql, None, None)

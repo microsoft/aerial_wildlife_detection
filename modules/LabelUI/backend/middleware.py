@@ -76,6 +76,33 @@ class DBMiddleware():
             - if 'ignoreLabeled' is set to True, only images without a single associated annotation are returned (may result in an empty set). Otherwise priority is given to unlabeled images, but all images are queried if there are no unlabeled ones left.
             - if 'limit' is a number, the return count will be clamped to it.
         '''
+
+        # prepare returns
+        response = {}
+
+        # query
+        schema = self.config.getProperty('Database', 'schema')
+        sql = '''
+            SELECT * FROM {}.prediction AS pred
+            JOIN {}.image AS img ON pred.image = img.id
+        '''.format(schema, schema)
+
+        if ignoreLabeled:
+            sql += '''
+             WHERE NOT EXISTS (
+                SELECT image FROM {}.annotation AS anno
+                WHERE anno.image = img.id
+            )
+            '''.format(schema)
+        
+        sql += ' ORDER BY pred.confidence DESC'
+        if limit is not None and isinstance(limit, int):
+            sql += ' LIMIT {}'.format(limit)
+        sql += ';'
+
+        #TODO: gather and standardize returns, return random unlabeled set if no prediction exists
+        # ALSO RETUR
+
         #TODO: implement:
         # 1. Create SQL string
         # 2. Query DB, sanity checks
@@ -132,6 +159,10 @@ class DBMiddleware():
                             'label': random.choice(list(self.projectSettings['classes'].keys()))
                         }
                     }
+                }
+            else:
+                response[str(s)] = {
+                    'fileName': localFiles[s]
                 }
         return response
 

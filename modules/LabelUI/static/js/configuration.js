@@ -25,7 +25,6 @@ window.loadConfiguration = function() {
         window.defaultImage_h = data['settings']['defaultImage_h'];
     });
 
-
     // styles (TODO: outsource?)
     window.styles = {
         hoverText: {
@@ -45,6 +44,9 @@ window.loadConfiguration = function() {
         },
         background: '#000000'
     };
+
+    // labeling interface
+    window.annotationProximityTolerance = 20;
 
     return promise;
 };

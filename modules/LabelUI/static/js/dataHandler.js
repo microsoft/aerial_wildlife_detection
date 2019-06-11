@@ -27,6 +27,10 @@ class DataHandler {
                         break;
                     case 'points':
                         var entry = new PointAnnotationEntry(d, data[d]);
+                        break;
+                    case 'boundingBoxes':
+                        var entry = new BoundingBoxAnnotationEntry(d, data[d]);
+                        break;
                     default:
                         break;
                 }

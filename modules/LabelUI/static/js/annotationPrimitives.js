@@ -23,6 +23,7 @@ window.parseAnnotation = function(annotationID, properties, type) {
 
 
 class AbstractAnnotation {
+
     constructor(annotationID, type) {
         this.annotationID = annotationID;
         this.type = type; 
@@ -30,6 +31,10 @@ class AbstractAnnotation {
 
     getProperties() {
         return {'annotationID':this.annotationID};
+    }
+
+    getAnnotationType() {
+        throw Error('Not implemented.');
     }
 
     draw(context, canvas, scaleFun) {
@@ -58,6 +63,10 @@ class LabelAnnotation extends AbstractAnnotation {
         return props;
     }
 
+    getAnnotationType() {
+        return 'label';
+    }
+
     draw(context, canvas, scaleFun) {
         // draw rectangle border around canvas if label exists
         if(this.label == null) return;
@@ -71,7 +80,7 @@ class LabelAnnotation extends AbstractAnnotation {
         }
         context.lineWidth = lineWidth;
         var wh = scaleFun([canvas.width(), canvas.height()]);
-        context.strokeRect(lineWidth/2, lineWidth/2, wh[0]-lineWidth/2, wh[1]-lineWidth/2);
+        context.strokeRect(lineWidth/2, lineWidth/2, wh[0]-lineWidth, wh[1]-lineWidth);
     }
 }
 
@@ -94,7 +103,12 @@ class PointAnnotation extends LabelAnnotation {
         return props;
     }
 
+    getAnnotationType() {
+        return 'point';
+    }
+
     draw(context, canvas, scaleFun) {
+        if(this.label == null) return;
         context.fillStyle = window.labelClassHandler.getColor(this.label, '#000000');
         var radius = 5;
         if(this.type == 'userAnnotation') {
@@ -103,31 +117,14 @@ class PointAnnotation extends LabelAnnotation {
             radius = 10;
         }
         var centerCoords = scaleFun([this.x, this.y]);
+        context.beginPath();
         context.arc(centerCoords[0], centerCoords[1], radius, 0, 2*Math.PI);
         context.fill();
-
-        // // adjust to canvas size on screen
-        // var scaleX = window.defaultImage_w / canvas.width();
-        // var scaleY = window.defaultImage_h / canvas.height();
-
-        // //TODO: shape, size, etc.
-        // var size = 20;
-        
-        // context.lineWidth = (this.type == 'annotation'? 8 : 4);
-        // context.beginPath();
-        // context.moveTo(scaleX * (this.x - size/2), scaleY * this.y);
-        // context.lineTo(scaleX * (this.x + size/2), scaleY * this.y);
-        // context.moveTo(scaleX * this.x, scaleY * (this.y - size/2));
-        // context.lineTo(scaleX * this.x, scaleY * (this.y + size/2));
-        // context.stroke();
+        context.closePath();
     }
 
     euclideanDistance(that) {
-        return Math.sqrt(Math.pow(this.x - that.x,2) + Math.pow(this.y - that.y,2));
-    }
-
-    euclideanDistance(thatX, thatY) {
-        return Math.sqrt(Math.pow(this.x - thatX,2) + Math.pow(this.y - thatY,2));
+        return Math.sqrt(Math.pow(this.x - that[0],2) + Math.pow(this.y - that[1],2));
     }
 }
 
@@ -139,25 +136,89 @@ class BoundingBoxAnnotation extends PointAnnotation {
         the center of the box.
         As such, they are a natural extension of the Point primitive.
     */
-   constructor(annotationID, properties, type) {
-       super(annotationID, properties, type);
-       this.w = w;
-       this.h = h;
-   }
+    constructor(annotationID, properties, type) {
+        super(annotationID, properties, type);
+        this.w = properties['w'];
+        this.h = properties['h'];
+    }
 
-   getProperties() {
-       var props = super.getProperties();
-       props['w'] = this.w;
-       props['h'] = this.h;
-       return props;
-   }
+    getProperties() {
+        var props = super.getProperties();
+        props['w'] = this.w;
+        props['h'] = this.h;
+        return props;
+    }
 
-   draw(context, canvas, scaleFun) {
+    getAnnotationType() {
+        return 'boundingBox';
+    }
+
+    draw(context, canvas, scaleFun) {
         //TODO: outline width
         context.strokeStyle = window.labelClassHandler.getColor(this.label, '#000000');
         context.lineWidth = (this.type == 'annotation'? 8 : 4);
         var wh = scaleFun([this.w, this.h]);
-        var center = scaleFun([this.x, this.y])
+        var center = scaleFun([this.x, this.y]);
+        context.beginPath();
         context.strokeRect(center[0] - wh[0]/2, center[1] - wh[1]/2, wh[0], wh[1]);
+        context.closePath();
+    }
+
+    getExtent() {
+        return [this.x - this.w/2, this.y - this.h/2, this.x + this.w/2, this.y + this.h/2];
+    }
+
+    isInDistance(coordinates, tolerance, forceCorner) {
+        /*
+            Returns true if any parts of the bounding box are
+            within a tolerance's distance of the provided coordinates.
+            If 'forceCorner' is true, coordinates have to be within
+            reach of one of the bounding box's corners.
+        */
+        if(forceCorner) {
+            return (this.getClosestHandle(coordinates, tolerance) != null);
+
+        } else {
+            var extentsTolerance = [this.x-this.w/2, this.y-this.h/2, this.x+this.w/2, this.y+this.h/2];
+            return (coordinates[0] >= extentsTolerance[0] && coordinates[0] <= extentsTolerance[2]) &&
+                (coordinates[1] >= extentsTolerance[1] && coordinates[1] <= extentsTolerance[3]);
+        }
+    }
+
+    containsPoint(coordinates) {
+        var extent = this.getExtent();
+        return (coordinates[0] >= extent[0] && coordinates[0] <= extent[2]) &&
+            (coordinates[1] >= extent[1] && coordinates[1] <= extent[3]);
+    }
+
+    getClosestHandle(coordinates, tolerance) {
+        /*
+            Returns one of {'nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se'} if the coordinates
+            are close to one of the adjustment handles within a given tolerance.
+            Returns 'c' if coordinates are not close to handle, but within bounding box.
+            Else returns null.
+        */
+        var matchL = Math.abs((this.x - this.w/2) - coordinates[0]) <= tolerance;
+        var matchT = Math.abs((this.y - this.h/2) - coordinates[1]) <= tolerance;
+        var matchR = Math.abs((this.x + this.w/2) - coordinates[0]) <= tolerance;
+        var matchB = Math.abs((this.y + this.h/2) - coordinates[1]) <= tolerance;
+
+        if(matchT) {
+            if(matchL) return 'nw';
+            if(matchR) return 'ne';
+            return 'n';
+        } else if(matchB) {
+            if(matchL) return 'sw';
+            if(matchR) return 'se';
+            return 's';
+        } else if(matchL) {
+            return 'w';
+        } else if(matchR) {
+            return 'e';
+        } else if(this.containsPoint(coordinates)) {
+            return 'c';
+        } else {
+            return null;
+        }
     }
 }
