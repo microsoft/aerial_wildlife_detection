@@ -11,15 +11,44 @@ class ImageViewport {
         this.ctx = canvas[0].getContext('2d');
         this.viewport = [0, 0, canvas[0].width, canvas[0].height];
         this.renderStack = [];
-        this.renderStack.sort(function(a, b) {
-            if(a.zIndex() < b.zIndex()) {
+        this.renderStack.sortFun = (function(a, b) {
+            if(a.zIndex < b.zIndex) {
                 return -1;
-            } else if(a.zIndex() > b.zIndex()) {
+            } else if(a.zIndex > b.zIndex) {
                 return 1;
             } else {
                 return 0;
             }
         });
+        this._setupCallbacks();
+    }
+
+    _setupCallbacks() {
+        this.callbacks = {};
+        for(var i=0; i<window.eventTypes.length; i++) {
+            this.callbacks[window.eventTypes[i]] = {};
+        }
+        this._updateCallbacks();
+    }
+
+    _updateCallbacks() {
+        var self = this;
+        for(var i=0; i<window.eventTypes.length; i++) {
+            var type = window.eventTypes[i];
+            if(Object.keys(this.callbacks[type]).length == 0) {
+                // disable callback
+                $(this.canvas).off(type);
+            } else {
+                // enable callback
+                $(this.canvas).off(type);
+                $(this.canvas).on(type, function(event) {
+                    for(var key in self.callbacks[event.type]) {
+                        self.callbacks[event.type][key](event);
+                    }
+                    self.render();
+                });
+            }
+        }
     }
 
     _getCanvasScaleFactors() {
@@ -31,7 +60,7 @@ class ImageViewport {
     addRenderElement(element) {
         if(this.indexOfRenderElement(element) === -1) {
             this.renderStack.push(element);
-            this.renderStack.sort();
+            this.renderStack.sort(this.renderStack.sortFun);
             this.render();
         }
     }
@@ -42,7 +71,7 @@ class ImageViewport {
 
     updateRenderElement(index, element) {
         this.renderStack[index] = element;
-        this.renderStack.sort();
+        this.renderStack.sort(this.renderStack.sortFun);
         this.render();
     }
 
@@ -106,5 +135,19 @@ class ImageViewport {
     resetViewport() {
         this.viewport = [0, 0, this.canvas.width(), this.canvas.height()];
         this.render();
+    }
+
+    addCallback(id, type, callbackFun) {
+        if(!(id in this.callbacks[type])) {
+            this.callbacks[type][id] = callbackFun;
+            this._updateCallbacks();
+        }
+    }
+
+    removeCallback(id, type) {
+        if(id in this.callbacks[type]) {
+            delete this.callbacks[type][id];
+            this._updateCallbacks();
+        }
     }
 }

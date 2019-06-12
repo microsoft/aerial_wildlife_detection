@@ -6,7 +6,7 @@
 
 import psycopg2
 from modules.Database.app import Database
-from .annotation_sql_tokens import QueryStrings_annotation, QueryStrings_prediction
+from .annotation_sql_tokens import QueryStrings_annotation, QueryStrings_prediction, getQueryString, getTableNamesString, getOnConflictString, parseAnnotation
 
 
 class DBMiddleware():
@@ -56,12 +56,11 @@ class DBMiddleware():
         # query
         schema = self.config.getProperty('Database', 'schema')
         sql = 'SELECT * FROM {}.labelclass'.format(schema)
-        classProps, colnames = self.dbConnector.execute(sql, None, None)
-        idCol = next(c for c in range(len(colnames)) if colnames[c]=='id')
+        classProps = self.dbConnector.execute(sql, None, None)
         classdef = {}
         for c in range(len(classProps)):
-            classID = classProps[c][idCol]
-            classdef[classID] = dict(zip(colnames, classProps[c]))
+            classID = classProps[c]['id']
+            classdef[classID] = classProps[c]
 
         return classdef
 
@@ -82,18 +81,17 @@ class DBMiddleware():
             - if 'ignoreLabeled' is set to True, only images without a single associated annotation are returned (may result in an empty set). Otherwise priority is given to unlabeled images, but all images are queried if there are no unlabeled ones left.
             - if 'limit' is a number, the return count will be clamped to it.
         '''
-        # prepare returns
-        response = {}
-
         # query
         schema = self.config.getProperty('Database', 'schema')
         sql = '''
             SELECT * FROM (SELECT id AS imageID, filename FROM {}.image) AS img
-            LEFT OUTER JOIN ({}) AS pred ON pred.image = img.imageID
-            LEFT OUTER JOIN ({}) AS anno ON anno.image = img.imageID
+            LEFT OUTER JOIN (SELECT {} FROM {}.prediction) AS pred ON pred.image = img.imageID
+            LEFT OUTER JOIN (SELECT {} FROM {}.annotation) AS anno ON anno.image = img.imageID
         '''.format(schema,
-            getattr(QueryStrings_prediction, self.projectSettings['predictionType']).value.format(schema),
-            getattr(QueryStrings_annotation, self.projectSettings['annotationType']).value.format(schema),
+            getQueryString(getattr(QueryStrings_prediction, self.projectSettings['predictionType']).value),
+            schema,
+            getQueryString(getattr(QueryStrings_annotation, self.projectSettings['annotationType']).value),
+            schema,
             schema)
 
         if ignoreLabeled:
@@ -109,120 +107,66 @@ class DBMiddleware():
             sql += ' LIMIT {}'.format(limit)
         sql += ';'
 
-        print(sql)
+        batch = self.dbConnector.execute(sql, None, limit)
 
-        nextBatch, colnames = self.dbConnector.execute(sql, None, limit)
-        colnameDict = dict(zip(colnames, range(len(colnames))))
-
-
-
-
-        #TODO: optimize this horrible code and provide proper, standardized return names below
 
         # format and return
-        for n in range(len(nextBatch)):
-            imgID = nextBatch[n][colnameDict['imageid']]
+        response = {}
+        for b in batch:
+            imgID = b['imageid']
             if not imgID in response:
                 response[imgID] = {
-                    'fileName': nextBatch[n][colnameDict['filename']],
+                    'fileName': b['filename'],
                     'predictions': {},
                     'annotations': {}
                 }
-            predID = nextBatch[n][colnameDict['predid']]
-            if predID is not None:
-                tokens = [c for c in colnames if c.startswith('pred')]
-                predValues = [nextBatch[n][colnameDict[t]] for t in tokens]
-                response[imgID]['predictions'][predID] = dict(zip(tokens, predValues))
-            annoID = nextBatch[n][colnameDict['annoid']]
-            if annoID is not None:
-                tokens = [c for c in colnames if c.startswith('anno')]
-                annoValues = [nextBatch[n][colnameDict[t]] for t in tokens]
-                response[imgID]['annotations'][annoID] = dict(zip(tokens, annoValues))
+            pred = {}
+            anno = {}
+            for key in b.keys():
+                if key.startswith('pred'):
+                    pred[key.replace('pred','')] = b[key]
+                elif key.startswith('anno'):
+                    anno[key.replace('anno','')] = b[key]
+            if b['predid'] is not None:
+                response[imgID]['predictions'][b['predid']] = pred
+            if b['annoid'] is not None:
+                response[imgID]['annotations'][b['annoid']] = anno
 
-        return response
-
-
-
-        #TODO: gather and standardize returns, return random unlabeled set if no prediction exists
-        # ALSO RETUR
-
-        #TODO: implement:
-        # 1. Create SQL string
-        # 2. Query DB, sanity checks
-        # 3. Load images from folder (TODO: better use dedicated image server, needs to be accessible by AITrainer as well...), using image paths defined in DB
-        # 4. Call customizable method to reorder or post-process images and labels
-        # 5. Return data in standardized format
-        
-
-        #TODO: for now we just use a dummy function that returns a random batch of local images
-        import os
-        import random
-        localFiles = os.listdir(self.config.getProperty('FileServer', 'staticfiles_dir'))
-        numFiles = (limit if limit is not None else 16)
-
-        response = {}
-
-        # simulate labels
-        for s in range(numFiles):
-            if self.projectSettings['predictionType'] == 'labels':
-                if random.random() > 0.5:
-                    userLabel = None
-                else:
-                    userLabel = random.choice(list(self.projectSettings['classes'].keys()))
-                predLabel = random.choice(list(self.projectSettings['classes'].keys()))
-                response[str(s)] = {
-                    'fileName': localFiles[s],
-                    'predictions': {
-                        'pred_0': {
-                            'label': predLabel,     #TODO: numClasses in settings.ini file?
-                            'confidence': random.random(),
-                        }
-                    },
-                    'annotations': {
-                        'anno_0': {
-                            'label': userLabel
-                        }
-                    }
-                }
-            elif self.projectSettings['predictionType'] == 'points':
-                response[str(s)] = {
-                    'fileName': localFiles[s],
-                    'predictions': {
-                        'point_0': {
-                            'x': 220,
-                            'y': 100,
-                            'label': random.choice(list(self.projectSettings['classes'].keys())),
-                            'confidence': random.random()
-                        }
-                    },
-                    'annotations': {
-                        'point_1': {
-                            'x': 150,
-                            'y': 80,
-                            'label': random.choice(list(self.projectSettings['classes'].keys()))
-                        }
-                    }
-                }
-            else:
-                response[str(s)] = {
-                    'fileName': localFiles[s]
-                }
-        return response
+        return { 'entries': response }
 
 
-    def submitAnnotations(self, imageIDs, annotations, metadata=None):
+    def submitAnnotations(self, submissions):
         '''
-            Sends user-provided annotations to the database. Inputs:
-            - imageIDs: [N] list of image UUIDs the labels are associated with
-            - annotations: [N] list of annotation data (str) for the images
-            - metadata: TODO
-            - TODO: user session data...
+            Sends user-provided annotations to the database.
         '''
-        #TODO: implement:
-        # 1. Sanity checks
-        # 2. Create SQL string
-        # 3. Submit data to DB
-        # 4. Return statistics
-        # TODO: need customizable method here too?
-        
+        # assemble values
+        colnames = []
+        values = []
+        for imageKey in submissions['entries']:
+            entry = submissions['entries'][imageKey]
+            if 'annotations' in entry and len(entry['annotations']):
+                for annoKey in entry['annotations']:
+                    # assemble annotation values
+                    annotation = entry['annotations'][annoKey]
+                    nextValues, nextColnames = parseAnnotation(annotation)
+                    values.append(nextValues)
+                    if not len(colnames) or len(colnames) != len(nextColnames):
+                        #TODO: uuugly, this should be standardized somewhere
+                        colnames = nextColnames
+
+
+        # prepare SQL
+        schema = self.config.getProperty('Database', 'schema')
+        sql = '''
+            INSERT INTO {}.annotation ({})
+            VALUES ( %s )
+            ON CONFLICT (id) DO UPDATE SET {};
+        '''.format(
+            schema,
+            getTableNamesString(getattr(QueryStrings_annotation, self.projectSettings['annotationType']).value),
+            getOnConflictString(getattr(QueryStrings_annotation, self.projectSettings['annotationType']).value)
+        )
+
+        self.dbConnector.insert(sql, values)
+
         return 'Not yet implemented.'

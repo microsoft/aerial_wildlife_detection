@@ -107,7 +107,7 @@
     }
 
     _createImageEntry() {
-        this.imageEntry = new ImageElement(this.viewport, this.getImageURI(), window.defaultImage_w, window.defaultImage_h);
+        this.imageEntry = new ImageElement(this.entryID + '_image', this.viewport, this.getImageURI(), window.defaultImage_w, window.defaultImage_h);
         this.viewport.addRenderElement(this.imageEntry);
     }
 
@@ -135,75 +135,6 @@
         }
         return props;
     }
-
-    // /* canvas and drawing functionalities */
-    // _getCanvasCoordinates(event) {
-    //     var posX = (event.pageX - this.canvas.offset().left);
-    //     var posY = (event.pageY - this.canvas.offset().top);
-    //     return [posX, posY];
-    // }
-
-    // _getScaledCanvasCoordinates(event) {
-    //     var coords = this._getCanvasCoordinates(event);
-    //     return this._convertCoordinates(coords, 'scaled');
-    // }
-
-    // _getCanvasScaleFactors() {
-    //     var scaleX = window.defaultImage_w / this.canvas.width();
-    //     var scaleY = window.defaultImage_h / this.canvas.height();
-    //     return [scaleX, scaleY];
-    // }
-
-    // _convertCoordinates(coords, outputFormat) {
-    //     var scales = this._getCanvasScaleFactors();
-    //     if(outputFormat == 'scaled') {
-    //         return [scales[0]*coords[0], scales[1]*coords[1]];
-    //     } else {
-    //         return [coords[0]/scales[0], coords[1]/scales[1]];
-    //     }
-    // }
-
-    // _convertToCanvasScale(coords) {
-    //     return this._convertCoordinates(coords, 'scaled');
-    // }
-
-    // _drawHoverText() {
-    //     //TODO: switch text position to left if too close to right side (top if too close to bottom)
-    //     if(this.hoverPos != null && this.hoverText != null) {
-    //         var dimensions = this.ctx.measureText(this.hoverText);
-    //         dimensions.height = window.styles.hoverText.box.height;
-    //         var offsetH = window.styles.hoverText.offsetH;
-    //         this.ctx.fillStyle = window.styles.hoverText.box.fill;
-    //         this.ctx.fillRect(offsetH+this.hoverPos[0]-2, this.hoverPos[1]-(dimensions.height/2+2), dimensions.width+4, dimensions.height+4);
-    //         this.ctx.strokeStyle = window.styles.hoverText.box.stroke.color;
-    //         this.ctx.lineWidth = window.styles.hoverText.box.stroke.lineWidth;
-    //         this.ctx.strokeRect(offsetH+this.hoverPos[0]-2, this.hoverPos[1]-(dimensions.height/2+2), dimensions.width+4, dimensions.height+4);
-    //         this.ctx.fillStyle = window.styles.hoverText.text.color;
-    //         this.ctx.font = window.styles.hoverText.text.font;
-    //         this.ctx.fillText(this.hoverText, offsetH+this.hoverPos[0], this.hoverPos[1]);
-    //     }
-    // }
-
-
-    // render() {
-    //     var canvasSize = this._convertToCanvasScale([this.canvas.width(), this.canvas.height()]);
-    //     this.ctx.fillStyle = window.styles.background;
-    //     this.ctx.fillRect(0, 0, canvasSize[0], canvasSize[1]);
-    //     this.ctx.drawImage(this.image, 0, 0, canvasSize[0], canvasSize[1]);
-    //     var self = this;
-    //     var rescale = function(coords) {
-    //         return self._convertToCanvasScale(coords);
-    //     }
-    //     for(var key in this.predictions) {
-    //         this.predictions[key].draw(this.ctx, this.canvas, rescale);
-    //     }
-    //     for(var key in this.annotations) {
-    //         this.annotations[key].draw(this.ctx, this.canvas, rescale);
-    //     }
-
-    //     // show hover message
-    //     this._drawHoverText();
-    // }
 
     render() {
         this.viewport.render();
@@ -271,7 +202,7 @@
         super._setup_markup();
         $(this.canvas).css('cursor', 'pointer');
 
-        this.hoverTextElement = new HoverTextElement(null, null, 1);
+        this.hoverTextElement = new HoverTextElement(this.entryID + '_hoverText', null, null, 5);
         this.viewport.addRenderElement(this.hoverTextElement);
 
         // click handler
@@ -304,8 +235,6 @@
     toggleUserLabel(removeLabel) {
         if(removeLabel) {
             this._removeElement(this.labelInstance);
-            // this.viewport.removeRenderElement(this.labelInstance.getRenderElement());
-            // this.labelInstance = null;
             this.noLabel = true;
             this.defaultLabelInstance = null;
 
@@ -314,7 +243,6 @@
             var key = this.entryID + '_anno';
             this.labelInstance = new LabelAnnotation(key, {'label':window.labelClassHandler.getActiveClassID()}, 'userAnnotation');
             this._addElement(this.labelInstance);
-            // this.viewport.addRenderElement(this.labelInstance.getRenderElement());
         }
         this.render();
     }
@@ -345,7 +273,7 @@ class PointAnnotationEntry extends AbstractDataEntry {
         var self = this;
         super._setup_markup();
 
-        this.hoverTextElement = new HoverTextElement(null, null, 1);
+        this.hoverTextElement = new HoverTextElement(this.entryID + '_hoverText', null, null, 5);
         this.viewport.addRenderElement(this.hoverTextElement);
 
         // interaction handlers
@@ -479,22 +407,22 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
         super._setup_markup();
         this.canvas.css('cursor', 'pointer');
 
-        this.hoverTextElement = new HoverTextElement(null, null, 1);
+        this.hoverTextElement = new HoverTextElement(this.entryID + '_hoverText', null, null, 5);
         this.viewport.addRenderElement(this.hoverTextElement);
 
         // interaction handlers
-        this.canvas.mousemove(function(event) {
-            self._canvas_mousemove(event);
-        });
-        this.canvas.mousedown(function(event) {
+        this.viewport.addCallback(this.entryID, 'mousedown', function(event) {
             self._canvas_mousedown(event);
         });
-        this.canvas.mouseleave(function(event) {
-            self._canvas_mouseout(event);
+        this.viewport.addCallback(this.entryID, 'mousemove', function(event) {
+            self._canvas_mousemove(event);
         });
-        this.canvas.mouseup(function(event) {
+        this.viewport.addCallback(this.entryID, 'mouseup', function(event) {
             self._canvas_mouseup(event);
         });
+        // this.viewport.addCallback(this.entryID, 'mouseleave', function(event) {
+        //     self._canvas_mouseleave(event);
+        // });
     }
 
     _getClosestBBox(coordinates, forceCorner) {
@@ -533,93 +461,38 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
             'height': 0,
             'label': window.labelClassHandler.getActiveClassID()
         };
-        this.activeAnnotationHandle = 'se';
-        this.activeAnnotation = new BoundingBoxAnnotation(key, props, 'annotation');
-        this._addElement(this.activeAnnotation);
+        // this.activeAnnotationHandle = 'se';
+        var anno = new Annotation(key, props, 'annotation');
+        this._addElement(anno);
+        anno.getRenderElement().registerAsCallback(this.viewport);
+        anno.getRenderElement().setActive(true, this.viewport);
+        // manually fire mousedown event on annotation
+        anno.getRenderElement()._mousedown_event(event, this.viewport);
     }
 
-    _setActiveAnnotation(event) {
-        var coords_full = this.viewport.getCanvasCoordinates(event, false);
-        var closest = this._getClosestBBox(coords_full, false);
-        this.activeAnnotation = closest;
-
-        // resize handles
-        if(closest == null) {
-            this.viewport.removeRenderElement(this.resizeHandles);
-            this.resizeHandles == null;
-        } else {    //if(this.resizeHandles == null) {
-            this.resizeHandles = this.activeAnnotation.getResizeHandles(false, 1);
-            this.viewport.addRenderElement(this.resizeHandles);
-            this.canvas.css('cursor', 'pointer');
-        }
-    }
-
-    _deleteActiveAnnotation() {
-        this._removeElement(this.activeAnnotation);
-        this.viewport.removeRenderElement(this.resizeHandles);
-        this.activeAnnotation = null;
-        this.activeAnnotationHandle = null;
-        this.resizeHandles = null;
-        this.canvas.css('cursor', 'pointer');
-        this.hoverTextElement.setProperty('text', null);
-    }
-
-    _updateActiveAnnotation(event) {
-        /*
-            Listens to mouse drag movements and modifies the annotation's
-            coordinates accordingly.
-            Also takes care of the resize handles.
-        */
-        if(this.activeAnnotation == null || this.activeAnnotationHandle == null) return;
-
-        // calc. new coordinates
-        var currentExtent = this.activeAnnotation.getExtent();
-        var mousePos = this.viewport.getCanvasCoordinates(event, false);
-        if(this.activeAnnotationHandle.includes('w')) {
-            var width = currentExtent[2] - mousePos[0];
-            var x = mousePos[0] + width/2;
-            this.activeAnnotation.setProperty('width', width);
-            this.activeAnnotation.setProperty('x', x);
-        }
-        if(this.activeAnnotationHandle.includes('e')) {
-            var width = mousePos[0] - currentExtent[0];
-            var x = mousePos[0] - width/2;
-            this.activeAnnotation.setProperty('width', width);
-            this.activeAnnotation.setProperty('x', x);
-        }
-        if(this.activeAnnotationHandle.includes('n')) {
-            var height = currentExtent[3] - mousePos[1];
-            var y = mousePos[1] + height/2;
-            this.activeAnnotation.setProperty('height', height);
-            this.activeAnnotation.setProperty('y', y);
-        }
-        if(this.activeAnnotationHandle.includes('s')) {
-            var height = mousePos[1] - currentExtent[1];
-            var y = mousePos[1] - height/2;
-            this.activeAnnotation.setProperty('height', height);
-            this.activeAnnotation.setProperty('y', y);
-        }
-        if(this.activeAnnotationHandle.includes('c')) {
-            var prevMousePosScaled = this.mousePos;
-            this.activeAnnotation.setProperty('x', this.activeAnnotation.x + mousePos[0] - prevMousePosScaled[0]);
-            this.activeAnnotation.setProperty('y', this.activeAnnotation.y + mousePos[1] - prevMousePosScaled[1]);
+    _deleteActiveAnnotations() {
+        for(var key in this.annotations) {
+            if(this.annotations[key].isActive()) {
+                this.annotations[key].getRenderElement().deregisterAsCallback(this.viewport);
+                this._removeElement(this.annotations[key]);
+            }
         }
     }
 
     _drawCrosshairLines(coords, visible) {
         if(this.crosshairLines == null && visible) {
             // create
-            var vertLine = new LineElement(coords[0], 0, coords[0], this.canvas.height(),
+            var vertLine = new LineElement(this.entryID + '_crosshairX', coords[0], 0, coords[0], this.canvas.height(),
                                 window.styles.crosshairLines.strokeColor,
                                 window.styles.crosshairLines.lineWidth,
                                 window.styles.crosshairLines.lineDash,
                                 1);
-            var horzLine = new LineElement(0, coords[1], this.canvas.width(), coords[1],
+            var horzLine = new LineElement(this.entryID + '_crosshairY', 0, coords[1], this.canvas.width(), coords[1],
                                 window.styles.crosshairLines.strokeColor,
                                 window.styles.crosshairLines.lineWidth,
                                 window.styles.crosshairLines.lineDash,
                                 1);
-            this.crosshairLines = new ElementGroup([vertLine, horzLine], 1);
+            this.crosshairLines = new ElementGroup(this.entryID + '_crosshairLines', [vertLine, horzLine], 1);
             this.viewport.addRenderElement(this.crosshairLines);
 
         } else {
@@ -643,14 +516,14 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
         this.mousedownCoords = coords;
 
         // check functionality
-        if(window.interfaceControls.addAnnotation) {
+        if(window.interfaceControls.action == window.interfaceControls.actions.ADD_ANNOTATION) {
+            // set all currently active boxes inactive
+            for(var key in this.annotations) {
+                this.annotations[key].setActive(false, this.viewport);
+            }
+
             // start creating a new bounding box
             this._createAnnotation(event);
-            this._setActiveAnnotation(event);
-        } else {
-            // find closest bbox (if there) and set active
-            if(this.activeAnnotation == null)
-                this._setActiveAnnotation(event);
         }
         this.render();
     }
@@ -659,144 +532,63 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
         var coords = this.viewport.getCanvasCoordinates(event, false);
 
         // update crosshair lines
-        this._drawCrosshairLines(coords, window.interfaceControls.addAnnotation);
+        this._drawCrosshairLines(coords, window.interfaceControls.action==window.interfaceControls.actions.ADD_ANNOTATION);
 
-        // check functionality
-        if(window.interfaceControls.addAnnotation) {
-            // update destination coordinates
-            this.mouseupCoords = coords;
-        }
-        if(this.mouseDrag) {
-            this._updateActiveAnnotation(event);
-        } else {
-            if(this.activeAnnotation != null) {
-                // bounding box highlighted; find handles
-                this.activeAnnotationHandle = this.activeAnnotation.getClosestHandle(this.mousePos, window.annotationProximityTolerance);
-
-                // show tooltip
-                if(this.activeAnnotationHandle == null) {
-                    this.hoverTextElement.setProperty('text', null);
-                } else if(this.activeAnnotationHandle == 'c') {
-                    if(event.altKey) {
-                        this.hoverTextElement.setProperty('text', 'delete box');
-                        this.canvas.css('cursor', 'pointer');
-                    } else {
-                        var text = 'Move (drag)';
-                        if(this.activeAnnotation.label != window.labelClassHandler.getActiveClassID()) {
-                            text += ' or change to "' + window.labelClassHandler.getActiveClassName() + '" (click)';
-                        }
-                        this.hoverTextElement.setProperty('text', text);
-                        this.canvas.css('cursor', 'move');
-                    }
-                } else {
-                    this.hoverTextElement.setProperty('position', coords);
-                    this.hoverTextElement.setProperty('text', 'resize');
+        // update hover text
+        var hoverText = null;
+        switch(window.interfaceControls.action) {
+            case window.interfaceControls.actions.ADD_ANNOTATION:
+                hoverText = 'add new \"' + window.labelClassHandler.getActiveClassName() + '"';
+                break;
+            case window.interfaceControls.actions.REMOVE_ANNOTATIONS:
+                var numActive = 0;
+                for(var key in this.annotations) {
+                    if(this.annotations[key].isActive()) numActive++;
                 }
-            }
+                if(numActive>0) {
+                    hoverText = 'Remove ' + numActive + ' annotation';
+                    if(numActive>1) hoverText += 's';
+                }
+                break;
+            case window.interfaceControls.actions.DO_NOTHING:
+                //TODO: buggy
+                for(var key in this.annotations) {
+                    if(this.annotations[key].isActive() && 
+                        this.annotations[key].label != window.labelClassHandler.getActiveClassID()) {
+                        hoverText = 'Change label to "' + window.labelClassHandler.getActiveClassName() + '"';
+                        break;
+                    }
+                }
+                break;
         }
-        this.mousePos = coords;
         this.hoverTextElement.setProperty('position', coords);
+        this.hoverTextElement.setProperty('text', hoverText);
+
         this.render();
     }
 
     _canvas_mouseup(event) {
-        this.mouseDrag = false;
+        // this.mouseDrag = false;
 
         // check functionality
-        if(window.interfaceControls.addAnnotation) {
+        if(window.interfaceControls.action == window.interfaceControls.actions.ADD_ANNOTATION) {
             // new annotation completed
-            window.interfaceControls.addAnnotation = false;
-        }
-        this._setActiveAnnotation(event);
-        if(this.activeAnnotationHandle == null) {
-            this._setActiveAnnotation(event);
+            //TODO: may fire before other rectangle's events, making them unwantedly active while finishing new rect
+            window.interfaceControls.action = window.interfaceControls.actions.DO_NOTHING;
+
+        } else if(window.interfaceControls.action == window.interfaceControls.actions.REMOVE_ANNOTATIONS) {
+            this._deleteActiveAnnotations();
+            window.interfaceControls.action = window.interfaceControls.actions.DO_NOTHING;
 
         } else {
-            // adjust active annotation
-            if(event.altKey) {
-                // delete it
-                this._deleteActiveAnnotation();
-
-            } else if(this.activeAnnotationHandle == 'c') {
-                // change label
-                this.activeAnnotation.setProperty('label', window.labelClassHandler.getActiveClassID());
-            }
-        }
-        
-        // clear temporary properties
-        // this.activeAnnotationHandle = null;
-        this.mousedownCoords = null;
-
-        this.render();
-    }
-
-    // _drawAdjustMarker(coords) {
-    //     var adjustBoxSize = 8;
-    //     this.ctx.fillRect(coords[0] - adjustBoxSize/2,
-    //         coords[1] - adjustBoxSize/2,
-    //         adjustBoxSize, adjustBoxSize);
-    //     this.ctx.strokeRect(coords[0] - adjustBoxSize/2,
-    //         coords[1] - adjustBoxSize/2,
-    //         adjustBoxSize, adjustBoxSize);
-    // }
-
-    render() {
-        super.render();
-        if(window.interfaceControls.addAnnotation) {
-            // // show dashed lines for easier orientation
-            // if(this.mousePos != null) {
-            //     this.ctx.strokeStyle = '#000000';
-            //     this.ctx.lineWidth = 1;
-            //     this.ctx.setLineDash([4, 4]);
-            //     this.ctx.beginPath();
-            //     this.ctx.moveTo(this.mousePos[0], 0);
-            //     this.ctx.lineTo(this.mousePos[0], this.canvas.height());
-            //     this.ctx.moveTo(0, this.mousePos[1]);
-            //     this.ctx.lineTo(this.canvas.width(), this.mousePos[1]);
-            //     this.ctx.stroke();
-            //     this.ctx.closePath();
-            //     this.ctx.setLineDash([]);
-            // }
-
-            // // show currently drawn bbox
-            // if(this.mousedownCoords != null && this.mouseupCoords != null) {
-            //     this.ctx.strokeStyle = window.labelClassHandler.getActiveColor();
-            //     this.ctx.lineWidth = 2;
-            //     this.ctx.strokeRect(this.mousedownCoords[0], this.mousedownCoords[1],
-            //             this.mouseupCoords[0]-this.mousedownCoords[0], this.mouseupCoords[1]-this.mousedownCoords[1]);
-            // }
-
-        } else {
-            // check if there's an active box
-            if(this.activeAnnotation != null) {
-
-                // // highlight box
-                // var adjustedXY = this.viewport.scaleToCanvas([this.activeAnnotation.x, this.activeAnnotation.y]);
-                // var adjustedWH = this.viewport.scaleToCanvas([this.activeAnnotation.w, this.activeAnnotation.h]);
-                
-                // this.ctx.fillStyle = '#FFFFFF';
-                // this.ctx.strokeStyle = '#000000';
-                // this.ctx.lineWidth = 1;
-
-                // // draw markers
-                // this._drawAdjustMarker([adjustedXY[0] - adjustedWH[0]/2, adjustedXY[1] - adjustedWH[1]/2]);
-                // this._drawAdjustMarker([adjustedXY[0] - adjustedWH[0]/2, adjustedXY[1]]);
-                // this._drawAdjustMarker([adjustedXY[0] - adjustedWH[0]/2, adjustedXY[1] + adjustedWH[1]/2]);
-                // this._drawAdjustMarker([adjustedXY[0], adjustedXY[1] - adjustedWH[1]/2]);
-                // this._drawAdjustMarker([adjustedXY[0], adjustedXY[1] + adjustedWH[1]/2]);
-                // this._drawAdjustMarker([adjustedXY[0] + adjustedWH[0]/2, adjustedXY[1]]);
-                // this._drawAdjustMarker([adjustedXY[0] + adjustedWH[0]/2, adjustedXY[1] - adjustedWH[1]/2]);
-                // this._drawAdjustMarker([adjustedXY[0] + adjustedWH[0]/2, adjustedXY[1] + adjustedWH[1]/2]);
-
-                // adjust cursor
-                if(this.activeAnnotationHandle == null) {
-                    this.canvas.css('cursor', 'crosshair');
-                } else if(this.activeAnnotationHandle == 'c') {
-                    this.canvas.css('cursor', 'move');
-                } else {
-                    this.canvas.css('cursor', this.activeAnnotationHandle+'-resize');
+            // update annotations to current label
+            for(var key in this.annotations) {
+                if(this.annotations[key].isActive()) {
+                    this.annotations[key].setProperty('label', window.labelClassHandler.getActiveClassID());
                 }
             }
         }
+
+        this.render();
     }
 }

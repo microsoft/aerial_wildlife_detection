@@ -27,8 +27,26 @@ $(document).ready(function() {
         window.dataHandler.loadNextBatch();
     });
 
-    //TODO
+    // events
+    window.eventTypes = [
+        'keydown',
+        'keyup',
+        'mousein',
+        'mouseout',
+        'mousemove',
+        'mousedown',
+        'mouseup',
+        'click',
+        'wheel'
+    ];
+
+    // interface
     window.interfaceControls = {
-        'addAnnotation': false
+        actions: {
+            DO_NOTHING: 0,
+            ADD_ANNOTATION: 1,
+            REMOVE_ANNOTATIONS: 2
+        }
     };
+    window.interfaceControls.action = window.interfaceControls.actions.DO_NOTHING;
 });

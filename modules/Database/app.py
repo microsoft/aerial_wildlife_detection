@@ -5,6 +5,7 @@
 '''
 
 import psycopg2
+from psycopg2.extras import RealDictCursor, execute_values
 
 
 class Database():
@@ -42,25 +43,32 @@ class Database():
 
     
     def execute(self, sql, arguments, numReturn=None):
-        cursor = self.conn.cursor()
+        cursor = self.conn.cursor(cursor_factory = RealDictCursor)
         cursor.execute(sql, arguments)
         self.conn.commit()
 
-        # column names
-        colnames = tuple(c.name for c in cursor.description)
+        # # column names
+        # colnames = tuple(c.name for c in cursor.description)
 
         returnValues = []
         if numReturn is None:
             returnValues = cursor.fetchall()
             cursor.close()
-            return returnValues, colnames
+            return returnValues #, colnames
 
         else:
             for _ in range(numReturn):
                 rv = cursor.fetchone()
                 if rv is None:
-                    return returnValues, colnames
+                    return returnValues #, colnames
                 returnValues.append(rv)
  
             cursor.close()
-            return returnValues, colnames
+            return returnValues #, colnames
+    
+
+    def insert(self, sql, values):
+        cursor = self.conn.cursor()
+        execute_values(cursor, sql, values)
+        self.conn.commit()
+        cursor.close()

@@ -22,6 +22,99 @@ window.parseAnnotation = function(annotationID, properties, type) {
 };
 
 
+
+
+class Annotation {
+
+    constructor(annotationID, properties, type) {
+        this.annotationID = annotationID;
+        this.type = type;
+        this._parse_properties(properties);
+    }
+
+    _parse_properties(properties) {
+        this.label = properties['label'];
+        this.confidence = properties['confidence'];
+        var lineWidth = 4;      //TODO
+        if(this.type == 'userAnnotation') {
+            lineWidth = 8;
+        } else if(this.type == 'annotation') {
+            lineWidth = 6;
+        }
+        if('segMapFileName' in properties) {
+            // Semantic segmentation map
+            throw Error('Segmentation maps not yet implemented');
+
+        } else if('coordinates' in properties) {
+            // Polygon
+            //TODO
+        } else if('width' in properties) {
+            // Bounding Box
+            this.geometry = new RectangleElement(
+                this.annotationID + '_geom',
+                properties['x'], properties['y'],
+                properties['width'], properties['height'],
+                null,
+                window.labelClassHandler.getColor(this.label),
+                lineWidth);
+        } else if('x' in properties) {
+            // Point
+            this.geometry = new PointElement(
+                this.annotationID + '_geom',
+                properties['x'], properties['y'],
+                window.labelClassHandler.getColor(this.label)
+            );
+        } else {
+            // Classification label
+            this.geometry = new BorderStrokeElement(
+                this.annotationID + '_geom',
+                window.labelClassHandler.getColor(this.label),
+                lineWidth,
+                []
+            )
+        }
+    }
+
+    isActive() {
+        return this.geometry.isActive;
+    }
+
+    setActive(active, viewport) {
+        this.geometry.setActive(active, viewport);
+    }
+
+    getProperties() {
+        return {
+            'annotationID' : this.annotationID,
+            'type' : this.type,
+            'label' : this.label,
+            'confidence' : this.confidence,
+            'geometry' : this.geometry.getGeometry()
+        };
+    }
+
+    setProperty(propertyName, value) {
+        if(this.hasOwnProperty(propertyName)) {
+            this[propertyName] = value;
+        }
+        if(propertyName == 'label') {
+            this.geometry.setProperty('color', window.labelClassHandler.getColor(value));
+        } else if(this.geometry.hasOwnProperty(propertyName)) {
+            this.geometry.setProperty(propertyName, value);
+        }
+    }
+
+    getAnnotationType() {
+        return this.geometry.getType();     //TODO: implemented only for backwards compatibility
+    }
+
+    getRenderElement() {
+        return this.geometry;               //TODO: ditto (?)
+    }
+}
+
+
+
 class AbstractAnnotation {
 
     constructor(annotationID, type) {
@@ -90,22 +183,6 @@ class LabelAnnotation extends AbstractAnnotation {
     getAnnotationType() {
         return 'label';
     }
-
-    // draw(context, canvas, scaleFun) {
-    //     // draw rectangle border around canvas if label exists
-    //     if(this.label == null) return;
-
-    //     context.strokeStyle = window.classes[this.label]['color'];
-    //     var lineWidth = 4;
-    //     if(this.type == 'userAnnotation') {
-    //         lineWidth = 8;
-    //     } else if(this.type == 'annotation') {
-    //         lineWidth = 6;
-    //     }
-    //     context.lineWidth = lineWidth;
-    //     var wh = scaleFun([canvas.width(), canvas.height()]);
-    //     context.strokeRect(lineWidth/2, lineWidth/2, wh[0]-lineWidth, wh[1]-lineWidth);
-    // }
 }
 
 
@@ -143,22 +220,6 @@ class PointAnnotation extends LabelAnnotation {
     getAnnotationType() {
         return 'point';
     }
-
-    // draw(context, canvas, scaleFun) {
-    //     if(this.label == null) return;
-    //     context.fillStyle = window.labelClassHandler.getColor(this.label, '#000000');
-    //     var radius = 5;
-    //     if(this.type == 'userAnnotation') {
-    //         radius = 15;
-    //     } else if(this.type == 'annotation') {
-    //         radius = 10;
-    //     }
-    //     var centerCoords = scaleFun([this.x, this.y]);
-    //     context.beginPath();
-    //     context.arc(centerCoords[0], centerCoords[1], radius, 0, 2*Math.PI);
-    //     context.fill();
-    //     context.closePath();
-    // }
 
     euclideanDistance(that) {
         return Math.sqrt(Math.pow(this.x - that[0],2) + Math.pow(this.y - that[1],2));

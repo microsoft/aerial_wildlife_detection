@@ -46,14 +46,17 @@ class CommandListener {
     addCallback(element, type, callbackFun, args) {
         if(type.includes('key')) {
             this._addKeyCallback(element, type, args, callbackFun);
+            this.registeredEvents[element] = type;
         } else {
             this._addGenericCallback(element, type, callbackFun);
+            this.registeredEvents[element] = type;
         }
     }
 
     removeCallback(element) {
         if(element in this.registeredEvents) {
-            $(element).off(this.registeredEvents[element]);   
+            $(element).off(this.registeredEvents[element]);
+            delete this.registeredEvents[element];
         }
     }
 }

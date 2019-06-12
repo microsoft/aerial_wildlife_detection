@@ -19,17 +19,17 @@ class DataHandler {
         this.dataEntries = [];
 
         $.getJSON('getLatestImages?limit=1', function(data) {
-            for(var d in data) {
+            for(var d in data['entries']) {
                 // create new data entry
                 switch(String(window.annotationType)) {
                     case 'labels':
-                        var entry = new ClassificationEntry(d, data[d]);
+                        var entry = new ClassificationEntry(d, data['entries'][d]);
                         break;
                     case 'points':
-                        var entry = new PointAnnotationEntry(d, data[d]);
+                        var entry = new PointAnnotationEntry(d, data['entries'][d]);
                         break;
                     case 'boundingBoxes':
-                        var entry = new BoundingBoxAnnotationEntry(d, data[d]);
+                        var entry = new BoundingBoxAnnotationEntry(d, data['entries'][d]);
                         break;
                     default:
                         break;
@@ -58,11 +58,23 @@ class DataHandler {
     submitAnnotations() {
         var self = this;
         var entries = this._entriesToJSON(true);
-        $.post('submitAnnotations', entries, function(response) {
-            console.log(response);
+        $.ajax({
+            url: 'submitAnnotations',
+            type: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            data: entries,
+            dataType: 'json',
+            success: function(response) {
+                console.log(response);
 
-            // next batch
-            self.loadNextBatch();
-        })
+                // next batch
+                self.loadNextBatch();
+            },
+            error: function(xhr, status, error) {
+                console.log(xhr)
+                console.log(status)
+                console.log(error)
+            }
+        });
     }
 }

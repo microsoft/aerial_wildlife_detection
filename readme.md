@@ -20,10 +20,11 @@ TODO: steps:
 
 ### Set up the database instance
 
-AIde uses [PostGreSQL](https://www.postgresql.org/) to store labels, predictions, file paths and metadata. The following instructions apply for recent versions of Debian-based Linux distributions, such as Ubuntu.
+AIde uses [PostgreSQL](https://www.postgresql.org/) to store labels, predictions, file paths and metadata. The following instructions apply for recent versions of Debian-based Linux distributions, such as Ubuntu.
+Note that AIde requires PostgreSQL >= 9.5.
 
-*Installing and configuring PostGreSQL*
-1. Install PostGreSQL server
+*Installing and configuring PostgreSQL*
+1. Install PostgreSQL server
 ```
     sudo apt-get update && sudo apt-get install -y wget
     echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list

@@ -83,9 +83,14 @@ class LabelUI():
 
         @self.app.post('/submitAnnotations')
         def submit_annotations():
-            #TODO: parse data
-            response = self.middleware.submitAnnotations(imageIDs=None, annotations=None, metadata=None)
-            return response
+            # parse
+            try:
+                submission = request.json
+                response = self.middleware.submitAnnotations(submission)
+                return response
+            except Exception as e:
+                print('ERROR: ' + str(e))
+                return { 'error': str(e) }
 
 
 
