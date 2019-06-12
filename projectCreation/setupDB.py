@@ -24,7 +24,7 @@ def _constructAnnotationFields(annoType, table):
     else:
         additionalTables = None
 
-    if annoType == 'classLabels':
+    if annoType == 'labels':
         annoFields = '''
             labelclass uuid NOT NULL,
             confidence real,

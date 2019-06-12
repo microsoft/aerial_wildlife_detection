@@ -26,7 +26,19 @@ class AbstractAnnotation {
 
     constructor(annotationID, type) {
         this.annotationID = annotationID;
-        this.type = type; 
+        this.type = type;
+    }
+
+    setProperty(propertyName, value) {
+        if(this.hasOwnProperty(propertyName)) {
+            this[propertyName] = value;
+        }
+        
+        if(propertyName == 'label') {
+            this.renderElement.setProperty('color', window.labelClassHandler.getColor(value));
+        } else if(this.renderElement.hasOwnProperty(propertyName)) {
+            this.renderElement.setProperty(propertyName, value);
+        }
     }
 
     getProperties() {
@@ -37,8 +49,8 @@ class AbstractAnnotation {
         throw Error('Not implemented.');
     }
 
-    draw(context, canvas, scaleFun) {
-        return;
+    getRenderElement() {
+        return this.renderElement;
     }
 }
 
@@ -52,6 +64,18 @@ class LabelAnnotation extends AbstractAnnotation {
         super(annotationID, type);
         this.label = properties['label'];
         this.confidence = properties['confidence'];
+        this._init_render_element();
+    }
+
+    _init_render_element() {
+        var lineWidth = 4;
+        if(this.type == 'userAnnotation') {
+            lineWidth = 8;
+        } else if(this.type == 'annotation') {
+            lineWidth = 6;
+        }
+        this.renderElement = new BorderStrokeElement(window.labelClassHandler.getColor(this.label),
+            lineWidth);
     }
 
     getProperties() {
@@ -67,21 +91,21 @@ class LabelAnnotation extends AbstractAnnotation {
         return 'label';
     }
 
-    draw(context, canvas, scaleFun) {
-        // draw rectangle border around canvas if label exists
-        if(this.label == null) return;
+    // draw(context, canvas, scaleFun) {
+    //     // draw rectangle border around canvas if label exists
+    //     if(this.label == null) return;
 
-        context.strokeStyle = window.classes[this.label]['color'];
-        var lineWidth = 4;
-        if(this.type == 'userAnnotation') {
-            lineWidth = 8;
-        } else if(this.type == 'annotation') {
-            lineWidth = 6;
-        }
-        context.lineWidth = lineWidth;
-        var wh = scaleFun([canvas.width(), canvas.height()]);
-        context.strokeRect(lineWidth/2, lineWidth/2, wh[0]-lineWidth, wh[1]-lineWidth);
-    }
+    //     context.strokeStyle = window.classes[this.label]['color'];
+    //     var lineWidth = 4;
+    //     if(this.type == 'userAnnotation') {
+    //         lineWidth = 8;
+    //     } else if(this.type == 'annotation') {
+    //         lineWidth = 6;
+    //     }
+    //     context.lineWidth = lineWidth;
+    //     var wh = scaleFun([canvas.width(), canvas.height()]);
+    //     context.strokeRect(lineWidth/2, lineWidth/2, wh[0]-lineWidth, wh[1]-lineWidth);
+    // }
 }
 
 
@@ -94,6 +118,19 @@ class PointAnnotation extends LabelAnnotation {
         super(annotationID, properties, type);
         this.x = properties['x'];
         this.y = properties['y'];
+        this._init_render_element();
+    }
+
+    _init_render_element() {
+        var radius = 5;
+        if(this.type == 'userAnnotation') {
+            radius = 15;
+        } else if(this.type == 'annotation') {
+            radius = 10;
+        }
+        this.renderElement = new PointElement(this.x, this.y,
+            window.labelClassHandler.getColor(this.label),
+            radius);
     }
 
     getProperties() {
@@ -107,21 +144,21 @@ class PointAnnotation extends LabelAnnotation {
         return 'point';
     }
 
-    draw(context, canvas, scaleFun) {
-        if(this.label == null) return;
-        context.fillStyle = window.labelClassHandler.getColor(this.label, '#000000');
-        var radius = 5;
-        if(this.type == 'userAnnotation') {
-            radius = 15;
-        } else if(this.type == 'annotation') {
-            radius = 10;
-        }
-        var centerCoords = scaleFun([this.x, this.y]);
-        context.beginPath();
-        context.arc(centerCoords[0], centerCoords[1], radius, 0, 2*Math.PI);
-        context.fill();
-        context.closePath();
-    }
+    // draw(context, canvas, scaleFun) {
+    //     if(this.label == null) return;
+    //     context.fillStyle = window.labelClassHandler.getColor(this.label, '#000000');
+    //     var radius = 5;
+    //     if(this.type == 'userAnnotation') {
+    //         radius = 15;
+    //     } else if(this.type == 'annotation') {
+    //         radius = 10;
+    //     }
+    //     var centerCoords = scaleFun([this.x, this.y]);
+    //     context.beginPath();
+    //     context.arc(centerCoords[0], centerCoords[1], radius, 0, 2*Math.PI);
+    //     context.fill();
+    //     context.closePath();
+    // }
 
     euclideanDistance(that) {
         return Math.sqrt(Math.pow(this.x - that[0],2) + Math.pow(this.y - that[1],2));
@@ -138,34 +175,42 @@ class BoundingBoxAnnotation extends PointAnnotation {
     */
     constructor(annotationID, properties, type) {
         super(annotationID, properties, type);
-        this.w = properties['w'];
-        this.h = properties['h'];
+        this.width = properties['width'];
+        this.height = properties['height'];
+        this._init_render_element();
+    }
+
+    _init_render_element() {
+        var lineWidth = (this.type == 'annotation'? 4 : 2);
+        this.renderElement = new RectangleElement(this.x, this.y,
+            this.width, this.height,
+            null,
+            window.labelClassHandler.getColor(this.label),
+            lineWidth);
     }
 
     getProperties() {
         var props = super.getProperties();
-        props['w'] = this.w;
-        props['h'] = this.h;
+        props['width'] = this.width;
+        props['height'] = this.height;
         return props;
+    }
+
+    setProperty(propertyName, value) {
+        super.setProperty(propertyName, value);
+        this.width = Math.max(window.minObjSize, this.width);
+        this.height = Math.max(window.minObjSize, this.height);
+
+        // carry over to resize handles
+        this._updateResizeHandles();
     }
 
     getAnnotationType() {
         return 'boundingBox';
     }
 
-    draw(context, canvas, scaleFun) {
-        //TODO: outline width
-        context.strokeStyle = window.labelClassHandler.getColor(this.label, '#000000');
-        context.lineWidth = (this.type == 'annotation'? 8 : 4);
-        var wh = scaleFun([this.w, this.h]);
-        var center = scaleFun([this.x, this.y]);
-        context.beginPath();
-        context.strokeRect(center[0] - wh[0]/2, center[1] - wh[1]/2, wh[0], wh[1]);
-        context.closePath();
-    }
-
     getExtent() {
-        return [this.x - this.w/2, this.y - this.h/2, this.x + this.w/2, this.y + this.h/2];
+        return [this.x - this.width/2, this.y - this.height/2, this.x + this.width/2, this.y + this.height/2];
     }
 
     isInDistance(coordinates, tolerance, forceCorner) {
@@ -179,7 +224,7 @@ class BoundingBoxAnnotation extends PointAnnotation {
             return (this.getClosestHandle(coordinates, tolerance) != null);
 
         } else {
-            var extentsTolerance = [this.x-this.w/2, this.y-this.h/2, this.x+this.w/2, this.y+this.h/2];
+            var extentsTolerance = [this.x-this.width/2, this.y-this.height/2, this.x+this.width/2, this.y+this.height/2];
             return (coordinates[0] >= extentsTolerance[0] && coordinates[0] <= extentsTolerance[2]) &&
                 (coordinates[1] >= extentsTolerance[1] && coordinates[1] <= extentsTolerance[3]);
         }
@@ -198,10 +243,10 @@ class BoundingBoxAnnotation extends PointAnnotation {
             Returns 'c' if coordinates are not close to handle, but within bounding box.
             Else returns null.
         */
-        var matchL = Math.abs((this.x - this.w/2) - coordinates[0]) <= tolerance;
-        var matchT = Math.abs((this.y - this.h/2) - coordinates[1]) <= tolerance;
-        var matchR = Math.abs((this.x + this.w/2) - coordinates[0]) <= tolerance;
-        var matchB = Math.abs((this.y + this.h/2) - coordinates[1]) <= tolerance;
+        var matchL = Math.abs((this.x - this.width/2) - coordinates[0]) <= tolerance;
+        var matchT = Math.abs((this.y - this.height/2) - coordinates[1]) <= tolerance;
+        var matchR = Math.abs((this.x + this.width/2) - coordinates[0]) <= tolerance;
+        var matchB = Math.abs((this.y + this.height/2) - coordinates[1]) <= tolerance;
 
         if(matchT) {
             if(matchL) return 'nw';
@@ -219,6 +264,78 @@ class BoundingBoxAnnotation extends PointAnnotation {
             return 'c';
         } else {
             return null;
+        }
+    }
+
+    getResizeHandles(cornersOnly, zIndex) {
+        /*
+            Returns small drawable rectangles at the corner coordinates
+            of this rectangle that look like resize handles.
+        */
+        if(this.resizeHandles != null) {
+            return this.resizeHandles;
+        }
+
+        var drawingProperties = window.styles.resizeHandles;
+        var getHandle = function(x, y) {
+            return new RectangleElement(x, y,
+                drawingProperties.size, drawingProperties.size,
+                drawingProperties.fillColor,
+                drawingProperties.strokeColor,
+                drawingProperties.lineWidth,
+                null,
+                zIndex);
+        }
+        var handles = [];
+
+        // corners
+        handles.push(getHandle(this.x - this.width/2, this.y - this.height/2));
+        handles.push(getHandle(this.x - this.width/2, this.y + this.height/2));
+        handles.push(getHandle(this.x + this.width/2, this.y - this.height/2));
+        handles.push(getHandle(this.x + this.width/2, this.y + this.height/2));
+
+        if(!cornersOnly) {
+            // sides
+            handles.push(getHandle(this.x, this.y - this.height/2));
+            handles.push(getHandle(this.x, this.y + this.height/2));
+            handles.push(getHandle(this.x - this.width/2, this.y));
+            handles.push(getHandle(this.x + this.width/2, this.y));
+        }
+        this.resizeHandles = new ElementGroup(handles);
+        return this.resizeHandles;
+    }
+
+    _updateResizeHandles() {
+        /*
+            Re-positions the resize handles (if available)
+            to match the bounding box position.
+        */
+        if(this.resizeHandles == null) return;
+
+        this.resizeHandles.elements[0].setProperty('x', this.x - this.width/2);
+        this.resizeHandles.elements[0].setProperty('y', this.y - this.height/2);
+
+        this.resizeHandles.elements[1].setProperty('x', this.x - this.width/2);
+        this.resizeHandles.elements[1].setProperty('y', this.y + this.height/2);
+
+        this.resizeHandles.elements[2].setProperty('x', this.x + this.width/2);
+        this.resizeHandles.elements[2].setProperty('y', this.y - this.height/2);
+
+        this.resizeHandles.elements[3].setProperty('x', this.x + this.width/2);
+        this.resizeHandles.elements[3].setProperty('y', this.y + this.height/2);
+
+        if(this.resizeHandles.elements.length > 4) {
+            this.resizeHandles.elements[4].setProperty('x', this.x);
+            this.resizeHandles.elements[4].setProperty('y', this.y - this.height/2);
+
+            this.resizeHandles.elements[5].setProperty('x', this.x);
+            this.resizeHandles.elements[5].setProperty('y', this.y + this.height/2);
+
+            this.resizeHandles.elements[6].setProperty('x', this.x - this.width/2);
+            this.resizeHandles.elements[6].setProperty('y', this.y);
+
+            this.resizeHandles.elements[7].setProperty('x', this.x + this.width/2);
+            this.resizeHandles.elements[7].setProperty('y', this.y);
         }
     }
 }

@@ -6,6 +6,7 @@
 
 import psycopg2
 from modules.Database.app import Database
+from .annotation_sql_tokens import QueryStrings_annotation, QueryStrings_prediction
 
 
 class DBMiddleware():
@@ -20,6 +21,8 @@ class DBMiddleware():
     def _fetchProjectSettings(self):
         self.projectSettings = {
             'dataServerURI': self.config.getProperty('LabelUI', 'dataServer_uri'),
+            'dataType': self.config.getProperty('Project', 'dataType'),
+            'minObjSize': self.config.getProperty('Project', 'minObjSize'),
             'classes': self.getClassDefinitions(),
             'annotationType': self.config.getProperty('LabelUI', 'annotationType'),
             'predictionType': self.config.getProperty('AITrainer', 'annotationType'),
@@ -29,6 +32,12 @@ class DBMiddleware():
             'defaultImage_h': self.config.getProperty('LabelUI', 'defaultImage_h', 600),
         }
 
+    def _initSQLstrings(self):
+        '''
+            Prepares retrieval and submission fragments for SQL queries,
+            depending on the kind of annotations.
+            TODO: put into dedicated enum?
+        '''
 
     def getProjectSettings(self):
         '''
@@ -44,20 +53,17 @@ class DBMiddleware():
         '''
             Returns a dictionary with entries for all classes in the project.
         '''
+        # query
+        schema = self.config.getProperty('Database', 'schema')
+        sql = 'SELECT * FROM {}.labelclass'.format(schema)
+        classProps, colnames = self.dbConnector.execute(sql, None, None)
+        idCol = next(c for c in range(len(colnames)) if colnames[c]=='id')
+        classdef = {}
+        for c in range(len(classProps)):
+            classID = classProps[c][idCol]
+            classdef[classID] = dict(zip(colnames, classProps[c]))
 
-        #TODO: dummy for now; create dedicated Python class for class labels that also serves the AITrainer (TODO: needed?)
-        return {
-            '1': {
-                'name': 'Elephant',
-                'index': 0,
-                'color': '#0000FF'
-            },
-            '2': {
-                'name': 'Livestock',
-                'index': 1,
-                'color': '#00FF00'
-            },
-        }
+        return classdef
 
 
     def getAnnotations(self, data):
@@ -69,36 +75,73 @@ class DBMiddleware():
         pass
 
     
-    def getNextBatch(self, ignoreLabeled=True, limit=None):
+    def getNextBatch(self, ignoreLabeled=False, limit=None):
         '''
             Returns entries from the database (table 'annotation') according to the following rules:
             - entries are ordered by value in column 'priority' (descending)
             - if 'ignoreLabeled' is set to True, only images without a single associated annotation are returned (may result in an empty set). Otherwise priority is given to unlabeled images, but all images are queried if there are no unlabeled ones left.
             - if 'limit' is a number, the return count will be clamped to it.
         '''
-
         # prepare returns
         response = {}
 
         # query
         schema = self.config.getProperty('Database', 'schema')
         sql = '''
-            SELECT * FROM {}.prediction AS pred
-            JOIN {}.image AS img ON pred.image = img.id
-        '''.format(schema, schema)
+            SELECT * FROM (SELECT id AS imageID, filename FROM {}.image) AS img
+            LEFT OUTER JOIN ({}) AS pred ON pred.image = img.imageID
+            LEFT OUTER JOIN ({}) AS anno ON anno.image = img.imageID
+        '''.format(schema,
+            getattr(QueryStrings_prediction, self.projectSettings['predictionType']).value.format(schema),
+            getattr(QueryStrings_annotation, self.projectSettings['annotationType']).value.format(schema),
+            schema)
 
         if ignoreLabeled:
             sql += '''
              WHERE NOT EXISTS (
                 SELECT image FROM {}.annotation AS anno
-                WHERE anno.image = img.id
+                WHERE anno.image = img.imageID
             )
             '''.format(schema)
         
-        sql += ' ORDER BY pred.confidence DESC'
+        sql += ' ORDER BY pred.priority DESC'
         if limit is not None and isinstance(limit, int):
             sql += ' LIMIT {}'.format(limit)
         sql += ';'
+
+        print(sql)
+
+        nextBatch, colnames = self.dbConnector.execute(sql, None, limit)
+        colnameDict = dict(zip(colnames, range(len(colnames))))
+
+
+
+
+        #TODO: optimize this horrible code and provide proper, standardized return names below
+
+        # format and return
+        for n in range(len(nextBatch)):
+            imgID = nextBatch[n][colnameDict['imageid']]
+            if not imgID in response:
+                response[imgID] = {
+                    'fileName': nextBatch[n][colnameDict['filename']],
+                    'predictions': {},
+                    'annotations': {}
+                }
+            predID = nextBatch[n][colnameDict['predid']]
+            if predID is not None:
+                tokens = [c for c in colnames if c.startswith('pred')]
+                predValues = [nextBatch[n][colnameDict[t]] for t in tokens]
+                response[imgID]['predictions'][predID] = dict(zip(tokens, predValues))
+            annoID = nextBatch[n][colnameDict['annoid']]
+            if annoID is not None:
+                tokens = [c for c in colnames if c.startswith('anno')]
+                annoValues = [nextBatch[n][colnameDict[t]] for t in tokens]
+                response[imgID]['annotations'][annoID] = dict(zip(tokens, annoValues))
+
+        return response
+
+
 
         #TODO: gather and standardize returns, return random unlabeled set if no prediction exists
         # ALSO RETUR

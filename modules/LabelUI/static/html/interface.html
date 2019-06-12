@@ -1,15 +1,18 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <title>fine-tuna</title>
+    <title>AIde</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <link type="text/css" href="css/bootstrap.min.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
     <script src="https://code.jquery.com/ui/1.12.0/jquery-ui.min.js" integrity="sha256-eGE6blurk5sHj+rmkfsGYeKyZx3M4bG+ZlFyA7Kns7E=" crossorigin="anonymous"></script>
     <script type="text/javascript" src="lib/openseadragon/openseadragon.min.js"></script>
-    <script type="text/javascript" src="js/annotationPrimitives.js"></script>
+    <script type="text/javascript" src="js/commandListener.js"></script>
     <script type="text/javascript" src="js/configuration.js"></script>
+    <script type="text/javascript" src="js/renderPrimitives.js"></script>
+    <script type="text/javascript" src="js/viewport/imageViewport.js"></script>
+    <script type="text/javascript" src="js/annotationPrimitives.js"></script>
     <script type="text/javascript" src="js/labelClassHandler.js"></script>
     <script type="text/javascript" src="js/dataEntry.js"></script>
     <script type="text/javascript" src="js/dataHandler.js"></script>
@@ -61,7 +64,7 @@
         
         <!-- Tool Description -->
         <div class="container-fluid">
-            <h1 class="mt-4">CV4Wildlife something rather</h1>
+            <h1 class="mt-4">AIde Label Interface</h1>
             <p>TODO: Description</p>
         </div>
 
@@ -84,6 +87,8 @@
                             Actions
                         </div>
                         <div class="card-body">
+                            <h5 class="card-title">Controls</h5>
+                            <button class="btn btn-primary" onclick="interfaceControls.addAnnotation=true;">+</button>
                             <h5 class="card-title">Legend</h5>
                             <p class="card-text">Click on a label or press its number (if 1-9) to activate it.</p>
                             <div class='legend-entries'></div>

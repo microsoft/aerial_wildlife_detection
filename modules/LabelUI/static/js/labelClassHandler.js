@@ -54,7 +54,11 @@ class LabelClassHandler {
 
 
         // iterate over label classes
+        var counter = 0;
         for(var c in window.classes) {
+            if(window.classes[c]['index'] == null) {
+                window.classes[c]['index'] = counter++;
+            }
             var nextClass = new LabelClass(c, window.classes[c], this);
             this.labelClasses[c] = nextClass;
         }

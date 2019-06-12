@@ -9,6 +9,12 @@ $(document).ready(function() {
     // set up general config
     var promise = window.loadConfiguration();
 
+    // command listener
+    promise = promise.done(function() {
+        window.commandListener = new CommandListener();
+        return $.Deferred().promise();
+    });
+
     // set up label class handler
     promise = promise.done(function() {
         window.labelClassHandler = new LabelClassHandler($('.legend-entries'));
@@ -20,4 +26,9 @@ $(document).ready(function() {
         window.dataHandler = new DataHandler($('#gallery'));
         window.dataHandler.loadNextBatch();
     });
+
+    //TODO
+    window.interfaceControls = {
+        'addAnnotation': false
+    };
 });

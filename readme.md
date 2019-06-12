@@ -1,8 +1,6 @@
-# CV4Wildlife AL Service
+# AIde - Assisted Interface that does everything
 
-Modular, multi-tier web framework for labeling image datasets with AI assistance and Active Learning support.
-
-Main contributors: Amrita Gupta, Benjamin Kellenberger
+AIde is a modular, multi-tier web framework for labeling image datasets with AI assistance and Active Learning support.
 
 
 ## Overview
@@ -22,7 +20,7 @@ TODO: steps:
 
 ### Set up the database instance
 
-AIlabelTool uses [PostGreSQL](https://www.postgresql.org/) to store labels, predictions, file paths and metadata. The following instructions apply for recent versions of Debian-based Linux distributions, such as Ubuntu.
+AIde uses [PostGreSQL](https://www.postgresql.org/) to store labels, predictions, file paths and metadata. The following instructions apply for recent versions of Debian-based Linux distributions, such as Ubuntu.
 
 *Installing and configuring PostGreSQL*
 1. Install PostGreSQL server

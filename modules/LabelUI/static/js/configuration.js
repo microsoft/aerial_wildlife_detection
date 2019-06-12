@@ -17,6 +17,8 @@ window.loadConfiguration = function() {
         if(!window.dataServerURI.endsWith('/')) {
             window.dataServerURI += '/';
         }
+        window.dataType = data['settings']['dataType'];
+        window.minObjSize = data['settings']['minObjSize'];
         window.classes = data['settings']['classes'];
         window.annotationType = data['settings']['annotationType'];
         window.numImages_x = data['settings']['numImages_x'];
@@ -42,7 +44,18 @@ window.loadConfiguration = function() {
                 color: '#FFFFFF'
             }
         },
-        background: '#000000'
+        background: '#000000',
+        resizeHandles: {
+            size: 8,
+            fillColor: '#FFFFFF',
+            strokeColor: '#000000',
+            lineWidth: 1
+        },
+        crosshairLines: {
+            strokeColor: '#000000',
+            lineWidth: 1,
+            lineDash: [4, 4]
+        }
     };
 
     // labeling interface

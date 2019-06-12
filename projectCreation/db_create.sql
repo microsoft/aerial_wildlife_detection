@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS &schema.IMAGE (
 CREATE TABLE IF NOT EXISTS &schema.LABELCLASS (
     id uuid DEFAULT uuid_generate_v4(),
     name VARCHAR NOT NULL,
+    color VARCHAR,
     PRIMARY KEY (id)
 );
 

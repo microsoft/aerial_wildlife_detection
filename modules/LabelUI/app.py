@@ -73,7 +73,11 @@ class LabelUI():
                 limit = int(request.query['limit'])
             except:
                 limit = None
-            json = self.middleware.getNextBatch(ignoreLabeled=True, limit=limit)
+            try:
+                ignoreLabeled = int(request.query['ignoreLabeled'])
+            except:
+                ignoreLabeled = False
+            json = self.middleware.getNextBatch(ignoreLabeled=ignoreLabeled, limit=limit)       #TODO
             return json
 
 

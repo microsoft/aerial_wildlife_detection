@@ -46,16 +46,21 @@ class Database():
         cursor.execute(sql, arguments)
         self.conn.commit()
 
-        if numReturn is None:
-            cursor.close()
-            return
+        # column names
+        colnames = tuple(c.name for c in cursor.description)
 
         returnValues = []
-        for n in range(numReturn):
-            rv = cursor.fetchone()
-            if rv is None:
-                return returnValues
-            returnValues.append(rv)
+        if numReturn is None:
+            returnValues = cursor.fetchall()
+            cursor.close()
+            return returnValues, colnames
+
+        else:
+            for _ in range(numReturn):
+                rv = cursor.fetchone()
+                if rv is None:
+                    return returnValues, colnames
+                returnValues.append(rv)
  
-        cursor.close()
-        return returnValues
+            cursor.close()
+            return returnValues, colnames
