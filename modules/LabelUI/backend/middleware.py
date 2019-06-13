@@ -4,7 +4,6 @@
     2019 Benjamin Kellenberger
 '''
 
-import psycopg2
 from modules.Database.app import Database
 from .annotation_sql_tokens import QueryStrings_annotation, QueryStrings_prediction, getQueryString, getTableNamesString, getOnConflictString, parseAnnotation
 
