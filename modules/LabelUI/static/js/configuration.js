@@ -11,22 +11,6 @@ window.loadConfiguration = function() {
         return window.defaultColors[idx % window.defaultColors.length];
     }
 
-    // project-specific settings
-    var promise = $.get('getProjectSettings', function(data) {
-        window.dataServerURI = data['settings']['dataServerURI'];
-        if(!window.dataServerURI.endsWith('/')) {
-            window.dataServerURI += '/';
-        }
-        window.dataType = data['settings']['dataType'];
-        window.minObjSize = data['settings']['minObjSize'];
-        window.classes = data['settings']['classes'];
-        window.annotationType = data['settings']['annotationType'];
-        window.numImages_x = data['settings']['numImages_x'];
-        window.numImages_y = data['settings']['numImages_y'];
-        window.defaultImage_w = data['settings']['defaultImage_w'];
-        window.defaultImage_h = data['settings']['defaultImage_h'];
-    });
-
     // styles (TODO: outsource?)
     window.styles = {
         hoverText: {
@@ -60,6 +44,23 @@ window.loadConfiguration = function() {
 
     // labeling interface
     window.annotationProximityTolerance = 20;
-
-    return promise;
 };
+
+
+
+// project settings
+//TODO: make proper promise object...
+$.get('getProjectSettings', function(data) {
+    window.dataServerURI = data['settings']['dataServerURI'];
+    if(!window.dataServerURI.endsWith('/')) {
+        window.dataServerURI += '/';
+    }
+    window.dataType = data['settings']['dataType'];
+    window.minObjSize = data['settings']['minObjSize'];
+    window.classes = data['settings']['classes'];
+    window.annotationType = data['settings']['annotationType'];
+    window.numImages_x = data['settings']['numImages_x'];
+    window.numImages_y = data['settings']['numImages_y'];
+    window.defaultImage_w = data['settings']['defaultImage_w'];
+    window.defaultImage_h = data['settings']['defaultImage_h'];
+});

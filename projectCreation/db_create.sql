@@ -20,12 +20,32 @@ CREATE SCHEMA IF NOT EXISTS &schema
 
 
 /* tables */
+CREATE TABLE IF NOT EXISTS &schema.USER (
+    name VARCHAR UNIQUE NOT NULL,
+    email VARCHAR,
+    hash VARCHAR,
+    isAdmin BOOLEAN DEFAULT FALSE,
+    session_token VARCHAR,
+    last_login TIMESTAMPTZ,
+    PRIMARY KEY (name)
+);
+
 CREATE TABLE IF NOT EXISTS &schema.IMAGE (
     id uuid DEFAULT uuid_generate_v4(),
     filename VARCHAR NOT NULL,
     exif VARCHAR,
     fVec bytea,
     PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS &schema.IMAGE_USER (
+    username VARCHAR NOT NULL,
+    image uuid NOT NULL,
+    viewcount SMALLINT DEFAULT 1,
+
+    PRIMARY KEY (username, image),
+    FOREIGN KEY (username) REFERENCES &schema.USER(name),
+    FOREIGN KEY (image) REFERENCES &schema.IMAGE(id)
 );
 
 CREATE TABLE IF NOT EXISTS &schema.LABELCLASS (

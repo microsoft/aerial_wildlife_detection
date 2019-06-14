@@ -69,7 +69,7 @@ class Annotation {
             this.geometry = new BorderStrokeElement(
                 this.annotationID + '_geom',
                 window.labelClassHandler.getColor(this.label),
-                lineWidth,
+                2*lineWidth,
                 []
             )
         }

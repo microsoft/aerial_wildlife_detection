@@ -6,8 +6,20 @@
 
 $(document).ready(function() {
 
+    // login check
+    var promise = $.ajax({
+        url: '/loginCheck',
+        method: 'post',
+        error: function() {
+            window.location.href = '/';
+        }
+    });
+
+
     // set up general config
-    var promise = window.loadConfiguration();
+    promise = promise.done(function() {
+        return window.loadConfiguration();
+    });
 
     // command listener
     promise = promise.done(function() {

@@ -39,6 +39,7 @@ class Launcher:
         app = Bottle()
 
         # parse requested instances
+        userHandler = None
         instance_args = self.args.instance.split(',')
 
         for i in instance_args:
@@ -52,7 +53,16 @@ class Launcher:
             # create instance
             instance = moduleClass(self.config, app)
             self.instances.append(instance)
+
+            #TODO: bit of a cheesy hack for now...
+            if moduleName == 'UserHandler':
+                userHandler = instance
         
+        if userHandler is not None:
+            for inst in self.instances:
+                if hasattr(inst, 'addLoginCheckFun'):
+                    inst.addLoginCheckFun(userHandler.checkAuthenticated)
+
         # run server
         host = self.config.getProperty('Server', 'host')
         port = self.config.getProperty('Server', 'port')
@@ -62,7 +72,7 @@ class Launcher:
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Run CV4Wildlife AL Service.')
-    parser.add_argument('--instance', type=str, default='FileServer, LabelUI', const=1, nargs='?',
+    parser.add_argument('--instance', type=str, default='UserHandler, FileServer, LabelUI', const=1, nargs='?',
                     help='Instance type(s) to run on this host. Accepts multiple keywords, comma-separated (default: "LabelUI").')
     args = parser.parse_args()
 

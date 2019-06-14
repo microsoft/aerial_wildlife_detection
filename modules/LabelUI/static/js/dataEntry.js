@@ -215,19 +215,19 @@
             var pos = self.viewport.getCanvasCoordinates(event, false);
             self.hoverTextElement.position = pos;
             if(event.altKey) {
-                this.hoverTextElement.setProperty('text', 'mark as unlabeled');
+                self.hoverTextElement.setProperty('text', 'mark as unlabeled');
             }
             if(self.labelInstance == null) {
-                this.hoverTextElement.setProperty('text', 'set label to "' + window.labelClassHandler.getActiveClassName() + '"');
+                self.hoverTextElement.setProperty('text', 'set label to "' + window.labelClassHandler.getActiveClassName() + '"');
             } else if(self.labelInstance.label != window.labelClassHandler.getActiveClassID()) {
-                this.hoverTextElement.setProperty('text', 'change label to "' + window.labelClassHandler.getActiveClassName() + '"');
+                self.hoverTextElement.setProperty('text', 'change label to "' + window.labelClassHandler.getActiveClassName() + '"');
             } else {
-                this.hoverTextElement.setProperty('text', null);
+                self.hoverTextElement.setProperty('text', null);
             }
             self.render();
         });
         this.markup.mouseout(function(event) {
-            this.hoverTextElement.setProperty('text', null);
+            self.hoverTextElement.setProperty('text', null);
             self.render();
         });
     }
@@ -239,10 +239,21 @@
             this.defaultLabelInstance = null;
 
         } else {
-            // set label instance to current label class
+            // Set label instance to current label class.
+            // Remove label if it's the same.
             var key = this.entryID + '_anno';
-            this.labelInstance = new LabelAnnotation(key, {'label':window.labelClassHandler.getActiveClassID()}, 'userAnnotation');
-            this._addElement(this.labelInstance);
+            if(this.labelInstance == null) {
+                this.labelInstance = new Annotation(key, {'label':window.labelClassHandler.getActiveClassID()}, 'userAnnotation');
+                this._addElement(this.labelInstance);
+                this.noLabel = false;
+            } else if(this.labelInstance.label == window.labelClassHandler.getActiveClassID()) {
+                this._removeElement(this.labelInstance);
+                this.labelInstance = null;
+                this.noLabel = true;
+                this.defaultLabelInstance = null;
+            } else {
+                this.labelInstance.setProperty('label', window.labelClassHandler.getActiveClassID());
+            }
         }
         this.render();
     }

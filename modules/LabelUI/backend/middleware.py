@@ -55,7 +55,7 @@ class DBMiddleware():
         # query
         schema = self.config.getProperty('Database', 'schema')
         sql = 'SELECT * FROM {}.labelclass'.format(schema)
-        classProps = self.dbConnector.execute(sql, None, None)
+        classProps = self.dbConnector.execute(sql, None, 'all')
         classdef = {}
         for c in range(len(classProps)):
             classID = classProps[c]['id']
@@ -103,8 +103,11 @@ class DBMiddleware():
         
         sql += ' ORDER BY pred.priority DESC'
         if limit is not None and isinstance(limit, int):
-            sql += ' LIMIT {}'.format(limit)
+            sql += ' LIMIT {}'.format(limit)        #FIXME: this limits the num. annotations, not images!!!
         sql += ';'
+
+        if limit is None:
+            limit = 'all'
 
         batch = self.dbConnector.execute(sql, None, limit)
 
@@ -134,13 +137,14 @@ class DBMiddleware():
         return { 'entries': response }
 
 
-    def submitAnnotations(self, submissions):
+    def submitAnnotations(self, username, submissions):
         '''
             Sends user-provided annotations to the database.
         '''
         # assemble values
         colnames = []
         values = []
+        viewcountValues = []
         for imageKey in submissions['entries']:
             entry = submissions['entries'][imageKey]
             if 'annotations' in entry and len(entry['annotations']):
@@ -152,10 +156,13 @@ class DBMiddleware():
                     if not len(colnames) or len(colnames) != len(nextColnames):
                         #TODO: uuugly, this should be standardized somewhere
                         colnames = nextColnames
+                    
+            viewcountValues.append((username, imageKey,))
 
 
-        # prepare SQL
         schema = self.config.getProperty('Database', 'schema')
+
+        # annotation table
         sql = '''
             INSERT INTO {}.annotation ({})
             VALUES ( %s )
@@ -168,4 +175,15 @@ class DBMiddleware():
 
         self.dbConnector.insert(sql, values)
 
-        return 'Not yet implemented.'
+
+        # viewcount table
+        sql = '''
+            INSERT INTO {}.image_user (username, image, viewcount)
+            VALUES ( %s )
+            ON CONFLICT (username, image) DO UPDATE SET viewcount = viewcount + 1;
+        '''.format(schema)
+
+        self.dbConnector.insert(sql, viewcountValues)
+
+
+        return 'ok'     #TODO

@@ -52,7 +52,6 @@ class LabelClassHandler {
         //     }
         // });
 
-
         // iterate over label classes
         var counter = 0;
         for(var c in window.classes) {

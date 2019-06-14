@@ -6,8 +6,9 @@
 '''
 
 from modules.Database.app import Database
+import psycopg2
 import pytz
-from datetime import datetime
+from datetime import datetime, timedelta
 import secrets
 import hashlib
 import bcrypt
@@ -17,7 +18,7 @@ from .exceptions import *
 class UserMiddleware():
 
     TOKEN_NUM_BYTES = 64
-    SALT_NUM_ROUNDS = 24
+    SALT_NUM_ROUNDS = 12
 
 
     def __init__(self, config):
@@ -36,6 +37,8 @@ class UserMiddleware():
 
 
     def _compare_tokens(self, tokenA, tokenB):
+        if tokenA is None or tokenB is None:
+            return False
         return secrets.compare_digest(tokenA, tokenB)
 
 
@@ -64,24 +67,29 @@ class UserMiddleware():
             'sessionToken': sessionToken
         }
 
-        self.dbConnector.execute('''UPDATE {}.user SET time_login = %s, session_token = %s;
-            WHERE username = %s
+        self.dbConnector.execute('''UPDATE {}.user SET last_login = %s, session_token = %s
+            WHERE name = %s
         '''.format(
             self.config.getProperty('Database', 'schema')
         ),
-        (now, sessionToken, username,))
+        (now, sessionToken, username,),
+        numReturn=None)
         #TODO: feedback that everything is ok?
 
-        return sessionToken, now
+        expires = now + timedelta(0, self.config.getProperty('UserHandler', 'time_login', type=int))
+
+        return sessionToken, now, expires
 
 
     def _invalidate_session(self, username):
-        del self.usersLoggedIn[username]
+        if username in self.usersLoggedIn:
+            del self.usersLoggedIn[username]
         self.dbConnector.execute(
-            'UPDATE {}.user SET session_token = NULL WHERE username = %s'.format(
+            'UPDATE {}.user SET session_token = NULL WHERE name = %s'.format(
                 self.config.getProperty('Database', 'schema')
             ),
-            (username,))
+            (username,),
+            numReturn=None)
         #TODO: feedback that everything is ok?
 
 
@@ -89,8 +97,63 @@ class UserMiddleware():
         result = self.dbConnector.execute('SELECT name FROM {}.user WHERE name = %s'.format(
             self.config.getProperty('Database', 'schema')
         ),
-        (username,))
+        (username,),
+        numReturn=1)
         return len(result)>0
+
+
+    def _check_logged_in(self, username, sessionToken):
+        now = self._current_time()
+        time_login = self.config.getProperty('UserHandler', 'time_login', type=int)
+        if not username in self.usersLoggedIn:
+            # check database
+            sql = 'SELECT last_login, session_token FROM {}.user WHERE name = %s;'.format(
+                self.config.getProperty('Database', 'schema')
+            )
+            result = self.dbConnector.execute(sql, (username,), numReturn=1)
+            if len(result) == 0:
+                # account does not exist
+                return False
+
+            result = result[0]
+
+            # check for session token
+            if not self._compare_tokens(result['session_token'], sessionToken):
+                # invalid session token provided
+                return False
+
+            # check for timestamp
+            if (now - result['last_login']).total_seconds() <= time_login:
+                # user still logged in
+                return True
+
+            else:
+                # session time-out
+                return False
+            
+            # generic error
+            return False
+        
+        else:
+            # check locally
+            if not self._compare_tokens(self.usersLoggedIn[username]['sessionToken'],
+                    sessionToken):
+                # invalid session token provided
+                return False
+
+            if (now - self.usersLoggedIn[username]['timestamp']).total_seconds() <= time_login:
+                # user still logged in
+                return True
+
+            else:
+                # session time-out
+                return False
+
+            # generic error
+            return False
+        
+        # generic error
+        return False
 
 
     def isLoggedIn(self, username, sessionToken):
@@ -104,88 +167,47 @@ class UserMiddleware():
             Otherwise returns True if and only if 'sessionToken' matches
             the entry in the database.
         '''
-        now = self._current_time()
-        time_login = self.config.getProperty('UserHandler', 'time_login')
-        if not username in self.usersLoggedIn:
-            # check database
-            sql = 'SELECT last_login, session_token FROM {}.user WHERE name = %s;'.format(
-                self.config.getProperty('Database', 'schema')
-            )
-            result = self.dbConnector.execute(sql, username, numReturn=1)
-            if len(result) == 0:
-                # account does not exist
-                self._invalidate_session(username)
-                raise InvalidRequestException()
+        if self._check_logged_in(username, sessionToken):
+            # still logged in; extend session
+            sessionToken, now, expires = self._init_or_extend_session(username, sessionToken)
+            return sessionToken, now, expires
 
-
-            # check for session token
-            if not self._compare_tokens(result['session_token'], sessionToken):
-                # invalid session token provided
-                self._invalidate_session(username)
-                raise InvalidRequestException()
-
-            # check for timestamp
-            if (now - result['last_login']) <= time_login:
-                # user still logged in; extend session
-                sessionToken, now = self._init_or_extend_session(username, sessionToken)
-                return sessionToken, now
-
-            else:
-                # session time-out
-                raise SessionTimeoutException()
-            
-            # generic error
-            self._invalidate_session(username)
-            raise InvalidRequestException()
-        
         else:
-            # check locally
-            if not self._compare_tokens(self.usersLoggedIn[username]['sessionToken'],
-                    sessionToken):
-                # invalid session token provided
-                self._invalidate_session(username)
-                raise InvalidRequestException()
-
-            if (now - self.usersLoggedIn[username]['timestamp']) <= time_login:
-                # user still logged in; extend session
-                self._init_or_extend_session(username, sessionToken)
-                return True
-
-            else:
-                # session time-out
-                raise SessionTimeoutException()
-
-            # generic error
-            self._invalidate_session(username)
-            raise InvalidRequestException()
-        
-        # generic error
-        self._invalidate_session(username)
-        raise InvalidRequestException()
+            # not logged in or error
+            raise Exception('Not logged in.')
 
 
 
-    def login(self, username, password):
-
-        #TODO: check if logged in
+    def login(self, username, password, sessionToken):
         #TODO: SQL sanitize
+
+        # check if logged in
+        try:
+            sessionToken, timestamp, expires = self._check_logged_in(username, sessionToken)
+            return sessionToken, timestamp, expires
+
+        except:
+            # not logged in; continue
+            pass
 
         # get user info
         userData = self.dbConnector.execute(
             'SELECT hash FROM {}.user WHERE name = %s;'.format(
                 self.config.getProperty('Database', 'schema')
             ),
-            (username,)
+            (username,),
+            numReturn=1
         )
         if len(userData) == 0:
             # account does not exist
             raise InvalidRequestException()
+        userData = userData[0]
         
         # verify provided password
-        if self._check_password(password, userData['hash']):
+        if self._check_password(password.encode('utf8'), bytes(userData['hash'])):
             # correct
-            sessionToken, timestamp = self._init_or_extend_session(username, None)
-            return sessionToken, timestamp
+            sessionToken, timestamp, expires = self._init_or_extend_session(username, None)
+            return sessionToken, timestamp, expires
 
         else:
             # incorrect
@@ -193,22 +215,29 @@ class UserMiddleware():
             raise InvalidPasswordException()
     
 
+    def logout(self, username, sessionToken):
+        # check if logged in first
+        if self._check_logged_in(username, sessionToken):
+            self._invalidate_session(username)
+
+
     def accountExists(self, username):
-        if self._check_account_exists(username):
-            raise AccountExistsException(username)
-        return False
+        return self._check_account_exists(username)
 
 
     def createAccount(self, username, password, email):
-        if not self.accountExists(username):
-            hash = self._create_hash(password)
+        if self._check_account_exists(username):
+            raise AccountExistsException(username)
+
+        else:
+            hash = self._create_hash(password.encode('utf8'))
+
             sql = '''
-                INSERT INTO {}.user (name, hash, email)
+                INSERT INTO {}.user (name, email, hash)
                 VALUES (%s, %s, %s);
             '''.format(self.config.getProperty('Database', 'schema'))
             self.dbConnector.execute(sql,
-            (username, hash, email))
-
-            sessionToken, timestamp = self._init_or_extend_session(username)
-            return sessionToken, timestamp
-        
+            (username, email, hash,),
+            numReturn=None)
+            sessionToken, timestamp, expires = self._init_or_extend_session(username)
+            return sessionToken, timestamp, expires

@@ -19,6 +19,7 @@ class DataHandler {
         this.dataEntries = [];
 
         $.getJSON('getLatestImages?limit=1', function(data) {
+            console.log(data['entries'])
             for(var d in data['entries']) {
                 // create new data entry
                 switch(String(window.annotationType)) {

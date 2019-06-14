@@ -44,7 +44,13 @@ class Database():
     
     def execute(self, sql, arguments, numReturn=None):
         cursor = self.conn.cursor(cursor_factory = RealDictCursor)
-        cursor.execute(sql, arguments)
+
+        try:
+            cursor.execute(sql, arguments)
+        except Exception as e:
+            print(e)
+            self.conn.rollback()
+
         self.conn.commit()
 
         # # column names
@@ -52,6 +58,10 @@ class Database():
 
         returnValues = []
         if numReturn is None:
+            cursor.close()
+            return
+        
+        elif numReturn == 'all':
             returnValues = cursor.fetchall()
             cursor.close()
             return returnValues #, colnames
@@ -69,6 +79,10 @@ class Database():
 
     def insert(self, sql, values):
         cursor = self.conn.cursor()
-        execute_values(cursor, sql, values)
+        try:
+            execute_values(cursor, sql, values)
+        except Exception as e:
+            print(e)
+            self.conn.rollback()
         self.conn.commit()
         cursor.close()
