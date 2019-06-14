@@ -233,6 +233,7 @@
     }
 
     toggleUserLabel(removeLabel) {
+        console.log('toggle')
         if(removeLabel) {
             this._removeElement(this.labelInstance);
             this.noLabel = true;
@@ -315,7 +316,7 @@ class PointAnnotationEntry extends AbstractDataEntry {
         var argMin = null;
         for(var key in this.predictions) {
             if(this.predictions[key] instanceof PointAnnotation) {
-                var dist = this.predictions[key].euclideanDistance(coordinates);
+                var dist = this.predictions[key].getRenderElement().euclideanDistance(coordinates);
                 if((dist < minDist) && (dist <= window.annotationProximityTolerance)) {
                     minDist = dist;
                     argMin = this.predictions[key];
@@ -324,7 +325,7 @@ class PointAnnotationEntry extends AbstractDataEntry {
         }
         for(var key in this.annotations) {
             if(this.annotations[key] instanceof PointAnnotation) {
-                var dist = this.annotations[key].euclideanDistance(coordinates);
+                var dist = this.annotations[key].getRenderElement().euclideanDistance(coordinates);
                 if((dist < minDist) && (dist <= window.annotationProximityTolerance)) {
                     minDist = dist;
                     argMin = this.annotations[key];
@@ -446,7 +447,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
         var argMin = null; 
         for(var key in this.annotations) {
             if(this.annotations[key].isInDistance(coordinates, window.annotationProximityTolerance, forceCorner)) {
-                var thisMinDist = this.annotations[key].euclideanDistance(coordinates);
+                var thisMinDist = this.annotations[key].getRenderElement().euclideanDistance(coordinates);
                 if(thisMinDist < minDist) {
                     minDist = thisMinDist;
                     argMin = this.annotations[key];
@@ -454,6 +455,50 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
             }
         }
         return argMin;
+    }
+
+    _toggleActive(event) {
+        /*
+            Sets boxes active or inactive as follows:
+            - if a box encompasses the event's coordinates:
+                - and is not active: it is turned active
+                - and is active: nothing happens
+                Any other box that is active _and_ contains the point stays active.
+                Other boxes that are active and do not contain the point get deactivated,
+                unless the shift key is held down.
+            - if no box contains the coordinates, every single one is deactivated.
+        */
+        var coords = this.viewport.getCanvasCoordinates(event, false);
+        var minDist = 1e9;
+        var argMin = null;
+        for(var key in this.annotations) {
+            var bbox = this.annotations[key].getRenderElement();
+            if(bbox.containsPoint(coords)) {
+                var dist = bbox.euclideanDistance(coords);
+                if(dist < minDist) {
+                    minDist = dist;
+                    argMin = key;
+                }
+                if(!(event.shiftKey && this.annotations[key].isActive())) {
+                    // deactivate
+                    this.annotations[key].setActive(false, this.viewport);
+                }
+            } else if(!event.shiftKey) {
+                // bbox outside and no shift key; deactivate
+                this.annotations[key].setActive(false, this.viewport);
+            }
+        }
+
+        // handle closest
+        if(argMin == null) {
+            // deactivate all
+            for(var key in this.annotations) {
+                this.annotations[key].setActive(false, this.viewport);
+            }
+        } else {
+            // set closest one active
+            this.annotations[argMin].setActive(true, this.viewport);
+        }
     }
 
     _canvas_mouseout(event) {
@@ -481,12 +526,29 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
         anno.getRenderElement()._mousedown_event(event, this.viewport);
     }
 
-    _deleteActiveAnnotations() {
+    _deleteActiveAnnotations(event) {
+        var coords = this.viewport.getCanvasCoordinates(event, false);
+        var minDist = 1e9;
+        var argMin = null;
         for(var key in this.annotations) {
-            if(this.annotations[key].isActive()) {
-                this.annotations[key].getRenderElement().deregisterAsCallback(this.viewport);
-                this._removeElement(this.annotations[key]);
+            var bbox = this.annotations[key].getRenderElement();
+            if(bbox.containsPoint(coords)) {
+                if(this.annotations[key].isActive()) {
+                    this.annotations[key].getRenderElement().deregisterAsCallback(this.viewport);
+                    this._removeElement(this.annotations[key]);
+                    return;
+                }
+                var dist = bbox.euclideanDistance(coords);
+                if(dist < minDist) {
+                    minDist = dist;
+                    argMin = key;
+                }
             }
+        }
+
+        if(argMin != null) {
+            // no active annotation found, but clicked within another one; delete it
+            this._removeElement(this.annotations[argMin]);
         }
     }
 
@@ -588,16 +650,26 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
             window.interfaceControls.action = window.interfaceControls.actions.DO_NOTHING;
 
         } else if(window.interfaceControls.action == window.interfaceControls.actions.REMOVE_ANNOTATIONS) {
-            this._deleteActiveAnnotations();
+            this._deleteActiveAnnotations(event);
             window.interfaceControls.action = window.interfaceControls.actions.DO_NOTHING;
 
-        } else {
-            // update annotations to current label
+        } else if(window.interfaceControls.action == window.interfaceControls.actions.EDIT_ANNOTATION) {
+            // reset action
+            window.interfaceControls.action = window.interfaceControls.actions.DO_NOTHING;
+
+        } else if(window.interfaceControls.action == window.interfaceControls.actions.DO_NOTHING) {
+            // update annotations to current label (if active)
+            var coords = this.viewport.getCanvasCoordinates(event, false);
             for(var key in this.annotations) {
                 if(this.annotations[key].isActive()) {
-                    this.annotations[key].setProperty('label', window.labelClassHandler.getActiveClassID());
+                    if(event.shiftKey || this.annotations[key].getRenderElement().containsPoint(coords)) {
+                        this.annotations[key].setProperty('label', window.labelClassHandler.getActiveClassID());
+                    }
                 }
             }
+
+            // activate or deactivate
+            this._toggleActive(event);
         }
 
         this.render();

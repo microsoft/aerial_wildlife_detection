@@ -144,6 +144,10 @@ class PointElement extends AbstractRenderElement {
         ctx.fill();
         ctx.closePath();
     }
+
+    euclideanDistance(that) {
+        return Math.sqrt(Math.pow(this.x - that[0],2) + Math.pow(this.y - that[1],2));
+    }
 }
 
 
@@ -186,16 +190,15 @@ class LineElement extends AbstractRenderElement {
 }
 
 
-class RectangleElement extends AbstractRenderElement {
+class RectangleElement extends PointElement {
 
     constructor(id, x, y, width, height, fillColor, strokeColor, lineWidth, lineDash, zIndex) {
-        super(id, zIndex);
+        super(id, x, y, strokeColor, null, zIndex);
         this.x = x;
         this.y = y;
         this.width = width;
         this.height = height;
         this.fillColor = fillColor;
-        this.color = strokeColor;
         this.lineWidth = lineWidth;
         this.lineDash = (lineDash == null? [] : lineDash);
 
@@ -356,6 +359,7 @@ class RectangleElement extends AbstractRenderElement {
 
     _mousedown_event(event, viewport) {
         this.mousePos_init = viewport.getCanvasCoordinates(event, false);
+        this.mousePos_current = viewport.getCanvasCoordinates(event, false);
         this.mouseDrag = true;
         this.activeHandle = this.getClosestHandle(this.mousePos_init, window.annotationProximityTolerance);
     }
@@ -367,7 +371,7 @@ class RectangleElement extends AbstractRenderElement {
             - if drag and close to resize handle: resize rectangle and move resize handles
             - if drag and inside rectangle: move rectangle and resize handles
         */
-        this.mousePos_current = viewport.getCanvasCoordinates(event, false);
+        var coords = viewport.getCanvasCoordinates(event, false);
         var extent = this.getExtent();
         if(this.mouseDrag && this.activeHandle != null) {
             // move or resize rectangle
@@ -408,8 +412,8 @@ class RectangleElement extends AbstractRenderElement {
                 this.setProperty('y', y);
             }
             if(this.activeHandle.includes('c')) {
-                this.setProperty('x', this.x + this.mousePos_current[0] - this.mousePos_init[0]);
-                this.setProperty('y', this.y + this.mousePos_current[1] - this.mousePos_init[1]);
+                this.setProperty('x', this.x + coords[0] - this.mousePos_current[0]);
+                this.setProperty('y', this.y + coords[1] - this.mousePos_current[1]);
             }
         } else {
             this.activeHandle = this.getClosestHandle(this.mousePos_current, window.annotationProximityTolerance);
@@ -426,6 +430,9 @@ class RectangleElement extends AbstractRenderElement {
         } else {
             viewport.canvas.css('cursor', this.activeHandle + '-resize');
         }
+
+        // update current mouse pos
+        this.mousePos_current = coords;
     }
 
     _mouseup_event(event, viewport) {
@@ -477,10 +484,11 @@ class RectangleElement extends AbstractRenderElement {
             viewport.addCallback(this.id, 'mouseup', this._get_active_handle_callback('mouseup', viewport));
         } else {
             viewport.removeRenderElement(this.resizeHandles);
-            // viewport.removeCallback(this.id, 'click');
+            viewport.removeCallback(this.id, 'click');
             viewport.removeCallback(this.id, 'mousedown');
             viewport.removeCallback(this.id, 'mousemove');
             viewport.removeCallback(this.id, 'mouseup');
+            this.mouseDrag = false;
         }
     }
 

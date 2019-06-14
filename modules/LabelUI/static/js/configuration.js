@@ -43,7 +43,7 @@ window.loadConfiguration = function() {
     };
 
     // labeling interface
-    window.annotationProximityTolerance = 20;
+    window.annotationProximityTolerance = 5;
 };
 
 

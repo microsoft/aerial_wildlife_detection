@@ -18,7 +18,8 @@ const interfaceCommands = {
     ZOOM_IN: 'zoomIn',
     ZOOM_OUT: 'zoomOut',
     ZOOM_RECT: 'zoomRect',
-    ADD_ANNOTATION: 'addAnnotation'
+    ADD_ANNOTATION: 'addAnnotation',
+    EDIT_ANNOTATION: 'editAnnotation'
 };
 
 

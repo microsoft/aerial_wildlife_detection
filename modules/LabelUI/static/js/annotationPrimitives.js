@@ -220,10 +220,6 @@ class PointAnnotation extends LabelAnnotation {
     getAnnotationType() {
         return 'point';
     }
-
-    euclideanDistance(that) {
-        return Math.sqrt(Math.pow(this.x - that[0],2) + Math.pow(this.y - that[1],2));
-    }
 }
 
 
