@@ -43,18 +43,7 @@ class Database():
 
     
     def execute(self, sql, arguments, numReturn=None):
-        cursor = self.conn.cursor(cursor_factory = RealDictCursor)
-
-        try:
-            cursor.execute(sql, arguments)
-        except Exception as e:
-            print(e)
-            self.conn.rollback()
-
-        self.conn.commit()
-
-        # # column names
-        # colnames = tuple(c.name for c in cursor.description)
+        cursor = self.execute_cursor(sql, arguments)
 
         returnValues = []
         if numReturn is None:
@@ -76,6 +65,18 @@ class Database():
             cursor.close()
             return returnValues #, colnames
     
+
+    def execute_cursor(self, sql, arguments):
+        cursor = self.conn.cursor(cursor_factory = RealDictCursor)
+        try:
+            cursor.execute(sql, arguments)
+        except Exception as e:
+            print(e)
+            self.conn.rollback()
+        self.conn.commit()
+
+        return cursor
+
 
     def insert(self, sql, values):
         cursor = self.conn.cursor()

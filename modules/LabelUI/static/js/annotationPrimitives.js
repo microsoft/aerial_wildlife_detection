@@ -3,22 +3,23 @@ window.parseAnnotation = function(annotationID, properties, type) {
         Reads the properties object and automatically initializes
         and returns the appropriate annotation primitive based on the contents.
     */
-   if('w' in properties) {
-       // width and height: bounding box
-       return new BoundingBoxAnnotation(annotationID, properties, type);
+   return new Annotation(annotationID, properties, type);
+//    if('width' in properties) {
+//        // width and height: bounding box
+//        return new BoundingBoxAnnotation(annotationID, properties, type);
 
-   } else if('x' in properties) {
-        // no width and height, but coordinates: point
-        return new PointAnnotation(annotationID, properties, type);
+//    } else if('x' in properties) {
+//         // no width and height, but coordinates: point
+//         return new PointAnnotation(annotationID, properties, type);
 
-   } else if('segMapFileName' in properties) {
-       //TODO: segmentation map
-       throw Error('Segmentation maps not yet implemented');
+//    } else if('segMapFileName' in properties) {
+//        //TODO: segmentation map
+//        throw Error('Segmentation maps not yet implemented');
 
-   } else {
-       // classification entry
-       return new LabelAnnotation(annotationID, properties, type);
-   }
+//    } else {
+//        // classification entry
+//        return new LabelAnnotation(annotationID, properties, type);
+//    }
 };
 
 
@@ -81,6 +82,11 @@ class Annotation {
 
     setActive(active, viewport) {
         this.geometry.setActive(active, viewport);
+    }
+
+    getChanged() {
+        // returns true if the user has modified the annotation
+        return this.geometry.changed;
     }
 
     getProperties() {

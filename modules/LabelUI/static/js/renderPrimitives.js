@@ -4,10 +4,14 @@ class AbstractRenderElement {
         this.id = id;
         this.zIndex = (zIndex == null? 0 : zIndex);
         this.isActive = false;
+        this.changed = false;   // will be set to true if user modifies the initial geometry
     }
 
     setProperty(propertyName, value) {
         this[propertyName] = value;
+
+        // set to user-modified
+        this.changed = true;
     }
 
     getGeometry() {
@@ -128,6 +132,8 @@ class PointElement extends AbstractRenderElement {
         this.size = size;
     }
 
+    //TODO: add interactions
+
     getGeometry() {
         return {
             'type': 'point',
@@ -164,6 +170,8 @@ class LineElement extends AbstractRenderElement {
         this.lineWidth = lineWidth;
         this.lineDash = (lineDash == null? [] : lineDash);
     }
+
+    //TODO: add interactions
 
     getGeometry() {
         return {
@@ -433,6 +441,9 @@ class RectangleElement extends PointElement {
 
         // update current mouse pos
         this.mousePos_current = coords;
+
+        // set to user-modified
+        this.changed = true;
     }
 
     _mouseup_event(event, viewport) {

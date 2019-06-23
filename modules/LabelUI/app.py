@@ -118,8 +118,12 @@ class LabelUI():
             if self.loginCheck():
                 # parse
                 try:
+                    username = request.get_cookie('username')
+                    if username is None:
+                        # this should never happen, since we are performing a login check
+                        raise Exception('no username provided')
                     submission = request.json
-                    response = self.middleware.submitAnnotations(submission)
+                    response = self.middleware.submitAnnotations(username, submission)
                     return response
                 except Exception as e:
                     print('ERROR: ' + str(e))

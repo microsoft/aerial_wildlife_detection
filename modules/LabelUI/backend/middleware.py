@@ -82,39 +82,65 @@ class DBMiddleware():
         '''
         # query
         schema = self.config.getProperty('Database', 'schema')
+        # sql = '''
+        #     SELECT * FROM (SELECT id AS imageID, filename FROM {}.image) AS img
+        #     LEFT OUTER JOIN (SELECT {} FROM {}.prediction) AS pred ON pred.image = img.imageID
+        #     LEFT OUTER JOIN (SELECT {} FROM {}.annotation) AS anno ON anno.image = img.imageID
+        # '''.format(schema,
+        #     getQueryString(getattr(QueryStrings_prediction, self.projectSettings['predictionType']).value),
+        #     schema,
+        #     getQueryString(getattr(QueryStrings_annotation, self.projectSettings['annotationType']).value),
+        #     schema)
         sql = '''
             SELECT * FROM (SELECT id AS imageID, filename FROM {}.image) AS img
+            LEFT OUTER JOIN (SELECT image, viewcount FROM {}.image_user) AS img_user ON img_user.image = img.imageID
             LEFT OUTER JOIN (SELECT {} FROM {}.prediction) AS pred ON pred.image = img.imageID
             LEFT OUTER JOIN (SELECT {} FROM {}.annotation) AS anno ON anno.image = img.imageID
-        '''.format(schema,
+        '''.format(
+            schema, schema,
             getQueryString(getattr(QueryStrings_prediction, self.projectSettings['predictionType']).value),
             schema,
             getQueryString(getattr(QueryStrings_annotation, self.projectSettings['annotationType']).value),
-            schema,
-            schema)
-
+            schema
+        )
         if ignoreLabeled:
             sql += '''
-             WHERE NOT EXISTS (
-                SELECT image FROM {}.annotation AS anno
-                WHERE anno.image = img.imageID
-            )
-            '''.format(schema)
+                WHERE viewcount = 0 OR viewcount IS NULL
+            '''
+
+        # if ignoreLabeled:
+        #     sql += '''
+        #      WHERE NOT EXISTS (
+        #         SELECT image FROM {}.annotation AS anno
+        #         WHERE anno.image = img.imageID
+        #     )
+        #     '''.format(schema)
         
         sql += ' ORDER BY pred.priority DESC'
-        if limit is not None and isinstance(limit, int):
-            sql += ' LIMIT {}'.format(limit)        #FIXME: this limits the num. annotations, not images!!!
-        sql += ';'
+        # if limit is not None and isinstance(limit, int):
+        #     sql += ' LIMIT {}'.format(limit)        #FIXME: this limits the num. annotations, not images!!!
+        # sql += ';'
 
-        if limit is None:
-            limit = 'all'
+        # if limit is None:
+        #     limit = 'all'
 
-        batch = self.dbConnector.execute(sql, None, limit)
 
+        # get cursor
+        cursor = self.dbConnector.execute_cursor(sql, None)
+
+        # batch = self.dbConnector.execute(sql, None, limit)
+
+        if limit is not None:
+            limit = int(limit)
 
         # format and return
         response = {}
-        for b in batch:
+        while limit is None or len(response) < limit:
+            b = cursor.fetchone()
+            if b is None:
+                break
+
+        # for b in batch:
             imgID = b['imageid']
             if not imgID in response:
                 response[imgID] = {
@@ -134,6 +160,7 @@ class DBMiddleware():
             if b['annoid'] is not None:
                 response[imgID]['annotations'][b['annoid']] = anno
 
+        cursor.close()
         return { 'entries': response }
 
 
@@ -141,6 +168,9 @@ class DBMiddleware():
         '''
             Sends user-provided annotations to the database.
         '''
+        #TODO
+        return "not implemented"
+
         # assemble values
         colnames = []
         values = []

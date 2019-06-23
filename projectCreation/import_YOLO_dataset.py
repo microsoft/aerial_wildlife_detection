@@ -22,6 +22,18 @@
         - x, y: center coordinates of the bounding box, normalized to image width, resp. height
         - width, height: width and height of the bounding box, normalized to image width, resp. height
     - Images without a ground truth simply do not need an associated label text file.
+    - Optionally, label text files may contain confidences in class order appended to each box. In this case,
+      bounding boxes are treated as predictions (instead of annotations) and inserted into the predictions table
+      accordingly.
+    - Flag "annotationType" specifies the target table into which the provided bounding boxes are inserted.
+      May either be "annotation" or "prediction".
+    - The optional flag "alCriterion" will specify how to calculate the "priority" value for each prediction,
+      if "annotationType" is set to "prediction" and confidence values are provided (see above). It may take one
+      of the following values:
+          - None: ignore confidences and do not set priority value
+          - BreakingTies: calculates the Breaking Ties (Luo, Tong, et al. "Active learning to recognize multiple
+            types of plankton." Journal of Machine Learning Research 6.Apr (2005): 589-613.) values for priority
+          - MaxConfidence: simply uses the maximum of the confidence scores as a priority value
 
     The script then proceeds by parsing the text files and scaling the coordinates back to absolute values,
     which is what will be stored in the database.
@@ -51,6 +63,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Parse YOLO annotations and import into database.')
     parser.add_argument('--labelFolder', type=str, default='/datadrive/aerialelephants/dataset/bkellenb/labels', const=1, nargs='?',
                     help='Directory (absolute path) on this machine that contains the YOLO label text files.')
+    parser.add_argument('--annotationType', type=str, default='prediction', const=1, nargs='?',
+                    help='Kind of the provided annotations. One of {"annotation", "prediction"} (default: annotation)')
+    parser.add_argument('--alCriterion', type=str, default=None, const=1, nargs='?',
+                    help='Criterion for the priority field (default: None)')
     parser.add_argument('--skipMismatches', type=bool, default=False, const=1, nargs='?',
                     help='Ignore label files without a corresponding image (default: False).')
     args = parser.parse_args()
@@ -103,6 +119,35 @@ if __name__ == '__main__':
         classdef[idx] = returnVal[0][0]
 
 
+    # prepare insertion SQL string
+    if args.annotationType == 'annotation':
+        sql = '''
+        INSERT INTO {}.ANNOTATION (image, timeCreated, timeRequired, labelclass, x, y, width, height)
+        VALUES(
+            (SELECT id FROM {}.IMAGE WHERE filename LIKE %s),
+            (TIMESTAMP %s),
+            -1,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s
+        )'''.format(dbSchema, dbSchema)
+    elif args.annotationType == 'prediction':
+        sql = '''
+        INSERT INTO {}.PREDICTION (image, timeCreated, labelclass, confidence, x, y, width, height, priority)
+        VALUES(
+            (SELECT id FROM {}.IMAGE WHERE filename LIKE %s),
+            (TIMESTAMP %s),
+            -1,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s
+        )'''.format(dbSchema, dbSchema)
 
     # locate all images and their base names
     imgs = {}
@@ -155,7 +200,7 @@ if __name__ == '__main__':
                 tokens = line.strip().split(' ')
                 label = int(tokens[0])
                 labels.append(label)
-                bbox = [float(t) for t in tokens[1:]]
+                bbox = [float(t) for t in tokens[1:5]]
                 bbox[0] *= sz[0]
                 bbox[1] *= sz[1]
                 bbox[2] *= sz[0]
@@ -163,17 +208,23 @@ if __name__ == '__main__':
                 bboxes.append(bbox)
             
                 # push to database
-                dbConn.execute('''
-                    INSERT INTO {}.ANNOTATION (image, timeCreated, timeRequired, labelclass, x, y, width, height)
-                    VALUES(
-                        (SELECT id FROM {}.IMAGE WHERE filename LIKE %s),
-                        (TIMESTAMP %s),
-                        -1,
-                        %s,
-                        %s,
-                        %s,
-                        %s,
-                        %s
-                    )
-                '''.format(dbSchema, dbSchema),
-                (baseName+'%', currentDT, classdef[label], bbox[0], bbox[1], bbox[2], bbox[3]))
+                if args.annotationType == 'annotation':
+                    dbConn.execute(sql,
+                        (baseName+'%', currentDT, classdef[label], bbox[0], bbox[1], bbox[2], bbox[3]))
+                        
+                elif args.annotationType == 'prediction':
+                    # calculate additional properties
+                    maxConf = None
+                    priority = None
+                    try:
+                        confidences = [float(t) for t in tokens[5:]].sort()
+                        maxConf = confidences[0]
+                        if args.alCriterion == 'BreakingTies':
+                            priority = confidences[0:2]
+                        elif args.alCriterion == 'MaxConfidence':
+                            priority = confidences[0]
+                    finally:
+                        # no values provided
+                        dbConn.execute(sql,
+                            (baseName+'%', currentDT, classdef[label], maxConf, bbox[0], bbox[1], bbox[2], bbox[3], priority))
+                

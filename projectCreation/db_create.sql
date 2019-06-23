@@ -23,7 +23,7 @@ CREATE SCHEMA IF NOT EXISTS &schema
 CREATE TABLE IF NOT EXISTS &schema.USER (
     name VARCHAR UNIQUE NOT NULL,
     email VARCHAR,
-    hash VARCHAR,
+    hash BYTEA,
     isAdmin BOOLEAN DEFAULT FALSE,
     session_token VARCHAR,
     last_login TIMESTAMPTZ,

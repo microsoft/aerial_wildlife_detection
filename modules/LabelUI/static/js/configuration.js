@@ -63,4 +63,9 @@ $.get('getProjectSettings', function(data) {
     window.numImages_y = data['settings']['numImages_y'];
     window.defaultImage_w = data['settings']['defaultImage_w'];
     window.defaultImage_h = data['settings']['defaultImage_h'];
+
+
+    // adjust grid (TODO: put into proper initializer?)
+    $('.gallery').css('grid-template-rows', 'repeat('+window.numImages_y+')');
+    $('.gallery').css('grid-template-columns', 'repeat('+window.numImages_x+')');
 });

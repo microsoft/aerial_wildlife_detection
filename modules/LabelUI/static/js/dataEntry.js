@@ -83,7 +83,6 @@
         */
         this.predictions = {};
         this.annotations = {};
-
         if(properties.hasOwnProperty('predictions')) {
             for(var key in properties['predictions']) {
                 //TODO: make failsafe?
@@ -95,13 +94,10 @@
             for(var key in properties['annotations']) {
                 //TODO: make more failsafe?
                 var annotation = window.parseAnnotation(key, properties['annotations'][key], 'annotation');
-
                 // Only add annotation if it is of the correct type.
-                // Should be handled by the server configuration, but this way
-                // we can make it double-failsafe.
-                if(annotation.getAnnotationType() == this.getAnnotationType()) {
-                    this._addElement(annotation);
-                }
+                // if(annotation.getAnnotationType() == this.getAnnotationType()) {     //TODO
+                this._addElement(annotation);
+                // }
             }
         }
     }
@@ -120,17 +116,20 @@
         return window.dataServerURI + this.fileName + '?' + Date.now();
     }
 
-    getProperties(minimal) {
+    getProperties(minimal, onlyUserAnnotations) {
         var props = { 'id': this.entryID };
         props['annotations'] = {};
         for(var key in this.annotations) {
-            props['annotations'][key] = this.annotations[key].getProperties(minimal);
+            if(!onlyUserAnnotations || this.annotations[key].getChanged())
+                props['annotations'][key] = this.annotations[key].getProperties(minimal);
         }
         if(!minimal) {
             props['fileName'] = this.fileName;
             props['predictions'] = {};
-            for(var key in this.predictions) {
-                props['predictions'][key] = this.predictions[key].getProperties(minimal);
+            if(!onlyUserAnnotations) {
+                for(var key in this.predictions) {
+                    props['predictions'][key] = this.predictions[key].getProperties(minimal);
+                }
             }
         }
         return props;
@@ -244,7 +243,7 @@
             // Remove label if it's the same.
             var key = this.entryID + '_anno';
             if(this.labelInstance == null) {
-                this.labelInstance = new Annotation(key, {'label':window.labelClassHandler.getActiveClassID()}, 'userAnnotation');
+                this.labelInstance = new Annotation(key, {'label':window.labelClassHandler.getActiveClassID()}, 'annotation');
                 this._addElement(this.labelInstance);
                 this.noLabel = false;
             } else if(this.labelInstance.label == window.labelClassHandler.getActiveClassID()) {
