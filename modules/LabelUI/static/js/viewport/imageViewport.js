@@ -8,7 +8,14 @@ class ImageViewport {
 
     constructor(canvas) {
         this.canvas = canvas;
+        var self = this;
+        $(window).on('resize', function() {
+            //TODO: doesn't allow for zooming
+            // self.setViewport([0, 0, parseInt(self.canvas.width()), parseInt(self.canvas.height())]);
+            self.render();
+        });
         this.ctx = canvas[0].getContext('2d');
+        this.validArea = [0, 0, 1, 1];    // may be a part of the canvas if the main image is smaller
         this.viewport = [0, 0, canvas[0].width, canvas[0].height];
         this.renderStack = [];
         this.renderStack.sortFun = (function(a, b) {
@@ -52,8 +59,8 @@ class ImageViewport {
     }
 
     _getCanvasScaleFactors() {
-        var scaleX = window.defaultImage_w / this.viewport[2];
-        var scaleY = window.defaultImage_h / this.viewport[3];
+        var scaleX = this.canvas[0].width;
+        var scaleY = this.canvas[0].height;
         return [scaleX, scaleY];
     }
 
@@ -83,26 +90,27 @@ class ImageViewport {
         }
     }
 
-    getCanvasCoordinates(event, scaled) {
-        var posX = (event.pageX - this.canvas.offset().left);
-        var posY = (event.pageY - this.canvas.offset().top);
-        var coords = [posX, posY];
-        if(scaled) {
-            coords = this.scaleToCanvas(coords);
-        }
+    getRelativeCoordinates(event, offsetCompensated) {
+        var posX = event.pageX - this.canvas.offset().left;
+        var posY = event.pageY - this.canvas.offset().top;
+
+        //TODO: ugly hack: need to account for differences between canvas size and canvas DOM element size...
+        // var scale = [this.canvas[0].width/this.canvas.width(), this.canvas[0].height/this.canvas.height()];
+        var coords = this.transformCoordinates([posX, posY], 'validArea', true);
+        // if(offsetCompensated) {
+        //     coords = [coords[0] - this.validArea[0], coords[1] - this.validArea[1]];
+        // }
         return coords;
     }
 
-    scaleToCanvas(coordinates) {
-        /*
-            Accepts given coordinates ([X, Y] or [X, Y, W, H])
-            and returns versions that are scaled and shifted to
-            match the current viewport.
-        */
+    _scale(coordinates, target) {
         var scaleFactors = this._getCanvasScaleFactors();
+        if(target !=='canvas') {
+            scaleFactors = [1/scaleFactors[0], 1/scaleFactors[1]];
+        }
         var coordsOut = [];
-        coordsOut.push((coordinates[0] - this.viewport[0]) * scaleFactors[0]);     //TODO: check
-        coordsOut.push((coordinates[1] - this.viewport[1]) * scaleFactors[1]);     //TODO: check
+        coordsOut.push((coordinates[0]) * scaleFactors[0]);
+        coordsOut.push((coordinates[1]) * scaleFactors[1]);
 
         if(coordinates.length == 4) {
             coordsOut.push(coordinates[2] * scaleFactors[0]);
@@ -111,19 +119,67 @@ class ImageViewport {
         return coordsOut;
     }
 
+    scaleToCanvas(coordinates) {
+        return this._scale(coordinates, 'canvas');
+    }
+
+    scaleToViewport(coordinates) {
+        return this.transformCoordinates(coordinates, 'validArea', true);
+        // return this._scale(coordinates, 'viewport');
+    }
+
+    transformCoordinates(coordinates, target, backwards) {
+        var coords_out = coordinates.slice();
+        var canvasSize = [this.canvas[0].width, this.canvas[0].height];
+        if(backwards) {
+            canvasSize = [1/canvasSize[0], 1/canvasSize[1]];
+        }
+
+        if(target === 'canvas') {
+            // scale w.r.t. full canvas size
+            coords_out[0] *= canvasSize[0];
+            coords_out[1] *= canvasSize[1];
+            if(coords_out.length == 4) {
+                coords_out[2] *= canvasSize[0];
+                coords_out[3] *= canvasSize[1];
+            }
+
+        } else if(target === 'validArea') {
+            // shift and scale w.r.t. valid area
+            var canvasScaleRatio = [this.canvas[0].width/this.canvas.width(), this.canvas[0].height/this.canvas.height()];
+            var areaSize = [this.canvas[0].width * this.validArea[2], this.canvas[0].height * this.validArea[3]];
+            if(backwards) {
+                coords_out[0] = coords_out[0] / (areaSize[0] / canvasScaleRatio[0]) - this.validArea[0];
+                coords_out[1] = coords_out[1] / (areaSize[1] / canvasScaleRatio[1]) - this.validArea[1];
+                if(coords_out.length == 4) {
+                    coords_out[2] /= areaSize[0];
+                    coords_out[3] /= areaSize[1];
+                }
+            } else {
+                coords_out[0] = (coords_out[0] + this.validArea[0]) * areaSize[0] / canvasScaleRatio[0];
+                coords_out[1] = (coords_out[1] + this.validArea[1]) * areaSize[1] / canvasScaleRatio[1];
+                if(coords_out.length == 4) {
+                    coords_out[2] *= areaSize[0];
+                    coords_out[3] *= areaSize[1];
+                }
+            }
+        }
+        return coords_out;
+    }
+
     render() {
         // clear canvas
-        var extent = this.scaleToCanvas([0, 0, this.canvas[0].width, this.canvas[0].height]);
+        var extent = [0, 0, this.canvas[0].width, this.canvas[0].height];
         this.ctx.fillStyle = window.styles.background;
         this.ctx.fillRect(0, 0, extent[2], extent[3]);
 
         // iterate through render stack
         var self = this;
-        var scaleFun = function(coords) {
-            return self.scaleToCanvas(coords);
+        var scaleFun = function(coords, target) {
+            return self.transformCoordinates(coords, target, false);
         }
         for(var i=0; i<this.renderStack.length; i++) {
-            this.renderStack[i].render(this.ctx, this.viewport, scaleFun);
+            this.renderStack[i].render(this.ctx, this.viewport, this.validArea, scaleFun);
         }
     }
 
@@ -134,6 +190,11 @@ class ImageViewport {
 
     resetViewport() {
         this.viewport = [0, 0, this.canvas.width(), this.canvas.height()];
+        this.render();
+    }
+
+    setValidArea(area) {
+        this.validArea = area;
         this.render();
     }
 

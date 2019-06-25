@@ -10,7 +10,11 @@ from util.configDef import Config
 from modules import Database
 
 
-def _constructAnnotationFields(annoType, table):
+def _constructAnnotationFields(annoType, table, doublePrecision=False):
+    coordType = 'real'
+    if doublePrecision:
+        coordType = 'double precision'
+
     if table == 'prediction':
         additionalTables = '''CREATE TABLE IF NOT EXISTS &schema.PREDICTION_LABELCLASS (
             predictionID uuid NOT NULL,
@@ -35,21 +39,21 @@ def _constructAnnotationFields(annoType, table):
         annoFields = '''
             labelclass uuid NOT NULL,
             confidence real,
-            x integer,
-            y integer,
+            x {},
+            y {},
             FOREIGN KEY (labelclass) REFERENCES &schema.LABELCLASS(id),
-        '''
+        '''.format(coordType, coordType)
 
     elif annoType == 'boundingBoxes':
         annoFields = '''
             labelclass uuid NOT NULL,
             confidence real,
-            x integer,
-            y integer,
-            width integer,
-            height integer,
+            x {},
+            y {},
+            width {},
+            height {},
             FOREIGN KEY (labelclass) REFERENCES &schema.LABELCLASS(id),
-        '''
+        '''.format(coordType, coordType, coordType, coordType)
 
     elif annoType == 'segmentationMasks':
         additionalTables = None     # not needed for semantic segmentation

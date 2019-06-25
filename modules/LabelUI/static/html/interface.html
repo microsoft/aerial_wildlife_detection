@@ -6,8 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <link type="text/css" href="static/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
-    <script src="https://code.jquery.com/ui/1.12.0/jquery-ui.min.js" integrity="sha256-eGE6blurk5sHj+rmkfsGYeKyZx3M4bG+ZlFyA7Kns7E=" crossorigin="anonymous"></script>
-    <script type="text/javascript" src="static/lib/openseadragon/openseadragon.min.js"></script>
     <script type="text/javascript" src="static/js/commandListener.js"></script>
     <script type="text/javascript" src="static/js/configuration.js"></script>
     <script type="text/javascript" src="static/js/renderPrimitives.js"></script>
@@ -18,17 +16,34 @@
     <script type="text/javascript" src="static/js/dataHandler.js"></script>
     <script type="text/javascript" src="static/js/init.js"></script>
     <style type="text/css">
-        .gallery {
-            display: grid;
-            /* grid-template-columns: repeat(5, 1fr);
-            grid-template-rows: repeat(5, 5vw); */
-            grid-gap: 15px;
-            padding: 20px 50px 10px 50px;
+        /* body {
+            overflow: hidden;
+        } */
+        #gallery-container {
+            background: #333333 !important;
         }
-        .gallery img,canvas {
+        .entry {
+            display: inline-block;
+        }
+        canvas {
             width: 100%;
-            height: 100%;
-            object-fit: cover;
+            height: auto;
+        }
+        .legend-entries {
+            display: grid;
+        }
+        .label-class-legend {
+            text-align: center;
+            padding: 8px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            margin: 4px;
+        }
+        .legend-inactive {
+            background: #EEEEEE !important;
+            color: #222222 !important;
+            font-weight: normal;
         }
     </style>
 </head>
@@ -36,30 +51,13 @@
 <body>
     <!-- Page Content -->
     <div id="page-content-wrapper">
+
         <!-- Navigation bar -->
-        <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">    
-            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-            </button>
-    
+        <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">        
             <div class="collapse navbar-collapse" id="navbarSupportedContent">
-            <ul class="navbar-nav ml-auto mt-2 mt-lg-0">
-                <li class="nav-item">
-                <a class="nav-link" href="#">Link</a>
-                </li>
-                <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                    Dropdown
-                </a>
-                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
-                    <a class="dropdown-item" href="#">Action</a>
-                    <a class="dropdown-item" href="#">Another action</a>
-                    <div class="dropdown-divider"></div>
-                    <a class="dropdown-item" href="#">Something else here</a>
-                </div>
-                </li>
-                <button class="btn btn-primary" onclick="window.location.href='/logout'">Log Out</button>
-            </ul>
+                <ul class="navbar-nav ml-auto mt-2 mt-lg-0">
+                    <li><button class="btn btn-sm btn-danger" onclick="window.location.href='/logout'">Log Out</button></li>
+                </ul>
             </div>
         </nav>
         
@@ -69,38 +67,27 @@
             <p>TODO: Description</p>
         </div>
 
-        <!-- Tool Area -->
-        <div class="container-fluid">
-            <div class="row center">
 
-                <!-- Image Display -->
-                <div class="col-xl-5 col-lg-6">
-                    <div id="gallery" class="gallery selectable-1">
-                    </div>
-                    <div id="gallery"></div>
-                </div>
-                <button class="btn btn-primary" onclick='window.dataHandler.submitAnnotations()'>Next</button>
-                
-                <!-- Widgets -->
-                <div class="col-xl-2">
-                    <div class="card">
-                        <div class="card-header">
-                            Actions
-                        </div>
-                        <div class="card-body">
-                            <h5 class="card-title">Controls</h5>
-                            <button class="btn btn-primary" onclick="window.interfaceControls.action=window.interfaceControls.actions.ADD_ANNOTATION;">+</button>
-                            <button class="btn btn-primary" onclick="window.interfaceControls.action=window.interfaceControls.actions.REMOVE_ANNOTATIONS;">-</button>
-                            <h5 class="card-title">Legend</h5>
-                            <p class="card-text">Click on a label or press its number (if 1-9) to activate it.</p>
-                            <div class='legend-entries'></div>
-                        </div>
-                    </div>
-                </div>
+        <!-- Image Display -->
+        <div class="jumbotron vertical-center" id="gallery-container">
+            <div class="container" id="gallery"></div>
+
+            <div class="container">
+                <button class="btn btn-primary" onclick="window.interfaceControls.action=window.interfaceControls.actions.ADD_ANNOTATION;">+</button>
+                <button class="btn btn-primary" onclick="window.interfaceControls.action=window.interfaceControls.actions.REMOVE_ANNOTATIONS;">-</button>
+                <button class="btn btn-primary float-right" onclick='window.dataHandler.submitAnnotations()'>Next</button>
+            </div>
+        </div>
+
+
+        <!-- Label Classes -->
+        <div class="jumbotron vertical-center" id="tools-container">
+            <div class="container">
+                <div>Classes</div>
+                <div class="legend-entries container"></div>
             </div>
         </div>
     </div>
-    <!-- /#page-content-wrapper -->
 </body>
 
 </html>

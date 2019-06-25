@@ -16,7 +16,7 @@ class LabelClass {
 
     getMarkup() {
         var self = this;
-        var markup = $('<div class="label-class-legend" id="labelLegend_'+this.classID+'"><span class="label-text">'+this.name+'</span></div>');
+        var markup = $('<div class="label-class-legend col-sm-3 legend-inactive" id="labelLegend_'+this.classID+'" style="background:' + this.color + '"><span class="label-text">'+this.name+'</span></div>');
 
         // setup click handler to activate label class
         markup.click(function() {
@@ -106,14 +106,14 @@ class LabelClassHandler {
     setActiveClass(labelClassInstance) {
         // reset style of currently active class
         if(this.activeClass != null) {
-            $('#labelLegend_'+this.activeClass.classID).css('background', 'none');
+            $('#labelLegend_'+this.activeClass.classID).toggleClass('legend-inactive');
         }
 
         this.activeClass = labelClassInstance;
 
         // apply style to new active class
         if(this.activeClass != null) {
-            $('#labelLegend_'+this.activeClass.classID).css('background', this.activeClass.color);
+            $('#labelLegend_'+this.activeClass.classID).toggleClass('legend-inactive');
         }
     }
 }

@@ -25,6 +25,11 @@ class DBMiddleware():
             'classes': self.getClassDefinitions(),
             'annotationType': self.config.getProperty('LabelUI', 'annotationType'),
             'predictionType': self.config.getProperty('AITrainer', 'annotationType'),
+            'showPredictions': self.config.getProperty('LabelUI', 'showPredictions'),
+            'carryOverPredictions': self.config.getProperty('LabelUI', 'carryOverPredictions'),
+            'carryOverRule': self.config.getProperty('LabelUI', 'carryOverRule'),
+            'defaultBoxSize_w': self.config.getProperty('LabelUI', 'defaultBoxSize_w'),
+            'defaultBoxSize_h': self.config.getProperty('LabelUI', 'defaultBoxSize_h'),
             'numImages_x': self.config.getProperty('LabelUI', 'numImages_x', 3),
             'numImages_y': self.config.getProperty('LabelUI', 'numImages_y', 2),
             'defaultImage_w': self.config.getProperty('LabelUI', 'defaultImage_w', 800),
@@ -82,15 +87,6 @@ class DBMiddleware():
         '''
         # query
         schema = self.config.getProperty('Database', 'schema')
-        # sql = '''
-        #     SELECT * FROM (SELECT id AS imageID, filename FROM {}.image) AS img
-        #     LEFT OUTER JOIN (SELECT {} FROM {}.prediction) AS pred ON pred.image = img.imageID
-        #     LEFT OUTER JOIN (SELECT {} FROM {}.annotation) AS anno ON anno.image = img.imageID
-        # '''.format(schema,
-        #     getQueryString(getattr(QueryStrings_prediction, self.projectSettings['predictionType']).value),
-        #     schema,
-        #     getQueryString(getattr(QueryStrings_annotation, self.projectSettings['annotationType']).value),
-        #     schema)
         sql = '''
             SELECT * FROM (SELECT id AS imageID, filename FROM {}.image) AS img
             LEFT OUTER JOIN (SELECT image, viewcount FROM {}.image_user) AS img_user ON img_user.image = img.imageID
@@ -107,22 +103,8 @@ class DBMiddleware():
             sql += '''
                 WHERE viewcount = 0 OR viewcount IS NULL
             '''
-
-        # if ignoreLabeled:
-        #     sql += '''
-        #      WHERE NOT EXISTS (
-        #         SELECT image FROM {}.annotation AS anno
-        #         WHERE anno.image = img.imageID
-        #     )
-        #     '''.format(schema)
         
         sql += ' ORDER BY pred.priority DESC'
-        # if limit is not None and isinstance(limit, int):
-        #     sql += ' LIMIT {}'.format(limit)        #FIXME: this limits the num. annotations, not images!!!
-        # sql += ';'
-
-        # if limit is None:
-        #     limit = 'all'
 
 
         # get cursor
@@ -140,7 +122,6 @@ class DBMiddleware():
             if b is None:
                 break
 
-        # for b in batch:
             imgID = b['imageid']
             if not imgID in response:
                 response[imgID] = {
@@ -160,7 +141,33 @@ class DBMiddleware():
             if b['annoid'] is not None:
                 response[imgID]['annotations'][b['annoid']] = anno
 
+            # #TODO
+            # import os
+            # from PIL import Image
+            # import matplotlib
+            # matplotlib.use('TkAgg')
+            # import matplotlib.pyplot as plt
+            # from matplotlib.patches import Rectangle
+            # img = Image.open(os.path.join('/datadrive/hfaerialblobs/bkellenb/predictions/A/sde-A_20180921A/images', b['filename']))
+            # sz = img.size
+            # plt.figure(1)
+            # plt.imshow(img)
+            # ax = plt.gca()
+            # for key in response[imgID]['predictions']:
+            #     pred = response[imgID]['predictions'][key]
+            #     ax.add_patch(Rectangle(
+            #         (sz[0] * (pred['x'] - pred['width']/2), sz[1] * (pred['y'] - pred['height']/2),),
+            #         sz[0] * pred['width'], sz[1] * pred['height'],
+            #         fill=False,
+            #         ec='r'
+            #     ))
+            # plt.draw()
+            # plt.waitforbuttonpress()
+
+
+
         cursor.close()
+
         return { 'entries': response }
 
 
@@ -169,7 +176,7 @@ class DBMiddleware():
             Sends user-provided annotations to the database.
         '''
         #TODO
-        return "not implemented"
+        return {"response": "not implemented"}
 
         # assemble values
         colnames = []

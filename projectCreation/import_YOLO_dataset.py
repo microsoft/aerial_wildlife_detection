@@ -61,11 +61,11 @@ from modules import Database
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Parse YOLO annotations and import into database.')
-    parser.add_argument('--labelFolder', type=str, default='/datadrive/aerialelephants/dataset/bkellenb/labels', const=1, nargs='?',
+    parser.add_argument('--labelFolder', type=str, default='/datadrive/hfaerialblobs/bkellenb/predictions/A/sde-A_20180921A/labels', const=1, nargs='?',
                     help='Directory (absolute path) on this machine that contains the YOLO label text files.')
     parser.add_argument('--annotationType', type=str, default='prediction', const=1, nargs='?',
                     help='Kind of the provided annotations. One of {"annotation", "prediction"} (default: annotation)')
-    parser.add_argument('--alCriterion', type=str, default=None, const=1, nargs='?',
+    parser.add_argument('--alCriterion', type=str, default='MaxConfidence', const=1, nargs='?',
                     help='Criterion for the priority field (default: None)')
     parser.add_argument('--skipMismatches', type=bool, default=False, const=1, nargs='?',
                     help='Ignore label files without a corresponding image (default: False).')
@@ -73,6 +73,7 @@ if __name__ == '__main__':
 
 
     # setup
+    print('Setup...')
     if not args.labelFolder.endswith('/'):
         args.labelFolder += '/'
 
@@ -116,7 +117,7 @@ if __name__ == '__main__':
             SELECT id FROM {}.LABELCLASS WHERE name LIKE %s'''.format(dbSchema),
         (className+'%',),
         1)
-        classdef[idx] = returnVal[0][0]
+        classdef[idx] = returnVal[0]['id']
 
 
     # prepare insertion SQL string
@@ -139,7 +140,6 @@ if __name__ == '__main__':
         VALUES(
             (SELECT id FROM {}.IMAGE WHERE filename LIKE %s),
             (TIMESTAMP %s),
-            -1,
             %s,
             %s,
             %s,
@@ -150,9 +150,10 @@ if __name__ == '__main__':
         )'''.format(dbSchema, dbSchema)
 
     # locate all images and their base names
+    print('\nAdding image paths...')
     imgs = {}
     imgFiles = os.listdir(imgBaseDir)
-    for i in imgFiles:
+    for i in tqdm(imgFiles):
         tokens = i.split('.')
         baseName = i.replace('.' + tokens[-1],'')
         imgs[baseName] = i
@@ -166,8 +167,8 @@ if __name__ == '__main__':
 
     
     # locate all label files
+    print('\nAdding labels...')
     labelFiles = glob.glob(os.path.join(args.labelFolder, '*.txt'))
-
     for l in tqdm(labelFiles):
 
         if 'classes.txt' in l:
@@ -192,7 +193,7 @@ if __name__ == '__main__':
         with open(labelPath, 'r') as f:
             lines = f.readlines()
 
-        # convert labels
+        # parse annotations
         labels = []
         bboxes = []
         if len(lines):
@@ -201,10 +202,10 @@ if __name__ == '__main__':
                 label = int(tokens[0])
                 labels.append(label)
                 bbox = [float(t) for t in tokens[1:5]]
-                bbox[0] *= sz[0]
-                bbox[1] *= sz[1]
-                bbox[2] *= sz[0]
-                bbox[3] *= sz[1]
+                # bbox[0] *= sz[0]
+                # bbox[1] *= sz[1]
+                # bbox[2] *= sz[0]
+                # bbox[3] *= sz[1]
                 bboxes.append(bbox)
             
                 # push to database
@@ -217,14 +218,14 @@ if __name__ == '__main__':
                     maxConf = None
                     priority = None
                     try:
-                        confidences = [float(t) for t in tokens[5:]].sort()
-                        maxConf = confidences[0]
+                        confidences = [float(t) for t in tokens[5:]]
+                        confidences.sort()
+                        maxConf = confidences[-1]
                         if args.alCriterion == 'BreakingTies':
-                            priority = confidences[0:2]
+                            priority = confidences[-1] - confidences[-2]
                         elif args.alCriterion == 'MaxConfidence':
-                            priority = confidences[0]
+                            priority = confidences[-1]
                     finally:
                         # no values provided
                         dbConn.execute(sql,
                             (baseName+'%', currentDT, classdef[label], maxConf, bbox[0], bbox[1], bbox[2], bbox[3], priority))
-                

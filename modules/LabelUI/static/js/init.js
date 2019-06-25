@@ -45,6 +45,7 @@ $(document).ready(function() {
         'keyup',
         'mousein',
         'mouseout',
+        'mouseleave',
         'mousemove',
         'mousedown',
         'mouseup',

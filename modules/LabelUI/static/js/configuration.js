@@ -4,6 +4,10 @@
     2019 Benjamin Kellenberger
 */
 
+window.parseBoolean = function(value) {
+    return (value===1 || ['yes', '1', 'true'].includes(value.toString().toLowerCase()));
+}
+
 window.loadConfiguration = function() {
     // general properties
     window.defaultColors = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#ffff99','#b15928'];
@@ -21,10 +25,10 @@ window.loadConfiguration = function() {
                     color: '#FFFFFF',
                     lineWidth: 0.5
                 },
-                height: 16      // adjust according to font size
+                height: 32      // adjust according to font size
             },
             text: {
-                font: '16px sans-serif bold',
+                font: '32px sans-serif bold',
                 color: '#FFFFFF'
             }
         },
@@ -59,13 +63,21 @@ $.get('getProjectSettings', function(data) {
     window.minObjSize = data['settings']['minObjSize'];
     window.classes = data['settings']['classes'];
     window.annotationType = data['settings']['annotationType'];
+    window.predictionType = data['settings']['predictionType'];
+    window.showPredictions = window.parseBoolean(data['settings']['showPredictions']);
+    window.carryOverPredictions = window.parseBoolean(data['settings']['carryOverPredictions']);
+    window.carryOverRule = data['settings']['carryOverRule'];
+    window.defaultBoxSize_w = data['settings']['defaultBoxSize_w'];
+    window.defaultBoxSize_h = data['settings']['defaultBoxSize_h'];
     window.numImages_x = data['settings']['numImages_x'];
     window.numImages_y = data['settings']['numImages_y'];
     window.defaultImage_w = data['settings']['defaultImage_w'];
     window.defaultImage_h = data['settings']['defaultImage_h'];
 
 
-    // adjust grid (TODO: put into proper initializer?)
-    $('.gallery').css('grid-template-rows', 'repeat('+window.numImages_y+')');
-    $('.gallery').css('grid-template-columns', 'repeat('+window.numImages_x+')');
+    // adjust number of images to one for mobile devices
+    if (/Mobi|Android/i.test(navigator.userAgent)) {
+        window.numImages_x = 1;
+        window.numImages_y = 1;
+    }
 });

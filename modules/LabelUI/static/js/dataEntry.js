@@ -38,7 +38,7 @@
 
     _addElement(element) {
         var key = element['annotationID'];
-        if(element['type'] == 'annotation') {
+        if(element['type'] == 'annotation' || window.carryOverPredictions) {
             this.annotations[key] = element;
         } else if(element['type'] == 'prediction') {
             this.predictions[key] = element;
@@ -80,22 +80,100 @@
         /*
             Iterates through properties object's entries "predictions" and "annotations"
             and creates new primitive instances each.
+            Might automatically convert predictions and carry them over to the annotations
+            if applicable and specified in the project settings.
         */
         this.predictions = {};
         this.annotations = {};
-        if(properties.hasOwnProperty('predictions')) {
-            for(var key in properties['predictions']) {
-                //TODO: make failsafe?
-                var prediction = window.parseAnnotation(key, properties['predictions'][key], 'prediction');
-                this._addElement(prediction);
+
+        if(window.showPredictions && properties.hasOwnProperty('predictions')) {
+            if(window.carryOverPredictions) {
+                // predictions need to be added to 'annotations' object; check if conversion
+                // required and convert accordingly
+                if(window.annotationType == 'labels') {
+                    // need image-wide labels
+                    if(window.predictionType == 'points' || window.predictionType == 'boundingBoxes') {
+                        // check carry-over rule
+                        if(window.carryOverRule == 'maxConfidence') {
+                            // select arg max
+                            var maxConf = -1;
+                            var argMax = null;
+                            for(var key in properties['predictions']) {
+                                var prediction = new Annotation(key, properties['predictions'][key], 'prediction');
+                                if(prediction.confidence > maxConf) {
+                                    maxConf = prediction.confidence;
+                                    argMax = prediction;
+                                }
+                            }
+                            if(argMax != null) {
+                                this._addElement(argMax);
+                            }
+                        } else if(window.carryOverRule == 'mode') {
+                            var counts = {};
+                            for(var key in properties['predictions']) {
+                                var prediction = new Annotation(key, properties['predictions'][key], 'prediction');
+                                if(!(counts.hasOwnProperty(prediction.label))) {
+                                    counts[label] = 0;
+                                }
+                                counts[label] += 1;
+                            }
+                            // find mode
+                            var count = -1;
+                            var argMax = null;
+                            for(var key in counts) {
+                                if(counts[key] > count) {
+                                    count = counts[key];
+                                    argMax = key;
+                                }
+                            }
+                            // add new label annotation
+                            if(argMax != null) {
+                                var anno = new Annotation(this.entryID+'_anno', {'label':argMax});
+                                this._addElement(anno);
+                            }
+                        }
+                    }
+                } else if(window.annotationType == 'points' && window.predictionType == 'boundingBoxes') {
+                    // remove width and height
+                    for(var key in properties['predictions']) {
+                        var props = properties['predictions'][key];
+                        delete props['width'];
+                        delete props['height'];
+                        var prediction = new Annotation(key, props, 'prediction');
+                        this._addElement(prediction);
+                    }
+                } else if(window.annotationType == 'boundingBoxes' && window.predictionType == 'points') {
+                    // add default width and height
+                    for(var key in properties['predictions']) {
+                        var props = properties['predictions'][key];
+                        props['width'] = window.defaultBoxSize_w;
+                        props['height'] = window.defaultBoxSize_h;
+                        var prediction = new Annotation(key, props, 'prediction');
+                        this._addElement(prediction);
+                    }
+                } else if(window.annotationType == window.predictionType) {
+                    // no conversion required
+                    for(var key in properties['predictions']) {
+                        var prediction = new Annotation(key, properties['predictions'][key], 'prediction');
+                        this._addElement(prediction);
+                    }
+                }
+
+            } else {
+                // no carry-over; add to predictions and leave them static
+                for(var key in properties['predictions']) {
+                    var prediction = new Annotation(key, properties['predictions'][key], 'prediction');
+                    this._addElement(prediction);
+                }
             }
         }
+
         if(properties.hasOwnProperty('annotations')) {
             for(var key in properties['annotations']) {
                 //TODO: make more failsafe?
-                var annotation = window.parseAnnotation(key, properties['annotations'][key], 'annotation');
+                var annotation = new Annotation(key, properties['annotations'][key], 'annotation');
                 // Only add annotation if it is of the correct type.
-                // if(annotation.getAnnotationType() == this.getAnnotationType()) {     //TODO
+                // if(annotation.getAnnotationType() == this.getAnnotationType()) {     //TODO: disabled for debugging purposes
                 this._addElement(annotation);
                 // }
             }
@@ -103,13 +181,15 @@
     }
 
     _createImageEntry() {
-        this.imageEntry = new ImageElement(this.entryID + '_image', this.viewport, this.getImageURI(), window.defaultImage_w, window.defaultImage_h);
+        this.imageEntry = new ImageElement(this.entryID + '_image', this.viewport, this.getImageURI());
         this.viewport.addRenderElement(this.imageEntry);
     }
 
     _setup_markup() {
-        this.markup = $('<div class="entry"></div>');
+        var colSize = Math.round(12 / window.numImages_x);  // for bootstrap
+        this.markup = $('<div class="entry box-shadow col-sm-' + colSize + '"></div>');
         this.markup.append(this.canvas);
+        var self = this;
     }
 
     getImageURI() {
@@ -211,7 +291,7 @@
 
         // tooltip for label change
         this.markup.mousemove(function(event) {
-            var pos = self.viewport.getCanvasCoordinates(event, false);
+            var pos = self.viewport.getRelativeCoordinates(event, true);
             self.hoverTextElement.position = pos;
             if(event.altKey) {
                 self.hoverTextElement.setProperty('text', 'mark as unlabeled');
@@ -335,8 +415,8 @@ class PointAnnotationEntry extends AbstractDataEntry {
     }
 
     _canvas_mousein(event) {
-        var coords = this.viewport.getCanvasCoordinates(event, false);
-        var coords_scaled = this.viewport.getCanvasCoordinates(event, true);
+        var coords = this.viewport.getRelativeCoordinates(event, true);
+        var coords_scaled = this.viewport.scaleToViewport(coords);
         this.hoverTextElement.setProperty('text', null);
         this.hoverTextElement.position = coords_scaled;
 
@@ -360,7 +440,8 @@ class PointAnnotationEntry extends AbstractDataEntry {
     }
 
     _canvas_click(event) {
-        var coords = this.viewport.getCanvasCoordinates(event, false);
+        console.log('click')
+        var coords = this.viewport.getRelativeCoordinates(event, true);
 
         // check if another point is close-by
         var closest = this._getClosestPoint(coords);
@@ -431,29 +512,9 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
         this.viewport.addCallback(this.entryID, 'mouseup', function(event) {
             self._canvas_mouseup(event);
         });
-        // this.viewport.addCallback(this.entryID, 'mouseleave', function(event) {
-        //     self._canvas_mouseleave(event);
-        // });
-    }
-
-    _getClosestBBox(coordinates, forceCorner) {
-        /*
-            Returns the annotated bounding box that is within a tolerance
-            of the provided coordinates _and_ whose center point is closest
-            to the coordinates.
-        */
-        var minDist = 1e9;
-        var argMin = null; 
-        for(var key in this.annotations) {
-            if(this.annotations[key].isInDistance(coordinates, window.annotationProximityTolerance, forceCorner)) {
-                var thisMinDist = this.annotations[key].getRenderElement().euclideanDistance(coordinates);
-                if(thisMinDist < minDist) {
-                    minDist = thisMinDist;
-                    argMin = this.annotations[key];
-                }
-            }
-        }
-        return argMin;
+        this.viewport.addCallback(this.entryID, 'mouseleave', function(event) {
+            self._canvas_mouseleave(event);
+        });
     }
 
     _toggleActive(event) {
@@ -467,7 +528,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
                 unless the shift key is held down.
             - if no box contains the coordinates, every single one is deactivated.
         */
-        var coords = this.viewport.getCanvasCoordinates(event, false);
+        var coords = this.viewport.getRelativeCoordinates(event, true);
         var minDist = 1e9;
         var argMin = null;
         for(var key in this.annotations) {
@@ -507,7 +568,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
     }
 
     _createAnnotation(event) {
-        var coords = this.viewport.getCanvasCoordinates(event, false);
+        var coords = this.viewport.getRelativeCoordinates(event, true);
         var key = this['entryID'] + '_' + new Date().getMilliseconds();
         var props = {
             'x': coords[0],
@@ -516,7 +577,6 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
             'height': 0,
             'label': window.labelClassHandler.getActiveClassID()
         };
-        // this.activeAnnotationHandle = 'se';
         var anno = new Annotation(key, props, 'annotation');
         this._addElement(anno);
         anno.getRenderElement().registerAsCallback(this.viewport);
@@ -526,7 +586,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
     }
 
     _deleteActiveAnnotations(event) {
-        var coords = this.viewport.getCanvasCoordinates(event, false);
+        var coords = this.viewport.getRelativeCoordinates(event, true);
         var minDist = 1e9;
         var argMin = null;
         for(var key in this.annotations) {
@@ -554,12 +614,12 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
     _drawCrosshairLines(coords, visible) {
         if(this.crosshairLines == null && visible) {
             // create
-            var vertLine = new LineElement(this.entryID + '_crosshairX', coords[0], 0, coords[0], this.canvas.height(),
+            var vertLine = new LineElement(this.entryID + '_crosshairX', coords[0], 0, coords[0], window.defaultImage_h,
                                 window.styles.crosshairLines.strokeColor,
                                 window.styles.crosshairLines.lineWidth,
                                 window.styles.crosshairLines.lineDash,
                                 1);
-            var horzLine = new LineElement(this.entryID + '_crosshairY', 0, coords[1], this.canvas.width(), coords[1],
+            var horzLine = new LineElement(this.entryID + '_crosshairY', 0, coords[1], window.defaultImage_w, coords[1],
                                 window.styles.crosshairLines.strokeColor,
                                 window.styles.crosshairLines.lineWidth,
                                 window.styles.crosshairLines.lineDash,
@@ -584,8 +644,6 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
 
     _canvas_mousedown(event) {
         this.mouseDrag = true;
-        var coords = this.viewport.getCanvasCoordinates(event, true);
-        this.mousedownCoords = coords;
 
         // check functionality
         if(window.interfaceControls.action == window.interfaceControls.actions.ADD_ANNOTATION) {
@@ -601,7 +659,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
     }
 
     _canvas_mousemove(event) {
-        var coords = this.viewport.getCanvasCoordinates(event, false);
+        var coords = this.viewport.getRelativeCoordinates(event, false);
 
         // update crosshair lines
         this._drawCrosshairLines(coords, window.interfaceControls.action==window.interfaceControls.actions.ADD_ANNOTATION);
@@ -658,7 +716,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
 
         } else if(window.interfaceControls.action == window.interfaceControls.actions.DO_NOTHING) {
             // update annotations to current label (if active)
-            var coords = this.viewport.getCanvasCoordinates(event, false);
+            var coords = this.viewport.getRelativeCoordinates(event, true);
             for(var key in this.annotations) {
                 if(this.annotations[key].isActive()) {
                     if(event.shiftKey || this.annotations[key].getRenderElement().containsPoint(coords)) {
@@ -671,6 +729,12 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
             this._toggleActive(event);
         }
 
+        this.render();
+    }
+
+    _canvas_mouseleave(event) {
+        this.hoverTextElement.setProperty('text', null);
+        this._drawCrosshairLines(null, false);
         this.render();
     }
 }
