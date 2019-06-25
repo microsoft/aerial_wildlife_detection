@@ -175,7 +175,37 @@ class DBMiddleware():
         '''
             Sends user-provided annotations to the database.
         '''
+        
         #TODO
+        schema = self.config.getProperty('Database', 'schema')
+        imageID = list(submissions['entries'].keys())[0]
+        filename = self.dbConnector.execute("SELECT filename FROM {}.image WHERE id = %s".format(schema),(imageID,), numReturn=1)
+        filename = filename[0]['filename']
+        import os
+        from PIL import Image
+        import matplotlib
+        matplotlib.use('TkAgg')
+        import matplotlib.pyplot as plt
+        from matplotlib.patches import Rectangle
+        img = Image.open(os.path.join('/datadrive/hfaerialblobs/bkellenb/predictions/A/sde-A_20180921A/images', filename))
+        sz = img.size
+        plt.figure(1)
+        plt.clf()
+        plt.imshow(img)
+        ax = plt.gca()
+        annos = submissions['entries'][imageID]['annotations']
+        for key in annos:
+            geom = annos[key]['geometry']['coordinates']
+            ax.add_patch(Rectangle(
+                (sz[0] * (geom[0] - geom[2]/2), sz[1] * (geom[1] - geom[2]/2),),
+                sz[0] * geom[2], sz[1] * geom[3],
+                fill=False,
+                ec='r'
+            ))
+        plt.draw()
+        plt.waitforbuttonpress()
+
+
         return {"response": "not implemented"}
 
         # assemble values

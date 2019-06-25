@@ -97,31 +97,6 @@ class ImageViewport {
         return coords;
     }
 
-    // _scale(coordinates, target) {
-    //     var scaleFactors = this._getCanvasScaleFactors();
-    //     if(target !=='canvas') {
-    //         scaleFactors = [1/scaleFactors[0], 1/scaleFactors[1]];
-    //     }
-    //     var coordsOut = [];
-    //     coordsOut.push((coordinates[0]) * scaleFactors[0]);
-    //     coordsOut.push((coordinates[1]) * scaleFactors[1]);
-
-    //     if(coordinates.length == 4) {
-    //         coordsOut.push(coordinates[2] * scaleFactors[0]);
-    //         coordsOut.push(coordinates[3] * scaleFactors[1]);
-    //     }
-    //     return coordsOut;
-    // }
-
-    // scaleToCanvas(coordinates) {
-    //     return this._scale(coordinates, 'canvas');
-    // }
-
-    // scaleToViewport(coordinates) {
-    //     return this.transformCoordinates(coordinates, 'validArea', true);
-    //     // return this._scale(coordinates, 'viewport');
-    // }
-
     transformCoordinates(coordinates, target, backwards) {
         /*
             Modifies coordinates w.r.t. either the valid area (typically spanned by the image)
