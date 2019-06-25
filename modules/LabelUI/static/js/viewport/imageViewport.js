@@ -90,77 +90,86 @@ class ImageViewport {
         }
     }
 
-    getRelativeCoordinates(event, offsetCompensated) {
+    getRelativeCoordinates(event, target) {
         var posX = event.pageX - this.canvas.offset().left;
         var posY = event.pageY - this.canvas.offset().top;
-
-        //TODO: ugly hack: need to account for differences between canvas size and canvas DOM element size...
-        // var scale = [this.canvas[0].width/this.canvas.width(), this.canvas[0].height/this.canvas.height()];
-        var coords = this.transformCoordinates([posX, posY], 'validArea', true);
-        // if(offsetCompensated) {
-        //     coords = [coords[0] - this.validArea[0], coords[1] - this.validArea[1]];
-        // }
+        var coords = this.transformCoordinates([posX, posY], target, true);
         return coords;
     }
 
-    _scale(coordinates, target) {
-        var scaleFactors = this._getCanvasScaleFactors();
-        if(target !=='canvas') {
-            scaleFactors = [1/scaleFactors[0], 1/scaleFactors[1]];
-        }
-        var coordsOut = [];
-        coordsOut.push((coordinates[0]) * scaleFactors[0]);
-        coordsOut.push((coordinates[1]) * scaleFactors[1]);
+    // _scale(coordinates, target) {
+    //     var scaleFactors = this._getCanvasScaleFactors();
+    //     if(target !=='canvas') {
+    //         scaleFactors = [1/scaleFactors[0], 1/scaleFactors[1]];
+    //     }
+    //     var coordsOut = [];
+    //     coordsOut.push((coordinates[0]) * scaleFactors[0]);
+    //     coordsOut.push((coordinates[1]) * scaleFactors[1]);
 
-        if(coordinates.length == 4) {
-            coordsOut.push(coordinates[2] * scaleFactors[0]);
-            coordsOut.push(coordinates[3] * scaleFactors[1]);
-        }
-        return coordsOut;
-    }
+    //     if(coordinates.length == 4) {
+    //         coordsOut.push(coordinates[2] * scaleFactors[0]);
+    //         coordsOut.push(coordinates[3] * scaleFactors[1]);
+    //     }
+    //     return coordsOut;
+    // }
 
-    scaleToCanvas(coordinates) {
-        return this._scale(coordinates, 'canvas');
-    }
+    // scaleToCanvas(coordinates) {
+    //     return this._scale(coordinates, 'canvas');
+    // }
 
-    scaleToViewport(coordinates) {
-        return this.transformCoordinates(coordinates, 'validArea', true);
-        // return this._scale(coordinates, 'viewport');
-    }
+    // scaleToViewport(coordinates) {
+    //     return this.transformCoordinates(coordinates, 'validArea', true);
+    //     // return this._scale(coordinates, 'viewport');
+    // }
 
     transformCoordinates(coordinates, target, backwards) {
-        var coords_out = coordinates.slice();
-        var canvasSize = [this.canvas[0].width, this.canvas[0].height];
-        if(backwards) {
-            canvasSize = [1/canvasSize[0], 1/canvasSize[1]];
-        }
+        /*
+            Modifies coordinates w.r.t. either the valid area (typically spanned by the image)
+            or the full canvas and transforms relative values (in [0, 1]) forward to full, ab-
+            solute values, or else full values back to relative scores if "backwards" is true.
 
-        if(target === 'canvas') {
-            // scale w.r.t. full canvas size
-            coords_out[0] *= canvasSize[0];
-            coords_out[1] *= canvasSize[1];
-            if(coords_out.length == 4) {
-                coords_out[2] *= canvasSize[0];
-                coords_out[3] *= canvasSize[1];
+            Note that the forward case uses the hypothetical canvas dimensions, whereas the
+            "backwards" case relies on the actual canvas DOM size. This is to account for re-
+            lative scaling and mouse/touch gesture capturing.
+        */
+        var coords_out = coordinates.slice();
+        
+        if(backwards) {
+            var canvasSize = [this.canvas.width(), this.canvas.height()];
+            if(target === 'canvas') {
+                coords_out[0] /= canvasSize[0];
+                coords_out[1] /= canvasSize[1];
+                if(coords_out.length == 4) {
+                    coords_out[2] /= canvasSize[0];
+                    coords_out[3] /= canvasSize[1];
+                }
+
+            } else if(target === 'validArea') {
+                var validSize = [this.validArea[2]*canvasSize[0], this.validArea[3]*canvasSize[1]];
+                coords_out[0] = (coords_out[0] - (this.validArea[0]*canvasSize[0])) / validSize[0];
+                coords_out[1] = (coords_out[1] - (this.validArea[1]*canvasSize[1])) / validSize[1];
+                if(coords_out.length == 4) {
+                    coords_out[2] /= validSize[0];
+                    coords_out[3] /= validSize[1];
+                }
             }
 
-        } else if(target === 'validArea') {
-            // shift and scale w.r.t. valid area
-            var canvasScaleRatio = [this.canvas[0].width/this.canvas.width(), this.canvas[0].height/this.canvas.height()];
-            var areaSize = [this.canvas[0].width * this.validArea[2], this.canvas[0].height * this.validArea[3]];
-            if(backwards) {
-                coords_out[0] = coords_out[0] / (areaSize[0] / canvasScaleRatio[0]) - this.validArea[0];
-                coords_out[1] = coords_out[1] / (areaSize[1] / canvasScaleRatio[1]) - this.validArea[1];
+        } else {
+            var canvasSize = [this.canvas[0].width, this.canvas[0].height];
+            if(target === 'canvas') {
+                coords_out[0] *= canvasSize[0];
+                coords_out[1] *= canvasSize[1];
                 if(coords_out.length == 4) {
-                    coords_out[2] /= areaSize[0];
-                    coords_out[3] /= areaSize[1];
+                    coords_out[2] *= canvasSize[0];
+                    coords_out[3] *= canvasSize[1];
                 }
-            } else {
-                coords_out[0] = (coords_out[0] + this.validArea[0]) * areaSize[0] / canvasScaleRatio[0];
-                coords_out[1] = (coords_out[1] + this.validArea[1]) * areaSize[1] / canvasScaleRatio[1];
+            } else if(target === 'validArea') {
+                var validSize = [this.validArea[2]*canvasSize[0], this.validArea[3]*canvasSize[1]];
+                coords_out[0] = (coords_out[0]*validSize[0]) + (this.validArea[0]*canvasSize[0]);
+                coords_out[1] = (coords_out[1]*validSize[1]) + (this.validArea[1]*canvasSize[1]);
                 if(coords_out.length == 4) {
-                    coords_out[2] *= areaSize[0];
-                    coords_out[3] *= areaSize[1];
+                    coords_out[2] *= validSize[0];
+                    coords_out[3] *= validSize[1];
                 }
             }
         }

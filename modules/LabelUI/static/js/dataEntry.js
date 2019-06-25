@@ -291,7 +291,7 @@
 
         // tooltip for label change
         this.markup.mousemove(function(event) {
-            var pos = self.viewport.getRelativeCoordinates(event, true);
+            var pos = self.viewport.getRelativeCoordinates(event, 'validArea');
             self.hoverTextElement.position = pos;
             if(event.altKey) {
                 self.hoverTextElement.setProperty('text', 'mark as unlabeled');
@@ -415,7 +415,7 @@ class PointAnnotationEntry extends AbstractDataEntry {
     }
 
     _canvas_mousein(event) {
-        var coords = this.viewport.getRelativeCoordinates(event, true);
+        var coords = this.viewport.getRelativeCoordinates(event, 'validArea');
         var coords_scaled = this.viewport.scaleToViewport(coords);
         this.hoverTextElement.setProperty('text', null);
         this.hoverTextElement.position = coords_scaled;
@@ -441,7 +441,7 @@ class PointAnnotationEntry extends AbstractDataEntry {
 
     _canvas_click(event) {
         console.log('click')
-        var coords = this.viewport.getRelativeCoordinates(event, true);
+        var coords = this.viewport.getRelativeCoordinates(event, 'validArea');
 
         // check if another point is close-by
         var closest = this._getClosestPoint(coords);
@@ -528,7 +528,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
                 unless the shift key is held down.
             - if no box contains the coordinates, every single one is deactivated.
         */
-        var coords = this.viewport.getRelativeCoordinates(event, true);
+        var coords = this.viewport.getRelativeCoordinates(event, 'validArea');
         var minDist = 1e9;
         var argMin = null;
         for(var key in this.annotations) {
@@ -568,7 +568,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
     }
 
     _createAnnotation(event) {
-        var coords = this.viewport.getRelativeCoordinates(event, true);
+        var coords = this.viewport.getRelativeCoordinates(event, 'validArea');
         var key = this['entryID'] + '_' + new Date().getMilliseconds();
         var props = {
             'x': coords[0],
@@ -586,7 +586,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
     }
 
     _deleteActiveAnnotations(event) {
-        var coords = this.viewport.getRelativeCoordinates(event, true);
+        var coords = this.viewport.getRelativeCoordinates(event, 'validArea');
         var minDist = 1e9;
         var argMin = null;
         for(var key in this.annotations) {
@@ -659,7 +659,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
     }
 
     _canvas_mousemove(event) {
-        var coords = this.viewport.getRelativeCoordinates(event, false);
+        var coords = this.viewport.getRelativeCoordinates(event, 'canvas');
 
         // update crosshair lines
         this._drawCrosshairLines(coords, window.interfaceControls.action==window.interfaceControls.actions.ADD_ANNOTATION);
@@ -716,7 +716,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
 
         } else if(window.interfaceControls.action == window.interfaceControls.actions.DO_NOTHING) {
             // update annotations to current label (if active)
-            var coords = this.viewport.getRelativeCoordinates(event, true);
+            var coords = this.viewport.getRelativeCoordinates(event, 'validArea');
             for(var key in this.annotations) {
                 if(this.annotations[key].isActive()) {
                     if(event.shiftKey || this.annotations[key].getRenderElement().containsPoint(coords)) {

@@ -214,13 +214,6 @@ class LineElement extends AbstractRenderElement {
         var startPos = scaleFun([this.startX, this.startY], 'canvas');
         var endPos = scaleFun([this.endX, this.endY], 'canvas');
         
-        // // shift coordinates w.r.t. bounds
-        // startPos[0] += limits[0];
-        // startPos[1] += limits[1];
-        // endPos[0] += limits[0];
-        // endPos[1] += limits[1];
-
-
         if(this.strokeColor != null) ctx.strokeStyle = this.strokeColor;
         if(this.lineWidth != null) ctx.lineWidth = this.lineWidth;
         ctx.setLineDash(this.lineDash);
@@ -383,7 +376,7 @@ class RectangleElement extends PointElement {
     /* interaction events */
     _click_event(event, viewport) {
         if(window.interfaceControls.action != window.interfaceControls.actions.DO_NOTHING) return;
-        var mousePos = viewport.getRelativeCoordinates(event, true);
+        var mousePos = viewport.getRelativeCoordinates(event, 'validArea');
         this.activeHandle = this.getClosestHandle(mousePos, window.annotationProximityTolerance / Math.min(viewport.canvas.width(), viewport.canvas.height()));
         if(this.activeHandle == null) {
             this.setActive(false, viewport);
@@ -395,7 +388,7 @@ class RectangleElement extends PointElement {
     }
 
     _mousedown_event(event, viewport) {
-        this.mousePos_current = viewport.getRelativeCoordinates(event, true);
+        this.mousePos_current = viewport.getRelativeCoordinates(event, 'validArea');
         this.mouseDrag = true;
         this.activeHandle = this.getClosestHandle(this.mousePos_current, window.annotationProximityTolerance / Math.min(viewport.canvas.width(), viewport.canvas.height()));
     }
@@ -407,7 +400,7 @@ class RectangleElement extends PointElement {
             - if drag and close to resize handle: resize rectangle and move resize handles
             - if drag and inside rectangle: move rectangle and resize handles
         */
-        var coords = viewport.getRelativeCoordinates(event, true);
+        var coords = viewport.getRelativeCoordinates(event, 'validArea');
         if(this.mousePos_current == null) {
             this.mousePos_current = coords;
         }
@@ -540,16 +533,7 @@ class RectangleElement extends PointElement {
         if(this.x == null || this.y == null) return;
 
         var coords = [this.x-this.width/2, this.y-this.height/2, this.width, this.height];
-
-        // // adjust coordinates w.r.t. bounds
-        // coords[0] += limits[0];
-        // coords[1] += limits[1];
-        // coords[2] *= limits[2];
-        // coords[3] *= limits[3];
-        console.log(coords)
         coords = scaleFun(coords, 'validArea');
-        console.log(coords)
-        console.log('///')
         if(this.fillColor != null) {
             ctx.fillStyle = this.fillColor;
             ctx.fillRect(coords[0], coords[1], coords[2], coords[3]);
