@@ -113,15 +113,16 @@ class ImageElement extends AbstractRenderElement {
 
 class HoverTextElement extends AbstractRenderElement {
 
-    constructor(id, hoverText, position, zIndex) {
+    constructor(id, hoverText, position, reference, zIndex) {
         super(id, zIndex);
         this.text = hoverText;
         this.position = position;
+        this.reference = reference;
     }
 
     render(ctx, viewport, limits, scaleFun) {
         if(this.text == null) return;
-        var hoverPos = scaleFun(this.position, 'canvas');
+        var hoverPos = scaleFun(this.position, this.reference);
         var dimensions = ctx.measureText(this.text);
         dimensions.height = window.styles.hoverText.box.height;
         // dimensions = scaleFun([dimensions.width, dimensions.height]);
@@ -163,16 +164,11 @@ class PointElement extends AbstractRenderElement {
 
         var coords = [this.x, this.y];
 
-        // shift coordinates w.r.t. bounds
-        coords[0] += limits[0];
-        coords[1] += limits[1];
+        coords = scaleFun(coords, 'validArea');
 
-        coords = scaleFun(coords);
-
-        var sz = scaleFun(this.size, this.size);
         ctx.fillStyle = this.color;
         ctx.beginPath();
-        ctx.arc(coords[0], coords[1], sz[0], 0, 2*Math.PI);
+        ctx.arc(coords[0], coords[1], this.size, 0, 2*Math.PI);
         ctx.fill();
         ctx.closePath();
     }
@@ -561,11 +557,12 @@ class BorderStrokeElement extends AbstractRenderElement {
         this.color = strokeColor;
         this.lineWidth = lineWidth;
         this.lineDash = (lineDash == null? [] : lineDash);
+        this.changed = true;        // always true; we want to collect all classification entries, since user will screen them anyway
     }
 
     render(ctx, viewport, limits, scaleFun) {
         if(this.color == null) return;
-        var coords = scaleFun(viewport, 'canvas');
+        var coords = scaleFun([0,0,1,1], 'canvas');
         ctx.strokeStyle = this.color;
         ctx.lineWidth = this.lineWidth;
         ctx.setLineDash(this.lineDash);

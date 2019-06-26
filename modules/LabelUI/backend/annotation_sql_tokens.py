@@ -6,20 +6,21 @@
 '''
 
 from enum import Enum
+from uuid import UUID
 
 
 class QueryStrings_prediction(Enum):
     labels = {
         'table': ['id', 'image', 'labelclass', 'confidence', 'priority'],
-        'query': ['predID', 'image', 'predLabel', 'confidence', 'priority']
+        'query': ['predID', 'image', 'predLabel', 'predConfidence', 'priority']
     }
     points = {
         'table': ['id', 'image', 'x', 'y', 'labelclass', 'confidence', 'priority'],
-        'query': ['predID', 'image', 'predX', 'predY', 'predLabel', 'confidence', 'priority']
+        'query': ['predID', 'image', 'predX', 'predY', 'predLabel', 'predConfidence', 'priority']
     }
     boundingBoxes = {
         'table': ['id', 'image', 'x', 'y', 'width', 'height', 'labelclass', 'confidence', 'priority'],
-        'query': ['predID', 'image', 'predX', 'predY', 'predWidth', 'predHeight', 'predLabel', 'confidence', 'priority']
+        'query': ['predID', 'image', 'predX', 'predY', 'predWidth', 'predHeight', 'predLabel', 'predConfidence', 'priority']
     }
     segmentationMasks = {
         'table': ['id', 'image', 'filename', 'priority'],
@@ -29,35 +30,35 @@ class QueryStrings_prediction(Enum):
 
 class QueryStrings_annotation(Enum):
     labels = {
-        'table': ['id', 'image', 'labelclass'],
-        'query': ['annoID', 'image', 'annoLabel'],
-        'submission': ['annotationID', None, 'label']
+        'table': ['id', 'image', 'labelclass', 'username'],
+        'query': ['annoID', 'image', 'annoLabel', 'annoUsername'],
+        'submission': ['annotationID', None, 'label', 'username']
     }
     points = {
-        'table': ['id', 'image', 'x', 'y', 'labelclass'],
-        'query': ['annoID', 'image', 'annoX', 'annoY', 'annoLabel'],
-        'submission': ['annotationID', None, 'x', 'y', 'label']
+        'table': ['id', 'image', 'x', 'y', 'labelclass', 'username'],
+        'query': ['annoID', 'image', 'annoX', 'annoY', 'annoLabel', 'annoUsername'],
+        'submission': ['annotationID', None, 'x', 'y', 'label', 'username']
     }
     boundingBoxes = {
-        'table': ['id', 'image', 'x', 'y', 'width', 'height', 'labelclass'],
-        'query': ['annoID', 'image', 'annoX', 'annoY', 'annoWidth', 'annoHeight', 'annoLabel'],
-        'submission': ['annotationID', None, 'x', 'y', 'width', 'height', 'label']
+        'table': ['id', 'image', 'x', 'y', 'width', 'height', 'labelclass', 'username'],
+        'query': ['annoID', 'image', 'annoX', 'annoY', 'annoWidth', 'annoHeight', 'annoLabel', 'annoUsername'],
+        'submission': ['annotationID', None, 'x', 'y', 'width', 'height', 'label', 'username']
     }
     segmentationMasks = {
-        'table': ['id', 'image', 'filename'],
-        'query': ['annoID', 'image', 'annoSegMap'],
-        'submission': ['annotationID', None, 'segmentationMap']
+        'table': ['id', 'image', 'filename', 'username'],
+        'query': ['annoID', 'image', 'annoSegMap', 'annoUsername'],
+        'submission': ['annotationID', None, 'segmentationMap', 'username']
     }
 
 
 def getQueryString(enum):
     return ', '.join(['{} AS {}'.format(enum['table'][x],enum['query'][x]) for x in range(len(enum['table']))])
 
-def getTableNamesString(enum):
-    return ', '.join([enum['table'][x] for x in range(len(enum['table']))])
+def getTableNames(enum):
+    return [enum['table'][x] for x in range(len(enum['table']))]
 
 def getOnConflictString(enum):
-    return ', '.join(['{} = EXCLUDED.{}'.format(enum['table'][x],enum['table'][x]) for x in range(len(enum['table']))])
+    return ', '.join(['{} = EXCLUDED.{}'.format(enum['table'][x],enum['table'][x]) for x in range(len(enum['table'])) if enum['table'][x] != 'id'])
 
 
 
@@ -65,29 +66,29 @@ def getOnConflictString(enum):
 def parseAnnotation(annotation):
     '''
         Receives an annotation object as submitted by the labeling UI.
-        Returns a tuple of values as well as a tuple of column names.
+        Returns a dictionary of column names and values.
     '''
-    values = []
-    colnames = []
+    valuesDict = {}
 
-    # ID
-    values.append(annotation['annotationID'])
-    colnames.append('id')
+    for key in annotation.keys():
+        if key == 'id':
+            # replace annotation ID with 'DEFAULT' keyword if no UUID
+            # (this is the case if the annotation is not yet in the DB)
+            try:
+                value = str(UUID(annotation['id']))
+            except:
+                value = 'DEFAULT'
+        
+        elif key == 'geometry':
+            # iterate through geometry tokens
+            for subKey in annotation['geometry'].keys():
+                valuesDict[subKey] = annotation['geometry'][subKey]     #TODO: typecast required?
+            continue
+        
+        else:
+            # generic parameter
+            value = annotation[key]
     
-    # geometry
-    if 'geometry' in annotation:
-        geom = annotation['geometry']
-        values.extend(geom['coordinates'])
-        type = geom['type']
-        if type == 'point':
-            colnames.extend(['x', 'y'])
+        valuesDict[key] = value
 
-        if type == 'rectangle':
-            colnames.extend(['x', 'y', 'width', 'height'])
-
-    # label
-    if 'label' in annotation:
-        values.append(annotation['label'])
-        colnames.append('labelclass')
-
-    return tuple(values), tuple(colnames)
+    return valuesDict

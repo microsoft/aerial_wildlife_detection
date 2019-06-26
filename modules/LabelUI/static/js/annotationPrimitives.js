@@ -8,12 +8,23 @@ class Annotation {
 
     _parse_properties(properties) {
         this.label = properties['label'];
+        if(!window.enableEmptyClass && this.label == null) {
+            // no empty class allowed; assign selected label
+            this.label = window.labelClassHandler.getActiveClassID();
+        }
         this.confidence = properties['confidence'];
         var lineWidth = 4;      //TODO
+        var pointSize = 8;
         if(this.type == 'userAnnotation') {
             lineWidth = 8;
+            pointSize = 10;
         } else if(this.type == 'annotation') {
             lineWidth = 6;
+            pointSize = 12;
+        }
+        var lineDash = [];
+        if(this.type == 'prediction') {
+            lineDash = [4, 4];      //TODO
         }
         if('segMapFileName' in properties) {
             // Semantic segmentation map
@@ -21,7 +32,8 @@ class Annotation {
 
         } else if('coordinates' in properties) {
             // Polygon
-            //TODO
+            throw Error('Polygons not yet implemented');
+
         } else if('width' in properties) {
             // Bounding Box
             this.geometry = new RectangleElement(
@@ -30,13 +42,16 @@ class Annotation {
                 properties['width'], properties['height'],
                 null,
                 window.labelClassHandler.getColor(this.label),
-                lineWidth);
+                lineWidth,
+                lineDash);
+
         } else if('x' in properties) {
             // Point
             this.geometry = new PointElement(
                 this.annotationID + '_geom',
                 properties['x'], properties['y'],
-                window.labelClassHandler.getColor(this.label)
+                window.labelClassHandler.getColor(this.label),
+                pointSize
             );
         } else {
             // Classification label
@@ -44,7 +59,7 @@ class Annotation {
                 this.annotationID + '_geom',
                 window.labelClassHandler.getColor(this.label),
                 2*lineWidth,
-                []
+                lineDash
             )
         }
     }
@@ -64,9 +79,9 @@ class Annotation {
 
     getProperties() {
         return {
-            'annotationID' : this.annotationID,
+            'id' : this.annotationID,
             'type' : this.type,
-            'label' : this.label,
+            'labelclass' : this.label,
             'confidence' : this.confidence,
             'geometry' : this.geometry.getGeometry()
         };
@@ -83,9 +98,9 @@ class Annotation {
         }
     }
 
-    getAnnotationType() {
-        return this.geometry.getType();     //TODO: implemented only for backwards compatibility
-    }
+    // getAnnotationType() {
+    //     return this.geometry.getType();     //TODO: implemented only for backwards compatibility
+    // }
 
     getRenderElement() {
         return this.geometry;               //TODO: ditto (?)

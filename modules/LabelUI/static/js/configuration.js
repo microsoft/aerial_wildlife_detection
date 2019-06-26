@@ -8,6 +8,12 @@ window.parseBoolean = function(value) {
     return (value===1 || ['yes', '1', 'true'].includes(value.toString().toLowerCase()));
 }
 
+window.getCurrentDateString = function() {
+    var date = new Date();
+    return date.toString();
+}
+
+
 window.loadConfiguration = function() {
     // general properties
     window.defaultColors = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#ffff99','#b15928'];
@@ -62,6 +68,7 @@ $.get('getProjectSettings', function(data) {
     window.dataType = data['settings']['dataType'];
     window.minObjSize = data['settings']['minObjSize'];
     window.classes = data['settings']['classes'];
+    window.enableEmptyClass = window.parseBoolean(data['settings']['enableEmptyClass']);
     window.annotationType = data['settings']['annotationType'];
     window.predictionType = data['settings']['predictionType'];
     window.showPredictions = window.parseBoolean(data['settings']['showPredictions']);

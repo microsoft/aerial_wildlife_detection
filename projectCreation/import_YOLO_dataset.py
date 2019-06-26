@@ -34,6 +34,7 @@
           - BreakingTies: calculates the Breaking Ties (Luo, Tong, et al. "Active learning to recognize multiple
             types of plankton." Journal of Machine Learning Research 6.Apr (2005): 589-613.) values for priority
           - MaxConfidence: simply uses the maximum of the confidence scores as a priority value
+          - TryAll: tries all heuristics (apart from 'None') and chooses the maximum score over all
 
     The script then proceeds by parsing the text files and scaling the coordinates back to absolute values,
     which is what will be stored in the database.
@@ -65,8 +66,8 @@ if __name__ == '__main__':
                     help='Directory (absolute path) on this machine that contains the YOLO label text files.')
     parser.add_argument('--annotationType', type=str, default='prediction', const=1, nargs='?',
                     help='Kind of the provided annotations. One of {"annotation", "prediction"} (default: annotation)')
-    parser.add_argument('--alCriterion', type=str, default='MaxConfidence', const=1, nargs='?',
-                    help='Criterion for the priority field (default: None)')
+    parser.add_argument('--alCriterion', type=str, default='TryAll', const=1, nargs='?',
+                    help='Criterion for the priority field (default: TryAll)')
     parser.add_argument('--skipMismatches', type=bool, default=False, const=1, nargs='?',
                     help='Ignore label files without a corresponding image (default: False).')
     args = parser.parse_args()
@@ -123,8 +124,9 @@ if __name__ == '__main__':
     # prepare insertion SQL string
     if args.annotationType == 'annotation':
         sql = '''
-        INSERT INTO {}.ANNOTATION (image, timeCreated, timeRequired, labelclass, x, y, width, height)
+        INSERT INTO {}.ANNOTATION (username, image, timeCreated, timeRequired, labelclass, x, y, width, height)
         VALUES(
+            {},
             (SELECT id FROM {}.IMAGE WHERE filename LIKE %s),
             (TIMESTAMP %s),
             -1,
@@ -133,7 +135,7 @@ if __name__ == '__main__':
             %s,
             %s,
             %s
-        )'''.format(dbSchema, dbSchema)
+        )'''.format(dbSchema, dbSchema, config.getProperty('Database', 'adminName'))
     elif args.annotationType == 'prediction':
         sql = '''
         INSERT INTO {}.PREDICTION (image, timeCreated, labelclass, confidence, x, y, width, height, priority)
@@ -202,10 +204,6 @@ if __name__ == '__main__':
                 label = int(tokens[0])
                 labels.append(label)
                 bbox = [float(t) for t in tokens[1:5]]
-                # bbox[0] *= sz[0]
-                # bbox[1] *= sz[1]
-                # bbox[2] *= sz[0]
-                # bbox[3] *= sz[1]
                 bboxes.append(bbox)
             
                 # push to database
@@ -222,9 +220,12 @@ if __name__ == '__main__':
                         confidences.sort()
                         maxConf = confidences[-1]
                         if args.alCriterion == 'BreakingTies':
-                            priority = confidences[-1] - confidences[-2]
+                            priority = 1 - (confidences[-1] - confidences[-2])
                         elif args.alCriterion == 'MaxConfidence':
                             priority = confidences[-1]
+                        elif args.alCriterion == 'TryAll':
+                            breakingTies = 1 - (confidences[-1] - confidences[-2])
+                            priority = max(maxConf, breakingTies)
                     finally:
                         # no values provided
                         dbConn.execute(sql,

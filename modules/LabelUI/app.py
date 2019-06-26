@@ -99,6 +99,7 @@ class LabelUI():
         @self.app.get('/getLatestImages')
         def get_latest_images():
             if self.loginCheck():
+                username = request.get_cookie('username')
                 try:
                     limit = int(request.query['limit'])
                 except:
@@ -107,7 +108,7 @@ class LabelUI():
                     ignoreLabeled = int(request.query['ignoreLabeled'])
                 except:
                     ignoreLabeled = False
-                json = self.middleware.getNextBatch(ignoreLabeled=ignoreLabeled, limit=limit)       #TODO
+                json = self.middleware.getNextBatch(username=username, ignoreLabeled=ignoreLabeled, limit=limit)       #TODO
                 return json
             else:
                 abort(401, 'not logged in')

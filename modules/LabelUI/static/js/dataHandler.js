@@ -10,6 +10,7 @@ class DataHandler {
         this.parentDiv = parentDiv;
         this.dataEntries = {};
         this.numImages = window.numImages_x * window.numImages_y;
+        console.log(this.numImages)
     }
 
     loadNextBatch() {

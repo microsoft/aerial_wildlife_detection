@@ -4,8 +4,9 @@
     2019 Benjamin Kellenberger
 '''
 
+from uuid import UUID
 from modules.Database.app import Database
-from .annotation_sql_tokens import QueryStrings_annotation, QueryStrings_prediction, getQueryString, getTableNamesString, getOnConflictString, parseAnnotation
+from .annotation_sql_tokens import QueryStrings_annotation, QueryStrings_prediction, getQueryString, getTableNames, getOnConflictString, parseAnnotation
 
 
 class DBMiddleware():
@@ -23,6 +24,7 @@ class DBMiddleware():
             'dataType': self.config.getProperty('Project', 'dataType'),
             'minObjSize': self.config.getProperty('Project', 'minObjSize'),
             'classes': self.getClassDefinitions(),
+            'enableEmptyClass': self.config.getProperty('Project', 'enableEmptyClass'),
             'annotationType': self.config.getProperty('LabelUI', 'annotationType'),
             'predictionType': self.config.getProperty('AITrainer', 'annotationType'),
             'showPredictions': self.config.getProperty('LabelUI', 'showPredictions'),
@@ -78,7 +80,7 @@ class DBMiddleware():
         pass
 
     
-    def getNextBatch(self, ignoreLabeled=False, limit=None):
+    def getNextBatch(self, username, ignoreLabeled=False, limit=None):
         '''
             Returns entries from the database (table 'annotation') according to the following rules:
             - entries are ordered by value in column 'priority' (descending)
@@ -91,13 +93,13 @@ class DBMiddleware():
             SELECT * FROM (SELECT id AS imageID, filename FROM {}.image) AS img
             LEFT OUTER JOIN (SELECT image, viewcount FROM {}.image_user) AS img_user ON img_user.image = img.imageID
             LEFT OUTER JOIN (SELECT {} FROM {}.prediction) AS pred ON pred.image = img.imageID
-            LEFT OUTER JOIN (SELECT {} FROM {}.annotation) AS anno ON anno.image = img.imageID
+            LEFT OUTER JOIN (SELECT {} FROM {}.annotation WHERE username = %s) AS anno ON anno.image = img.imageID
         '''.format(
             schema, schema,
             getQueryString(getattr(QueryStrings_prediction, self.projectSettings['predictionType']).value),
             schema,
             getQueryString(getattr(QueryStrings_annotation, self.projectSettings['annotationType']).value),
-            schema
+            schema,
         )
         if ignoreLabeled:
             sql += '''
@@ -108,9 +110,7 @@ class DBMiddleware():
 
 
         # get cursor
-        cursor = self.dbConnector.execute_cursor(sql, None)
-
-        # batch = self.dbConnector.execute(sql, None, limit)
+        cursor = self.dbConnector.execute_cursor(sql, (username,))
 
         if limit is not None:
             limit = int(limit)
@@ -142,29 +142,28 @@ class DBMiddleware():
                 response[imgID]['annotations'][b['annoid']] = anno
 
             # #TODO
-            # import os
-            # from PIL import Image
-            # import matplotlib
-            # matplotlib.use('TkAgg')
-            # import matplotlib.pyplot as plt
-            # from matplotlib.patches import Rectangle
-            # img = Image.open(os.path.join('/datadrive/hfaerialblobs/bkellenb/predictions/A/sde-A_20180921A/images', b['filename']))
-            # sz = img.size
-            # plt.figure(1)
-            # plt.imshow(img)
-            # ax = plt.gca()
-            # for key in response[imgID]['predictions']:
-            #     pred = response[imgID]['predictions'][key]
-            #     ax.add_patch(Rectangle(
-            #         (sz[0] * (pred['x'] - pred['width']/2), sz[1] * (pred['y'] - pred['height']/2),),
-            #         sz[0] * pred['width'], sz[1] * pred['height'],
-            #         fill=False,
-            #         ec='r'
-            #     ))
-            # plt.draw()
-            # plt.waitforbuttonpress()
-
-
+            # if len(response) == 1:
+            #     import os
+            #     from PIL import Image
+            #     import matplotlib
+            #     matplotlib.use('TkAgg')
+            #     import matplotlib.pyplot as plt
+            #     from matplotlib.patches import Rectangle
+            #     img = Image.open(os.path.join('/datadrive/hfaerialblobs/bkellenb/predictions/A/sde-A_20180921A/images', b['filename']))
+            #     sz = img.size
+            #     plt.figure(1)
+            #     plt.imshow(img)
+            #     ax = plt.gca()
+            #     for key in response[imgID]['predictions']:
+            #         pred = response[imgID]['predictions'][key]
+            #         ax.add_patch(Rectangle(
+            #             (sz[0] * (pred['x'] - pred['width']/2), sz[1] * (pred['y'] - pred['height']/2),),
+            #             sz[0] * pred['width'], sz[1] * pred['height'],
+            #             fill=False,
+            #             ec='r'
+            #         ))
+            #     plt.draw()
+            #     plt.waitforbuttonpress()
 
         cursor.close()
 
@@ -176,53 +175,57 @@ class DBMiddleware():
             Sends user-provided annotations to the database.
         '''
         
-        #TODO
-        schema = self.config.getProperty('Database', 'schema')
-        imageID = list(submissions['entries'].keys())[0]
-        filename = self.dbConnector.execute("SELECT filename FROM {}.image WHERE id = %s".format(schema),(imageID,), numReturn=1)
-        filename = filename[0]['filename']
-        import os
-        from PIL import Image
-        import matplotlib
-        matplotlib.use('TkAgg')
-        import matplotlib.pyplot as plt
-        from matplotlib.patches import Rectangle
-        img = Image.open(os.path.join('/datadrive/hfaerialblobs/bkellenb/predictions/A/sde-A_20180921A/images', filename))
-        sz = img.size
-        plt.figure(1)
-        plt.clf()
-        plt.imshow(img)
-        ax = plt.gca()
-        annos = submissions['entries'][imageID]['annotations']
-        for key in annos:
-            geom = annos[key]['geometry']['coordinates']
-            ax.add_patch(Rectangle(
-                (sz[0] * (geom[0] - geom[2]/2), sz[1] * (geom[1] - geom[2]/2),),
-                sz[0] * geom[2], sz[1] * geom[3],
-                fill=False,
-                ec='r'
-            ))
-        plt.draw()
-        plt.waitforbuttonpress()
+        # #TODO
+        # schema = self.config.getProperty('Database', 'schema')
+        # imageID = list(submissions['entries'].keys())[0]
+        # filename = self.dbConnector.execute("SELECT filename FROM {}.image WHERE id = %s".format(schema),(imageID,), numReturn=1)
+        # filename = filename[0]['filename']
+        # import os
+        # from PIL import Image
+        # import matplotlib
+        # matplotlib.use('TkAgg')
+        # import matplotlib.pyplot as plt
+        # from matplotlib.patches import Rectangle
+        # img = Image.open(os.path.join('/datadrive/hfaerialblobs/bkellenb/predictions/A/sde-A_20180921A/images', filename))
+        # sz = img.size
+        # plt.figure(2)
+        # plt.clf()
+        # plt.imshow(img)
+        # ax = plt.gca()
+        # annos = submissions['entries'][imageID]['annotations']
+        # for key in annos:
+        #     geom = annos[key]['geometry']['coordinates']
+        #     ax.add_patch(Rectangle(
+        #         (sz[0] * (geom[0] - geom[2]/2), sz[1] * (geom[1] - geom[3]/2),),
+        #         sz[0] * geom[2], sz[1] * geom[3],
+        #         fill=False,
+        #         ec='r'
+        #     ))
+        # plt.draw()
+        # plt.waitforbuttonpress()
 
-
-        return {"response": "not implemented"}
 
         # assemble values
-        colnames = []
+        colnames = getTableNames(getattr(QueryStrings_annotation, self.projectSettings['annotationType']).value)
         values = []
         viewcountValues = []
         for imageKey in submissions['entries']:
             entry = submissions['entries'][imageKey]
             if 'annotations' in entry and len(entry['annotations']):
-                for annoKey in entry['annotations']:
+                for annotation in entry['annotations']:
                     # assemble annotation values
-                    annotation = entry['annotations'][annoKey]
-                    nextValues, nextColnames = parseAnnotation(annotation)
-                    values.append(nextValues)
-                    if not len(colnames) or len(colnames) != len(nextColnames):
-                        #TODO: uuugly, this should be standardized somewhere
-                        colnames = nextColnames
+                    annotationTokens = parseAnnotation(annotation)
+                    annoValues = []
+                    for cname in colnames:
+                        if cname == 'image':
+                            annoValues.append(imageKey)
+                        elif cname == 'username':
+                            annoValues.append(username)
+                        elif cname in annotationTokens:
+                            annoValues.append(annotationTokens[cname])
+                        else:
+                            annoValues.append(None)
+                    values.append(tuple(annoValues))
                     
             viewcountValues.append((username, imageKey,))
 
@@ -236,11 +239,13 @@ class DBMiddleware():
             ON CONFLICT (id) DO UPDATE SET {};
         '''.format(
             schema,
-            getTableNamesString(getattr(QueryStrings_annotation, self.projectSettings['annotationType']).value),
+            ', '.join(colnames),
             getOnConflictString(getattr(QueryStrings_annotation, self.projectSettings['annotationType']).value)
         )
 
+        #TODO: something's still wrong here...
         self.dbConnector.insert(sql, values)
+
 
 
         # viewcount table

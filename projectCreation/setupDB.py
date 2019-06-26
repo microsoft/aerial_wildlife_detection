@@ -7,7 +7,7 @@
 
 import os
 from util.configDef import Config
-from modules import Database
+from modules import Database, UserHandling
 
 
 def _constructAnnotationFields(annoType, table, doublePrecision=False):
@@ -15,14 +15,14 @@ def _constructAnnotationFields(annoType, table, doublePrecision=False):
     if doublePrecision:
         coordType = 'double precision'
 
-    if table == 'prediction':
+    if False:       #TODO: separate confidence values for all labelclasses? How to handle empty class? (table == 'prediction'):
         additionalTables = '''CREATE TABLE IF NOT EXISTS &schema.PREDICTION_LABELCLASS (
-            predictionID uuid NOT NULL,
-            labelclassID uuid NOT NULL,
+            prediction uuid NOT NULL,
+            labelclass uuid NOT NULL,
             confidence real,
-            PRIMARY KEY (predictionID, labelclassID),
-            FOREIGN KEY (predictionID) REFERENCES &schema.PREDICTION(id),
-            FOREIGN KEY (labelclassID) REFERENCES &schema.LABELCLASS(id)
+            PRIMARY KEY (prediction, labelclass),
+            FOREIGN KEY (prediction) REFERENCES &schema.PREDICTION(id),
+            FOREIGN KEY (labelclass) REFERENCES &schema.LABELCLASS(id)
         );
         '''
     else:
@@ -30,14 +30,14 @@ def _constructAnnotationFields(annoType, table, doublePrecision=False):
 
     if annoType == 'labels':
         annoFields = '''
-            labelclass uuid NOT NULL,
+            labelclass uuid &labelclassNotNull,
             confidence real,
             FOREIGN KEY (labelclass) REFERENCES &schema.LABELCLASS(id),
         '''
     
     elif annoType == 'points':
         annoFields = '''
-            labelclass uuid NOT NULL,
+            labelclass uuid &labelclassNotNull,
             confidence real,
             x {},
             y {},
@@ -46,7 +46,7 @@ def _constructAnnotationFields(annoType, table, doublePrecision=False):
 
     elif annoType == 'boundingBoxes':
         annoFields = '''
-            labelclass uuid NOT NULL,
+            labelclass uuid &labelclassNotNull,
             confidence real,
             x {},
             y {},
@@ -103,6 +103,24 @@ if __name__ == '__main__':
     sql = sql.replace('&password', config.getProperty('Database', 'password'))
     sql = sql.replace('&schema', config.getProperty('Database', 'schema'))
 
+    requireLabelClass = ('' if config.getProperty('Project', 'enableEmptyClass', type=bool, fallback=False) else 'NOT NULL')
+    sql = sql.replace('&labelclassNotNull', requireLabelClass)
+
 
     # run SQL
     dbConn.execute(sql, None, None)
+
+
+    # add admin user
+    sql = '''
+        INSERT INTO {}.user (name, email, hash, isadmin)
+        VALUES (%s, %s, %s, %s)
+    '''.format(config.getProperty('Database', 'schema'))
+
+    adminPass = config.getProperty('Database', 'adminPassword')
+    uHandler = UserHandling.backend.middleware.UserMiddleware(config)
+    adminPass = uHandler._create_hash(adminPass.encode('utf8'))
+
+    values = (config.getProperty('Database', 'adminName'), config.getProperty('Database', 'adminEmail'), adminPass, True,)
+
+    dbConn.execute(sql, values, None)

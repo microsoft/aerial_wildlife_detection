@@ -57,14 +57,15 @@ CREATE TABLE IF NOT EXISTS &schema.LABELCLASS (
 
 CREATE TABLE IF NOT EXISTS &schema.ANNOTATION (
     id uuid DEFAULT uuid_generate_v4(),
+    username VARCHAR NOT NULL,
     image uuid NOT NULL,
     timeCreated TIMESTAMP NOT NULL DEFAULT NOW(),
     timeRequired BIGINT,
     
     &annotationFields
     PRIMARY KEY (id),
-    FOREIGN KEY (image) REFERENCES &schema.IMAGE(id),
-    FOREIGN KEY (labelClass) REFERENCES &schema.LABELCLASS(id)
+    FOREIGN KEY (username) REFERENCES &schema.USER(name),
+    FOREIGN KEY (image) REFERENCES &schema.IMAGE(id)
 );
 
 CREATE TABLE IF NOT EXISTS &schema.PREDICTION (

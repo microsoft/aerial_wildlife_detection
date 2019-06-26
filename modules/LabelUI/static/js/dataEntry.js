@@ -38,9 +38,9 @@
 
     _addElement(element) {
         var key = element['annotationID'];
-        if(element['type'] == 'annotation' || window.carryOverPredictions) {
+        if(element['type'] == 'annotation') {
             this.annotations[key] = element;
-        } else if(element['type'] == 'prediction') {
+        } else if(element['type'] == 'prediction' && window.showPredictions) {
             this.predictions[key] = element;
         }
         this.viewport.addRenderElement(element.getRenderElement());
@@ -86,10 +86,19 @@
         this.predictions = {};
         this.annotations = {};
 
-        if(window.showPredictions && properties.hasOwnProperty('predictions')) {
+        if(window.showPredictions || window.carryOverPredictions && properties.hasOwnProperty('predictions')) {
+            if(window.showPredictions) {
+                // add predictions as static, immutable objects
+                for(var key in properties['predictions']) {
+                    var prediction = new Annotation(key, properties['predictions'][key], 'prediction');
+                    this._addElement(prediction);
+                }
+            }
+
             if(window.carryOverPredictions) {
                 // predictions need to be added to 'annotations' object; check if conversion
-                // required and convert accordingly
+                // required and convert accordingly. Also set annotation to "changed", since we
+                // assume the user to have verified the prediction.
                 if(window.annotationType == 'labels') {
                     // need image-wide labels
                     if(window.predictionType == 'points' || window.predictionType == 'boundingBoxes') {
@@ -99,19 +108,24 @@
                             var maxConf = -1;
                             var argMax = null;
                             for(var key in properties['predictions']) {
-                                var prediction = new Annotation(key, properties['predictions'][key], 'prediction');
-                                if(prediction.confidence > maxConf) {
-                                    maxConf = prediction.confidence;
-                                    argMax = prediction;
+                                var predConf = properties['predictions'][key]['confidence'];
+                                if(predConf > maxConf) {
+                                    maxConf = predConf;
+                                    argMax = key;
                                 }
                             }
                             if(argMax != null) {
-                                this._addElement(argMax);
+                                // construct new classification entry
+                                var id = properties['predictions'][key]['id'];
+                                var label = properties['predictions'][key]['label'];
+                                var anno = new Annotation(window.getCurrentDateString(), {'id':id, 'label':label, 'confidence':maxConf}, 'annotation');
+                                anno.setProperty('changed', true);
+                                this._addElement(anno);
                             }
                         } else if(window.carryOverRule == 'mode') {
                             var counts = {};
                             for(var key in properties['predictions']) {
-                                var prediction = new Annotation(key, properties['predictions'][key], 'prediction');
+                                var prediction = new Annotation(window.getCurrentDateString(), properties['predictions'][key], 'prediction');
                                 if(!(counts.hasOwnProperty(prediction.label))) {
                                     counts[label] = 0;
                                 }
@@ -128,7 +142,8 @@
                             }
                             // add new label annotation
                             if(argMax != null) {
-                                var anno = new Annotation(this.entryID+'_anno', {'label':argMax});
+                                var anno = new Annotation(window.getCurrentDateString(), {'label':argMax}, 'annotation');
+                                anno.setProperty('changed', true);
                                 this._addElement(anno);
                             }
                         }
@@ -139,8 +154,8 @@
                         var props = properties['predictions'][key];
                         delete props['width'];
                         delete props['height'];
-                        var prediction = new Annotation(key, props, 'prediction');
-                        this._addElement(prediction);
+                        var anno = new Annotation(window.getCurrentDateString(), props, 'annotation');
+                        this._addElement(anno);
                     }
                 } else if(window.annotationType == 'boundingBoxes' && window.predictionType == 'points') {
                     // add default width and height
@@ -148,23 +163,19 @@
                         var props = properties['predictions'][key];
                         props['width'] = window.defaultBoxSize_w;
                         props['height'] = window.defaultBoxSize_h;
-                        var prediction = new Annotation(key, props, 'prediction');
-                        this._addElement(prediction);
+                        var anno = new Annotation(window.getCurrentDateString(), props, 'annotation');
+                        anno.setProperty('changed', true);
+                        this._addElement(anno);
                     }
                 } else if(window.annotationType == window.predictionType) {
                     // no conversion required
                     for(var key in properties['predictions']) {
-                        var prediction = new Annotation(key, properties['predictions'][key], 'prediction');
-                        this._addElement(prediction);
+                        var anno = new Annotation(window.getCurrentDateString(), properties['predictions'][key], 'annotation');
+                        anno.setProperty('changed', true);
+                        this._addElement(anno);
                     }
                 }
 
-            } else {
-                // no carry-over; add to predictions and leave them static
-                for(var key in properties['predictions']) {
-                    var prediction = new Annotation(key, properties['predictions'][key], 'prediction');
-                    this._addElement(prediction);
-                }
             }
         }
 
@@ -198,10 +209,10 @@
 
     getProperties(minimal, onlyUserAnnotations) {
         var props = { 'id': this.entryID };
-        props['annotations'] = {};
+        props['annotations'] = [];
         for(var key in this.annotations) {
             if(!onlyUserAnnotations || this.annotations[key].getChanged())
-                props['annotations'][key] = this.annotations[key].getProperties(minimal);
+                props['annotations'].push(this.annotations[key].getProperties(minimal));
         }
         if(!minimal) {
             props['fileName'] = this.fileName;
@@ -242,10 +253,11 @@
     constructor(entryID, properties) {
         super(entryID, properties);
 
-        // setup label instances
-        this.labelInstance = null;  // will be set by the user
-        this.noLabel = false;       // will be set to true if user explicitly de-clicks the image (to avoid carry-over of existing annotations or predictions)
-        this.defaultLabelInstance = this._getDefaultLabelInstance();
+        if(this.labelInstance == null) {
+            // add a default, blank instance if nothing has been predicted or annotated yet
+            var label = (window.enableEmptyClass ? window.labelClassHandler.getActiveClassID() : null);
+            this._addElement(new Annotation(window.getCurrentDateString(), {'label':label}, 'annotation'));
+        }
 
         this._setup_markup();
     }
@@ -258,22 +270,27 @@
         return null;
     }
 
-    _getDefaultLabelInstance() {
-        for(var key in this.annotations) {
-            // Only add annotation if it is of the correct type.
-            // TODO: implement e.g. mode of labels instead of first?
-            if(this.annotations[key].getAnnotationType() == this.getAnnotationType()) {
-                return this.annotations[key];
+    _addElement(element) {
+        // allow only one label for classification entry
+        if(element['type'] == 'annotation') {
+            if(Object.keys(this.annotations).length > 0) {
+                // replace current annotation
+                var key = Object.keys(this.annotations)[0];
+                this.viewport.removeRenderElement(this.annotations[key]);
+                delete this.annotations[key];
             }
-        }
 
-        // no annotation found, fallback for predictions
-        for(var key in this.predictions) {
-            if(this.predictions[key].getAnnotationType() == this.getAnnotationType()) {
-                return this.predictions[key];
-            }
+            // add new annotation from existing
+            key = element['annotationID'];
+            var anno = new Annotation(key, {'label':element['label']}, element['type']);
+            this.annotations[key] = anno;
+            this.viewport.addRenderElement(anno.getRenderElement());
+            this.labelInstance = anno;
+            
+        } else if(element['type'] == 'prediction' && window.showPredictions) {
+            this.predictions[key] = element;
+            this.viewport.addRenderElement(element.getRenderElement());
         }
-        return null;
     }
 
     _setup_markup() {
@@ -281,7 +298,7 @@
         super._setup_markup();
         $(this.canvas).css('cursor', 'pointer');
 
-        this.hoverTextElement = new HoverTextElement(this.entryID + '_hoverText', null, null, 5);
+        this.hoverTextElement = new HoverTextElement(this.entryID + '_hoverText', null, null, 'validArea', 5);
         this.viewport.addRenderElement(this.hoverTextElement);
 
         // click handler
@@ -311,28 +328,34 @@
         });
     }
 
-    toggleUserLabel(removeLabel) {
-        console.log('toggle')
-        if(removeLabel) {
-            this._removeElement(this.labelInstance);
-            this.noLabel = true;
-            this.defaultLabelInstance = null;
+    toggleUserLabel(forceRemove) {
+        /*
+            Toggles the classification label as follows:
+            - if the annotation has no label, it is set to the user-specified class
+            - if it has the same label as specified, the label is removed if the background
+              class is enabled
+            - if it has a different label than specified, the label is changed
+            - if forceRemove is true, the label is removed (if background class is enabled)
+        */
+        if(forceRemove && window.enableEmptyClass) {
+            this.labelInstance.setProperty('label', null);
 
         } else {
-            // Set label instance to current label class.
-            // Remove label if it's the same.
-            var key = this.entryID + '_anno';
+            var activeLabel = window.labelClassHandler.getActiveClassID();
             if(this.labelInstance == null) {
-                this.labelInstance = new Annotation(key, {'label':window.labelClassHandler.getActiveClassID()}, 'annotation');
-                this._addElement(this.labelInstance);
-                this.noLabel = false;
-            } else if(this.labelInstance.label == window.labelClassHandler.getActiveClassID()) {
-                this._removeElement(this.labelInstance);
-                this.labelInstance = null;
-                this.noLabel = true;
-                this.defaultLabelInstance = null;
+                // add new annotation
+                var anno = new Annotation(window.getCurrentDateString(), {'label':activeLabel}, 'annotation');
+                this._addElement(anno);
+
             } else {
-                this.labelInstance.setProperty('label', window.labelClassHandler.getActiveClassID());
+                if(this.labelInstance.label == activeLabel && window.enableEmptyClass) {
+                    // same label; disable
+                    this.labelInstance.setProperty('label', null);
+
+                } else {
+                    // different label; update
+                    this.labelInstance.setProperty('label', activeLabel);
+                }
             }
         }
         this.render();
@@ -364,7 +387,7 @@ class PointAnnotationEntry extends AbstractDataEntry {
         var self = this;
         super._setup_markup();
 
-        this.hoverTextElement = new HoverTextElement(this.entryID + '_hoverText', null, null, 5);
+        this.hoverTextElement = new HoverTextElement(this.entryID + '_hoverText', null, null, 'validArea', 5);
         this.viewport.addRenderElement(this.hoverTextElement);
 
         // interaction handlers
@@ -379,7 +402,7 @@ class PointAnnotationEntry extends AbstractDataEntry {
             self._canvas_mouseout(event);
         });
         this.canvas.mouseup(function(event) {
-            self._canvas_click(event);
+            self._canvas_mouseup(event);
         });
     }
 
@@ -391,10 +414,11 @@ class PointAnnotationEntry extends AbstractDataEntry {
             distance to the provided coordinates, if within a default
             tolerance threshold. Otherwise returns null.
         */
+        //TODO: tolerance is not converted to 0-1 canvas scale...
         var minDist = 1e9;
         var argMin = null;
         for(var key in this.predictions) {
-            if(this.predictions[key] instanceof PointAnnotation) {
+            if(this.predictions[key].getRenderElement().hasOwnProperty('x')) {
                 var dist = this.predictions[key].getRenderElement().euclideanDistance(coordinates);
                 if((dist < minDist) && (dist <= window.annotationProximityTolerance)) {
                     minDist = dist;
@@ -403,7 +427,7 @@ class PointAnnotationEntry extends AbstractDataEntry {
             }
         }
         for(var key in this.annotations) {
-            if(this.annotations[key] instanceof PointAnnotation) {
+            if(this.annotations[key].getRenderElement().hasOwnProperty('x')) {
                 var dist = this.annotations[key].getRenderElement().euclideanDistance(coordinates);
                 if((dist < minDist) && (dist <= window.annotationProximityTolerance)) {
                     minDist = dist;
@@ -416,9 +440,8 @@ class PointAnnotationEntry extends AbstractDataEntry {
 
     _canvas_mousein(event) {
         var coords = this.viewport.getRelativeCoordinates(event, 'validArea');
-        var coords_scaled = this.viewport.scaleToViewport(coords);
         this.hoverTextElement.setProperty('text', null);
-        this.hoverTextElement.position = coords_scaled;
+        this.hoverTextElement.setProperty('position', coords);
 
         // check if another point is close-by and show message
         var closest = this._getClosestPoint(coords);
@@ -439,10 +462,9 @@ class PointAnnotationEntry extends AbstractDataEntry {
         this.render();
     }
 
-    _canvas_click(event) {
-        console.log('click')
+    _canvas_mouseup(event) {
         var coords = this.viewport.getRelativeCoordinates(event, 'validArea');
-
+        console.log(coords)
         // check if another point is close-by
         var closest = this._getClosestPoint(coords);
         if(closest != null) {
@@ -464,7 +486,7 @@ class PointAnnotationEntry extends AbstractDataEntry {
                 'y': coords[1],
                 'label': window.labelClassHandler.getActiveClassID()
             };
-            var annotation = new PointAnnotation(key, props, 'annotation');
+            var annotation = new Annotation(key, props, 'annotation');
             this._addElement(annotation);
         }
         this.render();
@@ -499,7 +521,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
         super._setup_markup();
         this.canvas.css('cursor', 'pointer');
 
-        this.hoverTextElement = new HoverTextElement(this.entryID + '_hoverText', null, null, 5);
+        this.hoverTextElement = new HoverTextElement(this.entryID + '_hoverText', null, null, 'canvas', 5);
         this.viewport.addRenderElement(this.hoverTextElement);
 
         // interaction handlers
@@ -569,7 +591,6 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
 
     _createAnnotation(event) {
         var coords = this.viewport.getRelativeCoordinates(event, 'validArea');
-        var key = this['entryID'] + '_' + new Date().getMilliseconds();
         var props = {
             'x': coords[0],
             'y': coords[1],
@@ -577,7 +598,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
             'height': 0,
             'label': window.labelClassHandler.getActiveClassID()
         };
-        var anno = new Annotation(key, props, 'annotation');
+        var anno = new Annotation(window.getCurrentDateString(), props, 'annotation');
         this._addElement(anno);
         anno.getRenderElement().registerAsCallback(this.viewport);
         anno.getRenderElement().setActive(true, this.viewport);
