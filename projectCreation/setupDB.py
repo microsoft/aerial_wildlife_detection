@@ -37,7 +37,7 @@ def _constructAnnotationFields(annoType, table, doublePrecision=False):
     
     elif annoType == 'points':
         annoFields = '''
-            labelclass uuid &labelclassNotNull,
+            label uuid &labelclassNotNull,
             confidence real,
             x {},
             y {},
@@ -46,7 +46,7 @@ def _constructAnnotationFields(annoType, table, doublePrecision=False):
 
     elif annoType == 'boundingBoxes':
         annoFields = '''
-            labelclass uuid &labelclassNotNull,
+            label uuid &labelclassNotNull,
             confidence real,
             x {},
             y {},
@@ -58,8 +58,7 @@ def _constructAnnotationFields(annoType, table, doublePrecision=False):
     elif annoType == 'segmentationMasks':
         additionalTables = None     # not needed for semantic segmentation
         annoFields = '''
-            filename VARCHAR,
-            FOREIGN KEY (labelclassID) REFERENCES &schema.LABELCLASS(id),
+            filename VARCHAR
         '''
         raise NotImplementedError('Segmentation masks are not (yet) implemented.')
 

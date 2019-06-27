@@ -36,7 +36,6 @@ class CommandListener {
     }
 
     _addKeyCallback(element, type, key, callbackFun) {
-        //TODO: implement window-wide keydowns?
         $(element).on(type, function(event) {
             if(event.which() == key) {
                 callbackFun(event);

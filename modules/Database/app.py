@@ -6,6 +6,7 @@
 
 import psycopg2
 from psycopg2.extras import RealDictCursor, execute_values
+psycopg2.extras.register_uuid()
 
 
 class Database():

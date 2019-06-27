@@ -23,6 +23,20 @@ class LabelClass {
             self.changeListener.setActiveClass(self);
         });
 
+        // listener for keypress if in [1, 9]
+        if(this.index >= 0 && this.index < 9) {
+            $(window).keyup(function(event) {
+                try {
+                    var key = parseInt(String.fromCharCode(event.which));
+                    if(key == self.index+1) {
+                        self.changeListener.setActiveClass(self);
+                    }
+                } catch {
+                    return;
+                }
+            });
+        }
+
         return markup;
     }
 }
@@ -101,6 +115,10 @@ class LabelClassHandler {
         } catch {
             return defaultColor;
         }
+    }
+
+    getName(classID) {
+        return this.labelClasses[classID]['name'];
     }
 
     setActiveClass(labelClassInstance) {

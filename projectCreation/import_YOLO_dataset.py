@@ -124,7 +124,7 @@ if __name__ == '__main__':
     # prepare insertion SQL string
     if args.annotationType == 'annotation':
         sql = '''
-        INSERT INTO {}.ANNOTATION (username, image, timeCreated, timeRequired, labelclass, x, y, width, height)
+        INSERT INTO {}.ANNOTATION (username, image, timeCreated, timeRequired, label, x, y, width, height)
         VALUES(
             {},
             (SELECT id FROM {}.IMAGE WHERE filename LIKE %s),
@@ -138,7 +138,7 @@ if __name__ == '__main__':
         )'''.format(dbSchema, dbSchema, config.getProperty('Database', 'adminName'))
     elif args.annotationType == 'prediction':
         sql = '''
-        INSERT INTO {}.PREDICTION (image, timeCreated, labelclass, confidence, x, y, width, height, priority)
+        INSERT INTO {}.PREDICTION (image, timeCreated, label, confidence, x, y, width, height, priority)
         VALUES(
             (SELECT id FROM {}.IMAGE WHERE filename LIKE %s),
             (TIMESTAMP %s),

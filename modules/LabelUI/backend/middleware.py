@@ -5,8 +5,11 @@
 '''
 
 from uuid import UUID
+from datetime import datetime
+import dateutil.parser
 from modules.Database.app import Database
-from .annotation_sql_tokens import QueryStrings_annotation, QueryStrings_prediction, getQueryString, getTableNames, getOnConflictString, parseAnnotation
+from .sql_string_builder import SQLStringBuilder
+from .annotation_sql_tokens import QueryStrings_annotation, QueryStrings_prediction, getQueryString, getTableNames, getOnConflictString, parseAnnotation, FieldNames_prediction, FieldNames_annotation
 
 
 class DBMiddleware():
@@ -16,6 +19,8 @@ class DBMiddleware():
         self.dbConnector = Database(config)
 
         self._fetchProjectSettings()
+        self.sqlBuilder = SQLStringBuilder(config)
+        # self._initSQLstrings()
 
 
     def _fetchProjectSettings(self):
@@ -28,8 +33,10 @@ class DBMiddleware():
             'annotationType': self.config.getProperty('LabelUI', 'annotationType'),
             'predictionType': self.config.getProperty('AITrainer', 'annotationType'),
             'showPredictions': self.config.getProperty('LabelUI', 'showPredictions'),
+            'showPredictions_minConf': self.config.getProperty('LabelUI', 'showPredictions_minConf'),
             'carryOverPredictions': self.config.getProperty('LabelUI', 'carryOverPredictions'),
             'carryOverRule': self.config.getProperty('LabelUI', 'carryOverRule'),
+            'carryOverPredictions_minConf': self.config.getProperty('LabelUI', 'carryOverPredictions_minConf'),
             'defaultBoxSize_w': self.config.getProperty('LabelUI', 'defaultBoxSize_w'),
             'defaultBoxSize_h': self.config.getProperty('LabelUI', 'defaultBoxSize_h'),
             'numImages_x': self.config.getProperty('LabelUI', 'numImages_x', 3),
@@ -38,12 +45,40 @@ class DBMiddleware():
             'defaultImage_h': self.config.getProperty('LabelUI', 'defaultImage_h', 600),
         }
 
-    def _initSQLstrings(self):
-        '''
-            Prepares retrieval and submission fragments for SQL queries,
-            depending on the kind of annotations.
-            TODO: put into dedicated enum?
-        '''
+
+    def _assemble_annotations(self, cursor, limit=1e9):
+        response = {}
+        while len(response) < limit:
+            b = cursor.fetchone()
+            if b is None:
+                break
+
+            imgID = str(b['image'])
+            if not imgID in response:
+                response[imgID] = {
+                    'fileName': b['filename'],
+                    'predictions': {},
+                    'annotations': {}
+                }
+
+            # parse annotations and predictions
+            entryID = str(b['id'])
+            colnames = self.sqlBuilder.getColnames(b['ctype'])
+            entry = {}
+            for c in colnames:
+                value = b[c]
+                if isinstance(value, datetime):
+                    value = value.timestamp()
+                elif isinstance(value, UUID):
+                    value = str(value)
+                entry[c] = value
+            if b['ctype'] == 'annotation':
+                response[imgID]['annotations'][entryID] = entry
+            elif b['ctype'] == 'prediction':
+                response[imgID]['predictions'][entryID] = entry
+        
+        return response
+
 
     def getProjectSettings(self):
         '''
@@ -65,81 +100,79 @@ class DBMiddleware():
         classProps = self.dbConnector.execute(sql, None, 'all')
         classdef = {}
         for c in range(len(classProps)):
+            classProps[c]['id'] = str(classProps[c]['id'])  # convert UUID to string
             classID = classProps[c]['id']
             classdef[classID] = classProps[c]
 
         return classdef
 
 
-    def getAnnotations(self, data):
+    def getBatch(self, username, data):
         '''
             Returns entries from the database based on the list of data entry identifiers specified.
         '''
-        #TODO
-        print(data)
-        pass
+        # query
+        sql = self.sqlBuilder.getFixedImagesQueryString()
 
+        #TODO: username
+        cursor = self.dbConnector.execute_cursor(sql, tuple([UUID(d) for d in data]))
+
+        # parse results
+        try:
+            response = self._assemble_annotations(cursor)
+        finally:
+            cursor.close()
     
-    def getNextBatch(self, username, ignoreLabeled=False, limit=None):
+    def getNextBatch(self, username, subset, limit=None):
         '''
-            Returns entries from the database (table 'annotation') according to the following rules:
-            - entries are ordered by value in column 'priority' (descending)
-            - if 'ignoreLabeled' is set to True, only images without a single associated annotation are returned (may result in an empty set). Otherwise priority is given to unlabeled images, but all images are queried if there are no unlabeled ones left.
-            - if 'limit' is a number, the return count will be clamped to it.
+            TODO: description
         '''
         # query
-        schema = self.config.getProperty('Database', 'schema')
-        sql = '''
-            SELECT * FROM (SELECT id AS imageID, filename FROM {}.image) AS img
-            LEFT OUTER JOIN (SELECT image, viewcount FROM {}.image_user) AS img_user ON img_user.image = img.imageID
-            LEFT OUTER JOIN (SELECT {} FROM {}.prediction) AS pred ON pred.image = img.imageID
-            LEFT OUTER JOIN (SELECT {} FROM {}.annotation WHERE username = %s) AS anno ON anno.image = img.imageID
-        '''.format(
-            schema, schema,
-            getQueryString(getattr(QueryStrings_prediction, self.projectSettings['predictionType']).value),
-            schema,
-            getQueryString(getattr(QueryStrings_annotation, self.projectSettings['annotationType']).value),
-            schema,
-        )
-        if ignoreLabeled:
-            sql += '''
-                WHERE viewcount = 0 OR viewcount IS NULL
-            '''
-        
-        sql += ' ORDER BY pred.priority DESC'
+        sql = self.sqlBuilder.getNextBatchQueryString(subset)
 
+        # limit (TODO: make 128 a hyperparameter)
+        if limit is None:
+            limit = 128
+        else:
+            limit = min(int(limit), 128)
 
-        # get cursor
-        cursor = self.dbConnector.execute_cursor(sql, (username,))
+        cursor = self.dbConnector.execute_cursor(sql, (username,limit,))
 
-        if limit is not None:
-            limit = int(limit)
+        # parse results
+        try:
+            response = self._assemble_annotations(cursor, limit)
+        finally:
+            cursor.close()
 
-        # format and return
-        response = {}
-        while limit is None or len(response) < limit:
-            b = cursor.fetchone()
-            if b is None:
-                break
+        # response = {}
+        # while len(response) < limit:
+        #     b = cursor.fetchone()
+        #     if b is None:
+        #         break
 
-            imgID = b['imageid']
-            if not imgID in response:
-                response[imgID] = {
-                    'fileName': b['filename'],
-                    'predictions': {},
-                    'annotations': {}
-                }
-            pred = {}
-            anno = {}
-            for key in b.keys():
-                if key.startswith('pred'):
-                    pred[key.replace('pred','')] = b[key]
-                elif key.startswith('anno'):
-                    anno[key.replace('anno','')] = b[key]
-            if b['predid'] is not None:
-                response[imgID]['predictions'][b['predid']] = pred
-            if b['annoid'] is not None:
-                response[imgID]['annotations'][b['annoid']] = anno
+        #     imgID = str(b['image'])
+        #     if not imgID in response:
+        #         response[imgID] = {
+        #             'fileName': b['filename'],
+        #             'predictions': {},
+        #             'annotations': {}
+        #         }
+
+        #     # parse annotations and predictions
+        #     entryID = str(b['id'])
+        #     colnames = self.sqlBuilder.getColnames(b['ctype'])
+        #     entry = {}
+        #     for c in colnames:
+        #         value = b[c]
+        #         if isinstance(value, datetime):
+        #             value = value.timestamp()
+        #         elif isinstance(value, UUID):
+        #             value = str(value)
+        #         entry[c] = value
+        #     if b['ctype'] == 'annotation':
+        #         response[imgID]['annotations'][entryID] = entry
+        #     elif b['ctype'] == 'prediction':
+        #         response[imgID]['predictions'][entryID] = entry
 
             # #TODO
             # if len(response) == 1:
@@ -164,8 +197,6 @@ class DBMiddleware():
             #         ))
             #     plt.draw()
             #     plt.waitforbuttonpress()
-
-        cursor.close()
 
         return { 'entries': response }
 
@@ -207,55 +238,88 @@ class DBMiddleware():
 
         # assemble values
         colnames = getTableNames(getattr(QueryStrings_annotation, self.projectSettings['annotationType']).value)
-        values = []
+        values_insert = []
+        values_update = []
         viewcountValues = []
         for imageKey in submissions['entries']:
             entry = submissions['entries'][imageKey]
+
+            lastChecked = entry['timeCreated']
+            lastTimeRequired = entry['timeRequired']
             if 'annotations' in entry and len(entry['annotations']):
                 for annotation in entry['annotations']:
                     # assemble annotation values
                     annotationTokens = parseAnnotation(annotation)
                     annoValues = []
                     for cname in colnames:
-                        if cname == 'image':
-                            annoValues.append(imageKey)
+                        if cname == 'id':
+                            if cname in annotationTokens:
+                                # cast and only append id if the annotation is an existing one
+                                annoValues.append(UUID(annotationTokens[cname]))
+                        elif cname == 'image':
+                            annoValues.append(UUID(imageKey))
+                        elif cname == 'label' and annotationTokens[cname] is not None:
+                            annoValues.append(UUID(annotationTokens[cname]))
+                        elif cname == 'timeCreated':
+                            try:
+                                annoValues.append(dateutil.parser.parse(annotationTokens[cname]))
+                            except:
+                                annoValues.append(None)     #TODO
                         elif cname == 'username':
                             annoValues.append(username)
                         elif cname in annotationTokens:
                             annoValues.append(annotationTokens[cname])
                         else:
                             annoValues.append(None)
-                    values.append(tuple(annoValues))
+                    if 'id' in annotationTokens:
+                        # existing annotation; update
+                        values_update.append(tuple(annoValues))
+                    else:
+                        # new annotation
+                        values_insert.append(tuple(annoValues))
                     
-            viewcountValues.append((username, imageKey,))
+            viewcountValues.append((username, imageKey, 1, lastChecked, lastTimeRequired))
 
 
         schema = self.config.getProperty('Database', 'schema')
 
-        # annotation table
-        sql = '''
-            INSERT INTO {}.annotation ({})
-            VALUES ( %s )
-            ON CONFLICT (id) DO UPDATE SET {};
-        '''.format(
-            schema,
-            ', '.join(colnames),
-            getOnConflictString(getattr(QueryStrings_annotation, self.projectSettings['annotationType']).value)
-        )
+        
+        # insert new annotations
+        if len(values_insert):
+            sql = '''
+                INSERT INTO {}.annotation ({})
+                VALUES %s ;
+            '''.format(
+                schema,
+                ', '.join(colnames[1:])     # skip 'id' column
+                #getOnConflictString(getattr(QueryStrings_annotation, self.projectSettings['annotationType']).value)
+            )
+            self.dbConnector.insert(sql, values_insert)
 
-        #TODO: something's still wrong here...
-        self.dbConnector.insert(sql, values)
-
+        # update existing annotations
+        if len(values_update):
+            sql = '''
+                UPDATE {}.annotation AS a
+                SET {}
+                FROM (VALUES %s) AS e({})
+                WHERE e.id = a.id;
+            '''.format(
+                schema,
+                ', '.join(['{} = e.{}'.format(c, c) for c in colnames]),
+                ', '.join(colnames)
+                #getOnConflictString(getattr(QueryStrings_annotation, self.projectSettings['annotationType']).value)
+            )
+            self.dbConnector.insert(sql, values_update)
 
 
         # viewcount table
         sql = '''
-            INSERT INTO {}.image_user (username, image, viewcount)
-            VALUES ( %s )
-            ON CONFLICT (username, image) DO UPDATE SET viewcount = viewcount + 1;
+            INSERT INTO {}.image_user (username, image, viewcount, last_checked, last_time_required)
+            VALUES %s 
+            ON CONFLICT (username, image) DO UPDATE SET viewcount = image_user.viewcount + 1, last_checked = EXCLUDED.last_checked, last_time_required = EXCLUDED.last_time_required;
         '''.format(schema)
 
         self.dbConnector.insert(sql, viewcountValues)
 
 
-        return 'ok'     #TODO
+        return 0

@@ -5,6 +5,8 @@ class AbstractRenderElement {
         this.zIndex = (zIndex == null? 0 : zIndex);
         this.isActive = false;
         this.changed = false;   // will be set to true if user modifies the initial geometry
+        this.lastUpdated = new Date();  // timestamp of last update
+        this.visible = true;
     }
 
     setProperty(propertyName, value) {
@@ -12,10 +14,15 @@ class AbstractRenderElement {
 
         // set to user-modified
         this.changed = true;
+        this.lastUpdated = new Date();
     }
 
     getGeometry() {
         return {};
+    }
+
+    getLastUpdated() {
+        return this.lastUpdated;
     }
 
     setActive(active, viewport) {
@@ -26,8 +33,12 @@ class AbstractRenderElement {
         return this.zIndex;
     }
 
+    setVisible(visible) {
+        this.visible = visible;
+    }
+
     render(ctx, viewport, limits, scaleFun) {
-        throw Error('Not implemented.');
+        if(!this.visible) return;
     }
 }
 
@@ -56,6 +67,7 @@ class ElementGroup extends AbstractRenderElement {
     }
 
     render(ctx, viewport, limits, scaleFun) {
+        super.render(ctx, viewport, limits, scaleFun);
         for(var e=0; e<this.elements.length; e++) {
             this.elements[e].render(ctx, viewport, limits, scaleFun);
         }
@@ -93,6 +105,9 @@ class ImageElement extends AbstractRenderElement {
 
             // re-render
             self.viewport.render();
+
+            // set time created
+            self.timeCreated = new Date();
         };
         this.image.src = this.imageURI;
     }
@@ -101,7 +116,12 @@ class ImageElement extends AbstractRenderElement {
         return this.naturalImageExtent;
     }
 
+    getTimeCreated() {
+        return this.timeCreated;
+    }
+
     render(ctx, viewport, limits, scaleFun) {
+        super.render(ctx, viewport, limits, scaleFun);
         var targetCoords = scaleFun(this.bounds, 'canvas');
         ctx.drawImage(this.image, targetCoords[0], targetCoords[1],
             targetCoords[2],
@@ -121,19 +141,20 @@ class HoverTextElement extends AbstractRenderElement {
     }
 
     render(ctx, viewport, limits, scaleFun) {
+        super.render(ctx, viewport, limits, scaleFun);
         if(this.text == null) return;
         var hoverPos = scaleFun(this.position, this.reference);
+        ctx.font = window.styles.hoverText.text.font;
         var dimensions = ctx.measureText(this.text);
         dimensions.height = window.styles.hoverText.box.height;
-        // dimensions = scaleFun([dimensions.width, dimensions.height]);
+        dimensions = [dimensions.width + 8, dimensions.height];
         var offsetH = window.styles.hoverText.offsetH;
         ctx.fillStyle = window.styles.hoverText.box.fill;
-        ctx.fillRect(offsetH+hoverPos[0]-2, hoverPos[1]-(dimensions[1]/2+2), dimensions[0]+4, dimensions[1]+4);
+        ctx.fillRect(offsetH+hoverPos[0]-4, hoverPos[1]-(dimensions[1]/2+4), dimensions[0]+4, dimensions[1]+4);
         ctx.strokeStyle = window.styles.hoverText.box.stroke.color;
         ctx.lineWidth = window.styles.hoverText.box.stroke.lineWidth;
-        ctx.strokeRect(offsetH+hoverPos[0]-2, hoverPos[1]-(dimensions[1]/2+2), dimensions[0]+4, dimensions[1]+4);
+        ctx.strokeRect(offsetH+hoverPos[0]-4, hoverPos[1]-(dimensions[1]/2+4), dimensions[0]+4, dimensions[1]+4);
         ctx.fillStyle = window.styles.hoverText.text.color;
-        ctx.font = window.styles.hoverText.text.font;
         ctx.fillText(this.text, offsetH+hoverPos[0], hoverPos[1]);
     }
 }
@@ -160,6 +181,7 @@ class PointElement extends AbstractRenderElement {
     }
 
     render(ctx, viewport, limits, scaleFun) {
+        super.render(ctx, viewport, limits, scaleFun);
         if(this.x == null || this.y == null) return;
 
         var coords = [this.x, this.y];
@@ -203,6 +225,7 @@ class LineElement extends AbstractRenderElement {
     }
 
     render(ctx, viewport, limits, scaleFun) {
+        super.render(ctx, viewport, limits, scaleFun);
         if(this.startX == null || this.startY == null ||
             this.endX == null || this.endY == null)
             return;
@@ -444,6 +467,9 @@ class RectangleElement extends PointElement {
                 this.setProperty('x', this.x + coords[0] - mpc[0]);
                 this.setProperty('y', this.y + coords[1] - mpc[1]);
             }
+
+            // update timestamp
+            this.lastUpdated = new Date();
         } else {
             this.activeHandle = this.getClosestHandle(mpc, window.annotationProximityTolerance / Math.min(viewport.canvas.width(), viewport.canvas.height()));
         }
@@ -526,7 +552,7 @@ class RectangleElement extends PointElement {
 
 
     render(ctx, viewport, limits, scaleFun) {
-        if(this.x == null || this.y == null) return;
+        if(!this.visible || this.x == null || this.y == null) return;
 
         var coords = [this.x-this.width/2, this.y-this.height/2, this.width, this.height];
         coords = scaleFun(coords, 'validArea');
@@ -552,15 +578,17 @@ class BorderStrokeElement extends AbstractRenderElement {
         Draws a border around the viewport.
         Specifically intended for classification tasks.
     */
-    constructor(id, strokeColor, lineWidth, lineDash, zIndex) {
+    constructor(id, strokeColor, lineWidth, lineDash, text, zIndex) {
         super(id, zIndex);
         this.color = strokeColor;
         this.lineWidth = lineWidth;
         this.lineDash = (lineDash == null? [] : lineDash);
+        this.text = text;
         this.changed = true;        // always true; we want to collect all classification entries, since user will screen them anyway
     }
 
     render(ctx, viewport, limits, scaleFun) {
+        super.render(ctx, viewport, limits, scaleFun);
         if(this.color == null) return;
         var coords = scaleFun([0,0,1,1], 'canvas');
         ctx.strokeStyle = this.color;
@@ -569,6 +597,19 @@ class BorderStrokeElement extends AbstractRenderElement {
         ctx.beginPath();
         ctx.strokeRect(coords[0], coords[1], coords[2], coords[3]);
         ctx.closePath();
+
+        // show text in bottom left corner
+        if(this.text != null) {
+            ctx.fillStyle = window.styles.hoverText.text.color;
+            ctx.font = window.styles.hoverText.text.font;
+            var dimensions = ctx.measureText(this.text);
+            dimensions.height = window.styles.hoverText.box.height;
+            dimensions = [dimensions.width + 8, dimensions.height]  //scaleFun([dimensions.width, dimensions.height], 'canvas');
+            ctx.fillStyle = this.color;
+            ctx.fillRect(coords[0], coords[3] - dimensions[1], dimensions[0], dimensions[1]);
+            ctx.fillStyle = window.styles.hoverText.text.color;
+            ctx.fillText(this.text, coords[0] + 4, coords[3] - dimensions[1]/2 + 4);
+        }
     }
 }
 
@@ -586,6 +627,7 @@ class ResizeHandle extends AbstractRenderElement {
     }
 
     render(ctx, viewport, limits, scaleFun) {
+        super.render(ctx, viewport, limits, scaleFun);
         if(this.x == null || this.y == null) return;
 
         var coords = [this.x, this.y];

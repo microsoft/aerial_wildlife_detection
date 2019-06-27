@@ -22,6 +22,13 @@
         #gallery-container {
             background: #333333 !important;
         }
+        .widescreen {
+            max-width: 1920px;
+        }
+        #interface-controls > * {
+            margin-left: 10px;
+            margin-right: 10px;
+        }
         .entry {
             display: inline-block;
         }
@@ -67,24 +74,20 @@
             <p>TODO: Description</p>
         </div>
 
+        <div class="wrapper">
+            <!-- Image Display -->
+            <div class="jumbotron vertical-center" id="gallery-container">
+                <div class="container-fluid widescreen" id="gallery"></div>
 
-        <!-- Image Display -->
-        <div class="jumbotron vertical-center" id="gallery-container">
-            <div class="container" id="gallery"></div>
-
-            <div class="container">
-                <button class="btn btn-primary" onclick="window.interfaceControls.action=window.interfaceControls.actions.ADD_ANNOTATION;">+</button>
-                <button class="btn btn-primary" onclick="window.interfaceControls.action=window.interfaceControls.actions.REMOVE_ANNOTATIONS;">-</button>
-                <button class="btn btn-primary float-right" onclick='window.dataHandler.submitAnnotations()'>Next</button>
+                <div class="container widescreen" id="interface-controls"></div>
             </div>
-        </div>
 
-
-        <!-- Label Classes -->
-        <div class="jumbotron vertical-center" id="tools-container">
-            <div class="container">
-                <div>Classes</div>
-                <div class="legend-entries container"></div>
+            <!-- Label Classes -->
+            <div class="jumbotron vertical-center" id="tools-container">
+                <div class="container">
+                    <h2>Classes</h2>
+                    <div class="legend-entries container"></div>
+                </div>
             </div>
         </div>
     </div>

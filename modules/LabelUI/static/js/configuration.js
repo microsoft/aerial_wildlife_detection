@@ -31,10 +31,10 @@ window.loadConfiguration = function() {
                     color: '#FFFFFF',
                     lineWidth: 0.5
                 },
-                height: 32      // adjust according to font size
+                height: 28      // adjust according to font size
             },
             text: {
-                font: '32px sans-serif bold',
+                font: '14px sans-serif',
                 color: '#FFFFFF'
             }
         },
@@ -72,8 +72,10 @@ $.get('getProjectSettings', function(data) {
     window.annotationType = data['settings']['annotationType'];
     window.predictionType = data['settings']['predictionType'];
     window.showPredictions = window.parseBoolean(data['settings']['showPredictions']);
+    window.showPredictions_minConf = data['settings']['showPredictions_minConf'];
     window.carryOverPredictions = window.parseBoolean(data['settings']['carryOverPredictions']);
     window.carryOverRule = data['settings']['carryOverRule'];
+    window.carryOverPredictions_minConf = data['settings']['carryOverPredictions_minConf'];
     window.defaultBoxSize_w = data['settings']['defaultBoxSize_w'];
     window.defaultBoxSize_h = data['settings']['defaultBoxSize_h'];
     window.numImages_x = data['settings']['numImages_x'];

@@ -88,9 +88,10 @@ class LabelUI():
         @self.app.post('/getImages')
         def get_images():
             if self.loginCheck():
+                username = request.get_cookie('username')
                 postData = request.body.read()
-                dataIDs = postData['imageIDs']
-                json = self.middleware.getBatch(dataIDs)
+                dataIDs = request.json['imageIDs']
+                json = self.middleware.getBatch(username, dataIDs)
                 return json
             else:
                 abort(401, 'not logged in')
@@ -105,10 +106,10 @@ class LabelUI():
                 except:
                     limit = None
                 try:
-                    ignoreLabeled = int(request.query['ignoreLabeled'])
+                    subset = int(request.query['subset'])
                 except:
-                    ignoreLabeled = False
-                json = self.middleware.getNextBatch(username=username, ignoreLabeled=ignoreLabeled, limit=limit)       #TODO
+                    subset = 'preferUnlabeled'
+                json = self.middleware.getNextBatch(username=username, subset=subset, limit=limit)
                 return json
             else:
                 abort(401, 'not logged in')
@@ -124,11 +125,13 @@ class LabelUI():
                         # this should never happen, since we are performing a login check
                         raise Exception('no username provided')
                     submission = request.json
-                    response = self.middleware.submitAnnotations(username, submission)
-                    return response
+                    status = self.middleware.submitAnnotations(username, submission)
+                    return { 'status': status }
                 except Exception as e:
-                    print('ERROR: ' + str(e))
-                    return { 'error': str(e) }
+                    return {
+                        'status': 1,
+                        'message': str(e)
+                    }
             else:
                 abort(401, 'not logged in')
 

@@ -5,21 +5,39 @@
     2019 Benjamin Kellenberger
 '''
 
+#BIG TODO: MERGE WITH sql_string_builder.py
+
 from enum import Enum
 from uuid import UUID
 
 
+
+class FieldNames_prediction(Enum):
+    labels = set(['label', 'confidence'])
+    points = set(['label', 'confidence', 'x', 'y'])
+    boundingBoxes = set(['label', 'confidence', 'x', 'y', 'width', 'height'])
+    segmentationMasks = set(['filename'])   #TODO: conflict with image filename
+
+class FieldNames_annotation(Enum):
+    labels = set(['label'])
+    points = set(['label', 'x', 'y'])
+    boundingBoxes = set(['label', 'x', 'y', 'width', 'height'])
+    segmentationMasks = set(['filename'])   #TODO: conflict with image filename
+
+
+
+
 class QueryStrings_prediction(Enum):
     labels = {
-        'table': ['id', 'image', 'labelclass', 'confidence', 'priority'],
+        'table': ['id', 'image', 'label', 'confidence', 'priority'],
         'query': ['predID', 'image', 'predLabel', 'predConfidence', 'priority']
     }
     points = {
-        'table': ['id', 'image', 'x', 'y', 'labelclass', 'confidence', 'priority'],
+        'table': ['id', 'image', 'x', 'y', 'label', 'confidence', 'priority'],
         'query': ['predID', 'image', 'predX', 'predY', 'predLabel', 'predConfidence', 'priority']
     }
     boundingBoxes = {
-        'table': ['id', 'image', 'x', 'y', 'width', 'height', 'labelclass', 'confidence', 'priority'],
+        'table': ['id', 'image', 'x', 'y', 'width', 'height', 'label', 'confidence', 'priority'],
         'query': ['predID', 'image', 'predX', 'predY', 'predWidth', 'predHeight', 'predLabel', 'predConfidence', 'priority']
     }
     segmentationMasks = {
@@ -30,24 +48,24 @@ class QueryStrings_prediction(Enum):
 
 class QueryStrings_annotation(Enum):
     labels = {
-        'table': ['id', 'image', 'labelclass', 'username'],
-        'query': ['annoID', 'image', 'annoLabel', 'annoUsername'],
-        'submission': ['annotationID', None, 'label', 'username']
+        'table': ['id', 'image', 'label', 'username', 'timeCreated', 'timeRequired'],
+        'query': ['annoID', 'image', 'annoLabel', 'annoUsername', 'annoTimecreated', 'annoTimerequired'],
+        # 'submission': ['annotationID', None, 'label', 'username', 'timeCreated', 'timeRequired']
     }
     points = {
-        'table': ['id', 'image', 'x', 'y', 'labelclass', 'username'],
-        'query': ['annoID', 'image', 'annoX', 'annoY', 'annoLabel', 'annoUsername'],
-        'submission': ['annotationID', None, 'x', 'y', 'label', 'username']
+        'table': ['id', 'image', 'x', 'y', 'label', 'username', 'timeCreated', 'timeRequired'],
+        'query': ['annoID', 'image', 'annoX', 'annoY', 'annoLabel', 'annoUsername', 'annoTimecreated', 'annoTimerequired'],
+        # 'submission': ['annotationID', None, 'x', 'y', 'label', 'username', 'timeCreated', 'timeRequired']
     }
     boundingBoxes = {
-        'table': ['id', 'image', 'x', 'y', 'width', 'height', 'labelclass', 'username'],
-        'query': ['annoID', 'image', 'annoX', 'annoY', 'annoWidth', 'annoHeight', 'annoLabel', 'annoUsername'],
-        'submission': ['annotationID', None, 'x', 'y', 'width', 'height', 'label', 'username']
+        'table': ['id', 'image', 'x', 'y', 'width', 'height', 'label', 'username', 'timeCreated', 'timeRequired'],
+        'query': ['annoID', 'image', 'annoX', 'annoY', 'annoWidth', 'annoHeight', 'annoLabel', 'annoUsername', 'annoTimecreated', 'annoTimerequired'],
+        # 'submission': ['annotationID', None, 'x', 'y', 'width', 'height', 'label', 'username', 'timeCreated', 'timeRequired']
     }
     segmentationMasks = {
-        'table': ['id', 'image', 'filename', 'username'],
-        'query': ['annoID', 'image', 'annoSegMap', 'annoUsername'],
-        'submission': ['annotationID', None, 'segmentationMap', 'username']
+        'table': ['id', 'image', 'filename', 'username', 'timeCreated', 'timeRequired'],
+        'query': ['annoID', 'image', 'annoSegMap', 'annoUsername', 'annoTimecreated', 'annoTimerequired'],
+        # 'submission': ['annotationID', None, 'segmentationMap', 'username', 'timeCreated', 'timeRequired']
     }
 
 
@@ -72,12 +90,13 @@ def parseAnnotation(annotation):
 
     for key in annotation.keys():
         if key == 'id':
-            # replace annotation ID with 'DEFAULT' keyword if no UUID
-            # (this is the case if the annotation is not yet in the DB)
+            # check if new annotation (non-UUID conformant ID)
+            # or update for existing
             try:
                 value = str(UUID(annotation['id']))
             except:
-                value = 'DEFAULT'
+                # non-UUID conformant ID: skip 'id' field
+                continue
         
         elif key == 'geometry':
             # iterate through geometry tokens

@@ -42,6 +42,8 @@ CREATE TABLE IF NOT EXISTS &schema.IMAGE_USER (
     username VARCHAR NOT NULL,
     image uuid NOT NULL,
     viewcount SMALLINT DEFAULT 1,
+    last_checked TIMESTAMPTZ,
+    last_time_required BIGINT,
 
     PRIMARY KEY (username, image),
     FOREIGN KEY (username) REFERENCES &schema.USER(name),
@@ -59,7 +61,7 @@ CREATE TABLE IF NOT EXISTS &schema.ANNOTATION (
     id uuid DEFAULT uuid_generate_v4(),
     username VARCHAR NOT NULL,
     image uuid NOT NULL,
-    timeCreated TIMESTAMP NOT NULL DEFAULT NOW(),
+    timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     timeRequired BIGINT,
     
     &annotationFields
@@ -71,7 +73,7 @@ CREATE TABLE IF NOT EXISTS &schema.ANNOTATION (
 CREATE TABLE IF NOT EXISTS &schema.PREDICTION (
     id uuid DEFAULT uuid_generate_v4(),
     image uuid NOT NULL,
-    timeCreated TIMESTAMP NOT NULL DEFAULT NOW(),
+    timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     &predictionFields
     priority real,
     PRIMARY KEY (id),
@@ -96,7 +98,7 @@ CREATE TABLE IF NOT EXISTS &schema.CNN_LABELCLASS (
 CREATE TABLE IF NOT EXISTS &schema.CNNSTATE (
     id uuid DEFAULT uuid_generate_v4(),
     cnn uuid NOT NULL,
-    timeCreated TIMESTAMP NOT NULL DEFAULT NOW(),
+    timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     stateDict bytea NOT NULL,
     PRIMARY KEY (id),
     FOREIGN KEY (cnn) REFERENCES &schema.CNN(id)

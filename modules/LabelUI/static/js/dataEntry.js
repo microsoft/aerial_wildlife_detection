@@ -17,6 +17,8 @@
         this._setup_markup();
         this._createImageEntry();
         this._parseLabels(properties);
+
+        this.startTime = new Date();
     }
 
     _setup_viewport() {
@@ -86,19 +88,28 @@
         this.predictions = {};
         this.annotations = {};
 
-        if(window.showPredictions || window.carryOverPredictions && properties.hasOwnProperty('predictions')) {
-            if(window.showPredictions) {
-                // add predictions as static, immutable objects
+        var hasAnnotations = (properties.hasOwnProperty('annotations') && Object.keys(properties['annotations']).length > 0);
+        var hasPredictions = (properties.hasOwnProperty('predictions') && Object.keys(properties['predictions']).length > 0);
+
+        if(window.showPredictions || window.carryOverPredictions && hasPredictions) {
+            if(window.showPredictions && !hasAnnotations) {
+                // add predictions as static, immutable objects (only if entry has not yet been screened by user)
                 for(var key in properties['predictions']) {
                     var prediction = new Annotation(key, properties['predictions'][key], 'prediction');
-                    this._addElement(prediction);
+                    if(prediction.confidence >= window.showPredictions_minConf) {
+                        this._addElement(prediction);
+                    }
                 }
             }
 
-            if(window.carryOverPredictions) {
-                // predictions need to be added to 'annotations' object; check if conversion
-                // required and convert accordingly. Also set annotation to "changed", since we
-                // assume the user to have verified the prediction.
+            if(window.carryOverPredictions && !hasAnnotations) {
+                /*
+                    No annotations present for entry (i.e., entry not yet screened by user):
+                    show an initial guess provided by the predictions. Convert predictions
+                    if required. Also set annotation to "changed", since we assume the user
+                    to have visually screened the provided converted predictions, even if they
+                    are unchanged (i.e., deemed correct by the user).
+                */
                 if(window.annotationType == 'labels') {
                     // need image-wide labels
                     if(window.predictionType == 'points' || window.predictionType == 'boundingBoxes') {
@@ -109,7 +120,7 @@
                             var argMax = null;
                             for(var key in properties['predictions']) {
                                 var predConf = properties['predictions'][key]['confidence'];
-                                if(predConf > maxConf) {
+                                if(predConf >= window.carryOverPredictions_minConf && predConf > maxConf) {
                                     maxConf = predConf;
                                     argMax = key;
                                 }
@@ -152,27 +163,34 @@
                     // remove width and height
                     for(var key in properties['predictions']) {
                         var props = properties['predictions'][key];
-                        delete props['width'];
-                        delete props['height'];
-                        var anno = new Annotation(window.getCurrentDateString(), props, 'annotation');
-                        this._addElement(anno);
+                        if(props['confidence'] >= window.carryOverPredictions_minConf) {
+                            delete props['width'];
+                            delete props['height'];
+                            var anno = new Annotation(window.getCurrentDateString(), props, 'annotation');
+                            this._addElement(anno);
+                        }
                     }
                 } else if(window.annotationType == 'boundingBoxes' && window.predictionType == 'points') {
                     // add default width and height
                     for(var key in properties['predictions']) {
                         var props = properties['predictions'][key];
-                        props['width'] = window.defaultBoxSize_w;
-                        props['height'] = window.defaultBoxSize_h;
-                        var anno = new Annotation(window.getCurrentDateString(), props, 'annotation');
-                        anno.setProperty('changed', true);
-                        this._addElement(anno);
+                        if(props['confidence'] >= window.carryOverPredictions_minConf) {
+                            props['width'] = window.defaultBoxSize_w;
+                            props['height'] = window.defaultBoxSize_h;
+                            var anno = new Annotation(window.getCurrentDateString(), props, 'annotation');
+                            anno.setProperty('changed', true);
+                            this._addElement(anno);
+                        }
                     }
                 } else if(window.annotationType == window.predictionType) {
                     // no conversion required
                     for(var key in properties['predictions']) {
-                        var anno = new Annotation(window.getCurrentDateString(), properties['predictions'][key], 'annotation');
-                        anno.setProperty('changed', true);
-                        this._addElement(anno);
+                        var props = properties['predictions'][key];
+                        if(props['confidence'] >= window.carryOverPredictions_minConf) {
+                            var anno = new Annotation(window.getCurrentDateString(), props, 'annotation');
+                            anno.setProperty('changed', true);
+                            this._addElement(anno);
+                        }
                     }
                 }
 
@@ -200,7 +218,6 @@
         var colSize = Math.round(12 / window.numImages_x);  // for bootstrap
         this.markup = $('<div class="entry box-shadow col-sm-' + colSize + '"></div>');
         this.markup.append(this.canvas);
-        var self = this;
     }
 
     getImageURI() {
@@ -208,11 +225,20 @@
     }
 
     getProperties(minimal, onlyUserAnnotations) {
-        var props = { 'id': this.entryID };
+        var props = {
+            'id': this.entryID,
+            'timeCreated': this.getTimeCreated().toISOString(),
+            'timeRequired': this.getTimeRequired()
+        };
         props['annotations'] = [];
         for(var key in this.annotations) {
             if(!onlyUserAnnotations || this.annotations[key].getChanged())
-                props['annotations'].push(this.annotations[key].getProperties(minimal));
+                var annoProps = this.annotations[key].getProperties(minimal);
+                // append time created and time required
+                annoProps['timeCreated'] = this.getTimeCreated();
+                var timeRequired = Math.max(0, this.annotations[key].getTimeChanged() - this.getTimeCreated());
+                annoProps['timeRequired'] = timeRequired;
+                props['annotations'].push(annoProps);
         }
         if(!minimal) {
             props['fileName'] = this.fileName;
@@ -224,6 +250,35 @@
             }
         }
         return props;
+    }
+
+    getTimeCreated() {
+        // returns the timestamp of the image having successfully loaded
+        return this.imageEntry.getTimeCreated();
+    }
+
+    getTimeRequired() {
+        // returns the difference between the last annotation's last changed
+        // timestamp and the time created
+        if(this.getTimeCreated() == null) return null;
+
+        var lastModified = -1;
+        for(var key in this.annotations) {
+            var nextTimeChanged = this.annotations[key].getTimeChanged();
+            if(nextTimeChanged == null) continue;
+            if(nextTimeChanged > lastModified) {
+                lastModified = nextTimeChanged;
+            }
+        }
+
+        return Math.max(0, lastModified - this.getTimeCreated());
+    }
+
+    setPredictionsVisible(visible) {
+        for(var key in this.predictions) {
+            this.predictions[key].setVisible(visible);
+        }
+        this.render();
     }
 
     render() {
@@ -272,16 +327,16 @@
 
     _addElement(element) {
         // allow only one label for classification entry
+        var key = element['annotationID'];
         if(element['type'] == 'annotation') {
             if(Object.keys(this.annotations).length > 0) {
                 // replace current annotation
-                var key = Object.keys(this.annotations)[0];
-                this.viewport.removeRenderElement(this.annotations[key]);
-                delete this.annotations[key];
+                var currentKey = Object.keys(this.annotations)[0];
+                this.viewport.removeRenderElement(this.annotations[currentKey]);
+                delete this.annotations[currentKey];
             }
 
             // add new annotation from existing
-            key = element['annotationID'];
             var anno = new Annotation(key, {'label':element['label']}, element['type']);
             this.annotations[key] = anno;
             this.viewport.addRenderElement(anno.getRenderElement());
@@ -326,6 +381,18 @@
             self.hoverTextElement.setProperty('text', null);
             self.render();
         });
+    }
+
+    setLabel(label) {
+        if(this.labelInstance == null) {
+            // add new annotation
+            var anno = new Annotation(window.getCurrentDateString(), {'label':label}, 'annotation');
+            this._addElement(anno);
+
+        } else {
+            this.labelInstance.setProperty('label', label);
+        }
+        this.render();
     }
 
     toggleUserLabel(forceRemove) {
@@ -464,7 +531,6 @@ class PointAnnotationEntry extends AbstractDataEntry {
 
     _canvas_mouseup(event) {
         var coords = this.viewport.getRelativeCoordinates(event, 'validArea');
-        console.log(coords)
         // check if another point is close-by
         var closest = this._getClosestPoint(coords);
         if(closest != null) {
