@@ -157,6 +157,13 @@ class ImageViewport {
         this.ctx.fillStyle = window.styles.background;
         this.ctx.fillRect(0, 0, extent[2], extent[3]);
 
+        // show loading text
+        var loadingText = 'loading...';
+        this.ctx.font = '20px sans-serif';
+        var dimensions = this.ctx.measureText(loadingText);
+        this.ctx.fillStyle = '#FFFFFF';
+        this.ctx.fillText(loadingText, this.canvas[0].width/2 - dimensions.width/2, this.canvas[0].height/2);
+
         // iterate through render stack
         var self = this;
         var scaleFun = function(coords, target) {
