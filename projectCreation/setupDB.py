@@ -6,6 +6,7 @@
 '''
 
 import os
+import argparse
 from util.configDef import Config
 from modules import Database, UserHandling
 
@@ -30,9 +31,9 @@ def _constructAnnotationFields(annoType, table, doublePrecision=False):
 
     if annoType == 'labels':
         annoFields = '''
-            labelclass uuid &labelclassNotNull,
+            label uuid &labelclassNotNull,
             confidence real,
-            FOREIGN KEY (labelclass) REFERENCES &schema.LABELCLASS(id),
+            FOREIGN KEY (label) REFERENCES &schema.LABELCLASS(id),
         '''
     
     elif annoType == 'points':
@@ -41,7 +42,7 @@ def _constructAnnotationFields(annoType, table, doublePrecision=False):
             confidence real,
             x {},
             y {},
-            FOREIGN KEY (labelclass) REFERENCES &schema.LABELCLASS(id),
+            FOREIGN KEY (label) REFERENCES &schema.LABELCLASS(id),
         '''.format(coordType, coordType)
 
     elif annoType == 'boundingBoxes':
@@ -52,7 +53,7 @@ def _constructAnnotationFields(annoType, table, doublePrecision=False):
             y {},
             width {},
             height {},
-            FOREIGN KEY (labelclass) REFERENCES &schema.LABELCLASS(id),
+            FOREIGN KEY (label) REFERENCES &schema.LABELCLASS(id),
         '''.format(coordType, coordType, coordType, coordType)
 
     elif annoType == 'segmentationMasks':
@@ -72,7 +73,13 @@ def _constructAnnotationFields(annoType, table, doublePrecision=False):
 if __name__ == '__main__':
 
     # setup
-    config = Config()
+    parser = argparse.ArgumentParser(description='Run CV4Wildlife AL Service.')
+    parser.add_argument('--settings_filepath', type=str, default='config/settings.ini', const=1, nargs='?',
+                    help='Directory of the settings.ini file used for this machine (default: "config/settings.ini").')
+    args = parser.parse_args()
+
+
+    config = Config(args.settings_filepath)
     dbConn = Database(config)
     if dbConn.conn is None:
         raise Exception('Error connecting to database.')

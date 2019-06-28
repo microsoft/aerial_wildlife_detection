@@ -106,10 +106,14 @@ class LabelUI():
                 except:
                     limit = None
                 try:
+                    order = int(request.query['order'])
+                except:
+                    order = 'unlabeled'
+                try:
                     subset = int(request.query['subset'])
                 except:
-                    subset = 'preferUnlabeled'
-                json = self.middleware.getNextBatch(username=username, subset=subset, limit=limit)
+                    subset = 'default'  
+                json = self.middleware.getNextBatch(username=username, order=order, subset=subset, limit=limit)
                 return json
             else:
                 abort(401, 'not logged in')

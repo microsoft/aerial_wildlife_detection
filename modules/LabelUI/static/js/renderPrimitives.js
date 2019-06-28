@@ -6,6 +6,7 @@ class AbstractRenderElement {
         this.isActive = false;
         this.changed = false;   // will be set to true if user modifies the initial geometry
         this.lastUpdated = new Date();  // timestamp of last update
+        this.isValid = true;    // set to false by instances that are missing required properties (e.g. coordinates)
         this.visible = true;
     }
 
@@ -13,8 +14,13 @@ class AbstractRenderElement {
         this[propertyName] = value;
 
         // set to user-modified
-        this.changed = true;
-        this.lastUpdated = new Date();
+        if(!['id', 'isActive', 'visible', 'zIndex'].includes(propertyName)) {
+            this.changed = true;
+            this.lastUpdated = new Date();
+        } else {
+            //TODO: find out relevant elements to mark as changed
+            console.log(propertyName)
+        }
     }
 
     getGeometry() {
@@ -63,6 +69,14 @@ class ElementGroup extends AbstractRenderElement {
         var idx = this.elements.indexOf(element);
         if(idx !== -1) {
             this.elements.splice(idx, 1);
+        }
+    }
+
+    setVisible(visible) {
+        super.setVisible(visible);
+
+        for(var e=0; e<this.elements.length; e++) {
+            this.elements[e].setVisible(visible);
         }
     }
 
@@ -133,11 +147,15 @@ class ImageElement extends AbstractRenderElement {
 
 class HoverTextElement extends AbstractRenderElement {
 
-    constructor(id, hoverText, position, reference, zIndex) {
+    constructor(id, hoverText, position, reference, fillColor, textColor, strokeColor, lineWidth, zIndex) {
         super(id, zIndex);
         this.text = hoverText;
         this.position = position;
         this.reference = reference;
+        this.fillColor = fillColor;
+        this.textColor = textColor;
+        this.strokeColor = strokeColor;
+        this.lineWidth = lineWidth;
     }
 
     render(ctx, viewport, limits, scaleFun) {
@@ -149,12 +167,16 @@ class HoverTextElement extends AbstractRenderElement {
         dimensions.height = window.styles.hoverText.box.height;
         dimensions = [dimensions.width + 8, dimensions.height];
         var offsetH = window.styles.hoverText.offsetH;
-        ctx.fillStyle = window.styles.hoverText.box.fill;
-        ctx.fillRect(offsetH+hoverPos[0]-4, hoverPos[1]-(dimensions[1]/2+4), dimensions[0]+4, dimensions[1]+4);
-        ctx.strokeStyle = window.styles.hoverText.box.stroke.color;
-        ctx.lineWidth = window.styles.hoverText.box.stroke.lineWidth;
-        ctx.strokeRect(offsetH+hoverPos[0]-4, hoverPos[1]-(dimensions[1]/2+4), dimensions[0]+4, dimensions[1]+4);
-        ctx.fillStyle = window.styles.hoverText.text.color;
+        if(this.fillColor != null) {
+            ctx.fillStyle = this.fillColor;
+            ctx.fillRect(offsetH+hoverPos[0]-4, hoverPos[1]-(dimensions[1]/2+4), dimensions[0]+4, dimensions[1]+4);
+        }
+        if(this.strokeColor != null && this.lineWidth != null) {
+            ctx.strokeStyle = this.strokeColor;
+            ctx.lineWidth = this.lineWidth;
+            ctx.strokeRect(offsetH+hoverPos[0]-4, hoverPos[1]-(dimensions[1]/2+4), dimensions[0]+4, dimensions[1]+4);
+        }
+        ctx.fillStyle = this.textColor;
         ctx.fillText(this.text, offsetH+hoverPos[0], hoverPos[1]);
     }
 }
@@ -169,6 +191,8 @@ class PointElement extends AbstractRenderElement {
         this.y = y;
         this.color = color;
         this.size = size;
+
+        this.isValid = (x != null && y != null);
     }
 
     //TODO: add interactions
@@ -176,7 +200,8 @@ class PointElement extends AbstractRenderElement {
     getGeometry() {
         return {
             'type': 'point',
-            'coordinates': [this.x, this.y]
+            'x': this.x,
+            'y': this.y
         };
     }
 
@@ -213,6 +238,8 @@ class LineElement extends AbstractRenderElement {
         this.strokeColor = strokeColor;
         this.lineWidth = lineWidth;
         this.lineDash = (lineDash == null? [] : lineDash);
+
+        this.isValid = (startX != null && startY != null && endX != null && endY != null);
     }
 
     //TODO: add interactions
@@ -220,7 +247,10 @@ class LineElement extends AbstractRenderElement {
     getGeometry() {
         return {
             'type': 'line',
-            'coordinates': [this.startX, this.startY, this.endX, this.endY]
+            'startX': this.startX,
+            'startY': this.startY,
+            'endX': this.endX,
+            'endY': this.endY
         };
     }
 
@@ -257,13 +287,17 @@ class RectangleElement extends PointElement {
         this.lineWidth = lineWidth;
         this.lineDash = (lineDash == null? [] : lineDash);
 
+        this.isValid = (x != null && y != null && width != null && height != null);
         this.isActive = false;
     }
 
     getGeometry() {
         return {
             'type': 'rectangle',
-            'coordinates': [this.x, this.y, this.width, this.height]
+            'x': this.x,
+            'y': this.y,
+            'width': this.width,
+            'height': this.height
         };
     }
 
@@ -394,7 +428,7 @@ class RectangleElement extends PointElement {
     
     /* interaction events */
     _click_event(event, viewport) {
-        if(window.interfaceControls.action != window.interfaceControls.actions.DO_NOTHING) return;
+        if(!this.visible || window.interfaceControls.action != window.interfaceControls.actions.DO_NOTHING) return;
         var mousePos = viewport.getRelativeCoordinates(event, 'validArea');
         this.activeHandle = this.getClosestHandle(mousePos, window.annotationProximityTolerance / Math.min(viewport.canvas.width(), viewport.canvas.height()));
         if(this.activeHandle == null) {
@@ -407,9 +441,15 @@ class RectangleElement extends PointElement {
     }
 
     _mousedown_event(event, viewport) {
+        if(!this.visible) return;
         this.mousePos_current = viewport.getRelativeCoordinates(event, 'validArea');
         this.mouseDrag = true;
         this.activeHandle = this.getClosestHandle(this.mousePos_current, window.annotationProximityTolerance / Math.min(viewport.canvas.width(), viewport.canvas.height()));
+        if(this.activeHandle === 'c') {
+            // center of a box clicked; set globally so that other active boxes don't falsely resize
+            window.centerBoxActive = true;
+            viewport.canvas.css('cursor', 'move');
+        }
     }
 
     _mousemove_event(event, viewport) {
@@ -419,13 +459,24 @@ class RectangleElement extends PointElement {
             - if drag and close to resize handle: resize rectangle and move resize handles
             - if drag and inside rectangle: move rectangle and resize handles
         */
+        if(!this.visible) return;
+
         var coords = viewport.getRelativeCoordinates(event, 'validArea');
         if(this.mousePos_current == null) {
             this.mousePos_current = coords;
         }
         var mpc = this.mousePos_current;
         var extent = this.getExtent();
-        if(this.mouseDrag && this.activeHandle != null) {
+
+        if(window.centerBoxActive != null && window.centerBoxActive && this.mouseDrag) {
+            // clicked somewhere in a center of a box; move instead of resize
+            this.setProperty('x', this.x + coords[0] - mpc[0]);
+            this.setProperty('y', this.y + coords[1] - mpc[1]);
+
+            // update timestamp
+            this.lastUpdated = new Date();
+
+        } else if(this.mouseDrag && this.activeHandle != null) {
             // move or resize rectangle
             if(this.activeHandle.includes('w')) {
                 var width = extent[2] - mpc[0];
@@ -478,7 +529,7 @@ class RectangleElement extends PointElement {
         this._updateResizeHandles();
 
         // update cursor
-        if(this.activeHandle == null) {
+        if(window.interfaceControls.action === window.interfaceControls.actions.ADD_ANNOTATION || this.activeHandle == null) {
             viewport.canvas.css('cursor', 'crosshair');     //TODO: default cursor?
         } else if(this.activeHandle == 'c') {
             viewport.canvas.css('cursor', 'move');
@@ -495,6 +546,8 @@ class RectangleElement extends PointElement {
 
     _mouseup_event(event, viewport) {
         this.mouseDrag = false;
+        window.centerBoxActive = false;
+        viewport.canvas.css('cursor', 'crosshair');
     }
 
 
@@ -551,6 +604,16 @@ class RectangleElement extends PointElement {
     }
 
 
+    setVisible(visible) {
+        super.setVisible(visible);
+
+        // also propagate to resize handles (if available)
+        if(this.resizeHandles != null) {
+            this.resizeHandles.setVisible(visible);
+        }
+    }
+
+
     render(ctx, viewport, limits, scaleFun) {
         if(!this.visible || this.x == null || this.y == null) return;
 
@@ -589,7 +652,7 @@ class BorderStrokeElement extends AbstractRenderElement {
 
     render(ctx, viewport, limits, scaleFun) {
         super.render(ctx, viewport, limits, scaleFun);
-        if(this.color == null) return;
+        if(!this.visible || this.color == null) return;
         var coords = scaleFun([0,0,1,1], 'canvas');
         ctx.strokeStyle = this.color;
         ctx.lineWidth = this.lineWidth;
@@ -628,7 +691,7 @@ class ResizeHandle extends AbstractRenderElement {
 
     render(ctx, viewport, limits, scaleFun) {
         super.render(ctx, viewport, limits, scaleFun);
-        if(this.x == null || this.y == null) return;
+        if(!this.visible || this.x == null || this.y == null) return;
 
         var coords = [this.x, this.y];
 

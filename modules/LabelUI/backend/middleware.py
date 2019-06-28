@@ -25,6 +25,8 @@ class DBMiddleware():
 
     def _fetchProjectSettings(self):
         self.projectSettings = {
+            'projectName': self.config.getProperty('Project', 'projectName'),
+            'projectDescription': self.config.getProperty('Project', 'projectDescription'),
             'dataServerURI': self.config.getProperty('LabelUI', 'dataServer_uri'),
             'dataType': self.config.getProperty('Project', 'dataType'),
             'minObjSize': self.config.getProperty('Project', 'minObjSize'),
@@ -63,19 +65,20 @@ class DBMiddleware():
 
             # parse annotations and predictions
             entryID = str(b['id'])
-            colnames = self.sqlBuilder.getColnames(b['ctype'])
-            entry = {}
-            for c in colnames:
-                value = b[c]
-                if isinstance(value, datetime):
-                    value = value.timestamp()
-                elif isinstance(value, UUID):
-                    value = str(value)
-                entry[c] = value
-            if b['ctype'] == 'annotation':
-                response[imgID]['annotations'][entryID] = entry
-            elif b['ctype'] == 'prediction':
-                response[imgID]['predictions'][entryID] = entry
+            if b['ctype'] is not None:
+                colnames = self.sqlBuilder.getColnames(b['ctype'])
+                entry = {}
+                for c in colnames:
+                    value = b[c]
+                    if isinstance(value, datetime):
+                        value = value.timestamp()
+                    elif isinstance(value, UUID):
+                        value = str(value)
+                    entry[c] = value
+                if b['ctype'] == 'annotation':
+                    response[imgID]['annotations'][entryID] = entry
+                elif b['ctype'] == 'prediction':
+                    response[imgID]['predictions'][entryID] = entry
         
         return response
 
@@ -115,20 +118,21 @@ class DBMiddleware():
         sql = self.sqlBuilder.getFixedImagesQueryString()
 
         #TODO: username
-        cursor = self.dbConnector.execute_cursor(sql, tuple([UUID(d) for d in data]))
+        cursor = self.dbConnector.execute_cursor(sql, (tuple(UUID(d) for d in data), username,))
 
         # parse results
         try:
             response = self._assemble_annotations(cursor)
         finally:
             cursor.close()
+        return { 'entries': response }
     
-    def getNextBatch(self, username, subset, limit=None):
+    def getNextBatch(self, username, order='unlabeled', subset='default', limit=None):
         '''
             TODO: description
         '''
         # query
-        sql = self.sqlBuilder.getNextBatchQueryString(subset)
+        sql = self.sqlBuilder.getNextBatchQueryString(order, subset)
 
         # limit (TODO: make 128 a hyperparameter)
         if limit is None:
@@ -136,7 +140,7 @@ class DBMiddleware():
         else:
             limit = min(int(limit), 128)
 
-        cursor = self.dbConnector.execute_cursor(sql, (username,limit,))
+        cursor = self.dbConnector.execute_cursor(sql, (username,limit,username,))
 
         # parse results
         try:

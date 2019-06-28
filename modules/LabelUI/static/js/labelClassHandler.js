@@ -16,7 +16,11 @@ class LabelClass {
 
     getMarkup() {
         var self = this;
-        var markup = $('<div class="label-class-legend col-sm-3 legend-inactive" id="labelLegend_'+this.classID+'" style="background:' + this.color + '"><span class="label-text">'+this.name+'</span></div>');
+        var name = this.name;
+        if(this.index >= 0 && this.index < 9) {
+            name = '(' + (this.index+1) + ') ' + this.name;
+        }
+        var markup = $('<div class="label-class-legend col-sm-3 legend-inactive" id="labelLegend_'+this.classID+'" style="background:' + this.color + '"><span class="label-text">'+name+'</span></div>');
 
         // setup click handler to activate label class
         markup.click(function() {
@@ -94,15 +98,15 @@ class LabelClassHandler {
     }
 
     getActiveClassID() {
-        return this.activeClass['classID'];
+        return (this.activeClass == null? null : this.activeClass['classID']);
     }
 
     getActiveClassName() {
-        return this.activeClass['name'];
+        return (this.activeClass == null? null : this.activeClass['name']);
     }
 
     getActiveColor() {
-        return this.activeClass['color'];
+        return (this.activeClass == null? null : this.activeClass['color']);
     }
 
     getColor(classID) {
@@ -118,7 +122,7 @@ class LabelClassHandler {
     }
 
     getName(classID) {
-        return this.labelClasses[classID]['name'];
+        return (classID == null || !this.labelClasses.hasOwnProperty(classID)? null : this.labelClasses[classID]['name']);
     }
 
     setActiveClass(labelClassInstance) {

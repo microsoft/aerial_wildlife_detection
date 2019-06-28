@@ -27,6 +27,9 @@ class DataHandler {
             $(window).keyup(function(event) {
                 if(String.fromCharCode(event.which) === 'A') {
                     self.assignLabelToAll();
+                } else if(event.which === 46) {
+                    // Del key; remove all active annotations
+                    self.removeActiveAnnotations();
                 }
             });
 
@@ -47,9 +50,12 @@ class DataHandler {
             $(window).keyup(function(event) {
                 var key = String.fromCharCode(event.which);
                 if(key === '+' || key === 'W') {
-                    window.interfaceControls.action = WINDOW.interfaceControls.ACTIONS.ADD_ANNOTATION;
+                    window.interfaceControls.action = window.interfaceControls.actions.ADD_ANNOTATION;
                 } else if(key === '-' || key === 'R') {
-                    window.interfaceControls.action = WINDOW.interfaceControls.ACTIONS.REMOVE_ANNOTATIONS;
+                    window.interfaceControls.action = window.interfaceControls.actions.REMOVE_ANNOTATIONS;
+                } else if(event.which === 46) {
+                    // Del key; remove all active annotations
+                    self.removeActiveAnnotations();
                 }
             });
         }
@@ -75,15 +81,22 @@ class DataHandler {
         });
 
 
-        // hide predictions if shift key held down
+        // hide predictions (annotations) if shift (ctrl) key held down
         $(window).keydown(function(event) {
             if(event.which === 16) {
                 self.setPredictionsVisible(false);
+            } else if(event.which === 17) {
+                self.setAnnotationsVisible(false);
             }
         });
         $(window).keyup(function(event) {
             if(event.which === 16) {
                 self.setPredictionsVisible(true);
+            } else if(event.which === 17) {
+                self.setAnnotationsVisible(true);
+            } else if(event.which === 27) {
+                // Esc key; cancel ongoing operation
+                window.interfaceControls.action = window.interfaceControls.actions.DO_NOTHING;
             }
         });
     }
@@ -111,10 +124,25 @@ class DataHandler {
         }
     }
 
+    removeActiveAnnotations() {
+        if(window.annotationType == 'labels') {
+            this.clearLabelInAll();
+        } else {
+            for(var i=0; i<this.dataEntries.length; i++) {
+                this.dataEntries[i].removeActiveAnnotations();
+            }
+        }
+    }
 
     setPredictionsVisible(visible) {
         for(var i=0; i<this.dataEntries.length; i++) {
             this.dataEntries[i].setPredictionsVisible(visible);
+        }
+    }
+
+    setAnnotationsVisible(visible) {
+        for(var i=0; i<this.dataEntries.length; i++) {
+            this.dataEntries[i].setAnnotationsVisible(visible);
         }
     }
 
@@ -123,7 +151,7 @@ class DataHandler {
         var self = this;
 
         //TODO: subset
-        var url = 'getLatestImages?subset=preferUnlabeled&limit=' + this.numImagesPerBatch;
+        var url = 'getLatestImages?order=unlabeled&subset=default&limit=' + this.numImagesPerBatch;
         $.ajax({
             url: url,
             dataType: 'json',
@@ -178,7 +206,7 @@ class DataHandler {
 
     submitAnnotations() {
         var self = this;
-        var entries = this._entriesToJSON(true, true);
+        var entries = this._entriesToJSON(true, false);
         $.ajax({
             url: 'submitAnnotations',
             type: 'POST',
@@ -239,17 +267,17 @@ class DataHandler {
                 self.parentDiv.empty();
                 self.dataEntries = [];
 
-                for(var d in data['entries']) {
-                    // create new data entry
+                for(var d in prevBatch) {
+                    var entryID = prevBatch[d];
                     switch(String(window.annotationType)) {
                         case 'labels':
-                            var entry = new ClassificationEntry(d, data['entries'][d]);
+                            var entry = new ClassificationEntry(entryID, data['entries'][entryID]);
                             break;
                         case 'points':
-                            var entry = new PointAnnotationEntry(d, data['entries'][d]);
+                            var entry = new PointAnnotationEntry(entryID, data['entries'][entryID]);
                             break;
                         case 'boundingBoxes':
-                            var entry = new BoundingBoxAnnotationEntry(d, data['entries'][d]);
+                            var entry = new BoundingBoxAnnotationEntry(entryID, data['entries'][entryID]);
                             break;
                         default:
                             break;

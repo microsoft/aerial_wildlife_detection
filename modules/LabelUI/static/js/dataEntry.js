@@ -39,6 +39,7 @@
     }
 
     _addElement(element) {
+        if(!element.isValid()) return;
         var key = element['annotationID'];
         if(element['type'] == 'annotation') {
             this.annotations[key] = element;
@@ -197,7 +198,7 @@
             }
         }
 
-        if(properties.hasOwnProperty('annotations')) {
+        if(hasAnnotations) {
             for(var key in properties['annotations']) {
                 //TODO: make more failsafe?
                 var annotation = new Annotation(key, properties['annotations'][key], 'annotation');
@@ -281,6 +282,23 @@
         this.render();
     }
 
+    setAnnotationsVisible(visible) {
+        for(var key in this.annotations) {
+            this.annotations[key].setVisible(visible);
+        }
+        this.render();
+    }
+
+    removeActiveAnnotations() {
+        for(var key in this.annotations) {
+            if(this.annotations[key].isActive()) {
+                this.annotations[key].setActive(false, this.viewport);
+                this._removeElement(this.annotations[key]);
+            }
+        }
+        this.render();
+    }
+
     render() {
         this.viewport.render();
     }
@@ -353,7 +371,12 @@
         super._setup_markup();
         $(this.canvas).css('cursor', 'pointer');
 
-        this.hoverTextElement = new HoverTextElement(this.entryID + '_hoverText', null, null, 'validArea', 5);
+        this.hoverTextElement = new HoverTextElement(this.entryID + '_hoverText', null, null, 'validArea',
+            window.styles.hoverText.box.fill,
+            window.styles.hoverText.text.color,
+            window.styles.hoverText.box.stroke.color,
+            window.styles.hoverText.box.stroke.lineWidth,
+            5);
         this.viewport.addRenderElement(this.hoverTextElement);
 
         // click handler
@@ -367,11 +390,14 @@
             self.hoverTextElement.position = pos;
             if(event.altKey) {
                 self.hoverTextElement.setProperty('text', 'mark as unlabeled');
+                self.hoverTextElement.setProperty('fillColor', window.styles.hoverText.box.fill);
             }
             if(self.labelInstance == null) {
                 self.hoverTextElement.setProperty('text', 'set label to "' + window.labelClassHandler.getActiveClassName() + '"');
+                self.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getActiveColor());
             } else if(self.labelInstance.label != window.labelClassHandler.getActiveClassID()) {
                 self.hoverTextElement.setProperty('text', 'change label to "' + window.labelClassHandler.getActiveClassName() + '"');
+                self.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getActiveColor());
             } else {
                 self.hoverTextElement.setProperty('text', null);
             }
@@ -454,7 +480,8 @@ class PointAnnotationEntry extends AbstractDataEntry {
         var self = this;
         super._setup_markup();
 
-        this.hoverTextElement = new HoverTextElement(this.entryID + '_hoverText', null, null, 'validArea', 5);
+        this.hoverTextElement = new HoverTextElement(this.entryID + '_hoverText', null, [0, 0.99], 'canvas',
+            null, window.styles.hoverText.text.color, null, null, 5);
         this.viewport.addRenderElement(this.hoverTextElement);
 
         // interaction handlers
@@ -508,7 +535,7 @@ class PointAnnotationEntry extends AbstractDataEntry {
     _canvas_mousein(event) {
         var coords = this.viewport.getRelativeCoordinates(event, 'validArea');
         this.hoverTextElement.setProperty('text', null);
-        this.hoverTextElement.setProperty('position', coords);
+        // this.hoverTextElement.setProperty('position', coords);
 
         // check if another point is close-by and show message
         var closest = this._getClosestPoint(coords);
@@ -516,8 +543,10 @@ class PointAnnotationEntry extends AbstractDataEntry {
             // point found
             if(event.altKey) {
                 this.hoverTextElement.setProperty('text', 'remove point');
+                this.hoverTextElement.setProperty('fillColor', window.styles.hoverText.box.fill);
             } else if(closest['label'] != window.labelClassHandler.getActiveClassID()) {
                 this.hoverTextElement.setProperty('text', 'change to "' + window.labelClassHandler.getActiveClassName() + '"');
+                this.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getActiveColor());
             }
         }
         this.render();
@@ -587,7 +616,9 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
         super._setup_markup();
         this.canvas.css('cursor', 'pointer');
 
-        this.hoverTextElement = new HoverTextElement(this.entryID + '_hoverText', null, null, 'canvas', 5);
+        this.hoverTextElement = new HoverTextElement(this.entryID + '_hoverText', null, [0, 0.99], 'canvas',
+            null, window.styles.hoverText.text.color, null, null,
+            5);
         this.viewport.addRenderElement(this.hoverTextElement);
 
         // interaction handlers
@@ -629,11 +660,15 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
                 }
                 if(!(event.shiftKey && this.annotations[key].isActive())) {
                     // deactivate
-                    this.annotations[key].setActive(false, this.viewport);
+                    if(this.annotations[key].isVisible()) {
+                        this.annotations[key].setActive(false, this.viewport);
+                    }
                 }
             } else if(!event.shiftKey) {
                 // bbox outside and no shift key; deactivate
-                this.annotations[key].setActive(false, this.viewport);
+                if(this.annotations[key].isVisible()) {
+                    this.annotations[key].setActive(false, this.viewport);
+                }
             }
         }
 
@@ -641,9 +676,11 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
         if(argMin == null) {
             // deactivate all
             for(var key in this.annotations) {
-                this.annotations[key].setActive(false, this.viewport);
+                if(this.annotations[key].isVisible()) {
+                    this.annotations[key].setActive(false, this.viewport);
+                }
             }
-        } else {
+        } else if(this.annotations[argMin].isVisible()) {
             // set closest one active
             this.annotations[argMin].setActive(true, this.viewport);
         }
@@ -713,6 +750,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
                                 1);
             this.crosshairLines = new ElementGroup(this.entryID + '_crosshairLines', [vertLine, horzLine], 1);
             this.viewport.addRenderElement(this.crosshairLines);
+            this.canvas.css('cursor', 'crosshair');
 
         } else {
             if(visible) {
@@ -721,10 +759,12 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
                 this.crosshairLines.elements[0].setProperty('endX', coords[0]);
                 this.crosshairLines.elements[1].setProperty('startY', coords[1]);
                 this.crosshairLines.elements[1].setProperty('endY', coords[1]);
+                this.canvas.css('cursor', 'crosshair');
             } else {
                 // remove
                 this.viewport.removeRenderElement(this.crosshairLines);
                 this.crosshairLines = null;
+                this.canvas.css('cursor', 'pointer');
             }
         }
     }
@@ -736,7 +776,9 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
         if(window.interfaceControls.action == window.interfaceControls.actions.ADD_ANNOTATION) {
             // set all currently active boxes inactive
             for(var key in this.annotations) {
-                this.annotations[key].setActive(false, this.viewport);
+                if(this.annotations[key].isVisible()) {
+                    this.annotations[key].setActive(false, this.viewport);
+                }
             }
 
             // start creating a new bounding box
@@ -756,6 +798,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
         switch(window.interfaceControls.action) {
             case window.interfaceControls.actions.ADD_ANNOTATION:
                 hoverText = 'add new \"' + window.labelClassHandler.getActiveClassName() + '"';
+                this.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getActiveColor());
                 break;
             case window.interfaceControls.actions.REMOVE_ANNOTATIONS:
                 var numActive = 0;
@@ -765,6 +808,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
                 if(numActive>0) {
                     hoverText = 'Remove ' + numActive + ' annotation';
                     if(numActive>1) hoverText += 's';
+                    this.hoverTextElement.setProperty('fillColor', window.styles.hoverText.box.fill);
                 }
                 break;
             case window.interfaceControls.actions.DO_NOTHING:
@@ -773,12 +817,13 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
                     if(this.annotations[key].isActive() && 
                         this.annotations[key].label != window.labelClassHandler.getActiveClassID()) {
                         hoverText = 'Change label to "' + window.labelClassHandler.getActiveClassName() + '"';
+                        this.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getActiveColor());
                         break;
                     }
                 }
                 break;
         }
-        this.hoverTextElement.setProperty('position', coords);
+        // this.hoverTextElement.setProperty('position', coords);
         this.hoverTextElement.setProperty('text', hoverText);
 
         this.render();

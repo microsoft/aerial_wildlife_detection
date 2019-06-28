@@ -62,6 +62,8 @@ from modules import Database
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Parse YOLO annotations and import into database.')
+    parser.add_argument('--settings_filepath', type=str, default='config/settings.ini', const=1, nargs='?',
+                    help='Directory of the settings.ini file used for this machine (default: "config/settings.ini").')
     parser.add_argument('--labelFolder', type=str, default='/datadrive/hfaerialblobs/bkellenb/predictions/A/sde-A_20180921A/labels', const=1, nargs='?',
                     help='Directory (absolute path) on this machine that contains the YOLO label text files.')
     parser.add_argument('--annotationType', type=str, default='prediction', const=1, nargs='?',
@@ -71,17 +73,21 @@ if __name__ == '__main__':
     parser.add_argument('--skipMismatches', type=bool, default=False, const=1, nargs='?',
                     help='Ignore label files without a corresponding image (default: False).')
     args = parser.parse_args()
-
+    
 
     # setup
     print('Setup...')
-    if not args.labelFolder.endswith('/'):
+
+    if args.labelFolder == '':
+        args.labelFolder = None
+
+    if args.labelFolder is not None and not args.labelFolder.endswith('/'):
         args.labelFolder += '/'
 
     currentDT = datetime.datetime.now()
     currentDT = '{}-{}-{} {}:{}:{}'.format(currentDT.year, currentDT.month, currentDT.day, currentDT.hour, currentDT.minute, currentDT.second)
 
-    config = Config()
+    config = Config(args.settings_filepath)
     dbConn = Database(config)
     if dbConn.conn is None:
         raise Exception('Error connecting to database.')
@@ -93,63 +99,64 @@ if __name__ == '__main__':
     if not os.path.isdir(imgBaseDir):
         raise Exception('"{}" is not a valid directory on this machine. Are you running the script from the file server?'.format(imgBaseDir))
 
-    if not os.path.isdir(args.labelFolder):
+    if args.labelFolder is not None and not os.path.isdir(args.labelFolder):
         raise Exception('"{}" is not a valid directory on this machine.'.format(args.labelFolder))
 
 
     # parse class names and indices
-    classdef = {}
-    with open(os.path.join(args.labelFolder, 'classes.txt'),'r') as f:
-        lines = f.readlines()
-    for idx, line in enumerate(lines):
-        className = line.strip()
+    if args.labelFolder is not None:
+        classdef = {}
+        with open(os.path.join(args.labelFolder, 'classes.txt'),'r') as f:
+            lines = f.readlines()
+        for idx, line in enumerate(lines):
+            className = line.strip()
 
-        # push to database
-        dbConn.execute('''
-            INSERT INTO {}.LABELCLASS (name)
-            VALUES (
+            # push to database
+            dbConn.execute('''
+                INSERT INTO {}.LABELCLASS (name)
+                VALUES (
+                    %s
+                )
+            '''.format(dbSchema),
+            (className,))
+
+            # get newly assigned index
+            returnVal = dbConn.execute('''
+                SELECT id FROM {}.LABELCLASS WHERE name LIKE %s'''.format(dbSchema),
+            (className+'%',),
+            1)
+            classdef[idx] = returnVal[0]['id']
+
+
+        # prepare insertion SQL string
+        if args.annotationType == 'annotation':
+            sql = '''
+            INSERT INTO {}.ANNOTATION (username, image, timeCreated, timeRequired, label, x, y, width, height)
+            VALUES(
+                {},
+                (SELECT id FROM {}.IMAGE WHERE filename LIKE %s),
+                (TIMESTAMP %s),
+                -1,
+                %s,
+                %s,
+                %s,
+                %s,
                 %s
-            )
-        '''.format(dbSchema),
-        (className,))
-
-        # get newly assigned index
-        returnVal = dbConn.execute('''
-            SELECT id FROM {}.LABELCLASS WHERE name LIKE %s'''.format(dbSchema),
-        (className+'%',),
-        1)
-        classdef[idx] = returnVal[0]['id']
-
-
-    # prepare insertion SQL string
-    if args.annotationType == 'annotation':
-        sql = '''
-        INSERT INTO {}.ANNOTATION (username, image, timeCreated, timeRequired, label, x, y, width, height)
-        VALUES(
-            {},
-            (SELECT id FROM {}.IMAGE WHERE filename LIKE %s),
-            (TIMESTAMP %s),
-            -1,
-            %s,
-            %s,
-            %s,
-            %s,
-            %s
-        )'''.format(dbSchema, dbSchema, config.getProperty('Database', 'adminName'))
-    elif args.annotationType == 'prediction':
-        sql = '''
-        INSERT INTO {}.PREDICTION (image, timeCreated, label, confidence, x, y, width, height, priority)
-        VALUES(
-            (SELECT id FROM {}.IMAGE WHERE filename LIKE %s),
-            (TIMESTAMP %s),
-            %s,
-            %s,
-            %s,
-            %s,
-            %s,
-            %s,
-            %s
-        )'''.format(dbSchema, dbSchema)
+            )'''.format(dbSchema, dbSchema, config.getProperty('Database', 'adminName'))
+        elif args.annotationType == 'prediction':
+            sql = '''
+            INSERT INTO {}.PREDICTION (image, timeCreated, label, confidence, x, y, width, height, priority)
+            VALUES(
+                (SELECT id FROM {}.IMAGE WHERE filename LIKE %s),
+                (TIMESTAMP %s),
+                %s,
+                %s,
+                %s,
+                %s,
+                %s,
+                %s,
+                %s
+            )'''.format(dbSchema, dbSchema)
 
     # locate all images and their base names
     print('\nAdding image paths...')
@@ -169,64 +176,65 @@ if __name__ == '__main__':
 
     
     # locate all label files
-    print('\nAdding labels...')
-    labelFiles = glob.glob(os.path.join(args.labelFolder, '*.txt'))
-    for l in tqdm(labelFiles):
+    if args.labelFolder is not None:
+        print('\nAdding labels...')
+        labelFiles = glob.glob(os.path.join(args.labelFolder, '*.txt'))
+        for l in tqdm(labelFiles):
 
-        if 'classes.txt' in l:
-            continue
-
-        l = l.replace(args.labelFolder, '')
-        tokens = l.split('.')
-        baseName = l.replace('.' + tokens[-1],'')
-
-        # load matching image
-        if not baseName in imgs:
-            if args.skipMismatches:
+            if 'classes.txt' in l:
                 continue
-            else:
-                raise ValueError('Label file {} has no associated image'.format(l))
-        imgPath = os.path.join(imgBaseDir, imgs[baseName])
-        img = Image.open(imgPath)
-        sz = img.size
 
-        # load labels
-        labelPath = os.path.join(args.labelFolder, l)
-        with open(labelPath, 'r') as f:
-            lines = f.readlines()
+            l = l.replace(args.labelFolder, '')
+            tokens = l.split('.')
+            baseName = l.replace('.' + tokens[-1],'')
 
-        # parse annotations
-        labels = []
-        bboxes = []
-        if len(lines):
-            for line in lines:
-                tokens = line.strip().split(' ')
-                label = int(tokens[0])
-                labels.append(label)
-                bbox = [float(t) for t in tokens[1:5]]
-                bboxes.append(bbox)
-            
-                # push to database
-                if args.annotationType == 'annotation':
-                    dbConn.execute(sql,
-                        (baseName+'%', currentDT, classdef[label], bbox[0], bbox[1], bbox[2], bbox[3]))
-                        
-                elif args.annotationType == 'prediction':
-                    # calculate additional properties
-                    maxConf = None
-                    priority = None
-                    try:
-                        confidences = [float(t) for t in tokens[5:]]
-                        confidences.sort()
-                        maxConf = confidences[-1]
-                        if args.alCriterion == 'BreakingTies':
-                            priority = 1 - (confidences[-1] - confidences[-2])
-                        elif args.alCriterion == 'MaxConfidence':
-                            priority = confidences[-1]
-                        elif args.alCriterion == 'TryAll':
-                            breakingTies = 1 - (confidences[-1] - confidences[-2])
-                            priority = max(maxConf, breakingTies)
-                    finally:
-                        # no values provided
+            # load matching image
+            if not baseName in imgs:
+                if args.skipMismatches:
+                    continue
+                else:
+                    raise ValueError('Label file {} has no associated image'.format(l))
+            imgPath = os.path.join(imgBaseDir, imgs[baseName])
+            img = Image.open(imgPath)
+            sz = img.size
+
+            # load labels
+            labelPath = os.path.join(args.labelFolder, l)
+            with open(labelPath, 'r') as f:
+                lines = f.readlines()
+
+            # parse annotations
+            labels = []
+            bboxes = []
+            if len(lines):
+                for line in lines:
+                    tokens = line.strip().split(' ')
+                    label = int(tokens[0])
+                    labels.append(label)
+                    bbox = [float(t) for t in tokens[1:5]]
+                    bboxes.append(bbox)
+                
+                    # push to database
+                    if args.annotationType == 'annotation':
                         dbConn.execute(sql,
-                            (baseName+'%', currentDT, classdef[label], maxConf, bbox[0], bbox[1], bbox[2], bbox[3], priority))
+                            (baseName+'%', currentDT, classdef[label], bbox[0], bbox[1], bbox[2], bbox[3]))
+                            
+                    elif args.annotationType == 'prediction':
+                        # calculate additional properties
+                        maxConf = None
+                        priority = None
+                        try:
+                            confidences = [float(t) for t in tokens[5:]]
+                            confidences.sort()
+                            maxConf = confidences[-1]
+                            if args.alCriterion == 'BreakingTies':
+                                priority = 1 - (confidences[-1] - confidences[-2])
+                            elif args.alCriterion == 'MaxConfidence':
+                                priority = confidences[-1]
+                            elif args.alCriterion == 'TryAll':
+                                breakingTies = 1 - (confidences[-1] - confidences[-2])
+                                priority = max(maxConf, breakingTies)
+                        finally:
+                            # no values provided
+                            dbConn.execute(sql,
+                                (baseName+'%', currentDT, classdef[label], maxConf, bbox[0], bbox[1], bbox[2], bbox[3], priority))

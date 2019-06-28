@@ -16,7 +16,7 @@ class Launcher:
         self.args = args
 
         # load configuration
-        self.config = Config()
+        self.config = Config(args.settings_filepath)
 
         self.instances = []
         self._launch_instances()
@@ -72,6 +72,8 @@ class Launcher:
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Run CV4Wildlife AL Service.')
+    parser.add_argument('--settings_filepath', type=str, default='config/settings.ini', const=1, nargs='?',
+                    help='Directory of the settings.ini file used for this machine (default: "config/settings.ini").')
     parser.add_argument('--instance', type=str, default='UserHandler, FileServer, LabelUI', const=1, nargs='?',
                     help='Instance type(s) to run on this host. Accepts multiple keywords, comma-separated (default: "LabelUI").')
     args = parser.parse_args()

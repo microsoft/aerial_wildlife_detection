@@ -51,6 +51,7 @@ class SQLStringBuilder:
         fields_union = list(fields_anno.union(fields_pred))
         string_anno = ''
         string_pred = ''
+        string_all = ''
         for f in fields_union:
             if not f in fields_anno:
                 string_anno += 'NULL AS '
@@ -58,42 +59,37 @@ class SQLStringBuilder:
                 string_pred += 'NULL AS '
             string_anno += f + ','
             string_pred += f + ','
+            string_all += f + ','
         string_anno = string_anno.strip(',')
         string_pred = string_pred.strip(',')
+        string_all = string_all.strip(',')
 
-        #TODO: username
         sql = '''
-            SELECT * FROM (
-                SELECT id, image, 'annotation' AS cType, {annoCols} FROM {schema}.annotation AS anno
+            SELECT id, image, cType, filename, {allCols} FROM (
+                SELECT id AS image, filename FROM {schema}.image
+                WHERE id IN %s
+            ) AS img
+            LEFT OUTER JOIN (
+                SELECT id, image AS imID, 'annotation' AS cType, {annoCols} FROM {schema}.annotation AS anno
+                WHERE username = %s
                 UNION ALL
-                SELECT id, image, 'prediction' AS cType, {predCols} FROM {schema}.prediction AS pred
-            ) AS contents
-            JOIN (
-                SELECT id AS imageID, filename FROM {schema}.image
-            ) AS img ON img.imageID = contents.image
-            WHERE contents.image IN ( %s );
-        '''.format(schema=schema, annoCols=string_anno, predCols=string_pred)
+                SELECT id, image AS imID, 'prediction' AS cType, {predCols} FROM {schema}.prediction AS pred
+            ) AS contents ON img.image = contents.imID;
+        '''.format(schema=schema, allCols=string_all, annoCols=string_anno, predCols=string_pred)
         return sql
 
 
-    def getNextBatchQueryString(self, subset='preferUnlabeled'):
+    def getNextBatchQueryString(self, order='unlabeled', subset='default'):
         '''
             Assembles a DB query string. Inputs:
-            - subset: specifies how to constrain the returned set of
-              images, annotations and predictions. One of:
-                - preferUnlabeled: prioritizes images that have not (yet)
-                  been seen by the user (i.e., viewcount is None or zero)
-                - forceUnlabeled: only show images that have no/zero viewcount.
-                  This may result in an empty set.
-                - preferLabeled: prioritize images with a non-None/non-zero view-
-                  count. However, viewcounts are sorted in ascending order.
-                - preferLabeledDesc: prioritize images according to viewcount in
-                  descending order
-                - forceLabeled: restrict to images whose viewcount is one or more,
-                  sorted by viewcount in ascending order.
-                  May result in an empty set.
-                - forceLabeledDesc: restrict to seen images, sorted by viewcount in
-                  descending order.
+            - order: specifies sorting criterion for request:
+                - 'unlabeled': prioritize images that have not (yet) been viewed
+                    by the current user (i.e., zero/low viewcount)
+                - 'labeled': put images first in order that have a high user viewcount
+            - subset: hard constraint on the label status of the images:
+                - 'default': do not constrain query set
+                - 'forceLabeled': images must have a viewcount of 1 or more
+                - 'forceUnlabeled': images must not have been viewed by the current user
         '''
         schema = self.config.getProperty('Database', 'schema')
 
@@ -103,6 +99,7 @@ class SQLStringBuilder:
         fields_union = list(fields_anno.union(fields_pred))
         string_anno = ''
         string_pred = ''
+        string_all = ''
         for f in fields_union:
             if not f in fields_anno:
                 string_anno += 'NULL AS '
@@ -110,61 +107,48 @@ class SQLStringBuilder:
                 string_pred += 'NULL AS '
             string_anno += f + ','
             string_pred += f + ','
+            string_all += f + ','
         string_anno = string_anno.strip(',')
         string_pred = string_pred.strip(',')
+        string_all = string_all.strip(',')
 
         # subset selection fragment
         subsetFragment = ''
-        if subset == 'preferUnlabeled':
-            subsetFragment = '''
-                ORDER BY img_user.viewcount ASC NULLS FIRST, score DESC
-            '''
+        orderSpec = ''
+        if subset == 'forceLabeled':
+            subsetFragment = 'WHERE viewcount > 0'
         elif subset == 'forceUnlabeled':
-            subsetFragment = '''
-                HAVING img_user.viewcount IS NULL or img_user.viewcount = 0
-                ORDER BY img_user.viewcount ASC NULLS FIRST, score DESC
-            '''
-        elif subset == 'preferLabeled':
-            subsetFragment = '''
-                ORDER BY img_user.viewcount ASC NULLS LAST, score DESC
-            '''
-        elif subset == 'preferLabeledDesc':
-            subsetFragment = '''
-                ORDER BY img_user.viewcount DESC NULLS LAST, score DESC
-            '''
-        elif subset == 'forceLabeled':
-            subsetFragment = '''
-                HAVING img_user.viewcount > 0
-                ORDER BY img_user.viewcount ASC NULLS LAST, score DESC
-            '''
-        elif subset == 'forceLabeledDesc':
-            subsetFragment = '''
-                HAVING img_user.viewcount > 0
-                ORDER BY img_user.viewcount DESC NULLS LAST, score DESC
-            '''
-        else:
-            raise ValueError('{} is not a recognized subset specifier.'.format(subset))
+            subsetFragment = 'WHERE viewcount IS NULL OR viewcount = 0'
+
+        if order == 'unlabeled':
+            orderSpec = 'ORDER BY viewcount ASC NULLS FIRST, score DESC'
+        elif order == 'labeled':
+            orderSpec = 'ORDER BY viewcount DESC NULLS LAST, score DESC'
+
 
         sql = '''
-            SELECT * FROM (
-                SELECT id, image, 'annotation' AS cType, {annoCols} FROM {schema}.annotation AS anno
+            SELECT id, image, cType, filename, {allCols} FROM (
+            SELECT id AS image, filename, viewcount, score FROM {schema}.image AS img
+            LEFT OUTER JOIN (
+                SELECT * FROM {schema}.image_user
+                WHERE username = %s
+            ) AS iu ON img.id = iu.image
+            LEFT OUTER JOIN (
+                SELECT image, SUM(confidence)/COUNT(confidence) AS score
+                FROM {schema}.prediction
+                GROUP BY image
+            ) AS img_score ON img.id = img_score.image
+            {subset}
+            {order}
+            LIMIT %s
+            ) AS img_query
+            LEFT OUTER JOIN (
+                SELECT id, image AS imID, 'annotation' AS cType, {annoCols} FROM {schema}.annotation AS anno
+                WHERE username = %s
                 UNION ALL
-                SELECT id, image, 'prediction' AS cType, {predCols} FROM {schema}.prediction AS pred
-            ) AS contents
-            JOIN (
-                SELECT id AS imageID, filename FROM {schema}.image
-            ) AS img ON img.imageID = contents.image
-            WHERE contents.image IN (
-                SELECT topK.image FROM (
-                    SELECT pred.image, sum(confidence)/count(confidence) AS score, img_user.viewcount FROM aerialelephants.prediction AS pred
-                    FULL OUTER JOIN (
-                        SELECT * FROM aerialelephants.image_user WHERE username = %s
-                    ) AS img_user ON pred.image = img_user.image
-                    GROUP BY pred.image, img_user.viewcount
-                    {subset}
-                    LIMIT %s
-                ) AS topK
-            );
-        '''.format(schema=schema, annoCols=string_anno, predCols=string_pred, subset=subsetFragment)
+                SELECT id, image AS imID, 'prediction' AS cType, {predCols} FROM {schema}.prediction AS pred
+            ) AS contents ON img_query.image = contents.imID
+            {order};
+        '''.format(schema=schema, allCols=string_all, annoCols=string_anno, predCols=string_pred, order=orderSpec, subset=subsetFragment)
 
         return sql

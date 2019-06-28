@@ -61,6 +61,8 @@ window.loadConfiguration = function() {
 // project settings
 //TODO: make proper promise object...
 $.get('getProjectSettings', function(data) {
+    window.projectName = data['settings']['projectName'];
+    window.projectDescription = data['settings']['projectDescription'];
     window.dataServerURI = data['settings']['dataServerURI'];
     if(!window.dataServerURI.endsWith('/')) {
         window.dataServerURI += '/';
@@ -82,6 +84,15 @@ $.get('getProjectSettings', function(data) {
     window.numImages_y = data['settings']['numImages_y'];
     window.defaultImage_w = data['settings']['defaultImage_w'];
     window.defaultImage_h = data['settings']['defaultImage_h'];
+
+
+    // set interface page title and description
+    if(window.projectName != null) {
+        $('#project-title').html(window.projectName);
+    }
+    if(window.projectDescription != null) {
+        $('#project-description').html(window.projectDescription);
+    }
 
 
     // adjust number of images to one for mobile devices

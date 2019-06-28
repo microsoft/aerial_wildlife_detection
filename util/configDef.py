@@ -10,11 +10,9 @@ from modules import REGISTERED_MODULES
 
 class Config():
 
-    CONFIG_PATH = 'config/settings.ini'
-
-    def __init__(self):
+    def __init__(self, configPath):
         self.config = ConfigParser()
-        self.config.read(self.CONFIG_PATH)
+        self.config.read(configPath)
 
 
     def getProperty(self, module, propertyName, type=str, fallback=None):

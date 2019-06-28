@@ -69,6 +69,10 @@ class Annotation {
         }
     }
 
+    isValid() {
+        return this.geometry.isValid;
+    }
+
     isActive() {
         return this.geometry.isActive;
     }
@@ -76,6 +80,8 @@ class Annotation {
     setActive(active, viewport) {
         this.geometry.setActive(active, viewport);
     }
+
+
 
     getChanged() {
         // returns true if the user has modified the annotation
@@ -113,6 +119,10 @@ class Annotation {
 
     getRenderElement() {
         return this.geometry;
+    }
+
+    isVisible() {
+        return this.geometry.visible;
     }
 
     setVisible(visible) {
