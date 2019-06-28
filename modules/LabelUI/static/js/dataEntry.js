@@ -222,7 +222,7 @@
     }
 
     getImageURI() {
-        return window.dataServerURI + this.fileName + '?' + Date.now();
+        return window.dataServerURI + this.fileName;    // + '?' + Date.now();
     }
 
     getProperties(minimal, onlyUserAnnotations) {
@@ -328,7 +328,7 @@
 
         if(this.labelInstance == null) {
             // add a default, blank instance if nothing has been predicted or annotated yet
-            var label = (window.enableEmptyClass ? window.labelClassHandler.getActiveClassID() : null);
+            var label = (window.enableEmptyClass ? null : window.labelClassHandler.getActiveClassID());
             this._addElement(new Annotation(window.getCurrentDateString(), {'label':label}, 'annotation'));
         }
 

@@ -302,16 +302,22 @@ class DBMiddleware():
 
         # update existing annotations
         if len(values_update):
+            updateCols = ''
+            for col in colnames:
+                if col == 'label':
+                    updateCols += '{col} = UUID(e.{col}),'.format(col=col)
+                else:
+                    updateCols += '{col} = e.{col},'.format(col=col)
+
             sql = '''
-                UPDATE {}.annotation AS a
-                SET {}
-                FROM (VALUES %s) AS e({})
+                UPDATE {schema}.annotation AS a
+                SET {updateCols}
+                FROM (VALUES %s) AS e({colnames})
                 WHERE e.id = a.id;
             '''.format(
-                schema,
-                ', '.join(['{} = e.{}'.format(c, c) for c in colnames]),
-                ', '.join(colnames)
-                #getOnConflictString(getattr(QueryStrings_annotation, self.projectSettings['annotationType']).value)
+                schema=schema,
+                updateCols=updateCols.strip(','),
+                colnames=', '.join(colnames)
             )
             self.dbConnector.insert(sql, values_update)
 

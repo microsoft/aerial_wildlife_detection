@@ -255,6 +255,8 @@ class DataHandler {
         
         var self = this;
 
+        //TODO: check if changed and then submit current annotations first
+
         $.ajax({
             url: 'getImages',
             contentType: "application/json; charset=utf-8",

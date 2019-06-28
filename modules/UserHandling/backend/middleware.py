@@ -62,19 +62,20 @@ class UserMiddleware():
         if sessionToken is None:
             sessionToken = self._create_token()
 
+            # new session created; add to database
+            self.dbConnector.execute('''UPDATE {}.user SET last_login = %s, session_token = %s
+                WHERE name = %s
+            '''.format(
+                self.config.getProperty('Database', 'schema')
+            ),
+            (now, sessionToken, username,),
+            numReturn=None)
+            #TODO: feedback that everything is ok?
+
         self.usersLoggedIn[username] = {
             'timestamp': now,
             'sessionToken': sessionToken
         }
-
-        self.dbConnector.execute('''UPDATE {}.user SET last_login = %s, session_token = %s
-            WHERE name = %s
-        '''.format(
-            self.config.getProperty('Database', 'schema')
-        ),
-        (now, sessionToken, username,),
-        numReturn=None)
-        #TODO: feedback that everything is ok?
 
         expires = now + timedelta(0, self.config.getProperty('UserHandler', 'time_login', type=int))
 
@@ -147,6 +148,7 @@ class UserMiddleware():
 
             else:
                 # session time-out
+                print('Session timeout: {}, {}'.format(now, self.usersLoggedIn[username]['timestamp']).total_seconds())
                 return False
 
             # generic error
