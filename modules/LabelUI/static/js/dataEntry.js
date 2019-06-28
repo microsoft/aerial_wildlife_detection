@@ -226,9 +226,11 @@
     }
 
     getProperties(minimal, onlyUserAnnotations) {
+        var timeCreated = this.getTimeCreated();
+        if(timeCreated != null) timeCreated = timeCreated.toISOString();
         var props = {
             'id': this.entryID,
-            'timeCreated': this.getTimeCreated().toISOString(),
+            'timeCreated': timeCreated,
             'timeRequired': this.getTimeRequired()
         };
         props['annotations'] = [];

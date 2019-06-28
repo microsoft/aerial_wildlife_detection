@@ -6,6 +6,7 @@
 
 from uuid import UUID
 from datetime import datetime
+import pytz
 import dateutil.parser
 from modules.Database.app import Database
 from .sql_string_builder import SQLStringBuilder
@@ -91,6 +92,15 @@ class DBMiddleware():
         '''
         return self.projectSettings
 
+
+    def getProjectInfo(self):
+        '''
+            Returns safe, shareable information about the project.
+        '''
+        return {
+            'projectName' : self.projectSettings['projectName'],
+            'projectDescription' : self.projectSettings['projectDescription']
+        }
 
 
     def getClassDefinitions(self):
@@ -248,8 +258,14 @@ class DBMiddleware():
         for imageKey in submissions['entries']:
             entry = submissions['entries'][imageKey]
 
-            lastChecked = entry['timeCreated']
-            lastTimeRequired = entry['timeRequired']
+            try:
+                lastChecked = entry['timeCreated']
+                lastTimeRequired = entry['timeRequired']
+            except:
+                #TODO
+                lastChecked = datetime.now(tz=pytz.utc)
+                lastTimeRequired = 0
+
             if 'annotations' in entry and len(entry['annotations']):
                 for annotation in entry['annotations']:
                     # assemble annotation values
@@ -268,7 +284,7 @@ class DBMiddleware():
                             try:
                                 annoValues.append(dateutil.parser.parse(annotationTokens[cname]))
                             except:
-                                annoValues.append(None)     #TODO
+                                annoValues.append(datetime.now(tz=pytz.utc))
                         elif cname == 'username':
                             annoValues.append(username)
                         elif cname in annotationTokens:

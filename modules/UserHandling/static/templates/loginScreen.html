@@ -1,0 +1,50 @@
+<script type="text/javascript">
+    $(document).ready(function() {
+        $('#login-form').on('submit', function(e) {
+            e.preventDefault();
+            var username = $(this).find('[name=username]').val();
+            var password = $(this).find('[name=password]').val();
+
+            $.ajax({
+                url: '/login',
+                method: 'POST',
+                data: {
+                    'username': $('form').find('[name=username]').val(),
+                    'password': $('form').find('[name=password]').val()
+                },
+                success: function(data) {
+                    window.location.href = '/interface';
+                },
+                error: function(xhr, response, blank) {
+                    console.log(xhr)
+                    if(xhr.status === 403) {
+                        $('#error-message').html('Invalid username and/or password provided.');
+                        $('#error-message').css('display', 'block');
+                    } else {
+                        //TODO: max login tries, login timeout...
+                        $('#error-message').html('Sorry, an unknown error occurred.');
+                        $('#error-message').css('display', 'block');
+                    }
+                }
+            });
+        });
+    });
+</script>
+<h2>Sign in</h2>
+<form id="login-form" method="POST" class="container">
+    <div class="row fieldRow">
+        <label for="username" class="col-sm">Username:</label>
+        <input type="text" name="username" required class="col-sm" />
+    </div>
+    <div class="row fieldRow">
+        <label for="password" class="col-sm">Password:</label>
+        <input type="password" name="password" required class="col-sm" />
+    </div>
+    <div class="row fieldRow">
+        <div class="col-sm">
+            <input class="btn btn-sm btn-primary float-right" type="submit" value="Sign In" />
+        </div>
+    </div>
+
+    <div id="error-message" style="display:none;color:red"></div>
+</form>

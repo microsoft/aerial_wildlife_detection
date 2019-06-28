@@ -114,9 +114,26 @@ class UserHandler():
             except Exception as e:
                 abort(403, str(e))
 
-        @self.app.route('/newAccount')
+        @self.app.route('/createAccountScreen')
         def showNewAccountPage():
-            return static_file('newAccount.html', root=self.staticDir)
+            # check if token is required; if it is and wrong token provided, show login screen instead
+            targetToken = self.config.getProperty('UserHandler', 'create_account_token')
+            if targetToken is not None and not(targetToken == ''):
+                try:
+                    providedToken = request.query['t']
+                    if providedToken == targetToken:
+                        return static_file('templates/createAccountScreen.html', root=self.staticDir)
+                    else:
+                        return static_file('templates/loginScreen.html', root=self.staticDir)
+                except:
+                    return static_file('templates/loginScreen.html', root=self.staticDir)
+            else:
+                # no token required
+                return static_file('templates/createAccountScreen.html', root=self.staticDir)
+
+        @self.app.route('/loginScreen')
+        def showLoginPage():
+            return static_file('templates/loginScreen.html', root=self.staticDir)
 
         @self.app.route('/accountExists', method='POST')
         def checkAccountExists():
@@ -124,9 +141,7 @@ class UserHandler():
                 username = self._parse_parameter(request.forms, 'username')
                 if len(username) == 0:
                     raise Exception('invalid request.')
-                return {
-                    'response': str(self.middleware.accountExists(username))
-                }
+                return { 'response': self.middleware.accountExists(username) }
             except Exception as e:
                 abort(401, str(e))
 
@@ -147,7 +162,7 @@ class UserHandler():
             username = request.get_cookie('username')
             sessionToken = request.get_cookie('session_token')
             return self.middleware.isLoggedIn(username, sessionToken)
-        except Exception as e:
+        except Exception:
             return False
 
 

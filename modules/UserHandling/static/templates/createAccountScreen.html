@@ -1,0 +1,176 @@
+<script type="text/javascript">
+    $(document).ready(function() {
+        var checkOK = function checkOK() {
+            // check password
+            var password = $('#account-create-form').find('[name=password]').val();
+            var password_check = $('#account-create-form').find('[name=password-check]').val();
+            if(password == null || password.length === 0) return false;
+            if(password != password_check) {
+                return false;
+            }
+
+            // check unique name
+            var currName = $('#username').val();
+            if(currName == null || currName.length === 0) {
+                return false;
+            }
+            var promise = $.ajax({
+                url: '/accountExists',
+                method: 'post',
+                data: {
+                    'username': currName
+                },
+                success: function(data) {
+                    return (data['response'] !== true);
+                },
+                error: function() {
+                    return false;
+                }
+            });
+            return promise;
+        }
+
+        $('#username').change(function() {
+            // check if username is valid
+            var currName = $('#username').val();
+            if(currName != null && currName.length > 0) {
+                $.ajax({
+                    url: '/accountExists',
+                    method: 'post',
+                    data: {
+                        'username': currName
+                    },
+                    success: function(data) {
+                        if(data['response'] == true) {
+                            $('#account-exists-message').html('Name unavailable');
+                            $('#account-exists-message').css('color', 'red');
+                            $('#account-exists-message').css('display', 'inline');
+                            $('#submit-button').prop("disabled",true);
+                        } else {
+                            $('#account-exists-message').html('OK');
+                            $('#account-exists-message').css('color', 'green');
+                            $('#account-exists-message').css('display', 'inline');
+                            if(!checkOK()) {
+                                $('#submit-button').prop("disabled",true);
+                            } else {
+                                $('#submit-button').prop("disabled",false);
+                            }
+                        }
+                    },
+                    error: function(xhr, response, blank) {
+                        $('#error-message').html('Sorry, an unknown error occurred.');
+                        $('#error-message').css('display', 'block');
+                        // $('#submit-button').prop("disabled",true);
+                    }
+                })
+            } else {
+                $('#account-exists-message').css('display', 'none');
+                // $('#submit-button').prop("disabled",true);
+            }
+            if(!checkOK()) {
+                $('#submit-button').prop("disabled",true);
+            } else {
+                $('#submit-button').prop("disabled",false);
+            }
+        });
+
+        var checkPass = function() {
+            var password = $('#account-create-form').find('[name=password]').val();
+            var password_check = $('#account-create-form').find('[name=password-check]').val();
+
+            if(password == null || password.length === 0) return false;
+
+            if(password != password_check) {
+                $('#error-message').html('Passwords do not match.');
+                $('#error-message').css('display', 'block');
+                // $('#submit-button').prop("disabled",true);
+                return false;
+            } else {
+                $('#error-message').css('display', 'none');
+                // $('#submit-button').prop("disabled",false);
+                return true;
+            }
+        }
+
+        $('#password').change(function() {
+            checkPass();
+            if(!checkOK()) {
+                $('#submit-button').prop("disabled",true);
+            } else {
+                $('#submit-button').prop("disabled",false);
+            }
+        });
+
+        $('#password-check').change(function() {
+            checkPass();
+            if(!checkOK()) {
+                $('#submit-button').prop("disabled",true);
+            } else {
+                $('#submit-button').prop("disabled",false);
+            }
+        });
+
+        $('#account-create-form').on('submit', function(e) {
+            e.preventDefault();
+
+            if(!checkPass()) return;
+
+            if(!checkOK()) return;
+
+            var username = $(this).find('[name=username]').val();
+            var password = $(this).find('[name=password]').val();
+            var email = $(this).find('[name=email]').val();
+
+
+
+            $.ajax({
+                url: '/createAccount',
+                method: 'post',
+                data: {
+                    'username': username,
+                    'password': password,
+                    'email': email
+                },
+                success: function(data) {
+                    //TODO: data parsing needed?
+                    window.location.href = '/interface';
+                },
+                error: function(xhr, response, blank) {
+                    //TODO: ditto?
+                    $('#error-message').html('Sorry, an unknown error occurred.');
+                    $('#error-message').css('display', 'block');
+                    $('#submit-button').prop("disabled",true);
+                }
+            });
+        });
+    });
+</script>
+
+
+
+<h2>Create Account</h2>
+<form id="account-create-form" action="" method="POST" class="container">
+    <div class="row fieldRow">
+        <label for="username" class="col-sm">Username:</label>
+        <input type="text" name="username" id="username" required class="col-sm" />
+    </div>
+    <div class="row fieldRow">
+        <label for="password" class="col-sm">Password:</label>
+        <input type="password" id="password" name="password" required class="col-sm" />
+    </div>
+    <div class="row fieldRow">
+        <label for="password-check" class="col-sm">Re-type:</label>
+        <input type="password" id="password-check" name="password-check" required class="col-sm" />
+    </div>
+    <div class="row fieldRow">
+        <label for="email" class="col-sm">E-Mail Address:</label>
+        <input type="email" name="email" required class="col-sm" />
+    </div>
+    <input type="submit" value="Create" id="submit-button" class="btn btn-sm btn-primary" disabled />
+    <div id="account-exists-message" style="display:none;color:red;"></div>
+    <div id="error-message" style="display:none;color:red"></div>
+
+    <div class="row" style="margin-top:20px;">
+        <span style="margin-right:10px;">Already have an account?</span><a href="/">Sign in</a>
+    </div>
+</form>

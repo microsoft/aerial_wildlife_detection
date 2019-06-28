@@ -5,45 +5,98 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <link type="text/css" href="static/css/bootstrap.min.css" rel="stylesheet">
+    <style type="text/css">
+        body {
+            overflow: hidden;
+            background-image: url('static/img/backdrop.jpg');
+            -webkit-background-size: cover;
+            -moz-background-size: cover;
+            -o-background-size: cover;
+            background-size: cover;
+            height: 100vh;
+        }
+        #header {
+            color: white;
+        }
+        #footer {
+            background: #575352;
+            position: fixed;
+            width: 100%;
+            height: 40px;
+            bottom: 0;
+        }
+        #overlay {
+            background: #444444CC;
+            color:white;
+            padding: 20px;
+            z-index: 10;
+            margin: 0 auto;
+            margin-top: 5%;
+            width: 500px;
+        }
+        label {
+            text-align: right;
+        }
+        .fieldRow {
+            margin-bottom: 10px;
+        }
+    </style>
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
     <script type="text/javascript">
+        var getURLParameter = function getURLParameter(sParam) {
+            var sPageURL = window.location.search.substring(1),
+                sURLVariables = sPageURL.split('&'),
+                sParameterName,
+                i;
+            for (i = 0; i < sURLVariables.length; i++) {
+                sParameterName = sURLVariables[i].split('=');
+                if (sParameterName[0] === sParam) {
+                    return sParameterName[1] === undefined ? true : decodeURIComponent(sParameterName[1]);
+                }
+            }
+        };
         $(document).ready(function() {
-            $('#login-form').on('submit', function(e) {
-                e.preventDefault();
-                var username = $(this).find('[name=username]').val();
-                var password = $(this).find('[name=password]').val();
-
-                $.ajax({
-                    url: '/login',
-                    method: 'POST',
-                    data: {
-                        'username': $('form').find('[name=username]').val(),
-                        'password': $('form').find('[name=password]').val()
-                    },
-                    success: function(data) {
-                        console.log('success')
-                        window.location.href = '/interface';
-                    },
-                    error: function(xhr, response, blank) {
-                        console.log('ERROR:');
-                        console.log(xhr);
-                        console.log(response);
-                        console.log(blank);
+            // set title and description
+            $.get('getProjectInfo', function(data) {
+                if(data.hasOwnProperty('info')) {
+                    if(data['info'].hasOwnProperty('projectName')) {
+                        $('#project-title').html(data['info']['projectName']);
                     }
-                });
+                    if(data['info'].hasOwnProperty('projectDescription')) {
+                        $('#project-description').html(data['info']['projectDescription']);
+                    }
+                }
             });
+
+            // parse display property
+            var overlayURL = null;
+            var param = getURLParameter('d');
+            if(param === null || param === undefined || param === 'login') {
+                // show login screen
+                overlayURL = 'loginScreen';
+            } else if(param === 'createAccount') {
+                // parse token
+                var token = getURLParameter('t');
+                overlayURL = 'createAccountScreen';
+                if(token != null && token != undefined && token.length > 0) {
+                    overlayURL += '?t=' + token;
+                }
+            }
+            console.log(overlayURL)
+            $('#overlay').load(overlayURL);
         });
     </script>
 </head>
 
 <body>
-    <h1>Log in</h1>
-    <form id="login-form" action="/login" method="post">
-        <label for="username">Username:</label>
-        <input type="text" name="username" /><br />
-        <label for="password">Password:</label>
-        <input type="password" name="password" /><br />
-
-        <input type="submit" value="Log In" />
-    </form>
+    <div id="page-content-wrapper">
+        <div id="header" class="container-fluid">
+            <h1 id="project-title" class="mt-4">AIde Label Interface</h1>
+            <p id="project-description"></p>
+        </div>
+        <div id="overlay" class="container card vertical-center"></div>
+        <footer class="page-footer" id="footer">
+            <a href="https://www.microsoft.com/en-us/ai/ai-for-earth" target="_blank"><img height="100%" src="static/img/ms_logo.png" style="float:right" /></a>
+        </footer>
+    </div>
 </body>

@@ -63,6 +63,11 @@ class LabelUI():
 
 
         ''' dynamic routings '''
+        @self.app.get('/getProjectInfo')
+        def get_project_info():
+            # minimum info (name, description) that can be viewed without logging in
+            return {'info': self.middleware.getProjectInfo()}
+
         @self.app.get('/getProjectSettings')
         def get_project_settings():
             if self.loginCheck():
