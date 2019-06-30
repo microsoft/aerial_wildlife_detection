@@ -1,10 +1,11 @@
 '''
     Main Bottle and routings for the LabelUI web frontend.
 
-    2019 Amrita Gupta, Benjamin Kellenberger
+    2019 Benjamin Kellenberger
 '''
 
 import os
+import cgi
 import bottle
 from bottle import request, response, static_file, abort
 from .backend.middleware import DBMiddleware
@@ -50,12 +51,6 @@ class LabelUI():
                 response.set_header('Location', '/')
             return response
 
-
-        # @self.app.route('/<filename:re:.*_IMG_.*\.JPG$>')
-        # def send_img(filename):
-        #     self.loginCheck()
-        #     return static_file(filename, root=os.path.join(self.staticDir, 'img'))
-
         
         @self.app.route('/static/<filename:re:.*>')
         def send_static(filename):
@@ -67,6 +62,7 @@ class LabelUI():
         def get_project_info():
             # minimum info (name, description) that can be viewed without logging in
             return {'info': self.middleware.getProjectInfo()}
+
 
         @self.app.get('/getProjectSettings')
         def get_project_settings():
@@ -93,7 +89,7 @@ class LabelUI():
         @self.app.post('/getImages')
         def get_images():
             if self.loginCheck():
-                username = request.get_cookie('username')
+                username = cgi.escape(request.get_cookie('username'))
                 postData = request.body.read()
                 dataIDs = request.json['imageIDs']
                 json = self.middleware.getBatch(username, dataIDs)
@@ -105,7 +101,7 @@ class LabelUI():
         @self.app.get('/getLatestImages')
         def get_latest_images():
             if self.loginCheck():
-                username = request.get_cookie('username')
+                username = cgi.escape(request.get_cookie('username'))
                 try:
                     limit = int(request.query['limit'])
                 except:
@@ -129,7 +125,7 @@ class LabelUI():
             if self.loginCheck():
                 # parse
                 try:
-                    username = request.get_cookie('username')
+                    username = cgi.escape(request.get_cookie('username'))
                     if username is None:
                         # this should never happen, since we are performing a login check
                         raise Exception('no username provided')
