@@ -172,7 +172,7 @@ class DataHandler {
             url: url,
             dataType: 'json',
             success: function(data) {
-
+                
                 // clear current entries
                 self.parentDiv.empty();
                 self.dataEntries = [];
@@ -203,8 +203,6 @@ class DataHandler {
                 if(error == 'Unauthorized') {
                     // ask user to provide password again
                     window.verifyLogin((self.loadNextBatch).bind(self));
-                    // // redirect to login page
-                    // window.location.href = '/';
                 }
             }
         });
@@ -235,26 +233,23 @@ class DataHandler {
             dataType: 'json',
             success: function(response) {
                 // check status
-                if(response['status'] == 0) {
-
-                    self.loadNextBatch();
-
-                } else {
+                
+                if(response['status'] !== 0) {
                     // error
                     //TODO: make proper messaging system
                     alert('Error: ' + response['message']);
+                    return $.Deferred();
                 }
             },
             error: function(xhr, status, error) {
                 if(error == 'Unauthorized') {
-                    window.verifyLogin((self.submitAnnotations).bind(self));
-                    // // redirect to login page
-                    // window.location.href = '/';
+                    return window.verifyLogin((self.submitAnnotations).bind(self));
 
                 } else {
                     // error
                     //TODO: make proper messaging system
                     alert('Unexpected error: ' + error);
+                    return $.Deferred();
                 }
             }
         });
@@ -306,8 +301,6 @@ class DataHandler {
                         self._loadFixedBatch(batch);
                     }
                     window.verifyLogin((callback).bind(self));
-                    // // redirect to login page
-                    // window.location.href = '/';
                 }
             }
         });
@@ -316,23 +309,24 @@ class DataHandler {
 
     nextBatch() {
         if(window.uiBlocked) return;
-        // var redo = function() {
+        
+        var self = this;
 
-            // add current image IDs to history
-            var historyEntry = [];
-            for(var i=0; i<this.dataEntries.length; i++) {
-                historyEntry.push(this.dataEntries[i]['entryID']);
-            }
-            this.undoStack.push(historyEntry);
-
-            if(this.redoStack.length > 0) {
-                var nb = this.redoStack.pop();
-                this._loadFixedBatch(nb.slice());
+        // add current image IDs to history
+        var historyEntry = [];
+        for(var i=0; i<this.dataEntries.length; i++) {
+            historyEntry.push(this.dataEntries[i]['entryID']);
+        }
+        this.undoStack.push(historyEntry);
+        
+        this.submitAnnotations().done(function() {
+            if(self.redoStack.length > 0) {
+                var nb = self.redoStack.pop();
+                self._loadFixedBatch(nb.slice());
             } else {
-                this.submitAnnotations();
+                self.loadNextBatch();
             }
-        // }
-        // window.verifyLogin((redo).bind(this));
+        });
     }
 
 
@@ -340,19 +334,20 @@ class DataHandler {
         if(window.uiBlocked) return;
         if(this.undoStack.length === 0) return;
         
-        // var undo = function() {
-            // add current image IDs to history
-            var historyEntry = [];
-            for(var i=0; i<this.dataEntries.length; i++) {
-                historyEntry.push(this.dataEntries[i]['entryID']);
-            }
-            this.redoStack.push(historyEntry);
+        var self = this;
 
-            var pb = this.undoStack.pop();
+        // add current image IDs to history
+        var historyEntry = [];
+        for(var i=0; i<this.dataEntries.length; i++) {
+            historyEntry.push(this.dataEntries[i]['entryID']);
+        }
+        this.redoStack.push(historyEntry);
 
-            // load
-            this._loadFixedBatch(pb.slice());
-        // }
-        // window.verifyLogin((undo).bind(this));
+        var pb = this.undoStack.pop();
+
+        // load
+        this.submitAnnotations().done(function() {
+            self._loadFixedBatch(pb.slice());
+        })
     }
 }

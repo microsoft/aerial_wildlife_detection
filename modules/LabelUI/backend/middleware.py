@@ -51,7 +51,7 @@ class DBMiddleware():
 
     def _assemble_annotations(self, cursor, limit=1e9):
         response = {}
-        while len(response) < limit:
+        while True:
             b = cursor.fetchone()
             if b is None:
                 break
