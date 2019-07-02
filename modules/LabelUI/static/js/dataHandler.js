@@ -26,6 +26,7 @@ class DataHandler {
             // assign/remove all labels buttons
             parentElement.append($('<button class="btn btn-primary" onclick="window.dataHandler.assignLabelToAll()">Label All</button>'));
             $(window).keyup(function(event) {
+                if(window.uiBlocked) return;
                 if(String.fromCharCode(event.which) === 'A') {
                     self.assignLabelToAll();
                 } else if(event.which === 46) {
@@ -37,6 +38,7 @@ class DataHandler {
             if(window.enableEmptyClass) {
                 parentElement.append($('<button class="btn btn-primary btn-warning" onclick="window.dataHandler.clearLabelInAll()">Clear All</button>'));
                 $(window).keyup(function(event) {
+                    if(window.uiBlocked) return;
                     if(String.fromCharCode(event.which) === 'C') {
                         self.clearLabelInAll();
                     }
@@ -49,6 +51,7 @@ class DataHandler {
             parentElement.append($('<button class="btn btn-primary" onclick="window.interfaceControls.action=window.interfaceControls.actions.REMOVE_ANNOTATIONS;">-</button>'));
 
             $(window).keyup(function(event) {
+                if(window.uiBlocked) return;
                 var key = String.fromCharCode(event.which);
                 if(key === '+' || key === 'W') {
                     window.interfaceControls.action = window.interfaceControls.actions.ADD_ANNOTATION;
@@ -65,6 +68,7 @@ class DataHandler {
         // next and previous batch buttons
         parentElement.append($('<button class="btn btn-primary float-left" onclick="window.dataHandler.previousBatch()">Previous</button>'));
         $(window).keyup(function(event) {
+            if(window.uiBlocked) return;
             if(event.which === 37) {
                 // left arrow key
                 //TODO: confirmation request if no annotations got changed by the user?
@@ -72,22 +76,24 @@ class DataHandler {
             }
         });
 
-        parentElement.append($('<button class="btn btn-primary float-right" onclick="window.dataHandler.submitAnnotations()">Next</button>'));
+        parentElement.append($('<button class="btn btn-primary float-right" onclick="window.dataHandler.nextBatch()">Next</button>'));
         $(window).keyup(function(event) {
+            if(window.uiBlocked) return;
             if(event.which === 39) {
                 // right arrow key
                 //TODO: confirmation request if no annotations got changed by the user?
-                self.submitAnnotations();
+                self.nextBatch();
             }
         });
 
         // block previous/next buttons until everything is fully loaded
         //TODO: also do for interface controls (e.g. bbox removal)
-        this.uiBlocked = false;     // false to enable loading of initial batch
+        window.uiBlocked = false;     // false to enable loading of initial batch
 
 
         // hide predictions (annotations) if shift (ctrl) key held down
         $(window).keydown(function(event) {
+            if(window.uiBlocked) return;
             if(event.which === 16) {
                 self.setPredictionsVisible(false);
             } else if(event.which === 17) {
@@ -95,6 +101,7 @@ class DataHandler {
             }
         });
         $(window).keyup(function(event) {
+            if(window.uiBlocked) return;
             if(event.which === 16) {
                 self.setPredictionsVisible(true);
             } else if(event.which === 17) {
@@ -112,7 +119,7 @@ class DataHandler {
             For classification entries only: assigns the selected label
             to all data entries.
         */
-        if(this.uiBlocked || window.annotationType != 'labels') return;
+        if(window.uiBlocked || window.annotationType != 'labels') return;
         for(var i=0; i<this.dataEntries.length; i++) {
             this.dataEntries[i].setLabel(window.labelClassHandler.getActiveClassID());
         }
@@ -123,14 +130,14 @@ class DataHandler {
             For classification entries only: remove all assigned labels
             (if 'enableEmptyClass' is true).
         */
-        if(this.uiBlocked || window.annotationType != 'labels' || !window.enableEmptyClass) return;
+        if(window.uiBlocked || window.annotationType != 'labels' || !window.enableEmptyClass) return;
         for(var i=0; i<this.dataEntries.length; i++) {
             this.dataEntries[i].setLabel(null);
         }
     }
 
     removeActiveAnnotations() {
-        if(this.uiBlocked) return;
+        if(window.uiBlocked) return;
         if(window.annotationType == 'labels') {
             this.clearLabelInAll();
         } else {
@@ -141,14 +148,14 @@ class DataHandler {
     }
 
     setPredictionsVisible(visible) {
-        if(this.uiBlocked) return;
+        if(window.uiBlocked) return;
         for(var i=0; i<this.dataEntries.length; i++) {
             this.dataEntries[i].setPredictionsVisible(visible);
         }
     }
 
     setAnnotationsVisible(visible) {
-        if(this.uiBlocked) return;
+        if(window.uiBlocked) return;
         for(var i=0; i<this.dataEntries.length; i++) {
             this.dataEntries[i].setAnnotationsVisible(visible);
         }
@@ -156,17 +163,8 @@ class DataHandler {
 
 
     loadNextBatch() {
-        if(this.uiBlocked) return;
+        if(window.uiBlocked) return;
         var self = this;
-
-        // add current batch to undoStack
-        if(this.dataEntries.length > 0) {
-            var historyEntry = [];
-            for(var i=0; i<this.dataEntries.length; i++) {
-                historyEntry.push(this.dataEntries[i]['entryID']);
-            }
-            this.undoStack.push(historyEntry);
-        }
 
         //TODO: subset
         var url = 'getLatestImages?order=unlabeled&subset=default&limit=' + this.numImagesPerBatch;
@@ -199,12 +197,14 @@ class DataHandler {
                     self.parentDiv.append(entry.markup);
                     self.dataEntries.push(entry);
                 }
-                self.uiBlocked = false;
+                window.uiBlocked = false;
             },
             error: function(xhr, status, error) {
                 if(error == 'Unauthorized') {
-                    // redirect to login page
-                    window.location.href = '/';
+                    // ask user to provide password again
+                    window.verifyLogin((self.loadNextBatch).bind(self));
+                    // // redirect to login page
+                    // window.location.href = '/';
                 }
             }
         });
@@ -224,10 +224,10 @@ class DataHandler {
 
 
     submitAnnotations() {
-        if(this.uiBlocked) return;
+        if(window.uiBlocked) return;
         var self = this;
         var entries = this._entriesToJSON(true, false);
-        $.ajax({
+        return $.ajax({
             url: 'submitAnnotations',
             type: 'POST',
             contentType: 'application/json; charset=utf-8',
@@ -237,14 +237,6 @@ class DataHandler {
                 // check status
                 if(response['status'] == 0) {
 
-                    // // add current image IDs to history
-                    // var historyEntry = [];
-                    // for(var i=0; i<self.dataEntries.length; i++) {
-                    //     historyEntry.push(self.dataEntries[i]['entryID']);
-                    // }
-                    // self.undoStack.push(historyEntry);
-
-                    // load next batch
                     self.loadNextBatch();
 
                 } else {
@@ -255,8 +247,9 @@ class DataHandler {
             },
             error: function(xhr, status, error) {
                 if(error == 'Unauthorized') {
-                    // redirect to login page
-                    window.location.href = '/';
+                    window.verifyLogin((self.submitAnnotations).bind(self));
+                    // // redirect to login page
+                    // window.location.href = '/';
 
                 } else {
                     // error
@@ -268,18 +261,10 @@ class DataHandler {
     }
 
     _loadFixedBatch(batch) {
-        if(this.uiBlocked) return;
+        if(window.uiBlocked) return;
         var self = this;
 
         //TODO: check if changed and then submit current annotations first
-
-        // add current items to redo stack
-        var historyEntry = [];
-        for(var i=0; i<self.dataEntries.length; i++) {
-            historyEntry.push(self.dataEntries[i]['entryID']);
-        }
-        this.redoStack.push(historyEntry);
-
         $.ajax({
             url: 'getImages',
             contentType: "application/json; charset=utf-8",
@@ -313,38 +298,61 @@ class DataHandler {
                     self.dataEntries.push(entry);
                 }
 
-                self.uiBlocked = false;
+                window.uiBlocked = false;
             },
             error: function(xhr, status, error) {
                 if(error == 'Unauthorized') {
-                    // redirect to login page
-                    window.location.href = '/';
+                    var callback = function() {
+                        self._loadFixedBatch(batch);
+                    }
+                    window.verifyLogin((callback).bind(self));
+                    // // redirect to login page
+                    // window.location.href = '/';
                 }
             }
         });
     }
 
 
-    // nextBatch() {
-    //     // check redo stack first
-    //     if(this.redoStack.length > 0) {
-    //         var nextBatch = this.redoStack.pop();
-    //         this._loadFixedBatch(nextBatch);
-    //     } else {
-    //         this.loadNextBatch();
-    //     }
-    // }
+    nextBatch() {
+        if(window.uiBlocked) return;
+        // var redo = function() {
+
+            // add current image IDs to history
+            var historyEntry = [];
+            for(var i=0; i<this.dataEntries.length; i++) {
+                historyEntry.push(this.dataEntries[i]['entryID']);
+            }
+            this.undoStack.push(historyEntry);
+
+            if(this.redoStack.length > 0) {
+                var nb = this.redoStack.pop();
+                this._loadFixedBatch(nb.slice());
+            } else {
+                this.submitAnnotations();
+            }
+        // }
+        // window.verifyLogin((redo).bind(this));
+    }
+
 
     previousBatch() {
-        if(this.uiBlocked) return;
-        if(this.undoStack.length == 0) return;
+        if(window.uiBlocked) return;
+        if(this.undoStack.length === 0) return;
         
-        var prevBatch = this.undoStack.pop();
-        
-        // add to redo stack
-        this.redoStack.push(prevBatch);
+        // var undo = function() {
+            // add current image IDs to history
+            var historyEntry = [];
+            for(var i=0; i<this.dataEntries.length; i++) {
+                historyEntry.push(this.dataEntries[i]['entryID']);
+            }
+            this.redoStack.push(historyEntry);
 
-        // load
-        this._loadFixedBatch(prevBatch);
+            var pb = this.undoStack.pop();
+
+            // load
+            this._loadFixedBatch(pb.slice());
+        // }
+        // window.verifyLogin((undo).bind(this));
     }
 }

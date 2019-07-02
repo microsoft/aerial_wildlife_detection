@@ -72,6 +72,7 @@ class UserMiddleware():
             numReturn=None)
             #TODO: feedback that everything is ok?
 
+        # update local cache as well
         self.usersLoggedIn[username] = {
             'timestamp': now,
             'sessionToken': sessionToken
@@ -148,7 +149,6 @@ class UserMiddleware():
 
             else:
                 # session time-out
-                print('Session timeout: {}, {}'.format(now, self.usersLoggedIn[username]['timestamp']).total_seconds())
                 return False
 
             # generic error

@@ -7,7 +7,7 @@
 import os
 import cgi
 import bottle
-from bottle import request, response, static_file, abort
+from bottle import request, response, static_file, abort, SimpleTemplate
 from .backend.middleware import DBMiddleware
 
 
@@ -37,14 +37,19 @@ class LabelUI():
         ''' static routings '''
         @self.app.route('/')
         def index():
-            return static_file("index.html", root=os.path.join(self.staticDir, 'html'))
+            return static_file("index.html", root=os.path.join(self.staticDir, 'templates'))
 
+
+        with open(os.path.abspath(os.path.join(self.config.getProperty(self, 'staticfiles_dir'), 'templates/interface.html')), 'r') as f:
+            self.interface_template = SimpleTemplate(f.read())
 
         @self.app.route('/interface')
         def interface():
             if self.loginCheck():
-                response = static_file("interface.html", root=os.path.join(self.staticDir, 'html'))
-                response.set_header("Cache-Control", "public, max-age=604800")
+                username = cgi.escape(request.get_cookie('username'))
+                response = self.interface_template.render(username=username,
+                    projectTitle=self.config.getProperty('Project', 'projectName'), projectDescr=self.config.getProperty('Project', 'projectDescription'))
+                # response.set_header("Cache-Control", "public, max-age=604800")
             else:
                 response = bottle.response
                 response.status = 303

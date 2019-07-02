@@ -20,7 +20,7 @@ class LabelClass {
         if(this.index >= 0 && this.index < 9) {
             name = '(' + (this.index+1) + ') ' + this.name;
         }
-        var markup = $('<div class="label-class-legend col-sm-3 legend-inactive" id="labelLegend_'+this.classID+'" style="background:' + this.color + '"><span class="label-text">'+name+'</span></div>');
+        var markup = $('<div class="label-class-legend legend-inactive" id="labelLegend_'+this.classID+'" style="background:' + this.color + '"><span class="label-text">'+name+'</span></div>');
 
         // setup click handler to activate label class
         markup.click(function() {

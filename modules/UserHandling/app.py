@@ -43,8 +43,8 @@ class UserHandler():
 
                 sessionToken, _, expires = self.middleware.login(username, password, sessionToken)
                 
-                response.set_cookie('username', username, expires=expires)
-                response.set_cookie('session_token', sessionToken, expires=expires)
+                response.set_cookie('username', username)   #, expires=expires)
+                response.set_cookie('session_token', sessionToken, httponly=True)    #, expires=expires)
 
                 return {
                     'expires': expires.strftime('%H:%M:%S')
@@ -57,16 +57,17 @@ class UserHandler():
         @self.app.route('/loginCheck', method='POST')
         def loginCheck():
             try:
-                username = cgi.escape(request.get_cookie('username'))
+                username = request.get_cookie('username')
                 if username is None:
-                    username = cgi.escape(self._parse_parameter(request.forms, 'username'))
+                    username = self._parse_parameter(request.forms, 'username')
+                username = cgi.escape(username)
 
                 sessionToken = cgi.escape(request.get_cookie('session_token'))
 
                 _, _, expires = self.middleware.isLoggedIn(username, sessionToken)
                 
-                response.set_cookie('username', username, expires=expires)
-                response.set_cookie('session_token', sessionToken, expires=expires)
+                response.set_cookie('username', username)   #, expires=expires)
+                response.set_cookie('session_token', sessionToken, httponly=True)    #, expires=expires)
                 return {
                     'expires': expires.strftime('%H:%M:%S')
                 }
@@ -84,7 +85,7 @@ class UserHandler():
                 self.middleware.logout(username, sessionToken)
 
                 response.set_cookie('username', '', expires=0)
-                response.set_cookie('session_token', '', expires=0)
+                response.set_cookie('session_token', '', expires=0, httponly=True)
 
                 # send redirect
                 response.status = 303
@@ -107,8 +108,8 @@ class UserHandler():
                     username, password, email
                 )
 
-                response.set_cookie('username', username, expires=expires)
-                response.set_cookie('session_token', sessionToken, expires=expires)
+                response.set_cookie('username', username)   #, expires=expires)
+                response.set_cookie('session_token', sessionToken, httponly=True)    #, expires=expires)
                 return {
                     'expires': expires.strftime('%H:%M:%S')
                 }
