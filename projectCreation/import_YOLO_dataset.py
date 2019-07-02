@@ -102,6 +102,9 @@ if __name__ == '__main__':
     if args.labelFolder is not None and not os.path.isdir(args.labelFolder):
         raise Exception('"{}" is not a valid directory on this machine.'.format(args.labelFolder))
 
+    if not imgBaseDir.endswith('/'):
+        imgBaseDir += '/'
+
 
     # parse class names and indices
     if args.labelFolder is not None:
@@ -161,10 +164,13 @@ if __name__ == '__main__':
     # locate all images and their base names
     print('\nAdding image paths...')
     imgs = {}
-    imgFiles = os.listdir(imgBaseDir)
+    imgFiles = glob.glob(os.path.join(imgBaseDir, '**'), recursive=True)    # os.listdir(imgBaseDir)
     for i in tqdm(imgFiles):
-        tokens = i.split('.')
-        baseName = i.replace('.' + tokens[-1],'')
+        if os.path.isdir(i):
+            continue
+        
+        basePath, ext = os.path.splitext(i)
+        baseName = basePath.replace(imgBaseDir, '')
         imgs[baseName] = i
 
         # push image to database
@@ -172,21 +178,23 @@ if __name__ == '__main__':
             INSERT INTO {}.IMAGE (filename)
             VALUES (%s)
         '''.format(dbSchema),
-        (i,))
+        (baseName,))
 
     
     # locate all label files
     if args.labelFolder is not None:
         print('\nAdding labels...')
-        labelFiles = glob.glob(os.path.join(args.labelFolder, '*.txt'))
+        labelFiles = glob.glob(os.path.join(args.labelFolder, '**'), recursive=True)
         for l in tqdm(labelFiles):
 
-            if 'classes.txt' in l:
+            if os.path.isdir(l) or 'classes.txt' in l:
                 continue
 
-            l = l.replace(args.labelFolder, '')
-            tokens = l.split('.')
-            baseName = l.replace('.' + tokens[-1],'')
+            # l = l.replace(args.labelFolder, '')
+            # tokens = l.split('.')
+            # baseName = l.replace('.' + tokens[-1],'')
+            basePath, _ = os.path.splitext(l)
+            baseName = basePath.replace(args.labelFolder, '')
 
             # load matching image
             if not baseName in imgs:
@@ -194,13 +202,12 @@ if __name__ == '__main__':
                     continue
                 else:
                     raise ValueError('Label file {} has no associated image'.format(l))
-            imgPath = os.path.join(imgBaseDir, imgs[baseName])
-            img = Image.open(imgPath)
+            # imgPath = os.path.join(imgBaseDir, imgs[baseName])
+            img = Image.open(imgs[baseName])
             sz = img.size
 
             # load labels
-            labelPath = os.path.join(args.labelFolder, l)
-            with open(labelPath, 'r') as f:
+            with open(l, 'r') as f:
                 lines = f.readlines()
 
             # parse annotations

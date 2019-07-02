@@ -47,8 +47,8 @@ class DataHandler {
 
         } else {
             // add and remove buttons
-            parentElement.append($('<button class="btn btn-primary" onclick="window.interfaceControls.action=window.interfaceControls.actions.ADD_ANNOTATION;">+</button>'));
-            parentElement.append($('<button class="btn btn-primary" onclick="window.interfaceControls.action=window.interfaceControls.actions.REMOVE_ANNOTATIONS;">-</button>'));
+            parentElement.append($('<button id="add-annotation" class="btn btn-primary" onclick="window.interfaceControls.action=window.interfaceControls.actions.ADD_ANNOTATION;">+</button>'));
+            parentElement.append($('<button id="remove-annotation" class="btn btn-primary" onclick="window.interfaceControls.action=window.interfaceControls.actions.REMOVE_ANNOTATIONS;">-</button>'));
 
             $(window).keyup(function(event) {
                 if(window.uiBlocked) return;
@@ -66,7 +66,7 @@ class DataHandler {
         
 
         // next and previous batch buttons
-        parentElement.append($('<button class="btn btn-primary float-left" onclick="window.dataHandler.previousBatch()">Previous</button>'));
+        parentElement.append($('<button id="previous-button" class="btn btn-primary float-left" onclick="window.dataHandler.previousBatch()">Previous</button>'));
         $(window).keyup(function(event) {
             if(window.uiBlocked) return;
             if(event.which === 37) {
@@ -76,7 +76,7 @@ class DataHandler {
             }
         });
 
-        parentElement.append($('<button class="btn btn-primary float-right" onclick="window.dataHandler.nextBatch()">Next</button>'));
+        parentElement.append($('<button id="next-button" class="btn btn-primary float-right" onclick="window.dataHandler.nextBatch()">Next</button>'));
         $(window).keyup(function(event) {
             if(window.uiBlocked) return;
             if(event.which === 39) {

@@ -40,7 +40,7 @@ $(document).ready(function() {
     });
 
     // set up data handler
-    promise.done(function() {
+    promise = promise.done(function() {
         window.dataHandler = new DataHandler($('#gallery'));
         window.dataHandler.loadNextBatch();
     });
@@ -151,4 +151,11 @@ $(document).ready(function() {
             }
         });
     }
+
+
+
+    promise.done(function() {
+        // show interface tutorial
+        window.showTutorial();
+    })
 });
