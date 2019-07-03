@@ -4,8 +4,8 @@
     <title>AIde</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-    <!-- <link type="text/css" href="static/css/bootstrap.min.css" rel="stylesheet"> -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous" />
+    <link rel="stylesheet" href="static/css/interface.css" />
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/tooltip.js"></script>
@@ -20,110 +20,6 @@
     <script type="text/javascript" src="static/js/dataHandler.js"></script>
     <script type="text/javascript" src="static/js/uitutorial.js"></script>
     <script type="text/javascript" src="static/js/init.js"></script>
-    <style type="text/css">
-        body {
-            /* overflow: hidden; */
-            background: #333333 !important;
-            -webkit-background-size: cover;
-            -moz-background-size: cover;
-            -o-background-size: cover;
-            background-size: cover;
-            height: 100vh;
-        }
-        .navbar {
-            background: -moz-linear-gradient(left,  rgba(87,83,82,0.6) 0%, rgba(87,83,82,0.6) 39%, rgba(87,83,82,1) 82%, rgba(87,83,82,1) 100%);
-            background: -webkit-linear-gradient(left,  rgba(87,83,82,0.6) 0%,rgba(87,83,82,0.6) 39%,rgba(87,83,82,1) 82%,rgba(87,83,82,1) 100%);
-            background: linear-gradient(to right,  rgba(87,83,82,0.6) 0%,rgba(87,83,82,0.6) 39%,rgba(87,83,82,1) 82%,rgba(87,83,82,1) 100%);
-            filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#99575352', endColorstr='#575352',GradientType=1 );
-        }
-        .header-text {
-            color: white;
-        }
-        #footer {
-            background: -moz-linear-gradient(left,  rgba(87,83,82,0.6) 0%, rgba(87,83,82,0.6) 39%, rgba(87,83,82,1) 82%, rgba(87,83,82,1) 100%);
-            background: -webkit-linear-gradient(left,  rgba(87,83,82,0.6) 0%,rgba(87,83,82,0.6) 39%,rgba(87,83,82,1) 82%,rgba(87,83,82,1) 100%);
-            background: linear-gradient(to right,  rgba(87,83,82,0.6) 0%,rgba(87,83,82,0.6) 39%,rgba(87,83,82,1) 82%,rgba(87,83,82,1) 100%);
-            filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#99575352', endColorstr='#575352',GradientType=1 );
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-            height: 40px;
-        }
-        #gallery-container {
-            background: none;
-        }
-        .widescreen {
-            max-width: 1920px;
-        }
-        #interface-controls > * {
-            margin-left: 10px;
-            margin-right: 10px;
-        }
-        .entry {
-            display: inline-block;
-        }
-        canvas {
-            width: 100%;
-            height: auto;
-        }
-        #tools-container {
-            position: fixed;
-            right: 0;
-            top: 0;
-            bottom: 0;
-            margin: auto;
-            width: 200px;
-            height: 400px;
-            max-height: 75%;
-            padding: 10px;
-        }
-        .legend-entries {
-            display: grid;
-        }
-        .label-class-legend {
-            text-align: center;
-            padding: 8px;
-            font-weight: bold;
-            color: white;
-            cursor: pointer;
-            margin: 4px;
-        }
-        .legend-inactive {
-            background: #EEEEEE !important;
-            color: #222222 !important;
-            font-weight: normal;
-        }
-        .overlay {
-            display: none;
-            position: fixed;
-            left: 0;
-            top: 0;
-            right: 0;
-            bottom: 0;
-            background: #44444488;
-            z-index: 5;
-        }
-        .overlay-card {
-            position: absolute;
-            margin: auto;
-            /* background: #444444CC;
-            color:white; */
-            left: 0;
-            right: 0;
-            top: 0;
-            bottom: 0;
-            padding: 20px;
-            z-index: 10;
-            width: 720px;
-            height: 400px;
-            max-width: 50%;
-            max-height: 50%;
-            border-radius: 10px;
-        }
-        .tooltip {
-            opacity: 100;
-        }
-    </style>
 </head>
 
 <body>
@@ -133,6 +29,17 @@
         <!-- Overlay -->
         <div id="overlay" class="overlay">
             <div id="overlay-card" class="overlay-card card container"></div>
+            <div id="overlay-loader">
+                <div style="text-align:center;margin-bottom:20px;font-size:20px;text-align:center;">Loading...</div>
+                <!-- blatant copy of MS azure's splash screen loading dots -->
+                <div class="azure-loadingdots">
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                </div>
+            </div>
         </div>
 
         <!-- Navigation bar -->
@@ -148,7 +55,7 @@
                     <div class="dropdown nav navbar-nav" style="float:right;">
                         <a class="dropdown-toggle btn" id="navbar-user-dropdown" data-toggle="dropdown" href="#" style="color:white;font-weight:bold;" >{{ username }}</a>
                         <ul class="dropdown-menu" role="menu" aria-labelledby="navbar-user-dropdown">
-                            <li class="dropdown-item"><button class="btn btn-sm btn-danger" onclick="window.location.href='/logout'">Log Out</button></li>
+                            <li class="dropdown-item"><button id="logout" class="btn btn-sm btn-danger">Log Out</button></li>
                         </ul>
                     </div>
                 </li>

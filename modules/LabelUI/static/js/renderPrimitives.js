@@ -102,8 +102,7 @@ class ImageElement extends AbstractRenderElement {
 
     _create_image() {
         this.image = new Image();
-        // this.image.width = this.width;
-        // this.image.height = this.height;
+        this.image.loadingText = 'loading image...';
         var self = this;
         this.image.onload = function() {
             // calculate relative image offsets (X and Y)
@@ -126,6 +125,7 @@ class ImageElement extends AbstractRenderElement {
         };
         this.image.onerror = function() {
             this.loaded = false;
+            this.image.loadingText = 'loading failed.';
         };
         this.image.src = this.imageURI;
     }
@@ -148,13 +148,12 @@ class ImageElement extends AbstractRenderElement {
 
         } else {
             // loading failed
-            var loadingText = 'loading failed.';
             ctx.fillStyle = window.styles.background;
             ctx.fillRect(targetCoords[0], targetCoords[1], targetCoords[2], targetCoords[3]);
             ctx.font = '20px sans-serif';
-            var dimensions = ctx.measureText(loadingText);
+            var dimensions = ctx.measureText(this.image.loadingText);
             ctx.fillStyle = '#FFFFFF';
-            ctx.fillText(loadingText, targetCoords[2]/2 - dimensions.width/2, targetCoords[3]/2);
+            ctx.fillText(this.image.loadingText, targetCoords[2]/2 - dimensions.width/2, targetCoords[3]/2);
         }
     }
 }

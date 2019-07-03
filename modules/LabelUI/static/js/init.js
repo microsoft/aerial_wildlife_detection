@@ -6,6 +6,29 @@
 
 $(document).ready(function() {
 
+    // loading overlay
+    window.showLoadingOverlay = function(visible) {
+        if(visible) {
+            window.uiBlocked = true;
+            $('#overlay').css('display', 'block');
+            $('#overlay-loader').css('display', 'block');
+            $('#overlay-card').css('display', 'none');
+
+        } else {
+            $('#overlay').fadeOut({
+                complete: function() {
+                    $('#overlay-loader').css('display', 'none');
+                }
+            });
+            window.uiBlocked = false;
+        }
+    }
+
+
+    // block UI until loaded
+    window.showLoadingOverlay(true);
+
+
     // cookie helper
     window.getCookie = function(name) {
         var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
@@ -154,8 +177,26 @@ $(document).ready(function() {
 
 
 
+    // logout and reload functionality
+    $(window).bind('beforeunload',function() {
+        window.dataHandler.submitAnnotations();
+    });
+
+    $('#logout').click(function() {
+        window.dataHandler.submitAnnotations();
+        window.location.href = '/logout';
+    });
+
+
     // promise.done(function() {
     //     // show interface tutorial
     //     window.showTutorial();
     // });
+
+
+
+    // enable interface
+    promise.done(function() {
+        window.showLoadingOverlay(false);
+    })
 });
