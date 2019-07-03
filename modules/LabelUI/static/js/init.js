@@ -154,8 +154,8 @@ $(document).ready(function() {
 
 
 
-    promise.done(function() {
-        // show interface tutorial
-        window.showTutorial();
-    })
+    // promise.done(function() {
+    //     // show interface tutorial
+    //     window.showTutorial();
+    // });
 });

@@ -63,6 +63,9 @@ class DBMiddleware():
                     'predictions': {},
                     'annotations': {}
                 }
+            viewcount = b['viewcount']
+            if viewcount is not None:
+                response[imgID]['viewcount'] = viewcount
 
             # parse annotations and predictions
             entryID = str(b['id'])
@@ -128,7 +131,7 @@ class DBMiddleware():
         sql = self.sqlBuilder.getFixedImagesQueryString()
 
         #TODO: username
-        cursor = self.dbConnector.execute_cursor(sql, (tuple(UUID(d) for d in data), username,))
+        cursor = self.dbConnector.execute_cursor(sql, (tuple(UUID(d) for d in data), username, username,))
 
         # parse results
         try:
@@ -157,36 +160,6 @@ class DBMiddleware():
             response = self._assemble_annotations(cursor, limit)
         finally:
             cursor.close()
-
-        # response = {}
-        # while len(response) < limit:
-        #     b = cursor.fetchone()
-        #     if b is None:
-        #         break
-
-        #     imgID = str(b['image'])
-        #     if not imgID in response:
-        #         response[imgID] = {
-        #             'fileName': b['filename'],
-        #             'predictions': {},
-        #             'annotations': {}
-        #         }
-
-        #     # parse annotations and predictions
-        #     entryID = str(b['id'])
-        #     colnames = self.sqlBuilder.getColnames(b['ctype'])
-        #     entry = {}
-        #     for c in colnames:
-        #         value = b[c]
-        #         if isinstance(value, datetime):
-        #             value = value.timestamp()
-        #         elif isinstance(value, UUID):
-        #             value = str(value)
-        #         entry[c] = value
-        #     if b['ctype'] == 'annotation':
-        #         response[imgID]['annotations'][entryID] = entry
-        #     elif b['ctype'] == 'prediction':
-        #         response[imgID]['predictions'][entryID] = entry
 
             # #TODO
             # if len(response) == 1:
@@ -254,6 +227,10 @@ class DBMiddleware():
         colnames = getTableNames(getattr(QueryStrings_annotation, self.projectSettings['annotationType']).value)
         values_insert = []
         values_update = []
+
+        # for deletion: remove all annotations whose image ID matches but whose annotation ID is not among the submitted ones
+        ids = []
+
         viewcountValues = []
         for imageKey in submissions['entries']:
             entry = submissions['entries'][imageKey]
@@ -276,6 +253,7 @@ class DBMiddleware():
                             if cname in annotationTokens:
                                 # cast and only append id if the annotation is an existing one
                                 annoValues.append(UUID(annotationTokens[cname]))
+                                ids.append(UUID(annotationTokens[cname]))
                         elif cname == 'image':
                             annoValues.append(UUID(imageKey))
                         elif cname == 'label' and annotationTokens[cname] is not None:
@@ -303,7 +281,21 @@ class DBMiddleware():
 
         schema = self.config.getProperty('Database', 'schema')
 
-        
+
+        # delete all annotations that are not in submitted batch
+        if len(ids):
+            imageKeys = list(UUID(k) for k in submissions['entries'])
+            sql = '''
+                DELETE FROM {schema}.annotation WHERE username = %s AND id IN (
+                    SELECT idQuery.id FROM (
+                        SELECT * FROM {schema}.annotation WHERE id NOT IN %s
+                    ) AS idQuery
+                    JOIN (
+                        SELECT * FROM {schema}.annotation WHERE image IN %s
+                    ) AS imageQuery ON idQuery.id = imageQuery.id);
+            '''.format(schema=schema)
+            self.dbConnector.execute(sql, (username, tuple(ids), tuple(imageKeys),))
+
         # insert new annotations
         if len(values_insert):
             sql = '''

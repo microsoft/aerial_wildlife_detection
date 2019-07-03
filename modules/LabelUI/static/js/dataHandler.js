@@ -22,30 +22,7 @@ class DataHandler {
         var parentElement = $('#interface-controls');
         var self = this;
 
-        if(window.annotationType === 'labels') {
-            // assign/remove all labels buttons
-            parentElement.append($('<button class="btn btn-primary" onclick="window.dataHandler.assignLabelToAll()">Label All</button>'));
-            $(window).keyup(function(event) {
-                if(window.uiBlocked) return;
-                if(String.fromCharCode(event.which) === 'A') {
-                    self.assignLabelToAll();
-                } else if(event.which === 46) {
-                    // Del key; remove all active annotations
-                    self.removeActiveAnnotations();
-                }
-            });
-
-            if(window.enableEmptyClass) {
-                parentElement.append($('<button class="btn btn-primary btn-warning" onclick="window.dataHandler.clearLabelInAll()">Clear All</button>'));
-                $(window).keyup(function(event) {
-                    if(window.uiBlocked) return;
-                    if(String.fromCharCode(event.which) === 'C') {
-                        self.clearLabelInAll();
-                    }
-                });
-            }
-
-        } else {
+        if(!(window.annotationType === 'labels')) {
             // add and remove buttons
             parentElement.append($('<button id="add-annotation" class="btn btn-primary" onclick="window.interfaceControls.action=window.interfaceControls.actions.ADD_ANNOTATION;">+</button>'));
             parentElement.append($('<button id="remove-annotation" class="btn btn-primary" onclick="window.interfaceControls.action=window.interfaceControls.actions.REMOVE_ANNOTATIONS;">-</button>'));
@@ -63,7 +40,29 @@ class DataHandler {
                 }
             });
         }
+
+        // assign/remove all labels buttons
+        if(window.annotationType != 'labels' || window.enableEmptyClass) {
+            parentElement.append($('<button class="btn btn-primary btn-warning" onclick="window.dataHandler.clearLabelInAll()">Clear All</button>'));
+            $(window).keyup(function(event) {
+                if(window.uiBlocked) return;
+                if(String.fromCharCode(event.which) === 'C') {
+                    self.clearLabelInAll();
+                }
+            });
+        }
         
+        parentElement.append($('<button class="btn btn-primary" onclick="window.dataHandler.assignLabelToAll()">Label All</button>'));
+        $(window).keyup(function(event) {
+            if(window.uiBlocked) return;
+            if(String.fromCharCode(event.which) === 'A') {
+                self.assignLabelToAll();
+            } else if(event.which === 46) {
+                // Del key; remove all active annotations
+                self.removeActiveAnnotations();
+            }
+        });
+
 
         // next and previous batch buttons
         parentElement.append($('<button id="previous-button" class="btn btn-primary float-left" onclick="window.dataHandler.previousBatch()">Previous</button>'));
@@ -119,7 +118,7 @@ class DataHandler {
             For classification entries only: assigns the selected label
             to all data entries.
         */
-        if(window.uiBlocked || window.annotationType != 'labels') return;
+        if(window.uiBlocked) return;
         for(var i=0; i<this.dataEntries.length; i++) {
             this.dataEntries[i].setLabel(window.labelClassHandler.getActiveClassID());
         }
@@ -130,9 +129,22 @@ class DataHandler {
             For classification entries only: remove all assigned labels
             (if 'enableEmptyClass' is true).
         */
-        if(window.uiBlocked || window.annotationType != 'labels' || !window.enableEmptyClass) return;
+        if(window.uiBlocked || !window.enableEmptyClass) return;
         for(var i=0; i<this.dataEntries.length; i++) {
             this.dataEntries[i].setLabel(null);
+        }
+    }
+
+    refreshActiveAnnotations() {
+        /*
+            Iterates through the data entries and sets all active annotations
+            inactive, unless the globally set active data entry corresponds to
+            the respective data entry's entryID.
+        */
+        for(var i=0; i<this.dataEntries.length; i++) {
+            if(this.dataEntries[i].entryID != window.activeEntryID) {
+                this.dataEntries[i].setAnnotationsInactive();
+            }
         }
     }
 

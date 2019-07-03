@@ -37,7 +37,7 @@ class SQLStringBuilder:
         else:
             raise ValueError('{} is not a recognized type.'.format(type))
 
-        baseNames += ['id']
+        baseNames += ['id', 'viewcount']
 
         return baseNames
 
@@ -65,7 +65,7 @@ class SQLStringBuilder:
         string_all = string_all.strip(',')
 
         sql = '''
-            SELECT id, image, cType, filename, {allCols} FROM (
+            SELECT id, image, cType, viewcount, filename, {allCols} FROM (
                 SELECT id AS image, filename FROM {schema}.image
                 WHERE id IN %s
             ) AS img
@@ -74,7 +74,9 @@ class SQLStringBuilder:
                 WHERE username = %s
                 UNION ALL
                 SELECT id, image AS imID, 'prediction' AS cType, {predCols} FROM {schema}.prediction AS pred
-            ) AS contents ON img.image = contents.imID;
+            ) AS contents ON img.image = contents.imID
+            LEFT OUTER JOIN (SELECT image AS iu_image, viewcount, username FROM {schema}.image_user
+            WHERE username = %s) AS iu ON img.image = iu.iu_image;
         '''.format(schema=schema, allCols=string_all, annoCols=string_anno, predCols=string_pred)
         return sql
 
@@ -127,7 +129,7 @@ class SQLStringBuilder:
 
 
         sql = '''
-            SELECT id, image, cType, filename, {allCols} FROM (
+            SELECT id, image, cType, viewcount, filename, {allCols} FROM (
             SELECT id AS image, filename, viewcount, score FROM {schema}.image AS img
             LEFT OUTER JOIN (
                 SELECT * FROM {schema}.image_user

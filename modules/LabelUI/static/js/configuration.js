@@ -13,6 +13,15 @@ window.getCurrentDateString = function() {
     return date.toString();
 }
 
+window.getRandomString = function() {
+    // only used for temporary IDs, never for sensitive hashing
+    return Math.random().toString(36).substring(7);
+}
+
+window.getRandomID = function() {
+    return window.getCurrentDateString() + window.getRandomString();
+}
+
 
 window.loadConfiguration = function() {
     // general properties

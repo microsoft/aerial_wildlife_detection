@@ -8,6 +8,7 @@ class ImageViewport {
 
     constructor(canvas) {
         this.canvas = canvas;
+        this.loadingText = 'loading...';
         var self = this;
         $(window).on('resize', function() {
             //TODO: doesn't allow for zooming
@@ -158,11 +159,10 @@ class ImageViewport {
         this.ctx.fillRect(0, 0, extent[2], extent[3]);
 
         // show loading text
-        var loadingText = 'loading...';
         this.ctx.font = '20px sans-serif';
-        var dimensions = this.ctx.measureText(loadingText);
+        var dimensions = this.ctx.measureText(this.loadingText);
         this.ctx.fillStyle = '#FFFFFF';
-        this.ctx.fillText(loadingText, this.canvas[0].width/2 - dimensions.width/2, this.canvas[0].height/2);
+        this.ctx.fillText(this.loadingText, this.canvas[0].width/2 - dimensions.width/2, this.canvas[0].height/2);
 
         // iterate through render stack
         var self = this;

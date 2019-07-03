@@ -81,8 +81,6 @@ class Annotation {
         this.geometry.setActive(active, viewport);
     }
 
-
-
     getChanged() {
         // returns true if the user has modified the annotation
         return this.geometry.changed;

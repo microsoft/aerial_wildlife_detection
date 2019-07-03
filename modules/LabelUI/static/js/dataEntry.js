@@ -21,6 +21,16 @@
         this.startTime = new Date();
     }
 
+    _click(event) {
+        /*
+            Click listener to disable active annotations in other
+            data entries (unless shift key held down)
+        */
+        if(event.shiftKey) return;
+        window.activeEntryID = this.entryID;
+        window.dataHandler.refreshActiveAnnotations();      //TODO: ugly hack...
+    }
+
     _setup_viewport() {
         var self = this;
         if(window.dataType == 'images') {
@@ -30,6 +40,7 @@
                 self.viewport.resetViewport();
             });
             this.canvas.css('cursor', 'crosshair');
+
             this.viewport = new ImageViewport(this.canvas);
 
         } else {
@@ -88,9 +99,9 @@
         */
         this.predictions = {};
         this.annotations = {};
-
         var hasAnnotations = (properties.hasOwnProperty('annotations') && Object.keys(properties['annotations']).length > 0);
         var hasPredictions = (properties.hasOwnProperty('predictions') && Object.keys(properties['predictions']).length > 0);
+        var carryOverPredictions = window.carryOverPredictions && hasPredictions && (!properties.hasOwnProperty('viewcount') || properties['viewcount'] == 0);
 
         if(window.showPredictions || window.carryOverPredictions && hasPredictions) {
             if(window.showPredictions && !hasAnnotations) {
@@ -103,7 +114,7 @@
                 }
             }
 
-            if(window.carryOverPredictions && !hasAnnotations) {
+            if(carryOverPredictions) {
                 /*
                     No annotations present for entry (i.e., entry not yet screened by user):
                     show an initial guess provided by the predictions. Convert predictions
@@ -130,14 +141,14 @@
                                 // construct new classification entry
                                 var id = properties['predictions'][key]['id'];
                                 var label = properties['predictions'][key]['label'];
-                                var anno = new Annotation(window.getCurrentDateString(), {'id':id, 'label':label, 'confidence':maxConf}, 'annotation');
+                                var anno = new Annotation(window.getRandomID(), {'id':id, 'label':label, 'confidence':maxConf}, 'annotation');
                                 anno.setProperty('changed', true);
                                 this._addElement(anno);
                             }
                         } else if(window.carryOverRule == 'mode') {
                             var counts = {};
                             for(var key in properties['predictions']) {
-                                var prediction = new Annotation(window.getCurrentDateString(), properties['predictions'][key], 'prediction');
+                                var prediction = new Annotation(window.getRandomID(), properties['predictions'][key], 'prediction');
                                 if(!(counts.hasOwnProperty(prediction.label))) {
                                     counts[label] = 0;
                                 }
@@ -154,7 +165,7 @@
                             }
                             // add new label annotation
                             if(argMax != null) {
-                                var anno = new Annotation(window.getCurrentDateString(), {'label':argMax}, 'annotation');
+                                var anno = new Annotation(window.getRandomID(), {'label':argMax}, 'annotation');
                                 anno.setProperty('changed', true);
                                 this._addElement(anno);
                             }
@@ -167,7 +178,7 @@
                         if(props['confidence'] >= window.carryOverPredictions_minConf) {
                             delete props['width'];
                             delete props['height'];
-                            var anno = new Annotation(window.getCurrentDateString(), props, 'annotation');
+                            var anno = new Annotation(window.getRandomID(), props, 'annotation');
                             this._addElement(anno);
                         }
                     }
@@ -178,7 +189,7 @@
                         if(props['confidence'] >= window.carryOverPredictions_minConf) {
                             props['width'] = window.defaultBoxSize_w;
                             props['height'] = window.defaultBoxSize_h;
-                            var anno = new Annotation(window.getCurrentDateString(), props, 'annotation');
+                            var anno = new Annotation(window.getRandomID(), props, 'annotation');
                             anno.setProperty('changed', true);
                             this._addElement(anno);
                         }
@@ -188,7 +199,7 @@
                     for(var key in properties['predictions']) {
                         var props = properties['predictions'][key];
                         if(props['confidence'] >= window.carryOverPredictions_minConf) {
-                            var anno = new Annotation(window.getCurrentDateString(), props, 'annotation');
+                            var anno = new Annotation(window.getRandomID(), props, 'annotation');
                             anno.setProperty('changed', true);
                             this._addElement(anno);
                         }
@@ -219,6 +230,8 @@
         var colSize = Math.round(12 / window.numImages_x);  // for bootstrap
         this.markup = $('<div class="entry box-shadow col-sm-' + colSize + '"></div>');
         this.markup.append(this.canvas);
+        var self = this;
+        this.markup.on('click', (self._click).bind(self));
     }
 
     getImageURI() {
@@ -277,6 +290,13 @@
         return Math.max(0, lastModified - this.getTimeCreated());
     }
 
+    setLabel(label) {
+        for(var key in this.annotations) {
+            this.annotations[key].setProperty('label', label);
+        }
+        this.render();
+    }
+
     setPredictionsVisible(visible) {
         for(var key in this.predictions) {
             this.predictions[key].setVisible(visible);
@@ -287,6 +307,13 @@
     setAnnotationsVisible(visible) {
         for(var key in this.annotations) {
             this.annotations[key].setVisible(visible);
+        }
+        this.render();
+    }
+
+    setAnnotationsInactive() {
+        for(var key in this.annotations) {
+            this.annotations[key].setActive(false, this.viewport);
         }
         this.render();
     }
@@ -331,7 +358,7 @@
         if(this.labelInstance == null) {
             // add a default, blank instance if nothing has been predicted or annotated yet
             var label = (window.enableEmptyClass ? null : window.labelClassHandler.getActiveClassID());
-            this._addElement(new Annotation(window.getCurrentDateString(), {'label':label}, 'annotation'));
+            this._addElement(new Annotation(window.getRandomID(), {'label':label}, 'annotation'));
         }
 
         this._setup_markup();
@@ -414,7 +441,7 @@
     setLabel(label) {
         if(this.labelInstance == null) {
             // add new annotation
-            var anno = new Annotation(window.getCurrentDateString(), {'label':label}, 'annotation');
+            var anno = new Annotation(window.getRandomID(), {'label':label}, 'annotation');
             this._addElement(anno);
 
         } else {
@@ -439,7 +466,7 @@
             var activeLabel = window.labelClassHandler.getActiveClassID();
             if(this.labelInstance == null) {
                 // add new annotation
-                var anno = new Annotation(window.getCurrentDateString(), {'label':activeLabel}, 'annotation');
+                var anno = new Annotation(window.getRandomID(), {'label':activeLabel}, 'annotation');
                 this._addElement(anno);
 
             } else {
@@ -588,6 +615,16 @@ class PointAnnotationEntry extends AbstractDataEntry {
         }
         this.render();
     }
+
+
+    setLabel(label) {
+        for(var key in this.annotations) {
+            if(label == null) {
+                this._removeElement(this.annotations[key]);
+            }
+        }
+        this.render();
+    }
 }
 
 
@@ -703,7 +740,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
             'height': 0,
             'label': window.labelClassHandler.getActiveClassID()
         };
-        var anno = new Annotation(window.getCurrentDateString(), props, 'annotation');
+        var anno = new Annotation(window.getRandomID(), props, 'annotation');
         this._addElement(anno);
         anno.getRenderElement().registerAsCallback(this.viewport);
         anno.getRenderElement().setActive(true, this.viewport);

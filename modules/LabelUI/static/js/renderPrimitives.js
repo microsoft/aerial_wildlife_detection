@@ -117,11 +117,15 @@ class ImageElement extends AbstractRenderElement {
             // define valid canvas area as per image offset
             self.viewport.setValidArea(self.bounds);
 
-            // re-render
-            self.viewport.render();
-
             // set time created
             self.timeCreated = new Date();
+            this.loaded = true;
+
+            // re-render
+            self.viewport.render();
+        };
+        this.image.onerror = function() {
+            this.loaded = false;
         };
         this.image.src = this.imageURI;
     }
@@ -137,9 +141,21 @@ class ImageElement extends AbstractRenderElement {
     render(ctx, viewport, limits, scaleFun) {
         super.render(ctx, viewport, limits, scaleFun);
         var targetCoords = scaleFun(this.bounds, 'canvas');
-        ctx.drawImage(this.image, targetCoords[0], targetCoords[1],
-            targetCoords[2],
-            targetCoords[3]);
+        if(this.image.loaded) {
+            ctx.drawImage(this.image, targetCoords[0], targetCoords[1],
+                targetCoords[2],
+                targetCoords[3]);
+
+        } else {
+            // loading failed
+            var loadingText = 'loading failed.';
+            ctx.fillStyle = window.styles.background;
+            ctx.fillRect(targetCoords[0], targetCoords[1], targetCoords[2], targetCoords[3]);
+            ctx.font = '20px sans-serif';
+            var dimensions = ctx.measureText(loadingText);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillText(loadingText, targetCoords[2]/2 - dimensions.width/2, targetCoords[3]/2);
+        }
     }
 }
 
@@ -447,7 +463,6 @@ class RectangleElement extends PointElement {
         this.activeHandle = this.getClosestHandle(this.mousePos_current, window.annotationProximityTolerance / Math.min(viewport.canvas.width(), viewport.canvas.height()));
         if(this.activeHandle === 'c') {
             // center of a box clicked; set globally so that other active boxes don't falsely resize
-            window.centerBoxActive = true;
             viewport.canvas.css('cursor', 'move');
         }
     }
@@ -460,15 +475,14 @@ class RectangleElement extends PointElement {
             - if drag and inside rectangle: move rectangle and resize handles
         */
         if(!this.visible) return;
-
         var coords = viewport.getRelativeCoordinates(event, 'validArea');
+        var handle = this.getClosestHandle(coords, window.annotationProximityTolerance / Math.min(viewport.canvas.width(), viewport.canvas.height()));
         if(this.mousePos_current == null) {
             this.mousePos_current = coords;
         }
         var mpc = this.mousePos_current;
         var extent = this.getExtent();
-
-        if(window.centerBoxActive != null && window.centerBoxActive && this.mouseDrag) {
+        if(this.activeHandle == null && handle == null && this.mouseDrag) {
             // clicked somewhere in a center of a box; move instead of resize
             this.setProperty('x', this.x + coords[0] - mpc[0]);
             this.setProperty('y', this.y + coords[1] - mpc[1]);
@@ -546,7 +560,6 @@ class RectangleElement extends PointElement {
 
     _mouseup_event(event, viewport) {
         this.mouseDrag = false;
-        window.centerBoxActive = false;
         viewport.canvas.css('cursor', 'crosshair');
     }
 
