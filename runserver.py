@@ -1,5 +1,5 @@
 '''
-    Runs one of the two tiers (LabelingUI or AItrainer), based on the arguments passed.
+    Runs one or more of the tiers (LabelingUI, AIController, AIWorker), based on the arguments passed.
 
     2019 Benjamin Kellenberger
 '''

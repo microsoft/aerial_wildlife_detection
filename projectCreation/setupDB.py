@@ -101,12 +101,12 @@ if __name__ == '__main__':
         sql = f.read()
     
     # fill in placeholders
-    annoType_frontend = config.getProperty('LabelUI', 'annotationType')
+    annoType_frontend = config.getProperty('Project', 'annotationType')
     annoFields_frontend, additionalTables_frontend = _constructAnnotationFields(annoType_frontend, 'annotation')
     if additionalTables_frontend is not None:
         sql += additionalTables_frontend
 
-    annoType_backend = config.getProperty('AITrainer', 'annotationType')
+    annoType_backend = config.getProperty('Project', 'predictionType')
     annoFields_backend, additionalTables_backend = _constructAnnotationFields(annoType_backend, 'prediction')
     if additionalTables_backend is not None:
         sql += additionalTables_backend

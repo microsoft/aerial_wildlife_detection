@@ -7,7 +7,7 @@
 import os
 import cgi
 import bottle
-from bottle import request, response, static_file, abort, SimpleTemplate
+from bottle import request, response, static_file, redirect, abort, SimpleTemplate
 from .backend.middleware import DBMiddleware
 
 
@@ -37,7 +37,11 @@ class LabelUI():
         ''' static routings '''
         @self.app.route('/')
         def index():
-            return static_file("index.html", root=os.path.join(self.staticDir, 'templates'))
+            # redirect to interface if logged in
+            if self.loginCheck():
+                return redirect('/interface')
+            else:
+                return static_file("index.html", root=os.path.join(self.staticDir, 'templates'))
 
 
         with open(os.path.abspath(os.path.join(self.config.getProperty(self, 'staticfiles_dir'), 'templates/interface.html')), 'r') as f:

@@ -31,9 +31,9 @@ class SQLStringBuilder:
             (either 'prediction' or 'annotation').
         '''
         if type == 'prediction':
-            baseNames = list(getattr(FieldNames_prediction, self.config.getProperty('AITrainer', 'annotationType')).value)
+            baseNames = list(getattr(FieldNames_prediction, self.config.getProperty('Project', 'predictionType')).value)
         elif type == 'annotation':
-            baseNames = list(getattr(FieldNames_annotation, self.config.getProperty('LabelUI', 'annotationType')).value)
+            baseNames = list(getattr(FieldNames_annotation, self.config.getProperty('Project', 'annotationType')).value)
         else:
             raise ValueError('{} is not a recognized type.'.format(type))
 
@@ -46,8 +46,8 @@ class SQLStringBuilder:
         schema = self.config.getProperty('Database', 'schema')
 
         # assemble column names
-        fields_anno = getattr(FieldNames_annotation, self.config.getProperty('LabelUI', 'annotationType')).value
-        fields_pred = getattr(FieldNames_prediction, self.config.getProperty('AITrainer', 'annotationType')).value
+        fields_anno = getattr(FieldNames_annotation, self.config.getProperty('Project', 'annotationType')).value
+        fields_pred = getattr(FieldNames_prediction, self.config.getProperty('Project', 'predictionType')).value
         fields_union = list(fields_anno.union(fields_pred))
         string_anno = ''
         string_pred = ''
@@ -96,8 +96,8 @@ class SQLStringBuilder:
         schema = self.config.getProperty('Database', 'schema')
 
         # assemble column names
-        fields_anno = getattr(FieldNames_annotation, self.config.getProperty('LabelUI', 'annotationType')).value
-        fields_pred = getattr(FieldNames_prediction, self.config.getProperty('AITrainer', 'annotationType')).value
+        fields_anno = getattr(FieldNames_annotation, self.config.getProperty('Project', 'annotationType')).value
+        fields_pred = getattr(FieldNames_prediction, self.config.getProperty('Project', 'predictionType')).value
         fields_union = list(fields_anno.union(fields_pred))
         string_anno = ''
         string_pred = ''

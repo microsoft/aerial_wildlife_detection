@@ -64,7 +64,7 @@ Note that AIde requires PostgreSQL >= 9.5.
 
 ## Launching an instance
 
-To start an instance, run the "runserver.py" script with the appropriate argument for the desired type of module (i.e., one of: "LabelUI", "AITrainer", "FileServer").
+To start an instance, run the "runserver.py" script with the appropriate argument for the desired type of module (i.e., one of: "LabelUI", "AIController", "AIWorker", "FileServer").
 Example: the following command would start a labeling UI frontend on the current machine, using the parameters specified in the `config` directory:
 
 `python runserver.py --instance=LabelUI`
@@ -72,4 +72,4 @@ Example: the following command would start a labeling UI frontend on the current
 
 It is also possible to run multiple modules on the same instance by providing comma-separated module names as an argument:
 
-`python runserver.py --instance=LabelUI,AITrainer`
+`python runserver.py --instance=LabelUI,AIController`

@@ -49,7 +49,7 @@ if __name__ == '__main__':
 
     # check if correct type of annotations
     exportAnnotations = args.export_annotations
-    if exportAnnotations and not config.getProperty('LabelUI', 'annotationType') == 'boundingBoxes':
+    if exportAnnotations and not config.getProperty('Project', 'annotationType') == 'boundingBoxes':
         print('Warning: project annotations are not bounding boxes; skipping annotation export...')
         exportAnnotations = False
 

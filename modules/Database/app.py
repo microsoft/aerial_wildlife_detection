@@ -31,6 +31,7 @@ class Database():
                                         port=self.port,
                                         user=self.user,
                                         password=self.password)
+            self.conn.autocommit = True
         except:
             print('Error connecting to database {}:{} with username {}.'.format(
                 self.host, self.port, self.user
@@ -44,47 +45,52 @@ class Database():
 
     
     def execute(self, sql, arguments, numReturn=None):
-        cursor = self.execute_cursor(sql, arguments)
+        with self.execute_cursor(sql, arguments) as cursor:
+            try:
+                returnValues = []
+                if numReturn is None:
+                    cursor.close()
+                    return
+                
+                elif numReturn == 'all':
+                    returnValues = cursor.fetchall()
+                    cursor.close()
+                    return returnValues
 
-        returnValues = []
-        if numReturn is None:
-            cursor.close()
-            return
+                else:
+                    for _ in range(numReturn):
+                        rv = cursor.fetchone()
+                        if rv is None:
+                            return returnValues
+                        returnValues.append(rv)
         
-        elif numReturn == 'all':
-            returnValues = cursor.fetchall()
-            cursor.close()
-            return returnValues #, colnames
-
-        else:
-            for _ in range(numReturn):
-                rv = cursor.fetchone()
-                if rv is None:
-                    return returnValues #, colnames
-                returnValues.append(rv)
- 
-            cursor.close()
-            return returnValues #, colnames
+                    cursor.close()
+                    return returnValues
+            except Exception as e:
+                print(e)
+                self.conn.rollback()
+            finally:
+                cursor.close()
     
 
     def execute_cursor(self, sql, arguments):
         cursor = self.conn.cursor(cursor_factory = RealDictCursor)
         try:
             cursor.execute(sql, arguments)
+            self.conn.commit()
+            return cursor
         except Exception as e:
             print(e)
             self.conn.rollback()
-        self.conn.commit()
-
-        return cursor
 
 
     def insert(self, sql, values):
         cursor = self.conn.cursor()
         try:
             execute_values(cursor, sql, values)
+            self.conn.commit()
         except Exception as e:
             print(e)
             self.conn.rollback()
-        self.conn.commit()
-        cursor.close()
+        finally:
+            cursor.close()

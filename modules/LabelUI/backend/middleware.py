@@ -33,8 +33,8 @@ class DBMiddleware():
             'minObjSize': self.config.getProperty('Project', 'minObjSize'),
             'classes': self.getClassDefinitions(),
             'enableEmptyClass': self.config.getProperty('Project', 'enableEmptyClass'),
-            'annotationType': self.config.getProperty('LabelUI', 'annotationType'),
-            'predictionType': self.config.getProperty('AITrainer', 'annotationType'),
+            'annotationType': self.config.getProperty('Project', 'annotationType'),
+            'predictionType': self.config.getProperty('Project', 'predictionType'),
             'showPredictions': self.config.getProperty('LabelUI', 'showPredictions'),
             'showPredictions_minConf': self.config.getProperty('LabelUI', 'showPredictions_minConf'),
             'carryOverPredictions': self.config.getProperty('LabelUI', 'carryOverPredictions'),
@@ -130,15 +130,17 @@ class DBMiddleware():
         # query
         sql = self.sqlBuilder.getFixedImagesQueryString()
 
-        #TODO: username
-        cursor = self.dbConnector.execute_cursor(sql, (tuple(UUID(d) for d in data), username, username,))
-
         # parse results
-        try:
-            response = self._assemble_annotations(cursor)
-        finally:
-            cursor.close()
+        with self.dbConnector.execute_cursor(sql, (tuple(UUID(d) for d in data), username, username,)) as cursor:
+            try:
+                response = self._assemble_annotations(cursor)
+                self.dbConnector.conn.commit()
+            except:
+                self.dbConnector.conn.rollback()
+            finally:
+                cursor.close()
         return { 'entries': response }
+        
     
     def getNextBatch(self, username, order='unlabeled', subset='default', limit=None):
         '''
@@ -153,13 +155,15 @@ class DBMiddleware():
         else:
             limit = min(int(limit), 128)
 
-        cursor = self.dbConnector.execute_cursor(sql, (username,limit,username,))
-
         # parse results
-        try:
-            response = self._assemble_annotations(cursor, limit)
-        finally:
-            cursor.close()
+        with self.dbConnector.execute_cursor(sql, (username,limit,username,)) as cursor:
+            try:
+                response = self._assemble_annotations(cursor, limit)
+                self.dbConnector.conn.commit()
+            except:
+                self.dbConnector.conn.rollback()
+            finally:
+                cursor.close()
 
             # #TODO
             # if len(response) == 1:

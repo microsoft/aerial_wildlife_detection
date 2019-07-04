@@ -194,9 +194,8 @@ canvas {
 }
 
 .tooltip-inner {
-    background-color: #e0a800 !important;
-    color: black !important;
-    font-weight: bold;
+    background-color: #17a2b8 !important;
+    color: white !important;
     font-size: 18px;
-    border: 2px solid black;
+    /* TODO: change tooltip arrows to white */
 }

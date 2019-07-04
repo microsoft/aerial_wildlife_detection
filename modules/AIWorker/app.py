@@ -1,5 +1,5 @@
 '''
-    Main Bottle and routings for the AITrainer instance.
+    Main Bottle and routings for the AIWorker instance.
 
     2019 Benjamin Kellenberger
 '''
@@ -7,7 +7,7 @@
 from bottle import post, request, response
 
 
-class AITrainer:
+class AIWorker:
 
     def __init__(self, config, app):
         self.config = config
@@ -19,7 +19,7 @@ class AITrainer:
     def _initBottle(self):
 
         ''' notification listener '''
-        @self.app.post('/notify')
+        @self.app.post('/receive')
         def notification_received():
             #TODO
             if not hasattr(request.query, 'message'):
@@ -31,17 +31,3 @@ class AITrainer:
 
 
             return response
-
-
-
-
-''' Convenience launcher (FOR DEBUGGING ONLY) '''
-if __name__ == '__main__':
-
-    import argparse
-    from runserver import Launcher
-
-    parser = argparse.ArgumentParser(description='Run CV4Wildlife AL Service.')
-    parser.add_argument('--instance', type=str, default='AITrainer', const=1, nargs='?')
-    args = parser.parse_args()
-    Launcher(args)
