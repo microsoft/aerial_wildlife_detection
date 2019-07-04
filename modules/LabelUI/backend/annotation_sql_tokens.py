@@ -12,71 +12,19 @@ from uuid import UUID
 
 
 
-class FieldNames_prediction(Enum):
-    labels = set(['label', 'confidence'])
-    points = set(['label', 'confidence', 'x', 'y'])
-    boundingBoxes = set(['label', 'confidence', 'x', 'y', 'width', 'height'])
-    segmentationMasks = set(['filename'])   #TODO: conflict with image filename
-
-class FieldNames_annotation(Enum):
-    labels = set(['label'])
-    points = set(['label', 'x', 'y'])
-    boundingBoxes = set(['label', 'x', 'y', 'width', 'height'])
-    segmentationMasks = set(['filename'])   #TODO: conflict with image filename
-
-
-
-
 class QueryStrings_prediction(Enum):
-    labels = {
-        'table': ['id', 'image', 'label', 'confidence', 'priority'],
-        'query': ['predID', 'image', 'predLabel', 'predConfidence', 'priority']
-    }
-    points = {
-        'table': ['id', 'image', 'x', 'y', 'label', 'confidence', 'priority'],
-        'query': ['predID', 'image', 'predX', 'predY', 'predLabel', 'predConfidence', 'priority']
-    }
-    boundingBoxes = {
-        'table': ['id', 'image', 'x', 'y', 'width', 'height', 'label', 'confidence', 'priority'],
-        'query': ['predID', 'image', 'predX', 'predY', 'predWidth', 'predHeight', 'predLabel', 'predConfidence', 'priority']
-    }
-    segmentationMasks = {
-        'table': ['id', 'image', 'filename', 'priority'],
-        'query': ['predID', 'image', 'predSegMap', 'priority']
-    }
+    labels = ['id', 'image', 'label', 'confidence', 'priority'],
+    points = ['id', 'image', 'x', 'y', 'label', 'confidence', 'priority'],
+    boundingBoxes = ['id', 'image', 'x', 'y', 'width', 'height', 'label', 'confidence', 'priority'],
+    segmentationMasks = ['id', 'image', 'filename', 'priority']
 
 
 class QueryStrings_annotation(Enum):
-    labels = {
-        'table': ['id', 'image', 'label', 'username', 'timeCreated', 'timeRequired'],
-        'query': ['annoID', 'image', 'annoLabel', 'annoUsername', 'annoTimecreated', 'annoTimerequired'],
-        # 'submission': ['annotationID', None, 'label', 'username', 'timeCreated', 'timeRequired']
-    }
-    points = {
-        'table': ['id', 'image', 'x', 'y', 'label', 'username', 'timeCreated', 'timeRequired'],
-        'query': ['annoID', 'image', 'annoX', 'annoY', 'annoLabel', 'annoUsername', 'annoTimecreated', 'annoTimerequired'],
-        # 'submission': ['annotationID', None, 'x', 'y', 'label', 'username', 'timeCreated', 'timeRequired']
-    }
-    boundingBoxes = {
-        'table': ['id', 'image', 'x', 'y', 'width', 'height', 'label', 'username', 'timeCreated', 'timeRequired'],
-        'query': ['annoID', 'image', 'annoX', 'annoY', 'annoWidth', 'annoHeight', 'annoLabel', 'annoUsername', 'annoTimecreated', 'annoTimerequired'],
-        # 'submission': ['annotationID', None, 'x', 'y', 'width', 'height', 'label', 'username', 'timeCreated', 'timeRequired']
-    }
-    segmentationMasks = {
-        'table': ['id', 'image', 'filename', 'username', 'timeCreated', 'timeRequired'],
-        'query': ['annoID', 'image', 'annoSegMap', 'annoUsername', 'annoTimecreated', 'annoTimerequired'],
-        # 'submission': ['annotationID', None, 'segmentationMap', 'username', 'timeCreated', 'timeRequired']
-    }
+    labels = ['id', 'image', 'label', 'username', 'timeCreated', 'timeRequired'],
+    points = ['id', 'image', 'x', 'y', 'label', 'username', 'timeCreated', 'timeRequired'],
+    boundingBoxes = ['id', 'image', 'x', 'y', 'width', 'height', 'label', 'username', 'timeCreated', 'timeRequired'],
+    segmentationMasks = ['id', 'image', 'filename', 'username', 'timeCreated', 'timeRequired']
 
-
-def getQueryString(enum):
-    return ', '.join(['{} AS {}'.format(enum['table'][x],enum['query'][x]) for x in range(len(enum['table']))])
-
-def getTableNames(enum):
-    return [enum['table'][x] for x in range(len(enum['table']))]
-
-def getOnConflictString(enum):
-    return ', '.join(['{} = EXCLUDED.{}'.format(enum['table'][x],enum['table'][x]) for x in range(len(enum['table'])) if enum['table'][x] != 'id'])
 
 
 

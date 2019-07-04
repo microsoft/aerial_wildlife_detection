@@ -18,14 +18,25 @@ class DataHandler {
     }
 
     _setup_controls() {
-
         var parentElement = $('#interface-controls');
         var self = this;
 
         if(!(window.annotationType === 'labels')) {
             // add and remove buttons
-            parentElement.append($('<button id="add-annotation" class="btn btn-primary" onclick="window.interfaceControls.action=window.interfaceControls.actions.ADD_ANNOTATION;">+</button>'));
-            parentElement.append($('<button id="remove-annotation" class="btn btn-primary" onclick="window.interfaceControls.action=window.interfaceControls.actions.REMOVE_ANNOTATIONS;">-</button>'));
+            var addAnnoCallback = function() {
+                if(window.uiBlocked) return;
+                window.interfaceControls.action=window.interfaceControls.actions.ADD_ANNOTATION;
+            }
+            var removeAnnoCallback = function() {
+                if(window.uiBlocked) return;
+                window.interfaceControls.action=window.interfaceControls.actions.REMOVE_ANNOTATIONS;
+            }
+            var addAnnoBtn = $('<button id="add-annotation" class="btn btn-primary">+</button>');
+            addAnnoBtn.click(addAnnoCallback);
+            var removeAnnoBtn = $('<button id="remove-annotation" class="btn btn-primary">-</button>');
+            removeAnnoBtn.click(removeAnnoCallback);
+            parentElement.append(addAnnoBtn);
+            parentElement.append(removeAnnoBtn);
 
             $(window).keyup(function(event) {
                 if(window.uiBlocked) return;
@@ -43,7 +54,7 @@ class DataHandler {
 
         // assign/remove all labels buttons
         if(window.annotationType != 'labels' || window.enableEmptyClass) {
-            parentElement.append($('<button class="btn btn-primary btn-warning" onclick="window.dataHandler.clearLabelInAll()">Clear All</button>'));
+            parentElement.append($('<button class="btn btn-primary btn-warning" id="clearAll-button" onclick="window.dataHandler.clearLabelInAll()">Clear All</button>'));
             $(window).keyup(function(event) {
                 if(window.uiBlocked) return;
                 if(String.fromCharCode(event.which) === 'C') {
@@ -52,14 +63,17 @@ class DataHandler {
             });
         }
         
-        parentElement.append($('<button class="btn btn-primary" onclick="window.dataHandler.assignLabelToAll()">Label All</button>'));
+        parentElement.append($('<button class="btn btn-primary" id="labelAll-button" onclick="window.dataHandler.assignLabelToAll()">Label All</button>'));
+        parentElement.append($('<button class="btn btn-warning" id="unsure-button" onclick="window.dataHandler.toggleActiveAnnotationsUnsure()">Unsure</button>'));
         $(window).keyup(function(event) {
             if(window.uiBlocked) return;
             if(String.fromCharCode(event.which) === 'A') {
                 self.assignLabelToAll();
-            } else if(event.which === 46) {
-                // Del key; remove all active annotations
+            } else if(event.which === 46 || event.which === 8) {
+                // Del/backspace key; remove all active annotations
                 self.removeActiveAnnotations();
+            } else if(String.fromCharCode(event.which) === 'U') {
+                self.toggleActiveAnnotationsUnsure();
             }
         });
 
@@ -84,11 +98,6 @@ class DataHandler {
                 self.nextBatch();
             }
         });
-
-        // block previous/next buttons until everything is fully loaded
-        //TODO: also do for interface controls (e.g. bbox removal)
-        window.uiBlocked = false;     // false to enable loading of initial batch
-
 
         // hide predictions (annotations) if shift (ctrl) key held down
         $(window).keydown(function(event) {
@@ -159,6 +168,18 @@ class DataHandler {
         }
     }
 
+    toggleActiveAnnotationsUnsure() {
+        if(window.uiBlocked) return;
+        window.unsureButtonActive = true;   // for classification entries
+        var annotationsActive = false;
+        for(var i=0; i<this.dataEntries.length; i++) {
+            var response = this.dataEntries[i].toggleActiveAnnotationsUnsure();
+            if(response) annotationsActive = true;
+        }
+
+        if(annotationsActive) window.unsureButtonActive = false;
+    }
+
     setPredictionsVisible(visible) {
         if(window.uiBlocked) return;
         for(var i=0; i<this.dataEntries.length; i++) {
@@ -174,13 +195,12 @@ class DataHandler {
     }
 
 
-    loadNextBatch() {
-        if(window.uiBlocked) return;
+    _loadNextBatch() {
         var self = this;
 
         //TODO: subset
         var url = 'getLatestImages?order=unlabeled&subset=default&limit=' + this.numImagesPerBatch;
-        $.ajax({
+        return $.ajax({
             url: url,
             dataType: 'json',
             success: function(data) {
@@ -209,12 +229,12 @@ class DataHandler {
                     self.parentDiv.append(entry.markup);
                     self.dataEntries.push(entry);
                 }
-                window.uiBlocked = false;
+                // window.setUIblocked(false);
             },
             error: function(xhr, status, error) {
                 if(error == 'Unauthorized') {
                     // ask user to provide password again
-                    window.verifyLogin((self.loadNextBatch).bind(self));
+                    window.verifyLogin((self._loadNextBatch).bind(self));
                 }
             }
         });
@@ -226,14 +246,13 @@ class DataHandler {
         for(var e=0; e<this.dataEntries.length; e++) {
             entries[this.dataEntries[e].entryID] = this.dataEntries[e].getProperties(minimal, onlyUserAnnotations);
         }
-
         return JSON.stringify({
             'entries': entries
         })
     }
 
 
-    submitAnnotations() {
+    submitAnnotations(silent) {
         if(window.uiBlocked) return;
         var self = this;
         var entries = this._entriesToJSON(true, false);
@@ -248,9 +267,11 @@ class DataHandler {
                 
                 if(response['status'] !== 0) {
                     // error
-                    //TODO: make proper messaging system
-                    alert('Error: ' + response['message']);
-                    return $.Deferred();
+                    if(!silent) {
+                        //TODO: make proper messaging system
+                        alert('Error: ' + response['message']);
+                        return $.Deferred();
+                    }
                 }
             },
             error: function(xhr, status, error) {
@@ -259,9 +280,11 @@ class DataHandler {
 
                 } else {
                     // error
-                    //TODO: make proper messaging system
-                    alert('Unexpected error: ' + error);
-                    return $.Deferred();
+                    if(!silent) {
+                        //TODO: make proper messaging system
+                        alert('Unexpected error: ' + error);
+                        return $.Deferred();
+                    }
                 }
             }
         });
@@ -305,7 +328,7 @@ class DataHandler {
                     self.dataEntries.push(entry);
                 }
 
-                window.uiBlocked = false;
+                window.setUIblocked(false);
             },
             error: function(xhr, status, error) {
                 if(error == 'Unauthorized') {
@@ -336,7 +359,7 @@ class DataHandler {
                 var nb = self.redoStack.pop();
                 self._loadFixedBatch(nb.slice());
             } else {
-                self.loadNextBatch();
+                self._loadNextBatch();
             }
         });
     }

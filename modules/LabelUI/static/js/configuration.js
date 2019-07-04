@@ -40,10 +40,11 @@ window.loadConfiguration = function() {
                     color: '#FFFFFF',
                     lineWidth: 0.5
                 },
-                height: 28      // adjust according to font size
+                height: 24      // adjust according to font size
             },
             text: {
-                font: '14px sans-serif',
+                fontStyle: 'sans-serif',
+                fontSizePix: 12,
                 color: '#FFFFFF'
             }
         },

@@ -59,12 +59,6 @@ class ImageViewport {
         }
     }
 
-    _getCanvasScaleFactors() {
-        var scaleX = this.canvas[0].width;
-        var scaleY = this.canvas[0].height;
-        return [scaleX, scaleY];
-    }
-
     addRenderElement(element) {
         if(this.indexOfRenderElement(element) === -1) {
             this.renderStack.push(element);
@@ -166,8 +160,8 @@ class ImageViewport {
 
         // iterate through render stack
         var self = this;
-        var scaleFun = function(coords, target) {
-            return self.transformCoordinates(coords, target, false);
+        var scaleFun = function(coords, target, backwards) {
+            return self.transformCoordinates(coords, target, backwards);
         }
         for(var i=0; i<this.renderStack.length; i++) {
             this.renderStack[i].render(this.ctx, this.viewport, this.validArea, scaleFun);

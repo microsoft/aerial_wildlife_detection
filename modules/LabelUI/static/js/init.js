@@ -6,10 +6,16 @@
 
 $(document).ready(function() {
 
+    // enable/disable interface
+    window.setUIblocked = function(blocked) {
+        window.uiBlocked = blocked;
+        $('button').prop('disabled', blocked);
+    }
+
     // loading overlay
     window.showLoadingOverlay = function(visible) {
         if(visible) {
-            window.uiBlocked = true;
+            window.setUIblocked(true);
             $('#overlay').css('display', 'block');
             $('#overlay-loader').css('display', 'block');
             $('#overlay-card').css('display', 'none');
@@ -20,7 +26,7 @@ $(document).ready(function() {
                     $('#overlay-loader').css('display', 'none');
                 }
             });
-            window.uiBlocked = false;
+            window.setUIblocked(false);
         }
     }
 
@@ -34,6 +40,11 @@ $(document).ready(function() {
         var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
         if (match) return match[2];
     }
+    window.setCookie = function(name, value, days) {
+	    var d = new Date;
+	    d.setTime(d.getTime() + 24*60*60*1000*days);
+	    document.cookie = name + "=" + value + ";path=/;expires=" + d.toGMTString();
+	}
 
     // login check
     var promise = $.ajax({
@@ -43,7 +54,6 @@ $(document).ready(function() {
             window.location.href = '/';
         }
     });
-
 
     // set up general config
     promise = promise.done(function() {
@@ -65,7 +75,7 @@ $(document).ready(function() {
     // set up data handler
     promise = promise.done(function() {
         window.dataHandler = new DataHandler($('#gallery'));
-        window.dataHandler.loadNextBatch();
+        return window.dataHandler._loadNextBatch();
     });
 
     // events
@@ -92,23 +102,24 @@ $(document).ready(function() {
     };
     window.interfaceControls.action = window.interfaceControls.actions.DO_NOTHING;
 
-    window.uiBlocked = true;    // will be disabled as soon as initial batch is loaded
+    window.setUIblocked(true);
 
 
     // make class panel grow and shrink on mouseover/mouseleave
     $('#tools-container').on('mouseenter', function() {
-        if($(this).is(':animated')) return;
+        if(window.uiBlocked || $(this).is(':animated')) return;
         $('#tools-container').animate({
             right: 0
         });
     });
     $('#tools-container').on('mouseleave', function() {
+        if(window.uiBlocked) return;
         let offset = -$(this).outerWidth() + 40;
         $('#tools-container').animate({
             right: offset
         });
     });
-    $('#tools-container').trigger('mouseleave');
+    $('#tools-container').css('right', -$('#tools-container').outerWidth() + 40);
 
 
     // overlay HUD
@@ -117,10 +128,10 @@ $(document).ready(function() {
             $('#overlay-card').slideUp();
             $('#overlay').fadeOut();
             $('#overlay-card').empty();
-            window.uiBlocked = false;
+            window.setUIblocked(false);
 
         } else {
-            window.uiBlocked = true;
+            window.setUIblocked(true);
             $('#overlay-card').html(contents);
             $('#overlay').fadeIn();
             $('#overlay-card').slideDown();
@@ -142,7 +153,6 @@ $(document).ready(function() {
                     callback();
                 },
                 error: function(error) {
-                    console.log(error)
                     $('#invalid-password').show();
                 }
             })
@@ -178,25 +188,25 @@ $(document).ready(function() {
 
 
     // logout and reload functionality
-    $(window).bind('beforeunload',function() {
-        window.dataHandler.submitAnnotations();
-    });
+    window.onbeforeunload = function() {
+        window.dataHandler.submitAnnotations(true);
+    };
 
     $('#logout').click(function() {
-        window.dataHandler.submitAnnotations();
+        window.dataHandler.submitAnnotations(true);
         window.location.href = '/logout';
     });
 
 
-    // promise.done(function() {
-    //     // show interface tutorial
-    //     window.showTutorial();
-    // });
-
-
-
     // enable interface
-    promise.done(function() {
+    promise = promise.done(function() {
         window.showLoadingOverlay(false);
-    })
+    });
+
+
+    // show interface tutorial
+    promise.done(function() {
+        if(!(window.getCookie('skipTutorial')))
+            window.showTutorial(true);
+    });
 });

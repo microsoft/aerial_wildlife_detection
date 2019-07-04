@@ -24,12 +24,14 @@ class LabelClass {
 
         // setup click handler to activate label class
         markup.click(function() {
+            if(window.uiBlocked) return;
             self.changeListener.setActiveClass(self);
         });
 
         // listener for keypress if in [1, 9]
         if(this.index >= 0 && this.index < 9) {
             $(window).keyup(function(event) {
+                if(window.uiBlocked) return;
                 try {
                     var key = parseInt(String.fromCharCode(event.which));
                     if(key == self.index+1) {

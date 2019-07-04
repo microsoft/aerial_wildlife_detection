@@ -16,16 +16,24 @@ def _constructAnnotationFields(annoType, table, doublePrecision=False):
     if doublePrecision:
         coordType = 'double precision'
 
+    confString = ''
+    if table == 'prediction':
+        confString = 'conidence real'
+
+    unsureString = ''
+    if table == 'annotation':
+        unsureString = 'unsure boolean NOT NULL DEFAULT false'
+
     if False:       #TODO: separate confidence values for all labelclasses? How to handle empty class? (table == 'prediction'):
         additionalTables = '''CREATE TABLE IF NOT EXISTS &schema.PREDICTION_LABELCLASS (
             prediction uuid NOT NULL,
             labelclass uuid NOT NULL,
-            confidence real,
+            {confString},
             PRIMARY KEY (prediction, labelclass),
             FOREIGN KEY (prediction) REFERENCES &schema.PREDICTION(id),
             FOREIGN KEY (labelclass) REFERENCES &schema.LABELCLASS(id)
         );
-        '''
+        '''.format(confString=confString)
     else:
         additionalTables = None
 
@@ -33,28 +41,31 @@ def _constructAnnotationFields(annoType, table, doublePrecision=False):
         annoFields = '''
             label uuid &labelclassNotNull,
             confidence real,
+            {unsureString},
             FOREIGN KEY (label) REFERENCES &schema.LABELCLASS(id),
-        '''
+        '''.format(unsureString=unsureString)
     
     elif annoType == 'points':
         annoFields = '''
             label uuid &labelclassNotNull,
             confidence real,
-            x {},
-            y {},
+            x {coordType},
+            y {coordType},
+            {unsureString},
             FOREIGN KEY (label) REFERENCES &schema.LABELCLASS(id),
-        '''.format(coordType, coordType)
+        '''.format(coordType=coordType, unsureString=unsureString)
 
     elif annoType == 'boundingBoxes':
         annoFields = '''
             label uuid &labelclassNotNull,
             confidence real,
-            x {},
-            y {},
-            width {},
-            height {},
+            x {coordType},
+            y {coordType},
+            width {coordType},
+            height {coordType},
+            {unsureString},
             FOREIGN KEY (label) REFERENCES &schema.LABELCLASS(id),
-        '''.format(coordType, coordType, coordType, coordType)
+        '''.format(coordType=coordType, unsureString=unsureString)
 
     elif annoType == 'segmentationMasks':
         additionalTables = None     # not needed for semantic segmentation

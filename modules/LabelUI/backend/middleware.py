@@ -10,7 +10,7 @@ import pytz
 import dateutil.parser
 from modules.Database.app import Database
 from .sql_string_builder import SQLStringBuilder
-from .annotation_sql_tokens import QueryStrings_annotation, QueryStrings_prediction, getQueryString, getTableNames, getOnConflictString, parseAnnotation, FieldNames_prediction, FieldNames_annotation
+from .annotation_sql_tokens import QueryStrings_annotation, QueryStrings_prediction, parseAnnotation
 
 
 class DBMiddleware():
@@ -224,7 +224,7 @@ class DBMiddleware():
 
 
         # assemble values
-        colnames = getTableNames(getattr(QueryStrings_annotation, self.projectSettings['annotationType']).value)
+        colnames = getattr(QueryStrings_annotation, self.projectSettings['annotationType']).value[0]
         values_insert = []
         values_update = []
 
@@ -304,7 +304,6 @@ class DBMiddleware():
             '''.format(
                 schema,
                 ', '.join(colnames[1:])     # skip 'id' column
-                #getOnConflictString(getattr(QueryStrings_annotation, self.projectSettings['annotationType']).value)
             )
             self.dbConnector.insert(sql, values_insert)
 

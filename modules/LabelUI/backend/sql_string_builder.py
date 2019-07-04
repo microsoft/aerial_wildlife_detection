@@ -13,9 +13,9 @@ class FieldNames_prediction(Enum):
     segmentationMasks = set(['filename'])   #TODO: conflict with image filename
 
 class FieldNames_annotation(Enum):
-    labels = set(['label'])
-    points = set(['label', 'x', 'y'])
-    boundingBoxes = set(['label', 'x', 'y', 'width', 'height'])
+    labels = set(['label', 'unsure'])
+    points = set(['label', 'x', 'y', 'unsure'])
+    boundingBoxes = set(['label', 'x', 'y', 'width', 'height', 'unsure'])
     segmentationMasks = set(['filename'])   #TODO: conflict with image filename
 
 

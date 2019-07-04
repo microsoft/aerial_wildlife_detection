@@ -7,7 +7,15 @@ class AbstractRenderElement {
         this.changed = false;   // will be set to true if user modifies the initial geometry
         this.lastUpdated = new Date();  // timestamp of last update
         this.isValid = true;    // set to false by instances that are missing required properties (e.g. coordinates)
+        this.unsure = false;
         this.visible = true;
+    }
+
+    getProperty(propertyName) {
+        if(this.hasOwnProperty(propertyName)) {
+            return this[propertyName];
+        }
+        return null;
     }
 
     setProperty(propertyName, value) {
@@ -123,9 +131,9 @@ class ImageElement extends AbstractRenderElement {
             // re-render
             self.viewport.render();
         };
-        this.image.onerror = function() {
+        this.image.onerror = function(e) {
             this.loaded = false;
-            this.image.loadingText = 'loading failed.';
+            self.image.loadingText = 'loading failed.';
         };
         this.image.src = this.imageURI;
     }
@@ -177,11 +185,13 @@ class HoverTextElement extends AbstractRenderElement {
         super.render(ctx, viewport, limits, scaleFun);
         if(this.text == null) return;
         var hoverPos = scaleFun(this.position, this.reference);
-        ctx.font = window.styles.hoverText.text.font;
+        var scaleFactors = scaleFun([ctx.canvas.width,ctx.canvas.height], 'canvas', true);
+        ctx.font = window.styles.hoverText.text.fontSizePix * scaleFactors[0] + 'px ' + window.styles.hoverText.text.fontStyle;
         var dimensions = ctx.measureText(this.text);
         dimensions.height = window.styles.hoverText.box.height;
-        dimensions = [dimensions.width + 8, dimensions.height];
+        dimensions = [dimensions.width + 8, dimensions.height * scaleFactors[1]];
         var offsetH = window.styles.hoverText.offsetH;
+        
         if(this.fillColor != null) {
             ctx.fillStyle = this.fillColor;
             ctx.fillRect(offsetH+hoverPos[0]-4, hoverPos[1]-(dimensions[1]/2+4), dimensions[0]+4, dimensions[1]+4);
@@ -200,12 +210,13 @@ class HoverTextElement extends AbstractRenderElement {
 
 class PointElement extends AbstractRenderElement {
 
-    constructor(id, x, y, color, size, zIndex) {
+    constructor(id, x, y, color, size, unsure, zIndex) {
         super(id, zIndex);
         this.x = x;
         this.y = y;
         this.color = color;
         this.size = size;
+        this.unsure = unsure;
 
         this.isValid = (x != null && y != null);
     }
@@ -216,7 +227,8 @@ class PointElement extends AbstractRenderElement {
         return {
             'type': 'point',
             'x': this.x,
-            'y': this.y
+            'y': this.y,
+            'unsure': this.unsure
         };
     }
 
@@ -244,7 +256,7 @@ class PointElement extends AbstractRenderElement {
 
 class LineElement extends AbstractRenderElement {
 
-    constructor(id, startX, startY, endX, endY, strokeColor, lineWidth, lineDash, zIndex) {
+    constructor(id, startX, startY, endX, endY, strokeColor, lineWidth, lineDash, unsure, zIndex) {
         super(id, zIndex);
         this.startX = startX;
         this.startY = startY;
@@ -253,6 +265,7 @@ class LineElement extends AbstractRenderElement {
         this.strokeColor = strokeColor;
         this.lineWidth = lineWidth;
         this.lineDash = (lineDash == null? [] : lineDash);
+        this.unsure = unsure;
 
         this.isValid = (startX != null && startY != null && endX != null && endY != null);
     }
@@ -265,7 +278,8 @@ class LineElement extends AbstractRenderElement {
             'startX': this.startX,
             'startY': this.startY,
             'endX': this.endX,
-            'endY': this.endY
+            'endY': this.endY,
+            'unsure': this.unsure
         };
     }
 
@@ -292,8 +306,8 @@ class LineElement extends AbstractRenderElement {
 
 class RectangleElement extends PointElement {
 
-    constructor(id, x, y, width, height, fillColor, strokeColor, lineWidth, lineDash, zIndex) {
-        super(id, x, y, strokeColor, null, zIndex);
+    constructor(id, x, y, width, height, fillColor, strokeColor, lineWidth, lineDash, unsure, zIndex) {
+        super(id, x, y, strokeColor, null, unsure, zIndex);
         this.x = x;
         this.y = y;
         this.width = width;
@@ -312,7 +326,8 @@ class RectangleElement extends PointElement {
             'x': this.x,
             'y': this.y,
             'width': this.width,
-            'height': this.height
+            'height': this.height,
+            'unsure': this.unsure
         };
     }
 
@@ -643,6 +658,18 @@ class RectangleElement extends PointElement {
             ctx.strokeRect(coords[0], coords[1], coords[2], coords[3]);
             ctx.closePath();
         }
+        if(this.unsure) {
+            var text = 'unsure';
+            var scaleFactors = scaleFun([ctx.canvas.width,ctx.canvas.height], 'canvas', true);
+            ctx.font = window.styles.hoverText.text.fontSizePix * scaleFactors[0] + 'px ' + window.styles.hoverText.text.fontStyle;
+            var dimensions = ctx.measureText(text);
+            dimensions.height = window.styles.hoverText.box.height;
+            dimensions = [dimensions.width + 8, dimensions.height * scaleFactors[1]];
+            ctx.fillStyle = this.color;
+            ctx.fillRect(coords[0]-4, coords[1]-(dimensions[1]), dimensions[0]+4, dimensions[1]);
+            ctx.fillStyle = window.styles.hoverText.text.color;
+            ctx.fillText(text, coords[0]+4, coords[1]-dimensions[1]/2+4);
+        }
     }
 }
 
@@ -653,37 +680,53 @@ class BorderStrokeElement extends AbstractRenderElement {
         Draws a border around the viewport.
         Specifically intended for classification tasks.
     */
-    constructor(id, strokeColor, lineWidth, lineDash, text, zIndex) {
+    constructor(id, strokeColor, lineWidth, lineDash, text, unsure, zIndex) {
         super(id, zIndex);
         this.color = strokeColor;
         this.lineWidth = lineWidth;
         this.lineDash = (lineDash == null? [] : lineDash);
         this.text = text;
+        this.unsure = unsure;
         this.changed = true;        // always true; we want to collect all classification entries, since user will screen them anyway
+    }
+
+    setProperty(propertyName, value) {
+        super.setProperty(propertyName, value);
+        if(propertyName == 'color' && (value == null || value == undefined)) {
+            this.text = null;
+        }
     }
 
     render(ctx, viewport, limits, scaleFun) {
         super.render(ctx, viewport, limits, scaleFun);
-        if(!this.visible || this.color == null) return;
+        if(!this.visible) return;
+        var scaleFactors = scaleFun([ctx.canvas.width,ctx.canvas.height], 'canvas', true);
         var coords = scaleFun([0,0,1,1], 'canvas');
-        ctx.strokeStyle = this.color;
-        ctx.lineWidth = this.lineWidth;
-        ctx.setLineDash(this.lineDash);
-        ctx.beginPath();
-        ctx.strokeRect(coords[0], coords[1], coords[2], coords[3]);
-        ctx.closePath();
+
+        if(this.color != null) {
+            ctx.strokeStyle = this.color;
+            ctx.lineWidth = this.lineWidth * scaleFactors[0];
+            ctx.setLineDash(this.lineDash);
+            ctx.beginPath();
+            ctx.strokeRect(coords[0], coords[1], coords[2], coords[3]);
+            ctx.closePath();
+        }
 
         // show text in bottom left corner
-        if(this.text != null) {
+        var text = ''
+        if(this.text != null) text = this.text + ' ';
+        if(this.unsure) text += '(unsure)';
+        if(this.text != null || this.unsure) {
+            text = text.trim();
             ctx.fillStyle = window.styles.hoverText.text.color;
-            ctx.font = window.styles.hoverText.text.font;
-            var dimensions = ctx.measureText(this.text);
+            ctx.font = window.styles.hoverText.text.fontSizePix * scaleFactors[0] + 'px ' + window.styles.hoverText.text.fontStyle;
+            var dimensions = ctx.measureText(text);
             dimensions.height = window.styles.hoverText.box.height;
-            dimensions = [dimensions.width + 8, dimensions.height]  //scaleFun([dimensions.width, dimensions.height], 'canvas');
-            ctx.fillStyle = this.color;
-            ctx.fillRect(coords[0], coords[3] - dimensions[1], dimensions[0], dimensions[1]);
+            dimensions = [dimensions.width + 8, dimensions.height * scaleFactors[1]]
+            ctx.fillStyle = (this.color == null ? '#929292' : this.color);
+            ctx.fillRect(coords[0], coords[3] - dimensions[1]/2 - 4, dimensions[0], dimensions[1] + 8);
             ctx.fillStyle = window.styles.hoverText.text.color;
-            ctx.fillText(this.text, coords[0] + 4, coords[3] - dimensions[1]/2 + 4);
+            ctx.fillText(text, coords[0] + 4, coords[3] - 4);
         }
     }
 }

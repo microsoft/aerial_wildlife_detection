@@ -24,62 +24,64 @@
 
 <body>
     <!-- Page Content -->
-    <div id="page-content-wrapper">
-
-        <!-- Overlay -->
-        <div id="overlay" class="overlay">
-            <div id="overlay-card" class="overlay-card card container"></div>
-            <div id="overlay-loader">
-                <div style="text-align:center;margin-bottom:20px;font-size:20px;text-align:center;">Loading...</div>
-                <!-- blatant copy of MS azure's splash screen loading dots -->
-                <div class="azure-loadingdots">
-                    <div></div>
-                    <div></div>
-                    <div></div>
-                    <div></div>
-                    <div></div>
+    <div id="page-container">
+        <div id="content-wrapper">
+            <!-- Overlay -->
+            <div id="overlay" class="overlay">
+                <div id="overlay-card" class="overlay-card card container"></div>
+                <div id="overlay-loader">
+                    <div style="text-align:center;margin-bottom:20px;font-size:20px;text-align:center;">Loading...</div>
+                    <!-- blatant copy of MS azure's splash screen loading dots -->
+                    <div class="azure-loadingdots">
+                        <div></div>
+                        <div></div>
+                        <div></div>
+                        <div></div>
+                        <div></div>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Navigation bar -->
-        <nav class="navbar navbar-expand-lg navbar-light bg-dark border-bottom">
-            <ul class="nav navbar-nav">
-                <li class="nav-item header-text">
-                    <h1 id="project-title">{{ projectTitle }}</h1>
-                    <p id="project-description">{{ projectDescr }}</p>
-                </li>
-            </ul>
-            <ul class="nav navbar-nav ml-auto">
-                <li class="nav-item dropdown float-right">
-                    <div class="dropdown nav navbar-nav" style="float:right;">
-                        <a class="dropdown-toggle btn" id="navbar-user-dropdown" data-toggle="dropdown" href="#" style="color:white;font-weight:bold;" >{{ username }}</a>
-                        <ul class="dropdown-menu" role="menu" aria-labelledby="navbar-user-dropdown">
-                            <li class="dropdown-item"><button id="logout" class="btn btn-sm btn-danger">Log Out</button></li>
-                        </ul>
+            <!-- Navigation bar -->
+            <nav class="navbar navbar-expand-lg navbar-light bg-dark border-bottom">
+                <ul class="nav navbar-nav">
+                    <li class="nav-item header-text">
+                        <h1 id="project-title">{{ projectTitle }}</h1>
+                        <p id="project-description">{{ projectDescr }}</p>
+                    </li>
+                </ul>
+                <ul class="nav navbar-nav ml-auto">
+                    <li class="nav-item dropdown float-right">
+                        <button class="btn btn-info" onclick="javascript:window.showTutorial();">Help</button>
+                        <div class="dropdown nav navbar-nav" style="float:right;">
+                            <a class="dropdown-toggle btn" id="navbar-user-dropdown" data-toggle="dropdown" href="#" style="color:white;font-weight:bold;" >{{ username }}</a>
+                            <ul class="dropdown-menu" role="menu" aria-labelledby="navbar-user-dropdown">
+                                <li class="dropdown-item"><button id="logout" class="btn btn-sm btn-danger">Log Out</button></li>
+                            </ul>
+                        </div>
+                    </li>
+                </ul>
+            </nav>
+
+            <!-- Tool Description
+            <div class="container-fluid">
+                
+            </div> -->
+
+            <div class="wrapper h-100">
+                <!-- Image Display -->
+                <div class="vertical-center" id="gallery-container">
+                    <div class="container-fluid widescreen h-100" id="gallery"></div>
+
+                    <div class="container widescreen" id="interface-controls"></div>
+                </div>
+
+                <!-- Label Classes -->
+                <div class="card" id="tools-container">
+                    <div class="container">
+                        <h2>Classes</h2>
+                        <div class="legend-entries container"></div>
                     </div>
-                </li>
-            </ul>
-        </nav>
-
-        <!-- Tool Description
-        <div class="container-fluid">
-            
-        </div> -->
-
-        <div class="wrapper">
-            <!-- Image Display -->
-            <div class="jumbotron vertical-center" id="gallery-container">
-                <div class="container-fluid widescreen" id="gallery"></div>
-
-                <div class="container widescreen" id="interface-controls"></div>
-            </div>
-
-            <!-- Label Classes -->
-            <div class="card" id="tools-container">
-                <div class="container">
-                    <h2>Classes</h2>
-                    <div class="legend-entries container"></div>
                 </div>
             </div>
         </div>

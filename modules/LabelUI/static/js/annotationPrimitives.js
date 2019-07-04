@@ -8,6 +8,7 @@ class Annotation {
 
     _parse_properties(properties) {
         this.label = properties['label'];
+        var unsure = (properties['unsure'] == null || properties['unsure'] == undefined ? false : properties['unsure']);    //TODO: should be property of "Annotation", but for drawing reasons we assign it to the geometry...
         if(!window.enableEmptyClass && this.label == null) {
             // no empty class allowed; assign selected label
             this.label = window.labelClassHandler.getActiveClassID();
@@ -43,7 +44,8 @@ class Annotation {
                 null,
                 window.labelClassHandler.getColor(this.label),
                 lineWidth,
-                lineDash);
+                lineDash,
+                unsure);
 
         } else if('x' in properties) {
             // Point
@@ -51,7 +53,8 @@ class Annotation {
                 this.annotationID + '_geom',
                 properties['x'], properties['y'],
                 window.labelClassHandler.getColor(this.label),
-                pointSize
+                pointSize,
+                unsure
             );
         } else {
             // Classification label
@@ -62,9 +65,10 @@ class Annotation {
             this.geometry = new BorderStrokeElement(
                 this.annotationID + '_geom',
                 window.labelClassHandler.getColor(this.label),
-                2*lineWidth,
+                lineWidth,
                 lineDash,
-                borderText
+                borderText,
+                unsure
             )
         }
     }
@@ -100,15 +104,29 @@ class Annotation {
         };
     }
 
+    getProperty(propertyName) {
+        if(this.hasOwnProperty(propertyName)) {
+            return this[propertyName];
+        }
+        return this.geometry.getProperty(propertyName);
+    }
+
     setProperty(propertyName, value) {
         if(this.hasOwnProperty(propertyName)) {
             this[propertyName] = value;
         }
         if(propertyName == 'label') {
-            this.geometry.setProperty('color', window.labelClassHandler.getColor(value));
             if(this.geometry instanceof BorderStrokeElement) {
                 // show label text
-                this.geometry.setProperty('text', window.labelClassHandler.getActiveClassName());
+                if(value == null) {
+                    this.geometry.setProperty('color', null);
+                    this.geometry.setProperty('text', null);
+                } else {
+                    this.geometry.setProperty('color', window.labelClassHandler.getColor(value));
+                    this.geometry.setProperty('text', window.labelClassHandler.getName(value));
+                }
+            } else {
+                this.geometry.setProperty('color', window.labelClassHandler.getColor(value));
             }
         } else if(this.geometry.hasOwnProperty(propertyName)) {
             this.geometry.setProperty(propertyName, value);

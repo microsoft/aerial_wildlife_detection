@@ -250,6 +250,7 @@
         for(var key in this.annotations) {
             if(!onlyUserAnnotations || this.annotations[key].getChanged())
                 var annoProps = this.annotations[key].getProperties(minimal);
+                
                 // append time created and time required
                 annoProps['timeCreated'] = this.getTimeCreated();
                 var timeRequired = Math.max(0, this.annotations[key].getTimeChanged() - this.getTimeCreated());
@@ -326,6 +327,18 @@
             }
         }
         this.render();
+    }
+
+    toggleActiveAnnotationsUnsure() {
+        var active = false;
+        for(var key in this.annotations) {
+            if(this.annotations[key].isActive()) {
+                this.annotations[key].setProperty('unsure', !this.annotations[key].getProperty('unsure'));
+                active = true;
+            }
+        }
+        this.render();
+        return active;
     }
 
     render() {
@@ -410,18 +423,28 @@
 
         // click handler
         this.markup.click(function(event) {
-            self.toggleUserLabel(event.altKey);
+            if(window.uiBlocked) return;
+            if(window.unsureButtonActive) {
+                self.labelInstance.setProperty('unsure', !self.labelInstance.getProperty('unsure'));
+                window.unsureButtonActive = false;
+                self.render();
+            } else {
+                self.toggleUserLabel(event.altKey);
+            }
         });
 
         // tooltip for label change
         this.markup.mousemove(function(event) {
+            if(window.uiBlocked) return;
             var pos = self.viewport.getRelativeCoordinates(event, 'validArea');
             self.hoverTextElement.position = pos;
             if(event.altKey) {
                 self.hoverTextElement.setProperty('text', 'mark as unlabeled');
                 self.hoverTextElement.setProperty('fillColor', window.styles.hoverText.box.fill);
-            }
-            if(self.labelInstance == null) {
+            } else if(window.unsureButtonActive) {
+                self.hoverTextElement.setProperty('text', 'toggle unsure');
+                self.hoverTextElement.setProperty('fillColor', window.styles.hoverText.box.fill);
+            } else if(self.labelInstance == null) {
                 self.hoverTextElement.setProperty('text', 'set label to "' + window.labelClassHandler.getActiveClassName() + '"');
                 self.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getActiveColor());
             } else if(self.labelInstance.label != window.labelClassHandler.getActiveClassID()) {
@@ -430,10 +453,16 @@
             } else {
                 self.hoverTextElement.setProperty('text', null);
             }
+
+            // set active (for e.g. "unsure" functionality)
+            self.labelInstance.setActive(true);
+
             self.render();
         });
         this.markup.mouseout(function(event) {
+            if(window.uiBlocked) return;
             self.hoverTextElement.setProperty('text', null);
+            self.labelInstance.setActive(false);
             self.render();
         });
     }
@@ -727,6 +756,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
 
     _canvas_mouseout(event) {
         // clear hover text
+        if(window.uiBlocked) return;
         this.hoverTextElement.setProperty('text', null);
         this.render();
     }
@@ -775,6 +805,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
     }
 
     _drawCrosshairLines(coords, visible) {
+        if(window.uiBlocked) return;
         if(this.crosshairLines == null && visible) {
             // create
             var vertLine = new LineElement(this.entryID + '_crosshairX', coords[0], 0, coords[0], window.defaultImage_h,
@@ -809,6 +840,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
     }
 
     _canvas_mousedown(event) {
+        if(window.uiBlocked) return;
         this.mouseDrag = true;
 
         // check functionality
@@ -827,6 +859,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
     }
 
     _canvas_mousemove(event) {
+        if(window.uiBlocked) return;
         var coords = this.viewport.getRelativeCoordinates(event, 'canvas');
 
         // update crosshair lines
@@ -869,6 +902,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
     }
 
     _canvas_mouseup(event) {
+        if(window.uiBlocked) return;
         // this.mouseDrag = false;
 
         // check functionality
@@ -904,6 +938,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
     }
 
     _canvas_mouseleave(event) {
+        if(window.uiBlocked) return;
         this.hoverTextElement.setProperty('text', null);
         this._drawCrosshairLines(null, false);
         this.render();
