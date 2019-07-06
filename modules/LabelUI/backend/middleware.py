@@ -27,7 +27,7 @@ class DBMiddleware():
         self.projectSettings = {
             'projectName': self.config.getProperty('Project', 'projectName'),
             'projectDescription': self.config.getProperty('Project', 'projectDescription'),
-            'dataServerURI': self.config.getProperty('LabelUI', 'dataServer_uri'),
+            'dataServerURI': self.config.getProperty('Server', 'dataServer_uri'),
             'dataType': self.config.getProperty('Project', 'dataType'),
             'minObjSize': self.config.getProperty('Project', 'minObjSize'),
             'classes': self.getClassDefinitions(),

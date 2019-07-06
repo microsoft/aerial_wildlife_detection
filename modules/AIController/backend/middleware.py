@@ -72,7 +72,9 @@ class AIMiddleware():
         result = worker.get()
         print('Averaged epochs: {}, num epochs: {}'.format(result, len(epochs)))
 
-        # clear training flag
+        # flush
+        self.training_workers_result = None         #TODO: make history?
+        self.training_workers = None                #TODO: ditto
         self.training = False
 
         return result
@@ -157,7 +159,6 @@ class AIMiddleware():
         # initiate post-submission routine
         self._training_initiated()
 
-        print('DOOOOONE')
         return 'ok' #TODO
 
 
@@ -247,27 +248,25 @@ class AIMiddleware():
             Returns their status accordingly if they exist.
         '''
 
-        #TODO: if AsyncResult is called once processes have been submitted they never finish...
-        # DO NOT USE FUNCTION UNTIL PROBLEM IS FIXED!
-
         statuses = {}
 
         #TODO: epoch averaging...
 
-        if training_workers and self.training_workers_result is not None:   #TODO
+        if training_workers and self.training_workers_result is not None:
             for child in self.training_workers_result.children:
-                status = AsyncResult(child.id).status
+                print(vars(child).keys())
                 statuses[child.id] = {
                     'type' : 'training',
-                    'status' : status
+                    'status' : child.status,
+                    'meta': child.info
                 }
         
         if inference_workers and len(self.inference_workers):
             for key in self.inference_workers:
-                status = AsyncResult(key).status
                 statuses[key] = {
                     'type' : 'inference',
-                    'status' : status
+                    'status' : self.inference_workers[key].status,
+                    'info': child.info
                 }
 
         return statuses

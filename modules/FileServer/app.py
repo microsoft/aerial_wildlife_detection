@@ -35,17 +35,3 @@ class FileServer():
         @self.app.route(os.path.join(self.staticAddress, '<path:path>'))
         def send_file(path):
             return static_file(path, root=self.staticDir)
-
-
-
-
-''' Convenience launcher (FOR DEBUGGING ONLY) '''
-if __name__ == '__main__':
-    
-    import argparse
-    from runserver import Launcher
-
-    parser = argparse.ArgumentParser(description='Run CV4Wildlife AL Service.')
-    parser.add_argument('--instance', type=str, default='FileServer', const=1, nargs='?')
-    args = parser.parse_args()
-    Launcher(args)

@@ -25,9 +25,9 @@
 from celery import current_task
 
 
-def _call_train(dbConnector, config, data, trainingFun):
+def _call_train(dbConnector, config, data, trainingFun, fileServer):
     '''
-        Initiates model training and maintains workers, stati and failure
+        Initiates model training and maintains workers, status and failure
         events.
 
         Inputs:
@@ -49,7 +49,6 @@ def _call_train(dbConnector, config, data, trainingFun):
     # 1. Sanity checks, 2. Load model state, 3. Call AI model's train function, 4. Collect results and return
     print('initiate training')
 
-
     
     # load model state from database
     try:
@@ -68,12 +67,14 @@ def _call_train(dbConnector, config, data, trainingFun):
         stateDict = None
 
 
-    #TODO: load images here?
-    
 
     # call training function
-    result = trainingFun(dbConnector, config, stateDict, data)
+    try:
+        result = trainingFun(stateDict, data)
 
+    except Exception as err:
+        print(err)
+        result = 0      #TODO
 
 
     #TODO    
@@ -82,7 +83,7 @@ def _call_train(dbConnector, config, data, trainingFun):
 
     time.sleep(5*random.random())
 
-    current_task.update_state('PROGRESS')       #TODO: doesn't really work, plus issue with AsyncResult causing system to hang...
+    current_task.update_state('TRAINING', meta={'done': 5,'total': 10})
 
     time.sleep(5*random.random())
 
@@ -90,7 +91,7 @@ def _call_train(dbConnector, config, data, trainingFun):
 
 
 
-def _call_average_epochs(dbConnector, config, modelStates, averageFun):
+def _call_average_epochs(dbConnector, config, modelStates, averageFun, fileServer):
     '''
         Receives a number of model states (coming from different AIWorker instances),
         averages them by calling the AI model's 'average_epochs' function and inserts
@@ -109,7 +110,7 @@ def _call_average_epochs(dbConnector, config, modelStates, averageFun):
 
 
 
-def _call_inference(dbConnector, config, imageIDs, inferenceFun):
+def _call_inference(dbConnector, config, imageIDs, inferenceFun, fileServer):
     '''
 
     '''
@@ -126,7 +127,7 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun):
 
 
 
-def _call_rank(dbConnector, config, data, rankFun):
+def _call_rank(dbConnector, config, data, rankFun, fileServer):
     '''
 
     '''

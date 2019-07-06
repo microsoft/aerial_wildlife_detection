@@ -33,6 +33,7 @@ class SQLStringBuilder:
         if limit is None or limit == -1:
             # cap by limit specified in settings
             limit = self.config.getProperty('AIController', 'maxNumImages_train')
+            
         else:
             limit = min(limit, self.config.getProperty('AIController', 'maxNumImages_train'))
 
@@ -42,8 +43,9 @@ class SQLStringBuilder:
             order = 'DESC'
 
         sql = '''
-            SELECT newestAnno.image FROM (
-                SELECT image, timecreated FROM {schema}.annotation AS anno
+            SELECT newestAnno.image, newestAnno.filename FROM (
+                SELECT image, filename, timecreated FROM {schema}.annotation AS anno
+                JOIN {schema}.image AS img ON anno.image = img.id
                 WHERE anno.timecreated > (SELECT COALESCE({tsSpec}, to_timestamp(0)) AS latestState FROM {schema}.cnnstate)
                 ORDER BY anno.timecreated {order}
                 LIMIT {limit}

@@ -13,10 +13,13 @@ pkill celery;
 # Settings filepath
 export AIDE_CONFIG_PATH=config/settings.ini
 
+#TODO
+export AIDE_CONFIG_PATH=settings_windowCropping.ini
+
 
 # Celery
 celery -A modules.AIController.backend.celery_interface worker &
 
 
 # HTTP server
-python runserver.py --settings_filepath=$AIDE_CONFIG_PATH --instance=UserHandler,FileServer,LabelUI,AIController,AIWorker
+python runserver.py --settings_filepath=$AIDE_CONFIG_PATH --instance=UserHandler,FileServer,LabelUI,AIController
