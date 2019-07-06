@@ -4,30 +4,33 @@
     2019 Benjamin Kellenberger
 '''
 
+import os
 from configparser import ConfigParser
-from modules import REGISTERED_MODULES
 
 
 class Config():
 
-    def __init__(self, configPath):
+    def __init__(self):
+        if not 'AIDE_CONFIG_PATH' in os.environ:
+            raise ValueError('Missing system environment variable "AIDE_CONFIG_PATH".')
         self.config = ConfigParser()
-        self.config.read(configPath)
+        self.config.read(os.environ['AIDE_CONFIG_PATH'])
 
 
     def getProperty(self, module, propertyName, type=str, fallback=None):
-        if isinstance(module, str):
-            m = module
-        else:
-            if hasattr(module, '__name__') and module.__name__ in REGISTERED_MODULES:
-                m = module.__name__
-            elif hasattr(module, '__class__') and module.__class__.__name__ in REGISTERED_MODULES:
-                m = module.__class__.__name__
-            else:
-                m = module
+        # if isinstance(module, str):
+        #     m = module
+        # else:
+        #     if hasattr(module, '__name__') and module.__name__ in REGISTERED_MODULES:
+        #         m = module.__name__
+        #     elif hasattr(module, '__class__') and module.__class__.__name__ in REGISTERED_MODULES:
+        #         m = module.__class__.__name__
+        #     else:
+        #         m = module
             
-            if not m in REGISTERED_MODULES:
-                raise Exception('Module {} has not been registered.'.format(m))
+        #     if not m in REGISTERED_MODULES:
+        #         raise Exception('Module {} has not been registered.'.format(m))
+        m = module
 
         if type==bool:
             return self.config.getboolean(m, propertyName, fallback=fallback)
@@ -47,12 +50,17 @@ if __name__ == '__main__':
     '''
     import argparse
     parser = argparse.ArgumentParser(description='Get configuration entry programmatically.')
+    parser.add_argument('--settings_filepath', type=str, default='config/settings.ini', const=1, nargs='?',
+                    help='Directory of the settings.ini file used for this machine (default: "config/settings.ini").')
     parser.add_argument('--section', type=str, help='Configuration file section')
     parser.add_argument('--parameter', type=str, help='Parameter within the section')
     args = parser.parse_args()
+
+    os.environ['AIDE_CONFIG_PATH'] = str(args.settings_filepath)
 
     if args.section is None or args.parameter is None:
         print('Usage: python configDef.py --section=<.ini file section> --parameter=<section parameter name>')
 
     else:
+        #TODO: config filepath
         print(Config().getProperty(args.section, args.parameter))

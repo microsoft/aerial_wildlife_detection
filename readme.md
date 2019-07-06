@@ -46,6 +46,7 @@ Note that AIde requires PostgreSQL >= 9.5.
 2. Create a new database and the main user account. This needs to be done from the installation root of the AIlabelTool,
    with the correct environment activated.
 ```
+    //TODO: configDef needs --settings_filepath parameter...
     sudo -u postgres psql -c "CREATE USER $(python util/configDef.py --section=Database --parameter=user) WITH PASSWORD '$(python util/configDef.py --section=Database --parameter=user)';"
     sudo -u postgres psql -c "CREATE DATABASE $(python util/configDef.py --section=Database --parameter=name) WITH OWNER $(python util/configDef.py --section=Database --parameter=user) CONNECTION LIMIT -1;"
     sudo -u postgres psql -c "GRANT CONNECT ON DATABASE $(python util/configDef.py --section=Database --parameter=name) TO $(python util/configDef.py --section=Database --parameter=user);"

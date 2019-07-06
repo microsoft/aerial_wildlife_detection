@@ -5,7 +5,7 @@
 '''
 
 from bottle import post, request, response
-from celery import Celery
+from modules.AIController.backend.middleware import AIMiddleware
 
 
 class AIController:
@@ -14,40 +14,38 @@ class AIController:
         self.config = config
         self.app = app
 
-        self._initTaskScheduler()
+        self.middleware = AIMiddleware(config)
+
         self._initBottle()
 
 
-    def _initTaskScheduler(self):
-        self.taskScheduler = Celery('taskTest', backend=self.config.getProperty(self, 'result_backend'), broker=self.config.getProperty(self, 'broker_URL'))
-
-        @self.taskScheduler.task(bind=True)
-        def test(self):
-            print(self)
-            return 'it works'
-
-        
-        #TODO
-        try:
-            from modules.AIController.taskScheduler import add
-            result = add.delay(3, 4)
-            print(result.backend)
-            print(result.get())
-        except Exception as err:
-            print(err)
-            print('---------------')
-
-
     def _initBottle(self):
+        
+        @self.app.get('/startTraining')     #TODO: POST
+        def start_training():
+            '''
+                Manually request AIController to train the model.
+                This still only works if there is no training process ongoing.
+                Otherwise the request is aborted.
+            '''
+            #TODO: logincheck
+            try:
+                status = self.middleware.start_training(minTimestamp='lastState', distributeTraining=True)
+            except Exception as e:
+                status = str(e)
+            return { 'status' : status }
 
-        ''' notification listener '''
-        @self.app.post('/notify')
-        def notification_received():
-            #TODO
-            if not hasattr(request.query, 'message'):
-                response.status = 400
 
-            # forward notification
-            message = request.forms.get('message')
-
-            return response
+        @self.app.get('/checkStatus')    #TODO: POST
+        def check_status():
+            '''
+                Queries the middleware for any ongoing training worker processes
+                and returns the stati of each in a dict.
+            '''
+            #TODO: logincheck
+            try:
+                status = self.middleware.check_status(True, True)   #TODO: args
+            except Exception as e:
+                status = str(e)
+            
+            return { 'status' : status }

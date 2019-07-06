@@ -21,7 +21,6 @@ class DBMiddleware():
 
         self._fetchProjectSettings()
         self.sqlBuilder = SQLStringBuilder(config)
-        # self._initSQLstrings()
 
 
     def _fetchProjectSettings(self):

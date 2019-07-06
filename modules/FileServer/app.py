@@ -18,8 +18,8 @@ class FileServer():
     def __init__(self, config, app):
         self.config = config
         self.app = app
-        self.staticDir = self.config.getProperty(self, 'staticfiles_dir')
-        self.staticAddress = self.config.getProperty(self, 'staticfiles_uri')
+        self.staticDir = self.config.getProperty('FileServer', 'staticfiles_dir')
+        self.staticAddress = self.config.getProperty('FileServer', 'staticfiles_uri')
         if not self.staticAddress.startswith('/'):
             self.staticAddress = '/' + self.staticAddress
 

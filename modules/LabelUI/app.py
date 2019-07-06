@@ -16,7 +16,7 @@ class LabelUI():
     def __init__(self, config, app):
         self.config = config
         self.app = app
-        self.staticDir = self.config.getProperty(self, 'staticfiles_dir')
+        self.staticDir = self.config.getProperty('LabelUI', 'staticfiles_dir')
         self.middleware = DBMiddleware(config)
 
         self.login_check = None
@@ -44,7 +44,7 @@ class LabelUI():
                 return static_file("index.html", root=os.path.join(self.staticDir, 'templates'))
 
 
-        with open(os.path.abspath(os.path.join(self.config.getProperty(self, 'staticfiles_dir'), 'templates/interface.html')), 'r') as f:
+        with open(os.path.abspath(os.path.join(self.config.getProperty('LabelUI', 'staticfiles_dir'), 'templates/interface.html')), 'r') as f:
             self.interface_template = SimpleTemplate(f.read())
 
         @self.app.route('/interface')

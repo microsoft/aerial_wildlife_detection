@@ -15,7 +15,7 @@ class UserHandler():
     def __init__(self, config, app):
         self.config = config
         self.app = app
-        self.staticDir = self.config.getProperty(self, 'staticfiles_dir')
+        self.staticDir = self.config.getProperty('UserHandler', 'staticfiles_dir')
         self.middleware = UserMiddleware(config)
 
         self._initBottle()

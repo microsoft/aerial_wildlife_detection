@@ -4,10 +4,10 @@
     2019 Benjamin Kellenberger
 '''
 
+import os
 import argparse
 from bottle import Bottle
 from util.configDef import Config
-from modules import REGISTERED_MODULES
 
 
 class Launcher:
@@ -16,7 +16,7 @@ class Launcher:
         self.args = args
 
         # load configuration
-        self.config = Config(args.settings_filepath)
+        self.config = Config()
 
         self.instances = []
         self._launch_instances()
@@ -77,5 +77,12 @@ if __name__ == '__main__':
     parser.add_argument('--instance', type=str, default='UserHandler, FileServer, LabelUI', const=1, nargs='?',
                     help='Instance type(s) to run on this host. Accepts multiple keywords, comma-separated (default: "LabelUI").')
     args = parser.parse_args()
+
+    os.environ['AIDE_CONFIG_PATH'] = str(args.settings_filepath)
+
+
+    #TODO: dirty hack; have to import modules here for missing environment variable in celery_interface.py
+    from modules import REGISTERED_MODULES
+
 
     Launcher(args)

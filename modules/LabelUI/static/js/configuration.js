@@ -88,12 +88,12 @@ $.get('getProjectSettings', function(data) {
     window.carryOverPredictions = window.parseBoolean(data['settings']['carryOverPredictions']);
     window.carryOverRule = data['settings']['carryOverRule'];
     window.carryOverPredictions_minConf = data['settings']['carryOverPredictions_minConf'];
-    window.defaultBoxSize_w = data['settings']['defaultBoxSize_w'];
-    window.defaultBoxSize_h = data['settings']['defaultBoxSize_h'];
-    window.numImages_x = data['settings']['numImages_x'];
-    window.numImages_y = data['settings']['numImages_y'];
-    window.defaultImage_w = data['settings']['defaultImage_w'];
-    window.defaultImage_h = data['settings']['defaultImage_h'];
+    window.defaultBoxSize_w = parseInt(data['settings']['defaultBoxSize_w']);
+    window.defaultBoxSize_h = parseInt(data['settings']['defaultBoxSize_h']);
+    window.numImages_x = parseInt(data['settings']['numImages_x']);
+    window.numImages_y = parseInt(data['settings']['numImages_y']);
+    window.defaultImage_w = parseInt(data['settings']['defaultImage_w']);
+    window.defaultImage_h = parseInt(data['settings']['defaultImage_h']);
 
 
     // set interface page title and description

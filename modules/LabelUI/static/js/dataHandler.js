@@ -198,11 +198,6 @@ class DataHandler {
     _loadNextBatch() {
         var self = this;
 
-        //TODO
-        if(isNaN(this.numImagesPerBatch)) {
-            throw Error('ERROR: num images is NaN')
-        }
-
         var url = 'getLatestImages?order=unlabeled&subset=default&limit=' + this.numImagesPerBatch;
         return $.ajax({
             url: url,

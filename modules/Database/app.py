@@ -15,11 +15,11 @@ class Database():
         self.config = config
 
         # get DB parameters
-        self.database = config.getProperty(self, 'name').lower()
-        self.host = config.getProperty(self, 'host')
-        self.port = config.getProperty(self, 'port')
-        self.user = config.getProperty(self, 'user').lower()
-        self.password = config.getProperty(self, 'password')
+        self.database = config.getProperty('Database', 'name').lower()
+        self.host = config.getProperty('Database', 'host')
+        self.port = config.getProperty('Database', 'port')
+        self.user = config.getProperty('Database', 'user').lower()
+        self.password = config.getProperty('Database', 'password')
 
         self._createConnection()
 
@@ -31,7 +31,7 @@ class Database():
                                         port=self.port,
                                         user=self.user,
                                         password=self.password)
-            self.conn.autocommit = True
+            
         except:
             print('Error connecting to database {}:{} with username {}.'.format(
                 self.host, self.port, self.user
