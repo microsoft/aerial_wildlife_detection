@@ -46,7 +46,7 @@ class Launcher:
 
             moduleName = i.strip()
             moduleClass = REGISTERED_MODULES[moduleName]
-
+            
             # verify
             self._verify_unique(moduleClass)
 

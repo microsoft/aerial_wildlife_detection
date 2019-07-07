@@ -27,7 +27,7 @@ app = Celery('AIController',
 
 
 
-# load AIWorker
+# load AIWorker     TODO: since this file gets imported through the AIController as well, it has to unnecessarily create an AIWorker instance...
 worker = AIWorker(config, None)     #TODO: unneccessary second parameter for runserver compatibility
 
 
@@ -38,8 +38,8 @@ def call_train(data):
 
 
 @app.task()
-def call_average_epochs(modelStates):
-    return worker.call_average_epochs(modelStates)
+def call_average_model_states(modelStates):
+    return worker.call_average_model_states(modelStates)
 
 
 @app.task()

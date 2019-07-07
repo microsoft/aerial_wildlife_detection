@@ -126,7 +126,7 @@ class AIMiddleware():
         # get image IDs if training is distributed. Otherwise, let the AIWorker do it to minimize message size
         if distributeTraining:
             # query
-            sql = self.sqlBuilder.getTimestampQueryString(minTimestamp, order='oldest', limit=None) #TODO
+            sql = self.sqlBuilder.getTimestampQueryString(minTimestamp, order='oldest', limit=None) #TODO: just return imageIDs and let AIWorker query remaining data
 
             if isinstance(minTimestamp, datetime):
                 imageIDs = self.dbConn.execute(sql, (minTimestamp,), 'all')

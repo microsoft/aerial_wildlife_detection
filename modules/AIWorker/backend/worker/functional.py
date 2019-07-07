@@ -25,6 +25,26 @@
 from celery import current_task
 
 
+def __load_model_state(config, dbConnector):
+    # load model state from database
+    try:
+        sql = '''
+            SELECT query.statedict FROM (
+                SELECT statedict, timecreated
+                FROM {schema}.cnnstate
+                ORDER BY timecreated DESC NULLS LAST
+                LIMIT 1
+            ) AS query;
+        '''.format(schema=config.getProperty('Database', 'schema'))
+        stateDict = dbConnector.execute(sql, None, numReturn=1)     #TODO: issues Celery warning if no state dict found
+    
+    except:
+        # no state dict in database yet, have to start with a fresh model
+        stateDict = None
+
+    return stateDict
+
+
 def _call_train(dbConnector, config, data, trainingFun, fileServer):
     '''
         Initiates model training and maintains workers, status and failure
@@ -50,22 +70,11 @@ def _call_train(dbConnector, config, data, trainingFun, fileServer):
     print('initiate training')
 
     
-    # load model state from database
-    try:
-        sql = '''
-            SELECT query.statedict FROM (
-                SELECT statedict, timecreated
-                FROM {schema}.cnnstate
-                ORDER BY timecreated DESC NULLS LAST
-                LIMIT 1
-            ) AS query;
-        '''.format(schema=config.getProperty('Database', 'schema'))
-        stateDict = dbConnector.execute(sql, None, numReturn=1)     #TODO: issues Celery warning if no state dict found
-    
-    except:
-        # no state dict in database yet, have to start with a fresh model
-        stateDict = None
+    # load model state
+    stateDict = __load_model_state(config, dbConnector)
 
+    # load labels and other metadata
+    #TODO: query DB based on image IDs received here (in the data object)
 
 
     # call training function
@@ -80,33 +89,37 @@ def _call_train(dbConnector, config, data, trainingFun, fileServer):
     #TODO    
     import random
     import time
-
     time.sleep(5*random.random())
-
     current_task.update_state('TRAINING', meta={'done': 5,'total': 10})
-
     time.sleep(5*random.random())
 
     return result
 
 
 
-def _call_average_epochs(dbConnector, config, modelStates, averageFun, fileServer):
+def _call_average_model_states(dbConnector, config, modelStates, averageFun, fileServer):
     '''
         Receives a number of model states (coming from different AIWorker instances),
-        averages them by calling the AI model's 'average_epochs' function and inserts
+        averages them by calling the AI model's 'average_model_states' function and inserts
         the returning averaged model state into the database.
     '''
 
+    #TODO: sanity checks?
     print('initiate epoch averaging')
-    #TODO
-    finalModel = 0
-    for m in modelStates:
-        finalModel += m
-    
-    m /= len(modelStates)
 
-    return m
+    # do the work
+    modelStates_avg = averageFun(modelStates)
+
+    # push to database
+    sql = '''
+        INSERT INTO {schema}.cnnstate (stateDict)
+        VALUES ( %s )
+    '''.format(schema=config.getProperty('Database', 'schema'))     #TODO: multiple CNN types?
+
+    dbConnector.insert(sql, (modelStates_avg,))
+
+    # all done
+    return 0
 
 
 
@@ -118,11 +131,42 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, fileServer):
     print('initiated inference on {} images'.format(len(imageIDs)))
 
 
-    #TODO
-    import random
-    import time
-    time.sleep(10*random.random())
+    # load model state
+    stateDict = __load_model_state(config, dbConnector)
 
+
+    # call inference function
+    result = inferenceFun(stateDict, imageIDs)
+
+
+    # parse result
+    fieldNames = ['label', 'x', 'confidence']     #TODO: get from general helper function
+    values = []
+    for r in result:
+        nextResultValues = []
+        # we expect a dict of values, so we can use the fieldNames directly
+        for fn in fieldNames:
+            if not fn in r:
+                # field name is not in return value; might need to raise a warning, Exception, or set to None
+                nextResultValues.append(None)
+            
+            else:
+                #TODO: might need to do typecasts (e.g. UUID?)
+                nextResultValues.append(r[fn])
+        values.append(nextResultValues)
+
+
+    # commit to database
+    sql = '''
+        INSERT INTO {schema}.prediction ( {fieldNames} )
+        VALUES %s;
+    '''.format(schema=config.getProperty('Database', 'schema'),
+        fieldNames=fieldNames)
+
+    dbConnector.insert(sql, tuple(values))
+
+
+    #TODO: return status?
     return 0
 
 

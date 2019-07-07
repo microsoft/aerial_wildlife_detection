@@ -39,12 +39,12 @@ class RetinaNet:
         return 0
 
 
-    def average_epochs(self, stateDicts):
+    def average_model_states(self, stateDicts):
         #TODO
         return 0
 
     
-    def inference(self, data):
+    def inference(self, stateDict, data):
         #TODO
         return 0
 

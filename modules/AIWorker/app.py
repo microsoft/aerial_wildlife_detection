@@ -44,8 +44,8 @@ class AIWorker:
         requiredFunctions = {
             '__init__' : ['config', 'dbConnector', 'fileServer', 'options'],
             'train' : ['stateDict', 'data'],
-            'average_epochs' : ['stateDicts'],
-            'inference' : ['data'],
+            'average_model_states' : ['stateDicts'],
+            'inference' : ['stateDict', 'data'],
             'rank' : ['data']
         }   #TODO: make more elegant?
         functionNames = [func for func in dir(modelClass) if callable(getattr(modelClass, func))]
@@ -73,8 +73,8 @@ class AIWorker:
     
 
 
-    def call_average_epochs(self, modelStates):
-        return functional._call_average_epochs(self.dbConnector, self.config, modelStates, getattr(self.modelInstance, 'average_epochs'), self.fileServer)
+    def call_average_model_states(self, modelStates):
+        return functional._call_average_model_states(self.dbConnector, self.config, modelStates, getattr(self.modelInstance, 'average_epochs'), self.fileServer)
 
 
 
