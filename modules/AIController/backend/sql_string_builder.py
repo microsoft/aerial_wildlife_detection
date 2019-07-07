@@ -43,9 +43,8 @@ class SQLStringBuilder:
             order = 'DESC'
 
         sql = '''
-            SELECT newestAnno.image, newestAnno.filename FROM (
-                SELECT image, filename, timecreated FROM {schema}.annotation AS anno
-                JOIN {schema}.image AS img ON anno.image = img.id
+            SELECT newestAnno.image FROM (
+                SELECT image, timecreated FROM {schema}.annotation AS anno
                 WHERE anno.timecreated > (SELECT COALESCE({tsSpec}, to_timestamp(0)) AS latestState FROM {schema}.cnnstate)
                 ORDER BY anno.timecreated {order}
                 LIMIT {limit}

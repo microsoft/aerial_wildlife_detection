@@ -32,6 +32,8 @@ worker = AIWorker(config, None)     #TODO: unneccessary second parameter for run
 
 
 
+
+
 @app.task()
 def call_train(data):
     return worker.call_train(data)

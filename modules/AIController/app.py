@@ -29,10 +29,10 @@ class AIController:
                 Otherwise the request is aborted.
             '''
             #TODO: logincheck
-            try:
-                status = self.middleware.start_training(minTimestamp='lastState', distributeTraining=True)
-            except Exception as e:
-                status = str(e)
+            # try:
+            status = self.middleware.start_training(minTimestamp='lastState', distributeTraining=False) #TODO
+            # except Exception as e:
+            #     status = str(e)
             return { 'status' : status }
 
 

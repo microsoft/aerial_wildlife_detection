@@ -23,6 +23,7 @@
 '''
 
 from celery import current_task
+from constants.dbFieldNames import FieldNames_annotation, FieldNames_prediction
 
 
 def __load_model_state(config, dbConnector):
@@ -45,16 +46,53 @@ def __load_model_state(config, dbConnector):
     return stateDict
 
 
-def _call_train(dbConnector, config, data, trainingFun, fileServer):
+def __load_metadata(config, dbConnector, imageIDs):
+
+    schema = config.getProperty('Database', 'schema')
+
+    # prepare
+    meta = {}
+
+    # label names
+    labels = {}
+    sql = 'SELECT * FROM {schema}.labelclass;'.format(schema=schema)
+    result = dbConnector.execute(sql, None, 'all')
+    for r in result:
+        labels[r['id']] = r     #TODO: make more elegant?
+    meta['labelClasses'] = labels
+
+    # image data
+    imageMeta = {}
+    sql = 'SELECT * FROM {schema}.image WHERE id IN %s'.format(schema=schema)
+    result = dbConnector.execute(sql, (tuple(imageIDs),), 'all')
+    for r in result:
+        imageMeta[r['id']] = r  #TODO: make more elegant?
+
+
+    # annotations
+    fieldNames = list(getattr(FieldNames_annotation, config.getProperty('Project', 'predictionType')).value)
+    sql = '''
+        SELECT id AS annotationID, image, {fieldNames} FROM {schema}.annotation AS anno
+        WHERE image IN %s;
+    '''.format(schema=schema, fieldNames=','.join(fieldNames))
+    result = dbConnector.execute(sql, (tuple(imageIDs),), 'all')
+    for r in result:
+        if not 'annotations' in imageMeta[r['image']]:
+            imageMeta[r['image']]['annotations'] = []
+        imageMeta[r['image']]['annotations'].append(r)      #TODO: make more elegant?
+    meta['images'] = imageMeta
+
+    return meta
+
+
+def _call_train(dbConnector, config, imageIDs, trainingFun, fileServer):
     '''
         Initiates model training and maintains workers, status and failure
         events.
 
         Inputs:
-        - data: a dictionary of the data that got labeled. May contain the following key-value pairs:
-                - image ID: { dict }
-                    - features: (byte array of feature vectors, if available)
-                    - annotations: { dict of annotations as specified in the project settings }
+        - imageIDs: a list of image UUIDs the model should be trained on. Note that the remaining
+                    metadata (labels, class definitions, etc.) will be loaded here.
         
         Function then performs sanity checks and forwards the data to the AI model's anonymous
         'train' function, together with some helper instances (a 'Database' instance as well as a
@@ -74,24 +112,16 @@ def _call_train(dbConnector, config, data, trainingFun, fileServer):
     stateDict = __load_model_state(config, dbConnector)
 
     # load labels and other metadata
-    #TODO: query DB based on image IDs received here (in the data object)
+    data = __load_metadata(config, dbConnector, imageIDs)
+
 
 
     # call training function
     try:
         result = trainingFun(stateDict, data)
-
     except Exception as err:
         print(err)
         result = 0      #TODO
-
-
-    #TODO    
-    import random
-    import time
-    time.sleep(5*random.random())
-    current_task.update_state('TRAINING', meta={'done': 5,'total': 10})
-    time.sleep(5*random.random())
 
     return result
 
@@ -135,12 +165,15 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, fileServer):
     stateDict = __load_model_state(config, dbConnector)
 
 
+    # load remaining data (image filenames, class definitions)
+
+
     # call inference function
     result = inferenceFun(stateDict, imageIDs)
 
 
     # parse result
-    fieldNames = ['label', 'x', 'confidence']     #TODO: get from general helper function
+    fieldNames = list(getattr(FieldNames_prediction, config.getProperty('Project', 'predictionType')).value)
     values = []
     for r in result:
         nextResultValues = []

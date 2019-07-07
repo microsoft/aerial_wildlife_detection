@@ -4,6 +4,7 @@
     2019 Benjamin Kellenberger
 '''
 
+from uuid import UUID
 from datetime import datetime
 import pytz
 import dateutil.parser
@@ -51,13 +52,13 @@ class AIMiddleware():
             self.training = False
             return
         
-        t = threading.Thread(target=self._start_average_epochs)
+        t = threading.Thread(target=self._start_average_model_states)
         t.start()
         return
 
 
 
-    def _start_average_epochs(self):
+    def _start_average_model_states(self):
         # collect epochs (and wait for tasks to finish)
         epochs = []
         # for job in self.training_workers:
@@ -67,7 +68,7 @@ class AIMiddleware():
 
         
         # send job for epoch averaging
-        worker = celery_interface.call_average_epochs.delay(epochs)   #TODO
+        worker = celery_interface.call_average_model_states.delay(epochs)   #TODO
 
         result = worker.get()
         print('Averaged epochs: {}, num epochs: {}'.format(result, len(epochs)))
@@ -123,17 +124,19 @@ class AIMiddleware():
             raise ValueError('{} is not a recognized property for variable "minTimestamp"'.format(str(minTimestamp)))
 
 
-        # get image IDs if training is distributed. Otherwise, let the AIWorker do it to minimize message size
+
+        # query image IDs
+        sql = self.sqlBuilder.getTimestampQueryString(minTimestamp, order='oldest', limit=None)
+
+        if isinstance(minTimestamp, datetime):
+            imageIDs = self.dbConn.execute(sql, (minTimestamp,), 'all')
+
+        else:
+            imageIDs = self.dbConn.execute(sql, None, 'all')
+
+        imageIDs = [i['image'] for i in imageIDs]
+
         if distributeTraining:
-            # query
-            sql = self.sqlBuilder.getTimestampQueryString(minTimestamp, order='oldest', limit=None) #TODO: just return imageIDs and let AIWorker query remaining data
-
-            if isinstance(minTimestamp, datetime):
-                imageIDs = self.dbConn.execute(sql, (minTimestamp,), 'all')
-
-            else:
-                imageIDs = self.dbConn.execute(sql, None, 'all')
-
             
             # distribute across workers (TODO: also specify subset size for multiple jobs, even if only one worker?)
             num_workers = 10    #len(current_app.control.inspect().stats().keys())

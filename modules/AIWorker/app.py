@@ -9,7 +9,7 @@ from modules.AIWorker.backend.worker import functional, fileserver
 from modules.Database.app import Database
 
 
-class AIWorker:
+class AIWorker():
 
     def __init__(self, config, app):
         self.config = config
@@ -74,7 +74,7 @@ class AIWorker:
 
 
     def call_average_model_states(self, modelStates):
-        return functional._call_average_model_states(self.dbConnector, self.config, modelStates, getattr(self.modelInstance, 'average_epochs'), self.fileServer)
+        return functional._call_average_model_states(self.dbConnector, self.config, modelStates, getattr(self.modelInstance, 'average_model_states'), self.fileServer)
 
 
 

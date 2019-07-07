@@ -20,12 +20,14 @@ class RetinaNet:
         print('I just received {} data items.'.format(len(data)))
 
 
-        #TODO: how to load an image in the worker
-        import io
-        bytea = self.fileServer.getFile(data[0]['filename'])
-        from PIL import Image
-        img = Image.open(io.BytesIO(bytea))
-        print(img.size)
+        print(data.keys())
+
+        # #TODO: how to load an image in the worker
+        # import io
+        # bytea = self.fileServer.getFile(data[0]['filename'])
+        # from PIL import Image
+        # img = Image.open(io.BytesIO(bytea))
+        # print(img.size)
 
 
         import time
