@@ -257,7 +257,7 @@ class AIMiddleware():
 
         if training_workers and self.training_workers_result is not None:
             for child in self.training_workers_result.children:
-                print(vars(child).keys())
+                print(vars(child.app).keys())
                 statuses[child.id] = {
                     'type' : 'training',
                     'status' : child.status,

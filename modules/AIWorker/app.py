@@ -16,6 +16,7 @@ class AIWorker():
         self.dbConnector = Database(config)
         self._init_fileserver()
         self._init_model_instance()
+        self._init_al_instance()
     
 
 
@@ -45,8 +46,7 @@ class AIWorker():
             '__init__' : ['config', 'dbConnector', 'fileServer', 'options'],
             'train' : ['stateDict', 'data'],
             'average_model_states' : ['stateDicts'],
-            'inference' : ['stateDict', 'data'],
-            'rank' : ['data']
+            'inference' : ['stateDict', 'data']
         }   #TODO: make more elegant?
         functionNames = [func for func in dir(modelClass) if callable(getattr(modelClass, func))]
 
@@ -67,6 +67,44 @@ class AIWorker():
         self.modelInstance = modelClass(config=self.config, dbConnector=self.dbConnector, fileServer=self.fileServer, options=modelOptions)
 
 
+    def _init_al_instance(self):
+        '''
+            Creates the Active Learning (AL) criterion provider based on the configuration file.
+        '''
+        try:
+            modelOptions = json.load(self.config.getProperty('AIController', 'al_criterion_options_path'))
+        except:
+            modelOptions = None
+        modelLibPath = self.config.getProperty('AIController', 'al_criterion_lib_path')
+
+        # import superclass first, then retrieve class object
+        superclass = importlib.import_module(modelLibPath[0:modelLibPath.rfind('.')])
+        modelClass = getattr(superclass, modelLibPath[modelLibPath.rfind('.')+1:])
+
+        # verify functions and arguments
+        requiredFunctions = {
+            '__init__' : ['config', 'dbConnector', 'fileServer', 'options'],
+            'rank' : ['predictions']
+        }   #TODO: make more elegant?
+        functionNames = [func for func in dir(modelClass) if callable(getattr(modelClass, func))]
+
+        for key in requiredFunctions:
+            if not key in functionNames:
+                raise Exception('Class {} is missing required function {}.'.format(modelLibPath, key))
+
+            # check function arguments bidirectionally
+            funArgs = inspect.getargspec(getattr(modelClass, key))
+            for arg in requiredFunctions[key]:
+                if not arg in funArgs.args:
+                    raise Exception('Method {} of class {} is missing required argument {}.'.format(modelLibPath, key, arg))
+            for arg in funArgs.args:
+                if arg != 'self' and not arg in requiredFunctions[key]:
+                    raise Exception('Unsupported argument {} of method {} in class {}.'.format(arg, key, modelLibPath))
+
+        # create AI model instance
+        self.alInstance = modelClass(config=self.config, dbConnector=self.dbConnector, fileServer=self.fileServer, options=modelOptions)
+
+
 
     def call_train(self, data):
         return functional._call_train(self.dbConnector, self.config, data, getattr(self.modelInstance, 'train'), self.fileServer)
@@ -84,4 +122,4 @@ class AIWorker():
     
 
     def call_rank(self, data):
-        return functional._call_rank(self.dbConnector, self.config, data, getattr(self.modelInstance, 'rank'), self.fileServer)
+        return functional._call_rank(self.dbConnector, self.config, data, getattr(self.alInstance, 'rank'), self.fileServer)

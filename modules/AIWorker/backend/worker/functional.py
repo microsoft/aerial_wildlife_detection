@@ -139,6 +139,7 @@ def _call_average_model_states(dbConnector, config, modelStates, averageFun, fil
 
     # do the work
     modelStates_avg = averageFun(modelStates)
+    print(modelStates_avg)
 
     # push to database
     sql = '''
@@ -204,10 +205,15 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, fileServer):
 
 
 
-def _call_rank(dbConnector, config, data, rankFun, fileServer):
+def _call_rank(dbConnector, config, predictions, rankFun, fileServer):
     '''
 
     '''
-    print('Active Learning criterion.')
 
-    return 0
+    try:
+        result = rankFun(predictions)
+    except Exception as err:
+        print(err)
+        result = 0      #TODO
+
+    return result
