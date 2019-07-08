@@ -23,6 +23,8 @@ class FPN(nn.Module):
     def __init__(self, backbone, pretrained, out_planes=256, convertToInstanceNorm=False):
         super(FPN, self).__init__()
 
+        if isinstance(backbone, str):
+            backbone = getattr(resnet, backbone)
         self.backbone = backbone
         self.pretrained = pretrained
         self.out_planes = out_planes

@@ -32,7 +32,7 @@ class AIMiddleware():
         self.inference_workers = group()
 
 
-    def _training_initiated(self):
+    def _training_initiated(self, distributedTraining):
         '''
             To be called after a training process has been started.
             Starts a thread that waits for the worker(s) to finish.
@@ -52,26 +52,34 @@ class AIMiddleware():
             self.training = False
             return
         
-        t = threading.Thread(target=self._start_average_model_states)
+        t = threading.Thread(target=self._start_average_model_states, args=(distributedTraining,))
         t.start()
         return
 
 
 
-    def _start_average_model_states(self):
+    def _start_average_model_states(self, distributedTraining):
         # collect epochs (and wait for tasks to finish)
-        epochs = []
+        result = []
         # for job in self.training_workers:
         #     print('Worker {} finished.'.format(job.id))
         #     epochs.append(job.get())
-        epochs = self.training_workers_result.join()
+        result = self.training_workers_result.join()
+
+        # check if all workers have finished correctly
+        for r in range(len(result)):
+            if result[r] != 0:
+                raise Exception('Worker {} failed during training.'.format(r))
 
         
         # send job for epoch averaging
-        worker = celery_interface.call_average_model_states.delay(epochs)   #TODO
+        if distributedTraining:
+            worker = celery_interface.call_average_model_states.delay()
+            result = worker.get()
 
-        result = worker.get()
-        print('Averaged epochs: {}, num epochs: {}'.format(result, len(epochs)))
+            if result != 0:
+                raise Exception('Model state averaging failed.')
+
 
         # flush
         self.training_workers_result = None         #TODO: make history?
@@ -135,6 +143,9 @@ class AIMiddleware():
             imageIDs = self.dbConn.execute(sql, None, 'all')
 
         imageIDs = [i['image'] for i in imageIDs]
+        imageIDs = imageIDs[0:4]  #TODO: jsut for tests
+
+        print('Distribute?')
 
         if distributeTraining:
             
@@ -146,7 +157,7 @@ class AIMiddleware():
             processes = []
             for subset in images_subset:
                 print('Next subset length: {}'.format(len(subset)))
-                processes.append(celery_interface.call_train.s(subset))
+                processes.append(celery_interface.call_train.s(subset, True))
                 # process = celery_interface.call_train.delay(subset) #TODO: route to specific worker? http://docs.celeryproject.org/en/latest/userguide/routing.html#manual-routing
                 # self.training_workers[process.id] = process
 
@@ -154,16 +165,22 @@ class AIMiddleware():
             # call one worker directly
             # process = celery_interface.call_train.delay(data) #TODO: route to specific worker? http://docs.celeryproject.org/en/latest/userguide/routing.html#manual-routing
             # self.training_workers[process.id] = process
-            processes = [celery_interface.call_train.s(imageIDs)]
+            processes = [celery_interface.call_train.s(imageIDs, False)]
         
         self.training_workers = group(processes)
         self.training_workers_result = self.training_workers.apply_async()
 
         # initiate post-submission routine
-        self._training_initiated()
+        self._training_initiated(distributeTraining)
 
         return 'ok' #TODO
 
+
+    def _await_inference_jobs(self, jobIDs):
+        for jobID in jobIDs:
+            if jobID in self.inference_workers:
+                self.inference_workers[jobID].get()
+                del self.inference_workers[jobID]
 
 
     def _do_inference(self, imageIDs, maxNumWorkers=-1):
@@ -171,14 +188,19 @@ class AIMiddleware():
         if maxNumWorkers == -1:
             maxNumWorkers = len(current_app.control.inspect().stats().keys())   #TODO: more than one process per worker?
         else:
+            # print(current_app.control.inspect().stats())
             maxNumWorkers = min(maxNumWorkers, len(current_app.control.inspect().stats().keys()))
 
         # distribute across workers
         images_subset = array_split(imageIDs, max(1, len(imageIDs) // maxNumWorkers))
 
+        jobIDs = []
         for subset in images_subset:
             job = celery_interface.call_inference.delay(subset)
-            self.inference_workers[job.id] = job        #TODO: remove job once finished
+            self.inference_workers[job.id] = job
+            jobIDs.append(job.id)
+        t = threading.Thread(target=self._await_inference_jobs, args=(jobIDs,))
+        t.start()
 
 
 
@@ -213,7 +235,7 @@ class AIMiddleware():
         # load the IDs of the images that are being subjected to inference
         sql = self.sqlBuilder.getInferenceQueryString(forceUnlabeled, maxNumImages)
         imageIDs = self.dbConn.execute(sql, None, 'all')
-
+        imageIDs = [i['image'] for i in imageIDs]
 
         self._do_inference(imageIDs, maxNumWorkers)
         return 'ok' #TODO

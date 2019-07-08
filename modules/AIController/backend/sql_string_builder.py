@@ -64,13 +64,14 @@ class SQLStringBuilder:
         
         if limit is None or limit == -1:
             limitString = ''
-        elif isinstance(limit, int):
-            limitString = 'LIMIT {}'.format(limit)
         else:
-            raise ValueError('Invalid value for limit ({})'.format(limit))
+            try:
+                limitString = 'LIMIT {}'.format(int(limit))
+            except:
+                raise ValueError('Invalid value for limit ({})'.format(limit))
 
         sql = '''
-            SELECT query.imageID, query.viewcount FROM (
+            SELECT query.imageID AS image FROM (
                 SELECT image.id AS imageID, image_user.viewcount FROM {schema}.image
                 LEFT OUTER JOIN {schema}.image_user
                 ON image.id = image_user.image

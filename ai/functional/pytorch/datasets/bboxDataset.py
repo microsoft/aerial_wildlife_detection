@@ -12,16 +12,16 @@ from PIL import Image
 
 class BoundingBoxDataset(Dataset):
 
-    def __init__(self, data, stateDict, fileServer, targetFormat='xywh', transform=None, ignoreUnsure=False):
+    def __init__(self, data, fileServer, targetFormat='xywh', transform=None, ignoreUnsure=False):
         super(BoundingBoxDataset, self).__init__()
         self.fileServer = fileServer
         self.targetFormat = targetFormat
         self.transform = transform
         self.ignoreUnsure = ignoreUnsure
-        self.__parse_data(data, stateDict)
+        self.__parse_data(data)
 
     
-    def __parse_data(self, data, stateDict):
+    def __parse_data(self, data):
         
         # parse label classes first
         self.classdef = {}          # UUID -> index
@@ -47,15 +47,20 @@ class BoundingBoxDataset(Dataset):
             if 'annotations' in nextMeta:
                 for anno in nextMeta['annotations']:
                     coords = (
-                        nextMeta['annotations'][anno]['x'],
-                        nextMeta['annotations'][anno]['y'],
-                        nextMeta['annotations'][anno]['width'],
-                        nextMeta['annotations'][anno]['height']
+                        anno['x'],
+                        anno['y'],
+                        anno['width'],
+                        anno['height']
                     )
-                    label = nextMeta['annotations'][anno]['label']
-                    if nextMeta['annotations'][anno]['unsure'] and self.ignoreUnsure:
+                    label = anno['label']
+                    if 'unsure' in anno and anno['unsure'] and self.ignoreUnsure:
                         label = -1      # will automatically be ignored (TODO: also true for models other than RetinaNet?)
-                    
+                    elif label is None:
+                        # this usually does not happen for bounding boxes, but we account for it nonetheless
+                        continue
+                    else:
+                        label = self.classdef[label]
+
                     boundingBoxes.append(coords)
                     labels.append(label)
             
@@ -77,20 +82,21 @@ class BoundingBoxDataset(Dataset):
         # convert data
         sz = img.size
         boundingBoxes = torch.tensor(boundingBoxes).clone()
-        if boundingBoxes.dim() == 1:
-            boundingBoxes = boundingBoxes.unsqueeze(0)
-        boundingBoxes[:,0] *= sz[0]
-        boundingBoxes[:,1] *= sz[1]
-        boundingBoxes[:,2] *= sz[0]
-        boundingBoxes[:,3] *= sz[1]
-        if self.targetFormat == 'xyxy':
-            a = boundingBoxes[:,:2]
-            b = boundingBoxes[:,2:]
-            boundingBoxes = torch.cat([a-b/2,a+b/2], 1)
+        if len(boundingBoxes):
+            if boundingBoxes.dim() == 1:
+                boundingBoxes = boundingBoxes.unsqueeze(0)
+            boundingBoxes[:,0] *= sz[0]
+            boundingBoxes[:,1] *= sz[1]
+            boundingBoxes[:,2] *= sz[0]
+            boundingBoxes[:,3] *= sz[1]
+            if self.targetFormat == 'xyxy':
+                a = boundingBoxes[:,:2]
+                b = boundingBoxes[:,2:]
+                boundingBoxes = torch.cat([a-b/2,a+b/2], 1)
 
         labels = torch.tensor(labels).long()
 
         if self.transform is not None:
             img, boundingBoxes, labels = self.transform(img, boundingBoxes, labels)
 
-        return img, imageID, boundingBoxes, labels
+        return img, boundingBoxes, labels, imageID

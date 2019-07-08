@@ -7,10 +7,6 @@
 
 import os
 import argparse
-from tqdm import tqdm
-from util.configDef import Config
-from modules import Database
-
 
 def _replace(string, oldTokens, newToken):
     if isinstance(oldTokens, str):
@@ -23,13 +19,13 @@ def _replace(string, oldTokens, newToken):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Export annotations from database to YOLO format.')
-    parser.add_argument('--settings_filepath', type=str, default='/datadrive/misc/webCrawl/settings_webcrawl.ini', const=1, nargs='?',
+    parser.add_argument('--settings_filepath', type=str, default='settings_windowCropping.ini', const=1, nargs='?',
                     help='Directory of the settings.ini file used for this machine (default: "config/settings.ini").')
     parser.add_argument('--target_folder', type=str, default='export', const=1, nargs='?',
                     help='Export directory for the annotation text files.')
     parser.add_argument('--export_annotations', type=bool, default=True, const=1, nargs='?',
                     help='Whether to export annotations (default: True).')
-    parser.add_argument('--limit_users', type=str, default=None, const=1, nargs='?',
+    parser.add_argument('--limit_users', type=str, default='bkellenb', const=1, nargs='?',
                     help='Which users (comma-separated list of usernames) to limit annotations to (default: None).')
     parser.add_argument('--exclude_users', type=str, default=None, const=1, nargs='?',
                     help='Comma-separated list of usernames whose annotations not to include (default: None).')
@@ -45,7 +41,13 @@ if __name__ == '__main__':
 
     # setup
     print('Setup...\n')
-    config = Config(args.settings_filepath)
+    os.environ['AIDE_CONFIG_PATH'] = str(args.settings_filepath)
+
+    from tqdm import tqdm
+    from util.configDef import Config
+    from modules import Database
+
+    config = Config()
 
     # check if correct type of annotations
     exportAnnotations = args.export_annotations
@@ -55,7 +57,7 @@ if __name__ == '__main__':
 
     # setup DB connection
     dbConn = Database(config)
-    if dbConn.conn is None:
+    if dbConn.connectionPool is None:
         raise Exception('Error connecting to database.')
     dbSchema = config.getProperty('Database', 'schema')
 
@@ -90,7 +92,7 @@ if __name__ == '__main__':
                 limitUsers.append(u.strip())
             sql += 'WHERE anno.username IN %s'
             queryArgs = []
-            queryArgs.append(limitUsers)
+            queryArgs.append(tuple(limitUsers))
 
         if args.exclude_users is not None:
             excludeUsers = []
@@ -100,7 +102,7 @@ if __name__ == '__main__':
                 sql += 'AND anno.username NOT in %s'
             else:
                 sql += 'WHERE anno.username IN %s'
-            queryArgs.append(excludeUsers)
+            queryArgs.append(tuple(excludeUsers))
 
         if len(queryArgs) == 0:
             queryArgs = None
@@ -116,6 +118,10 @@ if __name__ == '__main__':
                 break
             
             # parse
+            if nextItem['label'] is None:
+                # TODO: it might happen that an annotation has no label; skip in this case
+                continue
+                
             imgName = nextItem['filename']
             label = labeldef[nextItem['label']][1]      # store label index
             x = nextItem['x']

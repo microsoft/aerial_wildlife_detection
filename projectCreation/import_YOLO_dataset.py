@@ -49,13 +49,7 @@
 '''
 
 import os
-import glob
-from tqdm import tqdm
-import datetime
 import argparse
-from PIL import Image
-from util.configDef import Config
-from modules import Database
 
 
 
@@ -77,6 +71,14 @@ if __name__ == '__main__':
 
     # setup
     print('Setup...')
+    os.environ['AIDE_CONFIG_PATH'] = str(args.settings_filepath)
+    
+    import glob
+    from tqdm import tqdm
+    import datetime
+    from PIL import Image
+    from util.configDef import Config
+    from modules import Database
 
     if args.labelFolder == '':
         args.labelFolder = None
@@ -87,9 +89,9 @@ if __name__ == '__main__':
     currentDT = datetime.datetime.now()
     currentDT = '{}-{}-{} {}:{}:{}'.format(currentDT.year, currentDT.month, currentDT.day, currentDT.hour, currentDT.minute, currentDT.second)
 
-    config = Config(args.settings_filepath)
+    config = Config()
     dbConn = Database(config)
-    if dbConn.conn is None:
+    if dbConn.connectionPool is None:
         raise Exception('Error connecting to database.')
     dbSchema = config.getProperty('Database', 'schema')
     

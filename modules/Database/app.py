@@ -4,9 +4,12 @@
     2019 Benjamin Kellenberger
 '''
 
+from contextlib import contextmanager
 import psycopg2
+from psycopg2.pool import ThreadedConnectionPool
 from psycopg2.extras import RealDictCursor, execute_values
 psycopg2.extras.register_uuid()
+
 
 
 class Database():
@@ -21,18 +24,22 @@ class Database():
         self.user = config.getProperty('Database', 'user').lower()
         self.password = config.getProperty('Database', 'password')
 
-        self._createConnection()
+        self._createConnectionPool()
 
 
-    def _createConnection(self):
+    def _createConnectionPool(self):
         try:
-            self.conn = psycopg2.connect(host=self.host,
-                                        database=self.database,
-                                        port=self.port,
-                                        user=self.user,
-                                        password=self.password)
-            
-        except:
+            self.connectionPool = ThreadedConnectionPool(
+                1,
+                self.config.getProperty('Database', 'max_num_connections', type=int, fallback=20),
+                host=self.host,
+                database=self.database,
+                port=self.port,
+                user=self.user,
+                password=self.password
+            )
+        except Exception as e:
+            print(e)
             print('Error connecting to database {}:{} with username {}.'.format(
                 self.host, self.port, self.user
             ))
@@ -43,18 +50,40 @@ class Database():
         ''' Dummy function for compatibility reasons '''
         return
 
-    
+
+
+    @contextmanager
+    def _get_connection(self):
+        conn = self.connectionPool.getconn()
+        try:
+            yield conn
+        finally:
+            self.connectionPool.putconn(conn, close=False)
+
+
     def execute(self, sql, arguments, numReturn=None):
-        with self.execute_cursor(sql, arguments) as cursor:
+        # with self.connectionPool.getconn() as conn:
+        with self._get_connection() as conn:
+            cursor = conn.cursor(cursor_factory = RealDictCursor)
+
+            # execute statement
+            try:
+                cursor.execute(sql, arguments)
+                conn.commit()
+            except Exception as e:
+                print(e)
+                conn.rollback()
+
+            # get results
             try:
                 returnValues = []
                 if numReturn is None:
-                    cursor.close()
+                    # cursor.close()
                     return
                 
                 elif numReturn == 'all':
                     returnValues = cursor.fetchall()
-                    cursor.close()
+                    # cursor.close()
                     return returnValues
 
                 else:
@@ -64,33 +93,38 @@ class Database():
                             return returnValues
                         returnValues.append(rv)
         
-                    cursor.close()
+                    # cursor.close()
                     return returnValues
             except Exception as e:
                 print(e)
-                self.conn.rollback()
+                # conn.rollback()
             finally:
-                cursor.close()
+                pass
+                # self.connectionPool.putconn(conn)
+                # cursor.close()
     
 
     def execute_cursor(self, sql, arguments):
-        cursor = self.conn.cursor(cursor_factory = RealDictCursor)
-        try:
-            cursor.execute(sql, arguments)
-            self.conn.commit()
-            return cursor
-        except Exception as e:
-            print(e)
-            self.conn.rollback()
+        with self._get_connection() as conn:
+            cursor = conn.cursor(cursor_factory = RealDictCursor)
+            try:
+                cursor.execute(sql, arguments)
+                conn.commit()
+                return cursor
+            except Exception as e:
+                print(e)
+                conn.rollback()
 
 
     def insert(self, sql, values):
-        cursor = self.conn.cursor()
-        try:
-            execute_values(cursor, sql, values)
-            self.conn.commit()
-        except Exception as e:
-            print(e)
-            self.conn.rollback()
-        finally:
-            cursor.close()
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            try:
+                execute_values(cursor, sql, values)
+                conn.commit()
+            except Exception as e:
+                print(e)
+                conn.rollback()
+            finally:
+                pass
+                # cursor.close()

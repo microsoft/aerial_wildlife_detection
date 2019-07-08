@@ -35,13 +35,13 @@ worker = AIWorker(config, None)     #TODO: unneccessary second parameter for run
 
 
 @app.task()
-def call_train(data):
-    return worker.call_train(data)
+def call_train(data, subset):
+    return worker.call_train(data, subset)
 
 
 @app.task()
-def call_average_model_states(modelStates):
-    return worker.call_average_model_states(modelStates)
+def call_average_model_states():
+    return worker.call_average_model_states()
 
 
 @app.task()

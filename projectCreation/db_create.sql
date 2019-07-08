@@ -80,12 +80,15 @@ CREATE TABLE IF NOT EXISTS &schema.PREDICTION (
     FOREIGN KEY (image) REFERENCES &schema.IMAGE(id)
 );
 
+/*
 CREATE TABLE IF NOT EXISTS &schema.CNN (
     id uuid DEFAULT uuid_generate_v4(),
     name VARCHAR NOT NULL,
     PRIMARY KEY (id)
 );
+*/
 
+/*
 CREATE TABLE IF NOT EXISTS &schema.CNN_LABELCLASS (
     cnn uuid NOT NULL,
     labelclass uuid NOT NULL,
@@ -94,15 +97,14 @@ CREATE TABLE IF NOT EXISTS &schema.CNN_LABELCLASS (
     FOREIGN KEY (cnn) REFERENCES &schema.CNN(id),
     FOREIGN KEY (labelclass) REFERENCES &schema.LABELCLASS(id)
 );
+*/
 
 CREATE TABLE IF NOT EXISTS &schema.CNNSTATE (
     id uuid DEFAULT uuid_generate_v4(),
-    cnn uuid NOT NULL,
+    --cnn uuid NOT NULL,
     timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     stateDict bytea NOT NULL,
-    PRIMARY KEY (id),
-    FOREIGN KEY (cnn) REFERENCES &schema.CNN(id)
+    partial boolean NOT NULL,
+    PRIMARY KEY (id)
+    --, FOREIGN KEY (cnn) REFERENCES &schema.CNN(id)
 );
-
-/* TODO: integrate user account tables, reference from annotation table */
-

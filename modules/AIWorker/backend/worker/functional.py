@@ -23,30 +23,39 @@
 '''
 
 from celery import current_task
+import psycopg2
+from util.helpers import current_time
 from constants.dbFieldNames import FieldNames_annotation, FieldNames_prediction
 
 
 def __load_model_state(config, dbConnector):
     # load model state from database
-    try:
-        sql = '''
-            SELECT query.statedict FROM (
-                SELECT statedict, timecreated
-                FROM {schema}.cnnstate
-                ORDER BY timecreated DESC NULLS LAST
-                LIMIT 1
-            ) AS query;
-        '''.format(schema=config.getProperty('Database', 'schema'))
-        stateDict = dbConnector.execute(sql, None, numReturn=1)     #TODO: issues Celery warning if no state dict found
-    
-    except:
-        # no state dict in database yet, have to start with a fresh model
+    # try:
+    sql = '''
+        SELECT query.statedict FROM (
+            SELECT statedict, timecreated
+            FROM {schema}.cnnstate
+            ORDER BY timecreated DESC NULLS LAST
+            LIMIT 1
+        ) AS query;
+    '''.format(schema=config.getProperty('Database', 'schema'))
+    stateDict = dbConnector.execute(sql, None, numReturn=1)     #TODO: issues Celery warning if no state dict found
+    if not len(stateDict):
+        # force creation of new model
         stateDict = None
+    
+    else:
+        # extract
+        stateDict = stateDict[0]['statedict']
+
+    # except Exception as err:
+    #     # no state dict in database yet, have to start with a fresh model
+    #     stateDict = None
 
     return stateDict
 
 
-def __load_metadata(config, dbConnector, imageIDs):
+def __load_metadata(config, dbConnector, imageIDs, loadAnnotations):
 
     schema = config.getProperty('Database', 'schema')
 
@@ -70,22 +79,23 @@ def __load_metadata(config, dbConnector, imageIDs):
 
 
     # annotations
-    fieldNames = list(getattr(FieldNames_annotation, config.getProperty('Project', 'predictionType')).value)
-    sql = '''
-        SELECT id AS annotationID, image, {fieldNames} FROM {schema}.annotation AS anno
-        WHERE image IN %s;
-    '''.format(schema=schema, fieldNames=','.join(fieldNames))
-    result = dbConnector.execute(sql, (tuple(imageIDs),), 'all')
-    for r in result:
-        if not 'annotations' in imageMeta[r['image']]:
-            imageMeta[r['image']]['annotations'] = []
-        imageMeta[r['image']]['annotations'].append(r)      #TODO: make more elegant?
+    if loadAnnotations:
+        fieldNames = list(getattr(FieldNames_annotation, config.getProperty('Project', 'predictionType')).value)
+        sql = '''
+            SELECT id AS annotationID, image, {fieldNames} FROM {schema}.annotation AS anno
+            WHERE image IN %s;
+        '''.format(schema=schema, fieldNames=','.join(fieldNames))
+        result = dbConnector.execute(sql, (tuple(imageIDs),), 'all')
+        for r in result:
+            if not 'annotations' in imageMeta[r['image']]:
+                imageMeta[r['image']]['annotations'] = []
+            imageMeta[r['image']]['annotations'].append(r)      #TODO: make more elegant?
     meta['images'] = imageMeta
 
     return meta
 
 
-def _call_train(dbConnector, config, imageIDs, trainingFun, fileServer):
+def _call_train(dbConnector, config, imageIDs, subset, trainingFun, fileServer):
     '''
         Initiates model training and maintains workers, status and failure
         events.
@@ -112,22 +122,29 @@ def _call_train(dbConnector, config, imageIDs, trainingFun, fileServer):
     stateDict = __load_model_state(config, dbConnector)
 
     # load labels and other metadata
-    data = __load_metadata(config, dbConnector, imageIDs)
-
-
+    data = __load_metadata(config, dbConnector, imageIDs, True)
 
     # call training function
     try:
-        result = trainingFun(stateDict, data)
+        stateDict = trainingFun(stateDict, data)
+
+        # commit state dict to database
+        sql = '''
+            INSERT INTO {schema}.cnnstate(stateDict, partial)
+            VALUES( %s, %s )
+        '''.format(schema=config.getProperty('Database', 'schema'))
+        dbConnector.execute(sql, (psycopg2.Binary(stateDict), subset,), numReturn=None)
+        result = 0  #TODO        
+        
     except Exception as err:
         print(err)
-        result = 0      #TODO
+        result = 1      #TODO
 
     return result
 
 
 
-def _call_average_model_states(dbConnector, config, modelStates, averageFun, fileServer):
+def _call_average_model_states(dbConnector, config, averageFun, fileServer):
     '''
         Receives a number of model states (coming from different AIWorker instances),
         averages them by calling the AI model's 'average_model_states' function and inserts
@@ -136,18 +153,33 @@ def _call_average_model_states(dbConnector, config, modelStates, averageFun, fil
 
     #TODO: sanity checks?
     print('initiate epoch averaging')
+    schema = config.getProperty('Database', 'schema')
+
+    # get all model states
+    sql = '''
+        SELECT stateDict FROM {schema}.cnnstate WHERE partial IS TRUE;
+    '''.format(schema=schema)
+    modelStates = dbConnector.execute(sql, None, 'all')
+
 
     # do the work
     modelStates_avg = averageFun(modelStates)
-    print(modelStates_avg)
+
 
     # push to database
     sql = '''
-        INSERT INTO {schema}.cnnstate (stateDict)
+        INSERT INTO {schema}.cnnstate (stateDict, partial)
         VALUES ( %s )
-    '''.format(schema=config.getProperty('Database', 'schema'))     #TODO: multiple CNN types?
+    '''.format(schema=schema)     #TODO: multiple CNN types?
+    dbConnector.insert(sql, (modelStates_avg, False,))   #TODO
 
-    dbConnector.insert(sql, (modelStates_avg,))
+
+    # delete partial model states
+    sql = '''
+        DELETE FROM {schema}.cnnstate WHERE partial IS TRUE;
+    '''.format(schema=schema)
+    dbConnector.execute(sql, None, None)
+
 
     # all done
     return 0
@@ -165,39 +197,49 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, fileServer):
     # load model state
     stateDict = __load_model_state(config, dbConnector)
 
-
     # load remaining data (image filenames, class definitions)
-
+    data = __load_metadata(config, dbConnector, imageIDs, False)
 
     # call inference function
-    result = inferenceFun(stateDict, imageIDs)
-
+    result = inferenceFun(stateDict, data)
+    print(result)
 
     # parse result
     fieldNames = list(getattr(FieldNames_prediction, config.getProperty('Project', 'predictionType')).value)
+    fieldNames.append('image')  # image ID
     values = []
-    for r in result:
-        nextResultValues = []
-        # we expect a dict of values, so we can use the fieldNames directly
-        for fn in fieldNames:
-            if not fn in r:
-                # field name is not in return value; might need to raise a warning, Exception, or set to None
-                nextResultValues.append(None)
-            
-            else:
-                #TODO: might need to do typecasts (e.g. UUID?)
-                nextResultValues.append(r[fn])
-        values.append(nextResultValues)
+    for imgID in result.keys():
+        for prediction in result[imgID]['predictions']:
+            nextResultValues = []
+            # we expect a dict of values, so we can use the fieldNames directly
+            for fn in fieldNames:
+                if fn == 'image':
+                    nextResultValues.append(imgID)
+                else:
+                    if fn in prediction:
+                        #TODO: might need to do typecasts (e.g. UUID?)
+                        nextResultValues.append(prediction[fn])
 
+                    else:
+                        # field name is not in return value; might need to raise a warning, Exception, or set to None
+                        nextResultValues.append(None)
+                    
+            values.append(nextResultValues)
+
+    print('--------------------')
+    print(values)
+    print('--------------------')
+    return 0
 
     # commit to database
-    sql = '''
-        INSERT INTO {schema}.prediction ( {fieldNames} )
-        VALUES %s;
-    '''.format(schema=config.getProperty('Database', 'schema'),
-        fieldNames=fieldNames)
+    if len(values):
+        sql = '''
+            INSERT INTO {schema}.prediction ( {fieldNames} )
+            VALUES %s;
+        '''.format(schema=config.getProperty('Database', 'schema'),
+            fieldNames=fieldNames)
 
-    dbConnector.insert(sql, tuple(values))
+        dbConnector.insert(sql, tuple(values))
 
 
     #TODO: return status?

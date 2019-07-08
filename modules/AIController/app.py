@@ -35,6 +35,15 @@ class AIController:
             #     status = str(e)
             return { 'status' : status }
 
+        
+        @self.app.get('/startInference')
+        def start_inference():
+            '''
+                TODO: just here for debugging purposes; in reality inference should automatically be called after training
+            '''
+            status = self.middleware.start_inference(forceUnlabeled=True, maxNumImages=12, maxNumWorkers=1)
+            return { 'status' : status }
+
 
         @self.app.get('/checkStatus')    #TODO: POST
         def check_status():

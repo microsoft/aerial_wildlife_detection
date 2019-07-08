@@ -106,13 +106,13 @@ class AIWorker():
 
 
 
-    def call_train(self, data):
-        return functional._call_train(self.dbConnector, self.config, data, getattr(self.modelInstance, 'train'), self.fileServer)
+    def call_train(self, data, subset):
+        return functional._call_train(self.dbConnector, self.config, data, subset, getattr(self.modelInstance, 'train'), self.fileServer)
     
 
 
-    def call_average_model_states(self, modelStates):
-        return functional._call_average_model_states(self.dbConnector, self.config, modelStates, getattr(self.modelInstance, 'average_model_states'), self.fileServer)
+    def call_average_model_states(self):
+        return functional._call_average_model_states(self.dbConnector, self.config, getattr(self.modelInstance, 'average_model_states'), self.fileServer)
 
 
 

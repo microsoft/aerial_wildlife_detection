@@ -2,13 +2,19 @@
 
 #TODO 2: define function shells first in an abstract superclass (with documentation) and a template.
 
+import io
+import importlib
+from tqdm import tqdm
 from celery import current_task
+import torch
 from torch.utils.data import DataLoader
 from torch.optim import Adam
 from torchvision import transforms as tr
+from ai.functional.pytorch._retinanet import DEFAULT_OPTIONS
 from ai.functional.pytorch._retinanet import collation, encoder, transforms as bboxTr, loss
 from ai.functional.pytorch._retinanet.model import RetinaNet as Model
 from ai.functional.pytorch.datasets.bboxDataset import BoundingBoxDataset
+from util.helpers import get_class_executable
 
 
 class RetinaNet:
@@ -19,8 +25,34 @@ class RetinaNet:
         self.config = config
         self.dbConnector = dbConnector
         self.fileServer = fileServer
-        self.options = options
-    
+        self._parse_options(options)
+
+
+    def _parse_options(self, options):
+        '''
+            Check for presence of required values and add defaults if not there.
+        '''
+        def __check_args(options, defaultOptions):
+            if not isinstance(defaultOptions, dict):
+                return options
+            for key in defaultOptions.keys():
+                if not key in options:
+                    options[key] = defaultOptions[key]
+                options[key] = __check_args(options[key], defaultOptions[key])
+            return options
+        if options is None or not isinstance(options, dict):
+            self.options = DEFAULT_OPTIONS
+        else:
+            self.options = __check_args(options, DEFAULT_OPTIONS)
+
+
+    def _get_device(self):
+        device = self.options['general']['device']
+        if 'cuda' in device and not torch.cuda.is_available():
+            device = 'cpu'
+        return device
+
+
 
     def train(self, stateDict, data):
         '''
@@ -35,11 +67,14 @@ class RetinaNet:
             model = Model.loadFromStateDict(stateDict)
         else:
             # initialize a fresh model
-            model = Model.loadFromStateDict(self.options)   #TODO: also provide default options / load from properties file
-        
+            self.options['model']['numClasses'] = len(data['labelClasses'])    #TODO
+            model = Model.loadFromStateDict(self.options['model'])
+
 
         # initialize data loader, dataset, transforms, optimizer, criterion
+        inputSize = tuple(self.options['general']['image_size'])
         transforms = bboxTr.Compose([
+            bboxTr.Resize(inputSize),
             bboxTr.RandomHorizontalFlip(p=0.5),
             bboxTr.DefaultTransform(tr.ColorJitter(0.25, 0.25, 0.25, 0.01)),
             bboxTr.DefaultTransform(tr.ToTensor()),
@@ -47,29 +82,36 @@ class RetinaNet:
                                                 std=[0.229, 0.224, 0.225]))
         ])  #TODO: ditto, also write functional.pytorch util to compose transformations
         dataset = BoundingBoxDataset(data,
-                                    stateDict,
                                     self.fileServer,
                                     targetFormat='xywh',
                                     transform=transforms,
-                                    ignoreUnsure=self.options['ignore_unsure'])  #TODO: ditto
-        dataEncoder = encoder.DataEncoder(minIoU_pos=0.5, maxIoU_neg=0.4)   #TODO: ditto
-        inputSize = (512, 512,)     #TODO: ditto
+                                    ignoreUnsure=self.options['train']['ignore_unsure'])
+        dataEncoder = encoder.DataEncoder(minIoU_pos=0.5, maxIoU_neg=0.4)   #TODO: implement into options
         collator = collation.Collator(inputSize, dataEncoder)
         dataLoader = DataLoader(
             dataset,
-            batch_size=self.options['batch_size'],   #TODO: ditto
+            batch_size=self.options['train']['batch_size'],
             shuffle=True,
             collate_fn=collator.collate_fn
         )
-        optimizer = Adam(model.parameters(), lr=1e-5, weight_decay=0.0)       #TODO: ditto (write functional.pytorch util to load optim)
-        criterion = loss.FocalLoss(num_classes=len(dataset.classdef), alpha=0.25, gamma=2, classWeights=None)     #TODO: ditto
 
+        # optimizer
+        optimizer_class = get_class_executable(self.options['train']['optim']['class'])
+        optimizer = optimizer_class(params=model.parameters(), **self.options['train']['optim']['kwargs'])        
+
+        # loss criterion
+        criterion_class = get_class_executable(self.options['train']['criterion']['class'])
+        criterion = criterion_class(**self.options['train']['criterion']['kwargs'])
 
         # train model
-        device = 'cuda:0'
         #TODO: outsource into dedicated function; set GPU, set random seed, etc.
-        for idx, (img, _, bboxes_target, labels_target) in enumerate(dataLoader):
-            img, boundingBoxes, labels = img.to(device), boundingBoxes.to(device), labels.to(device)
+        device = self._get_device()
+        torch.manual_seed(self.options['general']['seed'])
+        if 'cuda' in device:
+            torch.cuda.manual_seed(self.options['general']['seed'])
+
+        for idx, (img, bboxes_target, labels_target, _) in enumerate(tqdm(dataLoader)):
+            img, bboxes_target, labels_target = img.to(device), bboxes_target.to(device), labels_target.to(device)
 
             optimizer.zero_grad()
             bboxes_pred, labels_pred = model(img)
@@ -80,19 +122,28 @@ class RetinaNet:
             # update worker state   another TODO
             current_task.update_state(state='PROGRESS', meta={'done': idx+1, 'total': len(dataLoader)})
 
-
-        # all done; return state dict
-        stateDict = model.getStateDict()
-
-        return stateDict
+        # all done; return state dict as bytes
+        bio = io.BytesIO()
+        torch.save(model.getStateDict(), bio)
+        return bio.getvalue()
 
 
     def average_model_states(self, stateDicts):
         '''
             TODO
         '''
+
+        # read state dicts from bytes
+        for s in range(len(stateDicts)):
+            stateDict = io.BytesIO(stateDicts[s])
+            stateDicts[s] = torch.load(stateDict, map_location=lambda storage, loc: storage)
+
         average_states = Model.averageStateDicts(stateDicts)
-        return average_states
+
+        # all done; return state dict as bytes
+        bio = io.BytesIO()
+        torch.save(average_states, bio)
+        return bio.getvalue()
 
     
     def inference(self, stateDict, data):
@@ -101,48 +152,90 @@ class RetinaNet:
         '''
 
         # initialize model
+        if stateDict is None:
+            raise Exception('No trained model state found, but required for inference.')
+
+        # read state dict from bytes
+        stateDict = io.BytesIO(stateDict)
+        stateDict = torch.load(stateDict, map_location=lambda storage, loc: storage)
+        
         model = Model.loadFromStateDict(stateDict)
 
+
         # initialize data loader, dataset, transforms
+        inputSize = tuple(self.options['general']['image_size'])
         transforms = bboxTr.Compose([
+            bboxTr.Resize(inputSize),
             bboxTr.DefaultTransform(tr.ToTensor()),
             bboxTr.DefaultTransform(tr.Normalize(mean=[0.485, 0.456, 0.406],
                                                 std=[0.229, 0.224, 0.225]))
         ])  #TODO: ditto, also write functional.pytorch util to compose transformations
         dataset = BoundingBoxDataset(data,
-                                    stateDict,
                                     self.fileServer,
                                     targetFormat='xywh',
                                     transform=transforms)  #TODO: ditto
         dataEncoder = encoder.DataEncoder(minIoU_pos=0.5, maxIoU_neg=0.4)   #TODO: ditto
-        inputSize = (512, 512,)     #TODO: ditto
         collator = collation.Collator(inputSize, dataEncoder)
         dataLoader = DataLoader(
             dataset,
-            batch_size=self.options['batch_size'],   #TODO: ditto
-            shuffle=True,
+            batch_size=self.options['inference']['batch_size'],     #TODO: at the moment the RetinaNet decoder doesn't support batch sizes > 1...
+            shuffle=False,
             collate_fn=collator.collate_fn
         )
 
         # perform inference
         response = {}
-        device = 'cuda:0'
+        device = self._get_device()
         #TODO: outsource into dedicated function; set GPU, set random seed, etc.
-        for idx, (img, imgID, _, _) in enumerate(dataLoader):
+        for idx, (img, _, _, imgID) in enumerate(dataLoader):
             img = img.to(device)
 
             with torch.no_grad():
                 bboxes_pred, labels_pred = model(img)
-                bboxes_pred_img, labels_pred_img, confs_pred_img = dataEncoder.decode(bboxes_pred.squeeze(0).cpu(),
+                bboxes_pred, labels_pred, confs_pred = dataEncoder.decode(bboxes_pred.squeeze(0).cpu(),
                                     labels_pred.squeeze(0).cpu(),
                                     (inputSize[1],inputSize[0],),
                                     cls_thresh=0.1, nms_thresh=0.1,
                                     return_conf=True)       #TODO: ditto
 
-                # append to dict
-                response[imgID] = {
-                    'predictions': {}       #TODO
-                }
+                if bboxes_pred.dim() == 2:
+                    bboxes_pred = bboxes_pred.unsqueeze(0)
+                    labels_pred = labels_pred.unsqueeze(0)
+                    confs_pred = confs_pred.unsqueeze(0)
+
+                for i in range(len(imgID)):
+                    # convert bounding boxes to YOLO format
+                    predictions = []
+                    bboxes_pred_img = bboxes_pred[0,...]
+                    labels_pred_img = labels_pred[0,...]
+                    confs_pred_img = confs_pred[0,...]
+                    if len(bboxes_pred_img):
+                        bboxes_pred_img[:,2] -= bboxes_pred_img[:,0]
+                        bboxes_pred_img[:,3] -= bboxes_pred_img[:,1]
+                        bboxes_pred_img[:,0] += bboxes_pred_img[:,2]/2
+                        bboxes_pred_img[:,1] += bboxes_pred_img[:,3]/2
+                        bboxes_pred_img[:,0] /= inputSize[0]
+                        bboxes_pred_img[:,1] /= inputSize[1]
+                        bboxes_pred_img[:,2] /= inputSize[0]
+                        bboxes_pred_img[:,3] /= inputSize[1]
+
+                        # append to dict
+                        for b in range(bboxes_pred_img.size(0)):
+                            bbox = bboxes_pred_img[b,:]
+                            label = labels_pred_img[b]
+                            logits = confs_pred_img[b,:]
+                            predictions.append({
+                                'x': bbox[0],
+                                'y': bbox[1],
+                                'width': bbox[2],
+                                'height': bbox[3],
+                                'label': dataset.classdef_inv[label.item()],
+                                'logits': logits        #TODO: for AL criterion?
+                            })
+                    
+                    response[imgID[i]] = {
+                        'predictions': tuple(predictions)
+                    }
 
             # update worker state   another TODO
             current_task.update_state(state='PROGRESS', meta={'done': idx+1, 'total': len(dataLoader)})

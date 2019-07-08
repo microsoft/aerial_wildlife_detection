@@ -7,8 +7,8 @@
 
 from modules.Database.app import Database
 import psycopg2
-import pytz
-from datetime import datetime, timedelta
+from datetime import timedelta
+from util.helpers import current_time
 import secrets
 import hashlib
 import bcrypt
@@ -29,7 +29,7 @@ class UserMiddleware():
     
 
     def _current_time(self):
-        return datetime.now(tz=pytz.utc)
+        return current_time()
 
 
     def _create_token(self):

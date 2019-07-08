@@ -133,11 +133,13 @@ class DBMiddleware():
         with self.dbConnector.execute_cursor(sql, (tuple(UUID(d) for d in data), username, username,)) as cursor:
             try:
                 response = self._assemble_annotations(cursor)
-                self.dbConnector.conn.commit()
+                # self.dbConnector.conn.commit()
             except:
-                self.dbConnector.conn.rollback()
+                pass
+                # self.dbConnector.conn.rollback()
             finally:
-                cursor.close()
+                pass
+                # cursor.close()
         return { 'entries': response }
         
     
@@ -156,13 +158,15 @@ class DBMiddleware():
 
         # parse results
         with self.dbConnector.execute_cursor(sql, (username,limit,username,)) as cursor:
-            try:
-                response = self._assemble_annotations(cursor, limit)
-                self.dbConnector.conn.commit()
-            except:
-                self.dbConnector.conn.rollback()
-            finally:
-                cursor.close()
+            response = self._assemble_annotations(cursor, limit)
+            # try:
+            #     response = self._assemble_annotations(cursor, limit)
+            #     # self.dbConnector.conn.commit()
+            # except:
+            #     pass
+            #     # self.dbConnector.conn.rollback()
+            # finally:
+            #     cursor.close()
 
             # #TODO
             # if len(response) == 1:
