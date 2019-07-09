@@ -177,18 +177,13 @@ class RetinaNet:
                                                 std=[0.229, 0.224, 0.225]))
         ])  #TODO: ditto, also write functional.pytorch util to compose transformations
 
-        dataType = self.options['general']['dataType'].lower()      # 'image' or 'featureVector'
-        if dataType == 'featurevector':
-            # load images only if there is no feature vector available
-            loadImage = 'ifNoFvec'
-        else:
-            loadImage = True
+        #TODO
+        # dataType = self.options['general']['dataType'].lower()      # 'image' or 'featureVector'
 
         
         dataset = BoundingBoxDataset(data=data,
                                     fileServer=self.fileServer,
-                                    transform=transforms,
-                                    loadImage=loadImage)  #TODO: ditto
+                                    transform=transforms)  #TODO: ditto
         dataEncoder = encoder.DataEncoder(minIoU_pos=0.5, maxIoU_neg=0.4)   #TODO: ditto
         collator = collation.Collator(inputSize, dataEncoder)
         dataLoader = DataLoader(
@@ -205,16 +200,17 @@ class RetinaNet:
         for idx, (img, _, _, fVec, imgID) in enumerate(dataLoader):
             
 
-            # BIG FAT TODO: BATCH SIZE... >:{
-            if img is not None:
-                dataItem = img.to(device)
-                isFeatureVector = False
-            else:
-                dataItem = fVec.to(device)
-                isFeatureVector = True
+            # # BIG FAT TODO: BATCH SIZE... >:{
+            # if img is not None:
+            #     dataItem = img.to(device)
+            #     isFeatureVector = False
+            # else:
+            #     dataItem = fVec.to(device)
+            #     isFeatureVector = True
+            dataItem = img.to(device)
 
             with torch.no_grad():
-                bboxes_pred, labels_pred = model(dataItem, isFeatureVector)
+                bboxes_pred, labels_pred = model(dataItem, False)   #TODO: isFeatureVector
                 bboxes_pred, labels_pred, confs_pred = dataEncoder.decode(bboxes_pred.squeeze(0).cpu(),
                                     labels_pred.squeeze(0).cpu(),
                                     (inputSize[1],inputSize[0],),

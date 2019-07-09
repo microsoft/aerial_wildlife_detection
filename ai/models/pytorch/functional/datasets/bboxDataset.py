@@ -25,15 +25,6 @@ class BoundingBoxDataset(Dataset):
                         or 'xyxy' (top left and bottom right coordinates)
         - transform: Instance of classes defined in 'ai.functional.pytorch._util.bboxTransforms'. May be None for no transformation at all.
         - ignoreUnsure: if True, all annotations with flag 'unsure' will get a label of -1 (i.e., 'ignore')
-        - loadImage: takes one of the following values:
-                        - True: image data will be loaded (and transformed, if specified) during the '__getitem__' call at runtime.
-                        - 'ifNoFvec': image data will only be loaded (and transformed, if specified) if the image's feature vector is None.
-                        - False: skip image loading in any case ('img' will always be None).
-                     Set this parameter accordingly to accelerate data retrieval if the model is mostly used on and for feature vectors.
-                     Note that many transform functions, such as resizing, require an image to be present. If you wish to train or infer based
-                     on feature vectors you therefore might want to skip transforms altogether, also keeping in mind that they probably do not make
-                     all to much sense anyway (feature vectors are fixed and thus completely unaffected by transforms). As a matter of fact, transforms
-                     are skipped entirely if the image is not loaded.
 
         The '__getitem__' function returns the data entry at given index as a tuple with the following contents:
         - img: the loaded and transformed (if specified) image. Note: if 'loadImage' is set to False, 'img' will be None.
@@ -42,15 +33,12 @@ class BoundingBoxDataset(Dataset):
         - fVec: a torch tensor of feature vectors (if available; else None)
         - imageID: str, filename of the image loaded
     '''
-    def __init__(self, data, fileServer, targetFormat='xywh', transform=None, ignoreUnsure=False, loadImage=True):
+    def __init__(self, data, fileServer, targetFormat='xywh', transform=None, ignoreUnsure=False):
         super(BoundingBoxDataset, self).__init__()
         self.fileServer = fileServer
         self.targetFormat = targetFormat
         self.transform = transform
         self.ignoreUnsure = ignoreUnsure
-        if isinstance(loadImage, str):
-            loadImage = loadImage.lower()
-        self.loadImage = loadImage
         self.__parse_data(data)
 
     
@@ -77,7 +65,6 @@ class BoundingBoxDataset(Dataset):
             nextMeta = data['images'][key]
             boundingBoxes = []
             labels = []
-            featureVectors = []
             if 'annotations' in nextMeta:
                 for anno in nextMeta['annotations']:
                     if self.targetFormat == 'xyxy':
@@ -103,18 +90,17 @@ class BoundingBoxDataset(Dataset):
                     else:
                         label = self.classdef[label]
 
-                    # feature vectors
-                    if 'fVec' in anno:
-                        fVec = anno['fVec']     #TODO: convert from bytes (torch.from_numpy(np.frombuffer(anno['fVec'], dtype=np.float32)))
-                    else:
-                        fVec = None
-
                     boundingBoxes.append(coords)
                     labels.append(label)
-                    featureVectors.append(fVec)
+
+            # feature vector
+            if 'fVec' in nextMeta:
+                fVec = nextMeta['fVec']     #TODO: convert from bytes (torch.from_numpy(np.frombuffer(anno['fVec'], dtype=np.float32)))
+            else:
+                fVec = None
             
             imagePath = nextMeta['filename']
-            self.data.append((boundingBoxes, labels, key, featureVectors, imagePath))
+            self.data.append((boundingBoxes, labels, key, fVec, imagePath))
 
 
     def __len__(self):
@@ -126,10 +112,7 @@ class BoundingBoxDataset(Dataset):
         boundingBoxes, labels, imageID, fVec, imagePath = self.data[idx]
 
         # load image
-        if self.loadImage == True or (self.loadImage == 'ifnofvec' and fVec is None):
-            img = Image.open(BytesIO(self.fileServer.getFile(imagePath)))
-        else:
-            img = None
+        img = Image.open(BytesIO(self.fileServer.getFile(imagePath)))
 
         # convert data
         sz = img.size
