@@ -29,7 +29,7 @@ class AIMiddleware():
         self.training_workers_result = None
         self.training = False   # will be set to True once start_training is called (and False as soon as everything about the training process has finished)
 
-        self.inference_workers = group()
+        self.inference_workers = {}
 
 
     def _training_initiated(self, distributedTraining):
@@ -197,7 +197,8 @@ class AIMiddleware():
 
         jobIDs = []
         for subset in images_subset:
-            job = celery_interface.call_inference.delay(subset)
+            job = celery_interface.call_inference.apply_async(args=(subset,), ignore_result=False, result_extended=True)
+            print(job.backend)
             self.inference_workers[job.id] = job
             jobIDs.append(job.id)
         t = threading.Thread(target=self._await_inference_jobs, args=(jobIDs,))
@@ -229,7 +230,7 @@ class AIMiddleware():
         '''
         
         # setup
-        if maxNumImages == -1:
+        if maxNumImages is None or maxNumImages == -1:
             maxNumImages = self.config.getProperty('AIController', 'maxNumImages_inference')
 
 
@@ -287,12 +288,14 @@ class AIMiddleware():
                     'meta': child.info
                 }
         
+        
         if inference_workers and len(self.inference_workers):
             for key in self.inference_workers:
+                print(list(vars(self.inference_workers[key])))
                 statuses[key] = {
                     'type' : 'inference',
                     'status' : self.inference_workers[key].status,
-                    'info': child.info
+                    'info': self.inference_workers[key].info
                 }
 
         return statuses

@@ -24,7 +24,15 @@ config = Config()
 app = Celery('AIController',
             broker=config.getProperty('AIController', 'broker_URL'),
             backend=config.getProperty('AIController', 'result_backend'))
-
+app.conf.update(
+    result_backend=config.getProperty('AIController', 'result_backend'),
+    task_ignore_result=False,
+    result_persistent=False,
+    accept_content = ['json'],
+    task_serializer = 'json',
+    result_serializer = 'json',
+    task_track_started = True
+)
 
 
 # load AIWorker     TODO: since this file gets imported through the AIController as well, it has to unnecessarily create an AIWorker instance...

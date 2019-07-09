@@ -41,7 +41,7 @@ class AIController:
             '''
                 TODO: just here for debugging purposes; in reality inference should automatically be called after training
             '''
-            status = self.middleware.start_inference(forceUnlabeled=True, maxNumImages=12, maxNumWorkers=1)
+            status = self.middleware.start_inference(forceUnlabeled=True, maxNumImages=None, maxNumWorkers=1)
             return { 'status' : status }
 
 
