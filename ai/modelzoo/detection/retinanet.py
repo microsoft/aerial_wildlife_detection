@@ -110,6 +110,8 @@ class RetinaNet:
         if 'cuda' in device:
             torch.cuda.manual_seed(self.options['general']['seed'])
 
+        model.to(device)
+
         for idx, (img, bboxes_target, labels_target, _) in enumerate(tqdm(dataLoader)):
             img, bboxes_target, labels_target = img.to(device), bboxes_target.to(device), labels_target.to(device)
 
@@ -123,6 +125,9 @@ class RetinaNet:
             current_task.update_state(state='PROGRESS', meta={'done': idx+1, 'total': len(dataLoader)})
 
         # all done; return state dict as bytes
+        if 'cuda' in device:
+            torch.cuda.empty_cache()
+        model.cpu()
         bio = io.BytesIO()
         torch.save(model.getStateDict(), bio)
         return bio.getvalue()
@@ -186,6 +191,7 @@ class RetinaNet:
         # perform inference
         response = {}
         device = self._get_device()
+        model.to(device)
         #TODO: outsource into dedicated function; set GPU, set random seed, etc.
         for idx, (img, _, _, imgID) in enumerate(dataLoader):
             img = img.to(device)
@@ -239,5 +245,9 @@ class RetinaNet:
 
             # update worker state   another TODO
             current_task.update_state(state='PROGRESS', meta={'done': idx+1, 'total': len(dataLoader)})
+
+        model.cpu()
+        if 'cuda' in device:
+            torch.cuda.empty_cache()
 
         return response
