@@ -181,6 +181,7 @@ class AIMiddleware():
             if jobID in self.inference_workers:
                 self.inference_workers[jobID].get()
                 del self.inference_workers[jobID]
+        return
 
 
     def _do_inference(self, imageIDs, maxNumWorkers=-1):
@@ -234,7 +235,7 @@ class AIMiddleware():
 
         # load the IDs of the images that are being subjected to inference
         sql = self.sqlBuilder.getInferenceQueryString(forceUnlabeled, maxNumImages)
-        imageIDs = self.dbConn.execute(sql, None, 4)
+        imageIDs = self.dbConn.execute(sql, None, 'all')
         imageIDs = [i['image'] for i in imageIDs]
 
         self._do_inference(imageIDs, maxNumWorkers)
