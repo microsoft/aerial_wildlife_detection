@@ -71,8 +71,18 @@ class Database():
                 cursor.execute(sql, arguments)
                 conn.commit()
             except Exception as e:
-                print(e)
-                conn.rollback()
+                # conn.rollback()
+                # self.connectionPool.putconn(conn, close=False)    #TODO: this still causes connection to close
+                conn = self.connectionPool.getconn()
+
+                # retry execution
+                try:
+                    cursor = conn.cursor(cursor_factory = RealDictCursor)
+                    cursor.execute(sql, arguments)
+                    conn.commit()
+                except:
+                    print(e)
+                    conn.rollback()
 
             # get results
             try:
