@@ -18,8 +18,7 @@ class BreakingTies:
         # iterate through the images and predictions
         for imgID in data.keys():
             if 'predictions' in data[imgID]:
-                for predID in data[imgID]['predictions'].keys():
-                    pred = data[imgID]['predictions'][predID]
-                    btVal = _breaking_ties(pred)
-                    data[imgID]['predictions'][predID]['priority'] = btVal
+                for p in range(len(data[imgID]['predictions'])):
+                    btVal = _breaking_ties(data[imgID]['predictions'][p])
+                    data[imgID]['predictions'][p]['priority'] = btVal
         return data

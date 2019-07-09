@@ -112,7 +112,7 @@ class RetinaNet:
 
         model.to(device)
 
-        for idx, (img, bboxes_target, labels_target, fVec, _) in enumerate(tqdm(dataLoader)):
+        for idx, (img, bboxes_target, labels_target, (fVec, _)) in enumerate(tqdm(dataLoader)):
             img, bboxes_target, labels_target = img.to(device), bboxes_target.to(device), labels_target.to(device)
 
             optimizer.zero_grad()
@@ -198,7 +198,6 @@ class RetinaNet:
         device = self._get_device()
         model.to(device)
         for idx, (img, _, _, fVec, imgID) in enumerate(dataLoader):
-            
 
             # # BIG FAT TODO: BATCH SIZE... >:{
             # if img is not None:
@@ -254,7 +253,7 @@ class RetinaNet:
                             })
                     
                     response[imgID[i]] = {
-                        'predictions': tuple(predictions),
+                        'predictions': predictions,
                         'fVec': fVec        #TODO: maybe unnecessary (if fVec already there), cast to byte array (io.BytesIO(fVec.numpy().astype(np.float32)).getvalue())
                     }
 

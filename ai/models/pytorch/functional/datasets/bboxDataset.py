@@ -97,7 +97,7 @@ class BoundingBoxDataset(Dataset):
             if 'fVec' in nextMeta:
                 fVec = nextMeta['fVec']     #TODO: convert from bytes (torch.from_numpy(np.frombuffer(anno['fVec'], dtype=np.float32)))
             else:
-                fVec = None
+                fVec = []
             
             imagePath = nextMeta['filename']
             self.data.append((boundingBoxes, labels, key, fVec, imagePath))

@@ -126,7 +126,7 @@ def _call_train(dbConnector, config, imageIDs, subset, trainingFun, fileServer):
 
     # call training function
     try:
-        stateDict = trainingFun(stateDict, data)
+        stateDict = trainingFun(stateDict=stateDict, data=data)
 
         # commit state dict to database
         sql = '''
@@ -163,7 +163,7 @@ def _call_average_model_states(dbConnector, config, averageFun, fileServer):
 
 
     # do the work
-    modelStates_avg = averageFun(modelStates)
+    modelStates_avg = averageFun(stateDicts=modelStates)
 
 
     # push to database
@@ -201,11 +201,11 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
     data = __load_metadata(config, dbConnector, imageIDs, False)
 
     # call inference function
-    result = inferenceFun(stateDict, data)
+    result = inferenceFun(stateDict=stateDict, data=data)
 
     # call ranking function (AL criterion)
     if rankFun is not None:
-        result = rankFun(predictions=result, **{'stateDict':stateDict})
+        result = rankFun(data=result, **{'stateDict':stateDict})
 
 
     # parse result
@@ -234,13 +234,8 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
         if 'fVec' in result[imgID] and len(result[imgID]['fVec']):
             values_img.append([imgID, result[imgID]['fVec']])
 
-    print('--------------------')
-    print(list(result.keys())[0])
-    print('--------------------')
-    result[imgID]['predictions']
-    print('--------------------')
-    print(values_pred[0])
-    print('--------------------')
+
+    #TODO
     return 0
 
     # commit to database
@@ -265,15 +260,16 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
 
 
 
-def _call_rank(dbConnector, config, predictions, rankFun, fileServer):
-    '''
+#TODO: ranking is being done automatically after inference (requires logits which are not stored in DB)
+# def _call_rank(dbConnector, config, predictions, rankFun, fileServer):
+#     '''
 
-    '''
+#     '''
 
-    try:
-        result = rankFun(predictions)
-    except Exception as err:
-        print(err)
-        result = 0      #TODO
+#     try:
+#         result = rankFun(data=predictions)
+#     except Exception as err:
+#         print(err)
+#         result = 0      #TODO
 
-    return result
+#     return result

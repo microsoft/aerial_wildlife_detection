@@ -17,8 +17,7 @@ class MaxConfidence:
         # iterate through the images and predictions
         for imgID in data.keys():
             if 'predictions' in data[imgID]:
-                for predID in data[imgID]['predictions'].keys():
-                    pred = data[imgID]['predictions'][predID]
-                    val = _max_confidence(pred)
-                    data[imgID]['predictions'][predID]['priority'] = val
+                for p in range(len(data[imgID]['predictions'])):
+                    btVal = _max_confidence(data[imgID]['predictions'][p])
+                    data[imgID]['predictions'][p]['priority'] = btVal
         return data

@@ -21,12 +21,10 @@ class Compose:
         # iterate through the images and predictions
         for imgID in data.keys():
             if 'predictions' in data[imgID]:
-                for predID in data[imgID]['predictions'].keys():
-                    pred = data[imgID]['predictions'][predID]
-
+                for p in range(len(data[imgID]['predictions'])):
                     # iterate over heuristics and take the max
                     val = -1
                     for h in self.heuristics:
-                        val = max(val, h(pred))
-                    data[imgID]['predictions'][predID]['priority'] = val
+                        val = max(val, h(data[imgID]['predictions'][p]))
+                    data[imgID]['predictions'][p]['priority'] = val
         return data
