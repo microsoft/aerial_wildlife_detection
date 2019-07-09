@@ -186,7 +186,7 @@ def _call_average_model_states(dbConnector, config, averageFun, fileServer):
 
 
 
-def _call_inference(dbConnector, config, imageIDs, inferenceFun, fileServer):
+def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileServer):
     '''
 
     '''
@@ -202,12 +202,17 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, fileServer):
 
     # call inference function
     result = inferenceFun(stateDict, data)
-    print(result)
+
+    # call ranking function (AL criterion)
+    if rankFun is not None:
+        result = rankFun(predictions=result, **{'stateDict':stateDict})
+
 
     # parse result
     fieldNames = list(getattr(FieldNames_prediction, config.getProperty('Project', 'predictionType')).value)
     fieldNames.append('image')  # image ID
-    values = []
+    values_pred = []
+    values_img = []     # mostly for feature vectors
     for imgID in result.keys():
         for prediction in result[imgID]['predictions']:
             nextResultValues = []
@@ -224,23 +229,36 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, fileServer):
                         # field name is not in return value; might need to raise a warning, Exception, or set to None
                         nextResultValues.append(None)
                     
-            values.append(nextResultValues)
+            values_pred.append(nextResultValues)
+
+        if 'fVec' in result[imgID] and len(result[imgID]['fVec']):
+            values_img.append([imgID, result[imgID]['fVec']])
 
     print('--------------------')
-    print(values)
+    print(list(result.keys())[0])
+    print('--------------------')
+    result[imgID]['predictions']
+    print('--------------------')
+    print(values_pred[0])
     print('--------------------')
     return 0
 
     # commit to database
-    if len(values):
+    if len(values_pred):
         sql = '''
             INSERT INTO {schema}.prediction ( {fieldNames} )
             VALUES %s;
         '''.format(schema=config.getProperty('Database', 'schema'),
             fieldNames=fieldNames)
+        dbConnector.insert(sql, tuple(values_pred))
 
-        dbConnector.insert(sql, tuple(values))
-
+    if len(values_img):
+        sql = '''
+            INSERT INTO {schema}.image ( id, fVec )
+            VALUES %s
+            ON CONFLICT (id) DO UPDATE SET fVec = EXCLUDED.fVec;
+        '''.format(schema=config.getProperty('Database', 'schema'))
+        dbConnector.insert(sql, tuple(values_img))
 
     #TODO: return status?
     return 0

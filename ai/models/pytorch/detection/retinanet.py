@@ -11,17 +11,17 @@ from torch.utils.data import DataLoader
 from torch.optim import Adam
 from torchvision import transforms as tr
 from ai.functional.pytorch._retinanet import DEFAULT_OPTIONS
-from ai.functional.pytorch._retinanet import collation, encoder, transforms as bboxTr, loss
+from ai.functional.pytorch._retinanet import collation, encoder, loss
 from ai.functional.pytorch._retinanet.model import RetinaNet as Model
+import ai.functional.pytorch._util.bboxTransforms as bboxTr
 from ai.functional.pytorch.datasets.bboxDataset import BoundingBoxDataset
 from util.helpers import get_class_executable
+
 
 
 class RetinaNet:
 
     def __init__(self, config, dbConnector, fileServer, options):
-        #TODO
-        print('calling retinanet constructor')
         self.config = config
         self.dbConnector = dbConnector
         self.fileServer = fileServer
@@ -112,7 +112,7 @@ class RetinaNet:
 
         model.to(device)
 
-        for idx, (img, bboxes_target, labels_target, _) in enumerate(tqdm(dataLoader)):
+        for idx, (img, bboxes_target, labels_target, fVec, _) in enumerate(tqdm(dataLoader)):
             img, bboxes_target, labels_target = img.to(device), bboxes_target.to(device), labels_target.to(device)
 
             optimizer.zero_grad()
@@ -176,9 +176,19 @@ class RetinaNet:
             bboxTr.DefaultTransform(tr.Normalize(mean=[0.485, 0.456, 0.406],
                                                 std=[0.229, 0.224, 0.225]))
         ])  #TODO: ditto, also write functional.pytorch util to compose transformations
+
+        dataType = self.options['general']['dataType'].lower()      # 'image' or 'featureVector'
+        if dataType == 'featurevector':
+            # load images only if there is no feature vector available
+            loadImage = 'ifNoFvec'
+        else:
+            loadImage = True
+
+        
         dataset = BoundingBoxDataset(data=data,
                                     fileServer=self.fileServer,
-                                    transform=transforms)  #TODO: ditto
+                                    transform=transforms,
+                                    loadImage=loadImage)  #TODO: ditto
         dataEncoder = encoder.DataEncoder(minIoU_pos=0.5, maxIoU_neg=0.4)   #TODO: ditto
         collator = collation.Collator(inputSize, dataEncoder)
         dataLoader = DataLoader(
@@ -192,12 +202,19 @@ class RetinaNet:
         response = {}
         device = self._get_device()
         model.to(device)
-        #TODO: outsource into dedicated function; set GPU, set random seed, etc.
-        for idx, (img, _, _, imgID) in enumerate(dataLoader):
-            img = img.to(device)
+        for idx, (img, _, _, fVec, imgID) in enumerate(dataLoader):
+            
+
+            # BIG FAT TODO: BATCH SIZE... >:{
+            if img is not None:
+                dataItem = img.to(device)
+                isFeatureVector = False
+            else:
+                dataItem = fVec.to(device)
+                isFeatureVector = True
 
             with torch.no_grad():
-                bboxes_pred, labels_pred = model(img)
+                bboxes_pred, labels_pred = model(dataItem, isFeatureVector)
                 bboxes_pred, labels_pred, confs_pred = dataEncoder.decode(bboxes_pred.squeeze(0).cpu(),
                                     labels_pred.squeeze(0).cpu(),
                                     (inputSize[1],inputSize[0],),
@@ -236,14 +253,16 @@ class RetinaNet:
                                 'width': bbox[2].item(),
                                 'height': bbox[3].item(),
                                 'label': dataset.classdef_inv[label.item()],
-                                'logits': list(logits.numpy())        #TODO: for AL criterion?
+                                'logits': list(logits.numpy()),        #TODO: for AL criterion?
+                                'confidence': torch.max(logits).item()
                             })
                     
                     response[imgID[i]] = {
-                        'predictions': tuple(predictions)
+                        'predictions': tuple(predictions),
+                        'fVec': fVec        #TODO: maybe unnecessary (if fVec already there), cast to byte array (io.BytesIO(fVec.numpy().astype(np.float32)).getvalue())
                     }
 
-            # update worker state   another TODO
+            # update worker state   TODO
             current_task.update_state(state='PROGRESS', meta={'done': idx+1, 'total': len(dataLoader)})
 
         model.cpu()

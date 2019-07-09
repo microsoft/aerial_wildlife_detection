@@ -204,8 +204,11 @@ class RetinaNet(nn.Module):
             return list(self.fpn.parameters()) + headerParams
 
     
-    def forward(self, x):
-        fms = self.fpn(x)
+    def forward(self, x, isFeatureVector=False):
+        if isFeatureVector:
+            fms = x
+        else:
+            fms = self.fpn(x)
         loc_preds = []
         cls_preds = []
         for fm in fms:

@@ -7,6 +7,7 @@ import inspect
 import json
 from modules.AIWorker.backend.worker import functional, fileserver
 from modules.Database.app import Database
+from util.helpers import get_class_executable
 
 
 class AIWorker():
@@ -37,9 +38,8 @@ class AIWorker():
             modelOptions = None
         modelLibPath = self.config.getProperty('AIController', 'model_lib_path')
 
-        # import superclass first, then retrieve class object
-        superclass = importlib.import_module(modelLibPath[0:modelLibPath.rfind('.')])
-        modelClass = getattr(superclass, modelLibPath[modelLibPath.rfind('.')+1:])
+        # import class object
+        modelClass = get_class_executable(modelLibPath)
 
         # verify functions and arguments
         requiredFunctions = {
@@ -78,13 +78,12 @@ class AIWorker():
         modelLibPath = self.config.getProperty('AIController', 'al_criterion_lib_path')
 
         # import superclass first, then retrieve class object
-        superclass = importlib.import_module(modelLibPath[0:modelLibPath.rfind('.')])
-        modelClass = getattr(superclass, modelLibPath[modelLibPath.rfind('.')+1:])
+        modelClass = get_class_executable(modelLibPath)
 
         # verify functions and arguments
         requiredFunctions = {
             '__init__' : ['config', 'dbConnector', 'fileServer', 'options'],
-            'rank' : ['predictions']
+            'rank' : ['data', 'kwargs']
         }   #TODO: make more elegant?
         functionNames = [func for func in dir(modelClass) if callable(getattr(modelClass, func))]
 
@@ -117,7 +116,10 @@ class AIWorker():
 
 
     def call_inference(self, imageIDs):
-        return functional._call_inference(self.dbConnector, self.config, imageIDs, getattr(self.modelInstance, 'inference'), self.fileServer)
+        return functional._call_inference(self.dbConnector, self.config, imageIDs,
+                getattr(self.modelInstance, 'inference'),
+                getattr(self.alInstance, 'rank'),
+                self.fileServer)
 
     
 

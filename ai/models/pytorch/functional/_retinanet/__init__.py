@@ -13,6 +13,7 @@ DEFAULT_OPTIONS = {
 	"general": {
 		"image_size": [512, 512],
 		"device": "cuda",
+		"dataType": "featureVector",		# one of {'image','featureVector'}
         "seed": 1234
 	},
 	"model": {

@@ -1,14 +1,13 @@
 '''
-    Implementation of the Breaking Ties heuristic
-    (Luo et al. 2005: "Active Learning to Recognize Multiple Types of Plankton." JMLR 6, 589-613.)
+    Simply returns the maximum confidence value as a 'priority' score.
 
     2019 Benjamin Kellenberger
 '''
 
-from ai.al.functional.noarch.functional import _breaking_ties
+from ai.al.functional.noarch.functional import _max_confidence
 
-class BreakingTies:
-    
+class MaxConfidence:
+
     def __init__(self, config, dbConnector, fileServer, options):
         pass
 
@@ -20,6 +19,6 @@ class BreakingTies:
             if 'predictions' in data[imgID]:
                 for predID in data[imgID]['predictions'].keys():
                     pred = data[imgID]['predictions'][predID]
-                    btVal = _breaking_ties(pred)
-                    data[imgID]['predictions'][predID]['priority'] = btVal
+                    val = _max_confidence(pred)
+                    data[imgID]['predictions'][predID]['priority'] = val
         return data

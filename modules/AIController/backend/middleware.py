@@ -234,7 +234,7 @@ class AIMiddleware():
 
         # load the IDs of the images that are being subjected to inference
         sql = self.sqlBuilder.getInferenceQueryString(forceUnlabeled, maxNumImages)
-        imageIDs = self.dbConn.execute(sql, None, 'all')
+        imageIDs = self.dbConn.execute(sql, None, 4)
         imageIDs = [i['image'] for i in imageIDs]
 
         self._do_inference(imageIDs, maxNumWorkers)
