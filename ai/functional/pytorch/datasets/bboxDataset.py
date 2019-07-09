@@ -46,12 +46,20 @@ class BoundingBoxDataset(Dataset):
             labels = []
             if 'annotations' in nextMeta:
                 for anno in nextMeta['annotations']:
-                    coords = (
-                        anno['x'],
-                        anno['y'],
-                        anno['width'],
-                        anno['height']
-                    )
+                    if self.targetFormat == 'xyxy':
+                        coords = (
+                            anno['x'] - anno['width']/2,
+                            anno['y'] - anno['height']/2,
+                            anno['x'] + anno['width']/2,
+                            anno['y'] + anno['height']/2
+                        )
+                    else:
+                        coords = (
+                            anno['x'],
+                            anno['y'],
+                            anno['width'],
+                            anno['height']
+                        )
                     label = anno['label']
                     if 'unsure' in anno and anno['unsure'] and self.ignoreUnsure:
                         label = -1      # will automatically be ignored (TODO: also true for models other than RetinaNet?)
@@ -89,11 +97,7 @@ class BoundingBoxDataset(Dataset):
             boundingBoxes[:,1] *= sz[1]
             boundingBoxes[:,2] *= sz[0]
             boundingBoxes[:,3] *= sz[1]
-            if self.targetFormat == 'xyxy':
-                a = boundingBoxes[:,:2]
-                b = boundingBoxes[:,2:]
-                boundingBoxes = torch.cat([a-b/2,a+b/2], 1)
-
+                
         labels = torch.tensor(labels).long()
 
         if self.transform is not None:

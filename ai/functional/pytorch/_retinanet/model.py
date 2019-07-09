@@ -107,7 +107,7 @@ class FPN(nn.Module):
 
 class RetinaNet(nn.Module):
 
-    def __init__(self, numClasses=20, numAnchors=9, backbone=resnet.resnet50, pretrained=True, out_planes=256, convertToInstanceNorm=False):
+    def __init__(self, numClasses=20, numAnchors=9, backbone='resnet50', pretrained=True, out_planes=256, convertToInstanceNorm=False):
         super(RetinaNet, self).__init__()
 
         self.numClasses = numClasses

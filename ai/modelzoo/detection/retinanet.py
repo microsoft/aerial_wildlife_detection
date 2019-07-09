@@ -83,7 +83,7 @@ class RetinaNet:
         ])  #TODO: ditto, also write functional.pytorch util to compose transformations
         dataset = BoundingBoxDataset(data,
                                     self.fileServer,
-                                    targetFormat='xywh',
+                                    targetFormat='xyxy',
                                     transform=transforms,
                                     ignoreUnsure=self.options['train']['ignore_unsure'])
         dataEncoder = encoder.DataEncoder(minIoU_pos=0.5, maxIoU_neg=0.4)   #TODO: implement into options
@@ -128,6 +128,7 @@ class RetinaNet:
         if 'cuda' in device:
             torch.cuda.empty_cache()
         model.cpu()
+
         bio = io.BytesIO()
         torch.save(model.getStateDict(), bio)
         return bio.getvalue()
@@ -175,9 +176,8 @@ class RetinaNet:
             bboxTr.DefaultTransform(tr.Normalize(mean=[0.485, 0.456, 0.406],
                                                 std=[0.229, 0.224, 0.225]))
         ])  #TODO: ditto, also write functional.pytorch util to compose transformations
-        dataset = BoundingBoxDataset(data,
-                                    self.fileServer,
-                                    targetFormat='xywh',
+        dataset = BoundingBoxDataset(data=data,
+                                    fileServer=self.fileServer,
                                     transform=transforms)  #TODO: ditto
         dataEncoder = encoder.DataEncoder(minIoU_pos=0.5, maxIoU_neg=0.4)   #TODO: ditto
         collator = collation.Collator(inputSize, dataEncoder)
@@ -231,12 +231,12 @@ class RetinaNet:
                             label = labels_pred_img[b]
                             logits = confs_pred_img[b,:]
                             predictions.append({
-                                'x': bbox[0],
-                                'y': bbox[1],
-                                'width': bbox[2],
-                                'height': bbox[3],
+                                'x': bbox[0].item(),
+                                'y': bbox[1].item(),
+                                'width': bbox[2].item(),
+                                'height': bbox[3].item(),
                                 'label': dataset.classdef_inv[label.item()],
-                                'logits': logits        #TODO: for AL criterion?
+                                'logits': list(logits.numpy())        #TODO: for AL criterion?
                             })
                     
                     response[imgID[i]] = {
