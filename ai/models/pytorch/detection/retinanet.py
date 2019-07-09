@@ -10,11 +10,11 @@ import torch
 from torch.utils.data import DataLoader
 from torch.optim import Adam
 from torchvision import transforms as tr
-from ai.functional.pytorch._retinanet import DEFAULT_OPTIONS
-from ai.functional.pytorch._retinanet import collation, encoder, loss
-from ai.functional.pytorch._retinanet.model import RetinaNet as Model
-import ai.functional.pytorch._util.bboxTransforms as bboxTr
-from ai.functional.pytorch.datasets.bboxDataset import BoundingBoxDataset
+from ai.models.pytorch.functional._retinanet import DEFAULT_OPTIONS
+from ai.models.pytorch.functional._retinanet import collation, encoder, loss
+from ai.models.pytorch.functional._retinanet.model import RetinaNet as Model
+import ai.models.pytorch.functional._util.bboxTransforms as bboxTr
+from ai.models.pytorch.functional.datasets.bboxDataset import BoundingBoxDataset
 from util.helpers import get_class_executable
 
 

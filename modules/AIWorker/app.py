@@ -83,7 +83,7 @@ class AIWorker():
         # verify functions and arguments
         requiredFunctions = {
             '__init__' : ['config', 'dbConnector', 'fileServer', 'options'],
-            'rank' : ['data', 'kwargs']
+            'rank' : ['data']
         }   #TODO: make more elegant?
         functionNames = [func for func in dir(modelClass) if callable(getattr(modelClass, func))]
 
