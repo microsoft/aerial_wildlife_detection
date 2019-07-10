@@ -22,7 +22,7 @@
     2019 Benjamin Kellenberger
 '''
 
-from celery import current_task
+from celery import current_task, states
 import psycopg2
 from util.helpers import current_time
 from constants.dbFieldNames import FieldNames_annotation, FieldNames_prediction
@@ -119,21 +119,32 @@ def _call_train(dbConnector, config, imageIDs, subset, trainingFun, fileServer):
 
     
     # load model state
+    current_task.update_state(state='PREPARING', meta={'message':'loading model state'})
     stateDict = __load_model_state(config, dbConnector)
 
+
     # load labels and other metadata
+    current_task.update_state(state='PREPARING', meta={'message':'loading metadata'})
     data = __load_metadata(config, dbConnector, imageIDs, True)
+
 
     # call training function
     try:
+        current_task.update_state(state='PREPARING', meta={'message':'initiating training'})
         stateDict = trainingFun(stateDict=stateDict, data=data)
 
+        #TODO
+        return 0
+
         # commit state dict to database
+        current_task.update_state(state='FINALIZING', meta={'message':'saving model state'})
         sql = '''
             INSERT INTO {schema}.cnnstate(stateDict, partial)
             VALUES( %s, %s )
         '''.format(schema=config.getProperty('Database', 'schema'))
         dbConnector.execute(sql, (psycopg2.Binary(stateDict), subset,), numReturn=None)
+
+        current_task.update_state(state=states.SUCCESS, meta={'message':'done'})
         result = 0  #TODO        
         
     except Exception as err:
@@ -156,6 +167,7 @@ def _call_average_model_states(dbConnector, config, averageFun, fileServer):
     schema = config.getProperty('Database', 'schema')
 
     # get all model states
+    current_task.update_state(state='PREPARING', meta={'message':'loading model states'})
     sql = '''
         SELECT stateDict FROM {schema}.cnnstate WHERE partial IS TRUE;
     '''.format(schema=schema)
@@ -163,10 +175,12 @@ def _call_average_model_states(dbConnector, config, averageFun, fileServer):
 
 
     # do the work
+    current_task.update_state(state='PREPARING', meta={'message':'averaging models'})
     modelStates_avg = averageFun(stateDicts=modelStates)
 
 
     # push to database
+    current_task.update_state(state='FINALIZING', meta={'message':'saving model state'})
     sql = '''
         INSERT INTO {schema}.cnnstate (stateDict, partial)
         VALUES ( %s )
@@ -175,6 +189,7 @@ def _call_average_model_states(dbConnector, config, averageFun, fileServer):
 
 
     # delete partial model states
+    current_task.update_state(state='FINALIZING', meta={'message':'purging cache'})
     sql = '''
         DELETE FROM {schema}.cnnstate WHERE partial IS TRUE;
     '''.format(schema=schema)
@@ -182,6 +197,7 @@ def _call_average_model_states(dbConnector, config, averageFun, fileServer):
 
 
     # all done
+    current_task.update_state(state=states.SUCCESS, meta={'message':'done'})
     return 0
 
 
@@ -195,20 +211,25 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
 
 
     # load model state
+    current_task.update_state(state='PREPARING', meta={'message':'loading model state'})
     stateDict = __load_model_state(config, dbConnector)
 
     # load remaining data (image filenames, class definitions)
+    current_task.update_state(state='PREPARING', meta={'message':'loading metadata'})
     data = __load_metadata(config, dbConnector, imageIDs, False)
 
     # call inference function
+    current_task.update_state(state='PREPARING', meta={'message':'starting inference'})
     result = inferenceFun(stateDict=stateDict, data=data)
 
     # call ranking function (AL criterion)
     if rankFun is not None:
+        current_task.update_state(state='PREPARING', meta={'message':'calculating priorities'})
         result = rankFun(data=result, **{'stateDict':stateDict})
 
 
     # parse result
+    current_task.update_state(state='FINALIZING', meta={'message':'saving predictions'})
     fieldNames = list(getattr(FieldNames_prediction, config.getProperty('Project', 'predictionType')).value)
     fieldNames.append('image')  # image ID
     values_pred = []
@@ -256,6 +277,7 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
         dbConnector.insert(sql, tuple(values_img))
 
     #TODO: return status?
+    current_task.update_state(state=states.SUCCESS, meta={'message':'done'})
     return 0
 
 

@@ -111,8 +111,8 @@ class RetinaNet:
             torch.cuda.manual_seed(self.options['general']['seed'])
 
         model.to(device)
-
-        for idx, (img, bboxes_target, labels_target, (fVec, _)) in enumerate(tqdm(dataLoader)):
+        
+        for idx, (img, bboxes_target, labels_target, fVec, _) in enumerate(tqdm(dataLoader)):
             img, bboxes_target, labels_target = img.to(device), bboxes_target.to(device), labels_target.to(device)
 
             optimizer.zero_grad()
@@ -120,8 +120,8 @@ class RetinaNet:
             loss_value = criterion(bboxes_pred, bboxes_target, labels_pred, labels_target)
             loss_value.backward()
             optimizer.step()
-
-            # update worker state   another TODO
+            
+            # update worker state
             current_task.update_state(state='PROGRESS', meta={'done': idx+1, 'total': len(dataLoader)})
 
         # all done; return state dict as bytes

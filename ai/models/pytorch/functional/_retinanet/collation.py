@@ -23,9 +23,8 @@ class Collator():
         imgs = [x[0] for x in batch]
         boxes = [x[1] for x in batch]
         labels = [x[2] for x in batch]
-        numRest = len(batch[0]) - 3
-        if numRest:
-            rest = list(map(list, zip(*[x[3:] for x in batch])))
+        fVecs = [x[3] for x in batch]
+        imageIDs = [x[4] for x in batch]
 
         h, w = self.inputSize
         num_imgs = len(imgs)
@@ -33,19 +32,15 @@ class Collator():
 
         loc_targets = []
         cls_targets = []
-        rest_targets = []
+        fVecs_targets = []
+        imageIDs_targets = []
         for i in range(num_imgs):
             inputs[i] = imgs[i]
             loc_target, cls_target = self.encoder.encode(boxes[i], labels[i], input_size=(w,h))
             loc_targets.append(loc_target)
             cls_targets.append(cls_target)
-            if numRest:
-                rest_targets.append(rest[i])
+            fVecs_targets.append(fVecs[i])
+            imageIDs_targets.append(imageIDs[i])
 
-        if numRest:
-            returns = [inputs, torch.stack(loc_targets), torch.stack(cls_targets)]
-            returns.extend(rest)
-            return tuple(returns)
-            # return inputs, torch.stack(loc_targets), torch.stack(cls_targets), rest
-        else:
-            return inputs, torch.stack(loc_targets), torch.stack(cls_targets)
+        
+        return inputs, torch.stack(loc_targets), torch.stack(cls_targets), fVecs_targets, imageIDs_targets

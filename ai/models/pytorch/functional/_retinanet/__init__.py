@@ -31,7 +31,7 @@ DEFAULT_OPTIONS = {
 			}
 		},
         "criterion": {
-			"class": "ai.functional.pytorch._retinanet.loss.FocalLoss",
+			"class": "ai.models.pytorch.functional._retinanet.loss.FocalLoss",
 			"kwargs": {
 				"gamma": 2.0,
 				"alpha": 0.25

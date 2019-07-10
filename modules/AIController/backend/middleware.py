@@ -143,7 +143,8 @@ class AIMiddleware():
             imageIDs = self.dbConn.execute(sql, None, 'all')
 
         imageIDs = [i['image'] for i in imageIDs]
-        imageIDs = imageIDs[0:4]  #TODO: jsut for tests
+        print(len(imageIDs))
+        # imageIDs = imageIDs[0:4]  #TODO: jsut for tests
 
         print('Distribute?')
 
@@ -198,7 +199,6 @@ class AIMiddleware():
         jobIDs = []
         for subset in images_subset:
             job = celery_interface.call_inference.apply_async(args=(subset,), ignore_result=False, result_extended=True)
-            print(job.backend)
             self.inference_workers[job.id] = job
             jobIDs.append(job.id)
         t = threading.Thread(target=self._await_inference_jobs, args=(jobIDs,))

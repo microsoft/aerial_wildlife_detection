@@ -31,7 +31,8 @@ app.conf.update(
     accept_content = ['json'],
     task_serializer = 'json',
     result_serializer = 'json',
-    task_track_started = True
+    task_track_started = True,
+    broker_pool_limit=0
 )
 
 
@@ -52,8 +53,8 @@ def call_average_model_states():
     return worker.call_average_model_states()
 
 
-@app.task()
-def call_inference(imageIDs):
+@app.task(bind=True)
+def call_inference(self, imageIDs):
     return worker.call_inference(imageIDs)
 
 
