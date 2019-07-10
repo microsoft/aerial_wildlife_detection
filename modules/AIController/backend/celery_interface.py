@@ -53,8 +53,8 @@ def call_average_model_states():
     return worker.call_average_model_states()
 
 
-@app.task(bind=True)
-def call_inference(self, imageIDs):
+@app.task()
+def call_inference(imageIDs):
     return worker.call_inference(imageIDs)
 
 

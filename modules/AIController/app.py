@@ -52,9 +52,9 @@ class AIController:
                 and returns the stati of each in a dict.
             '''
             #TODO: logincheck
-            try:
-                status = self.middleware.check_status(True, True)   #TODO: args
-            except Exception as e:
-                status = str(e)
+            # try:
+            status = self.middleware.check_status(True, True)   #TODO: args
+            # except Exception as e:
+            #     status = str(e)
             
             return { 'status' : status }

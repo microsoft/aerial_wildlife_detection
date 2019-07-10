@@ -170,7 +170,7 @@ class AIMiddleware():
             processes = [celery_interface.call_train.s(imageIDs, False)]
         
         self.training_workers = group(processes)
-        self.training_workers_result = self.training_workers.apply_async()
+        self.training_workers_result = self.training_workers.apply_async(ignore_result=False, result_extended=True)
 
         #TODO
         import time
@@ -199,12 +199,9 @@ class AIMiddleware():
         # distribute across workers
         images_subset = array_split(imageIDs, max(1, len(imageIDs) // maxNumWorkers))
 
-        jobIDs = []
         for subset in images_subset:
             job = celery_interface.call_inference.apply_async(args=(subset,), ignore_result=False, result_extended=True)
             self.inference_workers[job.task_id] = job
-
-            jobIDs.append(job.id)
         return
 
 
@@ -279,7 +276,6 @@ class AIMiddleware():
         statuses = {}
 
         #TODO: epoch averaging...
-
         if training_workers and self.training_workers_result is not None:
             for child in self.training_workers_result.children:
                 statuses[child.id] = {
@@ -293,7 +289,7 @@ class AIMiddleware():
             for key in self.inference_workers:
                 
                 # print(self.inference_workers[key].ready())    #TODO: remove completed jobs? History?
-
+                
                 statuses[key] = {
                     'type' : 'inference',
                     'status' : self.inference_workers[key].status,
