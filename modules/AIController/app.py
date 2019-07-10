@@ -29,10 +29,10 @@ class AIController:
                 Otherwise the request is aborted.
             '''
             #TODO: logincheck
-            # try:
-            status = self.middleware.start_training(minTimestamp='lastState', distributeTraining=False) #TODO
-            # except Exception as e:
-            #     status = str(e)
+            try:
+                status = self.middleware.start_training(minTimestamp='lastState', distributeTraining=True) #TODO
+            except Exception as e:
+                status = str(e)
             return { 'status' : status }
 
         
@@ -52,9 +52,9 @@ class AIController:
                 and returns the stati of each in a dict.
             '''
             #TODO: logincheck
-            # try:
-            status = self.middleware.check_status(True, True)   #TODO: args
-            # except Exception as e:
-            #     status = str(e)
+            try:
+                status = self.middleware.check_status(True, True, False)   #TODO: args
+            except Exception as e:
+                status = str(e)
             
             return { 'status' : status }

@@ -8,8 +8,11 @@ from uuid import UUID
 from datetime import datetime
 import pytz
 import dateutil.parser
-import threading        # we can use Threads since we do not need parallel execution for this task
+from util.helpers import current_time
+import threading        # we can use Threads since we do not need parallel execution for the listener tasks
+import cgi
 from modules.AIController.backend import celery_interface
+import celery
 from celery import current_app, group
 from celery.result import AsyncResult
 from modules.AIWorker.backend.worker import functional
@@ -25,72 +28,67 @@ class AIMiddleware():
         self.dbConn = Database(config)
         self.sqlBuilder = SQLStringBuilder(config)
 
-        self.training_workers = None
-        self.training_workers_result = None
         self.training = False   # will be set to True once start_training is called (and False as soon as everything about the training process has finished)
 
-        self.inference_workers = {}
+        self.messages = {}
 
 
-    def _training_initiated(self, distributedTraining):
+    
+    def _on_raw_message(self, id, message):
+        self.messages[id]['status'] = message['status']
+        if 'result' in message:
+            self.messages[id]['meta'] = message['result']
+        else:
+            self.messages[id]['meta'] = None
+
+
+
+    def _inference_initiated(self, job):
         '''
-            To be called after a training process has been started.
-            Starts a thread that waits for the worker(s) to finish.
-            If there is just one worker, the thread waits for it to
+            To be called in a thread after an inference process has been started.
+            Waits for the worker to finish and stores the messages returned as
+            the worker is moving along.
+            Removes the worker's ID once finished. TODO
+        '''
+        job.get(on_message=lambda msg: self._on_raw_message(job.id, msg), propagate=False)
+
+
+
+    def _training_initiated(self, jobs, distributedTraining):
+        '''
+            To be called in a  thread after a training process has been started.
+            Waits for the worker(s) to finish and stores the messages returned
+            as the worker(s) is/are moving along.
+            If there is just one worker, the function simply waits for it to
             finish.
-            If there is more than one worker, the final thread calls
-            the 'average_epochs' instruction of the AI model and again
-            waits for it to finish.
+            If there is more than one worker, the 'average_model_states'
+            instruction of the AI model is called and again awaited for.
             After successful training, the 'training' flag will be set
             to False to allow another round of model training.
         '''
-
-        # check workers
-        if self.training_workers_result is None:
-            #TODO
-            print('enabling training again')
-            self.training = False
-            return
         
-        t = threading.Thread(target=self._start_average_model_states, args=(distributedTraining,))
-        t.start()
-        return
+        # wait for worker(s) to finish  (TODO: check if group?)
+        jobs.get(on_message=lambda msg: self._on_raw_message(jobs.id, msg), propagate=False)
 
 
+        # start model state averaging   (TODO: check if group?)
+        job = celery_interface.call_average_model_states.si()
+        statusFrame = job.freeze()
+        self.messages[statusFrame.id] = {
+            'type': 'modelFusion',
+            'submitted': str(current_time()),
+            'status': celery.states.PENDING,
+            'meta': {'message':'initiating model fusion'}
+        }
 
-    def _start_average_model_states(self, distributedTraining):
-        # collect epochs (and wait for tasks to finish)
-        result = []
-        # for job in self.training_workers:
-        #     print('Worker {} finished.'.format(job.id))
-        #     epochs.append(job.get())
-        # result = self.training_workers_result.join()
-
-        #TODO
-        return
-
-        # check if all workers have finished correctly
-        for r in range(len(result)):
-            if result[r] != 0:
-                raise Exception('Worker {} failed during training.'.format(r))
-
-        
-        # send job for epoch averaging
-        if distributedTraining:
-            worker = celery_interface.call_average_model_states.delay()
-            result = worker.get()     #TODO: causes status not to be updated anymore
-
-            if result != 0:
-                raise Exception('Model state averaging failed.')
+        worker = job.delay()
+        worker.get(on_message=lambda msg: self._on_raw_message(worker.id, msg), propagate=False)
 
 
-        # flush
-        self.training_workers_result = None         #TODO: make history?
-        self.training_workers = None                #TODO: ditto
+        # all done, enable training again (TODO: on error/on success?)
         self.training = False
 
-        return result
-
+        return
 
     
     def start_training(self, minTimestamp='lastState', distributeTraining=False):
@@ -135,54 +133,58 @@ class AIMiddleware():
             raise ValueError('{} is not a recognized property for variable "minTimestamp"'.format(str(minTimestamp)))
 
 
+        # #TODO: due to a limitation of RabbitMQ, status are not being broadcast from Celery group objects.
+        # # Also, it is unclear whether averaging model states from distributed trainings is useful.
+        # # We therefore disable distributed training until problems are solved.
+        # distributeTraining = False
+
 
         # query image IDs
         sql = self.sqlBuilder.getLatestQueryString(limit=None)
 
         if isinstance(minTimestamp, datetime):
-            imageIDs = self.dbConn.execute(sql, (minTimestamp,), 1024)        #TODO: 'all'
+            imageIDs = self.dbConn.execute(sql, (minTimestamp,), 'all')
 
         else:
-            imageIDs = self.dbConn.execute(sql, None, 1024)       #TODO: 'all'
+            imageIDs = self.dbConn.execute(sql, None, 'all')
 
         imageIDs = [i['image'] for i in imageIDs]
 
-        print('Distribute?')
 
         if distributeTraining:
-            
-            # distribute across workers (TODO: also specify subset size for multiple jobs, even if only one worker?)
-            num_workers = 10    #len(current_app.control.inspect().stats().keys())
+            # retrieve available workers
+            i = current_app.control.inspect()
+            num_workers = len(i.stats())
+
+            # distribute across workers (TODO: also specify subset size for multiple jobs; randomly draw if needed)
             images_subset = array_split(imageIDs, max(1, len(imageIDs) // num_workers))
-            print('Subset size: {}'.format(len(images_subset)))
 
             processes = []
             for subset in images_subset:
-                print('Next subset length: {}'.format(len(subset)))
-                processes.append(celery_interface.call_train.s(subset, True))
-                # process = celery_interface.call_train.delay(subset) #TODO: route to specific worker? http://docs.celeryproject.org/en/latest/userguide/routing.html#manual-routing
-                # self.training_workers[process.id] = process
+                processes.append(celery_interface.call_train.si(subset, True))
+            process = group(processes)
 
         else:
             # call one worker directly
             # process = celery_interface.call_train.delay(data) #TODO: route to specific worker? http://docs.celeryproject.org/en/latest/userguide/routing.html#manual-routing
-            # self.training_workers[process.id] = process
-            processes = [celery_interface.call_train.s(imageIDs, False)]
+            process = celery_interface.call_train.si(imageIDs, False)
         
-        self.training_workers = group(processes)
-        self.training_workers_result = self.training_workers.apply_async(ignore_result=False, result_extended=True)
 
-        #TODO
-        import time
-        while True:
-            for t in self.training_workers_result.children:
-                time.sleep(10)
-                print(f'State={t.state}, info={t.info}')
-                
+        # initiate job status
+        statusFrame = process.freeze()
+        self.messages[statusFrame.id] = {
+            'type': 'training',
+            'submitted': str(current_time()),
+            'status': celery.states.PENDING,
+            'meta': {'message':'initiating training'}
+        }
 
+        # submit job
+        job = process.apply_async(ignore_result=False, result_extended=True)
 
-        # initiate post-submission routine
-        self._training_initiated(distributeTraining)      #TODO
+        # start listener thread
+        t = threading.Thread(target=self._training_initiated, args=(job, distributeTraining,))
+        t.start()
 
         return 'ok' #TODO
 
@@ -190,17 +192,39 @@ class AIMiddleware():
     def _do_inference(self, imageIDs, maxNumWorkers=-1):
 
         # setup
-        if maxNumWorkers == -1:
-            maxNumWorkers = len(current_app.control.inspect().stats().keys())   #TODO: more than one process per worker?
-        else:
-            # print(current_app.control.inspect().stats())
-            maxNumWorkers = min(maxNumWorkers, len(current_app.control.inspect().stats().keys()))
+        if maxNumWorkers != 1:
+            # only query the number of available workers if more than one is specified to save time
+            i = current_app.control.inspect()
+            num_workers = len(i.stats())
+            if maxNumWorkers == -1:
+                maxNumWorkers = num_workers   #TODO: more than one process per worker?
+            else:
+                maxNumWorkers = min(maxNumWorkers, num_workers)
 
         # distribute across workers
         images_subset = array_split(imageIDs, max(1, len(imageIDs) // maxNumWorkers))
+        jobs = []
         for subset in images_subset:
-            job = celery_interface.call_inference.s(imageIDs=subset).delay()    #apply_async(args=(subset,), ignore_result=False, result_extended=True)
-            self.inference_workers[job.task_id] = job
+            job = celery_interface.call_inference.si(imageIDs=subset)
+            jobs.append(job)
+
+        # initiate job status
+        jobGroup = group(jobs)
+        statusFrame = jobGroup.freeze()
+        
+        self.messages[statusFrame.id] = {
+            'type': 'inference',
+            'submitted': str(current_time()),
+            'status': celery.states.PENDING,
+            'meta': {'message':'initiating inference'}
+        }
+
+        # send job
+        result = jobGroup.apply_async()
+
+        # start listener thread
+        t = threading.Thread(target=self._inference_initiated, args=(result,))
+        t.start()
         return
 
 
@@ -267,32 +291,48 @@ class AIMiddleware():
     
 
 
-    def check_status(self, training_workers, inference_workers):
+    def check_status(self, training_tasks, inference_tasks, workers):
         '''
             Queries the Celery worker results depending on the parameters specified.
             Returns their status accordingly if they exist.
         '''
-        statuses = {}
+        status = {}
 
-        #TODO: epoch averaging...
-        if training_workers and self.training_workers_result is not None:
-            for child in self.training_workers_result.children:
-                statuses[child.id] = {
-                    'type' : 'training',
-                    'status' : child.status,
-                    'meta': child.info
-                }
-        
-        
-        if inference_workers and len(self.inference_workers):
-            for key in self.inference_workers:
-                
-                # print(self.inference_workers[key].ready())    #TODO: remove completed jobs? History?
-                
-                statuses[key] = {
-                    'type' : 'inference',
-                    'status' : self.inference_workers[key].status,
-                    'info': self.inference_workers[key].info
-                }
+        status['tasks'] = {}
+        for key in self.messages.keys():
+            msg = self.messages[key]
 
-        return statuses
+            # check for worker failures
+            if msg['status'] == celery.states.FAILURE:
+                # append failure message
+                if 'meta' in msg and isinstance(msg['meta'], BaseException):
+                    info = { 'message': cgi.escape(str(msg['meta']))}
+                else:
+                    info = { 'message': 'an unknown error occurred'}
+            else:
+                info = msg['meta']    #TODO
+            
+            status['tasks'][key] = {
+                'type': msg['type'],
+                'submitted': msg['submitted'],
+                'status': msg['status'],
+                'meta': info
+            }
+            
+
+        # get worker status (this is very expensive, as each worker needs to be queried)
+        if workers:
+            workerStatus = {}
+            i = current_app.control.inspect()
+            stats = i.stats()
+            active_tasks = i.active()
+            scheduled_tasks = i.scheduled()
+            for key in stats:
+                activeTasks = [t['id'] for t in active_tasks[key]]
+                workerStatus[key] = {
+                    'active_tasks': activeTasks,
+                    'scheduled_tasks': scheduled_tasks[key]
+                }
+            status['workers'] = workerStatus
+
+        return status
