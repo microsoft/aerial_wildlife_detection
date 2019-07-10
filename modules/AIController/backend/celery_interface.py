@@ -31,8 +31,7 @@ app.conf.update(
     accept_content = ['json'],
     task_serializer = 'json',
     result_serializer = 'json',
-    task_track_started = True,
-    broker_pool_limit=0
+    task_track_started = True
 )
 
 

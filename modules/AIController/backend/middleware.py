@@ -198,9 +198,8 @@ class AIMiddleware():
 
         # distribute across workers
         images_subset = array_split(imageIDs, max(1, len(imageIDs) // maxNumWorkers))
-
         for subset in images_subset:
-            job = celery_interface.call_inference.apply_async(args=(subset,), ignore_result=False, result_extended=True)
+            job = celery_interface.call_inference.s(imageIDs=subset).delay()    #apply_async(args=(subset,), ignore_result=False, result_extended=True)
             self.inference_workers[job.task_id] = job
         return
 
