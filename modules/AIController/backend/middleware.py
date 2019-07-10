@@ -64,7 +64,10 @@ class AIMiddleware():
         # for job in self.training_workers:
         #     print('Worker {} finished.'.format(job.id))
         #     epochs.append(job.get())
-        result = self.training_workers_result.join()
+        # result = self.training_workers_result.join()
+
+        #TODO
+        return
 
         # check if all workers have finished correctly
         for r in range(len(result)):
@@ -75,7 +78,7 @@ class AIMiddleware():
         # send job for epoch averaging
         if distributedTraining:
             worker = celery_interface.call_average_model_states.delay()
-            result = worker.get()
+            result = worker.get()     #TODO: causes status not to be updated anymore
 
             if result != 0:
                 raise Exception('Model state averaging failed.')
@@ -134,16 +137,15 @@ class AIMiddleware():
 
 
         # query image IDs
-        sql = self.sqlBuilder.getTimestampQueryString(minTimestamp, order='oldest', limit=None)
+        sql = self.sqlBuilder.getLatestQueryString(limit=None)
 
         if isinstance(minTimestamp, datetime):
-            imageIDs = self.dbConn.execute(sql, (minTimestamp,), 'all')
+            imageIDs = self.dbConn.execute(sql, (minTimestamp,), 1024)        #TODO: 'all'
 
         else:
-            imageIDs = self.dbConn.execute(sql, None, 'all')
+            imageIDs = self.dbConn.execute(sql, None, 1024)       #TODO: 'all'
 
         imageIDs = [i['image'] for i in imageIDs]
-        imageIDs = imageIDs[0:4]  #TODO: jsut for tests
 
         print('Distribute?')
 
@@ -170,21 +172,23 @@ class AIMiddleware():
         self.training_workers = group(processes)
         self.training_workers_result = self.training_workers.apply_async()
 
+        #TODO
+        import time
+        while True:
+            for t in self.training_workers_result.children:
+                time.sleep(10)
+                print(f'State={t.state}, info={t.info}')
+                
+
+
         # initiate post-submission routine
-        self._training_initiated(distributeTraining)
+        self._training_initiated(distributeTraining)      #TODO
 
         return 'ok' #TODO
 
 
-    def _await_inference_jobs(self, jobIDs):
-        for jobID in jobIDs:
-            if jobID in self.inference_workers:
-                self.inference_workers[jobID].get()
-                del self.inference_workers[jobID]
-        return
-
-
     def _do_inference(self, imageIDs, maxNumWorkers=-1):
+
         # setup
         if maxNumWorkers == -1:
             maxNumWorkers = len(current_app.control.inspect().stats().keys())   #TODO: more than one process per worker?
@@ -198,12 +202,10 @@ class AIMiddleware():
         jobIDs = []
         for subset in images_subset:
             job = celery_interface.call_inference.apply_async(args=(subset,), ignore_result=False, result_extended=True)
-            print(job.backend)
-            self.inference_workers[job.id] = job
-            jobIDs.append(job.id)
-        t = threading.Thread(target=self._await_inference_jobs, args=(jobIDs,))
-        t.start()
+            self.inference_workers[job.task_id] = job
 
+            jobIDs.append(job.id)
+        return
 
 
     def start_inference(self, forceUnlabeled=True, maxNumImages=-1, maxNumWorkers=-1):
@@ -274,14 +276,12 @@ class AIMiddleware():
             Queries the Celery worker results depending on the parameters specified.
             Returns their status accordingly if they exist.
         '''
-
         statuses = {}
 
         #TODO: epoch averaging...
 
         if training_workers and self.training_workers_result is not None:
             for child in self.training_workers_result.children:
-                print(vars(child.app).keys())
                 statuses[child.id] = {
                     'type' : 'training',
                     'status' : child.status,
@@ -291,7 +291,9 @@ class AIMiddleware():
         
         if inference_workers and len(self.inference_workers):
             for key in self.inference_workers:
-                print(list(vars(self.inference_workers[key])))
+                
+                # print(self.inference_workers[key].ready())    #TODO: remove completed jobs? History?
+
                 statuses[key] = {
                     'type' : 'inference',
                     'status' : self.inference_workers[key].status,
