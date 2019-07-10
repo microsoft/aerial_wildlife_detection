@@ -16,19 +16,7 @@ class SQLStringBuilder:
         pass
 
     
-    def getTimestampQueryString(self, timestamp, order='oldest', limit=None):
-        
-        # parse timestamp given
-        if timestamp == 'lastState':
-            # select every image that has been labeled after the last model state
-            timestampSpecifier = 'MAX(timecreated)'
-        
-        elif isinstance(timestamp, datetime):
-            timestampSpecifier = '%s'
-
-        else:
-            timestampSpecifier = 'to_timestamp(0)'  #TODO: lazy hack...
-
+    def getLatestQueryString(self, limit=None):
 
         if limit is None or limit == -1:
             # cap by limit specified in settings
@@ -37,20 +25,15 @@ class SQLStringBuilder:
         else:
             limit = min(limit, self.config.getProperty('AIController', 'maxNumImages_train'))
 
-        if order == 'oldest':
-            order = 'ASC'
-        else:
-            order = 'DESC'
-
         sql = '''
             SELECT newestAnno.image FROM (
                 SELECT image, timecreated FROM {schema}.annotation AS anno
-                WHERE anno.timecreated > (SELECT COALESCE({tsSpec}, to_timestamp(0)) AS latestState FROM {schema}.cnnstate)
-                ORDER BY anno.timecreated {order}
+                WHERE anno.timecreated > COALESCE(to_timestamp(0), (SELECT MAX(timecreated) FROM {schema}.cnnstate))
+                ORDER BY anno.timecreated ASC
                 LIMIT {limit}
             ) AS newestAnno;
         '''.format(schema=self.config.getProperty('Database', 'schema'),
-                    tsSpec=timestampSpecifier, order=order, limit=limit)
+                limit=limit)
         return sql
 
     
