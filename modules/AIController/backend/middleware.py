@@ -376,5 +376,5 @@ class AIMiddleware():
                         'scheduled_tasks': scheduled_tasks[key]
                     }
             status['workers'] = workerStatus
-
+        
         return status

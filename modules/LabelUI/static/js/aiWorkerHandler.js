@@ -34,9 +34,10 @@ class AIWorkerJob {
         this.status = state['status'];
         
         // status message
-        var message = 'running';
-        if(status.hasOwnProperty('meta')  && status['meta'].hasOwnProperty('message')) {
-            message = status['meta']['message'];
+        try {
+            var message = state['meta']['message'];
+        } catch(err) {
+            var message = 'running';
         }
 
         // progress
@@ -62,6 +63,8 @@ class AIWorkerJob {
             this.progressBar.hide();
 
             // stop timers
+            $(self.elapsedTime).hide();
+            $(self.remainingTime).hide();
             clearInterval(this.timerHandle);
 
         } else {
