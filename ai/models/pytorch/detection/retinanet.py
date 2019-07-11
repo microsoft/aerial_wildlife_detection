@@ -122,7 +122,7 @@ class RetinaNet:
             optimizer.step()
             
             # update worker state
-            current_task.update_state(state='PROGRESS', meta={'done': idx+1, 'total': len(dataLoader)})
+            current_task.update_state(state='PROGRESS', meta={'done': idx+1, 'total': len(dataLoader), 'message': 'training'})
 
         # all done; return state dict as bytes
         if 'cuda' in device:
@@ -258,7 +258,7 @@ class RetinaNet:
                     }
 
             # update worker state   TODO
-            current_task.update_state(state='PROGRESS', meta={'done': idx+1, 'total': len(dataLoader)})
+            current_task.update_state(state='PROGRESS', meta={'done': idx+1, 'total': len(dataLoader), 'message': 'predicting'})
 
         model.cpu()
         if 'cuda' in device:

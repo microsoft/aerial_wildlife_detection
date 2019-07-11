@@ -43,6 +43,10 @@ class AIWorkerJob {
         if(this.status === 'PROGRESS') {
             this.total = parseInt(state['meta']['total']);
             this.current = Math.min(this.total, parseInt(state['meta']['done']));
+            this.numPolls += 1;
+
+            this.averageTimeRequired += this.timeElapsed / Math.max(1, this.current);
+            this.timeRemaining = (this.total - this.current) * (this.averageTimeRequired / Math.max(1,this.numPolls));
 
             // update progress bar
             var newWidthPerc = 100*(this.current / this.total);
@@ -54,7 +58,7 @@ class AIWorkerJob {
             message += ' (' + this.current + '/' + this.total + ')';
 
         } else if(this.status === 'SUCCESS' || this.status === 'FAILURE') {
-            // completed; hide progress bar
+            // completed; hide progress bar (TODO)
             this.progressBar.hide();
 
             // stop timers
@@ -70,10 +74,7 @@ class AIWorkerJob {
 
 
         // update time counter (markup will automatically update)
-        this.numPolls += 1;
         this.timeElapsed = new Date() - this.timeCreated;
-        this.averageTimeRequired += this.timeElapsed / Math.max(1, this.current);
-        this.timeRemaining = (this.total - this.current) * (this.averageTimeRequired / Math.max(1,this.numPolls));
     }
 
     _setup_markup() {
@@ -170,7 +171,7 @@ class AIWorkerHandler {
         this.prInd_tasks.append(this.miniStatus_tasks);
         var pbarWrapper = $('<div class="progressbar" id="minipanel-progressbar"></div>');
         this.progressBar_tasks = $('<div class="progressbar-filler progressbar-active"></div>');
-        pbarWrapper.append(this.progressBar);
+        pbarWrapper.append(this.progressBar_tasks);
         this.prInd_tasks.append(pbarWrapper);
         $('#ai-minipanel-status').append(this.prInd_tasks);
 
@@ -273,11 +274,6 @@ class AIWorkerHandler {
                     } else {
                         // update task
                         self.tasks[key].update_state(tasks[key]);
-
-                        // check if completed (TODO: history?)
-                        if(tasks[key]['status'] == 'SUCCESS' || tasks[key]['status'] == 'FAILURE') {
-                            delete self.tasks[key];
-                        }
                     }
 
                     // parse task progress
@@ -306,6 +302,7 @@ class AIWorkerHandler {
                     $(self.miniStatus_tasks).show();
                     var msg = Object.keys(self.tasks).length;
                     msg += (msg == 1 ? ' task' : ' tasks');
+                    
                     if(numTotal > 0) {
                         var newWidthPerc = 100*(numDone / numTotal);
                         self.progressBar_tasks.animate({
@@ -314,9 +311,7 @@ class AIWorkerHandler {
                         msg += ' (' + Math.round(newWidthPerc) + '%)';
                     } else {
                         // tasks going on, but progress unknown, set indeterminate
-                        self.progressBar_tasks.animate({
-                            'width': '100%'
-                        }, 1000);
+                        self.progressBar_tasks.css('width', '100%');
                     }
                     $(self.miniStatus_tasks).html(msg);
                 } else {

@@ -30,7 +30,6 @@ from constants.dbFieldNames import FieldNames_annotation, FieldNames_prediction
 
 def __load_model_state(config, dbConnector):
     # load model state from database
-    # try:
     sql = '''
         SELECT query.statedict FROM (
             SELECT statedict, timecreated
@@ -47,10 +46,6 @@ def __load_model_state(config, dbConnector):
     else:
         # extract
         stateDict = stateDict[0]['statedict']
-
-    # except Exception as err:
-    #     # no state dict in database yet, have to start with a fresh model
-    #     stateDict = None
 
     return stateDict
 
@@ -114,44 +109,51 @@ def _call_train(dbConnector, config, imageIDs, subset, trainingFun, fileServer):
         - TODO: more?
     '''
 
-    # 1. Sanity checks, 2. Load model state, 3. Call AI model's train function, 4. Collect results and return
+    #TODO
     print('initiate training')
 
     
     # load model state
     current_task.update_state(state='PREPARING', meta={'message':'loading model state'})
-    stateDict = __load_model_state(config, dbConnector)
-
+    try:
+        stateDict = __load_model_state(config, dbConnector)
+    except Exception as e:
+        current_task.update_state(state='FAILURE', meta={'message':'error during model state loading ({})'.format(str(e))})
+        return 5
 
     # load labels and other metadata
     current_task.update_state(state='PREPARING', meta={'message':'loading metadata'})
-    data = __load_metadata(config, dbConnector, imageIDs, True)
-
+    try:
+        data = __load_metadata(config, dbConnector, imageIDs, True)
+    except Exception as e:
+        current_task.update_state(state='FAILURE', meta={'message':'error during metadata loading ({})'.format(str(e))})
+        return 6
 
     # call training function
     try:
         current_task.update_state(state='PREPARING', meta={'message':'initiating training'})
         stateDict = trainingFun(stateDict=stateDict, data=data)
+    except Exception as e:
+        current_task.update_state(state='FAILURE', meta={'message':'error during training ({})'.format(str(e))})
+        return 1
 
-        #TODO
-        return 0
+    #TODO
+    return 0
 
-        # commit state dict to database
+    # commit state dict to database
+    try:
         current_task.update_state(state='FINALIZING', meta={'message':'saving model state'})
         sql = '''
             INSERT INTO {schema}.cnnstate(stateDict, partial)
             VALUES( %s, %s )
         '''.format(schema=config.getProperty('Database', 'schema'))
         dbConnector.execute(sql, (psycopg2.Binary(stateDict), subset,), numReturn=None)
+    except Exception as e:
+        current_task.update_state(state='FAILURE', meta={'message':'error during data committing ({})'.format(str(e))})
+        return 2
 
-        current_task.update_state(state=states.SUCCESS, meta={'message':'done'})
-        result = 0  #TODO        
-        
-    except Exception as err:
-        print(err)
-        result = 1      #TODO
-
-    return result
+    current_task.update_state(state=states.SUCCESS, meta={'message':'done'})
+    return 0
 
 
 
@@ -168,32 +170,46 @@ def _call_average_model_states(dbConnector, config, averageFun, fileServer):
 
     # get all model states
     current_task.update_state(state='PREPARING', meta={'message':'loading model states'})
-    sql = '''
-        SELECT stateDict FROM {schema}.cnnstate WHERE partial IS TRUE;
-    '''.format(schema=schema)
-    modelStates = dbConnector.execute(sql, None, 'all')
-
+    try:
+        sql = '''
+            SELECT stateDict FROM {schema}.cnnstate WHERE partial IS TRUE;
+        '''.format(schema=schema)
+        modelStates = dbConnector.execute(sql, None, 'all')
+    except Exception as e:
+        current_task.update_state(state='FAILURE', meta={'message':'error during model state loading ({})'.format(str(e))})
+        return 5
 
     # do the work
     current_task.update_state(state='PREPARING', meta={'message':'averaging models'})
-    modelStates_avg = averageFun(stateDicts=modelStates)
-
+    try:
+        modelStates_avg = averageFun(stateDicts=modelStates)
+    except Exception as e:
+        current_task.update_state(state='FAILURE', meta={'message':'error during model state averaging ({})'.format(str(e))})
+        return 1
 
     # push to database
     current_task.update_state(state='FINALIZING', meta={'message':'saving model state'})
-    sql = '''
-        INSERT INTO {schema}.cnnstate (stateDict, partial)
-        VALUES ( %s )
-    '''.format(schema=schema)     #TODO: multiple CNN types?
-    dbConnector.insert(sql, (modelStates_avg, False,))   #TODO
+    try:
+        sql = '''
+            INSERT INTO {schema}.cnnstate (stateDict, partial)
+            VALUES ( %s )
+        '''.format(schema=schema)     #TODO: multiple CNN types?
+        dbConnector.insert(sql, (modelStates_avg, False,))   #TODO
+    except Exception as e:
+        current_task.update_state(state='FAILURE', meta={'message':'error during data committing ({})'.format(str(e))})
+        return 2
 
 
     # delete partial model states
     current_task.update_state(state='FINALIZING', meta={'message':'purging cache'})
-    sql = '''
-        DELETE FROM {schema}.cnnstate WHERE partial IS TRUE;
-    '''.format(schema=schema)
-    dbConnector.execute(sql, None, None)
+    try:
+        sql = '''
+            DELETE FROM {schema}.cnnstate WHERE partial IS TRUE;
+        '''.format(schema=schema)
+        dbConnector.execute(sql, None, None)
+    except Exception as e:
+        current_task.update_state(state='FAILURE', meta={'message':'error during cache purging ({})'.format(str(e))})
+        return 8
 
 
     # all done
@@ -216,65 +232,83 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
 
     # load remaining data (image filenames, class definitions)
     current_task.update_state(state='PREPARING', meta={'message':'loading metadata'})
-    data = __load_metadata(config, dbConnector, imageIDs, False)
+    try:
+        data = __load_metadata(config, dbConnector, imageIDs, False)
+    except Exception as e:
+        current_task.update_state(state='FAILURE', meta={'message':'error during metadata loading ({})'.format(str(e))})
+        return 6
 
     # call inference function
     current_task.update_state(state='PREPARING', meta={'message':'starting inference'})
-    result = inferenceFun(stateDict=stateDict, data=data)
+    try:
+        result = inferenceFun(stateDict=stateDict, data=data)
+    except Exception as e:
+        current_task.update_state(state='FAILURE', meta={'message':'error during inference ({})'.format(str(e))})
+        return 1
 
     # call ranking function (AL criterion)
     if rankFun is not None:
         current_task.update_state(state='PREPARING', meta={'message':'calculating priorities'})
-        result = rankFun(data=result, **{'stateDict':stateDict})
-
+        try:
+            result = rankFun(data=result, **{'stateDict':stateDict})
+        except Exception as e:
+            current_task.update_state(state='FAILURE', meta={'message':'error during ranking ({})'.format(str(e))})
+            return 2
 
     # parse result
-    current_task.update_state(state='FINALIZING', meta={'message':'saving predictions'})
-    fieldNames = list(getattr(FieldNames_prediction, config.getProperty('Project', 'predictionType')).value)
-    fieldNames.append('image')  # image ID
-    values_pred = []
-    values_img = []     # mostly for feature vectors
-    for imgID in result.keys():
-        for prediction in result[imgID]['predictions']:
-            nextResultValues = []
-            # we expect a dict of values, so we can use the fieldNames directly
-            for fn in fieldNames:
-                if fn == 'image':
-                    nextResultValues.append(imgID)
-                else:
-                    if fn in prediction:
-                        #TODO: might need to do typecasts (e.g. UUID?)
-                        nextResultValues.append(prediction[fn])
-
+    try:
+        current_task.update_state(state='FINALIZING', meta={'message':'saving predictions'})
+        fieldNames = list(getattr(FieldNames_prediction, config.getProperty('Project', 'predictionType')).value)
+        fieldNames.append('image')  # image ID
+        values_pred = []
+        values_img = []     # mostly for feature vectors
+        for imgID in result.keys():
+            for prediction in result[imgID]['predictions']:
+                nextResultValues = []
+                # we expect a dict of values, so we can use the fieldNames directly
+                for fn in fieldNames:
+                    if fn == 'image':
+                        nextResultValues.append(imgID)
                     else:
-                        # field name is not in return value; might need to raise a warning, Exception, or set to None
-                        nextResultValues.append(None)
-                    
-            values_pred.append(nextResultValues)
+                        if fn in prediction:
+                            #TODO: might need to do typecasts (e.g. UUID?)
+                            nextResultValues.append(prediction[fn])
 
-        if 'fVec' in result[imgID] and len(result[imgID]['fVec']):
-            values_img.append([imgID, result[imgID]['fVec']])
+                        else:
+                            # field name is not in return value; might need to raise a warning, Exception, or set to None
+                            nextResultValues.append(None)
+                        
+                values_pred.append(nextResultValues)
 
+            if 'fVec' in result[imgID] and len(result[imgID]['fVec']):
+                values_img.append([imgID, result[imgID]['fVec']])
+    except Exception as e:
+        current_task.update_state(state='FAILURE', meta={'message':'error during result parsing ({})'.format(str(e))})
+        return 3
 
     #TODO
     return 0
 
     # commit to database
-    if len(values_pred):
-        sql = '''
-            INSERT INTO {schema}.prediction ( {fieldNames} )
-            VALUES %s;
-        '''.format(schema=config.getProperty('Database', 'schema'),
-            fieldNames=fieldNames)
-        dbConnector.insert(sql, tuple(values_pred))
+    try:
+        if len(values_pred):
+            sql = '''
+                INSERT INTO {schema}.prediction ( {fieldNames} )
+                VALUES %s;
+            '''.format(schema=config.getProperty('Database', 'schema'),
+                fieldNames=fieldNames)
+            dbConnector.insert(sql, tuple(values_pred))
 
-    if len(values_img):
-        sql = '''
-            INSERT INTO {schema}.image ( id, fVec )
-            VALUES %s
-            ON CONFLICT (id) DO UPDATE SET fVec = EXCLUDED.fVec;
-        '''.format(schema=config.getProperty('Database', 'schema'))
-        dbConnector.insert(sql, tuple(values_img))
+        if len(values_img):
+            sql = '''
+                INSERT INTO {schema}.image ( id, fVec )
+                VALUES %s
+                ON CONFLICT (id) DO UPDATE SET fVec = EXCLUDED.fVec;
+            '''.format(schema=config.getProperty('Database', 'schema'))
+            dbConnector.insert(sql, tuple(values_img))
+    except Exception as e:
+        current_task.update_state(state='FAILURE', meta={'message':'error during data committing ({})'.format(str(e))})
+        return 4
 
     #TODO: return status?
     current_task.update_state(state=states.SUCCESS, meta={'message':'done'})
@@ -290,8 +324,8 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
 
 #     try:
 #         result = rankFun(data=predictions)
-#     except Exception as err:
-#         print(err)
-#         result = 0      #TODO
+#     except Exception as e:
+#         current_task.update_state(state='FAILURE', meta={'message':'error during ranking ({})'.format(str(e))})
+#         return 2
 
 #     return result
