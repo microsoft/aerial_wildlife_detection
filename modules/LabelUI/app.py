@@ -124,6 +124,7 @@ class LabelUI():
                 except:
                     subset = 'default'  
                 json = self.middleware.getNextBatch(username=username, order=order, subset=subset, limit=limit)
+
                 return json
             else:
                 abort(401, 'not logged in')

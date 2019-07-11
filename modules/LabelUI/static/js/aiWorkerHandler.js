@@ -111,7 +111,12 @@ class AIWorkerJob {
             self.timeElapsed += 1000;
             self.timeRemaining = Math.max(0, self.timeRemaining - 1000);
             $(self.elapsedTime).html(window.msToTime(self.timeElapsed));
-            $(self.remainingTime).html('-'+window.msToTime(self.timeRemaining));
+            if(!isNaN(self.timeRemaining)) {
+                $(self.remainingTime).html('-'+window.msToTime(self.timeRemaining));
+                $(self.remainingTime).show();
+            } else {
+                $(self.remainingTime).hide();
+            }
         }, 1000);
 
         detailsC.append(prInd);
@@ -159,15 +164,26 @@ class AIWorkerHandler {
         // this.workersContainer = $('#ai-worker-entries');     //TODO
         this.taskContainer = $('#ai-tasks-entries');
 
-        // mini-panel global progress indicator
-        this.prInd = $('<div class="minipanel-progress" style="display:none"></div>');
-        this.miniStatus = $('<span style="margin-right:10px"></span>');
-        this.prInd.append(this.miniStatus);
+        // mini-panel global progress indicator for tasks
+        this.prInd_tasks = $('<div class="minipanel-progress" style="display:none"></div>');
+        this.miniStatus_tasks = $('<span style="margin-right:10px">Tasks:</span>');
+        this.prInd_tasks.append(this.miniStatus_tasks);
         var pbarWrapper = $('<div class="progressbar" id="minipanel-progressbar"></div>');
-        this.progressBar = $('<div class="progressbar-filler progressbar-active"></div>');
+        this.progressBar_tasks = $('<div class="progressbar-filler progressbar-active"></div>');
         pbarWrapper.append(this.progressBar);
-        this.prInd.append(pbarWrapper);
-        $('#ai-minipanel-status').append(this.prInd);
+        this.prInd_tasks.append(pbarWrapper);
+        $('#ai-minipanel-status').append(this.prInd_tasks);
+
+        // the same for annotations
+        this.prInd_anno = $('<div class="minipanel-progress" style="display:none"></div>');
+        this.miniStatus_anno = $('<span style="margin-right:10px">Annotations:</span>');
+        this.prInd_anno.append(this.miniStatus_anno);
+        var pbarWrapper = $('<div class="progressbar" id="minipanel-progressbar"></div>');
+        this.progressBar_anno = $('<div class="progressbar-filler progressbar-active"></div>');
+        pbarWrapper.append(this.progressBar_anno);
+        this.prInd_anno.append(pbarWrapper);
+        $('#ai-minipanel-status').append(this.prInd_anno);
+
 
         // make panel collapsible
         var self = this;
@@ -202,6 +218,8 @@ class AIWorkerHandler {
                 console.log(a);
                 console.log(b);
                 console.log(c);
+
+                setTimeout(function() { self._query_worker_status(); }, 60000);   //TODO: make parameter
             }
         })
     }
@@ -210,9 +228,35 @@ class AIWorkerHandler {
     _query_task_status() {
         var self = this;
         $.ajax({
-            url: window.aiControllerURI + 'status?tasks=true',
+            url: window.aiControllerURI + 'status?project=true&tasks=true',
             type: 'GET',
             success: function(data) {
+
+                // check first if wait for sufficient number of annotations is ongoing
+                if(data['status']['project'].hasOwnProperty('num_annotated')) {
+                    var numRequired_project = parseInt(data['status']['project']['num_next_training']);
+                    var numDone_project = Math.min(numRequired_project, parseInt(data['status']['project']['num_annotated']));
+                    var msg = numDone_project + '/' + numRequired_project + ' images until next training';
+                    $(self.miniStatus_anno).html(msg);
+
+                    // update progress bar for annotations
+                    $(self.prInd_anno).show();
+                    $(self.progressBar_anno).show();
+                    $(self.miniStatus_anno).show();
+
+                    var newWidthPerc = 100*(numDone_project / numRequired_project);
+                    self.progressBar_anno.animate({
+                        'width': newWidthPerc + '%'
+                    }, 1000);
+
+                } else {
+                    // no project data; hide progress info
+                    $(self.prInd_anno).hide();
+                    $(self.progressBar_anno).hide();
+                    $(self.miniStatus_anno).hide();
+                }
+
+
                 // global task status
                 var numTotal = 0;
                 var numDone = 0;
@@ -229,6 +273,11 @@ class AIWorkerHandler {
                     } else {
                         // update task
                         self.tasks[key].update_state(tasks[key]);
+
+                        // check if completed (TODO: history?)
+                        if(tasks[key]['status'] == 'SUCCESS' || tasks[key]['status'] == 'FAILURE') {
+                            delete self.tasks[key];
+                        }
                     }
 
                     // parse task progress
@@ -252,28 +301,29 @@ class AIWorkerHandler {
 
                 // update global progress bar and status message
                 if(Object.keys(self.tasks).length > 0) {
-                    $(self.prInd).show();
-                    $(self.progressBar).show();
-                    $(self.miniStatus).show();
-                    var msg = Object.keys(self.tasks).length + ' tasks';
+                    $(self.prInd_tasks).show();
+                    $(self.progressBar_tasks).show();
+                    $(self.miniStatus_tasks).show();
+                    var msg = Object.keys(self.tasks).length;
+                    msg += (msg == 1 ? ' task' : ' tasks');
                     if(numTotal > 0) {
                         var newWidthPerc = 100*(numDone / numTotal);
-                        self.progressBar.animate({
+                        self.progressBar_tasks.animate({
                             'width': newWidthPerc + '%'
                         }, 1000);
                         msg += ' (' + Math.round(newWidthPerc) + '%)';
                     } else {
                         // tasks going on, but progress unknown, set indeterminate
-                        self.progressBar.animate({
+                        self.progressBar_tasks.animate({
                             'width': '100%'
                         }, 1000);
                     }
-                    $(self.miniStatus).html(msg);
+                    $(self.miniStatus_tasks).html(msg);
                 } else {
                     // no tasks; hide progress bar and status message
-                    $(self.prInd).hide();
-                    $(self.progressBar).hide();
-                    $(self.miniStatus).hide();
+                    $(self.prInd_tasks).hide();
+                    $(self.progressBar_tasks).hide();
+                    $(self.miniStatus_tasks).hide();
                 }
 
                 setTimeout(function() { self._query_task_status(); }, 5000);   //TODO

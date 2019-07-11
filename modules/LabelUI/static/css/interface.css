@@ -264,6 +264,8 @@ canvas {
     flex: 2;
     margin-top: auto;
     margin-bottom: auto;
+    display: inline-flex;
+    flex-direction: column;
 }
 
 .minipanel-progress {

@@ -3,11 +3,13 @@
 
     2019 Benjamin Kellenberger
 '''
+
 import importlib
-import pytz
 from datetime import datetime
+import pytz
 
 
+#TODO: likely wrong...
 def array_split(arr, size):
      arrs = []
      while len(arr) > size:

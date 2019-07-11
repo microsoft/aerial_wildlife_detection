@@ -16,6 +16,7 @@ import celery
 from celery import current_app, group
 from celery.result import AsyncResult
 from modules.AIWorker.backend.worker import functional
+from .annotationWatchdog import Watchdog
 from .sql_string_builder import SQLStringBuilder
 from modules.Database.app import Database
 from util.helpers import array_split
@@ -32,10 +33,26 @@ class AIMiddleware():
 
         self.messages = {}
 
-        #TODO
-        self.progress = 0
-        self.max = 1024
-        self.TODO = str(current_time())
+        self.watchdog = None    # note: watchdog only created if users poll status (i.e., if there's activity)
+
+
+    def _init_watchdog(self):
+        '''
+            Launches a thread that periodically polls the database for new
+            annotations. Once the required number of new annotations is reached,
+            this thread will initiate the training process through the middleware.
+            The thread will be terminated and destroyed; a new thread will only be
+            re-created once the training process has finished.
+        '''
+        if self.training:
+            return
+        
+        numImages_autoTrain = self.config.getProperty('AIController', 'numImages_autoTrain', -1)
+        if numImages_autoTrain == -1:
+            return
+            
+        self.watchdog = Watchdog(self.config, self.dbConn, self)
+        self.watchdog.start()
 
 
     
@@ -296,13 +313,32 @@ class AIMiddleware():
     
 
 
-    def check_status(self, tasks, workers):
+    def check_status(self, project, tasks, workers):
         '''
             Queries the Celery worker results depending on the parameters specified.
             Returns their status accordingly if they exist.
         '''
         status = {}
 
+
+        # project status
+        if project:
+
+            if self.training:
+                status['project'] = {}
+            else:
+                # notify watchdog that users are active
+                if self.watchdog is None or self.watchdog.stopped():
+                    self._init_watchdog()
+                self.watchdog.nudge()
+
+                status['project'] = {
+                    'num_annotated': self.watchdog.lastCount,
+                    'num_next_training': self.watchdog.annoThreshold
+                }
+
+
+        # running tasks status
         if tasks:
             status['tasks'] = {}
             for key in self.messages.keys():
@@ -324,24 +360,6 @@ class AIMiddleware():
                     'status': msg['status'],
                     'meta': info
                 }
-            
-
-            #TODO: dummy status for UI debugging purposes
-            import random
-            ids = ['first task', 'second task', 'third task']
-            self.progress += random.randint(1, 10)
-            print(self.progress)
-            for i in range(3):
-                status['tasks'][ids[i]] = {
-                    'type': 'inference',
-                    'submitted': self.TODO,       #TODO
-                    'status': 'PROGRESS',
-                    'meta': {
-                        'done': self.progress,
-                        'total': self.max
-                    }
-                }
-            
 
         # get worker status (this is very expensive, as each worker needs to be pinged)
         if workers:

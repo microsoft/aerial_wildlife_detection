@@ -70,9 +70,10 @@ class AIController:
             '''
             if self.loginCheck(False):
                 try:
+                    queryProject = 'project' in request.query
                     queryTasks = 'tasks' in request.query
                     queryWorkers = 'workers' in request.query
-                    status = self.middleware.check_status(queryTasks, queryWorkers)
+                    status = self.middleware.check_status(queryProject, queryTasks, queryWorkers)
                 except Exception as e:
                     status = str(e)
                 return { 'status' : status }
