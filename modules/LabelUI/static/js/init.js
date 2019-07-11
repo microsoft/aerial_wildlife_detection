@@ -44,7 +44,27 @@ $(document).ready(function() {
 	    var d = new Date;
 	    d.setTime(d.getTime() + 24*60*60*1000*days);
 	    document.cookie = name + "=" + value + ";path=/;expires=" + d.toGMTString();
-	}
+    }
+    
+    // time util
+    window.msToTime = function(duration) {
+        var seconds = Math.floor((duration / 1000) % 60),
+            minutes = Math.floor((duration / (1000 * 60)) % 60),
+            hours = Math.floor((duration / (1000 * 60 * 60)) % 24);
+   
+        if(hours > 0) {
+            hours = (hours < 10) ? '0' + hours : hours;
+            minutes = (minutes < 10) ? '0' + minutes : minutes;
+            seconds = (seconds < 10) ? '0' + seconds : seconds;
+            result = hours + ':' + minutes + ':' + seconds;
+            return result;
+
+        } else {
+            minutes = (minutes < 10) ? '0' + minutes : minutes;
+            seconds = (seconds < 10) ? '0' + seconds : seconds;
+            return minutes + ':' + seconds;
+        }
+    }
 
     // login check
     var promise = $.ajax({
@@ -195,6 +215,16 @@ $(document).ready(function() {
     $('#logout').click(function() {
         window.dataHandler.submitAnnotations(true);
         window.location.href = '/logout';
+    });
+
+
+    // AI backend
+    promise = promise.done(function() {
+        if(window.aiControllerURI != null) {
+            window.aiWorkerHandler = new AIWorkerHandler($('.ai-worker-entries'));
+            $('#ai-worker-panel').show();
+        }
+        return $.Deferred();
     });
 
 

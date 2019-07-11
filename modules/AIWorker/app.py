@@ -123,5 +123,5 @@ class AIWorker():
 
     
 
-    def call_rank(self, data):
-        return functional._call_rank(self.dbConnector, self.config, data, getattr(self.alInstance, 'rank'), self.fileServer)
+    # def call_rank(self, data):
+    #     return functional._call_rank(self.dbConnector, self.config, data, getattr(self.alInstance, 'rank'), self.fileServer)

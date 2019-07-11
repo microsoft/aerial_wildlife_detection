@@ -4,7 +4,7 @@
     2019 Benjamin Kellenberger
 '''
 
-from bottle import post, request, response
+from bottle import post, request, response, abort
 from modules.AIController.backend.middleware import AIMiddleware
 
 
@@ -16,45 +16,66 @@ class AIController:
 
         self.middleware = AIMiddleware(config)
 
+        self.login_check = None
+
         self._initBottle()
+
+
+    def loginCheck(self, needBeAdmin=False):
+        return True if self.login_check is None else self.login_check(needBeAdmin)
+
+
+    def addLoginCheckFun(self, loginCheckFun):
+        self.login_check = loginCheckFun
 
 
     def _initBottle(self):
         
-        @self.app.get('/startTraining')     #TODO: POST
+        @self.app.post('/startTraining')
         def start_training():
             '''
                 Manually request AIController to train the model.
                 This still only works if there is no training process ongoing.
                 Otherwise the request is aborted.
             '''
-            #TODO: logincheck
-            try:
-                status = self.middleware.start_training(minTimestamp='lastState', distributeTraining=True) #TODO
-            except Exception as e:
-                status = str(e)
-            return { 'status' : status }
+            if self.loginCheck(True):
+                try:
+                    status = self.middleware.start_training(minTimestamp='lastState', distributeTraining=True) #TODO
+                except Exception as e:
+                    status = str(e)
+                return { 'status' : status }
+
+            else:
+                abort(401, 'unauthorized')
 
         
-        @self.app.get('/startInference')
+        @self.app.post('/startInference')
         def start_inference():
             '''
                 TODO: just here for debugging purposes; in reality inference should automatically be called after training
             '''
-            status = self.middleware.start_inference(forceUnlabeled=True, maxNumImages=None, maxNumWorkers=1)
-            return { 'status' : status }
+            if self.loginCheck(True):
+                status = self.middleware.start_inference(forceUnlabeled=True, maxNumImages=None, maxNumWorkers=1)
+                return { 'status' : status }
+            
+            else:
+                abort(401, 'unauthorized')
 
 
-        @self.app.get('/checkStatus')    #TODO: POST
+        @self.app.get('/status')
         def check_status():
             '''
                 Queries the middleware for any ongoing training worker processes
                 and returns the stati of each in a dict.
             '''
-            #TODO: logincheck
-            try:
-                status = self.middleware.check_status(True, True, False)   #TODO: args
-            except Exception as e:
-                status = str(e)
-            
-            return { 'status' : status }
+            if self.loginCheck(False):
+                try:
+                    queryTasks = 'tasks' in request.query
+                    queryWorkers = 'workers' in request.query
+                    status = self.middleware.check_status(queryTasks, queryWorkers)
+                except Exception as e:
+                    status = str(e)
+                return { 'status' : status }
+
+            else:
+                abort(401, 'unauthorized')

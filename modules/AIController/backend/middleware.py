@@ -291,36 +291,52 @@ class AIMiddleware():
     
 
 
-    def check_status(self, training_tasks, inference_tasks, workers):
+    def check_status(self, tasks, workers):
         '''
             Queries the Celery worker results depending on the parameters specified.
             Returns their status accordingly if they exist.
         '''
         status = {}
 
-        status['tasks'] = {}
-        for key in self.messages.keys():
-            msg = self.messages[key]
+        if tasks:
+            status['tasks'] = {}
+            for key in self.messages.keys():
+                msg = self.messages[key]
 
-            # check for worker failures
-            if msg['status'] == celery.states.FAILURE:
-                # append failure message
-                if 'meta' in msg and isinstance(msg['meta'], BaseException):
-                    info = { 'message': cgi.escape(str(msg['meta']))}
+                # check for worker failures
+                if msg['status'] == celery.states.FAILURE:
+                    # append failure message
+                    if 'meta' in msg and isinstance(msg['meta'], BaseException):
+                        info = { 'message': cgi.escape(str(msg['meta']))}
+                    else:
+                        info = { 'message': 'an unknown error occurred'}
                 else:
-                    info = { 'message': 'an unknown error occurred'}
-            else:
-                info = msg['meta']    #TODO
-            
-            status['tasks'][key] = {
-                'type': msg['type'],
-                'submitted': msg['submitted'],
-                'status': msg['status'],
-                'meta': info
-            }
+                    info = msg['meta']    #TODO
+                
+                status['tasks'][key] = {
+                    'type': msg['type'],
+                    'submitted': msg['submitted'],
+                    'status': msg['status'],
+                    'meta': info
+                }
             
 
-        # get worker status (this is very expensive, as each worker needs to be queried)
+            #TODO: dummy status for UI debugging purposes
+            import random
+            ids = ['first task', 'second task', 'third task']
+            for i in range(3):
+                status['tasks'][ids[i]] = {
+                    'type': 'inference',
+                    'submitted': str(current_time()),       #TODO
+                    'status': 'PROGRESS',
+                    'meta': {
+                        'done': random.randint(512, 1024),
+                        'total': 1024
+                    }
+                }
+            
+
+        # get worker status (this is very expensive, as each worker needs to be pinged)
         if workers:
             workerStatus = {}
             i = current_app.control.inspect()

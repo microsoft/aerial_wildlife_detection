@@ -6,6 +6,7 @@
 
 import os
 import cgi
+from urllib.parse import urljoin
 import bottle
 from bottle import request, response, static_file, redirect, abort, SimpleTemplate
 from .backend.middleware import DBMiddleware
@@ -24,8 +25,8 @@ class LabelUI():
         self._initBottle()
 
 
-    def loginCheck(self):
-        return True if self.login_check is None else self.login_check()
+    def loginCheck(self, needBeAdmin=False):
+        return True if self.login_check is None else self.login_check(needBeAdmin)
 
 
     def addLoginCheckFun(self, loginCheckFun):
@@ -99,7 +100,6 @@ class LabelUI():
         def get_images():
             if self.loginCheck():
                 username = cgi.escape(request.get_cookie('username'))
-                postData = request.body.read()
                 dataIDs = request.json['imageIDs']
                 json = self.middleware.getBatch(username, dataIDs)
                 return json
@@ -148,7 +148,6 @@ class LabelUI():
                     }
             else:
                 abort(401, 'not logged in')
-
 
 
 

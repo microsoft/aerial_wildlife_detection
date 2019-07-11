@@ -18,6 +18,7 @@
     <script type="text/javascript" src="static/js/labelClassHandler.js"></script>
     <script type="text/javascript" src="static/js/dataEntry.js"></script>
     <script type="text/javascript" src="static/js/dataHandler.js"></script>
+    <script type="text/javascript" src="static/js/aiWorkerHandler.js"></script>
     <script type="text/javascript" src="static/js/uitutorial.js"></script>
     <script type="text/javascript" src="static/js/init.js"></script>
 </head>
@@ -63,11 +64,6 @@
                 </ul>
             </nav>
 
-            <!-- Tool Description
-            <div class="container-fluid">
-                
-            </div> -->
-
             <div class="wrapper h-100">
                 <!-- Image Display -->
                 <div class="vertical-center" id="gallery-container">
@@ -85,8 +81,28 @@
                 </div>
             </div>
         </div>
+
         <footer class="page-footer" id="footer">
-            <a href="https://www.microsoft.com/en-us/ai/ai-for-earth" target="_blank"><img height="100%" src="static/img/ms_logo.png" style="float:right" /></a>
+
+            <!-- Collapsible AI worker panel -->
+            <div id="ai-worker-panel" class="ai-worker-panel">
+                <div class="container">
+                    <div style="font-size:18px">AI Workers</div>
+                    <div class="ai-worker-entries container"></div>
+                </div>
+                <div class="grad-border-h" style="position:absolute;bottom:0"></div>
+            </div>
+
+            <!-- Mini-entry in footer to it -->
+            <div class="ai-worker-panel ai-worker-minipanel">
+                <div class="grad-border-v"></div>
+                <span class="minipanel-span">AI Backend</span>
+                <div class="grad-border-v"></div>
+            </div>
+
+            <div class="ms-logo">
+                <a href="https://www.microsoft.com/en-us/ai/ai-for-earth" target="_blank"><img height="100%" src="static/img/ms_logo.png" /></a>
+            </div>
         </footer>
     </div>
 </body>

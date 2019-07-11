@@ -24,10 +24,17 @@ class DBMiddleware():
 
 
     def _fetchProjectSettings(self):
+        # AI controller URI
+        aiControllerURI = self.config.getProperty('Server', 'aiController_uri')
+        if aiControllerURI is None or aiControllerURI.strip() == '':
+            # no AI backend configured
+            aiControllerURI = None
+
         self.projectSettings = {
             'projectName': self.config.getProperty('Project', 'projectName'),
             'projectDescription': self.config.getProperty('Project', 'projectDescription'),
             'dataServerURI': self.config.getProperty('Server', 'dataServer_uri'),
+            'aiControllerURI': aiControllerURI,
             'dataType': self.config.getProperty('Project', 'dataType'),
             'minObjSize': self.config.getProperty('Project', 'minObjSize'),
             'classes': self.getClassDefinitions(),

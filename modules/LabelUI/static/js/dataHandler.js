@@ -9,7 +9,7 @@ class DataHandler {
     constructor(parentDiv) {
         this.parentDiv = parentDiv;
         this.dataEntries = [];
-        this.numImagesPerBatch = window.numImages_x * window.numImages_y;
+        this.numImagesPerBatch = parseInt(window.numImages_x) * parseInt(window.numImages_y);
 
         this.undoStack = [];
         this.redoStack = [];
@@ -197,6 +197,11 @@ class DataHandler {
 
     _loadNextBatch() {
         var self = this;
+
+        //TODO: sometimes num images is NaN; temporary hack until fix:
+        if(isNaN(this.numImagesPerBatch)) {
+            this.numImagesPerBatch = parseInt(window.numImages_x) * parseInt(window.numImages_y);
+        }
 
         var url = 'getLatestImages?order=unlabeled&subset=default&limit=' + this.numImagesPerBatch;
         return $.ajax({

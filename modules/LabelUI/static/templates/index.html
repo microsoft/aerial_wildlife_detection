@@ -44,6 +44,13 @@
         .fieldRow {
             margin-bottom: 10px;
         }
+
+        .ms-logo {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            height: 40px;
+        }
     </style>
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
     <script type="text/javascript">
@@ -99,7 +106,9 @@
         </div>
         <div id="overlay" class="container card vertical-center"></div>
         <footer class="page-footer" id="footer">
-            <a href="https://www.microsoft.com/en-us/ai/ai-for-earth" target="_blank"><img height="100%" src="static/img/ms_logo.png" style="float:right" /></a>
+            <div class="ms-logo">
+                <a href="https://www.microsoft.com/en-us/ai/ai-for-earth" target="_blank"><img height="100%" src="static/img/ms_logo.png" /></a>
+            </div>
         </footer>
     </div>
 </body>

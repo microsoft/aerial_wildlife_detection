@@ -77,6 +77,10 @@ $.get('getProjectSettings', function(data) {
     if(!window.dataServerURI.endsWith('/')) {
         window.dataServerURI += '/';
     }
+    window.aiControllerURI = data['settings']['aiControllerURI'];
+    if(window.aiControllerURI != null && !window.aiControllerURI.endsWith('/')) {
+        window.aiControllerURI += '/';
+    }
     window.dataType = data['settings']['dataType'];
     window.minObjSize = data['settings']['minObjSize'];
     window.classes = data['settings']['classes'];

@@ -51,6 +51,17 @@ class UserMiddleware():
         return hash
 
 
+    def _get_user_data(self, username):
+        sql = 'SELECT last_login, session_token, isAdmin FROM {}.user WHERE name = %s;'.format(
+            self.config.getProperty('Database', 'schema')
+        )
+        result = self.dbConnector.execute(sql, (username,), numReturn=1)
+        if not len(result):
+            return None
+        result = result[0]
+        return result
+
+
     def _init_or_extend_session(self, username, sessionToken=None):
         '''
             Establishes a "session" for the user (i.e., sets 'time_login'
@@ -70,13 +81,27 @@ class UserMiddleware():
             ),
             (now, sessionToken, username,),
             numReturn=None)
-            #TODO: feedback that everything is ok?
+            
+            # fetch user metadata and store locally
+            userData = self._get_user_data(username)
+            self.usersLoggedIn[username] = {
+                'timestamp': now,
+                'sessionToken': sessionToken,
+                'isAdmin': userData['isadmin']
+            }
+
 
         # update local cache as well
-        self.usersLoggedIn[username] = {
-            'timestamp': now,
-            'sessionToken': sessionToken
-        }
+        if not username in self.usersLoggedIn:
+            # fetch user metadata and store locally
+            userData = self._get_user_data(username)
+            self.usersLoggedIn[username] = {
+                'timestamp': now,
+                'sessionToken': sessionToken,
+                'isAdmin': userData['isadmin']
+            }
+        else:
+            self.usersLoggedIn[username]['timestamp'] = now
 
         expires = now + timedelta(0, self.config.getProperty('UserHandler', 'time_login', type=int))
 
@@ -109,15 +134,10 @@ class UserMiddleware():
         time_login = self.config.getProperty('UserHandler', 'time_login', type=int)
         if not username in self.usersLoggedIn:
             # check database
-            sql = 'SELECT last_login, session_token FROM {}.user WHERE name = %s;'.format(
-                self.config.getProperty('Database', 'schema')
-            )
-            result = self.dbConnector.execute(sql, (username,), numReturn=1)
-            if len(result) == 0:
+            result = self._get_user_data(username)
+            if result is None:
                 # account does not exist
                 return False
-
-            result = result[0]
 
             # check for session token
             if not self._compare_tokens(result['session_token'], sessionToken):
@@ -127,6 +147,14 @@ class UserMiddleware():
             # check for timestamp
             if (now - result['last_login']).total_seconds() <= time_login:
                 # user still logged in
+                if not username in self.usersLoggedIn:
+                    self.usersLoggedIn[username] = {
+                        'timestamp': now,
+                        'sessionToken': sessionToken,
+                        'isAdmin': result['isadmin']
+                    }
+                else:
+                    self.usersLoggedIn[username]['timestamp'] = now
                 return True
 
             else:
@@ -158,7 +186,26 @@ class UserMiddleware():
         return False
 
 
-    def isLoggedIn(self, username, sessionToken):
+    def isAuthenticated(self, username, sessionToken, admin=False):
+        '''
+            Checks if the user is logged in.
+            If 'admin' is True, returns True only if the user is
+            logged in and an administrator.
+        '''
+        loggedIn = self._check_logged_in(username, sessionToken)
+        if not loggedIn:
+            return False
+        
+        elif not admin:
+            return True
+
+        else:
+            return username in self.usersLoggedIn and \
+                'isAdmin' in self.usersLoggedIn[username] and \
+                    self.usersLoggedIn[username]['isAdmin'] is True
+
+
+    def getLoginData(self, username, sessionToken):
         '''
             Performs a lookup on the login timestamp dict.
             If the username cannot be found (also not in the database),

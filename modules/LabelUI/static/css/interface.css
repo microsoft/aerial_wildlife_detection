@@ -46,6 +46,12 @@ body {
     width: 100%;
     height: 40px;
 }
+.ms-logo {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    height: 40px;
+}
 #gallery-container {
     padding: 20px;
 }
@@ -198,4 +204,119 @@ canvas {
     color: white !important;
     font-size: 18px;
     /* TODO: change tooltip arrows to white */
+}
+
+.grad-border-v {
+    width: 0.5px;
+    height: 100%;
+    background: -moz-linear-gradient(top,  rgba(255,255,255,0) 0%, rgba(255,255,255,1) 50%, rgba(255,255,255,0) 100%); /* FF3.6-15 */
+    background: -webkit-linear-gradient(top,  rgba(255,255,255,0) 0%,rgba(255,255,255,1) 50%,rgba(255,255,255,0) 100%); /* Chrome10-25,Safari5.1-6 */
+    background: linear-gradient(to bottom,  rgba(255,255,255,0) 0%,rgba(255,255,255,1) 50%,rgba(255,255,255,0) 100%); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
+    filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#00ffffff', endColorstr='#00ffffff',GradientType=0 ); /* IE6-9 */
+}
+
+.grad-border-h {
+    height: 0.5px;
+    width: 100%;
+    background: -moz-linear-gradient(left,  rgba(255,255,255,0) 0%, rgba(255,255,255,1) 50%, rgba(255,255,255,0) 100%); /* FF3.6-15 */
+    background: -webkit-linear-gradient(left,  rgba(255,255,255,0) 0%,rgba(255,255,255,1) 50%,rgba(255,255,255,0) 100%); /* Chrome10-25,Safari5.1-6 */
+    background: linear-gradient(to right,  rgba(255,255,255,0) 0%,rgba(255,255,255,1) 50%,rgba(255,255,255,0) 100%); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
+    filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#00ffffff', endColorstr='#00ffffff',GradientType=1 ); /* IE6-9 */
+
+}
+
+/* AI controller window */
+.ai-worker-panel {
+    position: absolute;
+    right: 90px;
+    width: 400px;
+}
+.ai-worker-minipanel {
+    display: flex;
+    flex-direction: row;
+    float: right;
+    height: 100%;
+    color: white;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.minipanel-span {
+    flex: 1;
+    margin: 10px;
+    margin-top: auto;
+    margin-bottom: auto;
+}
+
+#ai-worker-panel {
+    /* display: none; */
+    position: absolute;
+    bottom: 40px;
+    height: 200px;
+    max-height:300px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    color: white;
+    background: #575352;
+}
+
+#ai-worker-panel * {
+    font-size: 14px;
+}
+
+.ai-worker-entries {
+    overflow-y: auto;
+}
+
+.ai-worker-job {
+    width: 100%;
+    height: 40px;
+}
+
+.progressbar {
+    width: 100%;
+    height: 5px;
+    background: white;
+}
+
+.progressbar-filler {
+    width: 0%;
+    height: 100%;
+    
+
+    /* TODO: make pretty gradient... */
+    /* Permalink - use to edit and share this gradient: https://colorzilla.com/gradient-editor/#6db3f2+0,54a3ee+50,3690f0+51,1e69de+100;Blue+Gloss+%233 */
+    background: rgb(109,179,242); /* Old browsers */
+    background: -moz-linear-gradient(left,  rgba(109,179,242,1) 0%, rgba(84,163,238,1) 50%, rgba(54,144,240,1) 51%, rgba(30,105,222,1) 100%); /* FF3.6-15 */
+    background: -webkit-linear-gradient(left,  rgba(109,179,242,1) 0%,rgba(84,163,238,1) 50%,rgba(54,144,240,1) 51%,rgba(30,105,222,1) 100%); /* Chrome10-25,Safari5.1-6 */
+    background: linear-gradient(to right,  rgba(109,179,242,1) 0%,rgba(84,163,238,1) 50%,rgba(54,144,240,1) 51%,rgba(30,105,222,1) 100%); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
+    filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#6db3f2', endColorstr='#1e69de',GradientType=1 ); /* IE6-9 */
+
+    background-size: 400% 400%;
+    
+    -webkit-animation: progressbar-animation 2s ease infinite;
+    -moz-animation: progressbar-animation 2s ease infinite;
+    -o-animation: progressbar-animation 2s ease infinite;
+    animation: progressbar-animation 2s ease infinite;
+}
+
+@-webkit-keyframes progressbar-animation {
+    0%{background-position:0% 50%}
+    50%{background-position:100% 50%}
+    100%{background-position:0% 50%}
+}
+@-moz-keyframes progressbar-animation {
+    0%{background-position:0% 50%}
+    50%{background-position:100% 50%}
+    100%{background-position:0% 50%}
+}
+@-o-keyframes progressbar-animation {
+    0%{background-position:0% 50%}
+    50%{background-position:100% 50%}
+    100%{background-position:0% 50%}
+}
+@keyframes progressbar-animation {
+    0%{background-position:0% 50%}
+    50%{background-position:100% 50%}
+    100%{background-position:0% 50%}
 }

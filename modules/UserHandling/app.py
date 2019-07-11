@@ -64,7 +64,7 @@ class UserHandler():
 
                 sessionToken = cgi.escape(request.get_cookie('session_token'))
 
-                _, _, expires = self.middleware.isLoggedIn(username, sessionToken)
+                _, _, expires = self.middleware.getLoginData(username, sessionToken)
                 
                 response.set_cookie('username', username)   #, expires=expires)
                 response.set_cookie('session_token', sessionToken, httponly=True)    #, expires=expires)
@@ -160,11 +160,11 @@ class UserHandler():
             return response
 
 
-    def checkAuthenticated(self):
+    def checkAuthenticated(self, admin=False):
         try:
             username = cgi.escape(request.get_cookie('username'))
             sessionToken = cgi.escape(request.get_cookie('session_token'))
-            return self.middleware.isLoggedIn(username, sessionToken)
+            return self.middleware.isAuthenticated(username, sessionToken, admin)
         except Exception:
             return False
 

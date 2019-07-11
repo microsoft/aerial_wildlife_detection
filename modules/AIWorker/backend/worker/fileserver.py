@@ -12,6 +12,7 @@
 import os
 import socket
 from urllib import request
+from urllib.parse import urlsplit
 from urllib.error import HTTPError
 import netifaces
 
@@ -52,7 +53,8 @@ class FileServer:
                 for j in iface:
                     localhosts.append(j['addr'])
         
-        baseURI_stripped = baseURI.strip('https://')    # note: this also accounts for 'http://'    #TODO: implement e.g. sftp?
+        baseURI_fragments = urlsplit(baseURI)
+        baseURI_stripped = baseURI_fragments.netloc
         for l in localhosts:
             if baseURI_stripped.startswith(l):
                 return True
