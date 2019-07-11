@@ -32,6 +32,11 @@ class AIMiddleware():
 
         self.messages = {}
 
+        #TODO
+        self.progress = 0
+        self.max = 1024
+        self.TODO = str(current_time())
+
 
     
     def _on_raw_message(self, id, message):
@@ -324,14 +329,16 @@ class AIMiddleware():
             #TODO: dummy status for UI debugging purposes
             import random
             ids = ['first task', 'second task', 'third task']
+            self.progress += random.randint(1, 10)
+            print(self.progress)
             for i in range(3):
                 status['tasks'][ids[i]] = {
                     'type': 'inference',
-                    'submitted': str(current_time()),       #TODO
+                    'submitted': self.TODO,       #TODO
                     'status': 'PROGRESS',
                     'meta': {
-                        'done': random.randint(512, 1024),
-                        'total': 1024
+                        'done': self.progress,
+                        'total': self.max
                     }
                 }
             
@@ -341,14 +348,15 @@ class AIMiddleware():
             workerStatus = {}
             i = current_app.control.inspect()
             stats = i.stats()
-            active_tasks = i.active()
-            scheduled_tasks = i.scheduled()
-            for key in stats:
-                activeTasks = [t['id'] for t in active_tasks[key]]
-                workerStatus[key] = {
-                    'active_tasks': activeTasks,
-                    'scheduled_tasks': scheduled_tasks[key]
-                }
+            if stats is not None and len(stats):
+                active_tasks = i.active()
+                scheduled_tasks = i.scheduled()
+                for key in stats:
+                    activeTasks = [t['id'] for t in active_tasks[key]]
+                    workerStatus[key] = {
+                        'active_tasks': activeTasks,
+                        'scheduled_tasks': scheduled_tasks[key]
+                    }
             status['workers'] = workerStatus
 
         return status

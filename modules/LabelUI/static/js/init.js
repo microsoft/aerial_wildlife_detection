@@ -222,7 +222,7 @@ $(document).ready(function() {
     promise = promise.done(function() {
         if(window.aiControllerURI != null) {
             window.aiWorkerHandler = new AIWorkerHandler($('.ai-worker-entries'));
-            $('#ai-worker-panel').show();
+            $('#ai-worker-minipanel').show();
         }
         return $.Deferred();
     });

@@ -86,17 +86,20 @@
 
             <!-- Collapsible AI worker panel -->
             <div id="ai-worker-panel" class="ai-worker-panel">
-                <div class="container">
-                    <div style="font-size:18px">AI Workers</div>
-                    <div class="ai-worker-entries container"></div>
+                <div class="ai-worker-container container">
+                    <!-- <h2>Workers</h2>
+                    <div class="container" id="ai-worker-entries"></div> -->
+                    <h2>Tasks</h2>
+                    <div class="container" id="ai-tasks-entries"></div>
                 </div>
                 <div class="grad-border-h" style="position:absolute;bottom:0"></div>
             </div>
 
             <!-- Mini-entry in footer to it -->
-            <div class="ai-worker-panel ai-worker-minipanel">
+            <div class="ai-worker-panel" id="ai-worker-minipanel">
                 <div class="grad-border-v"></div>
                 <span class="minipanel-span">AI Backend</span>
+                <div id='ai-minipanel-status'></div>
                 <div class="grad-border-v"></div>
             </div>
 
