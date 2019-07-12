@@ -14,8 +14,8 @@ export AIDE_CONFIG_PATH=settings_windowCropping.ini
 
 
 # Celery
-celery -A modules.AIController.backend.celery_interface worker &
+# celery -A modules.AIController.backend.celery_interface worker &
 
 
 # HTTP
-python runserver.py --settings_filepath=settings_windowCropping.ini --instance=AIWorker,FileServer
+python runserver.py --settings_filepath=settings_windowCropping.ini --instance=FileServer

@@ -96,8 +96,13 @@ class AIWorkerJob {
             message += ' (' + this.current + '/' + this.total + ')';
 
         } else if(this.status === 'SUCCESS' || this.status === 'FAILURE') {
-            // completed; hide progress bar (TODO)
-            this.progressBar.hide();
+            // completed
+            message = (this.status === 'SUCCESS' ? 'completed' : 'failed');
+            if(state.hasOwnProperty('meta') && state['meta'].hasOwnProperty('message')) {
+                message += ' (' + state['meta']['message'] + ')';
+            }
+
+            this.progressBar.parent().hide();
 
             // stop timers
             $(self.elapsedTime).hide();

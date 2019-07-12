@@ -1,6 +1,4 @@
-#TODO: plug in RetinaNet implementation eventually...
-
-#TODO 2: define function shells first in an abstract superclass (with documentation) and a template.
+#TODO: define function shells in an abstract superclass (with documentation) and a template.
 
 import io
 import importlib
