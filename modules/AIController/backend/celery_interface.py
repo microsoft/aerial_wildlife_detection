@@ -50,7 +50,7 @@ def call_train(data, subset):
 
 
 @app.task()
-def call_average_model_states():
+def call_average_model_states(*args):
     return worker.call_average_model_states()
 
 

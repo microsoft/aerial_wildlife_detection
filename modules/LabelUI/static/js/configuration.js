@@ -70,48 +70,53 @@ window.loadConfiguration = function() {
 
 // project settings
 //TODO: make proper promise object...
-$.get('getProjectSettings', function(data) {
-    window.projectName = data['settings']['projectName'];
-    window.projectDescription = data['settings']['projectDescription'];
-    window.dataServerURI = data['settings']['dataServerURI'];
-    if(!window.dataServerURI.endsWith('/')) {
-        window.dataServerURI += '/';
-    }
-    window.aiControllerURI = data['settings']['aiControllerURI'];
-    if(window.aiControllerURI != null && !window.aiControllerURI.endsWith('/')) {
-        window.aiControllerURI += '/';
-    }
-    window.dataType = data['settings']['dataType'];
-    window.minObjSize = data['settings']['minObjSize'];
-    window.classes = data['settings']['classes'];
-    window.enableEmptyClass = window.parseBoolean(data['settings']['enableEmptyClass']);
-    window.annotationType = data['settings']['annotationType'];
-    window.predictionType = data['settings']['predictionType'];
-    window.showPredictions = window.parseBoolean(data['settings']['showPredictions']);
-    window.showPredictions_minConf = data['settings']['showPredictions_minConf'];
-    window.carryOverPredictions = window.parseBoolean(data['settings']['carryOverPredictions']);
-    window.carryOverRule = data['settings']['carryOverRule'];
-    window.carryOverPredictions_minConf = data['settings']['carryOverPredictions_minConf'];
-    window.defaultBoxSize_w = parseInt(data['settings']['defaultBoxSize_w']);
-    window.defaultBoxSize_h = parseInt(data['settings']['defaultBoxSize_h']);
-    window.numImages_x = parseInt(data['settings']['numImages_x']);
-    window.numImages_y = parseInt(data['settings']['numImages_y']);
-    window.defaultImage_w = parseInt(data['settings']['defaultImage_w']);
-    window.defaultImage_h = parseInt(data['settings']['defaultImage_h']);
+window.getProjectSettings = function() {
+    return $.get('getProjectSettings', function(data) {
+        window.projectName = data['settings']['projectName'];
+        window.projectDescription = data['settings']['projectDescription'];
+        window.dataServerURI = data['settings']['dataServerURI'];
+        if(!window.dataServerURI.endsWith('/')) {
+            window.dataServerURI += '/';
+        }
+        window.aiControllerURI = data['settings']['aiControllerURI'];
+        if(window.aiControllerURI != null && !window.aiControllerURI.endsWith('/')) {
+            window.aiControllerURI += '/';
+        }
+        window.dataType = data['settings']['dataType'];
+        window.minObjSize = data['settings']['minObjSize'];
+        window.classes = data['settings']['classes'];
+        window.enableEmptyClass = window.parseBoolean(data['settings']['enableEmptyClass']);
+        window.annotationType = data['settings']['annotationType'];
+        window.predictionType = data['settings']['predictionType'];
+        window.showPredictions = window.parseBoolean(data['settings']['showPredictions']);
+        window.showPredictions_minConf = data['settings']['showPredictions_minConf'];
+        window.carryOverPredictions = window.parseBoolean(data['settings']['carryOverPredictions']);
+        window.carryOverRule = data['settings']['carryOverRule'];
+        window.carryOverPredictions_minConf = data['settings']['carryOverPredictions_minConf'];
+        window.defaultBoxSize_w = parseInt(data['settings']['defaultBoxSize_w']);
+        window.defaultBoxSize_h = parseInt(data['settings']['defaultBoxSize_h']);
+        window.numImages_x = parseInt(data['settings']['numImages_x']);
+        window.numImages_y = parseInt(data['settings']['numImages_y']);
+        window.defaultImage_w = parseInt(data['settings']['defaultImage_w']);
+        window.defaultImage_h = parseInt(data['settings']['defaultImage_h']);
 
 
-    // set interface page title and description
-    if(window.projectName != null) {
-        $('#project-title').html(window.projectName);
-    }
-    if(window.projectDescription != null) {
-        $('#project-description').html(window.projectDescription);
-    }
+        // set interface page title and description
+        if(window.projectName != null) {
+            $('#project-title').html(window.projectName);
+        }
+        if(window.projectDescription != null) {
+            $('#project-description').html(window.projectDescription);
+        }
 
 
-    // adjust number of images to one for mobile devices
-    if (/Mobi|Android/i.test(navigator.userAgent)) {
-        window.numImages_x = 1;
-        window.numImages_y = 1;
-    }
-});
+        // adjust number of images to one for mobile devices
+        if (/Mobi|Android/i.test(navigator.userAgent)) {
+            window.numImages_x = 1;
+            window.numImages_y = 1;
+        }
+
+        console.log('loaded')
+        return $.Deferred().promise();
+    });
+}

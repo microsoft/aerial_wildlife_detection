@@ -76,176 +76,175 @@ $(document).ready(function() {
     });
 
     // set up general config
-    promise = promise.done(function() {
+    promise = promise.then(function() {
         return window.loadConfiguration();
     });
 
+    promise = promise.then(function() {
+        return window.getProjectSettings();
+    });
+
     // command listener
-    promise = promise.done(function() {
+    promise = promise.then(function() {
         window.commandListener = new CommandListener();
-        return $.Deferred().promise();
     });
 
     // set up label class handler
     promise = promise.done(function() {
         window.labelClassHandler = new LabelClassHandler($('.legend-entries'));
-        return $.Deferred().promise();
     });
 
     // set up data handler
-    promise = promise.done(function() {
-        console.log(window.numImages_x)
-        console.log(window.numImages_y)
-        console.log(parseInt(window.numImages_x))
-        console.log(parseInt(window.numImages_x) * parseInt(window.numImages_y))
+    promise = promise.then(function() {
         window.dataHandler = new DataHandler($('#gallery'));
-        return $.Deferred().promise();
     });
 
-    // events
-    window.eventTypes = [
-        'keydown',
-        'keyup',
-        'mousein',
-        'mouseout',
-        'mouseleave',
-        'mousemove',
-        'mousedown',
-        'mouseup',
-        'click',
-        'wheel'
-    ];
 
-    // interface
-    window.interfaceControls = {
-        actions: {
-            DO_NOTHING: 0,
-            ADD_ANNOTATION: 1,
-            REMOVE_ANNOTATIONS: 2
-        }
-    };
-    window.interfaceControls.action = window.interfaceControls.actions.DO_NOTHING;
+    promise = promise.then(function() {
+        // events
+        window.eventTypes = [
+            'keydown',
+            'keyup',
+            'mousein',
+            'mouseout',
+            'mouseleave',
+            'mousemove',
+            'mousedown',
+            'mouseup',
+            'click',
+            'wheel'
+        ];
 
-    window.setUIblocked(true);
+        // interface
+        window.interfaceControls = {
+            actions: {
+                DO_NOTHING: 0,
+                ADD_ANNOTATION: 1,
+                REMOVE_ANNOTATIONS: 2
+            }
+        };
+        window.interfaceControls.action = window.interfaceControls.actions.DO_NOTHING;
+
+        window.setUIblocked(true);
 
 
-    // make class panel grow and shrink on mouseover/mouseleave
-    $('#tools-container').on('mouseenter', function() {
-        if(window.uiBlocked || $(this).is(':animated')) return;
-        $('#tools-container').animate({
-            right: 0
+        // make class panel grow and shrink on mouseover/mouseleave
+        $('#tools-container').on('mouseenter', function() {
+            if(window.uiBlocked || $(this).is(':animated')) return;
+            $('#tools-container').animate({
+                right: 0
+            });
         });
-    });
-    $('#tools-container').on('mouseleave', function() {
-        if(window.uiBlocked) return;
-        let offset = -$(this).outerWidth() + 40;
-        $('#tools-container').animate({
-            right: offset
+        $('#tools-container').on('mouseleave', function() {
+            if(window.uiBlocked) return;
+            let offset = -$(this).outerWidth() + 40;
+            $('#tools-container').animate({
+                right: offset
+            });
         });
-    });
-    $('#tools-container').css('right', -$('#tools-container').outerWidth() + 40);
+        $('#tools-container').css('right', -$('#tools-container').outerWidth() + 40);
 
 
-    // overlay HUD
-    window.showOverlay = function(contents) {
-        if(contents === undefined || contents === null) {
-            $('#overlay-card').slideUp();
-            $('#overlay').fadeOut();
-            $('#overlay-card').empty();
-            window.setUIblocked(false);
+        // overlay HUD
+        window.showOverlay = function(contents) {
+            if(contents === undefined || contents === null) {
+                $('#overlay-card').slideUp();
+                $('#overlay').fadeOut();
+                $('#overlay-card').empty();
+                window.setUIblocked(false);
 
-        } else {
-            window.setUIblocked(true);
-            $('#overlay-card').html(contents);
-            $('#overlay').fadeIn();
-            $('#overlay-card').slideDown();
+            } else {
+                window.setUIblocked(true);
+                $('#overlay-card').html(contents);
+                $('#overlay').fadeIn();
+                $('#overlay-card').slideDown();
+            }
         }
-    }
 
 
-    // login verification screen
-    window.showVerificationOverlay = function(callback) {
-        var loginFun = function(callback) {
-            var username = $('#navbar-user-dropdown').html();       // cannot use cookie since it has already been deleted by the server
-            var password = $('#password').val();
-            $.ajax({
-                url: '/login',
+        // login verification screen
+        window.showVerificationOverlay = function(callback) {
+            var loginFun = function(callback) {
+                var username = $('#navbar-user-dropdown').html();       // cannot use cookie since it has already been deleted by the server
+                var password = $('#password').val();
+                $.ajax({
+                    url: '/login',
+                    method: 'post',
+                    data: {username: username, password: password},
+                    success: function(response) {
+                        window.showOverlay(null);
+                        callback();
+                    },
+                    error: function(error) {
+                        $('#invalid-password').show();
+                    }
+                })
+            }
+
+            var overlayHtml = $('<h2>Renew Session</h2><div class="row fieldRow"><label for="password" class="col-sm">Password:</label><input type="password" name="password" id="password" required class="col-sm" /></div><div class="row fieldRow"><div class="col-sm"><div id="invalid-password" style="display:none;color:red;">invalid password entered</div><button id="abort" class="btn btn-sm btn-danger">Cancel</button><button id="confirm-password" class="btn btn-sm btn-primary float-right">OK</button></div></div>');
+            window.showOverlay(overlayHtml);
+
+            $('#abort').click(function() {
+                window.location.href = '/';
+            })
+
+            $('#confirm-password').click(function() {
+                loginFun(callback);
+            });
+        }
+
+        window.verifyLogin = function(callback) {
+            return $.ajax({
+                url: '/loginCheck',
                 method: 'post',
-                data: {username: username, password: password},
-                success: function(response) {
+                success: function() {
                     window.showOverlay(null);
                     callback();
                 },
-                error: function(error) {
-                    $('#invalid-password').show();
+                error: function() {
+                    // show login verification overlay
+                    window.showVerificationOverlay(callback);
                 }
-            })
+            });
         }
 
-        var overlayHtml = $('<h2>Renew Session</h2><div class="row fieldRow"><label for="password" class="col-sm">Password:</label><input type="password" name="password" id="password" required class="col-sm" /></div><div class="row fieldRow"><div class="col-sm"><div id="invalid-password" style="display:none;color:red;">invalid password entered</div><button id="abort" class="btn btn-sm btn-danger">Cancel</button><button id="confirm-password" class="btn btn-sm btn-primary float-right">OK</button></div></div>');
-        window.showOverlay(overlayHtml);
 
-        $('#abort').click(function() {
-            window.location.href = '/';
-        })
 
-        $('#confirm-password').click(function() {
-            loginFun(callback);
+        // logout and reload functionality
+        window.onbeforeunload = function() {
+            window.dataHandler.submitAnnotations(true);
+        };
+
+        $('#logout').click(function() {
+            window.dataHandler.submitAnnotations(true);
+            window.location.href = '/logout';
         });
-    }
-
-    window.verifyLogin = function(callback) {
-        return $.ajax({
-            url: '/loginCheck',
-            method: 'post',
-            success: function() {
-                window.showOverlay(null);
-                callback();
-            },
-            error: function() {
-                // show login verification overlay
-                window.showVerificationOverlay(callback);
-            }
-        });
-    }
-
-
-
-    // logout and reload functionality
-    window.onbeforeunload = function() {
-        window.dataHandler.submitAnnotations(true);
-    };
-
-    $('#logout').click(function() {
-        window.dataHandler.submitAnnotations(true);
-        window.location.href = '/logout';
     });
 
 
     // AI backend
-    promise = promise.done(function() {
+    promise = promise.then(function() {
         if(window.aiControllerURI != null) {
             window.aiWorkerHandler = new AIWorkerHandler($('.ai-worker-entries'));
             $('#ai-worker-minipanel').show();
         }
-        return $.Deferred().promise();
     });
 
 
     // load image batch
-    promise = promise.done(function() {
+    promise = promise.then(function() {
         return window.dataHandler._loadNextBatch();
     });
 
 
     // enable interface
-    promise = promise.done(function() {
+    promise = promise.then(function() {
         window.showLoadingOverlay(false);
     });
 
 
     // show interface tutorial
-    promise.done(function() {
+    promise.then(function() {
         if(!(window.getCookie('skipTutorial')))
             window.showTutorial(true);
     });
