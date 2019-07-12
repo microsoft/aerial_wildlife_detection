@@ -136,7 +136,7 @@ def _call_train(dbConnector, config, imageIDs, subset, trainingFun, fileServer):
         stateDict = trainingFun(stateDict=stateDict, data=data)
     except Exception as e:
         print(e)
-        raise Exception('error during training'})
+        raise Exception('error during training')
 
     #TODO
     return 0
@@ -151,7 +151,7 @@ def _call_train(dbConnector, config, imageIDs, subset, trainingFun, fileServer):
         dbConnector.execute(sql, (psycopg2.Binary(stateDict), subset,), numReturn=None)
     except Exception as e:
         print(e)
-        raise Exception('error during data committing'})
+        raise Exception('error during data committing')
 
     current_task.update_state(state=states.SUCCESS, meta={'message':'done'})
     return 0
@@ -178,7 +178,7 @@ def _call_average_model_states(dbConnector, config, averageFun, fileServer):
         modelStates = dbConnector.execute(sql, None, 'all')
     except Exception as e:
         print(e)
-        raise Exception('error during model state loading'})
+        raise Exception('error during model state loading')
 
     # do the work
     current_task.update_state(state='PREPARING', meta={'message':'averaging models'})
@@ -186,7 +186,7 @@ def _call_average_model_states(dbConnector, config, averageFun, fileServer):
         modelStates_avg = averageFun(stateDicts=modelStates)
     except Exception as e:
         print(e)
-        raise Exception('error during model state fusion'})
+        raise Exception('error during model state fusion')
 
     # push to database
     current_task.update_state(state='FINALIZING', meta={'message':'saving model state'})
@@ -198,7 +198,7 @@ def _call_average_model_states(dbConnector, config, averageFun, fileServer):
         dbConnector.insert(sql, (modelStates_avg, False,))   #TODO
     except Exception as e:
         print(e)
-        raise Exception('error during data committing'})
+        raise Exception('error during data committing')
 
 
     # delete partial model states
@@ -210,7 +210,7 @@ def _call_average_model_states(dbConnector, config, averageFun, fileServer):
         dbConnector.execute(sql, None, None)
     except Exception as e:
         print(e)
-        raise Exception('error during cache purging'})
+        raise Exception('error during cache purging')
 
 
     # all done
@@ -233,7 +233,7 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
         stateDict = __load_model_state(config, dbConnector)
     except Exception as e:
         print(e)
-        raise Exception('error during model state loading'})
+        raise Exception('error during model state loading')
 
     # load remaining data (image filenames, class definitions)
     current_task.update_state(state='PREPARING', meta={'message':'loading metadata'})
@@ -241,7 +241,7 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
         data = __load_metadata(config, dbConnector, imageIDs, False)
     except Exception as e:
         print(e)
-        raise Exception('error during metadata loading'})
+        raise Exception('error during metadata loading')
 
     # call inference function
     current_task.update_state(state='PREPARING', meta={'message':'starting inference'})
@@ -249,7 +249,7 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
         result = inferenceFun(stateDict=stateDict, data=data)
     except Exception as e:
         print(e)
-        raise Exception('error during inference'})
+        raise Exception('error during inference')
 
     # call ranking function (AL criterion)
     if rankFun is not None:
@@ -258,7 +258,7 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
             result = rankFun(data=result, **{'stateDict':stateDict})
         except Exception as e:
             print(e)
-            raise Exception('error during ranking'})
+            raise Exception('error during ranking')
 
     # parse result
     try:
@@ -289,7 +289,7 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
                 values_img.append([imgID, result[imgID]['fVec']])
     except Exception as e:
         print(e)
-        raise Exception('error during result parsing'})
+        raise Exception('error during result parsing')
 
     #TODO
     return 0
@@ -313,7 +313,7 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
             dbConnector.insert(sql, tuple(values_img))
     except Exception as e:
         print(e)
-        raise Exception('error during data committing'})
+        raise Exception('error during data committing')
 
     
     current_task.update_state(state=states.SUCCESS, meta={'message':'done'})
@@ -331,6 +331,6 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
 #         result = rankFun(data=predictions)
 #     except Exception as e:
 #         print(e)
-#         raise Exception('error during ranking'})
+#         raise Exception('error during ranking')
 
 #     return result
