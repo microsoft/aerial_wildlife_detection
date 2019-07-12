@@ -180,6 +180,12 @@ def _call_average_model_states(dbConnector, config, averageFun, fileServer):
         print(e)
         raise Exception('error during model state loading')
 
+    if not len(modelStates):
+        # no states to be averaged; return
+        current_task.update_state(state=states.SUCCESS, meta={'message':'no model states to be averaged'})
+        return 0
+
+
     # do the work
     current_task.update_state(state='PREPARING', meta={'message':'averaging models'})
     try:

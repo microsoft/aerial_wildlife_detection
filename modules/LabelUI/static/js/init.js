@@ -94,6 +94,9 @@ $(document).ready(function() {
 
     // set up data handler
     promise = promise.done(function() {
+        console.log(window.numImages_x)
+        console.log(window.numImages_y)
+        console.log(parseInt(window.numImages_x))
         console.log(parseInt(window.numImages_x) * parseInt(window.numImages_y))
         window.dataHandler = new DataHandler($('#gallery'));
         return $.Deferred().promise();
