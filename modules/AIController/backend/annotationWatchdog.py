@@ -78,6 +78,7 @@ class Watchdog(Thread):
             if count >= self.annoThreshold:
                 # threshold exceeded; initiate training process and return
                 self.middleware.start_training(minTimestamp='lastState', distributeTraining=False)    #TODO
+                self.stop()
                 break
             
             else:

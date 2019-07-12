@@ -116,7 +116,6 @@ window.getProjectSettings = function() {
             window.numImages_y = 1;
         }
 
-        console.log('loaded')
         return $.Deferred().promise();
     });
 }

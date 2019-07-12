@@ -312,7 +312,7 @@ canvas {
     padding-left: 0;
     padding-right: 0;
     padding-top: 10px;
-    padding-bottom: 10px;
+    padding-bottom: 20px;
 }
 
 #ai-worker-entries, #ai-tasks-entries {

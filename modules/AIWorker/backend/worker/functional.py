@@ -138,8 +138,8 @@ def _call_train(dbConnector, config, imageIDs, subset, trainingFun, fileServer):
         print(e)
         raise Exception('error during training')
 
-    #TODO
-    return 0
+    # #TODO
+    # return 0
 
     # commit state dict to database
     try:
@@ -297,8 +297,8 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
         print(e)
         raise Exception('error during result parsing')
 
-    #TODO
-    return 0
+    # #TODO
+    # return 0
 
     # commit to database
     try:

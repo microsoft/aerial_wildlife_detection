@@ -89,21 +89,6 @@ class AIMiddleware():
             to False to allow another round of model training.
         '''
 
-        print(trainingJob)
-
-        # # start model state averaging   (TODO: check if group?)
-        # job = celery_interface.call_average_model_states.si()
-        # statusFrame = job.freeze()
-        # self.messages[statusFrame.id] = {
-        #     'type': 'modelFusion',
-        #     'submitted': str(current_time()),
-        #     'status': celery.states.PENDING,
-        #     'meta': {'message':'sending job to worker'}
-        # }
-
-        # worker = job.delay()
-        # self._listen_status(worker, None, None)
-
         # all done, enable training again (TODO: on error/on success?)
         self.training = False
 
@@ -198,18 +183,17 @@ class AIMiddleware():
         }
 
         # submit job
-        job = process.apply_async(ignore_result=False, result_extended=True, link=celery_interface.call_average_model_states.s())       #TODO: only chain if distributed training
-
-        # start listener thread
         if distributeTraining:
-            on_complete = self._training_completed
+            # also append average model states job
+            job = process.apply_async(ignore_result=False, result_extended=True, link=celery_interface.call_average_model_states.s())
         else:
-            on_complete = None
+            job = process.apply_async(ignore_result=False, result_extended=True)
         
-        t = threading.Thread(target=self._listen_status, args=(job, on_complete, None))
+        # start listener thread
+        t = threading.Thread(target=self._listen_status, args=(job, self._training_completed, self._training_completed))
         t.start()
 
-        return 'ok' #TODO
+        return 'ok'
 
 
     def _do_inference(self, imageIDs, maxNumWorkers=-1):
@@ -310,7 +294,7 @@ class AIMiddleware():
         '''
 
         self._do_inference(imageIDs, maxNumWorkers)
-        return 'ok' #TODO
+        return 'ok'
     
 
 
@@ -324,7 +308,6 @@ class AIMiddleware():
 
         # project status
         if project:
-
             if self.training:
                 status['project'] = {}
             else:

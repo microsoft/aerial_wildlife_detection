@@ -109,8 +109,8 @@ class RetinaNet:
             torch.cuda.manual_seed(self.options['general']['seed'])
 
         model.to(device)
-        
-        for idx, (img, bboxes_target, labels_target, fVec, _) in enumerate(tqdm(dataLoader)):
+        imgCount = 0
+        for (img, bboxes_target, labels_target, fVec, _) in tqdm(dataLoader):
             img, bboxes_target, labels_target = img.to(device), bboxes_target.to(device), labels_target.to(device)
 
             optimizer.zero_grad()
@@ -120,7 +120,8 @@ class RetinaNet:
             optimizer.step()
             
             # update worker state
-            current_task.update_state(state='PROGRESS', meta={'done': idx+1, 'total': len(dataLoader), 'message': 'training'})
+            imgCount += img.size(0)
+            current_task.update_state(state='PROGRESS', meta={'done': imgCount, 'total': len(dataLoader.dataset), 'message': 'training'})
 
         # all done; return state dict as bytes
         if 'cuda' in device:
@@ -195,7 +196,8 @@ class RetinaNet:
         response = {}
         device = self._get_device()
         model.to(device)
-        for idx, (img, _, _, fVec, imgID) in enumerate(dataLoader):
+        imgCount = 0
+        for (img, _, _, fVec, imgID) in tqdm(dataLoader):
 
             # # BIG FAT TODO: BATCH SIZE... >:{
             # if img is not None:
@@ -256,7 +258,8 @@ class RetinaNet:
                     }
 
             # update worker state   TODO
-            current_task.update_state(state='PROGRESS', meta={'done': idx+1, 'total': len(dataLoader), 'message': 'predicting'})
+            imgCount += len(imgID)
+            current_task.update_state(state='PROGRESS', meta={'done': imgCount, 'total': len(dataLoader.dataset), 'message': 'predicting'})
 
         model.cpu()
         if 'cuda' in device:
