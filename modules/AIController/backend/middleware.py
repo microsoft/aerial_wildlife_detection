@@ -56,61 +56,57 @@ class AIMiddleware():
 
 
     
-    def _on_raw_message(self, id, message):
+    def _on_raw_message(self, job, message, on_complete=None, on_failure=None):
+        id = job.id
         self.messages[id]['status'] = message['status']
         if 'result' in message:
             self.messages[id]['meta'] = message['result']
         else:
             self.messages[id]['meta'] = None
 
+        if message['status'] == 'SUCCESS' and on_complete is not None:
+            on_complete(job)
+        elif message['status'] == 'FAILURE' and on_failure is not None:
+            on_failure(job)
 
 
-    def _inference_initiated(self, job):
+    def _listen_status(self, job, on_complete=None, on_failure=None):
         '''
-            To be called in a thread after an inference process has been started.
+            To be called in a thread after a has been submitted.
             Waits for the worker to finish and stores the messages returned as
             the worker is moving along.
-            Removes the worker's ID once finished. TODO
         '''
-        job.get(on_message=lambda msg: self._on_raw_message(job.id, msg), propagate=False)
+        job.get(on_message=lambda msg: self._on_raw_message(job, msg, on_complete, on_failure), propagate=False)
 
 
 
-    def _training_initiated(self, jobs, distributedTraining):
+    def _training_completed(self, trainingJob):
         '''
-            To be called in a  thread after a training process has been started.
-            Waits for the worker(s) to finish and stores the messages returned
-            as the worker(s) is/are moving along.
-            If there is just one worker, the function simply waits for it to
-            finish.
+            To be called after a training process has been completed.
             If there is more than one worker, the 'average_model_states'
             instruction of the AI model is called and again awaited for.
             After successful training, the 'training' flag will be set
             to False to allow another round of model training.
         '''
-        
-        # wait for worker(s) to finish  (TODO: check if group?)
-        jobs.get(on_message=lambda msg: self._on_raw_message(jobs.id, msg), propagate=False)
 
+        print(trainingJob)
 
-        # start model state averaging   (TODO: check if group?)
-        job = celery_interface.call_average_model_states.si()
-        statusFrame = job.freeze()
-        self.messages[statusFrame.id] = {
-            'type': 'modelFusion',
-            'submitted': str(current_time()),
-            'status': celery.states.PENDING,
-            'meta': {'message':'sending job to worker'}
-        }
+        # # start model state averaging   (TODO: check if group?)
+        # job = celery_interface.call_average_model_states.si()
+        # statusFrame = job.freeze()
+        # self.messages[statusFrame.id] = {
+        #     'type': 'modelFusion',
+        #     'submitted': str(current_time()),
+        #     'status': celery.states.PENDING,
+        #     'meta': {'message':'sending job to worker'}
+        # }
 
-        worker = job.delay()
-        worker.get(on_message=lambda msg: self._on_raw_message(worker.id, msg), propagate=False)
-
+        # worker = job.delay()
+        # self._listen_status(worker, None, None)
 
         # all done, enable training again (TODO: on error/on success?)
         self.training = False
 
-        return
 
     
     def start_training(self, minTimestamp='lastState', distributeTraining=False):
@@ -202,10 +198,15 @@ class AIMiddleware():
         }
 
         # submit job
-        job = process.apply_async(ignore_result=False, result_extended=True)
+        job = process.apply_async(ignore_result=False, result_extended=True, link=celery_interface.call_average_model_states.s())       #TODO: only chain if distributed training
 
         # start listener thread
-        t = threading.Thread(target=self._training_initiated, args=(job, distributeTraining,))
+        if distributeTraining:
+            on_complete = self._training_completed
+        else:
+            on_complete = None
+        
+        t = threading.Thread(target=self._listen_status, args=(job, on_complete, None))
         t.start()
 
         return 'ok' #TODO
@@ -245,7 +246,7 @@ class AIMiddleware():
         result = jobGroup.apply_async()
 
         # start listener thread
-        t = threading.Thread(target=self._inference_initiated, args=(result,))
+        t = threading.Thread(target=self._listen_status, args=(result, None, None))
         t.start()
         return
 

@@ -15,6 +15,7 @@ class AIWorker {
         this.workerID = workerID;
         this.state = state;
         this._setup_markup();
+        this.update_state(state);
     }
 
     _setup_markup() {
@@ -23,11 +24,11 @@ class AIWorker {
         var detailsC = $('<table style="margin-left:20px;width:180px;font-size:14px;color:darkgray;"></table>');
         var activeTasksC = $('<tr><td>Active Tasks:</td></tr>');
         detailsC.append(activeTasksC);
-        this.activeTasks = $('<td>0</td>');
+        this.activeTasks = $('<td></td>');
         activeTasksC.append(this.activeTasks);
         var schedTasksC = $('<tr><td>Scheduled Tasks:</td></tr>');
         detailsC.append(schedTasksC);
-        this.scheduledTasks = $('<td>0</td>');
+        this.scheduledTasks = $('<td></td>');
         schedTasksC.append(this.scheduledTasks);
         this.markup.append(detailsC);
     }
@@ -35,9 +36,13 @@ class AIWorker {
     update_state(state) {
         if(state.hasOwnProperty('active_tasks')) {
             this.activeTasks.html(state['active_tasks'].length);
+        } else {
+            this.activeTasks.html('0');
         }
         if(state.hasOwnProperty('scheduled_tasks')) {
-            this.activeTasks.html(state['scheduled_tasks'].length);
+            this.scheduledTasks.html(state['scheduled_tasks'].length);
+        } else {
+            this.scheduledTasks.html('0');
         }
     }
 }
@@ -318,6 +323,7 @@ class AIWorkerHandler {
 
 
                 // global task status
+                var taskInProgress = false;
                 var numTotal = 0;
                 var numDone = 0;
 
@@ -336,12 +342,15 @@ class AIWorkerHandler {
                     }
 
                     // parse task progress
-                    if(tasks[key].hasOwnProperty('meta')) {
-                        if(tasks[key]['meta'].hasOwnProperty('total')) {
-                            numTotal += tasks[key]['meta']['total'];
-                        }
-                        if(tasks[key]['meta'].hasOwnProperty('done')) {
-                            numDone += tasks[key]['meta']['done'];
+                    if(!(tasks[key].status === 'SUCCESS' || tasks[key].status === 'FAILURE')) {
+                        taskInProgress = true;
+                        if(tasks[key].hasOwnProperty('meta')) {
+                            if(tasks[key]['meta'].hasOwnProperty('total')) {
+                                numTotal += tasks[key]['meta']['total'];
+                            }
+                            if(tasks[key]['meta'].hasOwnProperty('done')) {
+                                numDone += tasks[key]['meta']['done'];
+                            }
                         }
                     }
                 }
@@ -361,8 +370,15 @@ class AIWorkerHandler {
                         }, 1000);
                         msg += ' (' + Math.round(newWidthPerc) + '%)';
                     } else {
-                        // tasks going on, but progress unknown, set indeterminate
-                        self.progressBar_tasks.css('width', '100%');
+                        if(taskInProgress) {
+                            // tasks going on, but progress unknown, set indeterminate
+                            self.progressBar_tasks.css('width', '100%');
+                        } else {
+                            // no task going on; hide progress bar
+                            $(self.prInd_tasks).hide();
+                            $(self.progressBar_tasks).hide();
+                            $(self.miniStatus_tasks).hide();
+                        }
                     }
                     $(self.miniStatus_tasks).html(msg);
                 } else {

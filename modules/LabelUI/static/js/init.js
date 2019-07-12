@@ -94,8 +94,9 @@ $(document).ready(function() {
 
     // set up data handler
     promise = promise.done(function() {
+        console.log(parseInt(window.numImages_x) * parseInt(window.numImages_y))
         window.dataHandler = new DataHandler($('#gallery'));
-        return window.dataHandler._loadNextBatch();
+        return $.Deferred().promise();
     });
 
     // events
@@ -224,7 +225,13 @@ $(document).ready(function() {
             window.aiWorkerHandler = new AIWorkerHandler($('.ai-worker-entries'));
             $('#ai-worker-minipanel').show();
         }
-        return $.Deferred();
+        return $.Deferred().promise();
+    });
+
+
+    // load image batch
+    promise = promise.done(function() {
+        return window.dataHandler._loadNextBatch();
     });
 
 

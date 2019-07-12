@@ -31,7 +31,9 @@ app.conf.update(
     accept_content = ['json'],
     task_serializer = 'json',
     result_serializer = 'json',
-    task_track_started = True
+    task_track_started = True,
+    broker_heartbeat = 0,           # required to avoid peer connection resets
+    worker_max_tasks_per_child = 1      # required to free memory (also CUDA) after each process
 )
 
 
