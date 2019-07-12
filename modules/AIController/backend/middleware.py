@@ -100,7 +100,7 @@ class AIMiddleware():
             'type': 'modelFusion',
             'submitted': str(current_time()),
             'status': celery.states.PENDING,
-            'meta': {'message':'initiating model fusion'}
+            'meta': {'message':'sending job to worker'}
         }
 
         worker = job.delay()
@@ -198,7 +198,7 @@ class AIMiddleware():
             'type': 'training',
             'submitted': str(current_time()),
             'status': celery.states.PENDING,
-            'meta': {'message':'initiating training'}
+            'meta': {'message':'sending job to worker'}
         }
 
         # submit job
@@ -238,7 +238,7 @@ class AIMiddleware():
             'type': 'inference',
             'submitted': str(current_time()),
             'status': celery.states.PENDING,
-            'meta': {'message':'initiating inference'}
+            'meta': {'message':'sending job to worker'}
         }
 
         # send job

@@ -6,6 +6,43 @@
 */
 
 
+class AIWorker {
+    /*
+        Wrapper for worker status.
+    */
+    constructor(workerNumber, workerID, state) {
+        this.workerNumber = workerNumber;
+        this.workerID = workerID;
+        this.state = state;
+        this._setup_markup();
+    }
+
+    _setup_markup() {
+        this.markup = $('<div class="ai-worker"></div>');
+        this.markup.append('<h3>' + this.workerID + '</h3>');
+        var detailsC = $('<table style="margin-left:20px;width:180px;font-size:14px;color:darkgray;"></table>');
+        var activeTasksC = $('<tr><td>Active Tasks:</td></tr>');
+        detailsC.append(activeTasksC);
+        this.activeTasks = $('<td>0</td>');
+        activeTasksC.append(this.activeTasks);
+        var schedTasksC = $('<tr><td>Scheduled Tasks:</td></tr>');
+        detailsC.append(schedTasksC);
+        this.scheduledTasks = $('<td>0</td>');
+        schedTasksC.append(this.scheduledTasks);
+        this.markup.append(detailsC);
+    }
+
+    update_state(state) {
+        if(state.hasOwnProperty('active_tasks')) {
+            this.activeTasks.html(state['active_tasks'].length);
+        }
+        if(state.hasOwnProperty('scheduled_tasks')) {
+            this.activeTasks.html(state['scheduled_tasks'].length);
+        }
+    }
+}
+
+
 class AIWorkerJob {
     /*
         Wrapper for individual jobs submitted to the worker(s).
@@ -81,7 +118,7 @@ class AIWorkerJob {
     }
 
     _setup_markup() {
-        this.markup = $('<div class="ai-worker-job expanded"></div>');
+        this.markup = $('<div class="ai-worker-job"></div>');
 
         // job type
         this.markup.append($('<h3 style="margin-left:12px;cursor:pointer">' + this.jobType + '</h3>'));
@@ -125,16 +162,6 @@ class AIWorkerJob {
 
         detailsC.append(prInd);
         this.markup.append(detailsC);
-
-        // collapsible
-        this.markup.click(function() {
-            if($(this).hasClass('expanded')) {
-                detailsC.slideUp();
-            } else {
-                detailsC.slideDown();
-            }
-            $(this).toggleClass('expanded');
-        });
     }
 
     update_state(state) {
@@ -149,9 +176,10 @@ class AIWorkerHandler {
 
     constructor(parentDiv) {
         this.parentDiv = parentDiv;
+        this.workers = {};
         this.tasks = {};
         this._setup_markup();
-        // this._query_worker_status(); //TODO
+        this._query_worker_status();
         this._query_task_status();
     }
 
@@ -165,8 +193,8 @@ class AIWorkerHandler {
 
     _setup_markup() {
 
-        // this.workersContainer = $('#ai-worker-entries');     //TODO
-        this.taskContainer = $('#ai-tasks-entries');
+        this.workersContainer = $('#ai-worker-entries');
+        this.tasksContainer = $('#ai-tasks-entries');
 
         // mini-panel global progress indicator for tasks
         this.prInd_tasks = $('<div class="minipanel-progress" style="display:none"></div>');
@@ -194,6 +222,27 @@ class AIWorkerHandler {
         $('#ai-worker-minipanel').click(function() {
             self.__toggle_panel();
         });
+        $('#ai-worker-panel-header').click(function() {
+            self.__toggle_panel();
+        });
+
+        // collapsible category headers
+        $('#ai-worker-header').click(function() {
+            if($(this).hasClass('expanded')) {
+                $('#ai-worker-entries').slideUp();
+            } else {
+                $('#ai-worker-entries').slideDown();
+            }
+            $(this).toggleClass('expanded');
+        });
+        $('#ai-tasks-header').click(function() {
+            if($(this).hasClass('expanded')) {
+                $('#ai-tasks-entries').slideUp();
+            } else {
+                $('#ai-tasks-entries').slideDown();
+            }
+            $(this).toggleClass('expanded');
+        });
     }
 
 
@@ -206,15 +255,17 @@ class AIWorkerHandler {
                 // parse workers
                 var workers = data['status']['workers'];
                 
-                //TODO: simple count for now
-                var count = Object.keys(workers).length;
-                var suffix = (count == 1 ? '' : 's');
-                $('#ai-worker-workers-count').html('connected to ' + count + ' worker' + suffix);
+                for(var key in workers) {
+                    if(!self.workers.hasOwnProperty(key)) {
+                        var worker = new AIWorker(Object.keys(self.workers).length+1, key, workers[key]);
+                        self.workers[key] = worker;
+                        self.workersContainer.prepend(worker.markup);
 
-                // for(var key in workers) {
-                //     console.log(key)
-                // }
-
+                    } else {
+                        // update worker
+                        self.workers[key].update_state(workers[key]);
+                    }
+                }
                 setTimeout(function() { self._query_worker_status(); }, 10000);   //TODO: make parameter
             },
             error: function(a,b,c) {
@@ -272,7 +323,7 @@ class AIWorkerHandler {
                     if(!self.tasks.hasOwnProperty(key)) {
                         var task = new AIWorkerJob(Object.keys(self.tasks).length+1, key, tasks[key]);
                         self.tasks[key] = task;
-                        self.taskContainer.append(task.markup);
+                        self.tasksContainer.prepend(task.markup);
 
                     } else {
                         // update task
@@ -287,14 +338,6 @@ class AIWorkerHandler {
                         if(tasks[key]['meta'].hasOwnProperty('done')) {
                             numDone += tasks[key]['meta']['done'];
                         }
-                    }
-                }
-
-                // check for completed tasks (TODO: what to do with them? Completed history?)
-                for(var key in self.tasks) {
-                    if(!tasks.hasOwnProperty(key)) {
-                        self.tasks[key].markup.remove();
-                        delete self.tasks[key];
                     }
                 }
 

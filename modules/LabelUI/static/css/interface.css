@@ -285,10 +285,23 @@ canvas {
     bottom: 40px;
     height: 400px;
     max-height:300px;
-    padding-top: 20px;
-    padding-bottom: 10px;
+    padding: 20px;
     color: white;
     background: #575352F0;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+}
+
+.ai-entries {
+    /* padding-left: 15px; */
+}
+
+#ai-worker-panel-header {
+    cursor: pointer;
+}
+
+.ai-list-subheader {
+    padding-left: 5px;
 }
 
 .ai-worker-container {
@@ -296,6 +309,10 @@ canvas {
     flex-direction: column;
     overflow-y: auto;
     height: 100%;
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 10px;
+    padding-bottom: 10px;
 }
 
 #ai-worker-entries, #ai-tasks-entries {
@@ -304,6 +321,7 @@ canvas {
     overflow-y: auto;
     margin-left: 10px;
     margin-right: 10px;
+    height: 100%;
 }
 
 .ai-worker-job {
@@ -312,21 +330,25 @@ canvas {
     margin-bottom: 20px;
 }
 
-.ai-worker-job::before {
+.ai-category-header {
+    cursor: pointer;
+}
+
+.ai-category-header::before {
     content: '\25B8';
     cursor: pointer;
     float: left;
     margin-left: -12px;
 }
 
-.ai-worker-job.expanded::before {
+.ai-category-header.expanded::before {
     animation: colArr-expand 1s ease forwards;
 	/* -webkit-transform: rotate(180deg);
 	-moz-transform: rotate(180deg);
 	transform: rotate(180deg); */
 }
 
-.ai-worker-job::before {
+.ai-category-header::before {
     animation: colArr-expand 1s ease backwards;
 	/* -webkit-transform: rotate(180deg);
 	-moz-transform: rotate(180deg);
