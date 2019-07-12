@@ -128,7 +128,7 @@ def _call_train(dbConnector, config, imageIDs, subset, trainingFun, fileServer):
         data = __load_metadata(config, dbConnector, imageIDs, True)
     except Exception as e:
         print(e)
-        raise Exception('error during metadata loading'})
+        raise Exception('error during metadata loading')
 
     # call training function
     try:
