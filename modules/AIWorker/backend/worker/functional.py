@@ -119,7 +119,7 @@ def _call_train(dbConnector, config, imageIDs, subset, trainingFun, fileServer):
         stateDict = __load_model_state(config, dbConnector)
     except Exception as e:
         print(e)
-        raise Exception('error during model state loading'})
+        raise Exception('error during model state loading')
 
 
     # load labels and other metadata
