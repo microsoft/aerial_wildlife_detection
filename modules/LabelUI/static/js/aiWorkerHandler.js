@@ -321,8 +321,6 @@ class AIWorkerHandler {
                     $(self.miniStatus_anno).hide();
                 }
 
-                var timeoutVal = 1000;
-
                 // global task status
                 var taskInProgress = false;
                 var numTotal = 0;
@@ -387,12 +385,15 @@ class AIWorkerHandler {
                     $(self.prInd_tasks).hide();
                     $(self.progressBar_tasks).hide();
                     $(self.miniStatus_tasks).hide();
-                    
-                    // reduce querying interval
-                    timeoutVal = 10000;
                 }
 
-                setTimeout(function() { self._query_task_status(); }, timeoutVal);   //TODO
+                var timeoutVal = 10000;
+                if(taskInProgress) {
+                    // increase polling frequency
+                    timeoutVal = 1000;
+                }
+
+                setTimeout(function() { self._query_task_status(); }, timeoutVal);
             },
             error: function(a,b,c) {
                 console.log(a);

@@ -89,41 +89,15 @@ class AIMiddleware():
             to False to allow another round of model training.
         '''
 
-        # all done, enable training again (TODO: on error/on success?)
+        # re-enable training
         self.training = False
 
 
-    
-    def start_training(self, minTimestamp='lastState', distributeTraining=False):
+
+    def _get_training_job_signature(self, minTimestamp='lastState', maxNumWorkers=-1):
         '''
-            Initiates a training round for the model, based on the set of data (images, annotations)
-            as specified in the parameters. Distributes data to the set of registered AIWorker instan-
-            ces, which then call the 'train' function of the AI model given in the configuration. Upon
-            training completion, the model states as returned by the function, and eventually the 
-            AIWorker instances are collected, and the AIController calls the 'average_states' function
-            of the AI model to get one single, most recent state. This is finally inserted to the data-
-            base.
-            Note that this function only loads the annotation data from the database, but not the images.
-            Retrieving images is part of the AI model's 'train' function. TODO: feature vectors?
-
-            Input parameters:
-            - minTimestamp: Defines the earliest point in time of the annotations to be considered for
-                            model training. May take one of the following values:
-                            - 'lastState' (default): Limits the annotations to those made after the time-
-                                                     stamp of the latest model state. If no model state is
-                                                     found, all annotations are considered.
-                            - None, -1, or 'all': Includes all annotations.
-                            - (a datetime object): Includes annotations made after a custom timestamp.
-            - distributeTraining: if True, the data (images, annotations) will be split into equal chunks
-                                  and distributed to all the registered AIWorkers. This requires a working
-                                  implementation of the 'average_states' function within the AI model.
-                                  By default (False), only one AIWorker is considered. //TODO: load balancing?
-
-            Returns:
-            - A dict with a status message. May take one of the following:
-                - TODO: status ok, fail, no annotations, etc. Make threaded so that it immediately returns something.
+            Assembles (but does not submit) a training job based on the provided parameters.
         '''
-
         # check if training is still in progress
         if self.training:
             raise Exception('Training process already running.')
@@ -136,10 +110,12 @@ class AIMiddleware():
             raise ValueError('{} is not a recognized property for variable "minTimestamp"'.format(str(minTimestamp)))
 
 
-        # #TODO: due to a limitation of RabbitMQ, status are not being broadcast from Celery group objects.
-        # # Also, it is unclear whether averaging model states from distributed trainings is useful.
-        # # We therefore disable distributed training until problems are solved.
-        # distributeTraining = False
+        if maxNumWorkers != 1:
+            # only query the number of available workers if more than one is specified to save time
+            i = current_app.control.inspect()
+            num_workers = min(maxNumWorkers, len(i.stats()))
+        else:
+            num_workers = maxNumWorkers
 
 
         # query image IDs
@@ -147,17 +123,13 @@ class AIMiddleware():
 
         if isinstance(minTimestamp, datetime):
             imageIDs = self.dbConn.execute(sql, (minTimestamp,), 'all')
-
         else:
             imageIDs = self.dbConn.execute(sql, None, 'all')
 
         imageIDs = [i['image'] for i in imageIDs]
 
 
-        if distributeTraining:
-            # retrieve available workers
-            i = current_app.control.inspect()
-            num_workers = len(i.stats())
+        if maxNumWorkers > 1:
 
             # distribute across workers (TODO: also specify subset size for multiple jobs; randomly draw if needed)
             images_subset = array_split(imageIDs, max(1, len(imageIDs) // num_workers))
@@ -182,22 +154,13 @@ class AIMiddleware():
             'meta': {'message':'sending job to worker'}
         }
 
-        # submit job
-        if distributeTraining:
-            # also append average model states job
-            job = process.apply_async(ignore_result=False, result_extended=True, link=celery_interface.call_average_model_states.s())
-        else:
-            job = process.apply_async(ignore_result=False, result_extended=True)
-        
-        # start listener thread
-        t = threading.Thread(target=self._listen_status, args=(job, self._training_completed, self._training_completed))
-        t.start()
-
-        return 'ok'
+        return process, num_workers
 
 
-    def _do_inference(self, imageIDs, maxNumWorkers=-1):
-
+    def _get_inference_job_signature(self, imageIDs, maxNumWorkers=-1):
+        '''
+            Assembles (but does not submit) an inference job based on the provided parameters.
+        '''
         # setup
         if maxNumWorkers != 1:
             # only query the number of available workers if more than one is specified to save time
@@ -225,9 +188,64 @@ class AIMiddleware():
             'status': celery.states.PENDING,
             'meta': {'message':'sending job to worker'}
         }
+        return jobGroup
+
+    
+    def start_training(self, minTimestamp='lastState', maxNumWorkers=-1):
+        '''
+            Initiates a training round for the model, based on the set of data (images, annotations)
+            as specified in the parameters. Distributes data to the set of registered AIWorker instan-
+            ces, which then call the 'train' function of the AI model given in the configuration. Upon
+            training completion, the model states as returned by the function, and eventually the 
+            AIWorker instances are collected, and the AIController calls the 'average_states' function
+            of the AI model to get one single, most recent state. This is finally inserted to the data-
+            base.
+            Note that this function only loads the annotation data from the database, but not the images.
+            Retrieving images is part of the AI model's 'train' function. TODO: feature vectors?
+
+            Input parameters:
+            - minTimestamp: Defines the earliest point in time of the annotations to be considered for
+                            model training. May take one of the following values:
+                            - 'lastState' (default): Limits the annotations to those made after the time-
+                                                     stamp of the latest model state. If no model state is
+                                                     found, all annotations are considered.
+                            - None, -1, or 'all': Includes all annotations.
+                            - (a datetime object): Includes annotations made after a custom timestamp.
+            - maxNumWorkers: Specify the maximum number of workers to distribute training to. If set to 1,
+                             the model is trained on just one worker (no model state averaging appended).
+                             If set to a number, that number of workers (up to the maximum number of connected)
+                             is consulted for training the model. Upon completion, all model state dictionaries
+                             are averaged by one random worker.
+                             If set to -1, all connected workers are considered. //TODO: load balancing?
+
+            Returns:
+            - A dict with a status message. May take one of the following:
+                - TODO: status ok, fail, no annotations, etc. Make threaded so that it immediately returns something.
+        '''
+
+        process, numWorkers = self._get_training_job_signature(minTimestamp, maxNumWorkers)
+
+
+        # submit job
+        if numWorkers > 1:
+            # also append average model states job
+            job = process.apply_async(ignore_result=False, result_extended=True, link=celery_interface.call_average_model_states.s())
+        else:
+            job = process.apply_async(ignore_result=False, result_extended=True)
+        
+        # start listener thread
+        t = threading.Thread(target=self._listen_status, args=(job, self._training_completed, self._training_completed))
+        t.start()
+
+        return 'ok'
+
+
+    def _do_inference(self, process):
 
         # send job
-        result = jobGroup.apply_async()
+        job = process.apply_async(ignore_result=False, result_extended=True)
+        
+        result = job.apply_async()
 
         # start listener thread
         t = threading.Thread(target=self._listen_status, args=(result, None, None))
@@ -262,14 +280,14 @@ class AIMiddleware():
         if maxNumImages is None or maxNumImages == -1:
             maxNumImages = self.config.getProperty('AIController', 'maxNumImages_inference')
 
-
         # load the IDs of the images that are being subjected to inference
         sql = self.sqlBuilder.getInferenceQueryString(forceUnlabeled, maxNumImages)
         imageIDs = self.dbConn.execute(sql, None, 'all')
         imageIDs = [i['image'] for i in imageIDs]
 
-        self._do_inference(imageIDs, maxNumWorkers)
-        return 'ok' #TODO
+        process = self._get_inference_job_signature(imageIDs, maxNumWorkers)
+        self._do_inference(process)
+        return 'ok'
 
 
     
@@ -293,9 +311,41 @@ class AIMiddleware():
                              time. If set to -1 (default), the data will be divided across all registered workers.
         '''
 
-        self._do_inference(imageIDs, maxNumWorkers)
+        process = self._get_inference_job_signature(imageIDs, maxNumWorkers)
+        self._do_inference(process)
         return 'ok'
     
+
+
+    def start_train_and_inference(self, minTimestamp='lastState', maxNumWorkers_train=1,
+                                    forceUnlabeled_inference=True, maxNumImages_inference=None, maxNumWorkers_inference=1):
+        '''
+            Submits a model training job, followed by inference.
+            This is the default behavior for the automated model update, since the newly trained model should directly
+            be used to infer new, potentially useful labels.
+        '''
+
+        # get training job signature
+        process, numWorkers_train = self._get_training_job_signature(minTimestamp, maxNumWorkers_train)
+
+        # submit job
+        if numWorkers_train > 1:
+            # also append average model states job
+            job = process.apply_async(ignore_result=False, result_extended=True, link=celery_interface.call_average_model_states.s())
+        else:
+            job = process.apply_async(ignore_result=False, result_extended=True)
+        
+        # start listener thread     NOTE: we send a callback to perform inference on the latest set of images here
+        def chain_inference():
+            self.training = False
+            return self.start_inference(forceUnlabeled_inference, maxNumImages_inference, maxNumWorkers_inference)
+
+        t = threading.Thread(target=self._listen_status, args=(job, chain_inference, self._training_completed))
+        t.start()
+
+        return 'ok'
+
+
 
 
     def check_status(self, project, tasks, workers):

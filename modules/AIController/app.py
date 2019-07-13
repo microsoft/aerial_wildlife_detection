@@ -18,7 +18,14 @@ class AIController:
 
         self.login_check = None
 
+        self._init_params()
         self._initBottle()
+
+
+    def _init_params(self):
+        self.maxNumWorkers_train = self.config.getProperty(self, 'maxNumWorkers_train', -1)
+        self.maxNumWorkers_inference = self.config.getProperty(self, 'maxNumWorkers_inference', -1)
+        self.maxNumImages_inference = self.config.getProperty(self, 'maxNumImages_inference')
 
 
     def loginCheck(self, needBeAdmin=False):
@@ -34,13 +41,13 @@ class AIController:
         @self.app.post('/startTraining')
         def start_training():
             '''
-                Manually request AIController to train the model.
+                Manually requests the AIController to train the model.
                 This still only works if there is no training process ongoing.
                 Otherwise the request is aborted.
             '''
             if self.loginCheck(True):
                 try:
-                    status = self.middleware.start_training(minTimestamp='lastState', distributeTraining=True) #TODO
+                    status = self.middleware.start_training(minTimestamp='lastState', maxNumWorkers=self.maxNumWorkers_train)
                 except Exception as e:
                     status = str(e)
                 return { 'status' : status }
@@ -52,14 +59,42 @@ class AIController:
         @self.app.post('/startInference')
         def start_inference():
             '''
-                TODO: just here for debugging purposes; in reality inference should automatically be called after training
+                Manually requests the AIController to issue an inference job.
             '''
             if self.loginCheck(True):
-                status = self.middleware.start_inference(forceUnlabeled=True, maxNumImages=None, maxNumWorkers=1)
+                status = self.middleware.start_inference(forceUnlabeled=True, maxNumImages=self.maxNumImages_inference, maxNumWorkers=self.maxNumWorkers_inference)
                 return { 'status' : status }
             
             else:
                 abort(401, 'unauthorized')
+
+
+        @self.app.post('/start')
+        def start_model():
+            '''
+                Manually launches one of the model processes (train, inference, both, etc.),
+                depending on the provided flags.
+            '''
+            #TODO: unverified
+            if self.loginCheck(True):
+                # parse parameters
+                try:
+                    params = request.json
+                    doTrain = 'train' in params and params['train'] is True
+                    doInference = 'inference' in params and params['inference'] is True
+                
+                    if doTrain:
+                        if doInference:
+                            status = self.middleware.start_train_and_inference(minTimestamp='lastState', maxNumWorkers_train=self.maxNumWorkers_train,
+                                    forceUnlabeled_inference=True, maxNumImages_inference=self.maxNumImages_inference, maxNumWorkers_inference=self.maxNumWorkers_inference)
+                        else:
+                            status = self.middleware.start_training(minTimestamp='lastState', maxNumWorkers=self.maxNumWorkers_train)
+                    else:
+                        status = self.middleware.start_inference(forceUnlabeled=True, maxNumImages=self.maxNumImages_inference, maxNumWorkers=self.maxNumWorkers_inference)
+
+                    return { 'status' : status }
+                except:
+                    abort(400, 'bad request')
 
 
         @self.app.get('/status')

@@ -26,6 +26,10 @@ class Watchdog(Thread):
 
         # initialize properties
         self.annoThreshold = float(config.getProperty('AIController', 'numImages_autoTrain'))
+        self.maxNumWorkers_train = self.config.getProperty('AIController', 'maxNumWorkers_train', -1)
+        self.maxNumWorkers_inference = self.config.getProperty('AIController', 'maxNumWorkers_inference', -1)
+        self.maxNumImages_inference = self.config.getProperty('AIController', 'maxNumImages_inference')
+
         self.maxWaitingTime = 1800                      # seconds
         self.minWaitingTime = 20
         self.currentWaitingTime = self.minWaitingTime   # modulated based on progress and activity
@@ -76,8 +80,12 @@ class Watchdog(Thread):
             count = count[0]['count']
 
             if count >= self.annoThreshold:
-                # threshold exceeded; initiate training process and return
-                self.middleware.start_training(minTimestamp='lastState', distributeTraining=False)    #TODO
+                # threshold exceeded; initiate training process followed by inference and return
+                self.middleware.start_train_and_inference(minTimestamp='lastState',
+                    maxNumWorkers_train=self.maxNumWorkers_train,
+                    forceUnlabeled_inference=True,
+                    maxNumImages_inference=self.maxNumImages_inference,
+                    maxNumWorkers_inference=self.maxNumWorkers_inference)
                 self.stop()
                 break
             

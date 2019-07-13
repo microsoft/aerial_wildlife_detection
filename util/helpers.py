@@ -9,7 +9,7 @@ from datetime import datetime
 import pytz
 
 
-#TODO: likely wrong...
+
 def array_split(arr, size):
      arrs = []
      while len(arr) > size:
