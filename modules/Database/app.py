@@ -28,22 +28,16 @@ class Database():
 
 
     def _createConnectionPool(self):
-        try:
-            self.connectionPool = ThreadedConnectionPool(
-                1,
-                self.config.getProperty('Database', 'max_num_connections', type=int, fallback=20),
-                host=self.host,
-                database=self.database,
-                port=self.port,
-                user=self.user,
-                password=self.password
-            )
-        except Exception as e:
-            print(e)
-            print('Error connecting to database {}:{} with username {}.'.format(
-                self.host, self.port, self.user
-            ))
-            #TODO: next steps
+        self.connectionPool = ThreadedConnectionPool(
+            1,
+            self.config.getProperty('Database', 'max_num_connections', type=int, fallback=20),
+            host=self.host,
+            database=self.database,
+            port=self.port,
+            user=self.user,
+            password=self.password,
+            connect_timeout=2
+        )
 
 
     def runServer(self):
@@ -55,6 +49,7 @@ class Database():
     @contextmanager
     def _get_connection(self):
         conn = self.connectionPool.getconn()
+        conn.autocommit = True
         try:
             yield conn
         finally:
@@ -62,7 +57,6 @@ class Database():
 
 
     def execute(self, sql, arguments, numReturn=None):
-        # with self.connectionPool.getconn() as conn:
         with self._get_connection() as conn:
             cursor = conn.cursor(cursor_factory = RealDictCursor)
 
@@ -71,7 +65,7 @@ class Database():
                 cursor.execute(sql, arguments)
                 conn.commit()
             except Exception as e:
-                # conn.rollback()
+                conn.rollback()
                 # self.connectionPool.putconn(conn, close=False)    #TODO: this still causes connection to close
                 conn = self.connectionPool.getconn()
 
@@ -107,11 +101,8 @@ class Database():
                     return returnValues
             except Exception as e:
                 print(e)
-                # conn.rollback()
             finally:
                 pass
-                # self.connectionPool.putconn(conn)
-                # cursor.close()
     
 
     def execute_cursor(self, sql, arguments):
@@ -135,6 +126,3 @@ class Database():
             except Exception as e:
                 print(e)
                 conn.rollback()
-            finally:
-                pass
-                # cursor.close()
