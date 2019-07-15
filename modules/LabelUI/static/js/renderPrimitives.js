@@ -573,6 +573,13 @@ class RectangleElement extends PointElement {
     }
 
     _mouseup_event(event, viewport) {
+        // Make sure box is of correct size
+        var minWidth = window.minBoxSize_w;
+        var minHeight = window.minBoxSize_h;
+        var minSize = viewport.getRelativeCoordinates([minWidth, minHeight], 'validArea');
+        this.width = Math.max(this.width, minSize[0]);
+        this.height = Math.max(this.height, minSize[1]);
+
         this.mouseDrag = false;
         viewport.canvas.css('cursor', 'crosshair');
     }

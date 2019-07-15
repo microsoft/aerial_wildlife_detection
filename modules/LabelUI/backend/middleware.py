@@ -10,7 +10,7 @@ import pytz
 import dateutil.parser
 from modules.Database.app import Database
 from .sql_string_builder import SQLStringBuilder
-from .annotation_sql_tokens import QueryStrings_annotation, QueryStrings_prediction, parseAnnotation
+from .annotation_sql_tokens import QueryStrings_annotation, QueryStrings_prediction, AnnotationParser
 
 
 class DBMiddleware():
@@ -21,6 +21,7 @@ class DBMiddleware():
 
         self._fetchProjectSettings()
         self.sqlBuilder = SQLStringBuilder(config)
+        self.annoParser = AnnotationParser(config)
 
 
     def _fetchProjectSettings(self):
@@ -36,7 +37,6 @@ class DBMiddleware():
             'dataServerURI': self.config.getProperty('Server', 'dataServer_uri'),
             'aiControllerURI': aiControllerURI,
             'dataType': self.config.getProperty('Project', 'dataType'),
-            'minObjSize': self.config.getProperty('Project', 'minObjSize'),
             'classes': self.getClassDefinitions(),
             'enableEmptyClass': self.config.getProperty('Project', 'enableEmptyClass'),
             'annotationType': self.config.getProperty('Project', 'annotationType'),
@@ -46,12 +46,14 @@ class DBMiddleware():
             'carryOverPredictions': self.config.getProperty('LabelUI', 'carryOverPredictions'),
             'carryOverRule': self.config.getProperty('LabelUI', 'carryOverRule'),
             'carryOverPredictions_minConf': self.config.getProperty('LabelUI', 'carryOverPredictions_minConf'),
-            'defaultBoxSize_w': self.config.getProperty('LabelUI', 'defaultBoxSize_w'),
-            'defaultBoxSize_h': self.config.getProperty('LabelUI', 'defaultBoxSize_h'),
-            'numImages_x': self.config.getProperty('LabelUI', 'numImages_x', 3),
-            'numImages_y': self.config.getProperty('LabelUI', 'numImages_y', 2),
-            'defaultImage_w': self.config.getProperty('LabelUI', 'defaultImage_w', 800),
-            'defaultImage_h': self.config.getProperty('LabelUI', 'defaultImage_h', 600),
+            'defaultBoxSize_w': self.config.getProperty('LabelUI', 'defaultBoxSize_w', type=int, fallback=10),
+            'defaultBoxSize_h': self.config.getProperty('LabelUI', 'defaultBoxSize_h', type=int, fallback=10),
+            'minBoxSize_w': self.config.getProperty('LabelUI', 'box_minWidth', type=int, fallback=1),
+            'minBoxSize_h': self.config.getProperty('LabelUI', 'box_minHeight', type=int, fallback=1),
+            'numImages_x': self.config.getProperty('LabelUI', 'numImages_x', type=int, fallback=3),
+            'numImages_y': self.config.getProperty('LabelUI', 'numImages_y', type=int, fallback=2),
+            'defaultImage_w': self.config.getProperty('LabelUI', 'defaultImage_w', type=int, fallback=800),
+            'defaultImage_h': self.config.getProperty('LabelUI', 'defaultImage_h', type=int, fallback=600),
         }
 
 
@@ -260,7 +262,7 @@ class DBMiddleware():
             if 'annotations' in entry and len(entry['annotations']):
                 for annotation in entry['annotations']:
                     # assemble annotation values
-                    annotationTokens = parseAnnotation(annotation)
+                    annotationTokens = self.annoParser.parseAnnotation(annotation)
                     annoValues = []
                     for cname in colnames:
                         if cname == 'id':
