@@ -138,8 +138,8 @@ def _call_train(dbConnector, config, imageIDs, subset, trainingFun, fileServer):
         print(e)
         raise Exception('error during training')
 
-    # #TODO
-    # return 0
+    #TODO
+    return 0
 
     # commit state dict to database
     try:
@@ -297,8 +297,6 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
         print(e)
         raise Exception('error during result parsing')
 
-    # #TODO
-    # return 0
 
     # commit to database
     try:
@@ -307,7 +305,7 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
                 INSERT INTO {schema}.prediction ( {fieldNames} )
                 VALUES %s;
             '''.format(schema=config.getProperty('Database', 'schema'),
-                fieldNames=fieldNames)
+                fieldNames=','.join(fieldNames))
             dbConnector.insert(sql, tuple(values_pred))
 
         if len(values_img):

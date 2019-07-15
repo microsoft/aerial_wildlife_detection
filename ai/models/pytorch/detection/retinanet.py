@@ -62,6 +62,7 @@ class RetinaNet:
 
         # initialize model
         if stateDict is not None:
+            stateDict = torch.load(io.BytesIO(stateDict), map_location=lambda storage, loc: storage)
             model = Model.loadFromStateDict(stateDict)
         else:
             # initialize a fresh model
@@ -130,6 +131,7 @@ class RetinaNet:
 
         bio = io.BytesIO()
         torch.save(model.getStateDict(), bio)
+
         return bio.getvalue()
 
 
@@ -165,6 +167,9 @@ class RetinaNet:
         stateDict = torch.load(stateDict, map_location=lambda storage, loc: storage)
         
         model = Model.loadFromStateDict(stateDict)
+
+        print(stateDict['numClasses'])
+        print(model.numClasses)
 
 
         # initialize data loader, dataset, transforms

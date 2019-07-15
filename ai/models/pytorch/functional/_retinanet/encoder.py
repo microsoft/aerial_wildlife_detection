@@ -100,14 +100,20 @@ class DataEncoder:
         loc_xy = (boxes[:,:2]-anchor_boxes[:,:2]) / anchor_boxes[:,2:]
         loc_wh = torch.log(boxes[:,2:]/anchor_boxes[:,2:])
         loc_targets = torch.cat([loc_xy,loc_wh], 1)
-        cls_targets = 1 + labels
 
+        cls_targets = 1 + labels
         cls_targets[max_ious<self.minIoU_pos] = 0
         ignore = (max_ious>self.maxIoU_neg) & (max_ious<self.minIoU_pos)  # ignore ious between [0.4,0.5]
         cls_targets[ignore] = -1  # for now just mark ignored to -1
 
         # make sure every target gets assigned at least one anchor (the optimal one)
         cls_targets[max_ids_target] = 1 + labels[max_ids_target]
+
+        # sanity check: remove NaNs and Infs
+        invalid = (torch.isinf(loc_targets) + \
+                  torch.isnan(loc_targets)).sum(1).type(torch.bool)
+        loc_targets[invalid,:] = 0
+        cls_targets[invalid] = -1
 
         return loc_targets, cls_targets
 

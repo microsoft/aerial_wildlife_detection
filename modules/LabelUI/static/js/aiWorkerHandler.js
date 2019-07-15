@@ -191,6 +191,8 @@ class AIWorkerHandler {
         this._setup_markup();
         this._query_worker_status();
         this._query_task_status();
+
+        // this.startInference();  //TODO
     }
 
     __toggle_panel() {
@@ -401,5 +403,20 @@ class AIWorkerHandler {
                 console.log(c);
             }
         });
+    }
+
+    
+    startInference() {
+        //TODO
+        $.ajax({
+            url: 'startInference',
+            method: 'POST',
+            success: function(data) {
+                console.log(data);
+            },
+            error: function() {
+                console.log('error')
+            }
+        })
     }
 }

@@ -89,6 +89,10 @@ class BoundingBoxDataset(Dataset):
                         continue
                     else:
                         label = self.classdef[label]
+                    
+                    # sanity check
+                    if coords[2] <= 0 or coords[3] <= 0:
+                        continue
 
                     boundingBoxes.append(coords)
                     labels.append(label)
