@@ -573,15 +573,19 @@ class RectangleElement extends PointElement {
     }
 
     _mouseup_event(event, viewport) {
-        // Make sure box is of correct size
-        var minWidth = window.minBoxSize_w;
-        var minHeight = window.minBoxSize_h;
-        var minSize = viewport.getRelativeCoordinates([minWidth, minHeight], 'validArea');
-        this.width = Math.max(this.width, minSize[0]);
-        this.height = Math.max(this.height, minSize[1]);
+        this._clamp_min_box_size(viewport);
 
         this.mouseDrag = false;
         viewport.canvas.css('cursor', 'crosshair');
+    }
+
+    _clamp_min_box_size(viewport) {
+        // Make sure box is of correct size
+        var minWidth = window.minBoxSize_w;
+        var minHeight = window.minBoxSize_h;
+        var minSize = viewport.transformCoordinates([minWidth, minHeight], 'validArea', true);
+        this.width = Math.max(this.width, minSize[0]);
+        this.height = Math.max(this.height, minSize[1]);
     }
 
 
@@ -628,6 +632,10 @@ class RectangleElement extends PointElement {
             viewport.addCallback(this.id, 'mousemove', this._get_active_handle_callback('mousemove', viewport));
             viewport.addCallback(this.id, 'mouseup', this._get_active_handle_callback('mouseup', viewport));
         } else {
+            // catch and assert min. box size before disabling callback
+            this._clamp_min_box_size(viewport);
+
+            // remove active properties
             viewport.removeRenderElement(this.resizeHandles);
             viewport.removeCallback(this.id, 'click');
             viewport.removeCallback(this.id, 'mousedown');
