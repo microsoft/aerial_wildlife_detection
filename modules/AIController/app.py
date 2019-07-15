@@ -23,9 +23,9 @@ class AIController:
 
 
     def _init_params(self):
-        self.maxNumWorkers_train = self.config.getProperty(self, 'maxNumWorkers_train', -1)
-        self.maxNumWorkers_inference = self.config.getProperty(self, 'maxNumWorkers_inference', -1)
-        self.maxNumImages_inference = self.config.getProperty(self, 'maxNumImages_inference')
+        self.maxNumWorkers_train = self.config.getProperty(self, 'maxNumWorkers_train', type=int, fallback=-1)
+        self.maxNumWorkers_inference = self.config.getProperty(self, 'maxNumWorkers_inference', type=int, fallback=-1)
+        self.maxNumImages_inference = self.config.getProperty(self, 'maxNumImages_inference', type=int)
 
 
     def loginCheck(self, needBeAdmin=False):

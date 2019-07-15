@@ -25,10 +25,10 @@ class Watchdog(Thread):
         self.middleware = middleware
 
         # initialize properties
-        self.annoThreshold = float(config.getProperty('AIController', 'numImages_autoTrain'))
-        self.maxNumWorkers_train = self.config.getProperty('AIController', 'maxNumWorkers_train', -1)
-        self.maxNumWorkers_inference = self.config.getProperty('AIController', 'maxNumWorkers_inference', -1)
-        self.maxNumImages_inference = self.config.getProperty('AIController', 'maxNumImages_inference')
+        self.annoThreshold = float(config.getProperty('AIController', 'numImages_autoTrain', type=int))
+        self.maxNumWorkers_train = self.config.getProperty('AIController', 'maxNumWorkers_train', type=int, fallback=-1)
+        self.maxNumWorkers_inference = self.config.getProperty('AIController', 'maxNumWorkers_inference', type=int, fallback=-1)
+        self.maxNumImages_inference = self.config.getProperty('AIController', 'maxNumImages_inference', type=int)
 
         self.maxWaitingTime = 1800                      # seconds
         self.minWaitingTime = 20

@@ -31,6 +31,10 @@ class AIMiddleware():
 
         self.training = False   # will be set to True once start_training is called (and False as soon as everything about the training process has finished)
 
+        self.celery_app = current_app
+        self.celery_app.set_current()
+        self.celery_app.set_default()
+
         self.messages = {}
 
         self.watchdog = None    # note: watchdog only created if users poll status (i.e., if there's activity)
@@ -112,7 +116,8 @@ class AIMiddleware():
 
         if maxNumWorkers != 1:
             # only query the number of available workers if more than one is specified to save time
-            i = current_app.control.inspect()
+            i = self.celery_app.control.inspect()
+            #TODO: raise error if i.stats() is None (no worker attached)
             num_workers = min(maxNumWorkers, len(i.stats()))
         else:
             num_workers = maxNumWorkers
@@ -164,7 +169,7 @@ class AIMiddleware():
         # setup
         if maxNumWorkers != 1:
             # only query the number of available workers if more than one is specified to save time
-            i = current_app.control.inspect()
+            i = self.celery_app.control.inspect()
             num_workers = len(i.stats())
             if maxNumWorkers == -1:
                 maxNumWorkers = num_workers   #TODO: more than one process per worker?
@@ -243,9 +248,7 @@ class AIMiddleware():
     def _do_inference(self, process):
 
         # send job
-        job = process.apply_async(ignore_result=False, result_extended=True)
-        
-        result = job.apply_async()
+        result = process.apply_async(ignore_result=False, result_extended=True)
 
         # start listener thread
         t = threading.Thread(target=self._listen_status, args=(result, None, None))
@@ -336,7 +339,7 @@ class AIMiddleware():
             job = process.apply_async(ignore_result=False, result_extended=True)
         
         # start listener thread     NOTE: we send a callback to perform inference on the latest set of images here
-        def chain_inference():
+        def chain_inference(*args):
             self.training = False
             return self.start_inference(forceUnlabeled_inference, maxNumImages_inference, maxNumWorkers_inference)
 
@@ -398,7 +401,7 @@ class AIMiddleware():
         # get worker status (this is very expensive, as each worker needs to be pinged)
         if workers:
             workerStatus = {}
-            i = current_app.control.inspect()
+            i = self.celery_app.control.inspect()
             stats = i.stats()
             if stats is not None and len(stats):
                 active_tasks = i.active()
