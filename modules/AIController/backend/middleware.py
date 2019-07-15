@@ -59,6 +59,16 @@ class AIMiddleware():
         self.watchdog.start()
 
 
+    def _get_num_available_workers(self):
+        #TODO: message + queue if no worker available
+        #TODO: limit to n tasks per worker
+        i = self.celery_app.control.inspect()
+        if i is not None:
+            stats = i.stats()
+            if stats is not None:
+                return len(i.stats())
+        return 1    #TODO
+
     
     def _on_raw_message(self, job, message, on_complete=None, on_failure=None):
         id = job.id
@@ -116,9 +126,7 @@ class AIMiddleware():
 
         if maxNumWorkers != 1:
             # only query the number of available workers if more than one is specified to save time
-            i = self.celery_app.control.inspect()
-            #TODO: raise error if i.stats() is None (no worker attached)
-            num_workers = min(maxNumWorkers, len(i.stats()))
+            num_workers = min(maxNumWorkers, self._get_num_available_workers())
         else:
             num_workers = maxNumWorkers
 
@@ -169,12 +177,11 @@ class AIMiddleware():
         # setup
         if maxNumWorkers != 1:
             # only query the number of available workers if more than one is specified to save time
-            i = self.celery_app.control.inspect()
-            num_workers = len(i.stats())
+            num_available = self._get_num_available_workers()
             if maxNumWorkers == -1:
-                maxNumWorkers = num_workers   #TODO: more than one process per worker?
+                maxNumWorkers = num_available   #TODO: more than one process per worker?
             else:
-                maxNumWorkers = min(maxNumWorkers, num_workers)
+                maxNumWorkers = min(maxNumWorkers, num_available)
 
         # distribute across workers
         images_subset = array_split(imageIDs, max(1, len(imageIDs) // maxNumWorkers))
