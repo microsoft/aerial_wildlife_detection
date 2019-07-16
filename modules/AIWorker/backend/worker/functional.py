@@ -281,7 +281,7 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
                 for fn in fieldNames:
                     if fn == 'image':
                         nextResultValues.append(imgID)
-                        ids_img.append((imgID,))
+                        ids_img.append(imgID)
                     else:
                         if fn in prediction:
                             #TODO: might need to do typecasts (e.g. UUID?)
@@ -313,16 +313,13 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
             sql = '''
                 DELETE FROM {schema}.prediction WHERE image IN %s;
             '''.format(schema=config.getProperty('Database', 'schema'))
-            dbConnector.insert(sql, ids_img)
+            dbConnector.insert(sql, (ids_img,))
 
             sql = '''
                 INSERT INTO {schema}.prediction ( {fieldNames} )
                 VALUES %s;
             '''.format(schema=config.getProperty('Database', 'schema'),
                 fieldNames=','.join(fieldNames))
-
-            # from celery.contrib import rdb
-            # rdb.set_trace()
             dbConnector.insert(sql, values_pred)
 
         if len(values_img):
