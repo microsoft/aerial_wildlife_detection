@@ -54,13 +54,6 @@ class MessageProcessor(Thread):
 
     def register_job(self, job, taskType, on_complete=None):
         self.jobs.append(job)
-        if not job.id in self.messages:
-            self.messages[job.id] = {
-            'type': taskType,
-            'submitted': str(current_time()),
-            'status': celery.states.PENDING,
-            'meta': {'message':'sending job to worker'}
-        }
 
         # look out for children (if group result)
         if hasattr(job, 'children') and job.children is not None:
@@ -71,6 +64,14 @@ class MessageProcessor(Thread):
                 'status': celery.states.PENDING,
                 'meta': {'message':'sending job to worker'}
             }
+        elif not job.id in self.messages:
+            # no children; add job itself
+            self.messages[job.id] = {
+            'type': taskType,
+            'submitted': str(current_time()),
+            'status': celery.states.PENDING,
+            'meta': {'message':'sending job to worker'}
+        }
 
         self.on_complete[job.id] = on_complete
 
