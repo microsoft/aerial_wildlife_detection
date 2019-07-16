@@ -4,18 +4,11 @@
     2019 Benjamin Kellenberger
 '''
 
-from uuid import UUID
 from datetime import datetime
-import pytz
-import dateutil.parser
-from util.helpers import current_time
-import threading        # we can use Threads since we do not need parallel execution for the listener tasks
 import cgi
 from modules.AIController.backend import celery_interface
 import celery
 from celery import current_app, group
-from celery.result import AsyncResult
-from modules.AIWorker.backend.worker import functional
 from .messageProcessor import MessageProcessor
 from .annotationWatchdog import Watchdog
 from .sql_string_builder import SQLStringBuilder
@@ -74,15 +67,6 @@ class AIMiddleware():
                 return len(i.stats())
         return 1    #TODO
 
-
-    def _set_initial_message(self, task_id, type):
-        # self.messageProcessor.messages[task_id] = {
-        #     'type': type,
-        #     'submitted': str(current_time()),
-        #     'status': celery.states.PENDING,
-        #     'meta': {'message':'sending job to worker'}
-        # }
-        pass
 
 
     def _training_completed(self, trainingJob):
@@ -218,12 +202,9 @@ class AIMiddleware():
         else:
             job = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True)
 
-        self._set_initial_message(task_id, 'train')
 
         # start listener
         self.messageProcessor.register_job(job, 'train', self._training_completed)
-        # t = threading.Thread(target=self._listen_status, args=(job, self._training_completed, self._training_completed))
-        # t.start()
 
         return 'ok'
 
@@ -234,16 +215,9 @@ class AIMiddleware():
         task_id = self.messageProcessor.task_id()
         result = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True)
 
-        # self._set_initial_message(task_id, 'inference') #TODO: needed?
-
-        # since inference is always done in a group, we need to create individual messages
-        for child in result.children:
-            self._set_initial_message(child.task_id, 'inference')
-
-        # start listeners
+        # start listener
         self.messageProcessor.register_job(result, 'inference', None)
-        # t = threading.Thread(target=self._listen_status, args=(result, None, None))
-        # t.start()
+
         return
 
 
@@ -330,18 +304,13 @@ class AIMiddleware():
         else:
             job = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True)
         
-        self._set_initial_message(task_id, 'train')
 
-        # start listener thread     NOTE: we send a callback to perform inference on the latest set of images here
+        # start listener thread
         def chain_inference(*args):
             self.training = False
             return self.start_inference(forceUnlabeled_inference, maxNumImages_inference, maxNumWorkers_inference)
 
-
-        self.messageProcessor.register_job(job, 'inference', chain_inference)
-        # #TODO
-        # t = threading.Thread(target=self._listen_status, args=(job, chain_inference, self._training_completed))
-        # t.start()
+        self.messageProcessor.register_job(job, 'train', chain_inference)
 
         return 'ok'
 
@@ -408,8 +377,9 @@ class AIMiddleware():
                 active_tasks = i.active()
                 scheduled_tasks = i.scheduled()
                 for key in stats:
+                    workerName = key.replace('celery@', '')
                     activeTasks = [t['id'] for t in active_tasks[key]]
-                    workerStatus[key] = {
+                    workerStatus[workerName] = {
                         'active_tasks': activeTasks,
                         'scheduled_tasks': scheduled_tasks[key]
                     }
