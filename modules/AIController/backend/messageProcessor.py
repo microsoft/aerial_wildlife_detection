@@ -63,7 +63,7 @@ class MessageProcessor(Thread):
         }
 
         # look out for children (if group result)
-        if hasattr(job, 'children'):
+        if hasattr(job, 'children') and job.children is not None:
             for child in job.children:
                 self.messages[child.task_id] = {
                 'type': taskType,

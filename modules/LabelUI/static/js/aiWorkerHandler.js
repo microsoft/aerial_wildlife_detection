@@ -258,7 +258,7 @@ class AIWorkerHandler {
 
 
         // //TODO
-        // $('#ai-worker-container').append($('<button class="btn btn-danger" onclick="window.aiWorkerHandler.startInference();">Inference</button>'));
+        $('#ai-worker-container').append($('<button class="btn btn-danger" onclick="window.aiWorkerHandler.startInference();">Inference</button>'));
         // $('#ai-worker-container').append($('<button class="btn btn-danger" onclick="window.aiWorkerHandler.startTraining();">Training</button>'))
     }
 

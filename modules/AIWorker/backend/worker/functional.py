@@ -273,6 +273,7 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
         fieldNames.append('image')  # image ID
         values_pred = []
         values_img = []     # mostly for feature vectors
+        ids_img = []        # to delete previous predictions
         for imgID in result.keys():
             for prediction in result[imgID]['predictions']:
                 nextResultValues = []
@@ -280,6 +281,7 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
                 for fn in fieldNames:
                     if fn == 'image':
                         nextResultValues.append(imgID)
+                        ids_img.append(imgID)
                     else:
                         if fn in prediction:
                             #TODO: might need to do typecasts (e.g. UUID?)
@@ -292,19 +294,27 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
                 values_pred.append(nextResultValues)
 
             if 'fVec' in result[imgID] and len(result[imgID]['fVec']):
-                values_img.append([imgID, result[imgID]['fVec']])
+                values_img.append([imgID, psycopg2.Binary(result[imgID]['fVec'])])
     except Exception as e:
         print(e)
         raise Exception('error during result parsing')
 
 
-    #TODO: commit is missing some important type casts...
+    # #TODO: commit is missing some important type casts...
+    # from celery.contrib import rdb
+    # rdb.set_trace()
     return 0
 
 
     # commit to database
     try:
         if len(values_pred):
+            # remove previous predictions first (TODO: set flag for this...)
+            sql = '''
+                DELETE FROM {schema}.prediction WHERE image IN %s;
+            '''.format(schema=config.getProperty('Database', 'schema'))
+            dbConnector.execute(sql, tuple(ids_img))
+
             sql = '''
                 INSERT INTO {schema}.prediction ( {fieldNames} )
                 VALUES %s;
