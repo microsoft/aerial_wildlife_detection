@@ -74,36 +74,15 @@ class AIMiddleware():
                 return len(i.stats())
         return 1    #TODO
 
-    
-    # def _on_raw_message(self, job, message, on_complete=None, on_failure=None):
-    #     id = message['task_id']
-    #     self.messages[id]['status'] = message['status']
-    #     if 'result' in message:
-    #         self.messages[id]['meta'] = message['result']
-    #     else:
-    #         self.messages[id]['meta'] = None
-
-    #     if message['status'] == 'SUCCESS' and on_complete is not None:
-    #         on_complete(job)
-    #     elif message['status'] == 'FAILURE' and on_failure is not None:
-    #         on_failure(job)
 
     def _set_initial_message(self, task_id, type):
-        self.messageProcessor.messages[task_id] = {
-            'type': type,
-            'submitted': str(current_time()),
-            'status': celery.states.PENDING,
-            'meta': {'message':'sending job to worker'}
-        }
-
-
-    # def _listen_status(self, job, on_complete=None):
-    #     '''
-    #         To be called in a thread after a has been submitted.
-    #         Waits for the worker to finish and stores the messages returned as
-    #         the worker is moving along.
-    #     '''
-    #     self.messageProcessor.register_job(job, on_complete)
+        # self.messageProcessor.messages[task_id] = {
+        #     'type': type,
+        #     'submitted': str(current_time()),
+        #     'status': celery.states.PENDING,
+        #     'meta': {'message':'sending job to worker'}
+        # }
+        pass
 
 
     def _training_completed(self, trainingJob):
@@ -242,7 +221,7 @@ class AIMiddleware():
         self._set_initial_message(task_id, 'train')
 
         # start listener
-        self.messageProcessor.register_job(job, self._training_completed)
+        self.messageProcessor.register_job(job, 'train', self._training_completed)
         # t = threading.Thread(target=self._listen_status, args=(job, self._training_completed, self._training_completed))
         # t.start()
 
@@ -261,8 +240,8 @@ class AIMiddleware():
         for child in result.children:
             self._set_initial_message(child.task_id, 'inference')
 
-        # start listener
-        self.messageProcessor.register_job(result, None)
+        # start listeners
+        self.messageProcessor.register_job(result, 'inference', None)
         # t = threading.Thread(target=self._listen_status, args=(result, None, None))
         # t.start()
         return
@@ -356,11 +335,10 @@ class AIMiddleware():
         # start listener thread     NOTE: we send a callback to perform inference on the latest set of images here
         def chain_inference(*args):
             self.training = False
-            #TODO
             return self.start_inference(forceUnlabeled_inference, maxNumImages_inference, maxNumWorkers_inference)
 
 
-        self.messageProcessor.register_job(job, chain_inference)
+        self.messageProcessor.register_job(job, 'inference', chain_inference)
         # #TODO
         # t = threading.Thread(target=self._listen_status, args=(job, chain_inference, self._training_completed))
         # t.start()

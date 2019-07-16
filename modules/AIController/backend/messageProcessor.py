@@ -23,7 +23,8 @@
 from threading import Thread
 import time
 import uuid
-from threading import Lock
+import celery
+from util.helpers import current_time
 
 
 class MessageProcessor(Thread):
@@ -54,7 +55,23 @@ class MessageProcessor(Thread):
     def register_job(self, job, taskType, on_complete=None):
         self.jobs.append(job)
         if not job.id in self.messages:
-            self.messages[job.id] = {}
+            self.messages[job.id] = {
+            'type': taskType,
+            'submitted': str(current_time()),
+            'status': celery.states.PENDING,
+            'meta': {'message':'sending job to worker'}
+        }
+
+        # look out for children (if group result)
+        if hasattr(job, 'children'):
+            for child in job.children:
+                self.messages[child.task_id] = {
+                'type': taskType,
+                'submitted': str(current_time()),
+                'status': celery.states.PENDING,
+                'meta': {'message':'sending job to worker'}
+            }
+
         self.on_complete[job.id] = on_complete
 
     
