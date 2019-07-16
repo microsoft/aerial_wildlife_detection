@@ -4,8 +4,6 @@
 '''
 
 from .LabelUI.app import LabelUI
-from .AIController.app import AIController
-from .AIWorker.app import AIWorker
 from .Database.app import Database
 from .FileServer.app import FileServer
 from .UserHandling.app import UserHandler
@@ -13,9 +11,19 @@ from .UserHandling.app import UserHandler
 
 REGISTERED_MODULES = {
     'LabelUI': LabelUI,
-    'AIController': AIController,
-    'AIWorker': AIWorker,
+    # 'AIController': AIController,
+    # 'AIWorker': AIWorker,
     'Database': Database,
     'FileServer': FileServer,
     'UserHandler': UserHandler
 }
+
+
+#TODO: dirty hack...
+try:
+    from .AIController.app import AIController
+    from .AIWorker.app import AIWorker
+    REGISTERED_MODULES['AIController'] = AIController
+    REGISTERED_MODULES['AIWorker'] = AIWorker
+except:
+    pass
