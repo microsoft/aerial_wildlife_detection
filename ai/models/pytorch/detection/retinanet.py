@@ -8,6 +8,7 @@ import torch
 from torch.utils.data import DataLoader
 from torch.optim import Adam
 from torchvision import transforms as tr
+import numpy as np
 from ai.models.pytorch.functional._retinanet import DEFAULT_OPTIONS
 from ai.models.pytorch.functional._retinanet import collation, encoder, loss
 from ai.models.pytorch.functional._retinanet.model import RetinaNet as Model
@@ -259,7 +260,7 @@ class RetinaNet:
                     
                     response[imgID[i]] = {
                         'predictions': predictions,
-                        'fVec': fVec        #TODO: maybe unnecessary (if fVec already there), cast to byte array (io.BytesIO(fVec.numpy().astype(np.float32)).getvalue())
+                        #TODO: exception if fVec is not torch tensor: 'fVec': io.BytesIO(fVec.numpy().astype(np.float32)).getvalue()
                     }
 
             # update worker state   TODO

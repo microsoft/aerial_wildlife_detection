@@ -7,6 +7,7 @@
 from io import BytesIO
 import torch
 from torch.utils.data import Dataset
+import numpy as np
 from PIL import Image
 
 
@@ -98,10 +99,12 @@ class BoundingBoxDataset(Dataset):
                     labels.append(label)
 
             # feature vector
-            if 'fVec' in nextMeta:
-                fVec = nextMeta['fVec']     #TODO: convert from bytes (torch.from_numpy(np.frombuffer(anno['fVec'], dtype=np.float32)))
-            else:
-                fVec = []
+            #TODO
+            fVec = None
+            # if 'fVec' in nextMeta:
+            #     fVec = torch.from_numpy(np.frombuffer(anno['fVec'], dtype=np.float32))     #TODO: convert from bytes (torch.from_numpy(np.frombuffer(anno['fVec'], dtype=np.float32)))
+            # else:
+            #     fVec = None
             
             imagePath = nextMeta['filename']
             self.data.append((boundingBoxes, labels, key, fVec, imagePath))

@@ -281,7 +281,7 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
                 for fn in fieldNames:
                     if fn == 'image':
                         nextResultValues.append(imgID)
-                        ids_img.append(imgID)
+                        ids_img.append((imgID,))
                     else:
                         if fn in prediction:
                             #TODO: might need to do typecasts (e.g. UUID?)
@@ -291,10 +291,10 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
                             # field name is not in return value; might need to raise a warning, Exception, or set to None
                             nextResultValues.append(None)
                         
-                values_pred.append(nextResultValues)
+                values_pred.append(tuple(nextResultValues))
 
             if 'fVec' in result[imgID] and len(result[imgID]['fVec']):
-                values_img.append([imgID, psycopg2.Binary(result[imgID]['fVec'])])
+                values_img.append((imgID, psycopg2.Binary(result[imgID]['fVec']),))
     except Exception as e:
         print(e)
         raise Exception('error during result parsing')
@@ -303,7 +303,7 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
     # #TODO: commit is missing some important type casts...
     # from celery.contrib import rdb
     # rdb.set_trace()
-    return 0
+    # return 0
 
 
     # commit to database
@@ -313,14 +313,17 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
             sql = '''
                 DELETE FROM {schema}.prediction WHERE image IN %s;
             '''.format(schema=config.getProperty('Database', 'schema'))
-            dbConnector.execute(sql, tuple(ids_img))
+            dbConnector.insert(sql, ids_img)
 
             sql = '''
                 INSERT INTO {schema}.prediction ( {fieldNames} )
                 VALUES %s;
             '''.format(schema=config.getProperty('Database', 'schema'),
                 fieldNames=','.join(fieldNames))
-            dbConnector.insert(sql, tuple(values_pred))
+
+            # from celery.contrib import rdb
+            # rdb.set_trace()
+            dbConnector.insert(sql, values_pred)
 
         if len(values_img):
             sql = '''
@@ -328,7 +331,7 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
                 VALUES %s
                 ON CONFLICT (id) DO UPDATE SET fVec = EXCLUDED.fVec;
             '''.format(schema=config.getProperty('Database', 'schema'))
-            dbConnector.insert(sql, tuple(values_img))
+            dbConnector.insert(sql, values_img)
     except Exception as e:
         print(e)
         raise Exception('error during data committing')
