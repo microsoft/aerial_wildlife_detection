@@ -48,16 +48,14 @@ Note that AIde requires PostgreSQL >= 9.5.
 # (see https://docs.microsoft.com/en-us/azure/load-balancer/load-balancer-outbound-connections#idletimeout)
 # This is fatal for our database connection system, which keeps connections open.
 # To avoid idling/dead connections, we thus use Ubuntu's keepalive timer:
-
-sudo -s;
-echo 60 > /proc/sys/net/ipv4/tcp_keepalive_time
-echo 60 > /proc/sys/net/ipv4/tcp_keepalive_intvl
-echo 10 > /proc/sys/net/ipv4/tcp_keepalive_probes
-sudo -k;
+echo "net.ipv4.tcp_keepalive_time = 60" | sudo tee -a "/etc/sysctl.conf" > /dev/null
+echo "net.ipv4.tcp_keepalive_intvl = 60" | sudo tee -a "/etc/sysctl.conf" > /dev/null
+echo "net.ipv4.tcp_keepalive_probes = 20" | sudo tee -a "/etc/sysctl.conf" > /dev/null
+sudo sysctl -p
 
 ```
 
-2. Create a new database and the main user account. This needs to be done from the installation root of the AIlabelTool,
+2. Create a new database and the main user account. This needs to be done from the installation root of AIde,
    with the correct environment activated.
 ```
     //TODO: configDef needs --settings_filepath parameter...

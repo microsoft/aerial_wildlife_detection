@@ -57,14 +57,6 @@ class AnnotationParser:
                 # iterate through geometry tokens
                 for subKey in annotation['geometry'].keys():
                     valuesDict[subKey] = annotation['geometry'][subKey]
-
-                    # sanity check for minimal bounding box width and height
-                    #TODO: also move x,y to make sure bbox is still centered around where clicked?
-                    if subKey == 'width':
-                        valuesDict[subKey] = max(valuesDict[subKey], self.minWidth)
-                    elif subKey == 'height':
-                        valuesDict[subKey] = max(valuesDict[subKey], self.minHeight)
-                    
                 continue
             
             else:
