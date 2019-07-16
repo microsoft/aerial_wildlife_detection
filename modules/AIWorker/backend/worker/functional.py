@@ -138,8 +138,6 @@ def _call_train(dbConnector, config, imageIDs, subset, trainingFun, fileServer):
         print(e)
         raise Exception('error during training')
 
-    #TODO
-    return 0
 
     # commit state dict to database
     try:
