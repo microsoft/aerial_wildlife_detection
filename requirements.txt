@@ -5,4 +5,4 @@ bcrypt>=3.1.6
 netifaces>=0.10.9
 
 # for the AI backend
-#celery>=4.3.0
+#celery[librabbitmq,redis,auth,msgpack]>=4.3.0  #TODO

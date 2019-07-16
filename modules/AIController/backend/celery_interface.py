@@ -27,7 +27,7 @@ app = Celery('AIController',
 app.conf.update(
     result_backend=config.getProperty('AIController', 'result_backend'),
     task_ignore_result=False,
-    result_persistent=False,
+    result_persistent=True,
     accept_content = ['json'],
     task_serializer = 'json',
     result_serializer = 'json',

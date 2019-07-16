@@ -16,10 +16,12 @@ import celery
 from celery import current_app, group
 from celery.result import AsyncResult
 from modules.AIWorker.backend.worker import functional
+from .messageProcessor import MessageProcessor
 from .annotationWatchdog import Watchdog
 from .sql_string_builder import SQLStringBuilder
 from modules.Database.app import Database
 from util.helpers import array_split
+
 
 
 class AIMiddleware():
@@ -35,9 +37,12 @@ class AIMiddleware():
         self.celery_app.set_current()
         self.celery_app.set_default()
 
-        self.messages = {}
 
         self.watchdog = None    # note: watchdog only created if users poll status (i.e., if there's activity)
+
+        #TODO
+        self.messageProcessor = MessageProcessor()
+        self.messageProcessor.start()
 
 
     def _init_watchdog(self):
@@ -51,7 +56,7 @@ class AIMiddleware():
         if self.training:
             return
         
-        numImages_autoTrain = self.config.getProperty('AIController', 'numImages_autoTrain', -1)
+        numImages_autoTrain = self.config.getProperty('AIController', 'numImages_autoTrain', type=int, fallback=-1)
         if numImages_autoTrain == -1:
             return
             
@@ -70,28 +75,35 @@ class AIMiddleware():
         return 1    #TODO
 
     
-    def _on_raw_message(self, job, message, on_complete=None, on_failure=None):
-        id = job.id
-        self.messages[id]['status'] = message['status']
-        if 'result' in message:
-            self.messages[id]['meta'] = message['result']
-        else:
-            self.messages[id]['meta'] = None
+    # def _on_raw_message(self, job, message, on_complete=None, on_failure=None):
+    #     id = message['task_id']
+    #     self.messages[id]['status'] = message['status']
+    #     if 'result' in message:
+    #         self.messages[id]['meta'] = message['result']
+    #     else:
+    #         self.messages[id]['meta'] = None
 
-        if message['status'] == 'SUCCESS' and on_complete is not None:
-            on_complete(job)
-        elif message['status'] == 'FAILURE' and on_failure is not None:
-            on_failure(job)
+    #     if message['status'] == 'SUCCESS' and on_complete is not None:
+    #         on_complete(job)
+    #     elif message['status'] == 'FAILURE' and on_failure is not None:
+    #         on_failure(job)
+
+    def _set_initial_message(self, task_id, type):
+        self.messageProcessor.messages[task_id] = {
+            'type': type,
+            'submitted': str(current_time()),
+            'status': celery.states.PENDING,
+            'meta': {'message':'sending job to worker'}
+        }
 
 
-    def _listen_status(self, job, on_complete=None, on_failure=None):
-        '''
-            To be called in a thread after a has been submitted.
-            Waits for the worker to finish and stores the messages returned as
-            the worker is moving along.
-        '''
-        job.get(on_message=lambda msg: self._on_raw_message(job, msg, on_complete, on_failure), propagate=False)
-
+    # def _listen_status(self, job, on_complete=None):
+    #     '''
+    #         To be called in a thread after a has been submitted.
+    #         Waits for the worker to finish and stores the messages returned as
+    #         the worker is moving along.
+    #     '''
+    #     self.messageProcessor.register_job(job, on_complete)
 
 
     def _training_completed(self, trainingJob):
@@ -157,16 +169,6 @@ class AIMiddleware():
             # process = celery_interface.call_train.delay(data) #TODO: route to specific worker? http://docs.celeryproject.org/en/latest/userguide/routing.html#manual-routing
             process = celery_interface.call_train.si(imageIDs, False)
         
-
-        # initiate job status
-        statusFrame = process.freeze()
-        self.messages[statusFrame.id] = {
-            'type': 'training',
-            'submitted': str(current_time()),
-            'status': celery.states.PENDING,
-            'meta': {'message':'sending job to worker'}
-        }
-
         return process, num_workers
 
 
@@ -190,16 +192,7 @@ class AIMiddleware():
             job = celery_interface.call_inference.si(imageIDs=subset)
             jobs.append(job)
 
-        # initiate job status
         jobGroup = group(jobs)
-        statusFrame = jobGroup.freeze()
-        
-        self.messages[statusFrame.id] = {
-            'type': 'inference',
-            'submitted': str(current_time()),
-            'status': celery.states.PENDING,
-            'meta': {'message':'sending job to worker'}
-        }
         return jobGroup
 
     
@@ -239,15 +232,19 @@ class AIMiddleware():
 
 
         # submit job
+        task_id = self.messageProcessor.task_id()
         if numWorkers > 1:
             # also append average model states job
-            job = process.apply_async(ignore_result=False, result_extended=True, link=celery_interface.call_average_model_states.s())
+            job = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True, link=celery_interface.call_average_model_states.s())
         else:
-            job = process.apply_async(ignore_result=False, result_extended=True)
-        
-        # start listener thread
-        t = threading.Thread(target=self._listen_status, args=(job, self._training_completed, self._training_completed))
-        t.start()
+            job = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True)
+
+        self._set_initial_message(task_id, 'train')
+
+        # start listener
+        self.messageProcessor.register_job(job, self._training_completed)
+        # t = threading.Thread(target=self._listen_status, args=(job, self._training_completed, self._training_completed))
+        # t.start()
 
         return 'ok'
 
@@ -255,11 +252,19 @@ class AIMiddleware():
     def _do_inference(self, process):
 
         # send job
-        result = process.apply_async(ignore_result=False, result_extended=True)
+        task_id = self.messageProcessor.task_id()
+        result = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True)
 
-        # start listener thread
-        t = threading.Thread(target=self._listen_status, args=(result, None, None))
-        t.start()
+        # self._set_initial_message(task_id, 'inference') #TODO: needed?
+
+        # since inference is always done in a group, we need to create individual messages
+        for child in result.children:
+            self._set_initial_message(child.task_id, 'inference')
+
+        # start listener
+        self.messageProcessor.register_job(result, None)
+        # t = threading.Thread(target=self._listen_status, args=(result, None, None))
+        # t.start()
         return
 
 
@@ -339,19 +344,26 @@ class AIMiddleware():
         process, numWorkers_train = self._get_training_job_signature(minTimestamp, maxNumWorkers_train)
 
         # submit job
+        task_id = self.messageProcessor.task_id()
         if numWorkers_train > 1:
             # also append average model states job
-            job = process.apply_async(ignore_result=False, result_extended=True, link=celery_interface.call_average_model_states.s())
+            job = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True, link=celery_interface.call_average_model_states.s())
         else:
-            job = process.apply_async(ignore_result=False, result_extended=True)
+            job = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True)
         
+        self._set_initial_message(task_id, 'train')
+
         # start listener thread     NOTE: we send a callback to perform inference on the latest set of images here
         def chain_inference(*args):
             self.training = False
+            #TODO
             return self.start_inference(forceUnlabeled_inference, maxNumImages_inference, maxNumWorkers_inference)
 
-        t = threading.Thread(target=self._listen_status, args=(job, chain_inference, self._training_completed))
-        t.start()
+
+        self.messageProcessor.register_job(job, chain_inference)
+        # #TODO
+        # t = threading.Thread(target=self._listen_status, args=(job, chain_inference, self._training_completed))
+        # t.start()
 
         return 'ok'
 
@@ -374,19 +386,23 @@ class AIMiddleware():
                 # notify watchdog that users are active
                 if self.watchdog is None or self.watchdog.stopped():
                     self._init_watchdog()
-                self.watchdog.nudge()
-
-                status['project'] = {
-                    'num_annotated': self.watchdog.lastCount,
-                    'num_next_training': self.watchdog.annoThreshold
-                }
+                if self.watchdog is not None:
+                    self.watchdog.nudge()
+                    status['project'] = {
+                        'num_annotated': self.watchdog.lastCount,
+                        'num_next_training': self.watchdog.annoThreshold
+                    }
+                else:
+                    status['project'] = {}
 
 
         # running tasks status
         if tasks:
             status['tasks'] = {}
-            for key in self.messages.keys():
-                msg = self.messages[key]
+            for key in self.messageProcessor.messages.keys():
+                msg = self.messageProcessor.messages[key]
+                if not len(msg):
+                    continue
 
                 # check for worker failures
                 if msg['status'] == celery.states.FAILURE:

@@ -45,7 +45,7 @@ class AIController:
                 This still only works if there is no training process ongoing.
                 Otherwise the request is aborted.
             '''
-            if self.loginCheck(True):
+            if self.loginCheck(False):
                 try:
                     status = self.middleware.start_training(minTimestamp='lastState', maxNumWorkers=self.maxNumWorkers_train)
                 except Exception as e:
@@ -61,7 +61,7 @@ class AIController:
             '''
                 Manually requests the AIController to issue an inference job.
             '''
-            if self.loginCheck(True):
+            if self.loginCheck(False):
                 status = self.middleware.start_inference(forceUnlabeled=True, maxNumImages=self.maxNumImages_inference, maxNumWorkers=self.maxNumWorkers_inference)
                 return { 'status' : status }
             

@@ -255,6 +255,11 @@ class AIWorkerHandler {
             }
             $(this).toggleClass('expanded');
         });
+
+
+        //TODO
+        $('#ai-worker-container').append($('<button class="btn btn-danger" onclick="window.aiWorkerHandler.startInference();">Inference</button>'));
+        $('#ai-worker-container').append($('<button class="btn btn-danger" onclick="window.aiWorkerHandler.startTraining();">Training</button>'))
     }
 
 
@@ -300,7 +305,7 @@ class AIWorkerHandler {
             success: function(data) {
 
                 // check first if wait for sufficient number of annotations is ongoing
-                if(data['status']['project'].hasOwnProperty('num_annotated')) {
+                if(data['status'].hasOwnProperty('project') && data['status']['project'].hasOwnProperty('num_annotated')) {
                     var numRequired_project = parseInt(data['status']['project']['num_next_training']);
                     var numDone_project = Math.min(numRequired_project, parseInt(data['status']['project']['num_annotated']));
                     var msg = numDone_project + '/' + numRequired_project + ' images until next training';
@@ -410,6 +415,20 @@ class AIWorkerHandler {
         //TODO
         $.ajax({
             url: 'startInference',
+            method: 'POST',
+            success: function(data) {
+                console.log(data);
+            },
+            error: function() {
+                console.log('error')
+            }
+        })
+    }
+
+    startTraining() {
+        //TODO
+        $.ajax({
+            url: 'startTraining',
             method: 'POST',
             success: function(data) {
                 console.log(data);
