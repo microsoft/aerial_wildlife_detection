@@ -57,15 +57,16 @@ class RetinaNet_ois(RetinaNet):
             minBBoxArea=64, minBBoxAreaFrac=0.25  #TODO
         )
 
-        # extra: parse base folder for images to look out for
-        self.__parse_base_folder()
-
-    
-    def __parse_base_folder(self):
         self.baseFolder_unlabeled = self.options['contrib']['baseFolder_unlabeled']
         self.loadRaw = self.options['contrib']['load_raw_images']
 
-        self.all_images = []
+        # extra: parse base folder for images to look out for
+        # self.__parse_base_folder()        #TODO: not done in constructor, since an unnecessary model instance is loaded on the AIController side at the moment...
+
+    
+    def __parse_base_folder(self):
+
+        all_images = []
 
         # retrieve all images
         generators = [
@@ -86,11 +87,11 @@ class RetinaNet_ois(RetinaNet):
             try:
                 while True:
                     imgPath = next(gen)
-                    self.all_images.append(imgPath)
+                    all_images.append(imgPath)
             except:
                 # end of generator
                 pass
-
+        return all_images
     
 
     def _inference_image(self, model, transform, filename):
@@ -259,7 +260,8 @@ class RetinaNet_ois(RetinaNet):
         fileSnippets_db = set([re.sub('_[0-9]+_[0-9]+_[0-9]+_[0-9]+\..*$', '', f) for f in filenames])
 
         # the same for images on disk
-        snippets_disk = [os.path.splitext(f.replace(self.baseFolder_unlabeled, '')) for f in self.all_images]
+        images_disk = self.__parse_base_folder()
+        snippets_disk = [os.path.splitext(f.replace(self.baseFolder_unlabeled, '')) for f in images_disk]
         extensions_disk = dict(snippets_disk)
         fileSnippets_disk = set(extensions_disk.keys())
 
