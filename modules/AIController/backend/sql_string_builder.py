@@ -20,10 +20,10 @@ class SQLStringBuilder:
 
         if limit is None or limit == -1:
             # cap by limit specified in settings
-            limit = self.config.getProperty('AIController', 'maxNumImages_train')
+            limit = self.config.getProperty('AIController', 'maxNumImages_train', type=int)
             
         else:
-            limit = min(limit, self.config.getProperty('AIController', 'maxNumImages_train'))
+            limit = min(limit, self.config.getProperty('AIController', 'maxNumImages_train', type=int))
 
         sql = '''
             SELECT newestAnno.image FROM (

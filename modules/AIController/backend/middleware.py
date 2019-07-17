@@ -247,7 +247,7 @@ class AIMiddleware():
         
         # setup
         if maxNumImages is None or maxNumImages == -1:
-            maxNumImages = self.config.getProperty('AIController', 'maxNumImages_inference')
+            maxNumImages = self.config.getProperty('AIController', 'maxNumImages_inference', type=int)
 
         # load the IDs of the images that are being subjected to inference
         sql = self.sqlBuilder.getInferenceQueryString(forceUnlabeled, maxNumImages)
