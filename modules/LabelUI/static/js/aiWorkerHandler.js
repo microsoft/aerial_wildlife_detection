@@ -395,7 +395,7 @@ class AIWorkerHandler {
                 }
 
                 var timeoutVal = 10000;
-                if(taskInProgress) {
+                if(numTasksInProgress > 0) {
                     // increase polling frequency
                     timeoutVal = 1000;
                 }

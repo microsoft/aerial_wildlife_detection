@@ -303,7 +303,7 @@ class RetinaNet_ois(RetinaNet):
 
         # also do regular inference
         print('Doing inference on existing patches...')
-        response_regular = super.inference(stateDict, data)
+        response_regular = super(RetinaNet_ois, self).inference(stateDict, data)
         for key in response_regular.keys():
             response[key] = response_regular[key]
 
