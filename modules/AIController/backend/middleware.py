@@ -83,7 +83,7 @@ class AIMiddleware():
 
 
 
-    def _get_training_job_signature(self, minTimestamp='lastState', maxNumWorkers=-1):
+    def _get_training_job_signature(self, minTimestamp='lastState', maxNumImages=None, maxNumWorkers=-1):
         '''
             Assembles (but does not submit) a training job based on the provided parameters.
         '''
@@ -107,7 +107,7 @@ class AIMiddleware():
 
 
         # query image IDs
-        sql = self.sqlBuilder.getLatestQueryString(limit=None)
+        sql = self.sqlBuilder.getLatestQueryString(limit=maxNumImages)
 
         if isinstance(minTimestamp, datetime):
             imageIDs = self.dbConn.execute(sql, (minTimestamp,), 'all')
@@ -159,7 +159,7 @@ class AIMiddleware():
         return jobGroup
 
     
-    def start_training(self, minTimestamp='lastState', maxNumWorkers=-1):
+    def start_training(self, minTimestamp='lastState', maxNumImages=None, maxNumWorkers=-1):
         '''
             Initiates a training round for the model, based on the set of data (images, annotations)
             as specified in the parameters. Distributes data to the set of registered AIWorker instan-
@@ -179,6 +179,7 @@ class AIMiddleware():
                                                      found, all annotations are considered.
                             - None, -1, or 'all': Includes all annotations.
                             - (a datetime object): Includes annotations made after a custom timestamp.
+            - maxNumImages: Maximum number of images to train on at a time.
             - maxNumWorkers: Specify the maximum number of workers to distribute training to. If set to 1,
                              the model is trained on just one worker (no model state averaging appended).
                              If set to a number, that number of workers (up to the maximum number of connected)
@@ -191,7 +192,7 @@ class AIMiddleware():
                 - TODO: status ok, fail, no annotations, etc. Make threaded so that it immediately returns something.
         '''
 
-        process, numWorkers = self._get_training_job_signature(minTimestamp, maxNumWorkers)
+        process, numWorkers = self._get_training_job_signature(minTimestamp, maxNumImages, maxNumWorkers)
 
 
         # submit job
@@ -285,7 +286,8 @@ class AIMiddleware():
     
 
 
-    def start_train_and_inference(self, minTimestamp='lastState', maxNumWorkers_train=1,
+    def start_train_and_inference(self, minTimestamp='lastState', maxNumImages_train=None, 
+                                    maxNumWorkers_train=1,
                                     forceUnlabeled_inference=True, maxNumImages_inference=None, maxNumWorkers_inference=1):
         '''
             Submits a model training job, followed by inference.
@@ -294,7 +296,7 @@ class AIMiddleware():
         '''
 
         # get training job signature
-        process, numWorkers_train = self._get_training_job_signature(minTimestamp, maxNumWorkers_train)
+        process, numWorkers_train = self._get_training_job_signature(minTimestamp, maxNumImages_train, maxNumWorkers_train)
 
         # submit job
         task_id = self.messageProcessor.task_id()

@@ -283,7 +283,13 @@ class RetinaNet_ois(RetinaNet):
 
         # do inference on the unlabeled images
         for u in tqdm(range(len(unlabeled))):
-            meta = self._inference_image(model, transform, unlabeled[u] + extensions_disk[unlabeled[u]])
+            try:
+                meta = self._inference_image(model, transform, unlabeled[u] + extensions_disk[unlabeled[u]])
+            except Exception as error:
+                #TODO
+                print(error)
+                print(unlabeled[u] + extensions_disk[unlabeled[u]])
+                raise Exception('Failed')
             for key in meta.keys():
                 response[key] = meta[key]
 

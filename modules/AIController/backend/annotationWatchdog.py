@@ -26,6 +26,7 @@ class Watchdog(Thread):
 
         # initialize properties
         self.annoThreshold = float(config.getProperty('AIController', 'numImages_autoTrain', type=int))
+        self.maxNumImages_train = self.config.getProperty('AIController', 'maxNumImages_train', type=int)
         self.maxNumWorkers_train = self.config.getProperty('AIController', 'maxNumWorkers_train', type=int, fallback=-1)
         self.maxNumWorkers_inference = self.config.getProperty('AIController', 'maxNumWorkers_inference', type=int, fallback=-1)
         self.maxNumImages_inference = self.config.getProperty('AIController', 'maxNumImages_inference', type=int)
@@ -82,6 +83,7 @@ class Watchdog(Thread):
             if count >= self.annoThreshold:
                 # threshold exceeded; initiate training process followed by inference and return
                 self.middleware.start_train_and_inference(minTimestamp='lastState',
+                    maxNumImages_train=self.maxNumImages_train,
                     maxNumWorkers_train=self.maxNumWorkers_train,
                     forceUnlabeled_inference=True,
                     maxNumImages_inference=self.maxNumImages_inference,

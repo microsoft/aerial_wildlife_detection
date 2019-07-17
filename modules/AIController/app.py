@@ -23,6 +23,7 @@ class AIController:
 
 
     def _init_params(self):
+        self.maxNumImages_train = self.config.getProperty(self, 'maxNumImages_train', type=int)
         self.maxNumWorkers_train = self.config.getProperty(self, 'maxNumWorkers_train', type=int, fallback=-1)
         self.maxNumWorkers_inference = self.config.getProperty(self, 'maxNumWorkers_inference', type=int, fallback=-1)
         self.maxNumImages_inference = self.config.getProperty(self, 'maxNumImages_inference', type=int)
@@ -47,7 +48,14 @@ class AIController:
             '''
             if self.loginCheck(False):
                 try:
-                    status = self.middleware.start_training(minTimestamp='lastState', maxNumWorkers=self.maxNumWorkers_train)
+                    if 'maxNum_train' in params:
+                        maxNumImages_train = params['maxNum_train']
+                    else:
+                        maxNumImages_train = self.maxNumImages_train
+
+                    status = self.middleware.start_training(minTimestamp='lastState', 
+                                        maxNumImages_train=maxNumImages_train,
+                                        maxNumWorkers=self.maxNumWorkers_train)
                 except Exception as e:
                     status = str(e)
                 return { 'status' : status }
@@ -62,7 +70,9 @@ class AIController:
                 Manually requests the AIController to issue an inference job.
             '''
             if self.loginCheck(False):
-                status = self.middleware.start_inference(forceUnlabeled=True, maxNumImages=self.maxNumImages_inference, maxNumWorkers=self.maxNumWorkers_inference)
+                status = self.middleware.start_inference(forceUnlabeled=True, 
+                                        maxNumImages=self.maxNumImages_inference,
+                                        maxNumWorkers=self.maxNumWorkers_inference)
                 return { 'status' : status }
             
             else:
@@ -82,15 +92,25 @@ class AIController:
                     params = request.json
                     doTrain = 'train' in params and params['train'] is True
                     doInference = 'inference' in params and params['inference'] is True
-                
+
+                    if 'maxNum_train' in params:
+                        maxNumImages_train = params['maxNum_train']
+                    else:
+                        maxNumImages_train = self.maxNumImages_train
+
                     if doTrain:
                         if doInference:
-                            status = self.middleware.start_train_and_inference(minTimestamp='lastState', maxNumWorkers_train=self.maxNumWorkers_train,
+                            status = self.middleware.start_train_and_inference(minTimestamp='lastState', 
+                                    maxNumWorkers_train=self.maxNumWorkers_train,
                                     forceUnlabeled_inference=True, maxNumImages_inference=self.maxNumImages_inference, maxNumWorkers_inference=self.maxNumWorkers_inference)
                         else:
-                            status = self.middleware.start_training(minTimestamp='lastState', maxNumWorkers=self.maxNumWorkers_train)
+                            status = self.middleware.start_training(minTimestamp='lastState',
+                                    maxNumImages=maxNumImages_train,
+                                    maxNumWorkers=self.maxNumWorkers_train)
                     else:
-                        status = self.middleware.start_inference(forceUnlabeled=True, maxNumImages=self.maxNumImages_inference, maxNumWorkers=self.maxNumWorkers_inference)
+                        status = self.middleware.start_inference(forceUnlabeled=True, 
+                                    maxNumImages=self.maxNumImages_inference, 
+                                    maxNumWorkers=self.maxNumWorkers_inference)
 
                     return { 'status' : status }
                 except:
