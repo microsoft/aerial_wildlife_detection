@@ -107,7 +107,7 @@ class RetinaNet_ois(RetinaNet):
         # load image
         filePath = os.path.join(self.baseFolder_unlabeled, filename)
         _, fileExt = os.path.splitext(filePath)
-        if fileExt.lower() in ['nef', 'cr2']:
+        if fileExt.lower() in ['.nef', '.cr2']:
             img = Image.fromarray(rawpy.imread(filePath).postprocess())
         else:
             img = Image.open(filePath).convert('RGB')
@@ -283,13 +283,10 @@ class RetinaNet_ois(RetinaNet):
 
         # do inference on the unlabeled images
         for u in tqdm(range(len(unlabeled))):
-            try:
-                meta = self._inference_image(model, transform, unlabeled[u] + extensions_disk[unlabeled[u]])
-            except Exception as error:
-                #TODO
-                print(error)
-                print(unlabeled[u] + extensions_disk[unlabeled[u]])
-                raise Exception('Failed')
+            #TODO
+            print(unlabeled[u] + extensions_disk[unlabeled[u]])
+            meta = self._inference_image(model, transform, unlabeled[u] + extensions_disk[unlabeled[u]])
+
             for key in meta.keys():
                 response[key] = meta[key]
 
