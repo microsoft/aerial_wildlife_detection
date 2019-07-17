@@ -85,8 +85,7 @@ class AIController:
                 Manually launches one of the model processes (train, inference, both, etc.),
                 depending on the provided flags.
             '''
-            #TODO: unverified
-            if self.loginCheck(True):
+            if self.loginCheck(False):  #TODO: require admin privileges once implemented
                 # parse parameters
                 try:
                     params = request.json
@@ -97,19 +96,23 @@ class AIController:
                         maxNumImages_train = params['maxNum_train']
                     else:
                         maxNumImages_train = self.maxNumImages_train
+                    if 'maxNum_inference' in params:
+                        maxNumImages_inference = params['maxNum_inference']
+                    else:
+                        maxNumImages_inference = self.maxNumImages_inference
 
                     if doTrain:
                         if doInference:
                             status = self.middleware.start_train_and_inference(minTimestamp='lastState', 
                                     maxNumWorkers_train=self.maxNumWorkers_train,
-                                    forceUnlabeled_inference=True, maxNumImages_inference=self.maxNumImages_inference, maxNumWorkers_inference=self.maxNumWorkers_inference)
+                                    forceUnlabeled_inference=True, maxNumImages_inference=maxNumImages_inference, maxNumWorkers_inference=self.maxNumWorkers_inference)
                         else:
                             status = self.middleware.start_training(minTimestamp='lastState',
                                     maxNumImages=maxNumImages_train,
                                     maxNumWorkers=self.maxNumWorkers_train)
                     else:
                         status = self.middleware.start_inference(forceUnlabeled=True, 
-                                    maxNumImages=self.maxNumImages_inference, 
+                                    maxNumImages=maxNumImages_inference, 
                                     maxNumWorkers=self.maxNumWorkers_inference)
 
                     return { 'status' : status }

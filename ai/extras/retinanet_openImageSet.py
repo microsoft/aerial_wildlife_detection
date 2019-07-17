@@ -191,7 +191,7 @@ class RetinaNet_ois(RetinaNet):
         result = {}
         for key in patchData.keys():
             # patch name
-            patchName = re.sub('\..*$', '', filename) + '_' + key + os.path.splitext(filename)[1]
+            patchName = re.sub('\..*$', '', filename) + '_' + key + '.JPG'
             
             patchDir = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), patchName)
             parentFolder, _ = os.path.split(patchDir)

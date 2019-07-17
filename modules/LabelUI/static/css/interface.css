@@ -284,7 +284,7 @@ canvas {
     position: absolute;
     bottom: 40px;
     height: 400px;
-    max-height:300px;
+    max-height:400px;
     padding: 20px;
     color: white;
     background: #575352F0;
@@ -313,6 +313,11 @@ canvas {
     padding-right: 0;
     padding-top: 10px;
     padding-bottom: 20px;
+}
+
+#ai-worker-container {
+    /* TODO: temporary solution while manual controls are in place */
+    height: 240px;
 }
 
 #ai-worker-entries, #ai-tasks-entries {

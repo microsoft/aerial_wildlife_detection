@@ -257,6 +257,11 @@ class AIWorkerHandler {
         });
 
 
+        // manual control (TODO: allow only if admin)
+        $('#launch-job-button').click(function() {
+            self.manualTrigger();
+        })
+
         // //TODO
         // $('#ai-worker-container').append($('<button class="btn btn-danger" onclick="window.aiWorkerHandler.startInference();">Inference</button>'));
         // $('#ai-worker-container').append($('<button class="btn btn-danger" onclick="window.aiWorkerHandler.startTraining();">Training</button>'))
@@ -435,6 +440,43 @@ class AIWorkerHandler {
             },
             error: function() {
                 console.log('error')
+            }
+        })
+    }
+
+    manualTrigger() {
+        /*
+            Gets the data entered through the interface and
+            manually starts a training, inference, or combined
+            cycle.
+        */
+        var doTrain = $('#check-do-train').is(":checked");
+        var numImg_train = $('#box-num-images-train').val();
+        var doInference = $('#check-do-inference').is(":checked");
+        var numImg_inference = $('#box-num-images-inference').val();
+
+        //TODO: check if training process running and disable checkbox if so
+        //TODO: default box values
+        //TODO: also check for maximum number of (concurrent) processes
+
+        if(!(doTrain || doInference)) return;
+        var data = {
+            'train': doTrain,
+            'maxNum_train': numImg_train,
+            'inference': doInference,
+            'maxNum_inference': numImg_inference
+        };
+        $.ajax({
+            url: 'start',
+            method: 'POST',
+            data: JSON.stringify(data),
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            success: function(response) {
+                console.log(response);  //TODO
+            },
+            error: function(response) {
+                console.log(response);  //TODO
             }
         })
     }
