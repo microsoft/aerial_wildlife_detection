@@ -166,12 +166,7 @@ class RetinaNet:
         # read state dict from bytes
         stateDict = io.BytesIO(stateDict)
         stateDict = torch.load(stateDict, map_location=lambda storage, loc: storage)
-        
         model = Model.loadFromStateDict(stateDict)
-
-        print(stateDict['numClasses'])
-        print(model.numClasses)
-
 
         # initialize data loader, dataset, transforms
         inputSize = tuple(self.options['general']['image_size'])
@@ -263,7 +258,7 @@ class RetinaNet:
                         #TODO: exception if fVec is not torch tensor: 'fVec': io.BytesIO(fVec.numpy().astype(np.float32)).getvalue()
                     }
 
-            # update worker state   TODO
+            # update worker state
             imgCount += len(imgID)
             current_task.update_state(state='PROGRESS', meta={'done': imgCount, 'total': len(dataLoader.dataset), 'message': 'predicting'})
 

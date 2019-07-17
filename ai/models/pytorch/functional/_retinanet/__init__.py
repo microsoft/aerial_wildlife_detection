@@ -2,7 +2,7 @@
     PyTorch implementation of the RetinaNet object detector:
         Lin, Tsung-Yi, et al. "Focal loss for dense object detection." Proceedings of the IEEE international conference on computer vision. 2017.
 
-    Implementation forked and adapted from: https://github.com/kuangliu/pytorch-retinanet
+    Basic implementation forked and adapted from: https://github.com/kuangliu/pytorch-retinanet
 
     2019 Benjamin Kellenberger
 '''

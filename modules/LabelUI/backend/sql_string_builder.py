@@ -115,19 +115,19 @@ class SQLStringBuilder:
             orderSpec = 'ORDER BY viewcount ASC NULLS FIRST, score DESC'
         elif order == 'labeled':
             orderSpec = 'ORDER BY viewcount DESC NULLS LAST, score DESC'
-
+        orderSpec += ', timeCreated DESC'
 
         sql = '''
             SELECT id, image, cType, viewcount, filename, {allCols} FROM (
-            SELECT id AS image, filename, viewcount, score FROM {schema}.image AS img
+            SELECT id AS image, filename, viewcount, score, timeCreated FROM {schema}.image AS img
             LEFT OUTER JOIN (
                 SELECT * FROM {schema}.image_user
                 WHERE username = %s
             ) AS iu ON img.id = iu.image
             LEFT OUTER JOIN (
-                SELECT image, SUM(confidence)/COUNT(confidence) AS score
+                SELECT image, SUM(confidence)/COUNT(confidence) AS score, timeCreated
                 FROM {schema}.prediction
-                GROUP BY image
+                GROUP BY image, timeCreated
             ) AS img_score ON img.id = img_score.image
             {subset}
             {order}

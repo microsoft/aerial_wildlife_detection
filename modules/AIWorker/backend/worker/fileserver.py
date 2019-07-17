@@ -102,6 +102,12 @@ class FileServer:
     
 
     def putFile(self, bytea, filename):
-        #TODO: implement for cases where model may want to add an image.
-        # What about remote file server? Might need to do authentication and sanity checks...
-        pass
+        '''
+            Saves a file to disk.
+            TODO: requires locally running FileServer instance for now.
+        '''
+        #TODO: What about remote file server? Might need to do authentication and sanity checks...
+        
+        with open(os.path.join(self.baseURI, filename), 'wb') as f:
+            f.write(bytea)
+        print('Wrote file to disk: ' + filename)    #TODO

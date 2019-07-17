@@ -584,7 +584,6 @@ class RectangleElement extends PointElement {
         var minWidth = window.minBoxSize_w;
         var minHeight = window.minBoxSize_h;
         var minSize = viewport.transformCoordinates([minWidth, minHeight], 'validArea', true);
-        console.log(this.width + ', ' + minSize[0])
         this.width = Math.max(this.width, minSize[0]);
         this.height = Math.max(this.height, minSize[1]);
     }
