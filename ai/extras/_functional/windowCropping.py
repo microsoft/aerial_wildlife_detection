@@ -59,33 +59,39 @@ class WindowCropper:
         cropSize=None, minCropSize=None, maxCropSize=None, forcePatchSizeAspectRatio=True, maintainAspectRatio=True,
         searchStride=(10,10,)):
 
-        if isinstance(patchSize, int):
-            self.patchSize = (patchSize, patchSize,)
+        self.patchSize = patchSize
+        if isinstance(self.patchSize, int):
+            self.patchSize = (self.patchSize, self.patchSize,)
 
         if cropMode == 'strided':
-            if stride is None:
+            self.stride = stride
+            if self.stride is None:
                 self.stride = self.patchSize
-            elif isinstance(stride, int):
-                self.stride = (stride, stride,)
+            elif isinstance(self.stride, int):
+                self.stride = (self.stride, self.stride,)
         
         elif cropMode == 'objectCentered':
-            if cropSize is None:
+            self.cropSize = cropSize
+            if self.cropSize is None:
                 self.cropSize = self.patchSize
-            elif isinstance(cropSize, int) or isinstance(cropSize, float):
-                self.cropSize = (cropSize, cropSize,)
+            elif isinstance(self.cropSize, int) or isinstance(self.cropSize, float):
+                self.cropSize = (self.cropSize, self.cropSize,)
             
-            if minCropSize is None:
+            self.minCropSize = minCropSize
+            if self.minCropSize is None:
                 self.minCropSize = (0, 0,)
-            elif isinstance(minCropSize, int):
-                self.minCropSize = (minCropSize, minCropSize,)
+            elif isinstance(self.minCropSize, int):
+                self.minCropSize = (self.minCropSize, self.minCropSize,)
+            self.maxCropSize = maxCropSize
             if maxCropSize is None:
                 self.maxCropSize = (1e9, 1e9,)
-            elif isinstance(maxCropSize, int):
-                self.maxCropSize = (maxCropSize, maxCropSize,)
+            elif isinstance(self.maxCropSize, int):
+                self.maxCropSize = (self.maxCropSize, self.maxCropSize,)
 
         elif cropMode == 'windowCropping':
-            if isinstance(searchStride, int):
-                self.searchStride = (searchStride, searchStride,)
+            self.searchStride = searchStride
+            if isinstance(self.searchStride, int):
+                self.searchStride = (self.searchStride, self.searchStride,)
         self.cropMode = cropMode
         self.exportEmptyPatches = exportEmptyPatches
         self.minBBoxArea = minBBoxArea
@@ -97,20 +103,20 @@ class WindowCropper:
     def splitImageIntoPatches(self, image, bboxes, labels, logits):
         sz = image.size
 
-        # prepare ground truth: translate bboxes to absolute XYXY format
-        labels = np.array(labels)
-        bboxes = np.array(bboxes)
-        logits = np.array(logits)
+        labels = labels.numpy()
+        bboxes = bboxes.numpy()
+        logits = logits.numpy()
 
         # prepare return values
         result = {}
 
         if len(bboxes):
-            # convert to absolute coords
-            bboxes[:,0] *= sz[0]
-            bboxes[:,1] *= sz[1]
-            bboxes[:,2] *= sz[0]
-            bboxes[:,3] *= sz[1]
+            # convert to XYWH format
+            bboxes[:,2] -= bboxes[:,0]
+            bboxes[:,3] -= bboxes[:,1]
+            bboxes[:,0] +- bboxes[:,2]/2
+            bboxes[:,1] +- bboxes[:,3]/2
+
 
         # create split locations
         if self.cropMode == 'strided':
@@ -298,7 +304,7 @@ class WindowCropper:
             # prepare result
             patchKey = '{}_{}_{}_{}'.format(coordsX[cIdx], coordsY[cIdx], cropSizesX[cIdx], cropSizesY[cIdx])
             result[patchKey] = {
-                'patch': None,   # will be assigned at the end, after resizing & Co.
+                'patch': patch,
                 'predictions': []
             }
 
@@ -346,7 +352,6 @@ class WindowCropper:
                 bboxes_patch = bboxes_patch[valid_area,:]
                 labels_patch = labels_patch[valid_area]
                 logits_patch = logits_patch[valid_area,:]
-                remainder_patch = [remainder_patch[r] for r in range(len(valid_area)) if valid_area[r]]
 
                 # rescale image patch if needed
                 if self.cropMode == 'objectCentered':

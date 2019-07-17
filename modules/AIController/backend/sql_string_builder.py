@@ -27,9 +27,9 @@ class SQLStringBuilder:
 
         sql = '''
             SELECT newestAnno.image FROM (
-                SELECT image, timecreated FROM {schema}.annotation AS anno
-                WHERE anno.timecreated > COALESCE(to_timestamp(0), (SELECT MAX(timecreated) FROM {schema}.cnnstate))
-                ORDER BY anno.timecreated ASC
+                SELECT image, last_checked FROM {schema}.image_user AS iu
+                WHERE iu.last_checked > COALESCE(to_timestamp(0), (SELECT MAX(timecreated) FROM {schema}.cnnstate))
+                ORDER BY iu.last_checked ASC
                 LIMIT {limit}
             ) AS newestAnno;
         '''.format(schema=self.config.getProperty('Database', 'schema'),

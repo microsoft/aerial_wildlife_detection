@@ -17,12 +17,12 @@ from celery import current_task
 import torch
 from torchvision import transforms as tr
 from PIL import Image
-from ..models.pytorch.detection.retinanet import RetinaNet
+import rawpy
+from ai.models.pytorch.detection.retinanet import RetinaNet
 from ai.models.pytorch.functional._retinanet.model import RetinaNet as Model
 from ai.models.pytorch.functional._retinanet import encoder
 from ai.models.pytorch.functional._retinanet.utils import box_nms
-import ai.models.pytorch.functional._util.bboxTransforms as bboxTr
-from ._functional import tensorSharding, windowCropping
+from ai.extras._functional import tensorSharding, windowCropping
 
 
 class RetinaNet_ois(RetinaNet):
@@ -30,8 +30,21 @@ class RetinaNet_ois(RetinaNet):
     def __init__(self, config, dbConnector, fileServer, options):
         super(RetinaNet_ois, self).__init__(config, dbConnector, fileServer, options)
 
+        # add contrib options
+        defaultContribOptions = {
+            'baseFolder_unlabeled': '/datadrive/hfaerialblobs/_images/',   # local folder to search for non-added images
+            'load_raw_images': True,   # whether to take RAW files into account
+            'inference_max_num_unlabeled': 64,
+            'stride': 0.65          # relative stride factor
+        }
+        if not 'contrib' in self.options:
+            self.options['contrib'] = defaultContribOptions
+        else:
+            self.options['contrib'] = self._parse_options(self.options['contrib'], defaultContribOptions)
+
+
         # parameters
-        self.batchSize = self.options['contrib']['batch_size']
+        self.batchSize = self.options['inference']['batch_size']
         self.maxNumUnlabeled = self.options['contrib']['inference_max_num_unlabeled']
         self.patchSize = tuple(self.options['general']['image_size'])
         self.stride = self.options['contrib']['stride']
@@ -41,7 +54,7 @@ class RetinaNet_ois(RetinaNet):
             patchSize=self.patchSize, exportEmptyPatches=False,
             cropMode='windowCropping',
             searchStride=(10,10,),
-            minBBoxArea=64, minBBoxAreaFrac=64  #TODO
+            minBBoxArea=64, minBBoxAreaFrac=0.25  #TODO
         )
 
         # extra: parse base folder for images to look out for
@@ -91,7 +104,12 @@ class RetinaNet_ois(RetinaNet):
         '''
 
         # load image
-        img = Image.open(io.BytesIO(self.fileServer.getFile(filename)))
+        filePath = os.path.join(self.baseFolder_unlabeled, filename)
+        _, fileExt = os.path.splitext(filePath)
+        if fileExt.lower() in ['nef', 'cr2']:
+            img = Image.fromarray(rawpy.imread(filePath).postprocess())
+        else:
+            img = Image.open(filePath).convert('RGB')
 
         # transform
         tensor = transform(img).to(self._get_device())
@@ -127,18 +145,19 @@ class RetinaNet_ois(RetinaNet):
                                                 return_conf=True)
 
             # incorporate patch offsets and append to list of predictions
-            if len(bboxes_pred_img):
-                bboxes_pred_img[:,0] += gridX[startIdx:endIdx]
-                bboxes_pred_img[:,1] += gridY[startIdx:endIdx]
-                bboxes_pred_img[:,2] += gridX[startIdx:endIdx]
-                bboxes_pred_img[:,3] += gridY[startIdx:endIdx]
+            for b in range(len(bboxes_pred_img)):
+                if len(bboxes_pred_img[b]):
+                    bboxes_pred_img[b][:,0] += gridX[startIdx+b]
+                    bboxes_pred_img[b][:,1] += gridY[startIdx+b]
+                    bboxes_pred_img[b][:,2] += gridX[startIdx+b]
+                    bboxes_pred_img[b][:,3] += gridY[startIdx+b]
 
-                scores_pred_img, _ = torch.max(confs_pred_img,1)
+                    scores_pred, _ = torch.max(confs_pred_img[b],1)
 
-                bboxes = torch.cat((bboxes, bboxes_pred_img), dim=0)
-                labels = torch.cat((labels, labels_pred_img), dim=0)
-                confs = torch.cat((confs, confs_pred_img), dim=0)
-                scores = torch.cat((scores, scores_pred_img), dim=0)
+                    bboxes = torch.cat((bboxes, bboxes_pred_img[b]), dim=0)
+                    labels = torch.cat((labels, labels_pred_img[b]), dim=0)
+                    confs = torch.cat((confs, confs_pred_img[b]), dim=0)
+                    scores = torch.cat((scores, scores_pred), dim=0)
 
         # do NMS on entire set
         keep = box_nms(bboxes, scores, threshold=0.1)   #TODO
@@ -150,21 +169,57 @@ class RetinaNet_ois(RetinaNet):
         # re-split into patches (WindowCropping)
         patchData = self.windowCropper.splitImageIntoPatches(img, bboxes, labels, confs)
 
+        # #TODO
+        # import matplotlib.pyplot as plt
+        # from matplotlib.patches import Rectangle
+        # plt.figure(1)
+        # plt.clf()
+        # plt.imshow(img)
+        # ax = plt.gca()
+        # for b in range(bboxes.size(0)):
+        #     ax.add_patch(Rectangle(
+        #         (bboxes[b,0], bboxes[b,1]),
+        #         (bboxes[b,2] - bboxes[b,0]), (bboxes[b,3] - bboxes[b,1]),
+        #         fill=False,
+        #         ec='r'
+        #     ))
+        # plt.draw()
+        # plt.waitforbuttonpress()
+
         # iterate over patches
         result = {}
         for key in patchData.keys():
             # patch name
             patchName = re.sub('\..*$', '', filename) + '_' + key + os.path.splitext(filename)[1]
+            
+            patchDir = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), patchName)
+            parentFolder, _ = os.path.split(patchDir)
+            os.makedirs(parentFolder, exist_ok=True)
 
             # save patch
-            bytea = io.BytesIO()
-            patchData[key]['patch'].save(bytea)
-            self.fileServer.putfile(bytea.getvalue(), patchName)    #TODO: verify
+            patchData[key]['patch'].save(patchDir)
 
             # append metadata
             result[patchName] = {
                 'predictions': patchData[key]['predictions']
             }
+
+            # #TODO
+            # plt.figure(2)
+            # plt.clf()
+            # plt.imshow(patchData[key]['patch'])
+            # psz = patchData[key]['patch'].size
+            # ax = plt.gca()
+            # for b in range(len(patchData[key]['predictions'])):
+            #     bbox = patchData[key]['predictions'][b]
+            #     ax.add_patch(Rectangle(
+            #         (psz[0] * (bbox['x']-bbox['width']/2), psz[1] * (bbox['y']-bbox['height']/2),),
+            #         psz[0]*bbox['width'], psz[0]*bbox['height'],
+            #         fill=False,
+            #         ec='r'
+            #     ))
+            # plt.draw()
+            # plt.waitforbuttonpress()
 
         # return metadata
         return result
@@ -177,10 +232,11 @@ class RetinaNet_ois(RetinaNet):
             inference on images already existing in the database, the model runs
             over large images specified in the folder ('all_images') and adds the
             predicted patches to the database.
-            TODO: Requires the FileServer to be running on the same instance.
+            TODO: Requires to be running on the same instance as the FileServer.
         '''
 
         # prepare return metadata
+        print('Doing inference on new images...')
         response = {}
 
         # initialize model
@@ -191,24 +247,24 @@ class RetinaNet_ois(RetinaNet):
         stateDict = io.BytesIO(stateDict)
         stateDict = torch.load(stateDict, map_location=lambda storage, loc: storage)
         model = Model.loadFromStateDict(stateDict)
+        model.to(self._get_device())
 
         # get all image filenames from DB
         current_task.update_state(state='PREPARING', meta={'message':'identifying images'})
         sql = 'SELECT filename FROM {schema}.image;'.format(schema=self.config.getProperty('Database', 'schema'))
         filenames = self.dbConnector.execute(sql, None, 'all')
-
-        #TODO
-        from celery.contrib import rdb
-        rdb.set_trace()
+        filenames = [f['filename'] for f in filenames]
 
         # get valid filename substring (pattern: path/base_x_y_w_h.JPG)
         fileSnippets_db = set([re.sub('_[0-9]+_[0-9]+_[0-9]+_[0-9]+\..*$', '', f) for f in filenames])
 
         # the same for images on disk
-        fileSnippets_disk = set([re.sub('\..*$', '', f.replace(self.baseFolder_unlabeled, '')) for f in self.all_images])
+        snippets_disk = [os.path.splitext(f.replace(self.baseFolder_unlabeled, '')) for f in self.all_images]
+        extensions_disk = dict(snippets_disk)
+        fileSnippets_disk = set(extensions_disk.keys())
 
         # identify images that have not yet been added to DB
-        unlabeled = fileSnippets_disk.intersection(fileSnippets_db)
+        unlabeled = fileSnippets_disk.difference(fileSnippets_db)
 
         if not len(unlabeled):
             return response
@@ -217,23 +273,124 @@ class RetinaNet_ois(RetinaNet):
         unlabeled = random.sample(unlabeled, min(self.maxNumUnlabeled, len(unlabeled)))
 
         # prepare transforms
-        transform = bboxTr.Compose([
-            bboxTr.DefaultTransform(tr.ToTensor()),
-            bboxTr.DefaultTransform(tr.Normalize(mean=[0.485, 0.456, 0.406],
-                                                std=[0.229, 0.224, 0.225]))
+        transform = tr.Compose([
+            tr.ToTensor(),
+            tr.Normalize(mean=[0.485, 0.456, 0.406],
+                         std=[0.229, 0.224, 0.225])
         ])  #TODO: write functional.pytorch util to compose transformations
 
         # do inference on the unlabeled images
         for u in tqdm(range(len(unlabeled))):
-            meta = self._inference_image(model, transform, unlabeled[u])
+            meta = self._inference_image(model, transform, unlabeled[u] + extensions_disk[unlabeled[u]])
             for key in meta.keys():
                 response[key] = meta[key]
 
             # update worker state
-            current_task.update_state(state='PROGRESS', meta={'done': u+1, 'total': len(unlabeled), 'message': 'predicting'})
+            current_task.update_state(state='PROGRESS', meta={'done': u+1, 'total': len(unlabeled), 'message': 'predicting new images'})
     
         model.cpu()
         if 'cuda' in self._get_device():
             torch.cuda.empty_cache()
 
+
+        # also do regular inference
+        print('Doing inference on existing patches...')
+        response_regular = super.inference(stateDict, data)
+        for key in response_regular.keys():
+            response[key] = response_regular[key]
+
+
         return response
+
+
+
+# #TODO
+# if __name__ == '__main__':
+
+
+#     os.environ['AIDE_CONFIG_PATH'] = 'settings_windowCropping.ini'
+#     from util.configDef import Config
+#     from modules.Database.app import Database
+#     from modules.AIWorker.backend.worker.fileserver import FileServer
+#     config = Config()
+#     dbConnector = Database(config)
+#     fileServer = FileServer(config)
+
+#     rn = RetinaNet_ois(config, dbConnector, fileServer, None)
+
+
+#     # do inference on unlabeled
+#     def __load_model_state(config, dbConnector):
+#         # load model state from database
+#         sql = '''
+#             SELECT query.statedict FROM (
+#                 SELECT statedict, timecreated
+#                 FROM {schema}.cnnstate
+#                 ORDER BY timecreated ASC NULLS LAST
+#                 LIMIT 1
+#             ) AS query;
+#         '''.format(schema=config.getProperty('Database', 'schema'))
+#         stateDict = dbConnector.execute(sql, None, numReturn=1)     #TODO: issues Celery warning if no state dict found
+#         if not len(stateDict):
+#             # force creation of new model
+#             stateDict = None
+        
+#         else:
+#             # extract
+#             stateDict = stateDict[0]['statedict']
+
+#         return stateDict
+#     stateDict = __load_model_state(config, dbConnector)
+
+
+#     #TODO TODO
+#     from constants.dbFieldNames import FieldNames_annotation
+#     def __load_metadata(config, dbConnector, imageIDs, loadAnnotations):
+#         schema = config.getProperty('Database', 'schema')
+
+#         # prepare
+#         meta = {}
+
+#         # label names
+#         labels = {}
+#         sql = 'SELECT * FROM {schema}.labelclass;'.format(schema=schema)
+#         result = dbConnector.execute(sql, None, 'all')
+#         for r in result:
+#             labels[r['id']] = r     #TODO: make more elegant?
+#         meta['labelClasses'] = labels
+
+#         # image data
+#         imageMeta = {}
+#         sql = 'SELECT * FROM {schema}.image WHERE id IN %s'.format(schema=schema)
+#         result = dbConnector.execute(sql, (tuple(imageIDs),), 'all')
+#         for r in result:
+#             imageMeta[r['id']] = r  #TODO: make more elegant?
+
+
+#         # annotations
+#         if loadAnnotations:
+#             fieldNames = list(getattr(FieldNames_annotation, config.getProperty('Project', 'predictionType')).value)
+#             sql = '''
+#                 SELECT id AS annotationID, image, {fieldNames} FROM {schema}.annotation AS anno
+#                 WHERE image IN %s;
+#             '''.format(schema=schema, fieldNames=','.join(fieldNames))
+#             result = dbConnector.execute(sql, (tuple(imageIDs),), 'all')
+#             for r in result:
+#                 if not 'annotations' in imageMeta[r['image']]:
+#                     imageMeta[r['image']]['annotations'] = []
+#                 imageMeta[r['image']]['annotations'].append(r)      #TODO: make more elegant?
+#         meta['images'] = imageMeta
+
+#         return meta
+
+#     sql = '''SELECT image FROM aerialelephants_wc.image_user WHERE viewcount > 0 LIMIT 4096''' 
+#     imageIDs = dbConnector.execute(sql, None, 4096)
+#     imageIDs = [i['image'] for i in imageIDs]
+
+#     data = __load_metadata(config, dbConnector, imageIDs, True)
+
+#     # stateDict = rn.train(stateDict, data)
+
+#     print('debug')
+
+#     rn.inference(stateDict, None)

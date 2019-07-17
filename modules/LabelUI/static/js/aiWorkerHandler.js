@@ -329,7 +329,7 @@ class AIWorkerHandler {
                 }
 
                 // global task status
-                var taskInProgress = false;
+                var numTasksInProgress = 0;
                 var numTotal = 0;
                 var numDone = 0;
 
@@ -349,7 +349,7 @@ class AIWorkerHandler {
 
                     // parse task progress
                     if(!(tasks[key].status === 'SUCCESS' || tasks[key].status === 'FAILURE')) {
-                        taskInProgress = true;
+                        numTasksInProgress += 1;
                         if(tasks[key].hasOwnProperty('meta')) {
                             if(tasks[key]['meta'].hasOwnProperty('total')) {
                                 numTotal += tasks[key]['meta']['total'];
@@ -362,12 +362,12 @@ class AIWorkerHandler {
                 }
 
                 // update global progress bar and status message
-                if(Object.keys(self.tasks).length > 0) {
+                if(numTasksInProgress > 0) {
                     $(self.prInd_tasks).show();
                     $(self.progressBar_tasks).show();
                     $(self.miniStatus_tasks).show();
-                    var msg = Object.keys(self.tasks).length;
-                    msg += (msg == 1 ? ' task' : ' tasks');
+                    var msg = numTasksInProgress;
+                    msg += (numTasksInProgress == 1 ? ' task' : ' tasks');
                     
                     if(numTotal > 0) {
                         var newWidthPerc = 100*(numDone / numTotal);
@@ -376,7 +376,7 @@ class AIWorkerHandler {
                         }, 1000);
                         msg += ' (' + Math.round(newWidthPerc) + '%)';
                     } else {
-                        if(taskInProgress) {
+                        if(numTasksInProgress > 0) {
                             // tasks going on, but progress unknown, set indeterminate
                             self.progressBar_tasks.css('width', '100%');
                         } else {

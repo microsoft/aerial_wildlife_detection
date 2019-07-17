@@ -11,7 +11,7 @@
 # default options for the model, may be overridden in the custom configuration loaded at runtime
 DEFAULT_OPTIONS = {
 	"general": {
-		"image_size": [512, 512],
+		"image_size": [800, 600],
 		"device": "cuda",
 		"dataType": "featureVector",		# one of {'image','featureVector'}
         "seed": 1234
@@ -37,10 +37,10 @@ DEFAULT_OPTIONS = {
 				"alpha": 0.25
 			}
 		},
-		"batch_size": 16,
-		"ignore_unsure": False
+		"batch_size": 32,
+		"ignore_unsure": True
 	},
 	"inference": {
-		"batch_size": 1
+		"batch_size": 256
 	}
 }

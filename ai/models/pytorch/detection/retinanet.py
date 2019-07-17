@@ -24,25 +24,25 @@ class RetinaNet:
         self.config = config
         self.dbConnector = dbConnector
         self.fileServer = fileServer
-        self._parse_options(options)
+        self.options = self._parse_options(options, DEFAULT_OPTIONS)
 
 
-    def _parse_options(self, options):
+    def _parse_options(self, options, defaultOptions):
         '''
             Check for presence of required values and add defaults if not there.
         '''
-        def __check_args(options, defaultOptions):
-            if not isinstance(defaultOptions, dict):
+        def __check_args(options, default):
+            if not isinstance(default, dict):
                 return options
-            for key in defaultOptions.keys():
+            for key in default.keys():
                 if not key in options:
-                    options[key] = defaultOptions[key]
-                options[key] = __check_args(options[key], defaultOptions[key])
+                    options[key] = default[key]
+                options[key] = __check_args(options[key], default[key])
             return options
         if options is None or not isinstance(options, dict):
-            self.options = DEFAULT_OPTIONS
+            return defaultOptions
         else:
-            self.options = __check_args(options, DEFAULT_OPTIONS)
+            return __check_args(options, defaultOptions)
 
 
     def _get_device(self):
@@ -188,7 +188,7 @@ class RetinaNet:
         collator = collation.Collator(inputSize, dataEncoder)
         dataLoader = DataLoader(
             dataset,
-            batch_size=self.options['inference']['batch_size'],     #TODO: at the moment the RetinaNet decoder doesn't support batch sizes > 1...
+            batch_size=16,  #TODO: self.options['inference']['batch_size'],
             shuffle=False,
             collate_fn=collator.collate_fn
         )
@@ -210,19 +210,22 @@ class RetinaNet:
             dataItem = img.to(device)
 
             with torch.no_grad():
-                bboxes_pred, labels_pred = model(dataItem, False)   #TODO: isFeatureVector
-                bboxes_pred, labels_pred, confs_pred = dataEncoder.decode(bboxes_pred.squeeze(0).cpu(),
-                                    labels_pred.squeeze(0).cpu(),
+                bboxes_pred_batch, labels_pred_batch = model(dataItem, False)   #TODO: isFeatureVector
+                bboxes_pred_batch, labels_pred_batch, confs_pred_batch = dataEncoder.decode(bboxes_pred_batch.squeeze(0).cpu(),
+                                    labels_pred_batch.squeeze(0).cpu(),
                                     (inputSize[1],inputSize[0],),
                                     cls_thresh=0.1, nms_thresh=0.1,
                                     return_conf=True)       #TODO: ditto
 
-                if bboxes_pred.dim() == 2:
-                    bboxes_pred = bboxes_pred.unsqueeze(0)
-                    labels_pred = labels_pred.unsqueeze(0)
-                    confs_pred = confs_pred.unsqueeze(0)
-
                 for i in range(len(imgID)):
+                    bboxes_pred = bboxes_pred_batch[i]
+                    labels_pred = labels_pred_batch[i]
+                    confs_pred = confs_pred_batch[i]
+                    if bboxes_pred.dim() == 2:
+                        bboxes_pred = bboxes_pred.unsqueeze(0)
+                        labels_pred = labels_pred.unsqueeze(0)
+                        confs_pred = confs_pred.unsqueeze(0)
+
                     # convert bounding boxes to YOLO format
                     predictions = []
                     bboxes_pred_img = bboxes_pred[0,...]
@@ -267,3 +270,95 @@ class RetinaNet:
             torch.cuda.empty_cache()
 
         return response
+
+
+# #TODO
+# if __name__ == '__main__':
+#     import os
+
+#     os.environ['AIDE_CONFIG_PATH'] = 'settings_windowCropping.ini'
+#     from util.configDef import Config
+#     from modules.Database.app import Database
+#     from modules.AIWorker.backend.worker.fileserver import FileServer
+#     config = Config()
+#     dbConnector = Database(config)
+#     fileServer = FileServer(config)
+
+#     rn = RetinaNet(config, dbConnector, fileServer, None)
+
+
+#     # do inference on unlabeled
+#     def __load_model_state(config, dbConnector):
+#         # load model state from database
+#         sql = '''
+#             SELECT query.statedict FROM (
+#                 SELECT statedict, timecreated
+#                 FROM {schema}.cnnstate
+#                 ORDER BY timecreated ASC NULLS LAST
+#                 LIMIT 1
+#             ) AS query;
+#         '''.format(schema=config.getProperty('Database', 'schema'))
+#         stateDict = dbConnector.execute(sql, None, numReturn=1)     #TODO: issues Celery warning if no state dict found
+#         if not len(stateDict):
+#             # force creation of new model
+#             stateDict = None
+        
+#         else:
+#             # extract
+#             stateDict = stateDict[0]['statedict']
+
+#         return stateDict
+#     stateDict = __load_model_state(config, dbConnector)
+
+
+#     #TODO TODO
+#     from constants.dbFieldNames import FieldNames_annotation
+#     def __load_metadata(config, dbConnector, imageIDs, loadAnnotations):
+#         schema = config.getProperty('Database', 'schema')
+
+#         # prepare
+#         meta = {}
+
+#         # label names
+#         labels = {}
+#         sql = 'SELECT * FROM {schema}.labelclass;'.format(schema=schema)
+#         result = dbConnector.execute(sql, None, 'all')
+#         for r in result:
+#             labels[r['id']] = r     #TODO: make more elegant?
+#         meta['labelClasses'] = labels
+
+#         # image data
+#         imageMeta = {}
+#         sql = 'SELECT * FROM {schema}.image WHERE id IN %s'.format(schema=schema)
+#         result = dbConnector.execute(sql, (tuple(imageIDs),), 'all')
+#         for r in result:
+#             imageMeta[r['id']] = r  #TODO: make more elegant?
+
+
+#         # annotations
+#         if loadAnnotations:
+#             fieldNames = list(getattr(FieldNames_annotation, config.getProperty('Project', 'predictionType')).value)
+#             sql = '''
+#                 SELECT id AS annotationID, image, {fieldNames} FROM {schema}.annotation AS anno
+#                 WHERE image IN %s;
+#             '''.format(schema=schema, fieldNames=','.join(fieldNames))
+#             result = dbConnector.execute(sql, (tuple(imageIDs),), 'all')
+#             for r in result:
+#                 if not 'annotations' in imageMeta[r['image']]:
+#                     imageMeta[r['image']]['annotations'] = []
+#                 imageMeta[r['image']]['annotations'].append(r)      #TODO: make more elegant?
+#         meta['images'] = imageMeta
+
+#         return meta
+
+#     sql = '''SELECT image FROM aerialelephants_wc.image_user WHERE viewcount > 0 LIMIT 4096''' 
+#     imageIDs = dbConnector.execute(sql, None, 4096)
+#     imageIDs = [i['image'] for i in imageIDs]
+
+#     data = __load_metadata(config, dbConnector, imageIDs, False)
+
+#     # stateDict = rn.train(stateDict, data)
+
+#     print('debug')
+
+#     rn.inference(stateDict, data)

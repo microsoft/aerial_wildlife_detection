@@ -135,24 +135,48 @@ class DataEncoder:
                      else torch.Tensor(input_size)
         anchor_boxes = self._get_anchor_boxes(input_size)
 
-        loc_xy = loc_preds[:,:2]
-        loc_wh = loc_preds[:,2:]
+        if loc_preds.dim() == 2:
+          loc_preds = loc_preds.unsqueeze(0)
+        if cls_preds.dim() == 2:
+          cls_preds = cls_preds.unsqueeze(0)
+        
+        batch_size = loc_preds.size(0)
 
-        xy = loc_xy * anchor_boxes[:,2:] + anchor_boxes[:,:2]
-        wh = loc_wh.exp() * anchor_boxes[:,2:]
-        boxes = torch.cat([xy-wh/2, xy+wh/2], 1)  # [#anchors,4]
+        
+        anchor_boxes = anchor_boxes.unsqueeze(0).expand_as(loc_preds)
+
+        loc_xy = loc_preds[:,:,:2]
+        loc_wh = loc_preds[:,:,2:]
+
+        xy = loc_xy * anchor_boxes[:,:,2:] + anchor_boxes[:,:,:2]
+        wh = loc_wh.exp() * anchor_boxes[:,:,2:]
+        boxes = torch.cat([xy-wh/2, xy+wh/2], 2)  # [#images,#anchors,4]
 
         logits = cls_preds.sigmoid()
-        score, labels = logits.max(1)          # [#anchors,]
+        score, labels = logits.max(2)          # [#images,#anchors,]
         ids = score > cls_thresh
-        ids = ids.nonzero().squeeze(1)             # [#obj,]
+        ids = ids.nonzero().squeeze(1)             # [imgIdx,objIdx]
 
-        if nms_thresh > 0:
-          keep = box_nms(boxes[ids], score[ids], threshold=nms_thresh)
-        else:
-          keep = torch.arange(labels[ids].size(0))
+        keep = []
+        for b in range(batch_size):
+          nextB = ids[:,0] == b
+          if nms_thresh > 0:
+            keepB = box_nms(boxes[ids[nextB,0],ids[nextB,1],:], score[ids[nextB,0],ids[nextB,1]], threshold=nms_thresh)
+          else:
+            keepB = torch.arange(ids[nextB,1].size(0))
+          keep.append(ids[nextB,1][keepB])
+
+        # assemble final annotations
+        boxes_out = []
+        labels_out = []
+        logits_out = []
+        for b in range(batch_size):
+          boxes_out.append(boxes[b,keep[b],:])
+          labels_out.append(labels[b,keep[b]])
+          if return_conf:
+            logits_out.append(logits[b,keep[b],:])
 
         if return_conf:
-          return boxes[ids][keep], labels[ids][keep], logits[ids,...][keep,...]
+          return boxes_out, labels_out, logits_out
         else:
-          return boxes[ids][keep], labels[ids][keep]
+          return boxes_out, labels_out
