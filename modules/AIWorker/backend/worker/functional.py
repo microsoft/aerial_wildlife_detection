@@ -298,12 +298,6 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
         raise Exception('error during result parsing')
 
 
-    # #TODO: commit is missing some important type casts...
-    # from celery.contrib import rdb
-    # rdb.set_trace()
-    # return 0
-
-
     # commit to database
     try:
         if len(values_pred):

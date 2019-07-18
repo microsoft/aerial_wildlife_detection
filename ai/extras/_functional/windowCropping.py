@@ -407,7 +407,7 @@ class WindowCropper:
                         'width': bboxes_patch[l,2],
                         'height': bboxes_patch[l,3],
                         'label': labels_patch[l],
-                        'logits': list(logits_patch),
+                        'logits': list(logits_patch[l,:]),
                         'confidence': np.max(logits_patch)
                     })
 

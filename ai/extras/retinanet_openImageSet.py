@@ -34,7 +34,7 @@ class RetinaNet_ois(RetinaNet):
         defaultContribOptions = {
             'baseFolder_unlabeled': '/datadrive/hfaerialblobs/_images/',   # local folder to search for non-added images
             'load_raw_images': True,   # whether to take RAW files into account
-            'inference_max_num_unlabeled': 64,
+            'inference_max_num_unlabeled': 2,
             'stride': 0.65          # relative stride factor
         }
         if not 'contrib' in self.options:
@@ -245,9 +245,9 @@ class RetinaNet_ois(RetinaNet):
             raise Exception('No trained model state found, but required for inference.')
 
         # read state dict from bytes
-        stateDict = io.BytesIO(stateDict)
-        stateDict = torch.load(stateDict, map_location=lambda storage, loc: storage)
-        model = Model.loadFromStateDict(stateDict)
+        stateDict_parsed = io.BytesIO(stateDict)
+        stateDict_parsed = torch.load(stateDict_parsed, map_location=lambda storage, loc: storage)
+        model = Model.loadFromStateDict(stateDict_parsed)
         model.to(self._get_device())
 
         # get all image filenames from DB
@@ -296,6 +296,28 @@ class RetinaNet_ois(RetinaNet):
         model.cpu()
         if 'cuda' in self._get_device():
             torch.cuda.empty_cache()
+
+
+        # commit to DB
+        current_task.update_state(state='PREPARING', meta={'message':'adding new images to database'})
+        sql = '''
+            INSERT INTO {schema}.image (filename)
+            VALUES %s;
+        '''.format(schema=self.config.getProperty('Database', 'schema'))
+        self.dbConnector.insert(sql, [(key,) for key in list(response.keys())])
+
+        
+        # get IDs of newly inserted patches
+        sql = '''
+            SELECT id, filename FROM {schema}.image WHERE filename IN %s;
+        '''.format(schema=self.config.getProperty('Database', 'schema'))
+        patchIDs = self.dbConnector.execute(sql, (tuple(response.keys()),), 'all')
+
+        # replace IDs of responses
+        new_response = {}
+        for p in patchIDs:
+            new_response[p['id']] = response[p['filename']]
+        response = new_response
 
 
         # also do regular inference
@@ -388,14 +410,16 @@ class RetinaNet_ois(RetinaNet):
 
 #         return meta
 
-#     sql = '''SELECT image FROM aerialelephants_wc.image_user WHERE viewcount > 0 LIMIT 4096''' 
-#     imageIDs = dbConnector.execute(sql, None, 4096)
+#     sql = '''SELECT image FROM aerialelephants_wc.image_user WHERE viewcount > 0 LIMIT 2''' 
+#     imageIDs = dbConnector.execute(sql, None, 2)
 #     imageIDs = [i['image'] for i in imageIDs]
 
-#     data = __load_metadata(config, dbConnector, imageIDs, True)
+#     data = __load_metadata(config, dbConnector, imageIDs, False)
 
 #     # stateDict = rn.train(stateDict, data)
 
 #     print('debug')
 
-#     rn.inference(stateDict, None)
+#     result = rn.inference(stateDict, data)
+
+#     print('debug')
