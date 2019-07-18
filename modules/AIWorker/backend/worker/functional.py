@@ -31,8 +31,8 @@ from constants.dbFieldNames import FieldNames_annotation, FieldNames_prediction
 def __load_model_state(config, dbConnector):
     # load model state from database
     sql = '''
-        SELECT query.statedict FROM (
-            SELECT statedict, timecreated
+        SELECT query.statedict, query.id FROM (
+            SELECT statedict, id, timecreated
             FROM {schema}.cnnstate
             ORDER BY timecreated DESC NULLS LAST
             LIMIT 1
@@ -42,12 +42,14 @@ def __load_model_state(config, dbConnector):
     if not len(stateDict):
         # force creation of new model
         stateDict = None
-    
+        stateDictID = None
+
     else:
         # extract
         stateDict = stateDict[0]['statedict']
+        stateDictID = stateDict[0]['id']
 
-    return stateDict
+    return stateDict, stateDictID
 
 
 def __load_metadata(config, dbConnector, imageIDs, loadAnnotations):
@@ -116,7 +118,7 @@ def _call_train(dbConnector, config, imageIDs, subset, trainingFun, fileServer):
     # load model state
     current_task.update_state(state='PREPARING', meta={'message':'loading model state'})
     try:
-        stateDict = __load_model_state(config, dbConnector)
+        stateDict, _ = __load_model_state(config, dbConnector)
     except Exception as e:
         print(e)
         raise Exception('error during model state loading')
@@ -234,7 +236,7 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
     # load model state
     current_task.update_state(state='PREPARING', meta={'message':'loading model state'})
     try:
-        stateDict = __load_model_state(config, dbConnector)
+        stateDict, stateDictID = __load_model_state(config, dbConnector)
     except Exception as e:
         print(e)
         raise Exception('error during model state loading')
@@ -268,7 +270,8 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
     try:
         current_task.update_state(state='FINALIZING', meta={'message':'saving predictions'})
         fieldNames = list(getattr(FieldNames_prediction, config.getProperty('Project', 'predictionType')).value)
-        fieldNames.append('image')  # image ID
+        fieldNames.append('image')      # image ID
+        fieldNames.append('cnnstate')   # model state ID
         values_pred = []
         values_img = []     # mostly for feature vectors
         ids_img = []        # to delete previous predictions
@@ -280,6 +283,8 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
                     if fn == 'image':
                         nextResultValues.append(imgID)
                         ids_img.append(imgID)
+                    elif fn == 'cnnstate':
+                        nextResultValues.append(stateDictID)
                     else:
                         if fn in prediction:
                             #TODO: might need to do typecasts (e.g. UUID?)

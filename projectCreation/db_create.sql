@@ -70,16 +70,6 @@ CREATE TABLE IF NOT EXISTS &schema.ANNOTATION (
     FOREIGN KEY (image) REFERENCES &schema.IMAGE(id)
 );
 
-CREATE TABLE IF NOT EXISTS &schema.PREDICTION (
-    id uuid DEFAULT uuid_generate_v4(),
-    image uuid NOT NULL,
-    timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    &predictionFields
-    priority real,
-    PRIMARY KEY (id),
-    FOREIGN KEY (image) REFERENCES &schema.IMAGE(id)
-);
-
 /*
 CREATE TABLE IF NOT EXISTS &schema.CNN (
     id uuid DEFAULT uuid_generate_v4(),
@@ -107,4 +97,16 @@ CREATE TABLE IF NOT EXISTS &schema.CNNSTATE (
     partial boolean NOT NULL,
     PRIMARY KEY (id)
     --, FOREIGN KEY (cnn) REFERENCES &schema.CNN(id)
+);
+
+CREATE TABLE IF NOT EXISTS &schema.PREDICTION (
+    id uuid DEFAULT uuid_generate_v4(),
+    image uuid NOT NULL,
+    timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    cnnstate UUID,
+    &predictionFields
+    priority real,
+    PRIMARY KEY (id),
+    FOREIGN KEY (image) REFERENCES &schema.IMAGE(id),
+    FOREIGN KEY (cnnstate) REFERENCES &schema.CNNSTATE(id)
 );
