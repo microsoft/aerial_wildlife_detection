@@ -265,7 +265,7 @@ class RetinaNet:
                                 'width': bbox[2].item(),
                                 'height': bbox[3].item(),
                                 'label': dataset.labelclassMap_inv[label.item()],
-                                'logits': list(logits.numpy()),        #TODO: for AL criterion?
+                                'logits': logits.numpy().tolist(),        #TODO: for AL criterion?
                                 'confidence': torch.max(logits).item()
                             })
                     

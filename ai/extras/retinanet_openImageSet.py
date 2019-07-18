@@ -34,7 +34,7 @@ class RetinaNet_ois(RetinaNet):
         defaultContribOptions = {
             'baseFolder_unlabeled': '/datadrive/hfaerialblobs/_images/',   # local folder to search for non-added images
             'load_raw_images': True,   # whether to take RAW files into account
-            'inference_max_num_unlabeled': 2,
+            'inference_max_num_unlabeled': 128,
             'stride': 0.65          # relative stride factor
         }
         if not 'contrib' in self.options:
@@ -251,7 +251,7 @@ class RetinaNet_ois(RetinaNet):
         model.to(self._get_device())
 
         # mapping labelClass (UUID) to index in model (number); create inverse
-        labelclassMap = stateDict['labelclassMap']
+        labelclassMap = stateDict_parsed['labelclassMap']
         labelclassMap_inv = {}
         for key in labelclassMap.keys():
             val = labelclassMap[key]
@@ -333,11 +333,11 @@ class RetinaNet_ois(RetinaNet):
             response = new_response
 
 
-        # also do regular inference
-        print('Doing inference on existing patches...')
-        response_regular = super(RetinaNet_ois, self).inference(stateDict, data)
-        for key in response_regular.keys():
-            response[key] = response_regular[key]
+        # # also do regular inference
+        # print('Doing inference on existing patches...')
+        # response_regular = super(RetinaNet_ois, self).inference(stateDict, data)
+        # for key in response_regular.keys():
+        #     response[key] = response_regular[key]
 
         return response
 
@@ -433,5 +433,3 @@ class RetinaNet_ois(RetinaNet):
 #     print('debug')
 
 #     result = rn.inference(stateDict, data)
-
-#     print('debug')
