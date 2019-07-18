@@ -93,46 +93,53 @@ class AIMiddleware():
 
         self.training = True
 
-        # sanity checks
-        if not (isinstance(minTimestamp, datetime) or minTimestamp == 'lastState' or
-                minTimestamp == -1 or minTimestamp is None):
-            raise ValueError('{} is not a recognized property for variable "minTimestamp"'.format(str(minTimestamp)))
+
+        try:
+
+            # sanity checks
+            if not (isinstance(minTimestamp, datetime) or minTimestamp == 'lastState' or
+                    minTimestamp == -1 or minTimestamp is None):
+                raise ValueError('{} is not a recognized property for variable "minTimestamp"'.format(str(minTimestamp)))
 
 
-        if maxNumWorkers != 1:
-            # only query the number of available workers if more than one is specified to save time
-            num_workers = min(maxNumWorkers, self._get_num_available_workers())
-        else:
-            num_workers = maxNumWorkers
+            if maxNumWorkers != 1:
+                # only query the number of available workers if more than one is specified to save time
+                num_workers = min(maxNumWorkers, self._get_num_available_workers())
+            else:
+                num_workers = maxNumWorkers
 
 
-        # query image IDs
-        sql = self.sqlBuilder.getLatestQueryString(limit=maxNumImages)
+            # query image IDs
+            sql = self.sqlBuilder.getLatestQueryString(limit=maxNumImages)
 
-        if isinstance(minTimestamp, datetime):
-            imageIDs = self.dbConn.execute(sql, (minTimestamp,), 'all')
-        else:
-            imageIDs = self.dbConn.execute(sql, None, 'all')
+            if isinstance(minTimestamp, datetime):
+                imageIDs = self.dbConn.execute(sql, (minTimestamp,), 'all')
+            else:
+                imageIDs = self.dbConn.execute(sql, None, 'all')
 
-        imageIDs = [i['image'] for i in imageIDs]
+            imageIDs = [i['image'] for i in imageIDs]
 
 
-        if maxNumWorkers > 1:
+            if maxNumWorkers > 1:
 
-            # distribute across workers (TODO: also specify subset size for multiple jobs; randomly draw if needed)
-            images_subset = array_split(imageIDs, max(1, len(imageIDs) // num_workers))
+                # distribute across workers (TODO: also specify subset size for multiple jobs; randomly draw if needed)
+                images_subset = array_split(imageIDs, max(1, len(imageIDs) // num_workers))
 
-            processes = []
-            for subset in images_subset:
-                processes.append(celery_interface.call_train.si(subset, True))
-            process = group(processes)
+                processes = []
+                for subset in images_subset:
+                    processes.append(celery_interface.call_train.si(subset, True))
+                process = group(processes)
 
-        else:
-            # call one worker directly
-            # process = celery_interface.call_train.delay(data) #TODO: route to specific worker? http://docs.celeryproject.org/en/latest/userguide/routing.html#manual-routing
-            process = celery_interface.call_train.si(imageIDs, False)
-        
-        return process, num_workers
+            else:
+                # call one worker directly
+                # process = celery_interface.call_train.delay(data) #TODO: route to specific worker? http://docs.celeryproject.org/en/latest/userguide/routing.html#manual-routing
+                process = celery_interface.call_train.si(imageIDs, False)
+            
+            return process, num_workers
+
+        except:
+            self.training = False
+            return None
 
 
     def _get_inference_job_signature(self, imageIDs, maxNumWorkers=-1):

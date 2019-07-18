@@ -58,7 +58,7 @@ class Database():
 
     def execute(self, sql, arguments, numReturn=None):
         with self._get_connection() as conn:
-            cursor = conn.cursor(cursor_factory = RealDictCursor)
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
 
             # execute statement
             try:
@@ -72,7 +72,7 @@ class Database():
 
                 # retry execution
                 try:
-                    cursor = conn.cursor(cursor_factory = RealDictCursor)
+                    cursor = conn.cursor(cursor_factory=RealDictCursor)
                     cursor.execute(sql, arguments)
                     conn.commit()
                 except:
@@ -107,7 +107,7 @@ class Database():
 
     def execute_cursor(self, sql, arguments):
         with self._get_connection() as conn:
-            cursor = conn.cursor(cursor_factory = RealDictCursor)
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
             try:
                 cursor.execute(sql, arguments)
                 conn.commit()
@@ -120,7 +120,7 @@ class Database():
                 # retry execution
                 conn = self.connectionPool.getconn()
                 try:
-                    cursor = conn.cursor(cursor_factory = RealDictCursor)
+                    cursor = conn.cursor(cursor_factory=RealDictCursor)
                     cursor.execute(sql, arguments)
                     conn.commit()
                 except Exception as e:
@@ -143,7 +143,7 @@ class Database():
                 # retry execution
                 conn = self.connectionPool.getconn()
                 try:
-                    cursor = conn.cursor(cursor_factory = RealDictCursor)
+                    cursor = conn.cursor(cursor_factory=RealDictCursor)
                     execute_values(cursor, sql, values)
                     conn.commit()
                 except Exception as e:

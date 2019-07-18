@@ -28,7 +28,7 @@ class SQLStringBuilder:
         sql = '''
             SELECT newestAnno.image FROM (
                 SELECT image, last_checked FROM {schema}.image_user AS iu
-                WHERE iu.last_checked > COALESCE(to_timestamp(0), (SELECT MAX(timecreated) FROM {schema}.cnnstate))
+                -- WHERE iu.last_checked > COALESCE(to_timestamp(0), (SELECT MAX(timecreated) FROM {schema}.cnnstate))
                 ORDER BY iu.last_checked ASC
                 LIMIT {limit}
             ) AS newestAnno;

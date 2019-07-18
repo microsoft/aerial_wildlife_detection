@@ -38,18 +38,19 @@ def __load_model_state(config, dbConnector):
             LIMIT 1
         ) AS query;
     '''.format(schema=config.getProperty('Database', 'schema'))
-    stateDict = dbConnector.execute(sql, None, numReturn=1)     #TODO: issues Celery warning if no state dict found
-    if not len(stateDict):
+    result = dbConnector.execute(sql, None, numReturn=1)     #TODO: issues Celery warning if no state dict found
+    if not len(result):
         # force creation of new model
         stateDict = None
         stateDictID = None
 
     else:
         # extract
-        stateDict = stateDict[0]['statedict']
-        stateDictID = stateDict[0]['id']
+        stateDict = result[0]['statedict']
+        stateDictID = result[0]['id']
 
     return stateDict, stateDictID
+
 
 
 def __load_metadata(config, dbConnector, imageIDs, loadAnnotations):

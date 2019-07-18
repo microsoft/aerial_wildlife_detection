@@ -48,13 +48,14 @@ class AIController:
             '''
             if self.loginCheck(False):
                 try:
+                    params = request.json
                     if 'maxNum_train' in params:
-                        maxNumImages_train = params['maxNum_train']
+                        maxNumImages_train = int(params['maxNum_train'])
                     else:
                         maxNumImages_train = self.maxNumImages_train
 
                     status = self.middleware.start_training(minTimestamp='lastState', 
-                                        maxNumImages_train=maxNumImages_train,
+                                        maxNumImages=maxNumImages_train,
                                         maxNumWorkers=self.maxNumWorkers_train)
                 except Exception as e:
                     status = str(e)
@@ -70,9 +71,17 @@ class AIController:
                 Manually requests the AIController to issue an inference job.
             '''
             if self.loginCheck(False):
-                status = self.middleware.start_inference(forceUnlabeled=True, 
-                                        maxNumImages=self.maxNumImages_inference,
-                                        maxNumWorkers=self.maxNumWorkers_inference)
+                try:
+                    params = request.json
+                    if 'maxNum_inference' in params:
+                        maxNumImages_inference = int(params['maxNum_inference'])
+                    else:
+                        maxNumImages_inference = self.maxNumImages_inference
+                    status = self.middleware.start_inference(forceUnlabeled=True, 
+                                            maxNumImages=maxNumImages_inference,
+                                            maxNumWorkers=self.maxNumWorkers_inference)
+                except Exception as e:
+                    status = str(e)
                 return { 'status' : status }
             
             else:
@@ -93,11 +102,11 @@ class AIController:
                     doInference = 'inference' in params and params['inference'] is True
 
                     if 'maxNum_train' in params:
-                        maxNumImages_train = params['maxNum_train']
+                        maxNumImages_train = int(params['maxNum_train'])
                     else:
                         maxNumImages_train = self.maxNumImages_train
                     if 'maxNum_inference' in params:
-                        maxNumImages_inference = params['maxNum_inference']
+                        maxNumImages_inference = int(params['maxNum_inference'])
                     else:
                         maxNumImages_inference = self.maxNumImages_inference
 
