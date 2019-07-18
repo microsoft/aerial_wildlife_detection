@@ -34,7 +34,8 @@ DEFAULT_OPTIONS = {
 			"class": "ai.models.pytorch.functional._retinanet.loss.FocalLoss",
 			"kwargs": {
 				"gamma": 2.0,
-				"alpha": 0.25
+				"alpha": 0.25,
+				"background_weight": 0.1
 			}
 		},
 		"batch_size": 32,

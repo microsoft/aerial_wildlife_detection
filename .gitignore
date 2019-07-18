@@ -106,6 +106,7 @@ venv.bak/
 
 # VS code project settings
 .vscode
+.VSCodeCounter
 
 
 # site configuration

@@ -154,7 +154,7 @@ def _call_train(dbConnector, config, imageIDs, subset, trainingFun, fileServer):
         print(e)
         raise Exception('error during data committing')
 
-    current_task.update_state(state=states.SUCCESS, meta={'message':'done'})
+    current_task.update_state(state=states.SUCCESS, meta={'message':'trained on {} images'.format(len(imageIDs))})
     return 0
 
 
@@ -221,7 +221,7 @@ def _call_average_model_states(dbConnector, config, averageFun, fileServer):
 
 
     # all done
-    current_task.update_state(state=states.SUCCESS, meta={'message':'done'})
+    current_task.update_state(state=states.SUCCESS, meta={'message':'averaged {} model states'.format(len(modelStates))})
     return 0
 
 
@@ -332,7 +332,7 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
         raise Exception('error during data committing')
 
     
-    current_task.update_state(state=states.SUCCESS, meta={'message':'done'})
+    current_task.update_state(state=states.SUCCESS, meta={'message':'predicted on {} images'.format(len(imageIDs))})
     return 0
 
 

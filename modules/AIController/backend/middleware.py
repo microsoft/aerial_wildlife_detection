@@ -119,7 +119,6 @@ class AIMiddleware():
 
             imageIDs = [i['image'] for i in imageIDs]
 
-
             if maxNumWorkers > 1:
 
                 # distribute across workers (TODO: also specify subset size for multiple jobs; randomly draw if needed)

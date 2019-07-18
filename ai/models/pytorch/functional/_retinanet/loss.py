@@ -8,10 +8,11 @@ from .utils import one_hot_embedding
 
 
 class FocalLoss(nn.Module):
-    def __init__(self, alpha=0.25, gamma=2):
+    def __init__(self, alpha=0.25, gamma=2, background_weight=1.0):
         super(FocalLoss, self).__init__()
         self.alpha = alpha
         self.gamma = gamma
+        self.background_weight = background_weight
 
     def focal_loss(self, x, y, num_classes):
         '''Focal loss.
@@ -37,6 +38,9 @@ class FocalLoss(nn.Module):
         w = alpha*t + (1-alpha)*(1-t)  # w = alpha if t > 0 else 1-alpha
         w = w * (1-pt).pow(gamma)
 
+        # custom background target weight
+        w[y==0,:] *= self.background_weight
+
         return F.binary_cross_entropy_with_logits(x, t, w.detach(), reduction='sum')
 
     def focal_loss_alt(self, x, y, num_classes):
@@ -60,6 +64,9 @@ class FocalLoss(nn.Module):
 
         w = alpha*t + (1-alpha)*(1-t)
         loss = -w*(pt+1e-12).log() / 2
+
+        # custom background target weight
+        w[y==0,:] *= self.background_weight
 
         return loss.sum()
 
