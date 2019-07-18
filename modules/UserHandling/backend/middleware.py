@@ -5,6 +5,7 @@
     2019 Benjamin Kellenberger
 '''
 
+from threading import Thread
 from modules.Database.app import Database
 import psycopg2
 from datetime import timedelta
@@ -60,6 +61,30 @@ class UserMiddleware():
             return None
         result = result[0]
         return result
+
+
+    def _extend_session_database(self, username):
+        '''
+            Updates the last login timestamp of the user to the current
+            time and commits the changes to the database.
+            Runs in a thread to be non-blocking.
+        '''
+        def _extend_session():
+            now = self._current_time()
+
+            self.dbConnector.execute('''UPDATE {}.user SET last_login = %s
+                    WHERE name = %s
+                '''.format(
+                    self.config.getProperty('Database', 'schema')
+                ),
+                (now, username,),
+                numReturn=None)
+            
+            # also update local cache
+            self.usersLoggedIn[username]['timestamp'] = now
+        
+        eT = Thread(target=_extend_session)
+        eT.start()
 
 
     def _init_or_extend_session(self, username, sessionToken=None):
@@ -145,7 +170,8 @@ class UserMiddleware():
                 return False
 
             # check for timestamp
-            if (now - result['last_login']).total_seconds() <= time_login:
+            time_diff = (now - result['last_login']).total_seconds()
+            if time_diff <= time_login:
                 # user still logged in
                 if not username in self.usersLoggedIn:
                     self.usersLoggedIn[username] = {
@@ -155,6 +181,11 @@ class UserMiddleware():
                     }
                 else:
                     self.usersLoggedIn[username]['timestamp'] = now
+
+                # extend user session (commit to DB) if needed
+                if time_diff >= 0.75 * time_login:
+                    self._extend_session_database(username)
+
                 return True
 
             else:

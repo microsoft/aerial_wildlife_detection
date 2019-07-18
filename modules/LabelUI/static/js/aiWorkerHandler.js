@@ -290,13 +290,13 @@ class AIWorkerHandler {
                 }
                 setTimeout(function() { self._query_worker_status(); }, 10000);   //TODO: make parameter
             },
-            error: function(a,b,c) {
-                //TODO
-                console.log(a);
-                console.log(b);
-                console.log(c);
-
-                setTimeout(function() { self._query_worker_status(); }, 60000);   //TODO: make parameter
+            error: function(xhr, status, error) {
+                if(error == 'Unauthorized') {
+                    // ask user to provide password again
+                    window.verifyLogin((self._query_worker_status).bind(self));
+                } else {
+                    setTimeout(function() { self._query_worker_status(); }, 60000);   //TODO: make parameter
+                }
             }
         })
     }
@@ -407,39 +407,48 @@ class AIWorkerHandler {
 
                 setTimeout(function() { self._query_task_status(); }, timeoutVal);
             },
-            error: function(a,b,c) {
-                console.log(a);
-                console.log(b);
-                console.log(c);
+            error: function(xhr, status, error) {
+                if(error == 'Unauthorized') {
+                    // ask user to provide password again
+                    window.verifyLogin((self._query_task_status).bind(self));
+                } else {
+                    setTimeout(function() { self._query_task_status(); }, 20000);   //TODO: make parameter
+                }
             }
         });
     }
 
     
     startInference() {
-        //TODO
+        var self = this;
         $.ajax({
             url: 'startInference',
             method: 'POST',
             success: function(data) {
                 console.log(data);
             },
-            error: function() {
-                console.log('error')
+            error: function(xhr, status, error) {
+                if(error == 'Unauthorized') {
+                    // ask user to provide password again
+                    window.verifyLogin((self.startInference).bind(self));
+                }
             }
         })
     }
 
     startTraining() {
-        //TODO
+        var self = this;
         $.ajax({
             url: 'startTraining',
             method: 'POST',
             success: function(data) {
                 console.log(data);
             },
-            error: function() {
-                console.log('error')
+            error: function(xhr, status, error) {
+                if(error == 'Unauthorized') {
+                    // ask user to provide password again
+                    window.verifyLogin((self.startTraining).bind(self));
+                }
             }
         })
     }
@@ -450,6 +459,7 @@ class AIWorkerHandler {
             manually starts a training, inference, or combined
             cycle.
         */
+        var self = this;
         var doTrain = $('#check-do-train').is(":checked");
         var numImg_train = $('#box-num-images-train').val();
         var doInference = $('#check-do-inference').is(":checked");
@@ -475,8 +485,11 @@ class AIWorkerHandler {
             success: function(response) {
                 console.log(response);  //TODO
             },
-            error: function(response) {
-                console.log(response);  //TODO
+            error: function(xhr, status, error) {
+                if(error == 'Unauthorized') {
+                    // ask user to provide password again
+                    window.verifyLogin((self.manualTrigger).bind(self));
+                }
             }
         })
     }
