@@ -107,10 +107,11 @@ class FPN(nn.Module):
 
 class RetinaNet(nn.Module):
 
-    def __init__(self, numClasses=20, numAnchors=9, backbone='resnet50', pretrained=True, out_planes=256, convertToInstanceNorm=False):
+    def __init__(self, labelclassMap, numAnchors=9, backbone='resnet50', pretrained=True, out_planes=256, convertToInstanceNorm=False):
         super(RetinaNet, self).__init__()
 
-        self.numClasses = numClasses
+        self.labelclassMap = labelclassMap
+        self.numClasses = len(labelclassMap.keys())
         self.numAnchors = numAnchors
         self.backbone = backbone
         self.pretrained = pretrained
@@ -125,7 +126,7 @@ class RetinaNet(nn.Module):
     def getStateDict(self):
         stateDict = {
             'model_state': self.state_dict(),
-            'numClasses': self.numClasses,
+            'labelclassMap': self.labelclassMap,
             'numAnchors': self.numAnchors,
             'backbone': self.backbone,
             'pretrained': self.pretrained,
@@ -138,7 +139,7 @@ class RetinaNet(nn.Module):
     @staticmethod
     def loadFromStateDict(stateDict):
         # parse args
-        numClasses = (stateDict['numClasses'] if 'numClasses' in stateDict else 20)
+        labelclassMap = stateDict['labelClassMap']
         numAnchors = (stateDict['numAnchors'] if 'numAnchors' in stateDict else 9)
         backbone = (stateDict['backbone'] if 'backbone' in stateDict else resnet.resnet50)
         pretrained = (stateDict['pretrained'] if 'pretrained' in stateDict else True)
@@ -147,7 +148,7 @@ class RetinaNet(nn.Module):
         state = (stateDict['model_state'] if 'model_state' in stateDict else None)
 
         # return model
-        model = RetinaNet(numClasses, numAnchors, backbone, pretrained, out_planes, convertToInstanceNorm)
+        model = RetinaNet(labelclassMap, numAnchors, backbone, pretrained, out_planes, convertToInstanceNorm)
         if state is not None:
             model.load_state_dict(state)
         return model

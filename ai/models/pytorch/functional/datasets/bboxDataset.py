@@ -22,6 +22,8 @@ class BoundingBoxDataset(Dataset):
                               { <image UUID> : { 'annotations' : { <annotation UUID> : { 'x', 'y', 'width', 'height', 'label' (label UUID) }}}}
                     - 'fVec': optional, contains feature vector bytes for image
         - fileServer: Instance that implements a 'getFile' function to load images
+        - labelClassMap: a dictionary/LUT with mapping: key = label class UUID, value = index (number) according
+                         to the model.
         - targetFormat: str for output bounding box format, either 'xywh' (xy = center coordinates, wh = width & height)
                         or 'xyxy' (top left and bottom right coordinates)
         - transform: Instance of classes defined in 'ai.functional.pytorch._util.bboxTransforms'. May be None for no transformation at all.
@@ -30,13 +32,14 @@ class BoundingBoxDataset(Dataset):
         The '__getitem__' function returns the data entry at given index as a tuple with the following contents:
         - img: the loaded and transformed (if specified) image. Note: if 'loadImage' is set to False, 'img' will be None.
         - boundingBoxes: transformed bounding boxes for the image.
-        - labels: labels for each bounding box according to the dataset's 'classdef' LUT (i.e., the labelClass indices).
+        - labels: labels for each bounding box according to the dataset's 'labelClassMap' LUT (i.e., the labelClass indices).
         - fVec: a torch tensor of feature vectors (if available; else None)
         - imageID: str, filename of the image loaded
     '''
-    def __init__(self, data, fileServer, targetFormat='xywh', transform=None, ignoreUnsure=False):
+    def __init__(self, data, fileServer, labelClassMap, targetFormat='xywh', transform=None, ignoreUnsure=False):
         super(BoundingBoxDataset, self).__init__()
         self.fileServer = fileServer
+        self.labelClassMap = labelClassMap
         self.targetFormat = targetFormat
         self.transform = transform
         self.ignoreUnsure = ignoreUnsure
@@ -45,20 +48,11 @@ class BoundingBoxDataset(Dataset):
     
     def __parse_data(self, data):
         
-        # parse label classes first
-        self.classdef = {}          # UUID -> index
-        self.classdef_inv = {}      # index -> UUID
-
-        idx = 0
-        for key in data['labelClasses']:
-            if not 'index' in data['labelClasses'][key]:
-                # no relation CNN-to-labelclass defined yet; do it here
-                index = idx
-                idx += 1
-            else:
-                index = data['labelClasses'][key]['index']
-            self.classdef[key] = index
-            self.classdef_inv[index] = key
+        # create inverse label class map as well
+        self.labelClassMap_inv = {}
+        for key in self.labelClassMap.keys():
+            val = self.labelClassMap[key]
+            self.labelClassMap_inv[val] = key
         
         # parse images
         self.data = []
@@ -89,7 +83,7 @@ class BoundingBoxDataset(Dataset):
                         # this usually does not happen for bounding boxes, but we account for it nonetheless
                         continue
                     else:
-                        label = self.classdef[label]
+                        label = self.labelClassMap[label]
                     
                     # sanity check
                     if coords[2] <= 0 or coords[3] <= 0:

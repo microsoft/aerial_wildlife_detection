@@ -65,9 +65,17 @@ class RetinaNet:
         if stateDict is not None:
             stateDict = torch.load(io.BytesIO(stateDict), map_location=lambda storage, loc: storage)
             model = Model.loadFromStateDict(stateDict)
+            
+            # mapping labelClass (UUID) to index in model (number)
+            labelClassMap = stateDict['labelClassMap']
         else:
+            # create new label class map
+            labelClassMap = {}
+            for index, lcID in enumerate(data['labelClasses']):
+                labelClassMap[lcID] = index
+            self.options['model']['labelClassMap'] = labelClassMap
+
             # initialize a fresh model
-            self.options['model']['numClasses'] = len(data['labelClasses'])    #TODO
             model = Model.loadFromStateDict(self.options['model'])
 
 
@@ -81,8 +89,9 @@ class RetinaNet:
             bboxTr.DefaultTransform(tr.Normalize(mean=[0.485, 0.456, 0.406],
                                                 std=[0.229, 0.224, 0.225]))
         ])  #TODO: ditto, also write functional.pytorch util to compose transformations
-        dataset = BoundingBoxDataset(data,
-                                    self.fileServer,
+        dataset = BoundingBoxDataset(data=data,
+                                    fileServer=self.fileServer,
+                                    labelClassMap=labelClassMap,
                                     targetFormat='xyxy',
                                     transform=transforms,
                                     ignoreUnsure=self.options['train']['ignore_unsure'])
@@ -168,6 +177,9 @@ class RetinaNet:
         stateDict = torch.load(stateDict, map_location=lambda storage, loc: storage)
         model = Model.loadFromStateDict(stateDict)
 
+        # mapping labelClass (UUID) to index in model (number)
+        labelClassMap = stateDict['labelClassMap']
+
         # initialize data loader, dataset, transforms
         inputSize = tuple(self.options['general']['image_size'])
         transforms = bboxTr.Compose([
@@ -183,6 +195,7 @@ class RetinaNet:
         
         dataset = BoundingBoxDataset(data=data,
                                     fileServer=self.fileServer,
+                                    labelClassMap=labelClassMap,
                                     transform=transforms)  #TODO: ditto
         dataEncoder = encoder.DataEncoder(minIoU_pos=0.5, maxIoU_neg=0.4)   #TODO: ditto
         collator = collation.Collator(inputSize, dataEncoder)
@@ -251,7 +264,7 @@ class RetinaNet:
                                 'y': bbox[1].item(),
                                 'width': bbox[2].item(),
                                 'height': bbox[3].item(),
-                                'label': dataset.classdef_inv[label.item()],
+                                'label': dataset.labelClassMap_inv[label.item()],
                                 'logits': list(logits.numpy()),        #TODO: for AL criterion?
                                 'confidence': torch.max(logits).item()
                             })

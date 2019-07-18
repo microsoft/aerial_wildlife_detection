@@ -250,6 +250,13 @@ class RetinaNet_ois(RetinaNet):
         model = Model.loadFromStateDict(stateDict_parsed)
         model.to(self._get_device())
 
+        # mapping labelClass (UUID) to index in model (number); create inverse
+        labelClassMap = stateDict['labelClassMap']
+        labelClassMap_inv = {}
+        for key in labelClassMap.keys():
+            val = labelClassMap[key]
+            labelClassMap_inv[val] = key
+
         # get all image filenames from DB
         current_task.update_state(state='PREPARING', meta={'message':'identifying images'})
         sql = 'SELECT filename FROM {schema}.image;'.format(schema=self.config.getProperty('Database', 'schema'))
@@ -298,26 +305,32 @@ class RetinaNet_ois(RetinaNet):
             torch.cuda.empty_cache()
 
 
-        # commit to DB
-        current_task.update_state(state='PREPARING', meta={'message':'adding new images to database'})
-        sql = '''
-            INSERT INTO {schema}.image (filename)
-            VALUES %s;
-        '''.format(schema=self.config.getProperty('Database', 'schema'))
-        self.dbConnector.insert(sql, [(key,) for key in list(response.keys())])
+        if len(response.keys()):
+            # convert label indices to UUIDs
+            for key in response.keys():
+                for p in range(len(response[key]['predictions'])):
+                    response[key]['predictions'][p]['label'] = labelClassMap_inv[response[key]['predictions'][p]['label']]
 
-        
-        # get IDs of newly inserted patches
-        sql = '''
-            SELECT id, filename FROM {schema}.image WHERE filename IN %s;
-        '''.format(schema=self.config.getProperty('Database', 'schema'))
-        patchIDs = self.dbConnector.execute(sql, (tuple(response.keys()),), 'all')
+            # commit to DB
+            current_task.update_state(state='PREPARING', meta={'message':'adding new images to database'})
+            sql = '''
+                INSERT INTO {schema}.image (filename)
+                VALUES %s;
+            '''.format(schema=self.config.getProperty('Database', 'schema'))
+            self.dbConnector.insert(sql, [(key,) for key in list(response.keys())])
 
-        # replace IDs of responses
-        new_response = {}
-        for p in patchIDs:
-            new_response[p['id']] = response[p['filename']]
-        response = new_response
+            
+            # get IDs of newly inserted patches
+            sql = '''
+                SELECT id, filename FROM {schema}.image WHERE filename IN %s;
+            '''.format(schema=self.config.getProperty('Database', 'schema'))
+            patchIDs = self.dbConnector.execute(sql, (tuple(response.keys()),), 'all')
+
+            # replace IDs of responses
+            new_response = {}
+            for p in patchIDs:
+                new_response[p['id']] = response[p['filename']]
+            response = new_response
 
 
         # also do regular inference
@@ -325,7 +338,6 @@ class RetinaNet_ois(RetinaNet):
         response_regular = super(RetinaNet_ois, self).inference(stateDict, data)
         for key in response_regular.keys():
             response[key] = response_regular[key]
-
 
         return response
 

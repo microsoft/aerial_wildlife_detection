@@ -35,8 +35,20 @@ if __name__ == '__main__':
     from util.helpers import get_class_executable, current_time
     modelClass = get_class_executable('ai.models.pytorch.functional._retinanet.model.RetinaNet')   #config.getProperty('AIController', 'model_lib_path'))     #TODO
 
-    # load model state (to be sure that the state is the correct one)
-    model = modelClass.loadFromStateDict(torch.load(open(args.modelPath, 'rb')))
+    # load state dict
+    stateDict = torch.load(open(args.modelPath, 'rb'))
+
+    # append label class map definition (if not present)
+    if not 'labelClassMap' in stateDict:
+        # query label class definitions
+        labelClasses = dbConn.execute('SELECT * FROM {schema}.labelclass;'.format(schema=config.getProperty('Database', 'schema')), None, 'all')
+        labelClassMap = {}
+        for idx, lc in enumerate(labelClasses):
+            labelClassMap[lc['id']] = idx
+        stateDict['labelClassMap'] = labelClassMap
+
+    # verify model state
+    model = modelClass.loadFromStateDict(stateDict)
     bio = io.BytesIO()
     torch.save(model.getStateDict(), bio)
     stateDict = bio.getvalue()
