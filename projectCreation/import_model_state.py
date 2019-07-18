@@ -39,13 +39,13 @@ if __name__ == '__main__':
     stateDict = torch.load(open(args.modelPath, 'rb'))
 
     # append label class map definition (if not present)
-    if not 'labelClassMap' in stateDict:
+    if not 'labelclassMap' in stateDict:
         # query label class definitions
         labelClasses = dbConn.execute('SELECT * FROM {schema}.labelclass;'.format(schema=config.getProperty('Database', 'schema')), None, 'all')
-        labelClassMap = {}
+        labelclassMap = {}
         for idx, lc in enumerate(labelClasses):
-            labelClassMap[lc['id']] = idx
-        stateDict['labelClassMap'] = labelClassMap
+            labelclassMap[lc['id']] = idx
+        stateDict['labelclassMap'] = labelclassMap
 
     # verify model state
     model = modelClass.loadFromStateDict(stateDict)

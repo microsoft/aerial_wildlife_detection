@@ -139,7 +139,7 @@ class RetinaNet(nn.Module):
     @staticmethod
     def loadFromStateDict(stateDict):
         # parse args
-        labelclassMap = stateDict['labelClassMap']
+        labelclassMap = stateDict['labelclassMap']
         numAnchors = (stateDict['numAnchors'] if 'numAnchors' in stateDict else 9)
         backbone = (stateDict['backbone'] if 'backbone' in stateDict else resnet.resnet50)
         pretrained = (stateDict['pretrained'] if 'pretrained' in stateDict else True)

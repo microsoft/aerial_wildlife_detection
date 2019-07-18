@@ -22,7 +22,7 @@ class BoundingBoxDataset(Dataset):
                               { <image UUID> : { 'annotations' : { <annotation UUID> : { 'x', 'y', 'width', 'height', 'label' (label UUID) }}}}
                     - 'fVec': optional, contains feature vector bytes for image
         - fileServer: Instance that implements a 'getFile' function to load images
-        - labelClassMap: a dictionary/LUT with mapping: key = label class UUID, value = index (number) according
+        - labelclassMap: a dictionary/LUT with mapping: key = label class UUID, value = index (number) according
                          to the model.
         - targetFormat: str for output bounding box format, either 'xywh' (xy = center coordinates, wh = width & height)
                         or 'xyxy' (top left and bottom right coordinates)
@@ -32,14 +32,14 @@ class BoundingBoxDataset(Dataset):
         The '__getitem__' function returns the data entry at given index as a tuple with the following contents:
         - img: the loaded and transformed (if specified) image. Note: if 'loadImage' is set to False, 'img' will be None.
         - boundingBoxes: transformed bounding boxes for the image.
-        - labels: labels for each bounding box according to the dataset's 'labelClassMap' LUT (i.e., the labelClass indices).
+        - labels: labels for each bounding box according to the dataset's 'labelclassMap' LUT (i.e., the labelClass indices).
         - fVec: a torch tensor of feature vectors (if available; else None)
         - imageID: str, filename of the image loaded
     '''
-    def __init__(self, data, fileServer, labelClassMap, targetFormat='xywh', transform=None, ignoreUnsure=False):
+    def __init__(self, data, fileServer, labelclassMap, targetFormat='xywh', transform=None, ignoreUnsure=False):
         super(BoundingBoxDataset, self).__init__()
         self.fileServer = fileServer
-        self.labelClassMap = labelClassMap
+        self.labelclassMap = labelclassMap
         self.targetFormat = targetFormat
         self.transform = transform
         self.ignoreUnsure = ignoreUnsure
@@ -49,10 +49,10 @@ class BoundingBoxDataset(Dataset):
     def __parse_data(self, data):
         
         # create inverse label class map as well
-        self.labelClassMap_inv = {}
-        for key in self.labelClassMap.keys():
-            val = self.labelClassMap[key]
-            self.labelClassMap_inv[val] = key
+        self.labelclassMap_inv = {}
+        for key in self.labelclassMap.keys():
+            val = self.labelclassMap[key]
+            self.labelclassMap_inv[val] = key
         
         # parse images
         self.data = []
@@ -83,7 +83,7 @@ class BoundingBoxDataset(Dataset):
                         # this usually does not happen for bounding boxes, but we account for it nonetheless
                         continue
                     else:
-                        label = self.labelClassMap[label]
+                        label = self.labelclassMap[label]
                     
                     # sanity check
                     if coords[2] <= 0 or coords[3] <= 0:

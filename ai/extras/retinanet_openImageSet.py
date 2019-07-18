@@ -251,11 +251,11 @@ class RetinaNet_ois(RetinaNet):
         model.to(self._get_device())
 
         # mapping labelClass (UUID) to index in model (number); create inverse
-        labelClassMap = stateDict['labelClassMap']
-        labelClassMap_inv = {}
-        for key in labelClassMap.keys():
-            val = labelClassMap[key]
-            labelClassMap_inv[val] = key
+        labelclassMap = stateDict['labelclassMap']
+        labelclassMap_inv = {}
+        for key in labelclassMap.keys():
+            val = labelclassMap[key]
+            labelclassMap_inv[val] = key
 
         # get all image filenames from DB
         current_task.update_state(state='PREPARING', meta={'message':'identifying images'})
@@ -309,7 +309,7 @@ class RetinaNet_ois(RetinaNet):
             # convert label indices to UUIDs
             for key in response.keys():
                 for p in range(len(response[key]['predictions'])):
-                    response[key]['predictions'][p]['label'] = labelClassMap_inv[response[key]['predictions'][p]['label']]
+                    response[key]['predictions'][p]['label'] = labelclassMap_inv[response[key]['predictions'][p]['label']]
 
             # commit to DB
             current_task.update_state(state='PREPARING', meta={'message':'adding new images to database'})
