@@ -23,6 +23,7 @@ class AIController:
 
 
     def _init_params(self):
+        self.minNumAnnoPerImage = self.config.getProperty(self, 'minNumAnnoPerImage', type=int, fallback=0)
         self.maxNumImages_train = self.config.getProperty(self, 'maxNumImages_train', type=int)
         self.maxNumWorkers_train = self.config.getProperty(self, 'maxNumWorkers_train', type=int, fallback=-1)
         self.maxNumWorkers_inference = self.config.getProperty(self, 'maxNumWorkers_inference', type=int, fallback=-1)
@@ -49,12 +50,17 @@ class AIController:
             if self.loginCheck(True):
                 try:
                     params = request.json
+                    if 'minNumAnnoPerImage' in params:
+                        minNumAnnoPerImage = int(params['minNumAnnoPerImage'])
+                    else:
+                        minNumAnnoPerImage = self.minNumAnnoPerImage
                     if 'maxNum_train' in params:
                         maxNumImages_train = int(params['maxNum_train'])
                     else:
                         maxNumImages_train = self.maxNumImages_train
 
                     status = self.middleware.start_training(minTimestamp='lastState', 
+                                        minNumAnnoPerImage=minNumAnnoPerImage,
                                         maxNumImages=maxNumImages_train,
                                         maxNumWorkers=self.maxNumWorkers_train)
                 except Exception as e:
@@ -100,6 +106,10 @@ class AIController:
                     doTrain = 'train' in params and params['train'] is True
                     doInference = 'inference' in params and params['inference'] is True
 
+                    if 'minNumAnnoPerImage' in params:
+                        minNumAnnoPerImage = int(params['minNumAnnoPerImage'])
+                    else:
+                        minNumAnnoPerImage = self.minNumAnnoPerImage
                     if 'maxNum_train' in params:
                         maxNumImages_train = int(params['maxNum_train'])
                     else:
@@ -111,11 +121,13 @@ class AIController:
 
                     if doTrain:
                         if doInference:
-                            status = self.middleware.start_train_and_inference(minTimestamp='lastState', 
+                            status = self.middleware.start_train_and_inference(minTimestamp='lastState',
+                                    minNumAnnoPerImage=minNumAnnoPerImage,
                                     maxNumWorkers_train=self.maxNumWorkers_train,
                                     forceUnlabeled_inference=True, maxNumImages_inference=maxNumImages_inference, maxNumWorkers_inference=self.maxNumWorkers_inference)
                         else:
                             status = self.middleware.start_training(minTimestamp='lastState',
+                                    minNumAnnoPerImage=minNumAnnoPerImage,
                                     maxNumImages=maxNumImages_train,
                                     maxNumWorkers=self.maxNumWorkers_train)
                     else:

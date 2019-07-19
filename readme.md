@@ -2,13 +2,29 @@
 
 AIde is a modular, multi-tier web framework for labeling image datasets with AI assistance and Active Learning support.
 
+![AIde overview](doc/figures/AIde_animal_hero.png)
+TODO: GIF/video of platform
 
-## Overview
 
-TODO
+AIde is primarily developed and maintained by [Benjamin Kellenberger](https://www.wur.nl/en/Persons/Benjamin-BA-Benjamin-Kellenberger-MSc.htm), in the context of the [Microsoft AI for Earth](https://www.microsoft.com/en-us/ai/ai-for-earth) initiative.
+
+
+## Highlights
+
+* **Fast:** AIde has been designed with speed in mind, both in terms of computations and workflow.
+* **Flexible:** the framework allows full customizability, from hyperparameters and models over annotation types to libraries. For example, it supports bounding boxes as model predictions and classification labels for user annotations; you may exchange the AI backend in any way you want (or [write your own](doc/custom_model.md)); etc.
+* **Modular:** AIde is separated into individual _Modules_, each of which can be run on separate machines for scalability, if needed. It even supports on-the-fly additions of new computational workers for the heavy model training part!
+
+
 
 
 ## Installation
+
+Setting up and running an instance of AIde with a custom dataset requires the following steps:
+1. Install required software: see [instructions](doc/install.md)
+2. Configure the settings file and prepare database: [configure](doc/configure_settings.md)
+3. Import existing data into project: [import](doc/import_data.md)
+
 
 TODO: steps:
 1. Install required software (TODO: write setup.py file, eventually provide docker script?)
@@ -18,71 +34,63 @@ TODO: steps:
 5. Launch the desired instance (see below)
 
 
-### Set up the database instance
 
-AIde uses [PostgreSQL](https://www.postgresql.org/) to store labels, predictions, file paths and metadata. The following instructions apply for recent versions of Debian-based Linux distributions, such as Ubuntu.
-Note that AIde requires PostgreSQL >= 9.5.
+## Framework Overview
 
-*Installing and configuring PostgreSQL*
-1. Install PostgreSQL server
+In its full form, AIde comprises individual instances (called _modules_) in an organization such as follows:
+
+![AIde module diagram](doc/figures/AIde_diagram.png)
+
+where the following modules are run:
+* **LabelUI**: module responsible for delivering and accepting predictions and annotations to and from the user/labeler;
+* **AIWorker**: node that runs the AI model in the background to train and predict data;
+* **AIController**: coordinator that distributes and manages jobs to and from the individual _AIWorker_ instance(s);
+* **Database**: stores all metadata (image paths, viewcounts, user annotations, model predictions, user account data, etc.);
+* **FileServer**: provides image files to both the _LabelUI_ and _AIWorker_ instances;
+* message broker: AIde makes use of [Celery](http://www.celeryproject.org/), a distributed task queue piggybacking on message brokers like [RabbitMQ](https://www.rabbitmq.com/) or [Redis](https://redis.io/).
+
+
+The framework can be configured in two ways:
+1. As a static labeling tool (_i.e._, using only the modules in (a.)). In this case there will be no AI assistance for learning and prioritizing the relevant images.
+2. As a full suite with AI support, using all modules.
+
+Also note that the individual modules need not necessarily be run on separate instances; it is possible to combine the components in any way and launch multiple (or all) modules on one machine. Also, the example shows three _AIWorker_ instances, but the number of workers can be chosen arbitrarily, and workers may be added or removed on-the-fly.
+
+
+
+## Launching AIde
+
+Every component of AIde needs to have the `AIDE_CONFIG_PATH` environment variable set correctly, specifying the path (relative or absolute) to the configuration INI file (see [configure](doc/configure_settings.md)). This can be done temporarily:
 ```
-    sudo apt-get update && sudo apt-get install -y wget
-    echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
-    wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
-    sudo apt-get update && sudo apt-get install -y postgresql-10
-
-    //TODO: change peer to md5 in /etc/postgresql/10/main/pg_hba.conf
-
-    //TODO
-    sudo sed -e "s/#[ ]*listen_addresses = 'localhost'/listen_addresses = '\*'/g" /etc/postgresql/10/main/postgresql.conf
-
-    //TODO: also need to replace the local IP address with "all" in pg_hba.conf (EXTREMELY UNSAFE)
-    sudo echo "host    all             all             0.0.0.0/0               md5" >> /etc/postgresql/10/main/pg_hba.conf
-
-    sudo service postgresql restart
-    sudo systemctl enable postgresql
-
-
-
-# For MS Azure: TCP connections are dropped after 4 minutes of inactivity
-# (see https://docs.microsoft.com/en-us/azure/load-balancer/load-balancer-outbound-connections#idletimeout)
-# This is fatal for our database connection system, which keeps connections open.
-# To avoid idling/dead connections, we thus use Ubuntu's keepalive timer:
-echo "net.ipv4.tcp_keepalive_time = 60" | sudo tee -a "/etc/sysctl.conf" > /dev/null
-echo "net.ipv4.tcp_keepalive_intvl = 60" | sudo tee -a "/etc/sysctl.conf" > /dev/null
-echo "net.ipv4.tcp_keepalive_probes = 20" | sudo tee -a "/etc/sysctl.conf" > /dev/null
-sudo sysctl -p
-
+    export AIDE_CONFIG_PATH=config/settings.ini
 ```
 
-2. Create a new database and the main user account. This needs to be done from the installation root of AIde,
-   with the correct environment activated.
+Or permanently (requires re-login):
 ```
-    //TODO: configDef needs --settings_filepath parameter...
-    sudo -u postgres psql -c "CREATE USER $(python util/configDef.py --section=Database --parameter=user) WITH PASSWORD '$(python util/configDef.py --section=Database --parameter=user)';"
-    sudo -u postgres psql -c "CREATE DATABASE $(python util/configDef.py --section=Database --parameter=name) WITH OWNER $(python util/configDef.py --section=Database --parameter=user) CONNECTION LIMIT -1;"
-    sudo -u postgres psql -c "GRANT CONNECT ON DATABASE $(python util/configDef.py --section=Database --parameter=name) TO $(python util/configDef.py --section=Database --parameter=user);"
-    sudo -u postgres psql -d $(python util/configDef.py --section=Database --parameter=name) -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
-
-    //TODO: needs to run after init
-    sudo -u postgres psql -d (python util/configDef.py --section=Database --parameter=name) -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO (python util/configDef.py --section=Database --parameter=user);"
-```
-
-3. Setup the database schema. We do that using the newly created user account instead of the postgres user:
-```
-    python projectCreation/setupDB.py
+    echo "export AIDE_CONFIG_PATH=config/settings.ini" > ~/.profile
 ```
 
 
+### Frontend
+The front-end modules of AIde (_LabelUI_, _AIController_, _FileServer_) can be run by invoking the `runserver.py` file with the correct arguments.
 
-## Launching an instance
+To launch just the frontend:
+```
+    conda activate aide
+    export AIDE_CONFIG_PATH=config/settings.ini
+    python runserver.py --instance=LabelUI
+```
 
-To start an instance, run the "runserver.py" script with the appropriate argument for the desired type of module (i.e., one of: "LabelUI", "AIController", "AIWorker", "FileServer").
-Example: the following command would start a labeling UI frontend on the current machine, using the parameters specified in the `config` directory:
+Instance arguments can be chained with commas. For example, to launch the _LabelUI_, _AIController_ and _FileServer_ on the same machine, replace the last line with:
+```
+    python runserver.py --instance=LabelUI,AIController,FileServer
+```
 
-`python runserver.py --instance=LabelUI`
 
-
-It is also possible to run multiple modules on the same instance by providing comma-separated module names as an argument:
-
-`python runserver.py --instance=LabelUI,AIController`
+### AIWorker
+_AIWorker_ modules need to be launched using Celery:
+```
+    conda activate aide
+    export AIDE_CONFIG_PATH=config/settings.ini
+    celery -A modules.AIController.backend.celery_interface worker
+```

@@ -26,7 +26,7 @@ DEFAULT_OPTIONS = {
 		"optim": {
 			"class": "torch.optim.Adam",
 			"kwargs": {
-				"lr": 1e-6,
+				"lr": 1e-7,
 				"weight_decay": 0.0
 			}
 		},

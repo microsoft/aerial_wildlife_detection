@@ -16,21 +16,43 @@ class SQLStringBuilder:
         pass
 
     
-    def getLatestQueryString(self, limit=None):
+    def getLatestQueryString(self, minNumAnnoPerImage=0, limit=None):
 
         if limit is None or limit == -1:
             # cap by limit specified in settings
             limit = self.config.getProperty('AIController', 'maxNumImages_train', type=int)
+        if minNumAnnoPerImage is None or minNumAnnoPerImage == -1:
+            minNumAnnoPerImage = self.config.getProperty('AIController', 'minNumAnnoPerImage', type=int)
 
-        sql = '''
-            SELECT newestAnno.image FROM (
-                SELECT image, last_checked FROM {schema}.image_user AS iu
-                -- WHERE iu.last_checked > COALESCE(to_timestamp(0), (SELECT MAX(timecreated) FROM {schema}.cnnstate))
-                ORDER BY iu.last_checked ASC
-                LIMIT {limit}
-            ) AS newestAnno;
-        '''.format(schema=self.config.getProperty('Database', 'schema'),
-                limit=limit)
+        if minNumAnnoPerImage <= 0:
+            # no restriction on number of annotations per image
+            sql = '''
+                SELECT newestAnno.image FROM (
+                    SELECT image, last_checked FROM {schema}.image_user AS iu
+                    -- WHERE iu.last_checked > COALESCE(to_timestamp(0), (SELECT MAX(timecreated) FROM {schema}.cnnstate))
+                    ORDER BY iu.last_checked ASC
+                    LIMIT {limit}
+                ) AS newestAnno;
+            '''.format(schema=self.config.getProperty('Database', 'schema'),
+                    limit=limit)
+        else:
+            sql = '''
+                SELECT newestAnno.image FROM (
+                    SELECT image, last_checked FROM {schema}.image_user AS iu
+                    WHERE image IN (
+                        SELECT image FROM (
+                            SELECT image, COUNT(*) AS cnt
+                            FROM {schema}.annotation
+                            GROUP BY image
+                            ) AS annoCount
+                        WHERE annoCount.cnt > {minAnnoCount}
+                    )
+                    ORDER BY iu.last_checked ASC
+                    LIMIT {limit}
+                ) AS newestAnno;
+            '''.format(schema=self.config.getProperty('Database', 'schema'),
+                    minAnnoCount=minNumAnnoPerImage,
+                    limit=limit)
         return sql
 
     

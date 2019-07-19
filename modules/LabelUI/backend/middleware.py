@@ -36,16 +36,16 @@ class DBMiddleware():
             'projectDescription': self.config.getProperty('Project', 'projectDescription'),
             'dataServerURI': self.config.getProperty('Server', 'dataServer_uri'),
             'aiControllerURI': aiControllerURI,
-            'dataType': self.config.getProperty('Project', 'dataType'),
+            'dataType': self.config.getProperty('Project', 'dataType', fallback='images'),
             'classes': self.getClassDefinitions(),
-            'enableEmptyClass': self.config.getProperty('Project', 'enableEmptyClass'),
+            'enableEmptyClass': self.config.getProperty('Project', 'enableEmptyClass', fallback='no'),
             'annotationType': self.config.getProperty('Project', 'annotationType'),
             'predictionType': self.config.getProperty('Project', 'predictionType'),
-            'showPredictions': self.config.getProperty('LabelUI', 'showPredictions'),
-            'showPredictions_minConf': self.config.getProperty('LabelUI', 'showPredictions_minConf'),
-            'carryOverPredictions': self.config.getProperty('LabelUI', 'carryOverPredictions'),
-            'carryOverRule': self.config.getProperty('LabelUI', 'carryOverRule'),
-            'carryOverPredictions_minConf': self.config.getProperty('LabelUI', 'carryOverPredictions_minConf'),
+            'showPredictions': self.config.getProperty('LabelUI', 'showPredictions', fallback='yes'),
+            'showPredictions_minConf': self.config.getProperty('LabelUI', 'showPredictions_minConf', type=float, fallback=0.5),
+            'carryOverPredictions': self.config.getProperty('LabelUI', 'carryOverPredictions', fallback='no'),
+            'carryOverRule': self.config.getProperty('LabelUI', 'carryOverRule', fallback='maxConfidence'),
+            'carryOverPredictions_minConf': self.config.getProperty('LabelUI', 'carryOverPredictions_minConf', type=float, fallback=0.75),
             'defaultBoxSize_w': self.config.getProperty('LabelUI', 'defaultBoxSize_w', type=int, fallback=10),
             'defaultBoxSize_h': self.config.getProperty('LabelUI', 'defaultBoxSize_h', type=int, fallback=10),
             'minBoxSize_w': self.config.getProperty('Project', 'box_minWidth', type=int, fallback=1),
@@ -299,8 +299,8 @@ class DBMiddleware():
 
 
         # delete all annotations that are not in submitted batch
+        imageKeys = list(UUID(k) for k in submissions['entries'])
         if len(ids):
-            imageKeys = list(UUID(k) for k in submissions['entries'])
             sql = '''
                 DELETE FROM {schema}.annotation WHERE username = %s AND id IN (
                     SELECT idQuery.id FROM (
@@ -311,6 +311,12 @@ class DBMiddleware():
                     ) AS imageQuery ON idQuery.id = imageQuery.id);
             '''.format(schema=schema)
             self.dbConnector.execute(sql, (username, tuple(ids), tuple(imageKeys),))
+        else:
+            # no annotations submitted; delete all annotations submitted before
+            sql = '''
+                DELETE FROM {schema}.annotation WHERE username = %s AND image IN %s;
+            '''.format(schema=schema)
+            self.dbConnector.execute(sql, (username, tuple(imageKeys),))
 
         # insert new annotations
         if len(values_insert):

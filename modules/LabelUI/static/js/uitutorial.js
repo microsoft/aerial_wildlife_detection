@@ -36,7 +36,8 @@ window.showTutorial = function(autostart) {
         [ '#remove-annotation', removeAnnotationString ],
         [ '#clearAll-button', 'Remove all annotations at once (or press C)'],
         [ '#next-button', 'Satisfied with your annotations? Click "Next" (or press the right arrow key).' ],
-        [ '#previous-button', 'Want to review the last image(s)? Click "Previous" (or press the left arrow key).' ]
+        [ '#previous-button', 'Want to review the last image(s)? Click "Previous" (or press the left arrow key).' ],
+        [ '#ai-worker-panel', 'View the tasks and progress of the AI worker(s) by clicking here.' ]
     ];
 
     var index = -1;
@@ -50,17 +51,21 @@ window.showTutorial = function(autostart) {
                 $('#tools-container').animate({
                     right: offset
                 });
+
+                // re-enable original mouseleave command (TODO: ugly)
+                $('#tools-container').on('mouseleave', function() {
+                    if(window.uiBlocked) return;
+                    let offset = -$(this).outerWidth() + 40;
+                    $('#tools-container').animate({
+                        right: offset
+                    });
+                });
+            } else if(interfaceElements[index][0] === '#ai-worker-panel') {
+                // minimize AI panel
+                $('#ai-tasks-entries').slideUp();
+                $('#ai-tasks-header').toggleClass('expanded');
             }
             $(interfaceElements[index][0]).tooltip('dispose');
-
-            // re-enable original mouseleave command (TODO: ugly)
-            $('#tools-container').on('mouseleave', function() {
-                if(window.uiBlocked) return;
-                let offset = -$(this).outerWidth() + 40;
-                $('#tools-container').animate({
-                    right: offset
-                });
-            });
         }
 
         do {
@@ -88,6 +93,11 @@ window.showTutorial = function(autostart) {
                     title: interfaceElements[index][1]
                 }).off("mouseover mouseout mouseleave").tooltip('show');
             });
+
+        } else if(interfaceElements[index][0] === '#ai-worker-panel') {
+            // show AI panel
+            $('#ai-tasks-entries').slideDown();
+            $('#ai-tasks-header').toggleClass('expanded');
 
         } else {
             $(interfaceElements[index][0]).tooltip({

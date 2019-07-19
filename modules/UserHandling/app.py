@@ -15,7 +15,7 @@ class UserHandler():
     def __init__(self, config, app):
         self.config = config
         self.app = app
-        self.staticDir = self.config.getProperty('UserHandler', 'staticfiles_dir')
+        self.staticDir = 'modules/UserHandling/static'  # self.config.getProperty('UserHandler', 'staticfiles_dir')
         self.middleware = UserMiddleware(config)
 
         self._initBottle()
@@ -125,6 +125,7 @@ class UserHandler():
         def showNewAccountPage():
             # check if token is required; if it is and wrong token provided, show login screen instead
             targetToken = cgi.escape(self.config.getProperty('UserHandler', 'create_account_token'))
+            print('"' + targetToken + '"')
             if targetToken is not None and not(targetToken == ''):
                 try:
                     providedToken = cgi.escape(request.query['t'])

@@ -101,7 +101,7 @@
         this.annotations = {};
         var hasAnnotations = (properties.hasOwnProperty('annotations') && Object.keys(properties['annotations']).length > 0);
         var hasPredictions = (properties.hasOwnProperty('predictions') && Object.keys(properties['predictions']).length > 0);
-        var carryOverPredictions = window.carryOverPredictions && hasPredictions && (!properties.hasOwnProperty('viewcount') || properties['viewcount'] == 0);
+        var carryOverPredictions = window.carryOverPredictions && hasPredictions && !hasAnnotations && (!properties.hasOwnProperty('viewcount') || properties['viewcount'] == 0);
 
         if(window.showPredictions || window.carryOverPredictions && hasPredictions) {
             if(window.showPredictions && !hasAnnotations) {

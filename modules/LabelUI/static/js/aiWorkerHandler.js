@@ -260,14 +260,17 @@ class AIWorkerHandler {
         // manual control (if admin)
         if(window.getCookie('isAdmin') === 'y') {
             $('#ai-manual-controls').append(
-                $(`<table>
+                $(`<table style="width:100%">
                     <tr>
-                        <td><input type="checkbox" id="check-do-train" />train</td>
-                        <td># Images: <input type="number" id="box-num-images-train" min="0" max="8192" value="256" /></td>
+                        <td><input type="checkbox" id="check-do-train" /></td><td>train</td>
+                        <td># Images: <input type="number" id="box-num-images-train" class="number-box" min="0" max="8192" value="256" /></td>
                     </tr>
                     <tr>
-                        <td><input type="checkbox" id="check-do-inference" />inference</td>
-                        <td># Images: <input type="number" id="box-num-images-inference" min="0" max="32768" value="1024" /></td>
+                        <td></td><td></td><td>min # annotations/image: <input type="number" id="box-num-annotations-train" class="number-box" min="0" value="0" /></td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" id="check-do-inference" /></td><td>inference</td>
+                        <td># Images: <input type="number" id="box-num-images-inference" class="number-box" min="0" max="32768" value="1024" /></td>
                     </tr>
                 </table>
                 <button class="btn btn-primary btn-sm" id="launch-job-button" style="float:right;margin-top:10px;">Launch</button>`)
@@ -472,6 +475,7 @@ class AIWorkerHandler {
         */
         var self = this;
         var doTrain = $('#check-do-train').is(":checked");
+        var numAnnoPerImg = $('#box-num-annotations-train').val();
         var numImg_train = $('#box-num-images-train').val();
         var doInference = $('#check-do-inference').is(":checked");
         var numImg_inference = $('#box-num-images-inference').val();
@@ -483,6 +487,7 @@ class AIWorkerHandler {
         if(!(doTrain || doInference)) return;
         var data = {
             'train': doTrain,
+            'minNumAnnoPerImage': numAnnoPerImg,
             'maxNum_train': numImg_train,
             'inference': doInference,
             'maxNum_inference': numImg_inference

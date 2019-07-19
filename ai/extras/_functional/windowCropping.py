@@ -396,19 +396,20 @@ class WindowCropper:
 
 
             # append results
-            result[patchKey] = {}
-            result[patchKey]['patch'] = patch
-            result[patchKey]['predictions'] = []
-            if hasBoxes:
-                for l in range(len(labels_patch)):
-                    result[patchKey]['predictions'].append({
-                        'x': bboxes_patch[l,0].tolist(),
-                        'y': bboxes_patch[l,1].tolist(),
-                        'width': bboxes_patch[l,2].tolist(),
-                        'height': bboxes_patch[l,3].tolist(),
-                        'label': labels_patch[l],
-                        'logits': logits_patch[l,:].tolist(),
-                        'confidence': np.max(logits_patch[l,:]).tolist()
-                    })
+            if self.exportEmptyPatches or (hasBoxes and len(labels_patch)):
+                result[patchKey] = {}
+                result[patchKey]['patch'] = patch
+                result[patchKey]['predictions'] = []
+                if hasBoxes and len(labels_patch):
+                    for l in range(len(labels_patch)):
+                        result[patchKey]['predictions'].append({
+                            'x': bboxes_patch[l,0].tolist(),
+                            'y': bboxes_patch[l,1].tolist(),
+                            'width': bboxes_patch[l,2].tolist(),
+                            'height': bboxes_patch[l,3].tolist(),
+                            'label': labels_patch[l],
+                            'logits': logits_patch[l,:].tolist(),
+                            'confidence': np.max(logits_patch[l,:]).tolist()
+                        })
 
         return result

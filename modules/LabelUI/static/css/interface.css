@@ -92,6 +92,7 @@ canvas {
     height: 400px;
     max-height: 75%;
     padding: 10px;
+    overflow-y: auto;
 }
 .legend-entries {
     display: grid;
@@ -241,7 +242,7 @@ canvas {
 .ai-worker-panel {
     position: absolute;
     right: 90px;
-    width: 400px;
+    width: 450px;
 }
 #ai-worker-minipanel {
     display: flex;
@@ -296,6 +297,12 @@ canvas {
     /* padding-left: 15px; */
 }
 
+.number-box {
+    width: 80px;
+    float: right;
+    margin-left: 10px;
+}
+
 #ai-worker-panel-header {
     cursor: pointer;
 }
@@ -317,7 +324,7 @@ canvas {
 
 #ai-worker-container {
     /* TODO: temporary solution while manual controls are in place */
-    height: 240px;
+    height: 200px;
 }
 
 #ai-worker-entries, #ai-tasks-entries {
@@ -337,9 +344,13 @@ canvas {
 
 .ai-category-header {
     cursor: pointer;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }
 
-.ai-category-header::before {
+/* .ai-category-header::before {
     content: '\25B8';
     cursor: pointer;
     float: left;
@@ -348,16 +359,14 @@ canvas {
 
 .ai-category-header.expanded::before {
     animation: colArr-expand 1s ease forwards;
-	/* -webkit-transform: rotate(180deg);
-	-moz-transform: rotate(180deg);
-	transform: rotate(180deg); */
 }
 
 .ai-category-header::before {
     animation: colArr-expand 1s ease backwards;
-	/* -webkit-transform: rotate(180deg);
-	-moz-transform: rotate(180deg);
-	transform: rotate(180deg); */
+} */
+
+#ai-manual-controls table td {
+    vertical-align: top;
 }
 
 @keyframes colArr-expand {

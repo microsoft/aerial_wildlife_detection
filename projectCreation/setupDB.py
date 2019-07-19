@@ -89,11 +89,10 @@ if __name__ == '__main__':
                     help='Directory of the settings.ini file used for this machine (default: "config/settings.ini").')
     args = parser.parse_args()
 
+    if not 'AIDE_CONFIG_PATH' in os.environ:
+        os.environ['AIDE_CONFIG_PATH'] = args.settings_filepath
 
-    config = Config(args.settings_filepath)
-    dbConn = Database(config)
-    if dbConn.conn is None:
-        raise Exception('Error connecting to database.')
+    config = Config()
 
 
     # read SQL skeleton
