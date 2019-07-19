@@ -35,7 +35,7 @@ DEFAULT_OPTIONS = {
 			"kwargs": {
 				"gamma": 2.0,
 				"alpha": 0.25,
-				"background_weight": 0.1
+				"background_weight": 0.5
 			}
 		},
 		"batch_size": 32,

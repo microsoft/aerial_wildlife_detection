@@ -257,14 +257,25 @@ class AIWorkerHandler {
         });
 
 
-        // manual control (TODO: allow only if admin)
-        $('#launch-job-button').click(function() {
-            self.manualTrigger();
-        })
-
-        // //TODO
-        // $('#ai-worker-container').append($('<button class="btn btn-danger" onclick="window.aiWorkerHandler.startInference();">Inference</button>'));
-        // $('#ai-worker-container').append($('<button class="btn btn-danger" onclick="window.aiWorkerHandler.startTraining();">Training</button>'))
+        // manual control (if admin)
+        if(window.getCookie('isAdmin') === 'y') {
+            $('#ai-manual-controls').append(
+                $(`<table>
+                    <tr>
+                        <td><input type="checkbox" id="check-do-train" />train</td>
+                        <td># Images: <input type="number" id="box-num-images-train" min="0" max="8192" value="256" /></td>
+                    </tr>
+                    <tr>
+                        <td><input type="checkbox" id="check-do-inference" />inference</td>
+                        <td># Images: <input type="number" id="box-num-images-inference" min="0" max="32768" value="1024" /></td>
+                    </tr>
+                </table>
+                <button class="btn btn-primary btn-sm" id="launch-job-button" style="float:right;margin-top:10px;">Launch</button>`)
+            );
+            $('#launch-job-button').click(function() {
+                self.manualTrigger();
+            })
+        }
     }
 
 

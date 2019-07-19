@@ -114,8 +114,8 @@ class WindowCropper:
             # convert to XYWH format
             bboxes[:,2] -= bboxes[:,0]
             bboxes[:,3] -= bboxes[:,1]
-            bboxes[:,0] +- bboxes[:,2]/2
-            bboxes[:,1] +- bboxes[:,3]/2
+            bboxes[:,0] += bboxes[:,2]/2
+            bboxes[:,1] += bboxes[:,3]/2
 
 
         # create split locations

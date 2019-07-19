@@ -116,6 +116,7 @@ class UserMiddleware():
             }
 
 
+
         # update local cache as well
         if not username in self.usersLoggedIn:
             # fetch user metadata and store locally
@@ -130,7 +131,7 @@ class UserMiddleware():
 
         expires = now + timedelta(0, self.config.getProperty('UserHandler', 'time_login', type=int))
 
-        return sessionToken, now, expires
+        return sessionToken, now, self.usersLoggedIn[username]['isAdmin'], expires
 
 
     def _invalidate_session(self, username):
@@ -249,8 +250,8 @@ class UserMiddleware():
         '''
         if self._check_logged_in(username, sessionToken):
             # still logged in; extend session
-            sessionToken, now, expires = self._init_or_extend_session(username, sessionToken)
-            return sessionToken, now, expires
+            sessionToken, now, isAdmin, expires = self._init_or_extend_session(username, sessionToken)
+            return sessionToken, now, isAdmin, expires
 
         else:
             # not logged in or error
@@ -259,16 +260,12 @@ class UserMiddleware():
 
 
     def login(self, username, password, sessionToken):
-        #TODO: SQL sanitize
 
         # check if logged in
-        try:
-            sessionToken, timestamp, expires = self._check_logged_in(username, sessionToken)
-            return sessionToken, timestamp, expires
-
-        except:
-            # not logged in; continue
-            pass
+        if self._check_logged_in(username, sessionToken):
+            # still logged in; extend session
+            sessionToken, now, isAdmin, expires = self._init_or_extend_session(username, sessionToken)
+            return sessionToken, now, isAdmin, expires
 
         # get user info
         userData = self.dbConnector.execute(
@@ -286,8 +283,8 @@ class UserMiddleware():
         # verify provided password
         if self._check_password(password.encode('utf8'), bytes(userData['hash'])):
             # correct
-            sessionToken, timestamp, expires = self._init_or_extend_session(username, None)
-            return sessionToken, timestamp, expires
+            sessionToken, timestamp, isAdmin, expires = self._init_or_extend_session(username, None)
+            return sessionToken, timestamp, isAdmin, expires
 
         else:
             # incorrect
@@ -319,5 +316,5 @@ class UserMiddleware():
             self.dbConnector.execute(sql,
             (username, email, hash,),
             numReturn=None)
-            sessionToken, timestamp, expires = self._init_or_extend_session(username)
+            sessionToken, timestamp, _, expires = self._init_or_extend_session(username)
             return sessionToken, timestamp, expires

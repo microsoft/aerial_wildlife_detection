@@ -46,7 +46,7 @@ class AIController:
                 This still only works if there is no training process ongoing.
                 Otherwise the request is aborted.
             '''
-            if self.loginCheck(False):
+            if self.loginCheck(True):
                 try:
                     params = request.json
                     if 'maxNum_train' in params:
@@ -70,7 +70,7 @@ class AIController:
             '''
                 Manually requests the AIController to issue an inference job.
             '''
-            if self.loginCheck(False):
+            if self.loginCheck(True):
                 try:
                     params = request.json
                     if 'maxNum_inference' in params:
@@ -94,8 +94,7 @@ class AIController:
                 Manually launches one of the model processes (train, inference, both, etc.),
                 depending on the provided flags.
             '''
-            if self.loginCheck(False):  #TODO: require admin privileges once implemented
-                # parse parameters
+            if self.loginCheck(True):
                 try:
                     params = request.json
                     doTrain = 'train' in params and params['train'] is True
@@ -133,7 +132,7 @@ class AIController:
         def check_status():
             '''
                 Queries the middleware for any ongoing training worker processes
-                and returns the stati of each in a dict.
+                and returns the status of each in a dict.
             '''
             if self.loginCheck(False):
                 try:

@@ -88,19 +88,7 @@
             <div id="ai-worker-panel" class="ai-worker-panel">
                 <h2 id="ai-worker-panel-header">AI Backend</h2>
                 <div class="grad-border-h" style="height:1px"></div>
-                <div class="container">
-                    <!-- TODO: manual controls -->
-                    <table>
-                        <tr>
-                            <td><input type="checkbox" id="check-do-train" />train</td>
-                            <td># Images: <input type="number" id="box-num-images-train" min="0" max="8192" value="256" /></td>
-                        </tr>
-                        <tr>
-                            <td><input type="checkbox" id="check-do-inference" />inference</td>
-                            <td># Images: <input type="number" id="box-num-images-inference" min="0" max="32768" value="1024" /></td>
-                        </tr>
-                    </table>
-                    <button class="btn btn-primary btn-sm" id="launch-job-button" style="float:right;margin-top:10px;">Launch</button>
+                <div class="container" id="ai-manual-controls">
                 </div>
                 <div class="ai-worker-container container" id="ai-worker-container">
                     <h3 class="ai-category-header expanded" id="ai-worker-header">Workers</h3>

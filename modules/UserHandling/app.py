@@ -41,10 +41,11 @@ class UserHandler():
                 if sessionToken is not None:
                     sessionToken = cgi.escape(sessionToken)
 
-                sessionToken, _, expires = self.middleware.login(username, password, sessionToken)
+                sessionToken, _, isAdmin, expires = self.middleware.login(username, password, sessionToken)
                 
                 response.set_cookie('username', username)   #, expires=expires)
                 response.set_cookie('session_token', sessionToken, httponly=True)    #, expires=expires)
+                response.set_cookie('isAdmin', ('y' if isAdmin else 'n'), httponly=False)    #, expires=expires)
 
                 return {
                     'expires': expires.strftime('%H:%M:%S')
@@ -64,10 +65,11 @@ class UserHandler():
 
                 sessionToken = cgi.escape(request.get_cookie('session_token'))
 
-                _, _, expires = self.middleware.getLoginData(username, sessionToken)
+                _, _, isAdmin, expires = self.middleware.getLoginData(username, sessionToken)
                 
                 response.set_cookie('username', username)   #, expires=expires)
                 response.set_cookie('session_token', sessionToken, httponly=True)    #, expires=expires)
+                response.set_cookie('isAdmin', ('y' if isAdmin else 'n'), httponly=False)    #, expires=expires)
                 return {
                     'expires': expires.strftime('%H:%M:%S')
                 }
@@ -86,6 +88,7 @@ class UserHandler():
 
                 response.set_cookie('username', '', expires=0)
                 response.set_cookie('session_token', '', expires=0, httponly=True)
+                response.set_cookie('isAdmin', '', expires=0, httponly=False)    #, expires=expires)
 
                 # send redirect
                 response.status = 303
@@ -110,6 +113,7 @@ class UserHandler():
 
                 response.set_cookie('username', username)   #, expires=expires)
                 response.set_cookie('session_token', sessionToken, httponly=True)    #, expires=expires)
+                response.set_cookie('isAdmin', 'n', httponly=False)    #, expires=expires)
                 return {
                     'expires': expires.strftime('%H:%M:%S')
                 }
