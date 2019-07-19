@@ -33,7 +33,8 @@ app.conf.update(
     result_serializer = 'json',
     task_track_started = True,
     broker_heartbeat = 0,           # required to avoid peer connection resets
-    worker_max_tasks_per_child = 1      # required to free memory (also CUDA) after each process
+    worker_max_tasks_per_child = 1,      # required to free memory (also CUDA) after each process
+    task_default_rate_limit = 3         #TODO
 )
 
 
@@ -44,12 +45,12 @@ worker = AIWorker(config, None)     #TODO: unneccessary second parameter for run
 
 
 
-@app.task()
+@app.task(rate_limit=1)
 def call_train(data, subset):
     return worker.call_train(data, subset)
 
 
-@app.task()
+@app.task(rate_limit=1)
 def call_average_model_states(*args):
     return worker.call_average_model_states()
 
