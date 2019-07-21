@@ -402,6 +402,11 @@ class WindowCropper:
                 result[patchKey]['predictions'] = []
                 if hasBoxes and len(labels_patch):
                     for l in range(len(labels_patch)):
+
+                        # clamp to image bounds
+                        bboxes_patch[l,:] = np.clip(bboxes_patch[l,:], 0, 1)
+
+                        # append
                         result[patchKey]['predictions'].append({
                             'x': bboxes_patch[l,0].tolist(),
                             'y': bboxes_patch[l,1].tolist(),
@@ -411,5 +416,4 @@ class WindowCropper:
                             'logits': logits_patch[l,:].tolist(),
                             'confidence': np.max(logits_patch[l,:]).tolist()
                         })
-
         return result

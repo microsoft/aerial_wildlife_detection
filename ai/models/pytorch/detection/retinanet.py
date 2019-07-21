@@ -254,6 +254,10 @@ class RetinaNet:
                         bboxes_pred_img[:,2] /= inputSize[0]
                         bboxes_pred_img[:,3] /= inputSize[1]
 
+                        # limit to image bounds
+                        bboxes_pred_img = torch.clamp(bboxes_pred_img, 0, 1)
+
+
                         # append to dict
                         for b in range(bboxes_pred_img.size(0)):
                             bbox = bboxes_pred_img[b,:]
