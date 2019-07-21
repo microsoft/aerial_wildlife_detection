@@ -35,6 +35,7 @@ class RetinaNet_ois(RetinaNet):
             'baseFolder_unlabeled': '/datadrive/hfaerialblobs/_images/',   # local folder to search for non-added images
             'load_raw_images': True,   # whether to take RAW files into account
             'inference_max_num_unlabeled': 128,
+            'export_empty_patches': False,
             'stride': 0.65          # relative stride factor
         }
         if not 'contrib' in self.options:
@@ -190,6 +191,10 @@ class RetinaNet_ois(RetinaNet):
         # iterate over patches
         result = {}
         for key in patchData.keys():
+
+            if not self.options['export_empty_patches'] and not len(patchData[key]['predictions']):
+                continue
+
             # patch name
             patchName = re.sub('\..*$', '', filename) + '_' + key + '.JPG'
             

@@ -37,9 +37,25 @@ class Watchdog(Thread):
 
         self.lastCount = 0                              # for difference tracking
 
+        minNumAnno = self.config.getProperty('AIController', 'minNumAnnoPerImage', type=int, fallback=0)
+        if minNumAnno > 0:
+            minNumAnnoString = '''
+                WHERE image IN (
+                    SELECT cntQ.image FROM (
+                        SELECT image, count(*) AS cnt FROM {schema}.annotation
+                        GROUP BY image
+                    ) AS cntQ WHERE cntQ.cnt > {minNumAnno}
+                )
+            '''.format(
+                schema=config.getProperty('Database', 'schema'),
+                minNumAnno=minNumAnno
+            )
+        else:
+            minNumAnnoString = ''
         self.sql = '''
             SELECT COUNT(image) AS count FROM (
                 SELECT image, MAX(last_checked) AS lastChecked FROM {schema}.image_user
+                {minNumAnnoString}
                 GROUP BY image
             ) AS query
             WHERE query.lastChecked > (
@@ -49,7 +65,8 @@ class Watchdog(Thread):
                         SELECT MAX(timeCreated) AS timeCreated FROM {schema}.cnnstate
                     )
             ) AS tsQ);
-        '''.format(schema=config.getProperty('Database', 'schema'))
+        '''.format(schema=config.getProperty('Database', 'schema'),
+                minNumAnnoString=minNumAnnoString)
 
     
     def stop(self):

@@ -111,12 +111,17 @@ class WindowCropper:
         result = {}
 
         if len(bboxes):
+            # limit to image bounds
+            bboxes[:,0] = np.clip(bboxes[:,0], 0, sz[0])
+            bboxes[:,1] = np.clip(bboxes[:,1], 0, sz[1])
+            bboxes[:,2] = np.clip(bboxes[:,2], 0, sz[0])
+            bboxes[:,3] = np.clip(bboxes[:,3], 0, sz[1])
+
             # convert to XYWH format
             bboxes[:,2] -= bboxes[:,0]
             bboxes[:,3] -= bboxes[:,1]
             bboxes[:,0] += bboxes[:,2]/2
             bboxes[:,1] += bboxes[:,3]/2
-
 
         # create split locations
         if self.cropMode == 'strided':
@@ -303,11 +308,6 @@ class WindowCropper:
 
             # prepare result
             patchKey = '{}_{}_{}_{}'.format(coordsX[cIdx], coordsY[cIdx], cropSizesX[cIdx], cropSizesY[cIdx])
-            result[patchKey] = {
-                'patch': patch,
-                'predictions': []
-            }
-
 
             # find bounding boxes within frame
             valid = 0
