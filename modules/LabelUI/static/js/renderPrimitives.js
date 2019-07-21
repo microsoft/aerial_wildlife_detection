@@ -600,17 +600,17 @@ class RectangleElement extends PointElement {
                 self._click_event(event, viewport);
             }
 
-        } else if(type == 'mousedown') {
+        } else if(type === 'mousedown') {
             return function(event) {
                 self._mousedown_event(event, viewport);
             };
 
-        } else if(type == 'mousemove') {
+        } else if(type === 'mousemove') {
             return function(event) {
                 self._mousemove_event(event, viewport);
             }
 
-        } else if(type == 'mouseup') {
+        } else if(type === 'mouseup' || type === 'mouseleave') {
             return function(event) {
                 self._mouseup_event(event, viewport);
             }
@@ -631,6 +631,7 @@ class RectangleElement extends PointElement {
             viewport.addCallback(this.id, 'mousedown', this._get_active_handle_callback('mousedown', viewport));
             viewport.addCallback(this.id, 'mousemove', this._get_active_handle_callback('mousemove', viewport));
             viewport.addCallback(this.id, 'mouseup', this._get_active_handle_callback('mouseup', viewport));
+            viewport.addCallback(this.id, 'mouseleave', this._get_active_handle_callback('mouseleave', viewport));
         } else {
             // catch and assert min. box size before disabling callback
             this._clamp_min_box_size(viewport);
@@ -641,6 +642,7 @@ class RectangleElement extends PointElement {
             viewport.removeCallback(this.id, 'mousedown');
             viewport.removeCallback(this.id, 'mousemove');
             viewport.removeCallback(this.id, 'mouseup');
+            viewport.removeCallback(this.id, 'mouseleave');
             this.mouseDrag = false;
         }
     }

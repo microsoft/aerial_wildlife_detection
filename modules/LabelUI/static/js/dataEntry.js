@@ -650,6 +650,8 @@ class PointAnnotationEntry extends AbstractDataEntry {
         for(var key in this.annotations) {
             if(label == null) {
                 this._removeElement(this.annotations[key]);
+            } else {
+                this.annotations[key].setProperty('label', label);
             }
         }
         this.render();
@@ -677,6 +679,17 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
         return $('<div class="annotationControls">' +
                 '<button onclick=>Add box</button>' +
                 '</div>');
+    }
+
+    setLabel(label) {
+        for(var key in this.annotations) {
+            if(label == null) {
+                this._removeElement(this.annotations[key]);
+            } else {
+                this.annotations[key].setProperty('label', label);
+            }
+        }
+        this.render();
     }
 
     _setup_markup() {
