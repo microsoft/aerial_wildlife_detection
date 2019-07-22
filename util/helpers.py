@@ -40,3 +40,23 @@ def get_class_executable(path):
     classPath, executableName = path[0:idx], path[idx+1:]
     execFile = importlib.import_module(classPath)
     return getattr(execFile, executableName)
+
+
+def check_args(options, defaultOptions):
+    '''
+        Compares a dictionary of objects ('options') with a set of 'defaultOptions'
+        options and copies entries from the default set to the provided options
+        if they are not in there.
+    '''
+    def __check(options, default):
+        if not isinstance(default, dict):
+            return options
+        for key in default.keys():
+            if not key in options:
+                options[key] = default[key]
+            options[key] = __check(options[key], default[key])
+        return options
+    if options is None or not isinstance(options, dict):
+        return defaultOptions
+    else:
+        return __check(options, defaultOptions)

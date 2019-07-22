@@ -166,7 +166,7 @@ class DBMiddleware():
             limit = min(int(limit), 128)
 
         # parse results
-        with self.dbConnector.execute_cursor(sql, (username,limit,username,)) as cursor:
+        with self.dbConnector.execute_cursor(sql, (limit,username,)) as cursor:
             response = self._assemble_annotations(cursor)
 
             # #TODO
