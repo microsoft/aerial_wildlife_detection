@@ -134,10 +134,10 @@ if __name__ == '__main__':
         VALUES (%s, %s, %s, %s)
     '''.format(config.getProperty('Database', 'schema'))
 
-    adminPass = config.getProperty('Database', 'adminPassword')
+    adminPass = config.getProperty('Project', 'adminPassword')
     uHandler = UserHandling.backend.middleware.UserMiddleware(config)
     adminPass = uHandler._create_hash(adminPass.encode('utf8'))
 
-    values = (config.getProperty('Database', 'adminName'), config.getProperty('Database', 'adminEmail'), adminPass, True,)
+    values = (config.getProperty('Project', 'adminName'), config.getProperty('Project', 'adminEmail'), adminPass, True,)
 
     dbConn.execute(sql, values, None)

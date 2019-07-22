@@ -147,7 +147,7 @@ if __name__ == '__main__':
                 %s,
                 %s,
                 %s
-            )'''.format(dbSchema, dbSchema, config.getProperty('Database', 'adminName'))
+            )'''.format(dbSchema, dbSchema, config.getProperty('Project', 'adminName'))
         elif args.annotationType == 'prediction':
             sql = '''
             INSERT INTO {}.PREDICTION (image, timeCreated, label, confidence, x, y, width, height, priority)
