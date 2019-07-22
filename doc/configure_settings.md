@@ -4,7 +4,7 @@ The settings INI file is the primary project property access point for every AId
 
 The settings file is divided into the following categories:
 
-##[Project]
+## [Project]
 
 General project settings go here.
 
@@ -22,7 +22,7 @@ General project settings go here.
 | adminPassword | (string) |  | YES | Plain text password of the AIde administrator account. |
 
 
-##[Server]
+## [Server]
 
 This section contains parameters for all the individual instances' addresses.
 
@@ -35,7 +35,7 @@ This section contains parameters for all the individual instances' addresses.
 
 
 
-##[UserHandler]
+## [UserHandler]
 
 | Name | Values | Default value | Required | Comments |
 |----------------------|---------------|---------------|----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -43,7 +43,7 @@ This section contains parameters for all the individual instances' addresses.
 | create_account_token | (string) |  |  | A custom string of (preferably) random characters required to be known to users who would like to create a new account on the project page. This is to make the project semi-secret. If this value is set, the webpage to create a new account can be accessed as follows: `http://<hostname>/?d=createAccount&t=<create_account_token>`, substituting the expressions in angular brackets accordingly. If left out, a new account can be created by simply visiting:  `http://<hostname>/?d=createAccount`. |
 
 
-##[LabelUI]
+## [LabelUI]
 
 | Name | Values | Default value | Required | Comments |
 |------------------------------|--------------------------|-----------------|----------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -56,7 +56,7 @@ This section contains parameters for all the individual instances' addresses.
 | carryOverRule | 'maxConfidence' | 'mode' | 'maxConfidence' |  | Required in case when the annotation and prediction types differ; in particular in a "many-to-one" mapping (e.g. predictions = bounding boxes, annotations = labels). If set to "maxConfidence", the label class of the prediction with the highest confidence value (per image) will be used. If set to "mode", the most frequently occurring label class of all the predictions in the image will be assigned as the image-wide label. Has no effect if the annotation type is != "labels". |
 
 
-##[AIController]
+## [AIController]
 
 | Name | Values | Default value | Required | Comments |
 |---------------------------|-----------------|------------------|----------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -74,7 +74,7 @@ This section contains parameters for all the individual instances' addresses.
 | maxNumWorkers_inference | (numeric) | -1 |  | Maximum number of AIWorker instances to involve when doing inference on images. -1 means that all available AIWorkers will be involved, and that the images will be distributed evenly across them. |
 
 
-##[FileServer]
+## [FileServer]
 
 | Name | Values | Default value | Required | Comments |
 |-----------------|--------------|---------------|----------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------|

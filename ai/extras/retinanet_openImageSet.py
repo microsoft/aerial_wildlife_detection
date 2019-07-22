@@ -18,6 +18,7 @@ import torch
 from torchvision import transforms as tr
 from PIL import Image
 import rawpy
+from util.helpers import check_args
 from ai.models.pytorch.detection.retinanet import RetinaNet
 from ai.models.pytorch.functional._retinanet.model import RetinaNet as Model
 from ai.models.pytorch.functional._retinanet import encoder
@@ -34,14 +35,14 @@ class RetinaNet_ois(RetinaNet):
         defaultContribOptions = {
             'baseFolder_unlabeled': '/datadrive/hfaerialblobs/_images/',   # local folder to search for non-added images
             'load_raw_images': True,   # whether to take RAW files into account
-            'inference_max_num_unlabeled': 4096,
+            'inference_max_num_unlabeled': 32,
             'export_empty_patches': False,
             'stride': 0.65          # relative stride factor
         }
         if not 'contrib' in self.options:
             self.options['contrib'] = defaultContribOptions
         else:
-            self.options['contrib'] = self._parse_options(self.options['contrib'], defaultContribOptions)
+            self.options['contrib'] = check_args(self.options['contrib'], defaultContribOptions)
 
 
         # parameters

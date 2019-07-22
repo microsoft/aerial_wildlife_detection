@@ -96,7 +96,7 @@ def change_box_order(boxes, order):
         return torch.cat([(a+b)/2,b-a+1], 1)
     return torch.cat([a-b/2,a+b/2], 1)
 
-def box_iou(box1, box2, order='xyxy'):
+def box_iou(box1, box2, order='xyxy', return_intersection=False):
     '''Compute the intersection over union of two set of boxes.
 
     The default box order is (xmin, ymin, xmax, ymax).
@@ -116,9 +116,6 @@ def box_iou(box1, box2, order='xyxy'):
         box1 = change_box_order(box1, 'xywh2xyxy')
         box2 = change_box_order(box2, 'xywh2xyxy')
 
-    N = box1.size(0)
-    M = box2.size(0)
-
     lt = torch.max(box1[:,None,:2], box2[:,:2])  # [N,M,2]
     rb = torch.min(box1[:,None,2:], box2[:,2:])  # [N,M,2]
 
@@ -128,7 +125,11 @@ def box_iou(box1, box2, order='xyxy'):
     area1 = (box1[:,2]-box1[:,0]+1) * (box1[:,3]-box1[:,1]+1)  # [N,]
     area2 = (box2[:,2]-box2[:,0]+1) * (box2[:,3]-box2[:,1]+1)  # [M,]
     iou = inter / (area1[:,None] + area2 - inter)
-    return iou
+
+    if return_intersection:
+      return iou, inter
+    else:
+      return iou
 
 def box_nms(bboxes, scores, threshold=0.5, mode='union'):
     '''Non maximum suppression.

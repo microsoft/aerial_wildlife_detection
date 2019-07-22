@@ -238,6 +238,16 @@ canvas {
 
 }
 
+.row {
+    margin-left: 0px !important;
+    margin-right: 0px !important;
+}
+
+.col-sm {
+    padding-left: 0px !important;
+    padding-right: 0px !important;
+}
+
 /* AI controller window */
 .ai-worker-panel {
     position: absolute;

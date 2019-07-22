@@ -14,7 +14,7 @@ from ai.models.pytorch.functional._retinanet import collation, encoder, loss
 from ai.models.pytorch.functional._retinanet.model import RetinaNet as Model
 import ai.models.pytorch.functional._util.bboxTransforms as bboxTr
 from ai.models.pytorch.functional.datasets.bboxDataset import BoundingBoxDataset
-from util.helpers import get_class_executable
+from util.helpers import get_class_executable, check_args
 
 
 
@@ -24,25 +24,7 @@ class RetinaNet:
         self.config = config
         self.dbConnector = dbConnector
         self.fileServer = fileServer
-        self.options = self._parse_options(options, DEFAULT_OPTIONS)
-
-
-    def _parse_options(self, options, defaultOptions):
-        '''
-            Check for presence of required values and add defaults if not there.
-        '''
-        def __check_args(options, default):
-            if not isinstance(default, dict):
-                return options
-            for key in default.keys():
-                if not key in options:
-                    options[key] = default[key]
-                options[key] = __check_args(options[key], default[key])
-            return options
-        if options is None or not isinstance(options, dict):
-            return defaultOptions
-        else:
-            return __check_args(options, defaultOptions)
+        self.options = check_args(options, DEFAULT_OPTIONS)
 
 
     def _get_device(self):

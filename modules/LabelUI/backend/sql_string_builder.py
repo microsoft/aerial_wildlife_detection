@@ -122,7 +122,6 @@ class SQLStringBuilder:
             SELECT id AS image, filename, viewcount, score, timeCreated FROM {schema}.image AS img
             LEFT OUTER JOIN (
                 SELECT * FROM {schema}.image_user
-                WHERE username = %s
             ) AS iu ON img.id = iu.image
             LEFT OUTER JOIN (
                 SELECT image, SUM(confidence)/COUNT(confidence) AS score, timeCreated
