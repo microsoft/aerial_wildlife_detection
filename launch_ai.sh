@@ -10,6 +10,7 @@ export AIDE_CONFIG_PATH=config/settings.ini
 
 #TODO
 export AIDE_CONFIG_PATH=settings_windowCropping.ini
+export AIDE_CONFIG_PATH=settings_wcsaerialblobs.ini
 
 
 # Celery

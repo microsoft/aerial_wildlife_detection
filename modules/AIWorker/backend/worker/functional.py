@@ -64,16 +64,18 @@ def __load_metadata(config, dbConnector, imageIDs, loadAnnotations):
     labels = {}
     sql = 'SELECT * FROM {schema}.labelclass;'.format(schema=schema)
     result = dbConnector.execute(sql, None, 'all')
-    for r in result:
-        labels[r['id']] = r     #TODO: make more elegant?
+    if len(result):
+        for r in result:
+            labels[r['id']] = r     #TODO: make more elegant?
     meta['labelClasses'] = labels
 
     # image data
     imageMeta = {}
     sql = 'SELECT * FROM {schema}.image WHERE id IN %s'.format(schema=schema)
     result = dbConnector.execute(sql, (tuple(imageIDs),), 'all')
-    for r in result:
-        imageMeta[r['id']] = r  #TODO: make more elegant?
+    if len(result):
+        for r in result:
+            imageMeta[r['id']] = r  #TODO: make more elegant?
 
 
     # annotations
@@ -84,10 +86,11 @@ def __load_metadata(config, dbConnector, imageIDs, loadAnnotations):
             WHERE image IN %s;
         '''.format(schema=schema, fieldNames=','.join(fieldNames))
         result = dbConnector.execute(sql, (tuple(imageIDs),), 'all')
-        for r in result:
-            if not 'annotations' in imageMeta[r['image']]:
-                imageMeta[r['image']]['annotations'] = []
-            imageMeta[r['image']]['annotations'].append(r)      #TODO: make more elegant?
+        if len(result):
+            for r in result:
+                if not 'annotations' in imageMeta[r['image']]:
+                    imageMeta[r['image']]['annotations'] = []
+                imageMeta[r['image']]['annotations'].append(r)      #TODO: make more elegant?
     meta['images'] = imageMeta
 
     return meta

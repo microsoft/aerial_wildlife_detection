@@ -125,7 +125,6 @@ class UserHandler():
         def showNewAccountPage():
             # check if token is required; if it is and wrong token provided, show login screen instead
             targetToken = cgi.escape(self.config.getProperty('UserHandler', 'create_account_token'))
-            print('"' + targetToken + '"')
             if targetToken is not None and not(targetToken == ''):
                 try:
                     providedToken = cgi.escape(request.query['t'])

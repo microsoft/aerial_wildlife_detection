@@ -18,17 +18,17 @@ def _constructAnnotationFields(annoType, table, doublePrecision=False):
 
     confString = ''
     if table == 'prediction':
-        confString = 'conidence real'
+        confString = 'conidence real,'
 
     unsureString = ''
     if table == 'annotation':
-        unsureString = 'unsure boolean NOT NULL DEFAULT false'
+        unsureString = 'unsure boolean NOT NULL DEFAULT false,'
 
     if False:       #TODO: separate confidence values for all labelclasses? How to handle empty class? (table == 'prediction'):
         additionalTables = '''CREATE TABLE IF NOT EXISTS &schema.PREDICTION_LABELCLASS (
             prediction uuid NOT NULL,
             labelclass uuid NOT NULL,
-            {confString},
+            {confString}
             PRIMARY KEY (prediction, labelclass),
             FOREIGN KEY (prediction) REFERENCES &schema.PREDICTION(id),
             FOREIGN KEY (labelclass) REFERENCES &schema.LABELCLASS(id)
@@ -41,7 +41,7 @@ def _constructAnnotationFields(annoType, table, doublePrecision=False):
         annoFields = '''
             label uuid &labelclassNotNull,
             confidence real,
-            {unsureString},
+            {unsureString}
             FOREIGN KEY (label) REFERENCES &schema.LABELCLASS(id),
         '''.format(unsureString=unsureString)
     
@@ -51,7 +51,7 @@ def _constructAnnotationFields(annoType, table, doublePrecision=False):
             confidence real,
             x {coordType},
             y {coordType},
-            {unsureString},
+            {unsureString}
             FOREIGN KEY (label) REFERENCES &schema.LABELCLASS(id),
         '''.format(coordType=coordType, unsureString=unsureString)
 
@@ -63,7 +63,7 @@ def _constructAnnotationFields(annoType, table, doublePrecision=False):
             y {coordType},
             width {coordType},
             height {coordType},
-            {unsureString},
+            {unsureString}
             FOREIGN KEY (label) REFERENCES &schema.LABELCLASS(id),
         '''.format(coordType=coordType, unsureString=unsureString)
 
@@ -93,6 +93,7 @@ if __name__ == '__main__':
         os.environ['AIDE_CONFIG_PATH'] = args.settings_filepath
 
     config = Config()
+    dbConn = Database(config)
 
 
     # read SQL skeleton
