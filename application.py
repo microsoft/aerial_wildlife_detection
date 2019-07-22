@@ -67,3 +67,7 @@ for i in instance_args:
     # add authentication functionality
     if hasattr(instance, 'addLoginCheckFun'):
         instance.addLoginCheckFun(userHandler.checkAuthenticated)
+
+
+if __name__ == '__main__':
+    app.run()

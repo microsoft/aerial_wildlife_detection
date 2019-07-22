@@ -50,13 +50,14 @@ if __name__ == '__main__':
     '''
     import argparse
     parser = argparse.ArgumentParser(description='Get configuration entry programmatically.')
-    parser.add_argument('--settings_filepath', type=str, default='config/settings.ini', const=1, nargs='?',
+    parser.add_argument('--settings_filepath', type=str,
                     help='Directory of the settings.ini file used for this machine (default: "config/settings.ini").')
     parser.add_argument('--section', type=str, help='Configuration file section')
     parser.add_argument('--parameter', type=str, help='Parameter within the section')
     args = parser.parse_args()
 
-    os.environ['AIDE_CONFIG_PATH'] = str(args.settings_filepath)
+    if 'settings_filepath' in args and args.settings_filepath is not None:
+        os.environ['AIDE_CONFIG_PATH'] = str(args.settings_filepath)
 
     if args.section is None or args.parameter is None:
         print('Usage: python configDef.py --section=<.ini file section> --parameter=<section parameter name>')
