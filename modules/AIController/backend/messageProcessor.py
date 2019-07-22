@@ -24,14 +24,17 @@ from threading import Thread
 import time
 import uuid
 import celery
+import kombu.five
 from util.helpers import current_time
 
 
 class MessageProcessor(Thread):
 
-    def __init__(self):
+    def __init__(self, celery_app):
         super(MessageProcessor, self).__init__()
         
+        self.celery_app = celery_app
+
         # job store
         self.jobs = []
 
@@ -91,7 +94,32 @@ class MessageProcessor(Thread):
         # iterate over all registered tasks and get their result, one by one
         while True:
             if not len(self.jobs):
-                # no jobs in queue; wait and then try again
+                # no jobs in current queue; ping workers for other running tasks
+                i = self.celery_app.control.inspect()
+                stats = i.stats()
+                if stats is not None and len(stats):
+                    active_tasks = i.active()
+                    for key in active_tasks.keys():
+                        taskList = active_tasks[key]
+                        for t in taskList:
+                            taskID = t['id']
+                            if not taskID in self.messages:
+                                # task got lost (e.g. due to server restart); re-add
+                                try:
+                                    timeSubmitted = datetime.fromtimestamp(time.time() - (kombu.five.monotonic() - t['time_start']))
+                                except:
+                                    timeSubmitted = str(current_time()) #TODO: dirty hack to make failsafe with UI
+                                self.messages[taskID] = {
+                                    'type': ('train' if 'train' in t['name'] else 'inference'),        #TODO
+                                    'submitted': timeSubmitted,
+                                    'status': celery.states.PENDING,
+                                    'meta': {'message':'job at worker'}
+                                }
+                                job = celery.result.AsyncResult(taskID)  #TODO: task.ready()
+                                self.jobs.append(job)
+
+            if not len(self.jobs):
+                # still no jobs in queue; wait and then try again
                 while True:
                     # check if anything in list
                     if len(self.jobs):

@@ -34,7 +34,7 @@ class AIMiddleware():
         self.watchdog = None    # note: watchdog only created if users poll status (i.e., if there's activity)
 
         #TODO
-        self.messageProcessor = MessageProcessor()
+        self.messageProcessor = MessageProcessor(self.celery_app)
         self.messageProcessor.start()
 
 
