@@ -71,15 +71,16 @@ def __load_metadata(config, dbConnector, imageIDs, loadAnnotations):
 
     # image data
     imageMeta = {}
-    sql = 'SELECT * FROM {schema}.image WHERE id IN %s'.format(schema=schema)
-    result = dbConnector.execute(sql, (tuple(imageIDs),), 'all')
-    if len(result):
-        for r in result:
-            imageMeta[r['id']] = r  #TODO: make more elegant?
+    if len(imageIDs):
+        sql = 'SELECT * FROM {schema}.image WHERE id IN %s'.format(schema=schema)
+        result = dbConnector.execute(sql, (tuple(imageIDs),), 'all')
+        if len(result):
+            for r in result:
+                imageMeta[r['id']] = r  #TODO: make more elegant?
 
 
     # annotations
-    if loadAnnotations:
+    if loadAnnotations and len(imageIDs):
         fieldNames = list(getattr(FieldNames_annotation, config.getProperty('Project', 'predictionType')).value)
         sql = '''
             SELECT id AS annotationID, image, {fieldNames} FROM {schema}.annotation AS anno

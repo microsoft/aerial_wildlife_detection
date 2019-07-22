@@ -129,14 +129,16 @@ class UserHandler():
                 try:
                     providedToken = cgi.escape(request.query['t'])
                     if providedToken == targetToken:
-                        return static_file('templates/createAccountScreen.html', root=self.staticDir)
+                        response = static_file('templates/createAccountScreen.html', root=self.staticDir)
                     else:
-                        return static_file('templates/loginScreen.html', root=self.staticDir)
+                        response = static_file('templates/loginScreen.html', root=self.staticDir)
                 except:
-                    return static_file('templates/loginScreen.html', root=self.staticDir)
+                    response = static_file('templates/loginScreen.html', root=self.staticDir)
             else:
                 # no token required
-                return static_file('templates/createAccountScreen.html', root=self.staticDir)
+                response = static_file('templates/createAccountScreen.html', root=self.staticDir)
+            response.set_header('Cache-Control', 'public, max-age=0')
+            return response
 
         @self.app.route('/loginScreen')
         def showLoginPage():
