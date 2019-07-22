@@ -4,16 +4,15 @@
 #
 # 2019 Benjamin Kellenberger
 
-# Terminate processes first
-pkill celery;
-
 
 # Settings filepath
 export AIDE_CONFIG_PATH=config/settings.ini
-
 #TODO
 export AIDE_CONFIG_PATH=settings_windowCropping.ini
 
+# modules to run
+export AIDE_MODULES=LabelUI,AIController
 
 # HTTP server
-python runserver.py --settings_filepath=$AIDE_CONFIG_PATH --instance=UserHandler,LabelUI,AIController
+#python runserver.py --settings_filepath=$AIDE_CONFIG_PATH --instance=UserHandler,LabelUI,AIController
+gunicorn application:app -b=0.0.0.0:8086

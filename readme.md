@@ -11,6 +11,8 @@ AIde is primarily developed and maintained by [Benjamin Kellenberger](https://ww
 
 ## Highlights
 
+![AIde highlights](doc/figures/Aide_highlights.png)
+
 * **Fast:** AIde has been designed with speed in mind, both in terms of computations and workflow.
 * **Flexible:** the framework allows full customizability, from hyperparameters and models over annotation types to libraries. For example, it supports bounding boxes as model predictions and classification labels for user annotations; you may exchange the AI backend in any way you want (or [write your own](doc/custom_model.md)); etc.
 * **Modular:** AIde is separated into individual _Modules_, each of which can be run on separate machines for scalability, if needed. It even supports on-the-fly additions of new computational workers for the heavy model training part!

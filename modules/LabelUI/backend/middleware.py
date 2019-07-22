@@ -57,7 +57,7 @@ class DBMiddleware():
         }
 
 
-    def _assemble_annotations(self, cursor, limit=1e9):
+    def _assemble_annotations(self, cursor):
         response = {}
         while True:
             b = cursor.fetchone()
@@ -167,15 +167,7 @@ class DBMiddleware():
 
         # parse results
         with self.dbConnector.execute_cursor(sql, (username,limit,username,)) as cursor:
-            response = self._assemble_annotations(cursor, limit)
-            # try:
-            #     response = self._assemble_annotations(cursor, limit)
-            #     # self.dbConnector.conn.commit()
-            # except:
-            #     pass
-            #     # self.dbConnector.conn.rollback()
-            # finally:
-            #     cursor.close()
+            response = self._assemble_annotations(cursor)
 
             # #TODO
             # if len(response) == 1:
