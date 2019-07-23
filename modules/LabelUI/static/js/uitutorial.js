@@ -106,9 +106,18 @@ window.showTutorial = function(autostart) {
         }
     }
 
-    
-    $(window).on('click', nextTooltip);
 
-    if(autostart)
+    if(autostart) {
+        // show welcome instructions
+        var welcomeContents = '<h2>Welcome!</h2>';      //TODO
+        welcomeContents += '<div style="border:' + window.styles.predictions.lineWidth + 'px solid blue; width:100px;height:60px;"></div>';
+        window.showOverlay(welcomeContents);
+
+        // show tooltips
+        $(window).on('click', nextTooltip);
         nextTooltip();
+    } else {
+        //TODO
+        $(window).on('click', nextTooltip);
+    }
 }
