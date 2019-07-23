@@ -35,12 +35,13 @@ window.showTutorial = function(autostart) {
         [ '#unsure-button', unsureString ],
         [ '#remove-annotation', removeAnnotationString ],
         [ '#clearAll-button', 'Remove all annotations at once (or press C)'],
+        [ '#gallery', 'Temporarily hide predictions (annotations) by holding down the shift (control) key.' ],
         [ '#next-button', 'Satisfied with your annotations? Click "Next" (or press the right arrow key).' ],
         [ '#previous-button', 'Want to review the last image(s)? Click "Previous" (or press the left arrow key).' ],
-        [ '#ai-worker-panel', 'View the tasks and progress of the AI worker(s) by clicking here.' ]
+        // [ '#ai-worker-panel', 'View the tasks and progress of the AI worker(s) by clicking here.' ]  //TODO: doesn't work; perhaps z-index problem?
     ];
 
-    var index = -1;
+    var index = -2;
     var nextTooltip = function() {
         window.setUIblocked(true);
 
@@ -62,8 +63,7 @@ window.showTutorial = function(autostart) {
                 });
             } else if(interfaceElements[index][0] === '#ai-worker-panel') {
                 // minimize AI panel
-                $('#ai-tasks-entries').slideUp();
-                $('#ai-tasks-header').toggleClass('expanded');
+                $('#ai-worker-panel').slideUp();
             }
             $(interfaceElements[index][0]).tooltip('dispose');
         }
@@ -72,7 +72,7 @@ window.showTutorial = function(autostart) {
             index += 1;
             if(index >= interfaceElements.length) {
                 // done with tooltips
-                $(window).off('click', nextTooltip);
+                $(window).off('click', advance);
                 window.setUIblocked(false);
                 window.setCookie('skipTutorial', true, 365);
                 return;
@@ -96,8 +96,7 @@ window.showTutorial = function(autostart) {
 
         } else if(interfaceElements[index][0] === '#ai-worker-panel') {
             // show AI panel
-            $('#ai-tasks-entries').slideDown();
-            $('#ai-tasks-header').toggleClass('expanded');
+            $('#ai-worker-panel').slideDown();
 
         } else {
             $(interfaceElements[index][0]).tooltip({
@@ -107,17 +106,22 @@ window.showTutorial = function(autostart) {
     }
 
 
-    if(autostart) {
-        // show welcome instructions
-        var welcomeContents = '<h2>Welcome!</h2>';      //TODO
-        welcomeContents += '<div style="border:' + window.styles.predictions.lineWidth + 'px solid blue; width:100px;height:60px;"></div>';
-        window.showOverlay(welcomeContents);
+    var advance = function() {
+        if(index === -2) {
+            var welcomeContents = $('<div style="overflow-y:auto"></div>');
+            welcomeContents.load('static/templates/tutorial_welcome.html');
+            window.showOverlay(welcomeContents, true);
+            index += 1;
+        } else {
+            window.showOverlay(null);
+            nextTooltip();
+        }
+    }
 
-        // show tooltips
-        $(window).on('click', nextTooltip);
-        nextTooltip();
-    } else {
-        //TODO
-        $(window).on('click', nextTooltip);
+    $(window).on('click', advance);
+    index = -2;
+
+    if(autostart) {
+        advance();
     }
 }

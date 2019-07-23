@@ -185,15 +185,25 @@ $(document).ready(function() {
 
 
         // overlay HUD
-        window.showOverlay = function(contents) {
+        window.showOverlay = function(contents, large) {
             if(contents === undefined || contents === null) {
                 $('#overlay-card').slideUp();
                 $('#overlay').fadeOut();
                 $('#overlay-card').empty();
+
+                // reset style
+                $('#overlay-card').css('width', '720px');
+                $('#overlay-card').css('height', '250px');
                 window.setUIblocked(false);
 
             } else {
                 window.setUIblocked(true);
+
+                // adjust style
+                if(large) {
+                    $('#overlay-card').css('width', '50%');
+                    $('#overlay-card').css('height', '50%');
+                }
                 $('#overlay-card').html(contents);
                 $('#overlay').fadeIn();
                 $('#overlay-card').slideDown();
