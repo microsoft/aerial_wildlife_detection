@@ -8,6 +8,7 @@ from uuid import UUID
 from datetime import datetime
 import pytz
 import dateutil.parser
+import json
 from modules.Database.app import Database
 from .sql_string_builder import SQLStringBuilder
 from .annotation_sql_tokens import QueryStrings_annotation, QueryStrings_prediction, AnnotationParser
@@ -30,6 +31,10 @@ class DBMiddleware():
         if aiControllerURI is None or aiControllerURI.strip() == '':
             # no AI backend configured
             aiControllerURI = None
+
+        # LabelUI drawing styles
+        with open(self.config.getProperty('LabelUI', 'styles_file', type=str, fallback='config/styles.json'), 'r') as f:
+            styles = json.load(f)
 
         self.projectSettings = {
             'projectName': self.config.getProperty('Project', 'projectName'),
@@ -54,6 +59,7 @@ class DBMiddleware():
             'numImages_y': self.config.getProperty('LabelUI', 'numImages_y', type=int, fallback=2),
             'defaultImage_w': self.config.getProperty('LabelUI', 'defaultImage_w', type=int, fallback=800),
             'defaultImage_h': self.config.getProperty('LabelUI', 'defaultImage_h', type=int, fallback=600),
+            'styles': styles
         }
 
 

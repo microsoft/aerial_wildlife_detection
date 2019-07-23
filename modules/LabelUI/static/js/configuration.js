@@ -31,36 +31,36 @@ window.loadConfiguration = function() {
     }
 
     // styles (TODO: outsource?)
-    window.styles = {
-        hoverText: {
-            offsetH: 10,
-            box: {
-                fill: 'rgba(88, 137, 216, 0.85)',
-                stroke: {
-                    color: '#FFFFFF',
-                    lineWidth: 0.5
-                },
-                height: 24      // adjust according to font size
-            },
-            text: {
-                fontStyle: 'sans-serif',
-                fontSizePix: 12,
-                color: '#FFFFFF'
-            }
-        },
-        background: '#000000',
-        resizeHandles: {
-            size: 8,
-            fillColor: '#FFFFFF',
-            strokeColor: '#000000',
-            lineWidth: 1
-        },
-        crosshairLines: {
-            strokeColor: '#000000',
-            lineWidth: 1,
-            lineDash: [4, 4]
-        }
-    };
+    // window.styles = {
+    //     hoverText: {
+    //         offsetH: 10,
+    //         box: {
+    //             fill: 'rgba(88, 137, 216, 0.85)',
+    //             stroke: {
+    //                 color: '#FFFFFF',
+    //                 lineWidth: 0.5
+    //             },
+    //             height: 24      // adjust according to font size
+    //         },
+    //         text: {
+    //             fontStyle: 'sans-serif',
+    //             fontSizePix: 12,
+    //             color: '#FFFFFF'
+    //         }
+    //     },
+    //     background: '#000000',
+    //     resizeHandles: {
+    //         size: 8,
+    //         fillColor: '#FFFFFF',
+    //         strokeColor: '#000000',
+    //         lineWidth: 1
+    //     },
+    //     crosshairLines: {
+    //         strokeColor: '#000000',
+    //         lineWidth: 1,
+    //         lineDash: [4, 4]
+    //     }
+    // };
 
     // labeling interface
     window.annotationProximityTolerance = 5;
@@ -101,6 +101,7 @@ window.getProjectSettings = function() {
         window.numImages_y = parseInt(data['settings']['numImages_y']);
         window.defaultImage_w = parseInt(data['settings']['defaultImage_w']);
         window.defaultImage_h = parseInt(data['settings']['defaultImage_h']);
+        window.styles = data['settings']['styles'];
 
 
         // set interface page title and description

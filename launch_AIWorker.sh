@@ -14,4 +14,4 @@ export AIDE_CONFIG_PATH=settings_wcsaerialblobs.ini
 
 
 # Celery
-celery -A modules.AIController.backend.celery_interface worker &
+celery -A modules.AIController.backend.celery_interface worker
