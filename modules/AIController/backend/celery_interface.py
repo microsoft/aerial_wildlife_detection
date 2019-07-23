@@ -34,7 +34,9 @@ app.conf.update(
     task_track_started = True,
     broker_heartbeat = 0,           # required to avoid peer connection resets
     worker_max_tasks_per_child = 1,      # required to free memory (also CUDA) after each process
-    task_default_rate_limit = 3         #TODO
+    task_default_rate_limit = 3,         #TODO
+    worker_prefetch_multiplier = 1,          #TODO
+    task_acks_late = True
 )
 
 

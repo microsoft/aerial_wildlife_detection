@@ -35,7 +35,7 @@ class RetinaNet_ois(RetinaNet):
         defaultContribOptions = {
             'baseFolder_unlabeled': '/datadrive/hfaerialblobs/_images/',   # local folder to search for non-added images
             'load_raw_images': True,   # whether to take RAW files into account
-            'inference_max_num_unlabeled': 32,
+            'inference_max_num_unlabeled': 64,
             'export_empty_patches': False,
             'stride': 0.65          # relative stride factor
         }
