@@ -135,12 +135,11 @@ class DataHandler {
 
     clearLabelInAll() {
         /*
-            For classification entries only: remove all assigned labels
-            (if 'enableEmptyClass' is true).
+            Remove all assigned labels (if 'enableEmptyClass' is true).
         */
         if(window.uiBlocked || !window.enableEmptyClass) return;
         for(var i=0; i<this.dataEntries.length; i++) {
-            this.dataEntries[i].setLabel(null);
+            this.dataEntries[i].removeAllAnnotations();
         }
     }
 
@@ -208,7 +207,6 @@ class DataHandler {
             url: url,
             dataType: 'json',
             success: function(data) {
-                
                 // clear current entries
                 self.parentDiv.empty();
                 self.dataEntries = [];
@@ -310,7 +308,6 @@ class DataHandler {
                 // clear current entries
                 self.parentDiv.empty();
                 self.dataEntries = [];
-
                 for(var d in batch) {
                     var entryID = batch[d];
                     switch(String(window.annotationType)) {

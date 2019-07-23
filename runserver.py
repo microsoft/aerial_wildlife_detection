@@ -72,9 +72,9 @@ class Launcher:
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Run CV4Wildlife AL Service.')
-    parser.add_argument('--settings_filepath', type=str, default='settings_wcsaerialblobs.ini', const=1, nargs='?',
+    parser.add_argument('--settings_filepath', type=str, default='settings_objectCentered.ini', const=1, nargs='?',
                     help='Directory of the settings.ini file used for this machine (default: "config/settings.ini").')
-    parser.add_argument('--instance', type=str, default='LabelUI,AIController', const=1, nargs='?',
+    parser.add_argument('--instance', type=str, default='LabelUI', const=1, nargs='?',
                     help='Instance type(s) to run on this host. Accepts multiple keywords, comma-separated (default: "LabelUI").')
     args = parser.parse_args()
 

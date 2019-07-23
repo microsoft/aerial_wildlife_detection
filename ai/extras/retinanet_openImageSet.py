@@ -96,6 +96,28 @@ class RetinaNet_ois(RetinaNet):
         return all_images
     
 
+    def train(self, stateDict, data):
+        '''
+            TODO: ugly hack: since we do not yet have a model that can cope with all label classes,
+            we simply ignore labels the model does not know.
+        '''
+        if stateDict is not None:
+            stateDict = torch.load(io.BytesIO(stateDict), map_location=lambda storage, loc: storage)
+            known_classes = stateDict['labelclassMap']
+        
+        self.options['train']['ignore_unsure'] = True
+        for key in data['images']:
+            nextMeta = data['images'][key]
+            if 'annotations' in nextMeta:
+                for annoKey in nextMeta['annotations'].keys():
+                    anno = data['images'][key]['annotations'][annoKey]
+                    if anno['label'] not in known_classes:
+                        data['images'][key]['annotations'][annoKey]['unsure'] = True
+        
+        # now start ordinary training
+        super().train(stateDict, data)
+
+
     def _inference_image(self, model, transform, filename):
         '''
             Loads the image with given filename from disk, splits it up into

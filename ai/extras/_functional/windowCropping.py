@@ -346,9 +346,10 @@ class WindowCropper:
                 # filter bboxes for size
                 origArea = (bboxes[valid,2] - bboxes[valid,0]) * (bboxes[valid,3] - bboxes[valid,1])
                 newArea = bboxes_patch[:,2] * bboxes_patch[:,3]
-                areaFrac = newArea / origArea
+                valid = origArea > 0
+                areaFrac = newArea / np.clip(origArea, 1e-8, None)
 
-                valid_area = (newArea >= self.minBBoxArea) * (areaFrac >= self.minBBoxAreaFrac)
+                valid_area = (newArea >= self.minBBoxArea) * (areaFrac >= self.minBBoxAreaFrac) * valid
                 bboxes_patch = bboxes_patch[valid_area,:]
                 labels_patch = labels_patch[valid_area]
                 logits_patch = logits_patch[valid_area,:]

@@ -14,19 +14,17 @@ class Annotation {
             this.label = window.labelClassHandler.getActiveClassID();
         }
         this.confidence = properties['confidence'];
-        var lineWidth = 4;      //TODO
-        var pointSize = 8;
-        if(this.type == 'userAnnotation') {
-            lineWidth = 8;
-            pointSize = 10;
-        } else if(this.type == 'annotation') {
-            lineWidth = 6;
-            pointSize = 12;
-        }
-        var lineDash = [];
+
+        // drawing styles
+        var color = window.labelClassHandler.getColor(this.label);
+        var style = JSON.parse(JSON.stringify(window.styles.annotations));  // copy default style
         if(this.type == 'prediction') {
-            lineDash = [4, 4];      //TODO
+            style = JSON.parse(JSON.stringify(window.styles.predictions));
         }
+        style['strokeColor'] = window.addAlpha(color, style.lineOpacity);
+        style['fillColor'] = window.addAlpha(color, style.fillOpacity);
+
+
         if('segMapFileName' in properties) {
             // Semantic segmentation map
             throw Error('Segmentation maps not yet implemented');
@@ -41,10 +39,7 @@ class Annotation {
                 this.annotationID + '_geom',
                 properties['x'], properties['y'],
                 properties['width'], properties['height'],
-                null,
-                window.labelClassHandler.getColor(this.label),
-                lineWidth,
-                lineDash,
+                style,
                 unsure);
 
         } else if('x' in properties) {
@@ -52,8 +47,7 @@ class Annotation {
             this.geometry = new PointElement(
                 this.annotationID + '_geom',
                 properties['x'], properties['y'],
-                window.labelClassHandler.getColor(this.label),
-                pointSize,
+                style,
                 unsure
             );
         } else {
@@ -64,10 +58,8 @@ class Annotation {
             }
             this.geometry = new BorderStrokeElement(
                 this.annotationID + '_geom',
-                window.labelClassHandler.getColor(this.label),
-                lineWidth,
-                lineDash,
                 borderText,
+                style,
                 unsure
             )
         }

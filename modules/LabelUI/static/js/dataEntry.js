@@ -329,6 +329,14 @@
         this.render();
     }
 
+    removeAllAnnotations() {
+        for(var key in this.annotations) {
+            this.annotations[key].setActive(false, this.viewport);
+            this._removeElement(this.annotations[key]);
+        }
+        this.render();
+    }
+
     toggleActiveAnnotationsUnsure() {
         var active = false;
         for(var key in this.annotations) {
@@ -397,7 +405,9 @@
             }
 
             // add new annotation from existing
-            var anno = new Annotation(key, {'label':element['label']}, element['type']);
+            // console.log(element['geometry'])
+            var unsure = element['geometry']['unsure'];
+            var anno = new Annotation(key, {'label':element['label'], 'unsure':unsure}, element['type']);
             this.annotations[key] = anno;
             this.viewport.addRenderElement(anno.getRenderElement());
             this.labelInstance = anno;
@@ -413,11 +423,14 @@
         super._setup_markup();
         $(this.canvas).css('cursor', 'pointer');
 
+        var htStyle = {
+            fillColor: window.styles.hoverText.box.fill,
+            textColor: window.styles.hoverText.text.color,
+            strokeColor: window.styles.hoverText.box.stroke.color,
+            lineWidth: window.styles.hoverText.box.stroke.lineWidth
+        };
         this.hoverTextElement = new HoverTextElement(this.entryID + '_hoverText', null, null, 'validArea',
-            window.styles.hoverText.box.fill,
-            window.styles.hoverText.text.color,
-            window.styles.hoverText.box.stroke.color,
-            window.styles.hoverText.box.stroke.lineWidth,
+            htStyle,
             5);
         this.viewport.addRenderElement(this.hoverTextElement);
 
@@ -511,6 +524,11 @@
         }
         this.render();
     }
+
+    removeAllAnnotations() {
+        this.labelInstance.setProperty('label', null);
+        this.render();
+    }
  }
 
 
@@ -538,8 +556,14 @@ class PointAnnotationEntry extends AbstractDataEntry {
         var self = this;
         super._setup_markup();
 
+        var htStyle = {
+            fillColor: window.styles.hoverText.box.fill,
+            textColor: window.styles.hoverText.text.color,
+            strokeColor: window.styles.hoverText.box.stroke.color,
+            lineWidth: window.styles.hoverText.box.stroke.lineWidth
+        };
         this.hoverTextElement = new HoverTextElement(this.entryID + '_hoverText', null, [0, 0.99], 'canvas',
-            null, window.styles.hoverText.text.color, null, null, 5);
+            htStyle, 5);
         this.viewport.addRenderElement(this.hoverTextElement);
 
         // interaction handlers
@@ -697,8 +721,15 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
         super._setup_markup();
         this.canvas.css('cursor', 'pointer');
 
+        var htStyle = {
+            fillColor: window.styles.hoverText.box.fill,
+            textColor: window.styles.hoverText.text.color,
+            strokeColor: window.styles.hoverText.box.stroke.color,
+            lineWidth: window.styles.hoverText.box.stroke.lineWidth,
+            lineDash: []
+        };
         this.hoverTextElement = new HoverTextElement(this.entryID + '_hoverText', null, [0, 0.99], 'canvas',
-            null, window.styles.hoverText.text.color, null, null,
+            htStyle,
             5);
         this.viewport.addRenderElement(this.hoverTextElement);
 
@@ -822,14 +853,12 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
         if(this.crosshairLines == null && visible) {
             // create
             var vertLine = new LineElement(this.entryID + '_crosshairX', coords[0], 0, coords[0], window.defaultImage_h,
-                                window.styles.crosshairLines.strokeColor,
-                                window.styles.crosshairLines.lineWidth,
-                                window.styles.crosshairLines.lineDash,
+                                window.styles.crosshairLines,
+                                false,
                                 1);
             var horzLine = new LineElement(this.entryID + '_crosshairY', 0, coords[1], window.defaultImage_w, coords[1],
-                                window.styles.crosshairLines.strokeColor,
-                                window.styles.crosshairLines.lineWidth,
-                                window.styles.crosshairLines.lineDash,
+                                window.styles.crosshairLines,
+                                false,
                                 1);
             this.crosshairLines = new ElementGroup(this.entryID + '_crosshairLines', [vertLine, horzLine], 1);
             this.viewport.addRenderElement(this.crosshairLines);

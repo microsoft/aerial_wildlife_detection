@@ -59,7 +59,7 @@ class DBMiddleware():
             'numImages_y': self.config.getProperty('LabelUI', 'numImages_y', type=int, fallback=2),
             'defaultImage_w': self.config.getProperty('LabelUI', 'defaultImage_w', type=int, fallback=800),
             'defaultImage_h': self.config.getProperty('LabelUI', 'defaultImage_h', type=int, fallback=600),
-            'styles': styles
+            'styles': styles['styles']
         }
 
 
@@ -93,6 +93,7 @@ class DBMiddleware():
                     elif isinstance(value, UUID):
                         value = str(value)
                     entry[c] = value
+                
                 if b['ctype'] == 'annotation':
                     response[imgID]['annotations'][entryID] = entry
                 elif b['ctype'] == 'prediction':
@@ -281,6 +282,11 @@ class DBMiddleware():
                             annoValues.append(username)
                         elif cname in annotationTokens:
                             annoValues.append(annotationTokens[cname])
+                        elif cname == 'unsure':
+                            if 'unsure' in annotationTokens and annotationTokens['unsure'] is not None:
+                                annoValues.append(annotationTokens[cname])
+                            else:
+                                annoValues.append(False)
                         else:
                             annoValues.append(None)
                     if 'id' in annotationTokens:

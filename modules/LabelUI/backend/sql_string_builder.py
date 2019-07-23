@@ -27,7 +27,7 @@ class SQLStringBuilder:
             raise ValueError('{} is not a recognized type.'.format(type))
 
         baseNames += ['id', 'viewcount']
-
+        
         return baseNames
 
 

@@ -35,23 +35,25 @@ $(document).ready(function() {
     window.showLoadingOverlay(true);
 
 
+
     // cookie helper
     window.getCookie = function(name) {
         var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
         if (match) return match[2];
     }
     window.setCookie = function(name, value, days) {
-	    var d = new Date;
-	    d.setTime(d.getTime() + 24*60*60*1000*days);
-	    document.cookie = name + "=" + value + ";path=/;expires=" + d.toGMTString();
+        var d = new Date;
+        d.setTime(d.getTime() + 24*60*60*1000*days);
+        document.cookie = name + "=" + value + ";path=/;expires=" + d.toGMTString();
     }
-    
+
+
     // time util
     window.msToTime = function(duration) {
         var seconds = Math.floor((duration / 1000) % 60),
             minutes = Math.floor((duration / (1000 * 60)) % 60),
             hours = Math.floor((duration / (1000 * 60 * 60)) % 24);
-   
+
         if(hours > 0) {
             hours = (hours < 10) ? '0' + hours : hours;
             minutes = (minutes < 10) ? '0' + minutes : minutes;
@@ -65,6 +67,43 @@ $(document).ready(function() {
             return minutes + ':' + seconds;
         }
     }
+
+
+    // color converter: adds alpha channel to existing color string
+    window.hexToRgb = function(hex) {
+        // Expand shorthand form (e.g. "03F") to full form (e.g. "0033FF")
+        var shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+        hex = hex.replace(shorthandRegex, function(m, r, g, b) {
+            return r + r + g + g + b + b;
+        });
+
+        var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? 'rgb(' + 
+                parseInt(result[1], 16) + ',' + 
+                parseInt(result[2], 16) + ',' + 
+                parseInt(result[3], 16) + ')' : null;
+    }
+
+    window._addAlpha = function(color, alpha) {
+        a = alpha > 1 ? (alpha / 100) : alpha;
+        if(color.startsWith('#')) {
+            // HEX color string
+            color = window.hexToRgb(color);
+        }
+        match = /rgba?\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(,\s*\d+[\.\d+]*)*\)/g.exec(color);
+        return "rgba(" + [match[1],match[2],match[3],a].join(',') +")";
+    }
+
+    window.addAlpha = function(color, alpha) {
+        if(color === null || color === undefined) return null;
+        if(alpha === null || alpha === undefined) return color;
+        if(alpha <= 0.0) return null;
+        alpha = alpha > 1 ? (alpha / 100) : alpha;
+        if(alpha >= 1.0) return color;
+        return window._addAlpha(color, alpha);
+    }
+    
+
 
     // login check
     var promise = $.ajax({

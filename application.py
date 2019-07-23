@@ -9,8 +9,8 @@
 
 #TODO: manually set env. variables for development stage
 import os
-os.environ['AIDE_CONFIG_PATH'] = 'settings_wcsaerialblobs.ini'
-os.environ['AIDE_MODULES'] = 'LabelUI,AIController'
+#os.environ['AIDE_CONFIG_PATH'] = 'settings_wcsaerialblobs.ini'
+#os.environ['AIDE_MODULES'] = 'LabelUI,AIController'
 
 
 ''' import resources and initialize app '''

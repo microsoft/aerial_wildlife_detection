@@ -1,7 +1,16 @@
 class AbstractRenderElement {
 
-    constructor(id, zIndex) {
+    constructor(id, style, zIndex) {
         this.id = id;
+        this.style = style;
+        if(this.style === null || this.style === undefined) {
+            this.style = {};
+        }
+        this.style.setProperty = function(propertyName, value) {
+            if(this.hasOwnProperty(propertyName)) {
+                this[propertyName] = value;
+            }
+        }
         this.zIndex = (zIndex == null? 0 : zIndex);
         this.isActive = false;
         this.changed = false;   // will be set to true if user modifies the initial geometry
@@ -19,6 +28,10 @@ class AbstractRenderElement {
     }
 
     setProperty(propertyName, value) {
+
+        // handle style properties separately
+        this.style.setProperty(propertyName, value);
+
         this[propertyName] = value;
 
         // set to user-modified
@@ -32,7 +45,9 @@ class AbstractRenderElement {
     }
 
     getGeometry() {
-        return {};
+        return {
+            'unsure': this.unsure
+        };
     }
 
     getLastUpdated() {
@@ -60,7 +75,7 @@ class AbstractRenderElement {
 class ElementGroup extends AbstractRenderElement {
 
     constructor(id, elements, zIndex) {
-        super(id, zIndex);
+        super(id, null, zIndex);
         this.elements = elements;
         if(this.elements == null) {
             this.elements = [];
@@ -100,7 +115,7 @@ class ElementGroup extends AbstractRenderElement {
 class ImageElement extends AbstractRenderElement {
 
     constructor(id, viewport, imageURI, zIndex) {
-        super(id, zIndex);
+        super(id, null, zIndex);
         this.viewport = viewport;
         this.imageURI = imageURI;
         // default parameter until image is loaded
@@ -170,15 +185,25 @@ class ImageElement extends AbstractRenderElement {
 
 class HoverTextElement extends AbstractRenderElement {
 
-    constructor(id, hoverText, position, reference, fillColor, textColor, strokeColor, lineWidth, zIndex) {
-        super(id, zIndex);
+    constructor(id, hoverText, position, reference, style, zIndex) {
+        super(id, style, zIndex);
         this.text = hoverText;
         this.position = position;
         this.reference = reference;
-        this.fillColor = fillColor;
-        this.textColor = textColor;
-        this.strokeColor = strokeColor;
-        this.lineWidth = lineWidth;
+        // this.fillColor = fillColor;
+        // this.textColor = textColor;
+        // this.strokeColor = strokeColor;
+        // this.lineWidth = lineWidth;
+        if(this.style.textColor == null || this.style.textColor == undefined) {
+            this.style['textColor'] = window.styles.hoverText.text.color;
+        }
+    }
+
+    setProperty(propertyName, value) {
+        super.setProperty(propertyName, value);
+        if(propertyName === 'color') {
+            this.style.fillColor = window.addAlpha(value, this.style.fillOpacity);
+        }
     }
 
     render(ctx, viewport, limits, scaleFun) {
@@ -192,16 +217,17 @@ class HoverTextElement extends AbstractRenderElement {
         dimensions = [dimensions.width + 8, dimensions.height * scaleFactors[1]];
         var offsetH = window.styles.hoverText.offsetH;
         
-        if(this.fillColor != null) {
-            ctx.fillStyle = this.fillColor;
+        if(this.style.fillColor != null) {
+            ctx.fillStyle = this.style.fillColor;
             ctx.fillRect(offsetH+hoverPos[0]-4, hoverPos[1]-(dimensions[1]/2+4), dimensions[0]+4, dimensions[1]+4);
         }
-        if(this.strokeColor != null && this.lineWidth != null) {
-            ctx.strokeStyle = this.strokeColor;
-            ctx.lineWidth = this.lineWidth;
+        if(this.style.strokeColor != null && this.style.lineWidth != null) {
+            ctx.strokeStyle = this.style.strokeColor;
+            ctx.lineWidth = this.style.lineWidth;
+            ctx.setLineDash([]);
             ctx.strokeRect(offsetH+hoverPos[0]-4, hoverPos[1]-(dimensions[1]/2+4), dimensions[0]+4, dimensions[1]+4);
         }
-        ctx.fillStyle = this.textColor;
+        ctx.fillStyle = this.style.textColor;
         ctx.fillText(this.text, offsetH+hoverPos[0], hoverPos[1]);
     }
 }
@@ -210,15 +236,25 @@ class HoverTextElement extends AbstractRenderElement {
 
 class PointElement extends AbstractRenderElement {
 
-    constructor(id, x, y, color, size, unsure, zIndex) {
-        super(id, zIndex);
+    constructor(id, x, y, style, unsure, zIndex) {
+        super(id, style, zIndex);
+        if(!this.style.hasOwnProperty('fillColor') && this.style.hasOwnProperty('color')) {
+            this.style['fillColor'] = window.addAlpha(this.style.color, this.style.fillOpacity);
+        }
         this.x = x;
         this.y = y;
-        this.color = color;
-        this.size = size;
+        // this.color = color;
+        // this.size = size;
         this.unsure = unsure;
 
         this.isValid = (x != null && y != null);
+    }
+
+    setProperty(propertyName, value) {
+        super.setProperty(propertyName, value);
+        if(propertyName === 'color') {
+            this.style.fillColor = window.addAlpha(value, this.style.fillOpacity);
+        }
     }
 
     //TODO: add interactions
@@ -240,9 +276,9 @@ class PointElement extends AbstractRenderElement {
 
         coords = scaleFun(coords, 'validArea');
 
-        ctx.fillStyle = this.color;
+        ctx.fillStyle = this.style.fillColor;
         ctx.beginPath();
-        ctx.arc(coords[0], coords[1], this.size, 0, 2*Math.PI);
+        ctx.arc(coords[0], coords[1], this.style.pointSize, 0, 2*Math.PI);
         ctx.fill();
         ctx.closePath();
     }
@@ -256,18 +292,28 @@ class PointElement extends AbstractRenderElement {
 
 class LineElement extends AbstractRenderElement {
 
-    constructor(id, startX, startY, endX, endY, strokeColor, lineWidth, lineDash, unsure, zIndex) {
-        super(id, zIndex);
+    constructor(id, startX, startY, endX, endY, style, unsure, zIndex) {
+        super(id, style, zIndex);
+        if(!this.style.hasOwnProperty('strokeColor') && this.style.hasOwnProperty('color')) {
+            this.style['strokeColor'] = window.addAlpha(this.style.color, this.style.lineOpacity);
+        }
         this.startX = startX;
         this.startY = startY;
         this.endX = endX;
         this.endY = endY;
-        this.strokeColor = strokeColor;
-        this.lineWidth = lineWidth;
-        this.lineDash = (lineDash == null? [] : lineDash);
+        // this.strokeColor = strokeColor;
+        // this.lineWidth = lineWidth;
+        // this.lineDash = (lineDash == null? [] : lineDash);
         this.unsure = unsure;
 
         this.isValid = (startX != null && startY != null && endX != null && endY != null);
+    }
+
+    setProperty(propertyName, value) {
+        super.setProperty(propertyName, value);
+        if(propertyName === 'color') {
+            this.style.strokeColor = window.addAlpha(value, this.style.lineOpacity);
+        }
     }
 
     //TODO: add interactions
@@ -292,9 +338,9 @@ class LineElement extends AbstractRenderElement {
         var startPos = scaleFun([this.startX, this.startY], 'canvas');
         var endPos = scaleFun([this.endX, this.endY], 'canvas');
         
-        if(this.strokeColor != null) ctx.strokeStyle = this.strokeColor;
-        if(this.lineWidth != null) ctx.lineWidth = this.lineWidth;
-        ctx.setLineDash(this.lineDash);
+        if(this.style.strokeColor != null) ctx.strokeStyle = this.style.strokeColor;
+        if(this.style.lineWidth != null) ctx.lineWidth = this.style.lineWidth;
+        ctx.setLineDash(this.style.lineDash);
         ctx.beginPath();
         ctx.moveTo(startPos[0], startPos[1]);
         ctx.lineTo(endPos[0], endPos[1]);
@@ -306,18 +352,28 @@ class LineElement extends AbstractRenderElement {
 
 class RectangleElement extends PointElement {
 
-    constructor(id, x, y, width, height, fillColor, strokeColor, lineWidth, lineDash, unsure, zIndex) {
-        super(id, x, y, strokeColor, null, unsure, zIndex);
+    constructor(id, x, y, width, height, style, unsure, zIndex) {
+        super(id, x, y, style, unsure, zIndex);
+        if(!this.style.hasOwnProperty('strokeColor') && this.style.hasOwnProperty('color')) {
+            this.style['strokeColor'] = window.addAlpha(this.style.color, this.style.lineOpacity);
+        }
         this.x = x;
         this.y = y;
         this.width = width;
         this.height = height;
-        this.fillColor = fillColor;
-        this.lineWidth = lineWidth;
-        this.lineDash = (lineDash == null? [] : lineDash);
+        // this.fillColor = fillColor;
+        // this.lineWidth = lineWidth;
+        // this.lineDash = (lineDash == null? [] : lineDash);
 
         this.isValid = (x != null && y != null && width != null && height != null);
         this.isActive = false;
+    }
+
+    setProperty(propertyName, value) {
+        super.setProperty(propertyName, value);
+        if(propertyName === 'color') {
+            this.style.strokeColor = window.addAlpha(value, this.style.lineOpacity);
+        }
     }
 
     getGeometry() {
@@ -663,14 +719,14 @@ class RectangleElement extends PointElement {
 
         var coords = [this.x-this.width/2, this.y-this.height/2, this.width, this.height];
         coords = scaleFun(coords, 'validArea');
-        if(this.fillColor != null) {
-            ctx.fillStyle = this.fillColor;
+        if(this.style.fillColor != null) {
+            ctx.fillStyle = this.style.fillColor;
             ctx.fillRect(coords[0], coords[1], coords[2], coords[3]);
         }
-        if(this.color != null) {
-            ctx.strokeStyle = this.color;
-            ctx.lineWidth = this.lineWidth;
-            ctx.setLineDash(this.lineDash);
+        if(this.style.strokeColor != null) {
+            ctx.strokeStyle = this.style.strokeColor;
+            ctx.lineWidth = this.style.lineWidth;
+            ctx.setLineDash(this.style.lineDash);
             ctx.beginPath();
             ctx.strokeRect(coords[0], coords[1], coords[2], coords[3]);
             ctx.closePath();
@@ -682,7 +738,8 @@ class RectangleElement extends PointElement {
             var dimensions = ctx.measureText(text);
             dimensions.height = window.styles.hoverText.box.height;
             dimensions = [dimensions.width + 8, dimensions.height * scaleFactors[1]];
-            ctx.fillStyle = this.color;
+            ctx.setLineDash([]);
+            ctx.fillStyle = this.style.strokeColor;
             ctx.fillRect(coords[0]-4, coords[1]-(dimensions[1]), dimensions[0]+4, dimensions[1]);
             ctx.fillStyle = window.styles.hoverText.text.color;
             ctx.fillText(text, coords[0]+4, coords[1]-dimensions[1]/2+4);
@@ -697,11 +754,11 @@ class BorderStrokeElement extends AbstractRenderElement {
         Draws a border around the viewport.
         Specifically intended for classification tasks.
     */
-    constructor(id, strokeColor, lineWidth, lineDash, text, unsure, zIndex) {
-        super(id, zIndex);
-        this.color = strokeColor;
-        this.lineWidth = lineWidth;
-        this.lineDash = (lineDash == null? [] : lineDash);
+    constructor(id, text, style, unsure, zIndex) {
+        super(id, style, zIndex);
+        // this.color = strokeColor;
+        // this.lineWidth = lineWidth;
+        // this.lineDash = (lineDash == null? [] : lineDash);
         this.text = text;
         this.unsure = unsure;
         this.changed = true;        // always true; we want to collect all classification entries, since user will screen them anyway
@@ -709,9 +766,20 @@ class BorderStrokeElement extends AbstractRenderElement {
 
     setProperty(propertyName, value) {
         super.setProperty(propertyName, value);
-        if(propertyName == 'color' && (value == null || value == undefined)) {
-            this.text = null;
+        if(propertyName === 'color') {
+            this.style.strokeColor = window.addAlpha(value, this.style.lineOpacity);
+            this.style.fillColor = window.addAlpha(value, this.style.fillOpacity);
+            if(value == null || value == undefined) {
+                this.text = null;
+            }
         }
+    }
+
+    getGeometry() {
+        return {
+            'type': 'label',
+            'unsure': this.unsure
+        };
     }
 
     render(ctx, viewport, limits, scaleFun) {
@@ -720,10 +788,10 @@ class BorderStrokeElement extends AbstractRenderElement {
         var scaleFactors = scaleFun([ctx.canvas.width,ctx.canvas.height], 'canvas', true);
         var coords = scaleFun([0,0,1,1], 'canvas');
 
-        if(this.color != null) {
-            ctx.strokeStyle = this.color;
-            ctx.lineWidth = this.lineWidth * scaleFactors[0];
-            ctx.setLineDash(this.lineDash);
+        if(this.style.strokeColor != null) {
+            ctx.strokeStyle = this.style.strokeColor;
+            ctx.lineWidth = this.style.lineWidth * scaleFactors[0];
+            ctx.setLineDash(this.style.lineDash);
             ctx.beginPath();
             ctx.strokeRect(coords[0], coords[1], coords[2], coords[3]);
             ctx.closePath();
@@ -740,7 +808,7 @@ class BorderStrokeElement extends AbstractRenderElement {
             var dimensions = ctx.measureText(text);
             dimensions.height = window.styles.hoverText.box.height;
             dimensions = [dimensions.width + 8, dimensions.height * scaleFactors[1]]
-            ctx.fillStyle = (this.color == null ? '#929292' : this.color);
+            ctx.fillStyle = (this.style.strokeColor == null ? '#929292' : this.style.strokeColor);
             ctx.fillRect(coords[0], coords[3] - dimensions[1]/2 - 4, dimensions[0], dimensions[1] + 8);
             ctx.fillStyle = window.styles.hoverText.text.color;
             ctx.fillText(text, coords[0] + 4, coords[3] - 4);
@@ -756,7 +824,7 @@ class ResizeHandle extends AbstractRenderElement {
         (but not in position), irrespective of scale.
     */
     constructor(id, x, y, zIndex) {
-        super(id, zIndex);
+        super(id, null, zIndex);
         this.x = x;
         this.y = y;
     }
