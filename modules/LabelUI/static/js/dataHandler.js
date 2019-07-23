@@ -122,6 +122,13 @@ class DataHandler {
     }
 
 
+    renderAll() {
+        for(var i=0; i<this.dataEntries.length; i++) {
+            this.dataEntries[i].render();
+        }
+    }
+
+
     assignLabelToAll() {
         /*
             For classification entries only: assigns the selected label

@@ -88,10 +88,10 @@ canvas {
     top: 0;
     bottom: 0;
     margin: auto;
-    width: 200px;
+    width: 300px;
     height: 400px;
     max-height: 75%;
-    padding: 10px;
+    padding: 20px;
     overflow-y: auto;
 }
 .legend-entries {

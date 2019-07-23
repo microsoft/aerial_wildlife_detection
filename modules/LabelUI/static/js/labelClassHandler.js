@@ -36,6 +36,8 @@ class LabelClass {
                     var key = parseInt(String.fromCharCode(event.which));
                     if(key == self.index+1) {
                         self.changeListener.setActiveClass(self);
+
+                        window.dataHandler.renderAll();
                     }
                 } catch {
                     return;
