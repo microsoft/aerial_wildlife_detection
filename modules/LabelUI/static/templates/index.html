@@ -8,12 +8,29 @@
     <style type="text/css">
         body {
             overflow: hidden;
-            background-image: url('static/img/backdrop.jpg');
+            height: 100vh;
+        }
+        #backdrop {
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
             -webkit-background-size: cover;
             -moz-background-size: cover;
             -o-background-size: cover;
             background-size: cover;
-            height: 100vh;
+            z-index: -1;
+        }
+        #backdrop-copyright {
+            position: absolute;
+            left: 30px;
+            bottom: 60px;
+            font-size: 10px;
+            color: #F6F6F6;
+            padding: 5px;
+            border-radius: 5px;
+            background: #444444CC;
         }
         #header {
             color: white;
@@ -54,31 +71,32 @@
     </style>
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
     <script type="text/javascript">
-        // quick hack for changing backdrops (TODO: implement properly)
-        var backdropURLs = [
-            'bingdesktop.com_gallery_2784.jpg',
-            'bingdesktop.com_gallery_24998.jpg',
-            'bingdesktop.com_gallery_25789.jpg',
-            'bingdesktop.com_gallery_28190.jpg',
-            'bingdesktop.com_photos_zebra-grass-outdoor-animal-199535.jpg'
-        ];
-        var currentBackdropIdx = Math.floor(Math.random() * backdropURLs.length);
-        $(document.body).css('background-image', 'url(static/img/backdrops/' + backdropURLs[currentBackdropIdx] + ')');
-        
-
-        var getURLParameter = function getURLParameter(sParam) {
-            var sPageURL = window.location.search.substring(1),
-                sURLVariables = sPageURL.split('&'),
-                sParameterName,
-                i;
-            for (i = 0; i < sURLVariables.length; i++) {
-                sParameterName = sURLVariables[i].split('=');
-                if (sParameterName[0] === sParam) {
-                    return sParameterName[1] === undefined ? true : decodeURIComponent(sParameterName[1]);
-                }
-            }
-        };
         $(document).ready(function() {
+            // cycle through backdrops
+            var backdropURLs = [
+                'bingdesktop.com_gallery_2784.jpg',
+                'bingdesktop.com_gallery_24998.jpg',
+                'bingdesktop.com_gallery_25789.jpg',
+                'bingdesktop.com_gallery_28190.jpg',
+            ];
+            var backdropSources = [
+                '&copy; Mint Images/SuperStock',
+                '&copy; Minden Pictures/Masterfile',
+                '&copy; Conor Barry/Aurora Photo',
+                '&copy; Patrick Bay/Getty Images'
+            ]
+            
+            var currentBackdropIdx = Math.floor(Math.random() * backdropURLs.length);
+            $('#backdrop-copyright').html(backdropSources[currentBackdropIdx]);
+            $('#backdrop').css('background-image', 'url(static/img/backdrops/' + backdropURLs[currentBackdropIdx] + ')');
+            // var cycleBackdrops = function() {
+            //     currentBackdropIdx = ++currentBackdropIdx % backdropURLs.length;
+            //     $('#backdrop-copyright').html(backdropSources[currentBackdropIdx]);
+            //     $('#backdrop').fadeIn(500).css('background-image', 'url(static/img/backdrops/' + backdropURLs[currentBackdropIdx] + ')').delay(2000).fadeOut(500, function () { cycleBackdrops(); });
+            // }
+            // cycleBackdrops();        //TODO: too hectic; causes white transition
+
+
             // set title and description
             $.get('getProjectInfo', function(data) {
                 if(data.hasOwnProperty('info')) {
@@ -92,6 +110,18 @@
             });
 
             // parse display property
+            var getURLParameter = function getURLParameter(sParam) {
+                var sPageURL = window.location.search.substring(1),
+                    sURLVariables = sPageURL.split('&'),
+                    sParameterName,
+                    i;
+                for (i = 0; i < sURLVariables.length; i++) {
+                    sParameterName = sURLVariables[i].split('=');
+                    if (sParameterName[0] === sParam) {
+                        return sParameterName[1] === undefined ? true : decodeURIComponent(sParameterName[1]);
+                    }
+                }
+            };
             var overlayURL = null;
             var param = getURLParameter('d');
             if(param === null || param === undefined || param === 'login') {
@@ -111,6 +141,8 @@
 </head>
 
 <body>
+    <div id="backdrop"></div>
+    <span id="backdrop-copyright"></span>
     <div id="page-content-wrapper">
         <div id="header" class="container-fluid">
             <h1 id="project-title" class="mt-4">AIde Label Interface</h1>

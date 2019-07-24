@@ -1,5 +1,5 @@
 body {
-    /* overflow: hidden; */
+    overflow: hidden;
     background: #333333 !important;
     -webkit-background-size: cover;
     -moz-background-size: cover;
@@ -7,7 +7,6 @@ body {
     background-size: cover;
     max-height: 100%;
     max-width: 100%;
-    overflow-x: hidden;
 }
 
 h1 {
@@ -29,7 +28,6 @@ h3 {
 
 #content-wrapper {
     padding-bottom: 40px;
-    /* height: 100vh; */
 }
 
 .wrapper {
@@ -40,6 +38,8 @@ h3 {
 }
 
 .navbar {
+    height: 99px;
+    border: none !important;
     background: -moz-linear-gradient(left,  rgba(87,83,82,0.6) 0%, rgba(87,83,82,0.6) 39%, rgba(87,83,82,1) 82%, rgba(87,83,82,1) 100%);
     background: -webkit-linear-gradient(left,  rgba(87,83,82,0.6) 0%,rgba(87,83,82,0.6) 39%,rgba(87,83,82,1) 82%,rgba(87,83,82,1) 100%);
     background: linear-gradient(to right,  rgba(87,83,82,0.6) 0%,rgba(87,83,82,0.6) 39%,rgba(87,83,82,1) 82%,rgba(87,83,82,1) 100%);
@@ -65,10 +65,17 @@ h3 {
     height: 40px;
 }
 #gallery-container {
-    padding: 20px;
+    margin: auto;
+    height: calc(100vh - 260px);
+}
+#gallery {
+    overflow-y: auto;
 }
 .widescreen {
     max-width: 1920px;
+}
+#interface-controls {
+    margin-top: 10px;
 }
 #interface-controls > * {
     margin-left: 10px;
@@ -77,24 +84,29 @@ h3 {
 .entry {
     display: inline-block;
     padding: 18px;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }
 canvas {
     width: 100%;
-    height: auto;
+    height: 100%;
+    /* max-height: 100%; */
 }
 #tools-container {
-    position: absolute;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    margin: auto;
-    width: 300px;
-    height: 400px;
-    max-height: 75%;
+    float: right;
+    height: calc(100vh - 140px);
+    color: white;
+    /* background: #575352; */
+    /* border: 1px solid white; */
+    width: 400px;
     padding: 20px;
+    padding-left: 5px;
+    padding-top: 75px;
     overflow-y: auto;
 }
-.legend-entries {
+#legend-entries {
     display: grid;
 }
 .label-class-legend {
@@ -132,7 +144,7 @@ canvas {
     width: 720px;
     height: 250px;
     max-width: 50%;
-    max-height: 50%;
+    /* max-height: 50%; */
     border-radius: 10px;
 }
 #overlay-loader {

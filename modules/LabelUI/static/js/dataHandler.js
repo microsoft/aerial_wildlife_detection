@@ -31,9 +31,9 @@ class DataHandler {
                 if(window.uiBlocked) return;
                 window.interfaceControls.action=window.interfaceControls.actions.REMOVE_ANNOTATIONS;
             }
-            var addAnnoBtn = $('<button id="add-annotation" class="btn btn-primary">+</button>');
+            var addAnnoBtn = $('<button id="add-annotation" class="btn btn-sm btn-primary">+</button>');
             addAnnoBtn.click(addAnnoCallback);
-            var removeAnnoBtn = $('<button id="remove-annotation" class="btn btn-primary">-</button>');
+            var removeAnnoBtn = $('<button id="remove-annotation" class="btn btn-sm btn-primary">-</button>');
             removeAnnoBtn.click(removeAnnoCallback);
             parentElement.append(addAnnoBtn);
             parentElement.append(removeAnnoBtn);
@@ -54,7 +54,7 @@ class DataHandler {
 
         // assign/remove all labels buttons
         if(window.annotationType != 'labels' || window.enableEmptyClass) {
-            parentElement.append($('<button class="btn btn-primary btn-warning" id="clearAll-button" onclick="window.dataHandler.clearLabelInAll()">Clear All</button>'));
+            parentElement.append($('<button class="btn btn-sm btn-warning" id="clearAll-button" onclick="window.dataHandler.clearLabelInAll()">Clear All</button>'));
             $(window).keyup(function(event) {
                 if(window.uiBlocked) return;
                 if(String.fromCharCode(event.which) === 'C') {
@@ -63,8 +63,8 @@ class DataHandler {
             });
         }
         
-        parentElement.append($('<button class="btn btn-primary" id="labelAll-button" onclick="window.dataHandler.assignLabelToAll()">Label All</button>'));
-        parentElement.append($('<button class="btn btn-warning" id="unsure-button" onclick="window.dataHandler.toggleActiveAnnotationsUnsure()">Unsure</button>'));
+        parentElement.append($('<button class="btn btn-sm btn-primary" id="labelAll-button" onclick="window.dataHandler.assignLabelToAll()">Label All</button>'));
+        parentElement.append($('<button class="btn btn-sm btn-warning" id="unsure-button" onclick="window.dataHandler.toggleActiveAnnotationsUnsure()">Unsure</button>'));
         $(window).keyup(function(event) {
             if(window.uiBlocked) return;
             if(String.fromCharCode(event.which) === 'A') {
@@ -79,7 +79,7 @@ class DataHandler {
 
 
         // next and previous batch buttons
-        parentElement.append($('<button id="previous-button" class="btn btn-primary float-left" onclick="window.dataHandler.previousBatch()">Previous</button>'));
+        parentElement.append($('<button id="previous-button" class="btn btn-sm btn-primary float-left" onclick="window.dataHandler.previousBatch()">Previous</button>'));
         $(window).keyup(function(event) {
             if(window.uiBlocked) return;
             if(event.which === 37) {
@@ -89,7 +89,7 @@ class DataHandler {
             }
         });
 
-        parentElement.append($('<button id="next-button" class="btn btn-primary float-right" onclick="window.dataHandler.nextBatch()">Next</button>'));
+        parentElement.append($('<button id="next-button" class="btn btn-sm btn-primary float-right" onclick="window.dataHandler.nextBatch()">Next</button>'));
         $(window).keyup(function(event) {
             if(window.uiBlocked) return;
             if(event.which === 39) {
@@ -238,7 +238,12 @@ class DataHandler {
                     self.parentDiv.append(entry.markup);
                     self.dataEntries.push(entry);
                 }
-                // window.setUIblocked(false);
+                
+                //TODO: causes canvas to be blurry on large screens...
+                // // if the entry count is one: make entry fill the screen
+                // if(self.dataEntries.length === 1) {
+                //     $(self.dataEntries[0].markup).css('height', '100%');
+                // }
             },
             error: function(xhr, status, error) {
                 if(error == 'Unauthorized') {

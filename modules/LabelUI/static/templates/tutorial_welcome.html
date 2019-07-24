@@ -2,20 +2,24 @@
 
 <p>
     Thanks for stopping by! We need your help to locate <b>Elephants, livestock, humans and more</b> in a challenging set of aerial images.
-    You can contribute by drawing <b>tight</b> rectangles around each individual object you encounter!
-    Also, you are not alone: an AI model in the background constantly learns from you and tries to find relevant objects in all the unlabeled images.
+    You can contribute by <span id="uitutorial-task-descr"></span>!
+    <span id="uitutorial-ai-descr"></span>
 </p>
 
 <h3>Instructions</h3>
 
 <p>You will see image(s) on the screen that might contain objects of interest.</p>
 <p>These are <b>predictions</b> made by the model:</p>
-<canvas id="uitutorial-predictions" width=400 style="width:400px"></canvas>
+<div style="padding:20px;background:#212529;text-align:center;">
+<canvas id="uitutorial-predictions" width=400 height=300 style="width:400px;height:300px;margin:0 auto;"></canvas>
+</div>
 <p>They are merely there for information and do not count as annotations.</p>
 <br />
 
 <p>These are <b>annotations</b> made by you:</p>
-<canvas id="uitutorial-annotations" width=400 style="width:400px"></canvas>
+<div style="padding:20px;background:#212529;text-align:center;">
+    <canvas id="uitutorial-annotations" width=400 height=300 style="width:400px;height:300px;margin:0 auto;"></canvas>
+</div>
 <p>Sometimes you might see already existing annotations; these are automatically converted from predictions if the model has a high confidence.</p>
 <p>
     Remember: every annotation in the image(s) must be correct. If you find one that is not good (e.g. a false positive, too tight, too loose, including multiple objects, wrong class, etc.), you must change it appropriately.
@@ -33,18 +37,39 @@
     $(document).ready(function() {
         var predVP = new ImageViewport($('#uitutorial-predictions'));
         var predStyle = JSON.parse(JSON.stringify(window.styles.predictions));
-        var color = window.labelClassHandler.getActiveColor();
+        var color = '#7AD124';
+        var className = 'Hartebeest';
         predStyle['strokeColor'] = window.addAlpha(color, predStyle.lineOpacity);
         predStyle['fillColor'] = window.addAlpha(color, predStyle.fillOpacity);
-        predVP.addRenderElement(new ImageElement('img', predVP, 'static/img/backdrop_uitutorial.jpg'),0);
-        predVP.addRenderElement(new RectangleElement('box', 0.5, 0.5, 0.5, 0.5, predStyle, false, 1));
+        predVP.addRenderElement(new ImageElement('img', predVP, 'static/img/tutorial_example.jpg',0));
 
         var annoVP = new ImageViewport($('#uitutorial-annotations'));
         var annoStyle = JSON.parse(JSON.stringify(window.styles.annotations));
-        var color = window.labelClassHandler.getActiveColor();
         annoStyle['strokeColor'] = window.addAlpha(color, annoStyle.lineOpacity);
         annoStyle['fillColor'] = window.addAlpha(color, annoStyle.fillOpacity);
-        annoVP.addRenderElement(new ImageElement('img', annoVP, 'static/img/backdrop_uitutorial.jpg'),0);
-        annoVP.addRenderElement(new RectangleElement('box', 0.5, 0.5, 0.5, 0.5, annoStyle, false, 1));
+        annoVP.addRenderElement(new ImageElement('img', annoVP, 'static/img/tutorial_example.jpg',0));
+
+
+        if(window.predictionType === 'labels') {
+            predVP.addRenderElement(new BorderStrokeElement('predLabel', className, predStyle, false, 1));
+        } else if(window.predictionType === 'boundingBoxes') {
+            predVP.addRenderElement(new RectangleElement('predBox', 0.5, 0.55, 0.5, 0.55, predStyle, false, 1));
+        }
+
+        var taskDescr = 'providing labels';
+        if(window.annotationType === 'labels') {
+            taskDescr = 'labeling all images that contain objects of interest';
+            annoVP.addRenderElement(new BorderStrokeElement('annoLabel', className, annoStyle, false, 1));
+        } else if(window.annotationType === 'boundingBoxes') {
+            taskDescr = 'drawing <b>tight</b> rectangles around each individual object you encounter';
+            annoVP.addRenderElement(new RectangleElement('annoBox', 0.5, 0.55, 0.5, 0.55, annoStyle, false, 1));
+        }
+
+        var aiDescr = '';
+        if(window.aiControllerURI != null) {
+            aiDescr = 'Also, you are not alone: an AI model in the background constantly learns from you and tries to find relevant objects in all the unlabeled images.';
+        }
+        $('#uitutorial-task-descr').html(taskDescr);
+        $('#uitutorial-ai-descr').html(aiDescr);
     });
 </script>

@@ -130,7 +130,7 @@ $(document).ready(function() {
 
     // set up label class handler
     promise = promise.done(function() {
-        window.labelClassHandler = new LabelClassHandler($('.legend-entries'));
+        window.labelClassHandler = new LabelClassHandler($('#legend-entries'));
     });
 
     // set up data handler
@@ -167,34 +167,37 @@ $(document).ready(function() {
         window.setUIblocked(true);
 
 
-        // make class panel grow and shrink on mouseover/mouseleave
-        $('#tools-container').on('mouseenter', function() {
-            if(window.uiBlocked || $(this).is(':animated')) return;
-            $('#tools-container').animate({
-                right: 0
-            });
-        });
-        $('#tools-container').on('mouseleave', function() {
-            if(window.uiBlocked) return;
-            let offset = -$(this).outerWidth() + 40;
-            $('#tools-container').animate({
-                right: offset
-            });
-        });
-        $('#tools-container').css('right', -$('#tools-container').outerWidth() + 40);
+        // // make class panel grow and shrink on mouseover/mouseleave
+        // $('#tools-container').on('mouseenter', function() {
+        //     if(window.uiBlocked || $(this).is(':animated')) return;
+        //     $('#tools-container').animate({
+        //         right: 0
+        //     });
+        // });
+        // $('#tools-container').on('mouseleave', function() {
+        //     if(window.uiBlocked) return;
+        //     let offset = -$(this).outerWidth() + 40;
+        //     $('#tools-container').animate({
+        //         right: offset
+        //     });
+        // });
+        // $('#tools-container').css('right', -$('#tools-container').outerWidth() + 40);
 
 
         // overlay HUD
-        window.showOverlay = function(contents, large) {
+        window.showOverlay = function(contents, large, uiBlocked_after) {
             if(contents === undefined || contents === null) {
-                $('#overlay-card').slideUp();
-                $('#overlay').fadeOut();
-                $('#overlay-card').empty();
+                $('#overlay-card').slideUp(1000, function() {
+                    $('#overlay-card').empty();
 
-                // reset style
-                $('#overlay-card').css('width', '720px');
-                $('#overlay-card').css('height', '250px');
-                window.setUIblocked(false);
+                    // reset style
+                    $('#overlay-card').css('width', '720px');
+                    $('#overlay-card').css('height', '250px');
+
+                    if(!uiBlocked_after)
+                        window.setUIblocked(false);
+                });
+                $('#overlay').fadeOut();
 
             } else {
                 window.setUIblocked(true);
@@ -202,7 +205,7 @@ $(document).ready(function() {
                 // adjust style
                 if(large) {
                     $('#overlay-card').css('width', '50%');
-                    $('#overlay-card').css('height', '50%');
+                    $('#overlay-card').css('height', '75%');
                 }
                 $('#overlay-card').html(contents);
                 $('#overlay').fadeIn();
