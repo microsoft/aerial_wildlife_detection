@@ -27,7 +27,7 @@
       accordingly.
     - Flag "annotationType" specifies the target table into which the provided bounding boxes are inserted.
       May either be "annotation" or "prediction".
-    - The optional flag "alCriterion" will specify how to calculate the "priority" value for each prediction,
+    - The optional flag "al_criterion" will specify how to calculate the "priority" value for each prediction,
       if "annotationType" is set to "prediction" and confidence values are provided (see above). It may take one
       of the following values:
           - None: ignore confidences and do not set priority value
@@ -42,7 +42,6 @@
     values:
         - timeCreated: (timestamp of the launch of this script)
         - timeRequired: -1
-        - TODO: user
     Also adds class definitions.
 
     2019 Benjamin Kellenberger
@@ -58,20 +57,19 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Parse YOLO annotations and import into database.')
     parser.add_argument('--settings_filepath', type=str, default='config/settings.ini', const=1, nargs='?',
                     help='Directory of the settings.ini file used for this machine (default: "config/settings.ini").')
-    parser.add_argument('--labelFolder', type=str, default='/datadrive/hfaerialblobs/bkellenb/predictions/A/sde-A_20180921A/labels', const=1, nargs='?',
+    parser.add_argument('--label_folder', type=str, default='/datadrive/hfaerialblobs/bkellenb/predictions/A/sde-A_20180921A/labels', const=1, nargs='?',
                     help='Directory (absolute path) on this machine that contains the YOLO label text files.')
-    parser.add_argument('--annotationType', type=str, default='prediction', const=1, nargs='?',
+    parser.add_argument('--annotation_type', type=str, default='prediction', const=1, nargs='?',
                     help='Kind of the provided annotations. One of {"annotation", "prediction"} (default: annotation)')
-    parser.add_argument('--alCriterion', type=str, default='TryAll', const=1, nargs='?',
+    parser.add_argument('--al_criterion', type=str, default='TryAll', const=1, nargs='?',
                     help='Criterion for the priority field (default: TryAll)')
-    parser.add_argument('--skipMismatches', type=bool, default=False, const=1, nargs='?',
-                    help='Ignore label files without a corresponding image (default: False).')
     args = parser.parse_args()
     
 
     # setup
     print('Setup...')
-    os.environ['AIDE_CONFIG_PATH'] = str(args.settings_filepath)
+    if not 'AIDE_CONFIG_PATH' in os.environ:
+        os.environ['AIDE_CONFIG_PATH'] = str(args.settings_filepath)
     
     import glob
     from tqdm import tqdm
@@ -80,11 +78,11 @@ if __name__ == '__main__':
     from util.configDef import Config
     from modules import Database
 
-    if args.labelFolder == '':
-        args.labelFolder = None
+    if args.label_folder == '':
+        args.label_folder = None
 
-    if args.labelFolder is not None and not args.labelFolder.endswith('/'):
-        args.labelFolder += '/'
+    if args.label_folder is not None and not args.label_folder.endswith('/'):
+        args.label_folder += '/'
 
     currentDT = datetime.datetime.now()
     currentDT = '{}-{}-{} {}:{}:{}'.format(currentDT.year, currentDT.month, currentDT.day, currentDT.hour, currentDT.minute, currentDT.second)
@@ -101,17 +99,17 @@ if __name__ == '__main__':
     if not os.path.isdir(imgBaseDir):
         raise Exception('"{}" is not a valid directory on this machine. Are you running the script from the file server?'.format(imgBaseDir))
 
-    if args.labelFolder is not None and not os.path.isdir(args.labelFolder):
-        raise Exception('"{}" is not a valid directory on this machine.'.format(args.labelFolder))
+    if args.label_folder is not None and not os.path.isdir(args.label_folder):
+        raise Exception('"{}" is not a valid directory on this machine.'.format(args.label_folder))
 
     if not imgBaseDir.endswith('/'):
         imgBaseDir += '/'
 
 
     # parse class names and indices
-    if args.labelFolder is not None:
+    if args.label_folder is not None:
         classdef = {}
-        with open(os.path.join(args.labelFolder, 'classes.txt'),'r') as f:
+        with open(os.path.join(args.label_folder, 'classes.txt'),'r') as f:
             lines = f.readlines()
         for idx, line in enumerate(lines):
             className = line.strip()
@@ -134,7 +132,7 @@ if __name__ == '__main__':
 
 
         # prepare insertion SQL string
-        if args.annotationType == 'annotation':
+        if args.annotation_type == 'annotation':
             sql = '''
             INSERT INTO {}.ANNOTATION (username, image, timeCreated, timeRequired, label, x, y, width, height)
             VALUES(
@@ -148,7 +146,7 @@ if __name__ == '__main__':
                 %s,
                 %s
             )'''.format(dbSchema, dbSchema, config.getProperty('Project', 'adminName'))
-        elif args.annotationType == 'prediction':
+        elif args.annotation_type == 'prediction':
             sql = '''
             INSERT INTO {}.PREDICTION (image, timeCreated, label, confidence, x, y, width, height, priority)
             VALUES(
@@ -184,27 +182,21 @@ if __name__ == '__main__':
 
     
     # locate all label files
-    if args.labelFolder is not None:
+    if args.label_folder is not None:
         print('\nAdding labels...')
-        labelFiles = glob.glob(os.path.join(args.labelFolder, '**'), recursive=True)
+        labelFiles = glob.glob(os.path.join(args.label_folder, '**'), recursive=True)
         for l in tqdm(labelFiles):
 
             if os.path.isdir(l) or 'classes.txt' in l:
                 continue
 
-            # l = l.replace(args.labelFolder, '')
-            # tokens = l.split('.')
-            # baseName = l.replace('.' + tokens[-1],'')
             basePath, _ = os.path.splitext(l)
-            baseName = basePath.replace(args.labelFolder, '')
+            baseName = basePath.replace(args.label_folder, '')
 
             # load matching image
             if not baseName in imgs:
-                if args.skipMismatches:
-                    continue
-                else:
-                    raise ValueError('Label file {} has no associated image'.format(l))
-            # imgPath = os.path.join(imgBaseDir, imgs[baseName])
+                continue
+
             img = Image.open(imgs[baseName])
             sz = img.size
 
@@ -224,11 +216,11 @@ if __name__ == '__main__':
                     bboxes.append(bbox)
                 
                     # push to database
-                    if args.annotationType == 'annotation':
+                    if args.annotation_type == 'annotation':
                         dbConn.execute(sql,
                             (baseName+'%', currentDT, classdef[label], bbox[0], bbox[1], bbox[2], bbox[3]))
                             
-                    elif args.annotationType == 'prediction':
+                    elif args.annotation_type == 'prediction':
                         # calculate additional properties
                         maxConf = None
                         priority = None
@@ -236,11 +228,13 @@ if __name__ == '__main__':
                             confidences = [float(t) for t in tokens[5:]]
                             confidences.sort()
                             maxConf = confidences[-1]
-                            if args.alCriterion == 'BreakingTies':
+                            if args.al_criterion is None or args.al_criterion == '' or args.al_criterion == 'none':
+                                priority = None
+                            elif args.al_criterion == 'BreakingTies':
                                 priority = 1 - (confidences[-1] - confidences[-2])
-                            elif args.alCriterion == 'MaxConfidence':
+                            elif args.al_criterion == 'MaxConfidence':
                                 priority = confidences[-1]
-                            elif args.alCriterion == 'TryAll':
+                            elif args.al_criterion == 'TryAll':
                                 breakingTies = 1 - (confidences[-1] - confidences[-2])
                                 priority = max(maxConf, breakingTies)
                         finally:

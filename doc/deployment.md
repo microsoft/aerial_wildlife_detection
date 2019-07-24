@@ -2,7 +2,7 @@
 
 The following instructions deploy AIde using the dedicated web server [NGINX](https://www.nginx.com/).
 This affects the following instances:
-* The _LabelUI_ frontend;
+* The _LabelUI_ module;
 * The _AIController_ module;
 * The file server.
 

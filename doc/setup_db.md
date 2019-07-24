@@ -4,17 +4,26 @@ AIde uses [PostgreSQL](https://www.postgresql.org/) to store labels, predictions
 Note that AIde requires PostgreSQL >= 9.5 (it has been tested with version 10).
 
 
-The instructions below assume you have [installed the AIde project](install.md) and [configured the project configuration file](configure_settings.md) on the machine that is dedicated to running the database.
-However, for the database operation, this is not required. If you wish to skip these steps you will only have to manually provide the values below that are `<span style="color:red">highlighted in red</span>`.
 
-1. Install PostgreSQL server
+
+## Define database details
+
+The instructions below assume you have [installed the AIde project](install.md) and [configured the project configuration file](configure_settings.md) on the machine that is dedicated to running the database.
+However, for the database operation, this is not required. If you wish to skip these steps you will have to manually provide the four parameters below (`$(python util/configDef.py ...)`).
+
+```
+    dbName=$(python util/configDef.py --section=Database --parameter=name)
+    dbUser=$(python util/configDef.py --section=Database --parameter=user)
+    dbPassword=$(python util/configDef.py --section=Database --parameter=user)
+    dbPort=$(python util/configDef.py --section=Database --parameter=port)
+```
+
+
+## Install PostgreSQL server
 
 ```
     # specify postgres version you wish to use (must be >= 9.5)
     version=10
-
-    # get database port from configuration file
-    dbPort=<span style="color:red">$(python util/configDef.py --section=Database --parameter=port)</span>
 
 
     # install packages
@@ -50,16 +59,7 @@ However, for the database operation, this is not required. If you wish to skip t
 ```
 
 
-2. Define database details
-
-```
-    dbName=$(python util/configDef.py --section=Database --parameter=name)
-    dbUser=$(python util/configDef.py --section=Database --parameter=user)
-    dbPassword=$(python util/configDef.py --section=Database --parameter=user)
-```
-
-
-3. Create a new database and the main user account. This needs to be done from the installation root of AIde,
+## Create a new database and the main user account. This needs to be done from the installation root of AIde,
    with the correct environment activated.
 
 ```
@@ -73,11 +73,13 @@ However, for the database operation, this is not required. If you wish to skip t
 ```
 
 
-4. Setup the database schema. We do that using the newly created user account instead of the postgres user:
+## Setup the database schema. We do that using the newly created user account instead of the postgres user:
 
 ```
     python projectCreation/setupDB.py
 ```
 
 
-5. If you wish you can remove the AIde code base (and Python environment) from the database server now, unless the server hosts any other AIde module.
+## Cleanup
+
+If you wish you can remove the AIde code base (and Python environment) from the database server now, unless the server hosts any other AIde module.

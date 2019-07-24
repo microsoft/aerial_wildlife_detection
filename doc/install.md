@@ -62,7 +62,7 @@ It is strongly recommended to run AIde in a self-contained Python environment, s
 
 Every instance running one of the services for AIde gets its required properties from a *.ini file.
 It is highly recommended to prepare a .ini file at the start of each project and to have a copy of the same file on all machines.
-**<span style="color:red">Important: NEVER, EVER make the configuration file accessible to the outside web.</span>**
+**Important: NEVER, EVER make the configuration file accessible to the outside web.**
 
 1. Create a *.ini file for your project. See the provided file under `config/settings.ini` for an example. To view all possible parameters, see [here](configure_settings.md).
 2. Copy the *.ini file to each server instance.
@@ -83,5 +83,31 @@ See [here](setup_db.md)
 
 
 
-### Set up the _LabelUI_ frontend
+### Import existing data
 
+Importing images (and labels) into a running database is explained [here](import_data.md).
+
+
+
+### Launch the modules
+
+To start AIde _in debugging mode_, run the following commands on the respective machine(s):
+
+1. Make sure the database is up and running
+2. Launch the _FileServer_:
+    ```
+        ./launch_fileserver.sh
+    ```
+3. Launch the frontend:
+    ```
+        # specify the modules here. Add "AIController" if you have the AI backend configured:
+        export AIDE_MODULES=LabelUI,AIController
+        ./launch_frontend.sh
+    ```
+4. (optional) launch one or more _AIWorker_ instances:
+    ```
+        ./launch_AIWorker.sh
+    ```
+
+Note that these instructions launch using Python's built-in WSGI server, which might be detrimental and is not designed for deployment.
+To deploy AIde properly, see [here](deployment.md).
