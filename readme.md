@@ -22,18 +22,7 @@ AIde is primarily developed and maintained by [Benjamin Kellenberger](https://ww
 
 ## Installation
 
-Setting up and running an instance of AIde with a custom dataset requires the following steps:
-1. Install required software: see [instructions](doc/install.md)
-2. Configure the settings file and prepare database: [configure](doc/configure_settings.md)
-3. Import existing data into project: [import](doc/import_data.md)
-
-
-TODO: steps:
-1. Install required software (TODO: write setup.py file, eventually provide docker script?)
-2. Provide parameters in `/config` directory with project-specific settings (database, interface parameters, etc.)
-3. Launch script that sets up project (TODO: write bash script in projectSetup folder)
-4. Populate database with data
-5. Launch the desired instance (see below)
+See the instructions [here](doc/install.md).
 
 
 

@@ -1,6 +1,6 @@
 # Import existing data into AIde
 
-AIde ships with a couple of helper scripts that allow importing existing datasets into the platform. All of the scripts (and instructions below) need to be executed from the _FileServer_ instance. This means that you must have [installed](doc/install.md) and [configured](doc/configure_settings.md) AIde on that machine accordingly, and to have the [database instance running](setup_db.md).
+AIde ships with a couple of helper scripts that allow importing existing datasets into the platform. All of the scripts (and instructions below) need to be executed from the _FileServer_ instance. This means that you must have [installed](install.md) and [configured](configure_settings.md) AIde on that machine accordingly, and to have the [database instance running](setup_db.md).
 
 
 ## Import images only

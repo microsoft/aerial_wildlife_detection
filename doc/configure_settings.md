@@ -90,7 +90,7 @@ This section contains parameters for all the individual instances' addresses.
 | name | (string) |  | YES | Name of the Postgres database on the server. |
 | schema | (string) |  | YES | Schema within the database to store the project data in. |
 | host | (URL) |  | YES | URL under which the database can be accessed (without the port). Can be set to `localhost` if and only if all AIde modules are to be launched on the same server the database is hosted on. |
-| port | (numeric) |  | YES | Port the database listens to. Note: Postgres' default port is 5432; unless the database instance is solely connected to LAN (and not WAN), it is advised to change the Postgres port to another, free value. The [database installation instructions](doc/setup_db.md) will automatically consider the custom port. |
+| port | (numeric) |  | YES | Port the database listens to. Note: Postgres' default port is 5432; unless the database instance is solely connected to LAN (and not WAN), it is advised to change the Postgres port to another, free value. The [database installation instructions](setup_db.md) will automatically consider the custom port. |
 | user | (string) |  | YES | Name of the user that is given access to the database. |
 | password | (string) |  | YES | Password (in clear text) for the Postgres user. **NOTE:** unlike all other database fields, the password is case-sensitive. |
 | max_num_connections | (numeric) | 16 |  | Maximum number of connections to the database per server running an AIde module. This number, multiplied by the number of server instances running AIde, must not exceed the maximum number of connections defined in Postgres' configuration file. |
