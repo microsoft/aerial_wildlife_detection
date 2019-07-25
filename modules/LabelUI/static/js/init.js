@@ -159,11 +159,14 @@ $(document).ready(function() {
             actions: {
                 DO_NOTHING: 0,
                 ADD_ANNOTATION: 1,
-                REMOVE_ANNOTATIONS: 2
+                REMOVE_ANNOTATIONS: 2,
+                ZOOM_IN: 3,
+                ZOOM_OUT: 4,
+                ZOOM_AREA: 5
             }
         };
         window.interfaceControls.action = window.interfaceControls.actions.DO_NOTHING;
-
+        window.interfaceControls.showLoupe = false;
         window.setUIblocked(true);
 
 

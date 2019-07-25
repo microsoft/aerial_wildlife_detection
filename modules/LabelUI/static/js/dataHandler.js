@@ -74,7 +74,44 @@ class DataHandler {
                 self.removeActiveAnnotations();
             } else if(String.fromCharCode(event.which) === 'U') {
                 self.toggleActiveAnnotationsUnsure();
+            } else if(String.fromCharCode(event.which) === 'B') {
+                // loupe
+                self.toggleLoupe();
+            } else if(String.fromCharCode(event.which) === 'R') {
+                // reset zoom
+                self.resetZoom();
             }
+        });
+
+
+        /* viewport functionalities */
+
+        // loupe
+        parentElement.append($('<button id="loupe-button" class="btn btn-sm btn-light">Loupe</button>'));
+        $('#loupe-button').click(function(e) {
+            e.preventDefault();
+            self.toggleLoupe();
+        });
+
+        // zoom buttons
+        var zoomButtons = $('<div style="display:inline"></div>');
+        parentElement.append(zoomButtons);
+
+        zoomButtons.append($('<button id="zoom-in-button" class="btn btn-sm btn-light">Zoom In</button>'));
+        $('#zoom-in-button').click(function() {
+            window.interfaceControls.action = window.interfaceControls.actions.ZOOM_IN;
+        });
+        zoomButtons.append($('<button id="zoom-area-button" class="btn btn-sm btn-light">Area</button>'));
+        $('#zoom-area-button').click(function() {
+            window.interfaceControls.action = window.interfaceControls.actions.ZOOM_AREA;
+        });
+        zoomButtons.append($('<button id="zoom-reset-button" class="btn btn-sm btn-light">Reset</button>'));
+        $('#zoom-reset-button').click(function() {
+            self.resetZoom();
+        });
+        zoomButtons.append($('<button id="zoom-out-button" class="btn btn-sm btn-light">Zoom Out</button>'));
+        $('#zoom-out-button').click(function() {
+            window.interfaceControls.action = window.interfaceControls.actions.ZOOM_OUT;
         });
 
 
@@ -201,6 +238,24 @@ class DataHandler {
     }
 
 
+    toggleLoupe() {
+        window.interfaceControls.showLoupe = !window.interfaceControls.showLoupe;
+        if(window.interfaceControls.showLoupe) {
+            $('#loupe-button').addClass('active');
+        } else {
+            $('#loupe-button').removeClass('active');
+        }
+        this.renderAll();
+    }
+
+
+    resetZoom() {
+        for(var e=0; e<this.dataEntries.length; e++) {
+            this.dataEntries[e].viewport.resetViewport();
+        }
+    }
+
+
     _loadNextBatch() {
         var self = this;
 
@@ -239,9 +294,10 @@ class DataHandler {
                     self.dataEntries.push(entry);
                 }
                 
-                //TODO: causes canvas to be blurry on large screens...
+                // //TODO: causes loss of aspect ratio and canvas to be blurry on large screens...
                 // // if the entry count is one: make entry fill the screen
                 // if(self.dataEntries.length === 1) {
+                //     $(self.dataEntries[0].markup).css('width', '100%');
                 //     $(self.dataEntries[0].markup).css('height', '100%');
                 // }
             },

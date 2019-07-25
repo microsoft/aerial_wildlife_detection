@@ -98,9 +98,7 @@ canvas {
     float: right;
     height: calc(100vh - 140px);
     color: white;
-    /* background: #575352; */
-    /* border: 1px solid white; */
-    width: 400px;
+    width: 350px;
     padding: 20px;
     padding-left: 5px;
     padding-top: 75px;
@@ -111,11 +109,12 @@ canvas {
 }
 .label-class-legend {
     text-align: center;
-    padding: 8px;
+    padding: 6px;
     font-weight: bold;
     color: white;
     cursor: pointer;
-    margin: 4px;
+    margin: 6px;
+    border-radius: 4px;
 }
 .legend-inactive {
     background: #EEEEEE !important;

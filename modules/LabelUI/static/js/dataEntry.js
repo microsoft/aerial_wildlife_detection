@@ -39,7 +39,7 @@
             this.canvas.ready(function() {
                 self.viewport.resetViewport();
             });
-            this.canvas.css('cursor', 'crosshair');
+            // this.canvas.css('cursor', 'crosshair');
 
             this.viewport = new ImageViewport(this.canvas);
 
@@ -421,7 +421,7 @@
     _setup_markup() {
         var self = this;
         super._setup_markup();
-        $(this.canvas).css('cursor', 'pointer');
+        // $(this.canvas).css('cursor', 'pointer');
 
         var htStyle = {
             fillColor: window.styles.hoverText.box.fill,
@@ -437,12 +437,14 @@
         // click handler
         this.markup.click(function(event) {
             if(window.uiBlocked) return;
-            if(window.unsureButtonActive) {
-                self.labelInstance.setProperty('unsure', !self.labelInstance.getProperty('unsure'));
-                window.unsureButtonActive = false;
-                self.render();
-            } else {
-                self.toggleUserLabel(event.altKey);
+            else if(window.interfaceControls.action === window.interfaceControls.actions.DO_NOTHING) {
+                if(window.unsureButtonActive) {
+                    self.labelInstance.setProperty('unsure', !self.labelInstance.getProperty('unsure'));
+                    window.unsureButtonActive = false;
+                    self.render();
+                } else {
+                    self.toggleUserLabel(event.altKey);
+                }
             }
         });
 
@@ -719,7 +721,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
     _setup_markup() {
         var self = this;
         super._setup_markup();
-        this.canvas.css('cursor', 'pointer');
+        // this.canvas.css('cursor', 'pointer');
 
         var htStyle = {
             fillColor: window.styles.hoverText.box.fill,
@@ -876,7 +878,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
                 // remove
                 this.viewport.removeRenderElement(this.crosshairLines);
                 this.crosshairLines = null;
-                this.canvas.css('cursor', 'pointer');
+                // this.canvas.css('cursor', 'pointer');
             }
         }
     }
@@ -951,15 +953,15 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
         if(window.interfaceControls.action == window.interfaceControls.actions.ADD_ANNOTATION) {
             // new annotation completed
             //TODO: may fire before other rectangle's events, making them unwantedly active while finishing new rect
-            window.interfaceControls.action = window.interfaceControls.actions.DO_NOTHING;
+            // window.interfaceControls.action = window.interfaceControls.actions.DO_NOTHING;
 
         } else if(window.interfaceControls.action == window.interfaceControls.actions.REMOVE_ANNOTATIONS) {
             this._deleteActiveAnnotations(event);
-            window.interfaceControls.action = window.interfaceControls.actions.DO_NOTHING;
+            // window.interfaceControls.action = window.interfaceControls.actions.DO_NOTHING;
 
         } else if(window.interfaceControls.action == window.interfaceControls.actions.EDIT_ANNOTATION) {
             // reset action
-            window.interfaceControls.action = window.interfaceControls.actions.DO_NOTHING;
+            // window.interfaceControls.action = window.interfaceControls.actions.DO_NOTHING;
 
         } else if(window.interfaceControls.action == window.interfaceControls.actions.DO_NOTHING) {
             // update annotations to current label (if active)

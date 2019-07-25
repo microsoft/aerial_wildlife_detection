@@ -1,3 +1,60 @@
+function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
+    /**
+     * Draws a rounded rectangle using the current state of the canvas.
+     * If you omit the last three params, it will draw a rectangle
+     * outline with a 5 pixel border radius
+     * @param {CanvasRenderingContext2D} ctx
+     * @param {Number} x The top left x coordinate
+     * @param {Number} y The top left y coordinate
+     * @param {Number} width The width of the rectangle
+     * @param {Number} height The height of the rectangle
+     * @param {Number} [radius = 5] The corner radius; It can also be an object 
+     *                 to specify different radii for corners
+     * @param {Number} [radius.tl = 0] Top left
+     * @param {Number} [radius.tr = 0] Top right
+     * @param {Number} [radius.br = 0] Bottom right
+     * @param {Number} [radius.bl = 0] Bottom left
+     * @param {Boolean} [fill = false] Whether to fill the rectangle.
+     * @param {Boolean} [stroke = true] Whether to stroke the rectangle.
+     * 
+     * source: https://stackoverflow.com/questions/1255512/how-to-draw-a-rounded-rectangle-on-html-canvas
+     */
+    if (typeof stroke == 'undefined') {
+      stroke = true;
+    }
+    if (typeof radius === 'undefined') {
+      radius = 5;
+    }
+    if (typeof radius === 'number') {
+      radius = {tl: radius, tr: radius, br: radius, bl: radius};
+    } else {
+      var defaultRadius = {tl: 0, tr: 0, br: 0, bl: 0};
+      for (var side in defaultRadius) {
+        radius[side] = radius[side] || defaultRadius[side];
+      }
+    }
+    ctx.beginPath();
+    ctx.moveTo(x + radius.tl, y);
+    ctx.lineTo(x + width - radius.tr, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius.tr);
+    ctx.lineTo(x + width, y + height - radius.br);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius.br, y + height);
+    ctx.lineTo(x + radius.bl, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius.bl);
+    ctx.lineTo(x, y + radius.tl);
+    ctx.quadraticCurveTo(x, y, x + radius.tl, y);
+    ctx.closePath();
+    if (fill) {
+      ctx.fill();
+    }
+    if (stroke) {
+      ctx.stroke();
+    }
+  
+  }
+
+
+
 class AbstractRenderElement {
 
     constructor(id, style, zIndex) {
@@ -66,7 +123,7 @@ class AbstractRenderElement {
         this.visible = visible;
     }
 
-    render(ctx, viewport, limits, scaleFun) {
+    render(ctx, scaleFun) {
         if(!this.visible) return;
     }
 }
@@ -103,10 +160,10 @@ class ElementGroup extends AbstractRenderElement {
         }
     }
 
-    render(ctx, viewport, limits, scaleFun) {
-        super.render(ctx, viewport, limits, scaleFun);
+    render(ctx, scaleFun) {
+        super.render(ctx, scaleFun);
         for(var e=0; e<this.elements.length; e++) {
-            this.elements[e].render(ctx, viewport, limits, scaleFun);
+            this.elements[e].render(ctx, scaleFun);
         }
     }
 }
@@ -161,9 +218,9 @@ class ImageElement extends AbstractRenderElement {
         return this.timeCreated;
     }
 
-    render(ctx, viewport, limits, scaleFun) {
-        super.render(ctx, viewport, limits, scaleFun);
-        var targetCoords = scaleFun(this.bounds, 'canvas');
+    render(ctx, scaleFun) {
+        super.render(ctx, scaleFun);
+        var targetCoords = scaleFun(this.bounds, 'validArea');
         if(this.image.loaded) {
             ctx.drawImage(this.image, targetCoords[0], targetCoords[1],
                 targetCoords[2],
@@ -190,10 +247,6 @@ class HoverTextElement extends AbstractRenderElement {
         this.text = hoverText;
         this.position = position;
         this.reference = reference;
-        // this.fillColor = fillColor;
-        // this.textColor = textColor;
-        // this.strokeColor = strokeColor;
-        // this.lineWidth = lineWidth;
         if(this.style.textColor == null || this.style.textColor == undefined) {
             this.style['textColor'] = window.styles.hoverText.text.color;
         }
@@ -206,11 +259,11 @@ class HoverTextElement extends AbstractRenderElement {
         }
     }
 
-    render(ctx, viewport, limits, scaleFun) {
-        super.render(ctx, viewport, limits, scaleFun);
+    render(ctx, scaleFun) {
+        super.render(ctx, scaleFun);
         if(this.text == null) return;
         var hoverPos = scaleFun(this.position, this.reference);
-        var scaleFactors = scaleFun([ctx.canvas.width,ctx.canvas.height], 'canvas', true);
+        var scaleFactors = scaleFun([0, 0, ctx.canvas.width, ctx.canvas.height], this.reference, true).slice(2,4);
         ctx.font = window.styles.hoverText.text.fontSizePix * scaleFactors[0] + 'px ' + window.styles.hoverText.text.fontStyle;
         var dimensions = ctx.measureText(this.text);
         dimensions.height = window.styles.hoverText.box.height;
@@ -243,8 +296,6 @@ class PointElement extends AbstractRenderElement {
         }
         this.x = x;
         this.y = y;
-        // this.color = color;
-        // this.size = size;
         this.unsure = unsure;
 
         this.isValid = (x != null && y != null);
@@ -268,8 +319,8 @@ class PointElement extends AbstractRenderElement {
         };
     }
 
-    render(ctx, viewport, limits, scaleFun) {
-        super.render(ctx, viewport, limits, scaleFun);
+    render(ctx, scaleFun) {
+        super.render(ctx, scaleFun);
         if(this.x == null || this.y == null) return;
 
         var coords = [this.x, this.y];
@@ -301,9 +352,6 @@ class LineElement extends AbstractRenderElement {
         this.startY = startY;
         this.endX = endX;
         this.endY = endY;
-        // this.strokeColor = strokeColor;
-        // this.lineWidth = lineWidth;
-        // this.lineDash = (lineDash == null? [] : lineDash);
         this.unsure = unsure;
 
         this.isValid = (startX != null && startY != null && endX != null && endY != null);
@@ -329,8 +377,8 @@ class LineElement extends AbstractRenderElement {
         };
     }
 
-    render(ctx, viewport, limits, scaleFun) {
-        super.render(ctx, viewport, limits, scaleFun);
+    render(ctx, scaleFun) {
+        super.render(ctx, scaleFun);
         if(this.startX == null || this.startY == null ||
             this.endX == null || this.endY == null)
             return;
@@ -361,9 +409,6 @@ class RectangleElement extends PointElement {
         this.y = y;
         this.width = width;
         this.height = height;
-        // this.fillColor = fillColor;
-        // this.lineWidth = lineWidth;
-        // this.lineDash = (lineDash == null? [] : lineDash);
 
         this.isValid = (x != null && y != null && width != null && height != null);
         this.isActive = false;
@@ -487,6 +532,10 @@ class RectangleElement extends PointElement {
             Returns 'c' if coordinates are not close to handle, but within bounding box.
             Else returns null.
         */
+
+        // check first if cursor is within reach
+        if(!this.isInDistance(coordinates, tolerance)) return null;
+
         var matchL = Math.abs((this.x - this.width/2) - coordinates[0]) <= tolerance;
         var matchT = Math.abs((this.y - this.height/2) - coordinates[1]) <= tolerance;
         var matchR = Math.abs((this.x + this.width/2) - coordinates[0]) <= tolerance;
@@ -529,7 +578,7 @@ class RectangleElement extends PointElement {
     _mousedown_event(event, viewport) {
         if(!this.visible) return;
         this.mousePos_current = viewport.getRelativeCoordinates(event, 'validArea');
-        this.mouseDrag = true;
+        this.mouseDrag = (event.which === 1);
         this.activeHandle = this.getClosestHandle(this.mousePos_current, window.annotationProximityTolerance / Math.min(viewport.canvas.width(), viewport.canvas.height()));
         if(this.activeHandle === 'c') {
             // center of a box clicked; set globally so that other active boxes don't falsely resize
@@ -546,21 +595,23 @@ class RectangleElement extends PointElement {
         */
         if(!this.visible) return;
         var coords = viewport.getRelativeCoordinates(event, 'validArea');
-        var handle = this.getClosestHandle(coords, window.annotationProximityTolerance / Math.min(viewport.canvas.width(), viewport.canvas.height()));
+        // var handle = this.getClosestHandle(coords, window.annotationProximityTolerance / Math.min(viewport.canvas.width(), viewport.canvas.height()));
         if(this.mousePos_current == null) {
             this.mousePos_current = coords;
         }
         var mpc = this.mousePos_current;
         var extent = this.getExtent();
-        if(this.activeHandle == null && handle == null && this.mouseDrag) {
-            // clicked somewhere in a center of a box; move instead of resize
-            this.setProperty('x', this.x + coords[0] - mpc[0]);
-            this.setProperty('y', this.y + coords[1] - mpc[1]);
+        // if(this.activeHandle == null && handle == null && this.mouseDrag) {
+        //     // clicked somewhere in a center of a box; move instead of resize
+        //      //TODO: this allows moving rectangles even if mouse dragged out in the blue...
+        //     this.setProperty('x', this.x + coords[0] - mpc[0]);
+        //     this.setProperty('y', this.y + coords[1] - mpc[1]);
 
-            // update timestamp
-            this.lastUpdated = new Date();
+        //     // update timestamp
+        //     this.lastUpdated = new Date();
 
-        } else if(this.mouseDrag && this.activeHandle != null) {
+        // } else
+        if(this.mouseDrag && this.activeHandle != null) {
             // move or resize rectangle
             if(this.activeHandle.includes('w')) {
                 var width = extent[2] - mpc[0];
@@ -614,7 +665,7 @@ class RectangleElement extends PointElement {
 
         // update cursor
         if(window.interfaceControls.action === window.interfaceControls.actions.ADD_ANNOTATION || this.activeHandle == null) {
-            viewport.canvas.css('cursor', 'crosshair');     //TODO: default cursor?
+            // viewport.canvas.css('cursor', 'crosshair');     //TODO: default cursor?
         } else if(this.activeHandle == 'c') {
             viewport.canvas.css('cursor', 'move');
         } else {
@@ -632,14 +683,14 @@ class RectangleElement extends PointElement {
         this._clamp_min_box_size(viewport);
 
         this.mouseDrag = false;
-        viewport.canvas.css('cursor', 'crosshair');
+        // viewport.canvas.css('cursor', 'crosshair');
     }
 
     _clamp_min_box_size(viewport) {
         // Make sure box is of correct size
         var minWidth = window.minBoxSize_w;
         var minHeight = window.minBoxSize_h;
-        var minSize = viewport.transformCoordinates([minWidth, minHeight], 'validArea', true);
+        var minSize = viewport.transformCoordinates([0, 0, minWidth, minHeight], 'validArea', true).slice(2,4);
         this.width = Math.max(this.width, minSize[0]);
         this.height = Math.max(this.height, minSize[1]);
     }
@@ -714,7 +765,7 @@ class RectangleElement extends PointElement {
     }
 
 
-    render(ctx, viewport, limits, scaleFun) {
+    render(ctx, scaleFun) {
         if(!this.visible || this.x == null || this.y == null) return;
 
         var coords = [this.x-this.width/2, this.y-this.height/2, this.width, this.height];
@@ -733,7 +784,7 @@ class RectangleElement extends PointElement {
         }
         if(this.unsure) {
             var text = 'unsure';
-            var scaleFactors = scaleFun([ctx.canvas.width,ctx.canvas.height], 'canvas', true);
+            var scaleFactors = scaleFun([0,0,ctx.canvas.width,ctx.canvas.height], 'canvas', true).slice(2,4);
             ctx.font = window.styles.hoverText.text.fontSizePix * scaleFactors[0] + 'px ' + window.styles.hoverText.text.fontStyle;
             var dimensions = ctx.measureText(text);
             dimensions.height = window.styles.hoverText.box.height;
@@ -782,8 +833,8 @@ class BorderStrokeElement extends AbstractRenderElement {
         };
     }
 
-    render(ctx, viewport, limits, scaleFun) {
-        super.render(ctx, viewport, limits, scaleFun);
+    render(ctx, scaleFun) {
+        super.render(ctx, scaleFun);
         if(!this.visible) return;
         var scaleFactors = scaleFun([ctx.canvas.width,ctx.canvas.height], 'canvas', true);
         var coords = scaleFun([0,0,1,1], 'canvas');
@@ -829,8 +880,8 @@ class ResizeHandle extends AbstractRenderElement {
         this.y = y;
     }
 
-    render(ctx, viewport, limits, scaleFun) {
-        super.render(ctx, viewport, limits, scaleFun);
+    render(ctx, scaleFun) {
+        super.render(ctx, scaleFun);
         if(!this.visible || this.x == null || this.y == null) return;
 
         var coords = [this.x, this.y];
@@ -851,5 +902,265 @@ class ResizeHandle extends AbstractRenderElement {
         ctx.beginPath();
         ctx.strokeRect(coords[0] - sz/2, coords[1] - sz/2, sz, sz);
         ctx.closePath();
+    }
+}
+
+
+
+
+class MiniViewport extends AbstractRenderElement {
+    /*
+        Miniature version of the viewport to be displayed at a given size
+        and position on the parent viewport.
+        Useful when only a sub-part of the viewport's area is to be shown.
+    */
+    constructor(id, parentViewport, parentExtent, x, y, size, zIndex) {
+        super(id, null, zIndex);
+        this.parentViewport = parentViewport;
+        this.parentExtent = parentExtent;
+        this.position = null;
+        if(x != null && y != null && size != null)
+            this.position = [x, y, size, size];
+    }
+
+    getPosition() {
+        return this.position;
+    }
+
+    setPosition(x, y, size) {
+        this.position = [x, y, size, size];
+    }
+
+
+    getParentExtent() {
+        return this.parentExtent;
+    }
+
+    setParentExtent(extent) {
+        this.parentExtent = extent;
+    }
+
+
+    render(ctx, scaleFun) {
+        if(this.position == null || this.parentExtent == null) return;
+        super.render(ctx, scaleFun);
+
+        // draw parent canvas as an image
+        var pos_abs = scaleFun(this.position, 'canvas');
+        var parentExtent_abs = scaleFun(this.parentExtent, 'canvas');
+        ctx.drawImage(
+            this.parentViewport.canvas[0],
+            parentExtent_abs[0], parentExtent_abs[1],
+            parentExtent_abs[2]-parentExtent_abs[0], parentExtent_abs[3]-parentExtent_abs[1],
+            pos_abs[0], pos_abs[1],
+            pos_abs[2], pos_abs[3]
+        )
+    }
+}
+
+
+
+
+class MiniMap extends AbstractRenderElement {
+    /*
+        The MiniMap, unlike the MiniViewport, actually re-draws the
+        canvas elements and also offers an interactive rectangle, showing
+        the position of the parent viewport's current extent.
+    */
+    constructor(id, parentViewport, x, y, size, interactive, zIndex) {
+        super(id, null, zIndex);
+        this.parentViewport = parentViewport;
+
+        this.position = null;
+        if(x != null && y != null && size != null)
+            this.position = [x, y, size, size];
+
+        if(interactive)
+            this._setup_interactions();
+    }
+
+    _mousedown_event(event) {
+        if(this.position == null || this.pos_abs == null) return;
+
+        // check if mousedown over mini-rectangle
+        var mousePos = this.parentViewport.getAbsoluteCoordinates(event);
+        var extent_parent = this.minimapScaleFun(this.parentViewport.getViewport(), 'canvas');
+        
+        //TODO: something's still buggy here...
+
+        if(mousePos[0] >= extent_parent[0] && mousePos[1] >= extent_parent[1] &&
+            mousePos[0] < (extent_parent[0]+extent_parent[1]) &&
+            mousePos[1] < (extent_parent[1]+extent_parent[2])) {
+
+            this.mousePos = mousePos;
+            this.mouseDown = true;
+        }
+    }
+
+    _mousemove_event(event) {
+        if(this.position == null || this.pos_abs == null || !this.mouseDown) return;
+
+        // determine difference to previous parent extent
+        var newMousePos = this.parentViewport.getAbsoluteCoordinates(event);
+        var diffX = (newMousePos[0] - this.mousePos[0]);
+        var diffY = (newMousePos[1] - this.mousePos[1]);
+        this.mousePos = newMousePos;
+
+        // backproject differences to full canvas size
+        var diffProj = this.minimapScaleFun([0, 0, diffX, diffY], 'canvas', true).slice(2,4);
+        var vp = this.parentViewport.getViewport();
+
+        // apply new viewport
+        vp[0] += diffProj[0];
+        vp[1] += diffProj[1];
+        this.parentViewport.setViewport(vp);
+    }
+    
+    _mouseup_event(event) {
+        this.mouseDown = false;
+    }
+
+    _mouseleave_event(event) {
+        this.mouseDown = false;
+    }
+
+    __get_callback(type) {
+        var self = this;
+        if(type === 'mousedown') {
+            return function(event) {
+                self._mousedown_event(event);
+            };
+        } else if(type ==='mousemove') {
+            return function(event) {
+                self._mousemove_event(event);
+            };
+        } else if(type ==='mouseup') {
+            return function(event) {
+                self._mouseup_event(event);
+            };
+        } else if(type ==='mouseleave') {
+            return function(event) {
+                self._mouseleave_event(event);
+            };
+        }
+    }
+
+    _setup_interactions() {
+        /*
+            Makes parent viewport move on drag of extent rectangle.
+        */
+        this.mouseDown = false;
+        this.parentViewport.addCallback(this.id, 'mousedown', this.__get_callback('mousedown'));
+        this.parentViewport.addCallback(this.id, 'mousemove', this.__get_callback('mousemove'));
+        this.parentViewport.addCallback(this.id, 'mouseup', this.__get_callback('mouseup'));
+        // this.parentViewport.addCallback(this.id, 'mouseleave', this.__get_callback('mouseleave'));
+    }
+
+    getPosition() {
+        return this.position;
+    }
+
+    setPosition(x, y, size) {
+        this.position = [x, y, size, size];
+    }
+
+
+    minimapScaleFun(coordinates, target, backwards) {
+        /*
+            Transforms coordinates to this minimap's area.
+        */
+        var coords_out = coordinates.slice();
+
+        if(backwards) {
+
+            // un-shift position
+            coords_out[0] -= this.pos_abs[0];
+            coords_out[1] -= this.pos_abs[1];
+
+            var canvasSize = [this.pos_abs[2], this.pos_abs[3]];
+            if(target === 'canvas') {
+                coords_out[0] /= canvasSize[0];
+                coords_out[1] /= canvasSize[1];
+                if(coords_out.length == 4) {
+                    coords_out[2] /= canvasSize[0];
+                    coords_out[3] /= canvasSize[1];
+                }
+
+            } else if(target === 'validArea') {
+                coords_out[0] /= canvasSize[0];
+                coords_out[1] /= canvasSize[1];
+                if(coords_out.length == 4) {
+                    coords_out[2] /= canvasSize[0];
+                    coords_out[3] /= canvasSize[1];
+                }
+            }
+        } else {
+            var canvasSize = [this.pos_abs[2], this.pos_abs[3]];
+            if(target === 'canvas') {
+                coords_out[0] *= canvasSize[0];
+                coords_out[1] *= canvasSize[1];
+                if(coords_out.length == 4) {
+                    coords_out[2] *= canvasSize[0];
+                    coords_out[3] *= canvasSize[1];
+                }
+            } else if(target === 'validArea') {
+                coords_out[0] *= canvasSize[0];
+                coords_out[1] *= canvasSize[1];
+                if(coords_out.length == 4) {
+                    coords_out[2] *= canvasSize[0];
+                    coords_out[3] *= canvasSize[1];
+                }
+            }
+
+            // shift position
+            coords_out[0] += this.pos_abs[0];
+            coords_out[1] += this.pos_abs[1];
+
+            // clamp coordinates to minimap extent
+            coords_out[0] = Math.max(coords_out[0], this.pos_abs[0]);
+            coords_out[1] = Math.max(coords_out[1], this.pos_abs[1]);
+            if(coords_out.length == 4) {
+                coords_out[0] = Math.min(coords_out[0], this.pos_abs[0]+this.pos_abs[2]-coords_out[2]);
+                coords_out[1] = Math.min(coords_out[1], this.pos_abs[1]+this.pos_abs[3]-coords_out[3]);
+            } else {
+                coords_out[0] = Math.min(coords_out[0], this.pos_abs[0]+this.pos_abs[2]);
+                coords_out[1] = Math.min(coords_out[1], this.pos_abs[1]+this.pos_abs[3]);
+            }
+        }
+        return coords_out;
+    }
+
+    render(ctx, scaleFun) {
+        if(this.position == null) return;
+        super.render(ctx, scaleFun);
+
+        // position of minimap on parent viewport
+        this.pos_abs = scaleFun(this.position, 'canvas');
+
+        // border and background
+        ctx.fillStyle = '#212529CC';
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([]);
+        roundRect(ctx, this.pos_abs[0] - 2, this.pos_abs[1] - 2,
+            this.pos_abs[2] + 4, this.pos_abs[3] + 4,
+            5, true, true);
+
+        // elements
+        for(var e=0; e<this.parentViewport.renderStack.length; e++) {
+
+            //TODO: dirty hack to avoid rendering HoverTextElement instances
+            if(this.parentViewport.renderStack[e].hasOwnProperty('text')) continue;
+            this.parentViewport.renderStack[e].render(ctx, (this.minimapScaleFun).bind(this));
+        }
+
+        // current extent of parent viewport
+        var extent_parent = this.minimapScaleFun(this.parentViewport.getViewport(), 'canvas');
+        ctx.fillStyle = '#CC000056';
+        ctx.strokeStyle = '#CC000000';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([]);
+        ctx.fillRect(extent_parent[0], extent_parent[1],
+            extent_parent[2], extent_parent[3]);
     }
 }
