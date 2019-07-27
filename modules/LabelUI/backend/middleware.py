@@ -55,8 +55,9 @@ class DBMiddleware():
             'defaultBoxSize_h': self.config.getProperty('LabelUI', 'defaultBoxSize_h', type=int, fallback=10),
             'minBoxSize_w': self.config.getProperty('Project', 'box_minWidth', type=int, fallback=1),
             'minBoxSize_h': self.config.getProperty('Project', 'box_minHeight', type=int, fallback=1),
-            'numImages_x': self.config.getProperty('LabelUI', 'numImages_x', type=int, fallback=3),
-            'numImages_y': self.config.getProperty('LabelUI', 'numImages_y', type=int, fallback=2),
+            'numImagesPerBatch': self.config.getProperty('LabelUI', 'numImagesPerBatch', type=int, fallback=1),
+            'minImageWidth': self.config.getProperty('LabelUI', 'minImageWidth', type=int, fallback=300),
+            'numImageColumns_max': self.config.getProperty('LabelUI', 'numImageColumns_max', type=int, fallback=1),
             'defaultImage_w': self.config.getProperty('LabelUI', 'defaultImage_w', type=int, fallback=800),
             'defaultImage_h': self.config.getProperty('LabelUI', 'defaultImage_h', type=int, fallback=600),
             'styles': styles['styles']

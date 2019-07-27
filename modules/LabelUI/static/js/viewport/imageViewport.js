@@ -196,9 +196,9 @@ class ImageViewport {
         // zoom in or out
         var delta = event.originalEvent.deltaY;
         if(delta > 0) {
-            this._zoom(event, 0.1);
+            this._zoom(event, 0.05);
         } else {
-            this._zoom(event, -0.1);
+            this._zoom(event, -0.05);
         }
     }
 

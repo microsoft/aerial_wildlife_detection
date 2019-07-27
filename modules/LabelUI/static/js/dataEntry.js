@@ -227,8 +227,8 @@
     }
 
     _setup_markup() {
-        var colSize = Math.round(12 / window.numImages_x);  // for bootstrap
-        this.markup = $('<div class="entry box-shadow col-sm-' + colSize + '"></div>');
+        // var colSize = Math.round(12 / window.numImages_x);  // for bootstrap
+        this.markup = $('<div class="entry"></div>');
         this.markup.append(this.canvas);
         var self = this;
         this.markup.on('click', (self._click).bind(self));
@@ -452,6 +452,11 @@
         this.markup.mousemove(function(event) {
             if(window.uiBlocked) return;
             var pos = self.viewport.getRelativeCoordinates(event, 'validArea');
+
+            // offset tooltip position if loupe is active
+            if(window.interfaceControls.showLoupe) {
+                pos[0] += 0.2
+            }
             self.hoverTextElement.position = pos;
             if(event.altKey) {
                 self.hoverTextElement.setProperty('text', 'mark as unlabeled');

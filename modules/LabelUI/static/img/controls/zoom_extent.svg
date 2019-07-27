@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="256px"
+	 height="256px" viewBox="0 0 256 256" enable-background="new 0 0 256 256" xml:space="preserve">
+	<g>
+		<ellipse fill="none" stroke="#FFFFFF" stroke-width="20" cx="138.88" cy="107.883" rx="50.596" ry="49.359"/>
+		<line fill="none" stroke="#FFFFFF" stroke-width="20" x1="50.524" y1="197.476" x2="105.813" y2="143.539"/>
+	</g>
+	<polygon fill="#FFFFFF" stroke="#FFFFFF" stroke-width="20" points="28.333,43.667 28.355,28.355 43.667,28.333 	"/>
+	<polygon fill="#FFFFFF" stroke="#FFFFFF" stroke-width="20" points="211.176,28.333 226.488,28.355 226.511,43.667 	"/>
+	<polygon fill="#FFFFFF" stroke="#FFFFFF" stroke-width="20" points="43.667,227.667 28.355,227.644 28.333,212.333 	"/>
+	<polygon fill="#FFFFFF" stroke="#FFFFFF" stroke-width="20" points="227.667,212.332 227.644,227.645 212.333,227.668 	"/>
+</svg>

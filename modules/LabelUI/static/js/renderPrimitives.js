@@ -1138,10 +1138,10 @@ class MiniMap extends AbstractRenderElement {
         this.pos_abs = scaleFun(this.position, 'canvas');
 
         // border and background
-        ctx.fillStyle = '#212529CC';
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([]);
+        ctx.fillStyle = window.styles.minimap.background.fillColor;
+        ctx.strokeStyle = window.styles.minimap.background.strokeColor;
+        ctx.lineWidth = window.styles.minimap.background.lineWidth;
+        ctx.setLineDash(window.styles.minimap.background.lineDash);
         roundRect(ctx, this.pos_abs[0] - 2, this.pos_abs[1] - 2,
             this.pos_abs[2] + 4, this.pos_abs[3] + 4,
             5, true, true);
@@ -1156,11 +1156,20 @@ class MiniMap extends AbstractRenderElement {
 
         // current extent of parent viewport
         var extent_parent = this.minimapScaleFun(this.parentViewport.getViewport(), 'canvas');
-        ctx.fillStyle = '#CC000056';
-        ctx.strokeStyle = '#CC000000';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([]);
+        ctx.fillStyle = window.styles.minimap.viewport.fillColor;
+        ctx.strokeStyle = window.styles.minimap.viewport.strokeColor;
+        ctx.lineWidth = window.styles.minimap.viewport.lineWidth;
+        ctx.setLineDash(window.styles.minimap.viewport.lineDash);
         ctx.fillRect(extent_parent[0], extent_parent[1],
             extent_parent[2], extent_parent[3]);
+
+
+        // another outlined border for aesthetics
+        ctx.strokeStyle = window.styles.minimap.background.strokeColor;
+        ctx.lineWidth = window.styles.minimap.background.lineWidth;
+        ctx.setLineDash(window.styles.minimap.background.lineDash);
+        roundRect(ctx, this.pos_abs[0] - 2, this.pos_abs[1] - 2,
+            this.pos_abs[2] + 4, this.pos_abs[3] + 4,
+            5, false, true);
     }
 }

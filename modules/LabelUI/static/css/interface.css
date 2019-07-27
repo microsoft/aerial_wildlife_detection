@@ -66,10 +66,12 @@ h3 {
 }
 #gallery-container {
     margin: auto;
+    width: 100%;
     height: calc(100vh - 260px);
 }
 #gallery {
-    overflow-y: auto;
+    height: 100%;
+    overflow: auto;
 }
 .widescreen {
     max-width: 1920px;
@@ -80,6 +82,13 @@ h3 {
 #interface-controls > * {
     margin-left: 10px;
     margin-right: 10px;
+}
+#viewport-controls {
+    display: flex;
+    flex-direction: column;
+}
+#viewport-controls > * {
+    margin-bottom: 5px;
 }
 .entry {
     display: inline-block;

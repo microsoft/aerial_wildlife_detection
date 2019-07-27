@@ -65,8 +65,9 @@ window.getProjectSettings = function() {
         window.defaultBoxSize_h = parseInt(data['settings']['defaultBoxSize_h']);
         window.minBoxSize_w = parseInt(data['settings']['minBoxSize_w']);
         window.minBoxSize_h = parseInt(data['settings']['minBoxSize_h']);
-        window.numImages_x = parseInt(data['settings']['numImages_x']);
-        window.numImages_y = parseInt(data['settings']['numImages_y']);
+        window.numImagesPerBatch = parseInt(data['settings']['numImagesPerBatch']);
+        window.minImageWidth = parseInt(data['settings']['minImageWidth']);
+        window.numImageColumns_max = parseInt(data['settings']['numImageColumns_max']);
         window.defaultImage_w = parseInt(data['settings']['defaultImage_w']);
         window.defaultImage_h = parseInt(data['settings']['defaultImage_h']);
         window.styles = data['settings']['styles'];
@@ -83,8 +84,8 @@ window.getProjectSettings = function() {
 
         // adjust number of images to one for mobile devices
         if (/Mobi|Android/i.test(navigator.userAgent)) {
-            window.numImages_x = 1;
-            window.numImages_y = 1;
+            window.minImageWidth = '100%';
+            window.numImageColumns_max = 1;
         }
 
         return $.Deferred().promise();

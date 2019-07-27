@@ -9,7 +9,7 @@ class DataHandler {
     constructor(parentDiv) {
         this.parentDiv = parentDiv;
         this.dataEntries = [];
-        this.numImagesPerBatch = parseInt(window.numImages_x) * parseInt(window.numImages_y);
+        this.numImagesPerBatch = window.numImagesPerBatch;  //parseInt(window.numImages_x) * parseInt(window.numImages_y);
 
         this.undoStack = [];
         this.redoStack = [];
@@ -85,33 +85,31 @@ class DataHandler {
 
 
         /* viewport functionalities */
+        var vpControls = $('#viewport-controls');
 
         // loupe
-        parentElement.append($('<button id="loupe-button" class="btn btn-sm btn-light">Loupe</button>'));
+        vpControls.append($('<button id="loupe-button" class="btn btn-sm btn-secondary" title="Toggle Loupe (B)"><img src="static/img/controls/loupe.svg" style="height:18px" /></button>'));
         $('#loupe-button').click(function(e) {
             e.preventDefault();
             self.toggleLoupe();
         });
 
         // zoom buttons
-        var zoomButtons = $('<div style="display:inline"></div>');
-        parentElement.append(zoomButtons);
-
-        zoomButtons.append($('<button id="zoom-in-button" class="btn btn-sm btn-light">Zoom In</button>'));
+        vpControls.append($('<button id="zoom-in-button" class="btn btn-sm btn-secondary" title="Zoom In"><img src="static/img/controls/zoom_in.svg" style="height:18px" /></button>'));
         $('#zoom-in-button').click(function() {
             window.interfaceControls.action = window.interfaceControls.actions.ZOOM_IN;
         });
-        zoomButtons.append($('<button id="zoom-area-button" class="btn btn-sm btn-light">Area</button>'));
+        vpControls.append($('<button id="zoom-out-button" class="btn btn-sm btn-secondary" title="Zoom Out"><img src="static/img/controls/zoom_out.svg" style="height:18px" /></button>'));
+        $('#zoom-out-button').click(function() {
+            window.interfaceControls.action = window.interfaceControls.actions.ZOOM_OUT;
+        });
+        vpControls.append($('<button id="zoom-area-button" class="btn btn-sm btn-secondary" title="Zoom to Area"><img src="static/img/controls/zoom_area.svg" style="height:18px" /></button>'));
         $('#zoom-area-button').click(function() {
             window.interfaceControls.action = window.interfaceControls.actions.ZOOM_AREA;
         });
-        zoomButtons.append($('<button id="zoom-reset-button" class="btn btn-sm btn-light">Reset</button>'));
+        vpControls.append($('<button id="zoom-reset-button" class="btn btn-sm btn-secondary" title="Original Extent (R)"><img src="static/img/controls/zoom_extent.svg" style="height:18px" /></button>'));
         $('#zoom-reset-button').click(function() {
             self.resetZoom();
-        });
-        zoomButtons.append($('<button id="zoom-out-button" class="btn btn-sm btn-light">Zoom Out</button>'));
-        $('#zoom-out-button').click(function() {
-            window.interfaceControls.action = window.interfaceControls.actions.ZOOM_OUT;
         });
 
 
@@ -259,11 +257,6 @@ class DataHandler {
     _loadNextBatch() {
         var self = this;
 
-        //TODO: sometimes num images is NaN; temporary hack until fix:
-        if(isNaN(this.numImagesPerBatch)) {
-            this.numImagesPerBatch = parseInt(window.numImages_x) * parseInt(window.numImages_y);
-        }
-
         var url = 'getLatestImages?order=unlabeled&subset=default&limit=' + this.numImagesPerBatch;
         return $.ajax({
             url: url,
@@ -293,13 +286,10 @@ class DataHandler {
                     self.parentDiv.append(entry.markup);
                     self.dataEntries.push(entry);
                 }
-                
-                // //TODO: causes loss of aspect ratio and canvas to be blurry on large screens...
-                // // if the entry count is one: make entry fill the screen
-                // if(self.dataEntries.length === 1) {
-                //     $(self.dataEntries[0].markup).css('width', '100%');
-                //     $(self.dataEntries[0].markup).css('height', '100%');
-                // }
+
+                //TODO: needs to be put here instead of init script
+                // adjust width of entries
+                window.windowResized();
             },
             error: function(xhr, status, error) {
                 if(error == 'Unauthorized') {

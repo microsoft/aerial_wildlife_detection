@@ -41,6 +41,20 @@
             "strokeColor": "#000000",
             "lineWidth": 1,
             "lineDash": [4, 4]
+        },
+        "minimap": {
+            "background": {
+                "fillColor": "#212529CC",
+                "strokeColor": "#565352",
+                "lineWidth": 4,
+                "lineDash": []
+            },
+            "viewport": {
+                "fillColor": "#CCCCCCAA",
+                "strokeColor": "#CCCCCC",
+                "lineWidth": 1,
+                "lineDash": []
+            }
         }
     }
 }

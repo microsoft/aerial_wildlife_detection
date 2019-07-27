@@ -170,6 +170,34 @@ $(document).ready(function() {
         window.setUIblocked(true);
 
 
+        // auto-resize entries on window resize
+        window.windowResized = function () {
+            var gallery = $('#gallery');
+            numCols = Math.min(Math.floor(gallery.width() / window.minImageWidth), window.numImageColumns_max);
+            numRows = Math.ceil(window.numImagesPerBatch / numCols);
+            var style = {};
+            if(numRows === 1) {
+                // resize canvas to fit height (so that no scrolling is needed)
+                var canvas = $('canvas')[0];
+                var aspectRatio = canvas.width / canvas.height;
+                var height = Math.max(gallery.innerHeight(), window.minImageWidth/aspectRatio);
+                style = {
+                    'min-width':  window.minImageWidth+'px',
+                    'width': height*aspectRatio + 'px',
+                    'height': height + 'px'
+                };
+            } else {
+                style = {
+                    'min-width':  window.minImageWidth+'px',
+                    'width': 'calc(100% / ' + numCols + ')',
+                    'height': ''
+                };
+            }
+            $('.entry').css(style);
+            window.dataHandler.renderAll();
+        }
+        $(window).resize(windowResized);
+
         // // make class panel grow and shrink on mouseover/mouseleave
         // $('#tools-container').on('mouseenter', function() {
         //     if(window.uiBlocked || $(this).is(':animated')) return;
