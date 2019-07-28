@@ -50,11 +50,21 @@ CREATE TABLE IF NOT EXISTS &schema.IMAGE_USER (
     FOREIGN KEY (image) REFERENCES &schema.IMAGE(id)
 );
 
+CREATE TABLE IF NOT EXISTS &schema.LABELCLASSGROUP (
+    id uuid DEFAULT uuid_generate_v4(),
+    name VARCHAR NOT NULL,
+    color VARCHAR,
+    parent uuid,
+    PRIMARY KEY (id)
+);
+
 CREATE TABLE IF NOT EXISTS &schema.LABELCLASS (
     id uuid DEFAULT uuid_generate_v4(),
     name VARCHAR NOT NULL,
     color VARCHAR,
-    PRIMARY KEY (id)
+    labelclassgroup uuid,
+    PRIMARY KEY (id),
+    FOREIGN KEY (labelclassgroup) REFERENCES &schema.LABELCLASSGROUP(id)
 );
 
 CREATE TABLE IF NOT EXISTS &schema.ANNOTATION (

@@ -25,10 +25,11 @@ window.getRandomID = function() {
 
 window.loadConfiguration = function() {
     // general properties
-    window.defaultColors = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#ffff99','#b15928'];
-    window.getDefaultColor = function(idx) {
-        return window.defaultColors[idx % window.defaultColors.length];
-    }
+    //TODO: replaced with function in labelClassHandler.js
+    // window.defaultColors = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#ffff99','#b15928'];
+    // window.getDefaultColor = function(idx) {
+    //     return window.defaultColors[idx % window.defaultColors.length];
+    // }
 
     // labeling interface
     window.annotationProximityTolerance = 5;

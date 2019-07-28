@@ -71,6 +71,7 @@ $(document).ready(function() {
 
     // color converter: adds alpha channel to existing color string
     window.hexToRgb = function(hex) {
+        if(hex.toLowerCase().startsWith('rgb')) return hex;
         // Expand shorthand form (e.g. "03F") to full form (e.g. "0033FF")
         var shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
         hex = hex.replace(shorthandRegex, function(m, r, g, b) {
@@ -102,7 +103,25 @@ $(document).ready(function() {
         if(alpha >= 1.0) return color;
         return window._addAlpha(color, alpha);
     }
+
+    window.getBrightness = function(color) {
+        var rgb = window.hexToRgb(color);
+        match = /rgba?\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(,\s*\d+[\.\d+]*)*\)/g.exec(rgb);
+        return (parseInt(match[1]) + parseInt(match[2]) + parseInt(match[3])) / 3;
+    }
     
+
+    
+    window.shuffle = function(a) {
+        var j, x, i;
+        for (i = a.length - 1; i > 0; i--) {
+            j = Math.floor(Math.random() * (i + 1));
+            x = a[i];
+            a[i] = a[j];
+            a[j] = x;
+        }
+        return a;
+    }
 
 
     // login check
@@ -172,28 +191,41 @@ $(document).ready(function() {
 
         // auto-resize entries on window resize
         window.windowResized = function () {
+            var canvas = $('canvas');
+            if(canvas.length === 0) return;
+            canvas = canvas[0];
+
             var gallery = $('#gallery');
-            numCols = Math.min(Math.floor(gallery.width() / window.minImageWidth), window.numImageColumns_max);
-            numRows = Math.ceil(window.numImagesPerBatch / numCols);
-            var style = {};
-            if(numRows === 1) {
-                // resize canvas to fit height (so that no scrolling is needed)
-                var canvas = $('canvas')[0];
-                var aspectRatio = canvas.width / canvas.height;
-                var height = Math.max(gallery.innerHeight(), window.minImageWidth/aspectRatio);
-                style = {
-                    'min-width':  window.minImageWidth+'px',
-                    'width': height*aspectRatio + 'px',
-                    'height': height + 'px'
-                };
+            var numCols = Math.min(Math.floor(gallery.width() / window.minImageWidth), window.numImageColumns_max);
+            var numRows = Math.ceil(window.numImagesPerBatch / numCols);
+
+            // resize canvas to fit height (so that as little scrolling as possible is needed)
+            var aspectRatio = canvas.width / canvas.height;
+
+            var height = Math.max(window.minImageWidth/aspectRatio, gallery.height() / numRows);
+            var width = Math.max(window.minImageWidth, gallery.width() / numCols);
+            if(height > width/aspectRatio) {
+                height = width/aspectRatio;
             } else {
-                style = {
-                    'min-width':  window.minImageWidth+'px',
-                    'width': 'calc(100% / ' + numCols + ')',
-                    'height': ''
-                };
+                width = height*aspectRatio;
             }
+
+            var style = {
+                'min-width':  window.minImageWidth+'px',
+                'width': width + 'px',
+                'height': height + 'px'
+            };
             $('.entry').css(style);
+
+            // gallery: account for width, center entries
+            var toolsWidth = $('#tools-container').width() + $('#viewport-controls').width();
+            $('#gallery').css({
+                'width': 'calc(100vw - '+toolsWidth+'px)',
+            });
+
+            // label class entries
+            $('#legend-entries').css('height', gallery.height() + 'px');
+
             window.dataHandler.renderAll();
         }
         $(window).resize(windowResized);

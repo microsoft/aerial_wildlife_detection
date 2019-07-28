@@ -26,16 +26,17 @@ window.showTutorial = function(autostart) {
         var removeAnnotationString = 'Click (or press R), then click into the annotation to remove it. Hint: remove selected annotations directly with the Del key.';
     }
     let interfaceElements = [
-        [ '#gallery', 'View the next image(s) here.', 'left' ],
+        [ '#gallery', 'View the next image(s) here.', 'top' ],
+        [ '#viewport-controls', 'Zoom in/out, show loupe, etc.', 'left' ],
         [ '#legend-entries', 'Select the correct label class (or press its number on the keyboard).', 'bottom' ],
         [ '#add-annotation', 'Click to add a new annotation (hint: you can also use the W key).', 'top' ],
-        [ '#gallery', addAnnotationString, 'left' ],
-        [ '#gallery', changeAnnotationString, 'left' ],
+        [ '#gallery', addAnnotationString, 'top' ],
+        [ '#gallery', changeAnnotationString, 'top' ],
         [ '#labelAll-button', 'Label everything with the foreground class (or press the A key)', 'top'],
         [ '#unsure-button', unsureString, 'top' ],
         [ '#remove-annotation', removeAnnotationString, 'top' ],
         [ '#clearAll-button', 'Remove all annotations at once (or press C)', 'top'],
-        [ '#gallery', 'Temporarily hide predictions (annotations) by holding down the shift (control) key.', 'left' ],
+        [ '#gallery', 'Temporarily hide predictions (annotations) by holding down the shift (control) key.', 'top' ],
         [ '#next-button', 'Satisfied with your annotations? Click "Next" (or press the right arrow key).', 'top' ],
         [ '#previous-button', 'Want to review the last image(s)? Click "Previous" (or press the left arrow key).', 'top' ],
         // [ '#ai-worker-panel', 'View the tasks and progress of the AI worker(s) by clicking here.' ]  //TODO: doesn't work; perhaps z-index problem?

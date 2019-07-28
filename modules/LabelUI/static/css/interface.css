@@ -68,6 +68,7 @@ h3 {
     margin: auto;
     width: 100%;
     height: calc(100vh - 260px);
+    text-align: center;
 }
 #gallery {
     height: 100%;
@@ -107,23 +108,59 @@ canvas {
     float: right;
     height: calc(100vh - 140px);
     color: white;
-    width: 350px;
-    padding: 20px;
+    width: 320px;
+    min-width: 320px;
     padding-left: 5px;
+    padding-right: 5px;
     padding-top: 75px;
-    overflow-y: auto;
+    padding-bottom: 10px;
 }
 #legend-entries {
-    display: grid;
+    padding: 10px;
+    overflow-y: auto;
+}
+.legend-color-dot {
+    display: inline-block;
+    vertical-align: middle;
+    width: 20px;
+    height: 20px;
+    border-radius: 8px;
+    margin-right: 5px;
 }
 .label-class-legend {
-    text-align: center;
-    padding: 6px;
+    padding: 4px;
     font-weight: bold;
     color: white;
     cursor: pointer;
     margin: 6px;
     border-radius: 4px;
+    padding-left: 10px;
+}
+.label-text {
+    font-size: 14px;
+}
+.labelGroup {
+    margin-bottom: 10px;
+}
+.labelGroup > h3 {
+    cursor: pointer;
+    padding-left: 12px;
+}
+.labelGroup > h3::before {
+    content: '\25B8';
+    cursor: pointer;
+    float: left;
+    margin-left: -12px;
+}
+.labelGroup > h3.expanded::before {
+    animation: colArr-expand 1s ease forwards;
+}
+.labelGroup > h3::before {
+    animation: colArr-expand 1s ease backwards;
+}
+
+.labelGroup-children {
+    margin-left: 10px;
 }
 .legend-inactive {
     background: #EEEEEE !important;
@@ -234,10 +271,15 @@ canvas {
 
 .tooltip-inner {
     background-color: #17a2b8 !important;
-    color: white !important;
+    color: white;
     font-size: 18px;
-    /* TODO: change tooltip arrows to white */
+    max-width: 300px !important;
 }
+
+.arrow::before{
+    border-bottom-color:#17a2b8 !important;
+    border-top-color:#17a2b8 !important;
+  }
 
 .grad-border-v {
     width: 1px;

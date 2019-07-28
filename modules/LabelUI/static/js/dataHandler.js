@@ -236,6 +236,36 @@ class DataHandler {
     }
 
 
+    getAllPresentClassIDs() {
+        /*
+            Returns a dict of all label class IDs that are present
+            in the image entry/entries.
+        */
+        var presentClassIDs = {};
+        for(var key in this.dataEntries) {
+            presentClassIDs = {...presentClassIDs, ...this.dataEntries[key].getActiveClassIDs()};
+        }
+        return presentClassIDs;
+    }
+
+
+    updatePresentClasses() {
+        //TODO: too much of a mess right now
+        // /*
+        //     Examines the label classes present in the images and
+        //     puts their markup to the top of the class entries.
+        // */
+        // var presentClassIDs = this.getAllPresentClassIDs();
+
+        // //TODO: this is very expensive; replace with LUT on the long term...
+        // var container = $('#legend-entries-active-container');
+        // container.empty();
+        // for(var key in presentClassIDs) {
+        //     container.append(window.labelClassHandler.getClass(key).getMarkup(true));
+        // }
+    }
+
+
     toggleLoupe() {
         window.interfaceControls.showLoupe = !window.interfaceControls.showLoupe;
         if(window.interfaceControls.showLoupe) {
@@ -286,6 +316,9 @@ class DataHandler {
                     self.parentDiv.append(entry.markup);
                     self.dataEntries.push(entry);
                 }
+
+                // update present classes list
+                self.updatePresentClasses();
 
                 //TODO: needs to be put here instead of init script
                 // adjust width of entries
@@ -386,6 +419,9 @@ class DataHandler {
                     self.parentDiv.append(entry.markup);
                     self.dataEntries.push(entry);
                 }
+
+                // update present classes list
+                self.updatePresentClasses();
 
                 window.setUIblocked(false);
             },

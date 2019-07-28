@@ -44,9 +44,9 @@
         },
         "minimap": {
             "background": {
-                "fillColor": "#212529CC",
-                "strokeColor": "#565352",
-                "lineWidth": 4,
+                "fillColor": "#CCCCCCCC",
+                "strokeColor": "#CCCCCC",
+                "lineWidth": 2,
                 "lineDash": []
             },
             "viewport": {

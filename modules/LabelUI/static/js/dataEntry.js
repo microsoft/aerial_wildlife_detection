@@ -296,6 +296,8 @@
             this.annotations[key].setProperty('label', label);
         }
         this.render();
+
+        window.dataHandler.updatePresentClasses();
     }
 
     setPredictionsVisible(visible) {
@@ -327,6 +329,8 @@
             }
         }
         this.render();
+
+        window.dataHandler.updatePresentClasses();
     }
 
     removeAllAnnotations() {
@@ -335,6 +339,8 @@
             this._removeElement(this.annotations[key]);
         }
         this.render();
+
+        window.dataHandler.updatePresentClasses();
     }
 
     toggleActiveAnnotationsUnsure() {
@@ -347,6 +353,23 @@
         }
         this.render();
         return active;
+    }
+
+    getActiveClassIDs() {
+        /*
+            Returns distinct label class IDs of all annotations and predictions
+            present in the entry.
+        */
+        var classIDs = {};
+        for(var key in this.annotations) {
+            var label = this.annotations[key].label;
+            if(label != null) classIDs[label] = 1;
+        }
+        for(var key in this.predictions) {
+            var label = this.predictions[key].label;
+            if(label != null) classIDs[label] = 1;
+        }
+        return classIDs;
     }
 
     render() {
@@ -405,17 +428,26 @@
             }
 
             // add new annotation from existing
-            // console.log(element['geometry'])
             var unsure = element['geometry']['unsure'];
             var anno = new Annotation(key, {'label':element['label'], 'unsure':unsure}, element['type']);
             this.annotations[key] = anno;
             this.viewport.addRenderElement(anno.getRenderElement());
             this.labelInstance = anno;
+
+            // flip text color of BorderStrokeElement if needed
+            var htFill = this.labelInstance.geometry.getProperty('fillColor');
+            if(htFill != null && window.getBrightness(htFill) >= 92) {
+                this.labelInstance.geometry.setProperty('textColor', '#000000');
+            } else {
+                this.labelInstance.geometry.setProperty('textColor', '#FFFFFF');
+            }
             
         } else if(element['type'] == 'prediction' && window.showPredictions) {
             this.predictions[key] = element;
             this.viewport.addRenderElement(element.getRenderElement());
         }
+
+        window.dataHandler.updatePresentClasses();
     }
 
     _setup_markup() {
@@ -446,6 +478,8 @@
                     self.toggleUserLabel(event.altKey);
                 }
             }
+
+            window.dataHandler.updatePresentClasses();
         });
 
         // tooltip for label change
@@ -474,6 +508,14 @@
                 self.hoverTextElement.setProperty('text', null);
             }
 
+            // flip text color if needed
+            var htFill = self.hoverTextElement.getProperty('fillColor');
+            if(htFill != null && window.getBrightness(htFill) >= 92) {
+                self.hoverTextElement.setProperty('textColor', '#000000');
+            } else {
+                self.hoverTextElement.setProperty('textColor', '#FFFFFF');
+            }
+
             // set active (for e.g. "unsure" functionality)
             self.labelInstance.setActive(true);
 
@@ -496,7 +538,18 @@
         } else {
             this.labelInstance.setProperty('label', label);
         }
+
+        // flip text color of BorderStrokeElement if needed
+        var htFill = this.labelInstance.geometry.getProperty('fillColor');
+        if(htFill != null && window.getBrightness(htFill) >= 92) {
+            this.labelInstance.geometry.setProperty('textColor', '#000000');
+        } else {
+            this.labelInstance.geometry.setProperty('textColor', '#FFFFFF');
+        }
+
         this.render();
+
+        window.dataHandler.updatePresentClasses();
     }
 
     toggleUserLabel(forceRemove) {
@@ -509,7 +562,7 @@
             - if forceRemove is true, the label is removed (if background class is enabled)
         */
         if(forceRemove && window.enableEmptyClass) {
-            this.labelInstance.setProperty('label', null);
+            this.setLabel(null);
 
         } else {
             var activeLabel = window.labelClassHandler.getActiveClassID();
@@ -521,20 +574,24 @@
             } else {
                 if(this.labelInstance.label == activeLabel && window.enableEmptyClass) {
                     // same label; disable
-                    this.labelInstance.setProperty('label', null);
+                    this.setLabel(null);
 
                 } else {
                     // different label; update
-                    this.labelInstance.setProperty('label', activeLabel);
+                    this.setLabel(activeLabel);
                 }
             }
         }
         this.render();
+
+        window.dataHandler.updatePresentClasses();
     }
 
     removeAllAnnotations() {
         this.labelInstance.setProperty('label', null);
         this.render();
+
+        window.dataHandler.updatePresentClasses();
     }
  }
 
@@ -637,6 +694,14 @@ class PointAnnotationEntry extends AbstractDataEntry {
                 this.hoverTextElement.setProperty('text', 'change to "' + window.labelClassHandler.getActiveClassName() + '"');
                 this.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getActiveColor());
             }
+
+            // flip text color if needed
+            var htFill = this.hoverTextElement.getProperty('fillColor');
+            if(htFill != null && window.getBrightness(htFill) >= 92) {
+                this.hoverTextElement.setProperty('textColor', '#000000');
+            } else {
+                this.hoverTextElement.setProperty('textColor', '#FFFFFF');
+            }
         }
         this.render();
     }
@@ -674,6 +739,8 @@ class PointAnnotationEntry extends AbstractDataEntry {
             this._addElement(annotation);
         }
         this.render();
+
+        window.dataHandler.updatePresentClasses();
     }
 
 
@@ -686,6 +753,8 @@ class PointAnnotationEntry extends AbstractDataEntry {
             }
         }
         this.render();
+
+        window.dataHandler.updatePresentClasses();
     }
 }
 
@@ -721,6 +790,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
             }
         }
         this.render();
+        window.dataHandler.updatePresentClasses();
     }
 
     _setup_markup() {
@@ -853,6 +923,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
             // no active annotation found, but clicked within another one; delete it
             this._removeElement(this.annotations[argMin]);
         }
+        window.dataHandler.updatePresentClasses();
     }
 
     _drawCrosshairLines(coords, visible) {
@@ -933,18 +1004,38 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
                 }
                 break;
             case window.interfaceControls.actions.DO_NOTHING:
-                //TODO: buggy
+                // find box over coordinates
+                var anno = null;
                 for(var key in this.annotations) {
-                    if(this.annotations[key].isActive() && 
-                        this.annotations[key].label != window.labelClassHandler.getActiveClassID()) {
-                        hoverText = 'Change label to "' + window.labelClassHandler.getActiveClassName() + '"';
-                        this.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getActiveColor());
-                        break;
+                    if(this.annotations[key].geometry.containsPoint(coords)) {
+                        anno = this.annotations[key];
                     }
+                }
+                // set text
+                if(anno === undefined || anno === null) {
+                    hoverText = null;
+                    break;
+                }
+                if(anno.isActive() && anno.label != window.labelClassHandler.getActiveClassID()) {
+                    hoverText = 'Change label to "' + window.labelClassHandler.getActiveClassName() + '"';
+                    this.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getActiveColor());
+                } else {
+                    // show current class name of box
+                    hoverText = window.labelClassHandler.getName(anno.label);
+                    this.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getColor(anno.label));
                 }
                 break;
         }
         // this.hoverTextElement.setProperty('position', coords);
+
+        // flip text color if needed
+        var htFill = this.hoverTextElement.getProperty('fillColor');
+        if(htFill != null && window.getBrightness(htFill) >= 92) {
+            this.hoverTextElement.setProperty('textColor', '#000000');
+        } else {
+            this.hoverTextElement.setProperty('textColor', '#FFFFFF');
+        }
+
         this.hoverTextElement.setProperty('text', hoverText);
 
         this.render();
@@ -981,9 +1072,13 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
 
             // activate or deactivate
             this._toggleActive(event);
+
+            window.dataHandler.updatePresentClasses();
         }
 
         this.render();
+
+        window.dataHandler.updatePresentClasses();
     }
 
     _canvas_mouseleave(event) {

@@ -126,16 +126,83 @@ class DBMiddleware():
         '''
             Returns a dictionary with entries for all classes in the project.
         '''
-        # query
+        classdef = {
+            'entries': {
+                'default': {}   # default group for ungrouped label classes
+            }
+        }
         schema = self.config.getProperty('Database', 'schema')
-        sql = 'SELECT * FROM {}.labelclass'.format(schema)
-        classProps = self.dbConnector.execute(sql, None, 'all')
-        classdef = {}
-        for c in range(len(classProps)):
-            classProps[c]['id'] = str(classProps[c]['id'])  # convert UUID to string
-            classID = classProps[c]['id']
-            classdef[classID] = classProps[c]
 
+        # query data
+        sql = '''
+            SELECT 'group' AS type, id, name, color, parent FROM {schema}.labelclassgroup
+            UNION ALL
+            SELECT 'class' AS type, id, name, color, labelclassgroup FROM {schema}.labelclass;
+        '''.format(schema=schema)
+        classData = self.dbConnector.execute(sql, None, 'all')
+
+        # assemble entries first
+        allEntries = {}
+        classIndex = 0      #TODO: dirty solution to have classes with different indices
+        for cl in classData:
+            id = str(cl['id'])
+            entry = {
+                'id': id,
+                'name': cl['name'],
+                'color': cl['color'],
+                'parent': str(cl['parent']) if cl['parent'] is not None else None
+            }
+            if cl['type'] == 'group':
+                entry['entries'] = {}
+            else:
+                entry['index'] = classIndex
+                classIndex += 1
+            allEntries[id] = entry
+        
+
+        # transform into tree
+        def _find_parent(tree, parentID):
+            if parentID is None:
+                return tree['entries']['default']
+            elif 'id' in tree and tree['id'] == parentID:
+                return tree
+            elif 'entries' in tree:
+                for ek in tree['entries'].keys():
+                    rv = _find_parent(tree['entries'][ek], parentID)
+                    if rv is not None:
+                        return rv
+                return None
+            else:
+                return None
+
+
+        allEntries['default'] = {
+            'name': '(other)',
+            'entries': {}
+        }
+        allEntries = {
+            'entries': allEntries
+        }
+        for key in list(allEntries['entries'].keys()):
+            if key == 'default':
+                continue
+            if key in allEntries['entries']:
+                entry = allEntries['entries'][key]
+                parentID = entry['parent']
+                del entry['parent']
+
+                if 'entries' in entry and parentID is None:
+                    # group, but no parent: append to root directly
+                    allEntries['entries'][key] = entry
+                
+                else:
+                    # move item
+                    parent = _find_parent(allEntries, parentID)
+                    parent['entries'][key] = entry
+                    del allEntries['entries'][key]
+
+        classdef = allEntries
+        classdef['numClasses'] = classIndex
         return classdef
 
 

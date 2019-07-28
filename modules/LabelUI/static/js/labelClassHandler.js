@@ -4,28 +4,100 @@
     2019 Benjamin Kellenberger
 */
 
+window.parseClassdefEntry = function(id, entry, parent) {
+    if(entry.hasOwnProperty('entries') && entry['entries'] != undefined) {
+        // label class group
+        if(Object.keys(entry['entries']).length > 0) {
+            return new LabelClassGroup(id, entry, parent);
+        } else {
+            // empty group
+            return null;
+        }
+    } else {
+        // label class
+        return new LabelClass(id, entry, parent);
+    }
+}
 
-class LabelClass {
-    constructor(classID, properties, changeListener) {
-        this.classID = classID;
-        this.name = (properties['name']==null? '[Label Class '+this.classID+']' : properties['name']);
-        this.index = properties['index'];
-        this.color = (properties['color']==null? window.getDefaultColor(this.index) : properties['color']);
-        this.changeListener = changeListener;
+window._rainbow = function(numOfSteps, step) {
+    // This function generates vibrant, "evenly spaced" colours (i.e. no clustering). This is ideal for creating easily distinguishable vibrant markers in Google Maps and other apps.
+    // Adam Cole, 2011-Sept-14
+    // HSV to RBG adapted from: http://mjijackson.com/2008/02/rgb-to-hsl-and-rgb-to-hsv-color-model-conversion-algorithms-in-javascript
+    var r, g, b;
+    var h = step / numOfSteps;
+    var i = ~~(h * 6);
+    var f = h * 6 - i;
+    var q = 1 - f;
+    switch(i % 6){
+        case 0: r = 1; g = f; b = 0; break;
+        case 1: r = q; g = 1; b = 0; break;
+        case 2: r = 0; g = 1; b = f; break;
+        case 3: r = 0; g = q; b = 1; break;
+        case 4: r = f; g = 0; b = 1; break;
+        case 5: r = 1; g = 0; b = q; break;
+    }
+    var c = "#" + ("00" + (~ ~(r * 255)).toString(16)).slice(-2) + ("00" + (~ ~(g * 255)).toString(16)).slice(-2) + ("00" + (~ ~(b * 255)).toString(16)).slice(-2);
+    return (c);
+}
+
+window.initClassColors = function(numColors) {
+    window.defaultColors = [];
+    for(var c=0; c<numColors; c++) {
+        window.defaultColors.push(
+            window._rainbow(numColors, c)
+        );
     }
 
-    getMarkup() {
+    // shuffle order for easier discrimination
+    window.shuffle(window.defaultColors);
+};
+
+
+class LabelClass {
+    constructor(classID, properties, parent) {
+        this.classID = classID;
+        this.name = (properties['name']===null || properties['name'] === undefined ? '[Label Class '+this.classID+']' : properties['name']);
+        this.index = properties['index'];
+        this.color = (properties['color']===null  || properties['color'] === undefined ? window.defaultColors[this.index] : properties['color']);
+
+        // flip active foreground color if background is too bright
+        this.darkForeground = (window.getBrightness(this.color) >= 92);
+        this.parent = parent;
+    }
+
+    getMarkup(altStyle) {
+
+        if(altStyle) {
+            if(this.markup_alt != undefined && this.markup_alt != null) return this.markup_alt;
+        } else {
+            if(this.markup != undefined && this.markup != null) return this.markup;
+        }
+
         var self = this;
         var name = this.name;
         if(this.index >= 0 && this.index < 9) {
             name = '(' + (this.index+1) + ') ' + this.name;
         }
-        var markup = $('<div class="label-class-legend legend-inactive" id="labelLegend_'+this.classID+'" style="background:' + this.color + '"><span class="label-text">'+name+'</span></div>');
+        var foregroundStyle = '';
+        if(altStyle || this.darkForeground) {
+            foregroundStyle = 'color:black;';
+        }
+        var legendInactive = 'legend-inactive';
+        if(this.parent.getActiveClassID() === this.classID) legendInactive = '';
 
+        var id = 'labelLegend_' + this.classID;
+        var colorStyle = 'background:' + this.color;
+        if(altStyle) {
+            id = 'labelLegend_alt_' + this.classID;
+            var markup = $('<div class="label-class-legend ' + legendInactive + '" id="' + id + '" style="'+foregroundStyle + '"><div class="legend-color-dot" style="' + colorStyle + '"></div><span class="label-text">'+name+'</span></div>');
+        } else {
+            var markup = $('<div class="label-class-legend ' + legendInactive + '" id="' + id + '" style="'+foregroundStyle + colorStyle + '"><span class="label-text">'+name+'</span></div>');
+        }
+        
         // setup click handler to activate label class
         markup.click(function() {
             if(window.uiBlocked) return;
-            self.changeListener.setActiveClass(self);
+            self.parent.setActiveClass(self);
         });
 
         // listener for keypress if in [1, 9]
@@ -35,7 +107,7 @@ class LabelClass {
                 try {
                     var key = parseInt(String.fromCharCode(event.which));
                     if(key == self.index+1) {
-                        self.changeListener.setActiveClass(self);
+                        self.parent.setActiveClass(self);
 
                         window.dataHandler.renderAll();
                     }
@@ -45,7 +117,79 @@ class LabelClass {
             });
         }
 
+        // save for further use
+        if(altStyle) this.markup_alt = markup;
+        else this.markup = markup;
+
         return markup;
+    }
+}
+
+
+
+class LabelClassGroup {
+    constructor(id, properties, parent) {
+        this.id = id;
+        this.parent = parent;
+        this.children = [];
+        this.labelClasses = {};
+        this._parse_properties(properties);
+    }
+
+    _parse_properties(properties) {
+        this.name = properties['name'];
+        this.color = properties['color'];
+
+        // append children in order
+        for(var key in properties['entries']) {
+
+            var nextItem = window.parseClassdefEntry(key, properties['entries'][key], this);
+            if(nextItem === null) continue;
+
+            this.children.push(nextItem);
+            if(nextItem instanceof LabelClass) {
+                this.labelClasses[key] = nextItem;
+            } else {
+                // append label class group's entries
+                this.labelClasses = {...this.labelClasses, ...nextItem.labelClasses};
+            }
+        }
+    }
+
+    getMarkup() {
+        var markup = $('<div class="labelGroup"></div>');
+        var childrenDiv = $('<div class="labelGroup-children"></div>');
+
+        // append all children
+        for(var c=0; c<this.children.length; c++) {
+            childrenDiv.append($(this.children[c].getMarkup()));
+        }
+
+        // expand/collapse on header click
+        if(this.name != null && this.name != undefined) {
+            var markupHeader = $('<h3 class="expanded">' + this.name + '</h3>');
+            markupHeader.click(function() {
+                $(this).toggleClass('expanded');
+                if(childrenDiv.is(':visible')) {
+                    childrenDiv.slideUp();
+                } else {
+                    childrenDiv.slideDown();
+                }
+            });
+            markup.append(markupHeader);
+        }
+
+        markup.append(childrenDiv);
+
+        return markup;
+    }
+
+    getActiveClassID() {
+        return this.parent.getActiveClassID();
+    }
+
+    setActiveClass(labelClassInstance) {
+        this.parent.setActiveClass(labelClassInstance);
     }
 }
 
@@ -54,47 +198,35 @@ class LabelClassHandler {
     constructor(classLegendDiv) {
         this.classLegendDiv = classLegendDiv;
         this._setupLabelClasses();
-        this._buildLegend();
 
         this.setActiveClass(this.labelClasses[Object.keys(this.labelClasses)[0]]);
     }
 
     _setupLabelClasses() {
-        // creates LabelClass instances in numeric order according to the class index (TODO: allow customizable order?)
+        // parse label classes and class groups
         this.labelClasses = {};
 
-        // this.order = [];
-        // this.order.sort(function(a, b) {
-        //     if(a['index'] < b['index']) {
-        //         return -1;
-        //     } else if(a['index'] > b['index']) {
-        //         return 1;
-        //     } else {
-        //         return 0;
-        //     }
-        // });
+        // initialize default rainbow colors
+        window.initClassColors(window.classes.numClasses)
 
-        // iterate over label classes
-        var counter = 0;
-        for(var c in window.classes) {
-            if(window.classes[c]['index'] == null) {
-                window.classes[c]['index'] = counter++;
+        for(var c in window.classes['entries']) {
+            var nextItem = window.parseClassdefEntry(c, window.classes['entries'][c], this);
+            if(nextItem === null) continue;
+
+            if(nextItem instanceof LabelClass) {
+                this.labelClasses[c] = nextItem;
+            } else {
+                // append label class group's entries
+                this.labelClasses = {...this.labelClasses, ...nextItem.labelClasses};
             }
-            var nextClass = new LabelClass(c, window.classes[c], this);
-            this.labelClasses[c] = nextClass;
+
+            // append to div
+            this.classLegendDiv.append(nextItem.getMarkup());
         }
     }
 
-    _buildLegend() {
-        // this.order.length = 0;
-        $(this.classLegendDiv).empty();
-        for(var key in this.labelClasses) {
-            var lcInstance = this.labelClasses[key];
-            var markup = $(lcInstance.getMarkup());
-            $(this.classLegendDiv).append(markup);
-        }
-
-        //TODO: order
+    getClass(id) {
+        return this.labelClasses[id];
     }
 
     getActiveClass() {
@@ -133,6 +265,7 @@ class LabelClassHandler {
         // reset style of currently active class
         if(this.activeClass != null) {
             $('#labelLegend_'+this.activeClass.classID).toggleClass('legend-inactive');
+            $('#labelLegend_alt_'+this.activeClass.classID).toggleClass('legend-inactive');
         }
 
         this.activeClass = labelClassInstance;
@@ -140,6 +273,7 @@ class LabelClassHandler {
         // apply style to new active class
         if(this.activeClass != null) {
             $('#labelLegend_'+this.activeClass.classID).toggleClass('legend-inactive');
+            $('#labelLegend_alt_'+this.activeClass.classID).toggleClass('legend-inactive');
         }
     }
 }

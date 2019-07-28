@@ -80,6 +80,8 @@ class AbstractRenderElement {
     getProperty(propertyName) {
         if(this.hasOwnProperty(propertyName)) {
             return this[propertyName];
+        } else if(this.style.hasOwnProperty(propertyName)) {
+            return this.style[propertyName];
         }
         return null;
     }
@@ -807,9 +809,9 @@ class BorderStrokeElement extends AbstractRenderElement {
     */
     constructor(id, text, style, unsure, zIndex) {
         super(id, style, zIndex);
-        // this.color = strokeColor;
-        // this.lineWidth = lineWidth;
-        // this.lineDash = (lineDash == null? [] : lineDash);
+        if(this.style.textColor == null || this.style.textColor == undefined) {
+            this.style['textColor'] = window.styles.hoverText.text.color;
+        }
         this.text = text;
         this.unsure = unsure;
         this.changed = true;        // always true; we want to collect all classification entries, since user will screen them anyway
@@ -861,7 +863,7 @@ class BorderStrokeElement extends AbstractRenderElement {
             dimensions = [dimensions.width + 8, dimensions.height * scaleFactors[1]]
             ctx.fillStyle = (this.style.strokeColor == null ? '#929292' : this.style.strokeColor);
             ctx.fillRect(coords[0], coords[3] - dimensions[1]/2 - 4, dimensions[0], dimensions[1] + 8);
-            ctx.fillStyle = window.styles.hoverText.text.color;
+            ctx.fillStyle = this.style.textColor;
             ctx.fillText(text, coords[0] + 4, coords[3] - 4);
         }
     }
@@ -1168,8 +1170,8 @@ class MiniMap extends AbstractRenderElement {
         ctx.strokeStyle = window.styles.minimap.background.strokeColor;
         ctx.lineWidth = window.styles.minimap.background.lineWidth;
         ctx.setLineDash(window.styles.minimap.background.lineDash);
-        roundRect(ctx, this.pos_abs[0] - 2, this.pos_abs[1] - 2,
-            this.pos_abs[2] + 4, this.pos_abs[3] + 4,
+        roundRect(ctx, this.pos_abs[0] - ctx.lineWidth/2, this.pos_abs[1] - ctx.lineWidth/2,
+            this.pos_abs[2] + ctx.lineWidth, this.pos_abs[3] + ctx.lineWidth,
             5, false, true);
     }
 }
