@@ -49,7 +49,7 @@ window.initClassColors = function(numColors) {
     }
 
     // shuffle order for easier discrimination
-    window.shuffle(window.defaultColors);
+    // window.shuffle(window.defaultColors);    //TODO: gets re-shuffled at load, which is confusing
 };
 
 
@@ -63,6 +63,10 @@ class LabelClass {
         // flip active foreground color if background is too bright
         this.darkForeground = (window.getBrightness(this.color) >= 92);
         this.parent = parent;
+
+        // markups
+        this.markup = null;
+        this.markup_alt = null;
     }
 
     getMarkup(altStyle) {
@@ -122,6 +126,45 @@ class LabelClass {
         else this.markup = markup;
 
         return markup;
+    }
+
+
+    filter(keywords) {
+        /*
+            Shows (or hides) this entry if it matches (or does not match)
+            one or more of the keywords specified according to the Leven-
+            shtein distance.
+        */
+        if(keywords === null || keywords === undefined) {
+            if(this.markup != null) {
+                this.markup.show();
+            }
+            if(this.markup_alt != null) {
+                this.markup_alt.show();
+            }
+            return;
+        }
+        var target = this.name.toLowerCase();
+        for(var k=0; k<keywords.length; k++) {
+            var kw = keywords[k].toLowerCase();
+            if(target.includes(kw) || window.levDist(target, kw) <= 3) {
+                if(this.markup != null) {
+                    this.markup.show();
+                }
+                if(this.markup_alt != null) {
+                    this.markup_alt.show();
+                }
+                return;
+            }
+        }
+
+        // invisible
+        if(this.markup != null) {
+            this.markup.hide();
+        }
+        if(this.markup_alt != null) {
+            this.markup_alt.hide();
+        }
     }
 }
 
@@ -274,6 +317,18 @@ class LabelClassHandler {
         if(this.activeClass != null) {
             $('#labelLegend_'+this.activeClass.classID).toggleClass('legend-inactive');
             $('#labelLegend_alt_'+this.activeClass.classID).toggleClass('legend-inactive');
+        }
+    }
+
+
+    filter(keywords) {
+        /*
+            Hides label class entries and groups if they do not match
+            one or more of the keywords given.
+            Matching is done through the Levenshtein distance.
+        */
+        for(var key in this.labelClasses) {
+            this.labelClasses[key].filter(keywords);
         }
     }
 }

@@ -124,6 +124,69 @@ $(document).ready(function() {
     }
 
 
+    // search function for label classes
+    window.filterLabels = function() {
+        var keywords = $('#labelclass-search-box').val();
+        if(keywords != null && keywords != undefined) {
+            keywords = keywords.split(/s[\s ]+/);
+        }
+        if(keywords.length === 0 || (keywords.length === 1 && keywords[0] === '')) keywords = null;
+        window.labelClassHandler.filter(keywords);
+    }
+
+    // Levenshtein distance for word comparison
+    window.levDist = function(s, t) {
+        var d = []; //2d matrix
+    
+        // Step 1
+        var n = s.length;
+        var m = t.length;
+    
+        if (n == 0) return m;
+        if (m == 0) return n;
+    
+        //Create an array of arrays in javascript (a descending loop is quicker)
+        for (var i = n; i >= 0; i--) d[i] = [];
+    
+        // Step 2
+        for (var i = n; i >= 0; i--) d[i][0] = i;
+        for (var j = m; j >= 0; j--) d[0][j] = j;
+    
+        // Step 3
+        for (var i = 1; i <= n; i++) {
+            var s_i = s.charAt(i - 1);
+    
+            // Step 4
+            for (var j = 1; j <= m; j++) {
+    
+                //Check the jagged ld total so far
+                if (i == j && d[i][j] > 4) return n;
+    
+                var t_j = t.charAt(j - 1);
+                var cost = (s_i == t_j) ? 0 : 1; // Step 5
+    
+                //Calculate the minimum
+                var mi = d[i - 1][j] + 1;
+                var b = d[i][j - 1] + 1;
+                var c = d[i - 1][j - 1] + cost;
+    
+                if (b < mi) mi = b;
+                if (c < mi) mi = c;
+    
+                d[i][j] = mi; // Step 6
+    
+                //Damerau transposition
+                if (i > 1 && j > 1 && s_i == t.charAt(j - 2) && s.charAt(i - 2) == t_j) {
+                    d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + cost);
+                }
+            }
+        }
+    
+        // Step 7
+        return d[n][m];
+    }
+
+
     // login check
     var promise = $.ajax({
         url: '/loginCheck',
@@ -150,6 +213,20 @@ $(document).ready(function() {
     // set up label class handler
     promise = promise.done(function() {
         window.labelClassHandler = new LabelClassHandler($('#legend-entries'));
+
+        // search function
+        $('#labelclass-search-box').on({
+            keyup: window.filterLabels,
+            search: window.filterLabels,
+            focusin: function() {
+                window.shortcutsDisabled = true;
+                window.filterLabels();
+            },
+            focusout: function() {
+                window.shortcutsDisabled = false;
+                window.filterLabels();
+            }
+        });
     });
 
     // set up data handler
@@ -186,6 +263,7 @@ $(document).ready(function() {
         };
         window.interfaceControls.action = window.interfaceControls.actions.DO_NOTHING;
         window.interfaceControls.showLoupe = false;
+        window.shortcutsDisabled = false;       // if true, keystrokes like "A" for "label all" are disabled
         window.setUIblocked(true);
 
 
@@ -224,27 +302,11 @@ $(document).ready(function() {
             });
 
             // label class entries
-            $('#legend-entries').css('height', gallery.height() + 'px');
+            $('#legend-entries').css('height', gallery.height() - 60 + 'px');   // -60 for search bar
 
             window.dataHandler.renderAll();
         }
         $(window).resize(windowResized);
-
-        // // make class panel grow and shrink on mouseover/mouseleave
-        // $('#tools-container').on('mouseenter', function() {
-        //     if(window.uiBlocked || $(this).is(':animated')) return;
-        //     $('#tools-container').animate({
-        //         right: 0
-        //     });
-        // });
-        // $('#tools-container').on('mouseleave', function() {
-        //     if(window.uiBlocked) return;
-        //     let offset = -$(this).outerWidth() + 40;
-        //     $('#tools-container').animate({
-        //         right: offset
-        //     });
-        // });
-        // $('#tools-container').css('right', -$('#tools-container').outerWidth() + 40);
 
 
         // overlay HUD

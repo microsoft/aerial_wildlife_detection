@@ -39,7 +39,7 @@ class DataHandler {
             parentElement.append(removeAnnoBtn);
 
             $(window).keyup(function(event) {
-                if(window.uiBlocked) return;
+                if(window.uiBlocked || window.shortcutsDisabled) return;
                 var key = String.fromCharCode(event.which);
                 if(key === '+' || key === 'W') {
                     window.interfaceControls.action = window.interfaceControls.actions.ADD_ANNOTATION;
@@ -56,7 +56,7 @@ class DataHandler {
         if(window.annotationType != 'labels' || window.enableEmptyClass) {
             parentElement.append($('<button class="btn btn-sm btn-warning" id="clearAll-button" onclick="window.dataHandler.clearLabelInAll()">Clear All</button>'));
             $(window).keyup(function(event) {
-                if(window.uiBlocked) return;
+                if(window.uiBlocked || window.shortcutsDisabled) return;
                 if(String.fromCharCode(event.which) === 'C') {
                     self.clearLabelInAll();
                 }
@@ -66,7 +66,7 @@ class DataHandler {
         parentElement.append($('<button class="btn btn-sm btn-primary" id="labelAll-button" onclick="window.dataHandler.assignLabelToAll()">Label All</button>'));
         parentElement.append($('<button class="btn btn-sm btn-warning" id="unsure-button" onclick="window.dataHandler.toggleActiveAnnotationsUnsure()">Unsure</button>'));
         $(window).keyup(function(event) {
-            if(window.uiBlocked) return;
+            if(window.uiBlocked || window.shortcutsDisabled) return;
             if(String.fromCharCode(event.which) === 'A') {
                 self.assignLabelToAll();
             } else if(event.which === 46 || event.which === 8) {
@@ -116,7 +116,7 @@ class DataHandler {
         // next and previous batch buttons
         parentElement.append($('<button id="previous-button" class="btn btn-sm btn-primary float-left" onclick="window.dataHandler.previousBatch()">Previous</button>'));
         $(window).keyup(function(event) {
-            if(window.uiBlocked) return;
+            if(window.uiBlocked || window.shortcutsDisabled) return;
             if(event.which === 37) {
                 // left arrow key
                 //TODO: confirmation request if no annotations got changed by the user?
@@ -126,7 +126,7 @@ class DataHandler {
 
         parentElement.append($('<button id="next-button" class="btn btn-sm btn-primary float-right" onclick="window.dataHandler.nextBatch()">Next</button>'));
         $(window).keyup(function(event) {
-            if(window.uiBlocked) return;
+            if(window.uiBlocked || window.shortcutsDisabled) return;
             if(event.which === 39) {
                 // right arrow key
                 //TODO: confirmation request if no annotations got changed by the user?
@@ -136,7 +136,7 @@ class DataHandler {
 
         // hide predictions (annotations) if shift (ctrl) key held down
         $(window).keydown(function(event) {
-            if(window.uiBlocked) return;
+            if(window.uiBlocked || window.shortcutsDisabled) return;
             if(event.which === 16) {
                 self.setPredictionsVisible(false);
             } else if(event.which === 17) {
@@ -144,7 +144,7 @@ class DataHandler {
             }
         });
         $(window).keyup(function(event) {
-            if(window.uiBlocked) return;
+            if(window.uiBlocked || window.shortcutsDisabled) return;
             if(event.which === 16) {
                 self.setPredictionsVisible(true);
             } else if(event.which === 17) {

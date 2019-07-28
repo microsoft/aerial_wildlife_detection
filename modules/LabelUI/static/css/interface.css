@@ -115,9 +115,16 @@ canvas {
     padding-top: 75px;
     padding-bottom: 10px;
 }
+#labelclass-search-box {
+    margin: 10px;
+    width: calc(100% - 20px);
+    border-radius: 5px;
+    padding-left: 5px;
+}
 #legend-entries {
     padding: 10px;
     overflow-y: auto;
+    height: 100%;
 }
 .legend-color-dot {
     display: inline-block;

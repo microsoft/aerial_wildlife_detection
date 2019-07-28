@@ -467,7 +467,7 @@
         this.viewport.addRenderElement(this.hoverTextElement);
 
         // click handler
-        this.markup.click(function(event) {
+        this.markup.mouseup(function(event) {
             if(window.uiBlocked) return;
             else if(window.interfaceControls.action === window.interfaceControls.actions.DO_NOTHING) {
                 if(window.unsureButtonActive) {
@@ -492,18 +492,24 @@
                 pos[0] += 0.2
             }
             self.hoverTextElement.position = pos;
-            if(event.altKey) {
-                self.hoverTextElement.setProperty('text', 'mark as unlabeled');
-                self.hoverTextElement.setProperty('fillColor', window.styles.hoverText.box.fill);
-            } else if(window.unsureButtonActive) {
-                self.hoverTextElement.setProperty('text', 'toggle unsure');
-                self.hoverTextElement.setProperty('fillColor', window.styles.hoverText.box.fill);
-            } else if(self.labelInstance == null) {
-                self.hoverTextElement.setProperty('text', 'set label to "' + window.labelClassHandler.getActiveClassName() + '"');
-                self.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getActiveColor());
-            } else if(self.labelInstance.label != window.labelClassHandler.getActiveClassID()) {
-                self.hoverTextElement.setProperty('text', 'change label to "' + window.labelClassHandler.getActiveClassName() + '"');
-                self.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getActiveColor());
+            if(window.interfaceControls.action in [window.interfaceControls.actions.DO_NOTHING,
+                window.interfaceControls.actions.ADD_ANNOTATION,
+                window.interfaceControls.actions.REMOVE_ANNOTATIONS]) {
+                if(event.altKey) {
+                    self.hoverTextElement.setProperty('text', 'mark as unlabeled');
+                    self.hoverTextElement.setProperty('fillColor', window.styles.hoverText.box.fill);
+                } else if(window.unsureButtonActive) {
+                    self.hoverTextElement.setProperty('text', 'toggle unsure');
+                    self.hoverTextElement.setProperty('fillColor', window.styles.hoverText.box.fill);
+                } else if(self.labelInstance == null) {
+                    self.hoverTextElement.setProperty('text', 'set label to "' + window.labelClassHandler.getActiveClassName() + '"');
+                    self.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getActiveColor());
+                } else if(self.labelInstance.label != window.labelClassHandler.getActiveClassID()) {
+                    self.hoverTextElement.setProperty('text', 'change label to "' + window.labelClassHandler.getActiveClassName() + '"');
+                    self.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getActiveColor());
+                } else {
+                    self.hoverTextElement.setProperty('text', null);
+                }
             } else {
                 self.hoverTextElement.setProperty('text', null);
             }

@@ -27,7 +27,7 @@ window.showTutorial = function(autostart) {
     }
     let interfaceElements = [
         [ '#gallery', 'View the next image(s) here.', 'top' ],
-        [ '#viewport-controls', 'Zoom in/out, show loupe, etc.', 'left' ],
+        [ '#viewport-controls', 'Zoom in/out, show loupe, etc.', 'top' ],
         [ '#legend-entries', 'Select the correct label class (or press its number on the keyboard).', 'bottom' ],
         [ '#add-annotation', 'Click to add a new annotation (hint: you can also use the W key).', 'top' ],
         [ '#gallery', addAnnotationString, 'top' ],
