@@ -87,6 +87,9 @@ _AIWorker_ modules need to be launched using Celery:
 ```
 
 
+## Writing your own AI model
+AIde is fully modular and supports custom AI models, as long as they provide a Python interface and can handle the different annotation and prediction types appropriately. See [here](doc/custom_model.md) for details.
+
 
 
 # Contributing

@@ -108,8 +108,8 @@ canvas {
     float: right;
     height: calc(100vh - 140px);
     color: white;
-    width: 320px;
-    min-width: 320px;
+    width: 400px;
+    min-width: 400px;
     padding-left: 5px;
     padding-right: 5px;
     padding-top: 75px;
@@ -135,19 +135,19 @@ canvas {
     margin-right: 5px;
 }
 .label-class-legend {
-    padding: 4px;
+    padding: 2px;
     font-weight: bold;
     color: white;
     cursor: pointer;
-    margin: 6px;
-    border-radius: 4px;
+    margin: 10px;
+    border-radius: 2px;
     padding-left: 10px;
 }
 .label-text {
     font-size: 14px;
 }
 .labelGroup {
-    margin-bottom: 10px;
+    margin-bottom: 30px;
 }
 .labelGroup > h3 {
     cursor: pointer;

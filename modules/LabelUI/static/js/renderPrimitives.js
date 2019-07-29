@@ -265,11 +265,10 @@ class HoverTextElement extends AbstractRenderElement {
         super.render(ctx, scaleFun);
         if(this.text == null) return;
         var hoverPos = scaleFun(this.position, this.reference);
-        var scaleFactors = scaleFun([0, 0, ctx.canvas.width, ctx.canvas.height], this.reference, true).slice(2,4);
-        ctx.font = window.styles.hoverText.text.fontSizePix * scaleFactors[0] + 'px ' + window.styles.hoverText.text.fontStyle;
+        ctx.font = window.styles.hoverText.text.fontSizePix + 'px ' + window.styles.hoverText.text.fontStyle;
         var dimensions = ctx.measureText(this.text);
         dimensions.height = window.styles.hoverText.box.height;
-        dimensions = [dimensions.width + 8, dimensions.height * scaleFactors[1]];
+        dimensions = [dimensions.width + 8, dimensions.height];
         var offsetH = window.styles.hoverText.offsetH;
         
         if(this.style.fillColor != null) {
@@ -784,6 +783,7 @@ class RectangleElement extends PointElement {
             ctx.strokeRect(coords[0], coords[1], coords[2], coords[3]);
             ctx.closePath();
         }
+        // console.log(scaleFun([0,0,0,this.style.lineWidth], 'canvas'))
         if(this.unsure) {
             var text = 'unsure';
             var scaleFactors = scaleFun([0,0,ctx.canvas.width,ctx.canvas.height], 'canvas', true).slice(2,4);
@@ -1151,8 +1151,9 @@ class MiniMap extends AbstractRenderElement {
         // elements
         for(var e=0; e<this.parentViewport.renderStack.length; e++) {
 
-            //TODO: dirty hack to avoid rendering HoverTextElement instances
-            if(this.parentViewport.renderStack[e].hasOwnProperty('text')) continue;
+            //TODO: dirty hack to avoid rendering HoverTextElement instances and resize handles
+            if(this.parentViewport.renderStack[e].hasOwnProperty('text') ||
+                this.parentViewport.renderStack[e] instanceof ElementGroup) continue;
             this.parentViewport.renderStack[e].render(ctx, (this.minimapScaleFun).bind(this));
         }
 

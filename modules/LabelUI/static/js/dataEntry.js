@@ -489,8 +489,9 @@
 
             // offset tooltip position if loupe is active
             if(window.interfaceControls.showLoupe) {
-                pos[0] += 0.2
+                pos[0] += 0.2;  //TODO: does not account for zooming in
             }
+
             self.hoverTextElement.position = pos;
             if(window.interfaceControls.action in [window.interfaceControls.actions.DO_NOTHING,
                 window.interfaceControls.actions.ADD_ANNOTATION,

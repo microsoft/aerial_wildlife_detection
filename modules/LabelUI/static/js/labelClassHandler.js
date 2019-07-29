@@ -142,7 +142,7 @@ class LabelClass {
             if(this.markup_alt != null) {
                 this.markup_alt.show();
             }
-            return;
+            return true;
         }
         var target = this.name.toLowerCase();
         for(var k=0; k<keywords.length; k++) {
@@ -154,7 +154,7 @@ class LabelClass {
                 if(this.markup_alt != null) {
                     this.markup_alt.show();
                 }
-                return;
+                return true;
             }
         }
 
@@ -165,6 +165,7 @@ class LabelClass {
         if(this.markup_alt != null) {
             this.markup_alt.hide();
         }
+        return false;
     }
 }
 
@@ -176,6 +177,7 @@ class LabelClassGroup {
         this.parent = parent;
         this.children = [];
         this.labelClasses = {};
+        this.markup = null;
         this._parse_properties(properties);
     }
 
@@ -200,7 +202,9 @@ class LabelClassGroup {
     }
 
     getMarkup() {
-        var markup = $('<div class="labelGroup"></div>');
+        if(this.markup != null) return this.markup;
+
+        this.markup = $('<div class="labelGroup"></div>');
         var childrenDiv = $('<div class="labelGroup-children"></div>');
 
         // append all children
@@ -219,12 +223,12 @@ class LabelClassGroup {
                     childrenDiv.slideDown();
                 }
             });
-            markup.append(markupHeader);
+            this.markup.append(markupHeader);
         }
 
-        markup.append(childrenDiv);
+        this.markup.append(childrenDiv);
 
-        return markup;
+        return this.markup;
     }
 
     getActiveClassID() {
@@ -234,12 +238,34 @@ class LabelClassGroup {
     setActiveClass(labelClassInstance) {
         this.parent.setActiveClass(labelClassInstance);
     }
+
+    filter(keywords) {
+        /*
+            Delegates the command to the children and awaits their
+            response. If none of the children are visible after
+            filtering, the group itself is being hidden. Propagates
+            the state of itself to the parent through the return
+            statement.
+        */
+        var childVisible = false;
+        for(var c=0; c<this.children.length; c++) {
+            if(this.children[c].filter(keywords)) {
+                childVisible = true;
+            }
+        }
+
+        // show or hide group depending on children's visibility
+        if(childVisible) this.markup.show();
+        else this.markup.hide();
+        return childVisible;
+    }
 }
 
 
 class LabelClassHandler {
     constructor(classLegendDiv) {
         this.classLegendDiv = classLegendDiv;
+        this.items = [];    // may be both labelclasses and groups
         this._setupLabelClasses();
 
         this.setActiveClass(this.labelClasses[Object.keys(this.labelClasses)[0]]);
@@ -262,6 +288,7 @@ class LabelClassHandler {
                 // append label class group's entries
                 this.labelClasses = {...this.labelClasses, ...nextItem.labelClasses};
             }
+            this.items.push(nextItem);
 
             // append to div
             this.classLegendDiv.append(nextItem.getMarkup());
@@ -327,8 +354,8 @@ class LabelClassHandler {
             one or more of the keywords given.
             Matching is done through the Levenshtein distance.
         */
-        for(var key in this.labelClasses) {
-            this.labelClasses[key].filter(keywords);
+        for(var c=0; c<this.items.length; c++) {
+            this.items[c].filter(keywords);
         }
     }
 }

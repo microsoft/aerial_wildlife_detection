@@ -295,6 +295,12 @@ $(document).ready(function() {
             };
             $('.entry').css(style);
 
+            // update actual canvas width and height
+            $('canvas').each(function() {
+                this.width = width;
+                this.height = height;
+            })
+
             // gallery: account for width, center entries
             var toolsWidth = $('#tools-container').width() + $('#viewport-controls').width();
             $('#gallery').css({
@@ -307,6 +313,28 @@ $(document).ready(function() {
             window.dataHandler.renderAll();
         }
         $(window).resize(windowResized);
+
+
+        // // make tools container resizeable
+        // $('#tools-container-resize-handle').on({
+        //     mousedown: function(event) {
+        //         this.currentX = event.pageX;
+        //     },
+        //     mousemove: function(event) {
+        //         if(this.currentX != undefined && this.currentX != null) {
+        //             var offset = this.currentX - event.pageX;
+        //             var tc = $('#tools-container');
+        //             tc.css('width', tc.css('width') + offset);
+        //             windowResized();
+        //         }
+        //     },
+        //     mouseup: function() {
+        //         this.currentX = undefined;
+        //     },
+        //     mouseleave: function() {
+        //         this.currentX = undefined;
+        //     }
+        // });
 
 
         // overlay HUD
