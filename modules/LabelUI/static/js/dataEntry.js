@@ -86,10 +86,6 @@
         throw Error('Not implemented.');
     }
 
-    getAnnotationControls() {
-        throw Error('Not implemented.');
-    }
-
     _parseLabels(properties) {
         /*
             Iterates through properties object's entries "predictions" and "annotations"
@@ -412,10 +408,6 @@
         return 'label';
     }
 
-    getAnnotationControls() {
-        return null;
-    }
-
     _addElement(element) {
         // allow only one label for classification entry
         var key = element['annotationID'];
@@ -619,138 +611,6 @@ class PointAnnotationEntry extends AbstractDataEntry {
         return 'point';
     }
 
-    getAnnotationControls() {
-        return null;
-    }
-
-    _setup_markup() {
-        var self = this;
-        super._setup_markup();
-
-        var htStyle = {
-            fillColor: window.styles.hoverText.box.fill,
-            textColor: window.styles.hoverText.text.color,
-            strokeColor: window.styles.hoverText.box.stroke.color,
-            lineWidth: window.styles.hoverText.box.stroke.lineWidth
-        };
-        this.hoverTextElement = new HoverTextElement(this.entryID + '_hoverText', null, [0, 0.99], 'canvas',
-            htStyle, 5);
-        this.viewport.addRenderElement(this.hoverTextElement);
-
-        // interaction handlers
-        this.canvas.mousemove(function(event) {
-            self._canvas_mousein(event);
-        });
-        this.canvas.keydown(function(event) {
-            //TODO: make hover text change when delete key is held down
-            self._canvas_mousein(event);
-        });
-        this.canvas.mouseleave(function(event) {
-            self._canvas_mouseout(event);
-        });
-        this.canvas.mouseup(function(event) {
-            self._canvas_mouseup(event);
-        });
-    }
-
-
-    /* canvas interaction functionalities */
-    _getClosestPoint(coordinates) {
-        /*
-            Returns the point whose coordinates form the closest Euclidean
-            distance to the provided coordinates, if within a default
-            tolerance threshold. Otherwise returns null.
-        */
-        //TODO: tolerance is not converted to 0-1 canvas scale...
-        var minDist = 1e9;
-        var argMin = null;
-        for(var key in this.predictions) {
-            if(this.predictions[key].getRenderElement().hasOwnProperty('x')) {
-                var dist = this.predictions[key].getRenderElement().euclideanDistance(coordinates);
-                if((dist < minDist) && (dist <= window.annotationProximityTolerance)) {
-                    minDist = dist;
-                    argMin = this.predictions[key];
-                }
-            }
-        }
-        for(var key in this.annotations) {
-            if(this.annotations[key].getRenderElement().hasOwnProperty('x')) {
-                var dist = this.annotations[key].getRenderElement().euclideanDistance(coordinates);
-                if((dist < minDist) && (dist <= window.annotationProximityTolerance)) {
-                    minDist = dist;
-                    argMin = this.annotations[key];
-                }
-            }
-        }
-        return argMin;
-    }
-
-    _canvas_mousein(event) {
-        var coords = this.viewport.getRelativeCoordinates(event, 'validArea');
-        this.hoverTextElement.setProperty('text', null);
-        // this.hoverTextElement.setProperty('position', coords);
-
-        // check if another point is close-by and show message
-        var closest = this._getClosestPoint(coords);
-        if(closest != null) {
-            // point found
-            if(event.altKey) {
-                this.hoverTextElement.setProperty('text', 'remove point');
-                this.hoverTextElement.setProperty('fillColor', window.styles.hoverText.box.fill);
-            } else if(closest['label'] != window.labelClassHandler.getActiveClassID()) {
-                this.hoverTextElement.setProperty('text', 'change to "' + window.labelClassHandler.getActiveClassName() + '"');
-                this.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getActiveColor());
-            }
-
-            // flip text color if needed
-            var htFill = this.hoverTextElement.getProperty('fillColor');
-            if(htFill != null && window.getBrightness(htFill) >= 92) {
-                this.hoverTextElement.setProperty('textColor', '#000000');
-            } else {
-                this.hoverTextElement.setProperty('textColor', '#FFFFFF');
-            }
-        }
-        this.render();
-    }
-
-    _canvas_mouseout(event) {
-        // clear hover text
-        this.hoverTextElement.setProperty('text', null);
-        this.render();
-    }
-
-    _canvas_mouseup(event) {
-        var coords = this.viewport.getRelativeCoordinates(event, 'validArea');
-        // check if another point is close-by
-        var closest = this._getClosestPoint(coords);
-        if(closest != null) {
-            // point found; alter or delete it
-            if(event.altKey) {
-                // remove point
-                //TODO: undo history?
-                this._removeElement(closest);
-            } else if(closest['label'] != window.labelClassHandler.getActiveClassID()) {
-                // change label of closest point
-                closest.setProperty('label', window.labelClassHandler.getActiveClassID());
-            }
-            // this._updateElement(closest);
-        } else if(!event.altKey) {
-            // no point in proximity; add new
-            var key = this['entryID'] + '_' + coords[0] + '_' + coords[1];
-            var props = {
-                'x': coords[0],
-                'y': coords[1],
-                'label': window.labelClassHandler.getActiveClassID()
-            };
-            var annotation = new Annotation(key, props, 'annotation');
-            this._addElement(annotation);
-        }
-        this.render();
-
-        window.dataHandler.updatePresentClasses();
-    }
-
-
     setLabel(label) {
         for(var key in this.annotations) {
             if(label == null) {
@@ -760,8 +620,255 @@ class PointAnnotationEntry extends AbstractDataEntry {
             }
         }
         this.render();
+        window.dataHandler.updatePresentClasses();
+    }
+
+    _setup_markup() {
+        var self = this;
+        super._setup_markup();
+        // this.canvas.css('cursor', 'pointer');
+
+        var htStyle = {
+            fillColor: window.styles.hoverText.box.fill,
+            textColor: window.styles.hoverText.text.color,
+            strokeColor: window.styles.hoverText.box.stroke.color,
+            lineWidth: window.styles.hoverText.box.stroke.lineWidth,
+            lineDash: []
+        };
+        this.hoverTextElement = new HoverTextElement(this.entryID + '_hoverText', null, [0, 0.99], 'canvas',
+            htStyle,
+            5);
+        this.viewport.addRenderElement(this.hoverTextElement);
+
+        // interaction handlers
+        this.viewport.addCallback(this.entryID, 'mousedown', (self._canvas_mousedown).bind(self));
+        this.viewport.addCallback(this.entryID, 'mousemove', (self._canvas_mousemove).bind(self));
+        this.viewport.addCallback(this.entryID, 'mouseup', (self._canvas_mouseup).bind(self));
+        this.viewport.addCallback(this.entryID, 'mouseleave', (self._canvas_mouseleave).bind(self));
+    }
+
+    _toggleActive(event) {
+        /*
+            Sets points active or inactive as follows:
+            - if a point is close enough to the event's coordinates:
+                - and is not active: it is turned active
+                - and is active: nothing happens
+                Any other point that is active _and_ is close enough to the point stays active.
+                Other points that are active and are not near the coordinates get deactivated,
+                unless the shift key is held down.
+            - if no point is near the coordinates, every single one is deactivated.
+        */
+        var coords = this.viewport.getRelativeCoordinates(event, 'validArea');
+        var tolerance = this.viewport.transformCoordinates([0,0,window.annotationProximityTolerance,0], 'canvas', true)[2];
+        var minDist = 1e9;
+        var argMin = null;
+        for(var key in this.annotations) {
+            var point = this.annotations[key].getRenderElement();
+            var dist = point.euclideanDistance(coords);
+            if(dist <= tolerance) {
+                if(dist < minDist) {
+                    minDist = dist;
+                    argMin = key;
+                }
+                if(!(event.shiftKey && this.annotations[key].isActive())) {
+                    // deactivate
+                    if(this.annotations[key].isVisible()) {
+                        this.annotations[key].setActive(false, this.viewport);
+                    }
+                }
+            }
+        }
+
+        // handle closest
+        if(argMin == null) {
+            // deactivate all
+            for(var key in this.annotations) {
+                if(this.annotations[key].isVisible()) {
+                    this.annotations[key].setActive(false, this.viewport);
+                }
+            }
+        } else if(this.annotations[argMin].isVisible()) {
+            // set closest one active
+            this.annotations[argMin].setActive(true, this.viewport);
+        }
+    }
+
+    _canvas_mouseout(event) {
+        // clear hover text
+        if(window.uiBlocked) return;
+        this.hoverTextElement.setProperty('text', null);
+        this.render();
+    }
+
+    _createAnnotation(event) {
+        var coords = this.viewport.getRelativeCoordinates(event, 'validArea');
+        var props = {
+            'x': coords[0],
+            'y': coords[1],
+            'label': window.labelClassHandler.getActiveClassID()
+        };
+        var anno = new Annotation(window.getRandomID(), props, 'annotation');
+        this._addElement(anno);
+        anno.getRenderElement().registerAsCallback(this.viewport);
+        anno.getRenderElement().setActive(true, this.viewport);
+        // manually fire mousedown event on annotation
+        anno.getRenderElement()._mousedown_event(event, this.viewport);
+    }
+
+    _deleteActiveAnnotations(event) {
+        var coords = this.viewport.getRelativeCoordinates(event, 'validArea');
+        var minDist = 1e9;
+        var argMin = null;
+        for(var key in this.annotations) {
+            var point = this.annotations[key].getRenderElement();
+            var dist = point.euclideanDistance(coords);
+            var tolerance = this.viewport.transformCoordinates([0,0,window.annotationProximityTolerance,0], 'canvas', true)[2];
+            if(dist <= tolerance) {
+                if(this.annotations[key].isActive()) {
+                    this.annotations[key].getRenderElement().deregisterAsCallback(this.viewport);
+                    this._removeElement(this.annotations[key]);
+                    return;
+                }
+                
+                if(dist < minDist) {
+                    minDist = dist;
+                    argMin = key;
+                }
+            }
+        }
+
+        if(argMin != null) {
+            // no active annotation found, but clicked within another one; delete it
+            this._removeElement(this.annotations[argMin]);
+        }
+        window.dataHandler.updatePresentClasses();
+    }
+
+    _canvas_mousedown(event) {
+        if(window.uiBlocked) return;
+        this.mouseDrag = true;
+
+        // check functionality
+        if(window.interfaceControls.action === window.interfaceControls.actions.ADD_ANNOTATION) {
+            // set all currently active points inactive
+            for(var key in this.annotations) {
+                if(this.annotations[key].isVisible()) {
+                    this.annotations[key].setActive(false, this.viewport);
+                }
+            }
+
+            // start creating a new point
+            this._createAnnotation(event);
+        }
+        this.render();
+    }
+
+    _canvas_mousemove(event) {
+        if(window.uiBlocked) return;
+        var coords = this.viewport.getRelativeCoordinates(event, 'canvas');
+
+        // update hover text
+        var hoverText = null;
+        switch(window.interfaceControls.action) {
+            case window.interfaceControls.actions.ADD_ANNOTATION:
+                hoverText = 'add new \"' + window.labelClassHandler.getActiveClassName() + '"';
+                this.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getActiveColor());
+                break;
+            case window.interfaceControls.actions.REMOVE_ANNOTATIONS:
+                var numActive = 0;
+                for(var key in this.annotations) {
+                    if(this.annotations[key].isActive()) numActive++;
+                }
+                if(numActive>0) {
+                    hoverText = 'Remove ' + numActive + ' annotation';
+                    if(numActive>1) hoverText += 's';
+                    this.hoverTextElement.setProperty('fillColor', window.styles.hoverText.box.fill);
+                }
+                break;
+            case window.interfaceControls.actions.DO_NOTHING:
+                // find point near coordinates
+                var anno = null;
+                var tolerance = this.viewport.transformCoordinates([0,0,window.annotationProximityTolerance,0], 'canvas', true)[2];
+                for(var key in this.annotations) {
+                    if(this.annotations[key].geometry.euclideanDistance(coords) <= tolerance) {
+                        anno = this.annotations[key];
+                    }
+                }
+                // set text
+                if(anno === undefined || anno === null) {
+                    hoverText = null;
+                    break;
+                }
+                if(anno.isActive() && anno.label != window.labelClassHandler.getActiveClassID()) {
+                    hoverText = 'Change label to "' + window.labelClassHandler.getActiveClassName() + '"';
+                    this.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getActiveColor());
+                } else {
+                    // show current class name of point
+                    hoverText = window.labelClassHandler.getName(anno.label);
+                    this.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getColor(anno.label));
+                }
+                break;
+        }
+        // this.hoverTextElement.setProperty('position', coords);
+
+        // flip text color if needed
+        var htFill = this.hoverTextElement.getProperty('fillColor');
+        if(htFill != null && window.getBrightness(htFill) >= 92) {
+            this.hoverTextElement.setProperty('textColor', '#000000');
+        } else {
+            this.hoverTextElement.setProperty('textColor', '#FFFFFF');
+        }
+
+        this.hoverTextElement.setProperty('text', hoverText);
+
+        this.render();
+    }
+
+    _canvas_mouseup(event) {
+        if(window.uiBlocked) return;
+        // this.mouseDrag = false;
+
+        // check functionality
+        if(window.interfaceControls.action == window.interfaceControls.actions.ADD_ANNOTATION) {
+            // new annotation completed
+            //TODO: may fire before other rectangle's events, making them unwantedly active while finishing new rect
+            // window.interfaceControls.action = window.interfaceControls.actions.DO_NOTHING;
+
+        } else if(window.interfaceControls.action == window.interfaceControls.actions.REMOVE_ANNOTATIONS) {
+            this._deleteActiveAnnotations(event);
+            // window.interfaceControls.action = window.interfaceControls.actions.DO_NOTHING;
+
+        } else if(window.interfaceControls.action == window.interfaceControls.actions.EDIT_ANNOTATION) {
+            // reset action
+            // window.interfaceControls.action = window.interfaceControls.actions.DO_NOTHING;
+
+        } else if(window.interfaceControls.action == window.interfaceControls.actions.DO_NOTHING) {
+            // update annotations to current label (if active)
+            var coords = this.viewport.getRelativeCoordinates(event, 'validArea');
+            var tolerance = this.viewport.transformCoordinates([0,0,window.annotationProximityTolerance,0], 'canvas', true)[2];
+            for(var key in this.annotations) {
+                if(this.annotations[key].isActive()) {
+                    if(event.shiftKey || this.annotations[key].getRenderElement().euclideanDistance(coords) <= tolerance) {
+                        this.annotations[key].setProperty('label', window.labelClassHandler.getActiveClassID());
+                    }
+                }
+            }
+
+            // activate or deactivate
+            this._toggleActive(event);
+
+            window.dataHandler.updatePresentClasses();
+        }
+
+        this.render();
 
         window.dataHandler.updatePresentClasses();
+    }
+
+    _canvas_mouseleave(event) {
+        if(window.uiBlocked) return;
+        this.hoverTextElement.setProperty('text', null);
+        this.render();
     }
 }
 
@@ -779,13 +886,6 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
 
     getAnnotationType() {
         return 'boundingBox';
-    }
-
-    getAnnotationControls() {
-        //TODO
-        return $('<div class="annotationControls">' +
-                '<button onclick=>Add box</button>' +
-                '</div>');
     }
 
     setLabel(label) {

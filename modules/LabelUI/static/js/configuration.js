@@ -32,7 +32,7 @@ window.loadConfiguration = function() {
     // }
 
     // labeling interface
-    window.annotationProximityTolerance = 5;
+    window.annotationProximityTolerance = 15;
 };
 
 

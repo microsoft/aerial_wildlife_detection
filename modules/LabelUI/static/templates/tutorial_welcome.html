@@ -52,6 +52,8 @@
 
         if(window.predictionType === 'labels') {
             predVP.addRenderElement(new BorderStrokeElement('predLabel', className, predStyle, false, 1));
+        } else if(window.predictionType === 'points') {
+            predVP.addRenderElement(new PointElement('predPoint', 0.5, 0.55, predStyle, false, 1));
         } else if(window.predictionType === 'boundingBoxes') {
             predVP.addRenderElement(new RectangleElement('predBox', 0.5, 0.55, 0.5, 0.55, predStyle, false, 1));
         }
@@ -60,6 +62,9 @@
         if(window.annotationType === 'labels') {
             taskDescr = 'labeling all images that contain objects of interest';
             annoVP.addRenderElement(new BorderStrokeElement('annoLabel', className, annoStyle, false, 1));
+        } else if(window.annotationType === 'points') {
+            taskDescr = 'placing points on the center of each individual object you encounter';
+            annoVP.addRenderElement(new PointElement('annoPoint', 0.5, 0.55, annoStyle, false, 1));
         } else if(window.annotationType === 'boundingBoxes') {
             taskDescr = 'drawing <b>tight</b> rectangles around each individual object you encounter';
             annoVP.addRenderElement(new RectangleElement('annoBox', 0.5, 0.55, 0.5, 0.55, annoStyle, false, 1));

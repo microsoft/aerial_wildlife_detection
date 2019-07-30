@@ -195,7 +195,7 @@ Loading such an object could then look as follows:
 
 
 #### Inference parameters
-* **stateDict:** See [above](#Training parameters).
+* **stateDict:** See above (section "Training parameters").
 * **data:** Similarly to the training data, also the inference data come in Python dict format. As a matter of fact they look exactly the same as in the training case, except that all 'annotations' sections are completely missing.
 * **(return value)** In the inference case, the model needs to return a Python dict containing model predictions.
 These may look as follows:

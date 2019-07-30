@@ -309,8 +309,6 @@ class PointElement extends AbstractRenderElement {
         }
     }
 
-    //TODO: add interactions
-
     getGeometry() {
         return {
             'type': 'point',
@@ -320,23 +318,181 @@ class PointElement extends AbstractRenderElement {
         };
     }
 
+    /* interaction events */
+    _click_event(event, viewport) {
+        if(!this.visible || window.interfaceControls.action != window.interfaceControls.actions.DO_NOTHING) return;
+        var mousePos = viewport.getRelativeCoordinates(event, 'validArea');
+        
+        // activate if position within tolerance
+        var tolerance = viewport.transformCoordinates([0,0,window.annotationProximityTolerance,0], 'canvas', true)[2];
+        if(this.euclideanDistance(mousePos) <= tolerance) {
+            this.setActive(true, viewport);
+        } else {
+            this.setActive(false, viewport);
+        }
+    }
+
+    _mousedown_event(event, viewport) {
+        if(!this.visible) return;
+        this.mousePos_current = viewport.getRelativeCoordinates(event, 'validArea');
+        this.mouseDrag = (event.which === 1);
+        var tolerance = viewport.transformCoordinates([0,0,window.annotationProximityTolerance,0], 'canvas', true)[2];
+        if(this.euclideanDistance(this.mousePos_current) <= tolerance) {
+            // center of a box clicked; set globally so that other active boxes don't falsely resize
+            viewport.canvas.css('cursor', 'move');
+        }
+    }
+
+    _mousemove_event(event, viewport) {
+        /*
+            On mousemove, we update the target coordinates and the point:
+            - always: update cursor
+            - if drag and within distance to point: move it
+        */
+        if(!this.visible) return;
+        var coords = viewport.getRelativeCoordinates(event, 'validArea');
+        if(this.mousePos_current == null) {
+            this.mousePos_current = coords;
+        }
+        var mpc = this.mousePos_current;
+        var tolerance = viewport.transformCoordinates([0,0,window.annotationProximityTolerance,0], 'canvas', true)[2];
+        if(this.mouseDrag && this.euclideanDistance(mpc) <= tolerance) {
+            // move point
+            this.setProperty('x', this.x + coords[0] - mpc[0]);
+            this.setProperty('y', this.y + coords[1] - mpc[1]);
+
+            // update timestamp
+            this.lastUpdated = new Date();
+
+            // update cursor
+            viewport.canvas.css('cursor', 'move');
+        }
+
+        // update current mouse pos
+        this.mousePos_current = coords;
+
+        // set to user-modified
+        this.changed = true;
+    }
+
+    _mouseup_event(event, viewport) {
+        this.mouseDrag = false;
+        // viewport.canvas.css('cursor', 'crosshair');
+    }
+
+    _get_active_handle_callback(type, viewport) {
+        var self = this;
+        if(type == 'click') {
+            /*
+                Activates or deactivates this point, depending on where
+                the click landed.
+            */
+            return function(event) {
+                self._click_event(event, viewport);
+            }
+
+        } else if(type === 'mousedown') {
+            return function(event) {
+                self._mousedown_event(event, viewport);
+            };
+
+        } else if(type === 'mousemove') {
+            return function(event) {
+                self._mousemove_event(event, viewport);
+            }
+
+        } else if(type === 'mouseup' || type === 'mouseleave') {
+            return function(event) {
+                self._mouseup_event(event, viewport);
+            }
+        }
+    }
+
+    setActive(active, viewport) {
+        /*
+            Sets the 'active' property to the given value.
+        */
+        super.setActive(active, viewport);
+        if(active) {
+            // viewport.addCallback(this, 'click', this._get_active_handle_callback('click', viewport));
+            viewport.addCallback(this.id, 'mousedown', this._get_active_handle_callback('mousedown', viewport));
+            viewport.addCallback(this.id, 'mousemove', this._get_active_handle_callback('mousemove', viewport));
+            viewport.addCallback(this.id, 'mouseup', this._get_active_handle_callback('mouseup', viewport));
+            viewport.addCallback(this.id, 'mouseleave', this._get_active_handle_callback('mouseleave', viewport));
+        } else {
+
+            // remove active properties
+            // viewport.removeCallback(this.id, 'click');
+            viewport.removeCallback(this.id, 'mousedown');
+            viewport.removeCallback(this.id, 'mousemove');
+            viewport.removeCallback(this.id, 'mouseup');
+            viewport.removeCallback(this.id, 'mouseleave');
+            this.mouseDrag = false;
+        }
+    }
+
+    registerAsCallback(viewport) {
+        /*
+            Adds this instance to the viewport.
+            This makes the entry user-modifiable in terms of position.
+        */
+        viewport.addCallback(this.id, 'click', this._get_active_handle_callback('click', viewport));
+    }
+
+    deregisterAsCallback(viewport) {
+        this.setActive(false, viewport);
+        viewport.removeCallback(this.id, 'click');
+    }
+
     render(ctx, scaleFun) {
-        super.render(ctx, scaleFun);
-        if(this.x == null || this.y == null) return;
+        if(!this.visible || this.x == null || this.y == null) return;
 
-        var coords = [this.x, this.y];
+        var coords = scaleFun([this.x, this.y], 'validArea');
 
-        coords = scaleFun(coords, 'validArea');
-
-        ctx.fillStyle = this.style.fillColor;
+        // draw actual point
+        ctx.fillStyle = window.addAlpha(this.style.fillColor, this.style.fillOpacity);
         ctx.beginPath();
         ctx.arc(coords[0], coords[1], this.style.pointSize, 0, 2*Math.PI);
         ctx.fill();
         ctx.closePath();
+
+        // if active: also draw outline
+        if(this.isActive) {
+            ctx.strokeStyle = window.addAlpha(this.style.fillColor, this.style.lineOpacity);
+            ctx.lineWidth = 4;
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            ctx.arc(coords[0], coords[1], this.style.pointSize + 6, 0, 2*Math.PI);
+            ctx.stroke();
+            ctx.closePath();
+        }
+
+        // unsure flag
+        if(this.unsure) {
+            var text = 'unsure';
+            var scaleFactors = scaleFun([0,0,ctx.canvas.width,ctx.canvas.height], 'canvas', true).slice(2,4);
+            ctx.font = window.styles.hoverText.text.fontSizePix * scaleFactors[0] + 'px ' + window.styles.hoverText.text.fontStyle;
+            var dimensions = ctx.measureText(text);
+            dimensions.height = window.styles.hoverText.box.height;
+            dimensions = [dimensions.width + 8, dimensions.height * scaleFactors[1]];
+            ctx.setLineDash([]);
+            ctx.fillStyle = this.style.fillColor;
+            ctx.fillRect(coords[0]+4, coords[1]-(dimensions[1]), dimensions[0]+8, dimensions[1]);
+            ctx.fillStyle = window.styles.hoverText.text.color;
+            ctx.fillText(text, coords[0]+12, coords[1]-dimensions[1]/2+4);
+        }
     }
 
     euclideanDistance(that) {
         return Math.sqrt(Math.pow(this.x - that[0],2) + Math.pow(this.y - that[1],2));
+    }
+
+    isInDistance(coordinates, tolerance) {
+        /*
+            Returns true if the point is within a tolerance's distance
+            of the provided coordinates.
+        */
+        return this.euclideanDistance(coordinates) <= tolerance;
     }
 }
 
@@ -364,8 +520,6 @@ class LineElement extends AbstractRenderElement {
             this.style.strokeColor = window.addAlpha(value, this.style.lineOpacity);
         }
     }
-
-    //TODO: add interactions
 
     getGeometry() {
         return {
@@ -431,19 +585,6 @@ class RectangleElement extends PointElement {
             'height': this.height,
             'unsure': this.unsure
         };
-    }
-
-    registerAsCallback(viewport) {
-        /*
-            Adds this instance to the viewport.
-            This makes the rectangle user-modifiable in terms of size and position.
-        */
-        viewport.addCallback(this.id, 'click', this._get_active_handle_callback('click', viewport));
-    }
-
-    deregisterAsCallback(viewport) {
-        this.setActive(false, viewport);
-        viewport.removeCallback(this.id, 'click');
     }
 
     getExtent() {
