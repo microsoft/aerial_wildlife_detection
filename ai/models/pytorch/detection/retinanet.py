@@ -95,7 +95,6 @@ class RetinaNet:
         criterion = criterion_class(**self.options['train']['criterion']['kwargs'])
 
         # train model
-        #TODO: outsource into dedicated function; set GPU, set random seed, etc.
         device = self._get_device()
         torch.manual_seed(self.options['general']['seed'])
         if 'cuda' in device:
@@ -170,9 +169,6 @@ class RetinaNet:
             bboxTr.DefaultTransform(tr.Normalize(mean=[0.485, 0.456, 0.406],
                                                 std=[0.229, 0.224, 0.225]))
         ])  #TODO: ditto, also write functional.pytorch util to compose transformations
-
-        #TODO
-        # dataType = self.options['general']['dataType'].lower()      # 'image' or 'featureVector'
 
         
         dataset = BoundingBoxDataset(data=data,
