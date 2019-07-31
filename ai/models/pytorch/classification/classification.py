@@ -11,6 +11,7 @@ from tqdm import tqdm
 from celery import current_task
 
 from ai.models import AIModel
+from .. import parse_transforms, get_device
 from . import DEFAULT_OPTIONS
 
 from util.helpers import get_class_executable, check_args
@@ -27,33 +28,6 @@ class ClassificationModel(AIModel):
         self.model_class = get_class_executable(self.options['model']['class'])
         self.criterion_class = get_class_executable(self.options['train']['criterion']['class'])
         self.optim_class = get_class_executable(self.options['train']['optim']['class'])
-
-    
-    def _get_device(self):
-        device = self.options['general']['device']
-        if 'cuda' in device and not torch.cuda.is_available():
-            device = 'cpu'
-        return device
-
-
-    def _parse_transforms(self, options):
-        '''
-            Recursively iterates through the options and initializes transform
-            functions based on the given class executable name and kwargs.
-        '''
-        if isinstance(options, dict) and 'class' in options:
-            tr_class = get_class_executable(options['class'])
-            if 'kwargs' in options:
-                for kw in options['kwargs']:
-                    options['kwargs'][kw] = self._parse_transforms(options['kwargs'][kw])
-                tr_inst = tr_class(**options['kwargs'])
-            else:
-                tr_inst = tr_class()
-            options = tr_inst
-        elif isinstance(options, list):
-            for o in range(len(options)):
-                options[o] = self._parse_transforms(options[o])
-        return options
 
 
     def train(self, stateDict, data):
@@ -83,7 +57,7 @@ class ClassificationModel(AIModel):
 
 
         # setup transform, data loader, dataset, optimizer, criterion
-        transform = self._parse_transforms(self.options['train']['transform'])
+        transform = parse_transforms(self.options['train']['transform'])
 
         dataset_class = get_class_executable(self.options['dataset']['class'])
         dataset = dataset_class(data, self.fileServer, labelclassMap,
@@ -102,7 +76,7 @@ class ClassificationModel(AIModel):
         criterion = criterion_class(**self.options['train']['criterion']['kwargs'])
 
         # train model
-        device = self._get_device()
+        device = get_device(self.options)
         torch.manual_seed(self.options['general']['seed'])
         if 'cuda' in device:
             torch.cuda.manual_seed(self.options['general']['seed'])
@@ -173,7 +147,7 @@ class ClassificationModel(AIModel):
         labelclassMap = stateDict['labelclassMap']
 
         # setup transform, data loader, dataset, optimizer, criterion
-        transform = self._parse_transforms(self.options['inference']['transform'])
+        transform = parse_transforms(self.options['inference']['transform'])
 
         dataset_class = get_class_executable(self.options['dataset']['class'])
         dataset = dataset_class(data, self.fileServer, labelclassMap,
@@ -187,7 +161,7 @@ class ClassificationModel(AIModel):
 
         # perform inference
         response = {}
-        device = self._get_device()
+        device = get_device(self.options)
         model.to(device)
         imgCount = 0
         for (img, _, _, fVec, imgID) in tqdm(dataLoader):

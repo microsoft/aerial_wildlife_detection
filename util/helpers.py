@@ -54,7 +54,8 @@ def check_args(options, defaultOptions):
         for key in default.keys():
             if not key in options:
                 options[key] = default[key]
-            options[key] = __check(options[key], default[key])
+            if not key == 'transform':
+                options[key] = __check(options[key], default[key])
         return options
     if options is None or not isinstance(options, dict):
         return defaultOptions

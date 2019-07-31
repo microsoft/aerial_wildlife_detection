@@ -32,10 +32,20 @@ class AIWorker():
 
     def _init_model_instance(self):
         # parse AI model path
-        try:
-            modelOptions = json.load(self.config.getProperty('AIController', 'model_options_path'))
-        except:
+        modelOptionsPath = self.config.getProperty('AIController', 'model_options_path')
+        if modelOptionsPath is not None and modelOptionsPath.strip() != '':
+            try:
+                with open(modelOptionsPath, 'r') as f:
+                    modelOptions = json.load(f)
+            except Exception as err:
+                print('WARNING: could not read model options (file "{filepath}"). Error message: {message}.'.format(
+                    filepath=modelOptionsPath,
+                    message=str(err)
+                ))
+                modelOptions = None
+        else:
             modelOptions = None
+
         modelLibPath = self.config.getProperty('AIController', 'model_lib_path')
 
         # import class object
@@ -71,10 +81,19 @@ class AIWorker():
         '''
             Creates the Active Learning (AL) criterion provider based on the configuration file.
         '''
-        try:
-            modelOptions = json.load(self.config.getProperty('AIController', 'al_criterion_options_path'))
-        except:
+        modelOptionsPath = self.config.getProperty('AIController', 'al_criterion_options_path')
+        if modelOptionsPath is not None and modelOptionsPath.strip() != '':
+            try:
+                with open(self.config.getProperty('AIController', 'al_criterion_options_path'), 'r') as f:
+                    modelOptions = json.load(f)
+            except Exception as err:
+                print('WARNING: could not read AL criterion options (file "{filepath}"). Error message: {message}.'.format(
+                    filepath=modelOptionsPath,
+                    message=str(err)
+                ))
+        else:
             modelOptions = None
+
         modelLibPath = self.config.getProperty('AIController', 'al_criterion_lib_path')
 
         # import superclass first, then retrieve class object

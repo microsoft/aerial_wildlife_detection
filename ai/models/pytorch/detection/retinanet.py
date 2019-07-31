@@ -1,38 +1,26 @@
-#TODO: define function shells in an abstract superclass (with documentation) and a template.
-
 import io
-import importlib
 from tqdm import tqdm
 from celery import current_task
 import torch
 from torch.utils.data import DataLoader
-from torch.optim import Adam
-from torchvision import transforms as tr
-import numpy as np
+# from torchvision import transforms as tr
+# import numpy as np
+from ai.models import AIModel
+from .. import parse_transforms, get_device
 from ai.models.pytorch.functional._retinanet import DEFAULT_OPTIONS
 from ai.models.pytorch.functional._retinanet import collation, encoder, loss
 from ai.models.pytorch.functional._retinanet.model import RetinaNet as Model
-import ai.models.pytorch.functional._util.bboxTransforms as bboxTr
+# import ai.models.pytorch.functional._util.bboxTransforms as bboxTr
 from ai.models.pytorch.functional.datasets.bboxDataset import BoundingBoxDataset
 from util.helpers import get_class_executable, check_args
 
 
 
-class RetinaNet:
+class RetinaNet(AIModel):
 
     def __init__(self, config, dbConnector, fileServer, options):
-        self.config = config
-        self.dbConnector = dbConnector
-        self.fileServer = fileServer
-        self.options = check_args(options, DEFAULT_OPTIONS)
-
-
-    def _get_device(self):
-        device = self.options['general']['device']
-        if 'cuda' in device and not torch.cuda.is_available():
-            device = 'cpu'
-        return device
-
+        super(RetinaNet, self).__init__(config, dbConnector, fileServer, options)
+        self.options = check_args(self.options, DEFAULT_OPTIONS)
 
 
     def train(self, stateDict, data):
@@ -58,24 +46,25 @@ class RetinaNet:
             self.options['model']['labelclassMap'] = labelclassMap
 
             # initialize a fresh model
-            model = Model.loadFromStateDict(self.options['model'])
+            model = Model.loadFromStateDict(self.options['model']['kwargs'])
 
 
         # initialize data loader, dataset, transforms, optimizer, criterion
         inputSize = tuple(self.options['general']['image_size'])
-        transforms = bboxTr.Compose([
-            bboxTr.Resize(inputSize),
-            bboxTr.RandomHorizontalFlip(p=0.5),
-            bboxTr.DefaultTransform(tr.ColorJitter(0.25, 0.25, 0.25, 0.01)),
-            bboxTr.DefaultTransform(tr.ToTensor()),
-            bboxTr.DefaultTransform(tr.Normalize(mean=[0.485, 0.456, 0.406],
-                                                std=[0.229, 0.224, 0.225]))
-        ])  #TODO: ditto, also write functional.pytorch util to compose transformations
+        transform = parse_transforms(self.options['train']['transform'])
+        # transforms = bboxTr.Compose([
+        #     bboxTr.Resize(inputSize),
+        #     bboxTr.RandomHorizontalFlip(p=0.5),
+        #     bboxTr.DefaultTransform(tr.ColorJitter(0.25, 0.25, 0.25, 0.01)),
+        #     bboxTr.DefaultTransform(tr.ToTensor()),
+        #     bboxTr.DefaultTransform(tr.Normalize(mean=[0.485, 0.456, 0.406],
+        #                                         std=[0.229, 0.224, 0.225]))
+        # ])  #TODO: ditto, also write functional.pytorch util to compose transformations
         dataset = BoundingBoxDataset(data=data,
                                     fileServer=self.fileServer,
                                     labelclassMap=labelclassMap,
                                     targetFormat='xyxy',
-                                    transform=transforms,
+                                    transform=transform,
                                     ignoreUnsure=self.options['train']['ignore_unsure'])
         dataEncoder = encoder.DataEncoder(minIoU_pos=0.5, maxIoU_neg=0.4)   #TODO: implement into options
         collator = collation.Collator(inputSize, dataEncoder)
@@ -95,7 +84,7 @@ class RetinaNet:
         criterion = criterion_class(**self.options['train']['criterion']['kwargs'])
 
         # train model
-        device = self._get_device()
+        device = get_device(self.options)
         torch.manual_seed(self.options['general']['seed'])
         if 'cuda' in device:
             torch.cuda.manual_seed(self.options['general']['seed'])
@@ -163,18 +152,19 @@ class RetinaNet:
 
         # initialize data loader, dataset, transforms
         inputSize = tuple(self.options['general']['image_size'])
-        transforms = bboxTr.Compose([
-            bboxTr.Resize(inputSize),
-            bboxTr.DefaultTransform(tr.ToTensor()),
-            bboxTr.DefaultTransform(tr.Normalize(mean=[0.485, 0.456, 0.406],
-                                                std=[0.229, 0.224, 0.225]))
-        ])  #TODO: ditto, also write functional.pytorch util to compose transformations
+        transform = parse_transforms(self.options['inference']['transform'])
+        # transforms = bboxTr.Compose([
+        #     bboxTr.Resize(inputSize),
+        #     bboxTr.DefaultTransform(tr.ToTensor()),
+        #     bboxTr.DefaultTransform(tr.Normalize(mean=[0.485, 0.456, 0.406],
+        #                                         std=[0.229, 0.224, 0.225]))
+        # ])  #TODO: ditto, also write functional.pytorch util to compose transformations
 
         
         dataset = BoundingBoxDataset(data=data,
                                     fileServer=self.fileServer,
                                     labelclassMap=labelclassMap,
-                                    transform=transforms)  #TODO: ditto
+                                    transform=transform)
         dataEncoder = encoder.DataEncoder(minIoU_pos=0.5, maxIoU_neg=0.4)   #TODO: ditto
         collator = collation.Collator(inputSize, dataEncoder)
         dataLoader = DataLoader(
@@ -186,7 +176,7 @@ class RetinaNet:
 
         # perform inference
         response = {}
-        device = self._get_device()
+        device = get_device(self.options)
         model.to(device)
         imgCount = 0
         for (img, _, _, fVec, imgID) in tqdm(dataLoader):
