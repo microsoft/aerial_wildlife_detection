@@ -1,5 +1,5 @@
 '''
-    Generic PyTorch dataset wrapper.
+    PyTorch dataset wrapper for image classification datasets.
 
     2019 Benjamin Kellenberger
 '''
@@ -10,10 +10,10 @@ from torch.utils.data import Dataset
 from PIL import Image
 
 
-class PyTorchDataset(Dataset):
+class ClassificationDataset(Dataset):
 
     def __init__(self, data, fileServer, labelclassMap, transform, ignoreUnsure=False, **kwargs):
-        super(PyTorchDataset, self).__init__()
+        super(ClassificationDataset, self).__init__()
         self.fileServer = fileServer
         self.labelclassMap = labelclassMap
         self.transform = transform

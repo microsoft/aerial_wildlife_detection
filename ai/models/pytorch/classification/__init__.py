@@ -1,25 +1,34 @@
-{
+'''
+    Default configuration properties for PyTorch classification models.
+    May be overridden (also partially) by models subclassig the classification trainer,
+    or else through the custom configuration loaded at runtime.
+
+    2019 Benjamin Kellenberger
+'''
+
+DEFAULT_OPTIONS = {
 	"general": {
+		"image_size": [224, 224],
 		"device": "cuda",
-		"seed": 1234
+        "seed": 0
 	},
 	"model": {
-		"class": "ai.models.pytorch.ResNet",
-		"kwargs": {
+        "class": "ai.models.pytorch.ResNet",
+        "kwargs": {
 			"featureExtractor": "resnet50",
-			"pretrained": true
+			"pretrained": True
 		}
 	},
-	"dataset": {
+    "dataset": {
 		"class": "ai.models.pytorch.ClassificationDataset"
 	},
 	"train": {
-		"dataLoader": {
-			"kwargs": {
-				"shuffle": true,
-				"batch_size": 32
-			}
-		},
+        "dataLoader": {
+            "kwargs": {
+                "shuffle": True,
+                "batch_size": 32
+            }
+        },
 		"optim": {
 			"class": "torch.optim.Adam",
 			"kwargs": {
@@ -27,7 +36,7 @@
 				"weight_decay": 0.0
 			}
 		},
-		"transform": {
+        "transform": {
 			"class": "torchvision.transforms.Compose",
 			"kwargs": {
 				"transforms": [{
@@ -55,10 +64,10 @@
 				]
 			}
 		},
-		"criterion": {
+        "criterion": {
 			"class": "torch.nn.CrossEntropyLoss"
 		},
-		"ignore_unsure": true
+        "ignore_unsure": True
 	},
 	"inference": {
 		"transform": {

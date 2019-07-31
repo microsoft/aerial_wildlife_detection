@@ -5,7 +5,7 @@
 		"seed": 1234
 	},
 	"model": {
-		"class": "ai.models.pytorch.functional._retinanet.model.RetinaNet",
+		"class": "ai.models.pytorch.RetinaNet",
 		"kwargs": {
 			"backbone": "resnet50",
 			"pretrained": true,
@@ -14,7 +14,7 @@
 		}
 	},
 	"dataset": {
-		"class": "ai.models.pytorch.functional.datasets.bboxDataset.BoundingBoxDataset",
+		"class": "ai.models.pytorch.BoundingBoxDataset",
 		"kwargs": {
 			"targetFormat": "xywh"
 		}
@@ -34,22 +34,22 @@
 			}
 		},
 		"transform": {
-			"class": "ai.models.pytorch.functional._util.bboxTransforms.Compose",
+			"class": "ai.models.pytorch.bboxTransforms.Compose",
 			"kwargs": {
 				"transforms": [{
-						"class": "ai.models.pytorch.functional._util.bboxTransforms.Resize",
+						"class": "ai.models.pytorch.bboxTransforms.Resize",
 						"kwargs": {
 							"size": [800, 600]
 						}
 					},
 					{
-						"class": "ai.models.pytorch.functional._util.bboxTransforms.RandomHorizontalFlip",
+						"class": "ai.models.pytorch.bboxTransforms.RandomHorizontalFlip",
 						"kwargs": {
 							"p": 0.5
 						}
 					},
 					{
-						"class": "ai.models.pytorch.functional._util.bboxTransforms.DefaultTransform",
+						"class": "ai.models.pytorch.bboxTransforms.DefaultTransform",
 						"kwargs": {
 							"transform": {
 								"class": "torchvision.transforms.ColorJitter",
@@ -63,7 +63,7 @@
 						}
 					},
 					{
-						"class": "ai.models.pytorch.functional._util.bboxTransforms.DefaultTransform",
+						"class": "ai.models.pytorch.bboxTransforms.DefaultTransform",
 						"kwargs": {
 							"transform": {
 								"class": "torchvision.transforms.ToTensor"
@@ -71,7 +71,7 @@
 						}
 					},
 					{
-						"class": "ai.models.pytorch.functional._util.bboxTransforms.DefaultTransform",
+						"class": "ai.models.pytorch.bboxTransforms.DefaultTransform",
 						"kwargs": {
 							"transform": {
 								"class": "torchvision.transforms.Normalize",
@@ -97,16 +97,16 @@
 	},
 	"inference": {
 		"transform": {
-			"class": "ai.models.pytorch.functional._util.bboxTransforms.Compose",
+			"class": "ai.models.pytorch.bboxTransforms.Compose",
 			"kwargs": {
 				"transforms": [{
-						"class": "ai.models.pytorch.functional._util.bboxTransforms.Resize",
+						"class": "ai.models.pytorch.bboxTransforms.Resize",
 						"kwargs": {
 							"size": [800, 600]
 						}
 					},
 					{
-						"class": "ai.models.pytorch.functional._util.bboxTransforms.DefaultTransform",
+						"class": "ai.models.pytorch.bboxTransforms.DefaultTransform",
 						"kwargs": {
 							"transform": {
 								"class": "torchvision.transforms.ToTensor"
@@ -114,7 +114,7 @@
 						}
 					},
 					{
-						"class": "ai.models.pytorch.functional._util.bboxTransforms.DefaultTransform",
+						"class": "ai.models.pytorch.bboxTransforms.DefaultTransform",
 						"kwargs": {
 							"transform": {
 								"class": "torchvision.transforms.Normalize",
