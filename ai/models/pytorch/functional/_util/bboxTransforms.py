@@ -274,16 +274,16 @@ class Resize(object):
     """
         Works on a PIL image and bboxes with format (X, Y, W, H) and absolute pixel values.
     """
-    def __init__(self, outSize, interpolation=Image.BILINEAR):
-        if isinstance(outSize,int):
-            outSize = tuple((outSize,outSize))
-        self.outSize = outSize
+    def __init__(self, size, interpolation=Image.BILINEAR):
+        if isinstance(size,int):
+            size = tuple((size,size))
+        self.size = size
         self.interpolation = interpolation
     
 
     def __call__(self, img, bboxes=None, labels=None):
         sz_orig = img.size
-        img = F.resize(img, self.outSize, self.interpolation)
+        img = F.resize(img, self.size, self.interpolation)
         sz_new = img.size
 
         if bboxes is not None and len(bboxes) > 0:

@@ -10,10 +10,10 @@ from torch.utils.data import Dataset
 from PIL import Image
 
 
-class PytorchDataset(Dataset):
+class PyTorchDataset(Dataset):
 
     def __init__(self, data, fileServer, labelclassMap, transform, ignoreUnsure=False, **kwargs):
-        super(PytorchDataset, self).__init__()
+        super(PyTorchDataset, self).__init__()
         self.fileServer = fileServer
         self.labelclassMap = labelclassMap
         self.transform = transform
@@ -33,7 +33,6 @@ class PytorchDataset(Dataset):
         self.data = []
         for key in data['images']:
             nextMeta = data['images'][key]
-            boundingBoxes = []
             labels = []
             if 'annotations' in nextMeta:
                 for anno in nextMeta['annotations']:

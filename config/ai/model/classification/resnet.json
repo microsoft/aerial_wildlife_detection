@@ -1,23 +1,17 @@
 {
 	"general": {
-		"image_size": [800, 600],
 		"device": "cuda",
 		"seed": 1234
 	},
 	"model": {
-		"class": "ai.models.pytorch.functional._retinanet.model.RetinaNet",
+		"class": "ai.models.pytorch.functional.classification.resnet.ResNet",
 		"kwargs": {
-			"backbone": "resnet50",
-			"pretrained": true,
-			"outPlanes": 256,
-			"convertToInstanceNorm": false
+			"featureExtractor": "resnet50",
+			"pretrained": true
 		}
 	},
 	"dataset": {
-		"class": "ai.models.pytorch.functional.datasets.bboxDataset.BoundingBoxDataset",
-		"kwargs": {
-			"targetFormat": "xywh"
-		}
+		"class": "ai.models.pytorch.functional.datasets.genericDataset.PyTorchDataset"
 	},
 	"train": {
 		"dataLoader": {
@@ -34,54 +28,30 @@
 			}
 		},
 		"transform": {
-			"class": "ai.models.pytorch.functional._util.bboxTransforms.Compose",
+			"class": "torchvision.transforms.Compose",
 			"kwargs": {
 				"transforms": [{
-						"class": "ai.models.pytorch.functional._util.bboxTransforms.Resize",
+						"class": "torchvision.transforms.Resize",
 						"kwargs": {
-							"outSize": [800, 600]
+							"size": [224, 224]
 						}
 					},
 					{
-						"class": "ai.models.pytorch.functional._util.bboxTransforms.RandomHorizontalFlip",
+						"class": "torchvision.transforms.RandomHorizontalFlip",
 						"kwargs": {
 							"p": 0.5
 						}
 					},
 					{
-						"class": "ai.models.pytorch.functional._util.bboxTransforms.DefaultTransform",
-						"kwargs": {
-							"transform": {
-								"class": "torchvision.transforms.ColorJitter",
-								"kwargs": {
-									"brightness": 0.25,
-									"contrast": 0.25,
-									"saturation": 0.25,
-									"hue": 0.01
-								}
-							}
-						}
-					},
-					{
-						"class": "ai.models.pytorch.functional._util.bboxTransforms.DefaultTransform",
-						"kwargs": {
-							"transform": {
-								"class": "torchvision.transforms.ToTensor"
-							}
-						}
-					},
-					{
-						"class": "ai.models.pytorch.functional._util.bboxTransforms.DefaultTransform",
-						"kwargs": {
-							"transform": {
-								"class": "torchvision.transforms.Normalize",
-								"kwargs": {
-									"mean": [0.485, 0.456, 0.406],
-									"std": [0.229, 0.224, 0.225]
-								}
-							}
-						}
-					}
+                        "class": "torchvision.transforms.ToTensor"
+                    },
+                    {
+                        "class": "torchvision.transforms.Normalize",
+                        "kwargs": {
+                            "mean": [0.485, 0.456, 0.406],
+                            "std": [0.229, 0.224, 0.225]
+                        }
+                    }
 				]
 			}
 		},
@@ -100,31 +70,21 @@
 			"class": "ai.models.pytorch.functional._util.bboxTransforms.Compose",
 			"kwargs": {
 				"transforms": [{
-						"class": "ai.models.pytorch.functional._util.bboxTransforms.Resize",
-						"kwargs": {
-							"outSize": [800, 600]
-						}
-					},
-					{
-						"class": "ai.models.pytorch.functional._util.bboxTransforms.DefaultTransform",
-						"kwargs": {
-							"transform": {
-								"class": "torchvision.transforms.ToTensor"
-							}
-						}
-					},
-					{
-						"class": "ai.models.pytorch.functional._util.bboxTransforms.DefaultTransform",
-						"kwargs": {
-							"transform": {
-								"class": "torchvision.transforms.Normalize",
-								"kwargs": {
-									"mean": [0.485, 0.456, 0.406],
-									"std": [0.229, 0.224, 0.225]
-								}
-							}
-						}
-					}
+                        "class": "torchvision.transforms.Resize",
+                        "kwargs": {
+                            "size": [224, 224]
+                        }
+                    },
+                    {
+                        "class": "torchvision.transforms.ToTensor"
+                    },
+                    {
+                        "class": "torchvision.transforms.Normalize",
+                        "kwargs": {
+                            "mean": [0.485, 0.456, 0.406],
+                            "std": [0.229, 0.224, 0.225]
+                        }
+                    }
 				]
 			}
 		},

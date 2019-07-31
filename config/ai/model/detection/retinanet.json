@@ -39,7 +39,7 @@
 				"transforms": [{
 						"class": "ai.models.pytorch.functional._util.bboxTransforms.Resize",
 						"kwargs": {
-							"outSize": [800, 600]
+							"size": [800, 600]
 						}
 					},
 					{
@@ -102,7 +102,7 @@
 				"transforms": [{
 						"class": "ai.models.pytorch.functional._util.bboxTransforms.Resize",
 						"kwargs": {
-							"outSize": [800, 600]
+							"size": [800, 600]
 						}
 					},
 					{
