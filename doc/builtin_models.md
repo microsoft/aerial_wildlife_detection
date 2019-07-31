@@ -294,46 +294,59 @@ AIde therefore treats object detection transforms differently by always applying
 
 * `ai.models.pytorch.detection.Compose`
   Accepts an iterable of custom, detection-ready transforms and applies them in order.
+
   Args:
-    transforms (iterable): Iterable (list, tuple, etc.) of transforms from this list here.
+  * transforms (iterable): Iterable (list, tuple, etc.) of transforms from this list here.
+
 
 * `ai.models.pytorch.detection.DefaultTransform`
   Receives one of the standard PyTorch transforms (e.g. from `torchvision.transforms`) and, at runtime, applies it to the image or tensor only (not to bounding boxes or labels). This is useful for image manipulations that do not result in a geometric change, such as color distortions.
+
   Args:
-    transform: a callable object that works on either PIL images or torch tensors, depending on where in the transform stack the 'DefaultTransform' is inserted.
+  * transform: a callable object that works on either PIL images or torch tensors, depending on where in the transform stack the 'DefaultTransform' is inserted.
+
 
 * `ai.models.pytorch.detection.Resize`
   Resize an image and associated bounding boxes to a given size.
+
   Args:
-    size (sequence or int): int (square side) or iterable of size 2 (width, height) denoting the image's absolute target size.
-    interpolation (int, optional): Desired interpolation. Default is ``PIL.Image.BILINEAR``.
+  * size (sequence or int): int (square side) or iterable of size 2 (width, height) denoting the image's absolute target size.
+  * interpolation (int, optional): Desired interpolation. Default is ``PIL.Image.BILINEAR``.
+
 
 * `ai.models.pytorch.detection.RandomHorizontalFlip`
   Horizontally flip the given PIL Image and bounding boxes randomly with a given probability.
+
   Args:
-    p (float): probability of the image and boxes being flipped. Default value is 0.5
+  * p (float): probability of the image and boxes being flipped. Default value is 0.5
+
 
 * `ai.models.pytorch.detection.RandomFlip`
   Horizontally and/or vertically flip the given PIL Image and bounding boxes randomly with a given probability.
+
   Args:
-    p_h (float): probability of the image and boxes being flipped horizontally. Default value is 0.5
-    p_v (float): probability of the image and boxes being flipped vertically. Default value is 0.5
+  * p_h (float): probability of the image and boxes being flipped horizontally. Default value is 0.5
+  * p_v (float): probability of the image and boxes being flipped vertically. Default value is 0.5
+
 
 * `ai.models.pytorch.detection.RandomClip`
   Random image clip of fixed size with custom properties.
+
   Args:
-    patchSize (sequence or int): int (square side) or iterable of size 2 (width, height) denoting the size of the patch to be clipped from the full image
-    jitter (sequence, int or float): int, float (both directions) or iterable (x, y) denoting the maximum pixel values that are randomly added or subtracted to the X and Y coordinates of the patch center. Useful to maximize variability.
-    limitBorders (boolean): boolean. If True, patches are always fully inside the parent image and never exceed its boundaries.
-    objectProbability (float): either a scalar in [0, 1], or None.
+  * patchSize (sequence or int): int (square side) or iterable of size 2 (width, height) denoting the size of the patch to be clipped from the full image
+  * jitter (sequence, int or float): int, float (both directions) or iterable (x, y) denoting the maximum pixel values that are randomly added or subtracted to the X and Y coordinates of the patch center. Useful to maximize variability.
+  * limitBorders (boolean): boolean. If True, patches are always fully inside the parent image and never exceed its boundaries.
+  * objectProbability (float): either a scalar in [0, 1], or None.
                        If a scalar value is chosen, the patch will be clipped with position from one of the label bounding boxes (if available) at random, under the condition that a uniform, random value is <= this scalar.
                        If set to None, the patch will be clipped completely at random.
 
+
 * `ai.models.pytorch.detection.RandomSizedClip`
   Random image clip with custom size and custom properties. Similar to `ai.models.pytorch.detection.RandomClip`, but with two additional parameters.
+  
   Args:
-    patchSizeMin (sequence or int): int (square side) or iterable of size 2 (width, height) denoting the minimum patch size to be clipped
-    patchSizeMax (sequence or int): int (square side) or iterable of size 2 (width, height) denoting the maximum patch size to be clipped
-    jitter (sequence, int or float)
-    limitBorders (boolean)
-    objectProbability (float)
+  * patchSizeMin (sequence or int): int (square side) or iterable of size 2 (width, height) denoting the minimum patch size to be clipped
+  * patchSizeMax (sequence or int): int (square side) or iterable of size 2 (width, height) denoting the maximum patch size to be clipped
+  * jitter (sequence, int or float)
+  * limitBorders (boolean)
+  * objectProbability (float)

@@ -27,7 +27,6 @@ It is highly recommended to install PyTorch with GPU support (see the [official 
 ## Step-by-step installation
 
 The following installation routine had been tested on Ubuntu 16.04. AIde will likely run on different OS as well, with instructions requiring corresponding adaptations.
-For deployment it is imperative to use a proper web server, such as [NGINX](https://www.nginx.com/) (which is the recommended way of deploying AIde, and shown below). However, for debugging purposes you may use Python's built-in server capabilities.
 
 
 

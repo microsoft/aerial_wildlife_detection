@@ -1,5 +1,10 @@
 # Launching AIde
 
+Note that the instructions below launch AIde using Python's built-in WSGI server, which might be detrimental and is not designed for deployment.
+To deploy AIde properly, see [here](deployment.md).
+
+
+
 ## Environment variables
 Machines running an AIde service need to have the `AIDE_CONFIG_PATH` environment variable set:
 
@@ -40,8 +45,3 @@ _AIWorker_ modules need to be launched using Celery:
     export AIDE_CONFIG_PATH=config/settings.ini
     celery -A modules.AIController.backend.celery_interface worker
 ```
-
-
-
-Note that these instructions launch AIde using Python's built-in WSGI server, which might be detrimental and is not designed for deployment.
-To deploy AIde properly, see [here](deployment.md).
