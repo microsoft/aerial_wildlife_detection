@@ -19,6 +19,7 @@ from torchvision import transforms as tr
 from PIL import Image
 import rawpy
 from util.helpers import check_args
+from ai.models.pytorch import parse_transforms, get_device
 from ai.models.pytorch.detection.retinanet import RetinaNet
 from ai.models.pytorch.functional._retinanet.model import RetinaNet as Model
 from ai.models.pytorch.functional._retinanet import encoder
@@ -46,7 +47,7 @@ class RetinaNet_ois(RetinaNet):
 
 
         # parameters
-        self.batchSize = self.options['inference']['batch_size']
+        self.batchSize = self.options['inference']['dataLoader']['kwargs']['batch_size']
         self.maxNumUnlabeled = self.options['contrib']['inference_max_num_unlabeled']
         self.patchSize = tuple(self.options['general']['image_size'])
         self.stride = self.options['contrib']['stride']
@@ -61,9 +62,6 @@ class RetinaNet_ois(RetinaNet):
 
         self.baseFolder_unlabeled = self.options['contrib']['baseFolder_unlabeled']
         self.loadRaw = self.options['contrib']['load_raw_images']
-
-        # extra: parse base folder for images to look out for
-        # self.__parse_base_folder()        #TODO: not done in constructor, since an unnecessary model instance is loaded on the AIController side at the moment...
 
     
     def __parse_base_folder(self):
@@ -128,6 +126,8 @@ class RetinaNet_ois(RetinaNet):
             identified bounding boxes under the patch names as a dict.
         '''
 
+        device = get_device(self.options)
+
         # load image
         filePath = os.path.join(self.baseFolder_unlabeled, filename)
         _, fileExt = os.path.splitext(filePath)
@@ -137,7 +137,7 @@ class RetinaNet_ois(RetinaNet):
             img = Image.open(filePath).convert('RGB')
 
         # transform
-        tensor = transform(img).to(self._get_device())
+        tensor = transform(img).to(device)
 
         # evaluate in a grid fashion
         gridX, gridY = tensorSharding.createSplitLocations_auto(img.size, [self.patchSize[1], self.patchSize[0]], stride=self.stride, tight=True)
@@ -264,6 +264,8 @@ class RetinaNet_ois(RetinaNet):
             TODO: Requires to be running on the same instance as the FileServer.
         '''
 
+        device = get_device(self.options)
+
         # prepare return metadata
         print('Doing inference on new images...')
         response = {}
@@ -276,7 +278,7 @@ class RetinaNet_ois(RetinaNet):
         stateDict_parsed = io.BytesIO(stateDict)
         stateDict_parsed = torch.load(stateDict_parsed, map_location=lambda storage, loc: storage)
         model = Model.loadFromStateDict(stateDict_parsed)
-        model.to(self._get_device())
+        model.to(device)
 
         # mapping labelClass (UUID) to index in model (number); create inverse
         labelclassMap = stateDict_parsed['labelclassMap']
@@ -329,7 +331,7 @@ class RetinaNet_ois(RetinaNet):
             current_task.update_state(state='PROGRESS', meta={'done': u+1, 'total': len(unlabeled), 'message': 'predicting new images'})
     
         model.cpu()
-        if 'cuda' in self._get_device():
+        if 'cuda' in device:
             torch.cuda.empty_cache()
 
 

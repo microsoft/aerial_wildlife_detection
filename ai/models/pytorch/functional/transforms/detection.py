@@ -26,12 +26,6 @@ def _verticalFlip(img, bboxes=None, labels=None):
     return img, bboxes, labels
 
 
-def _unNormalize(tensor, mean, std):
-    for t, m, s in zip(tensor, mean, std):
-        t.mul_(s).add_(m)
-    return tensor
-
-
 def _bboxResize(bboxes, sz_orig, sz_new):
     sz_orig = [float(s) for s in sz_orig]
     sz_new = [float(s) for s in sz_new]
@@ -360,12 +354,3 @@ class RandomRot90(object):
 
 
 
-class UnNormalize(object):
-    
-    def __init__(self, mean, std):
-        self.mean = mean
-        self.std = std
-
-    
-    def __call__(self, tensor):
-        return _unNormalize(tensor, self.mean, self.std)

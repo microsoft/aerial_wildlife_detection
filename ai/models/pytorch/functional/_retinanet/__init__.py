@@ -38,22 +38,22 @@ DEFAULT_OPTIONS = {
 			}
 		},
 		"transform": {
-			"class": "ai.models.pytorch.bboxTransforms.Compose",
+			"class": "ai.models.pytorch.detection.Compose",
 			"kwargs": {
 				"transforms": [{
-						"class": "ai.models.pytorch.bboxTransforms.Resize",
+						"class": "ai.models.pytorch.detection.Resize",
 						"kwargs": {
 							"size": [800, 600]
 						}
 					},
 					{
-						"class": "ai.models.pytorch.bboxTransforms.RandomHorizontalFlip",
+						"class": "ai.models.pytorch.detection.RandomHorizontalFlip",
 						"kwargs": {
 							"p": 0.5
 						}
 					},
 					{
-						"class": "ai.models.pytorch.bboxTransforms.DefaultTransform",
+						"class": "ai.models.pytorch.detection.DefaultTransform",
 						"kwargs": {
 							"transform": {
 								"class": "torchvision.transforms.ColorJitter",
@@ -67,7 +67,7 @@ DEFAULT_OPTIONS = {
 						}
 					},
 					{
-						"class": "ai.models.pytorch.bboxTransforms.DefaultTransform",
+						"class": "ai.models.pytorch.detection.DefaultTransform",
 						"kwargs": {
 							"transform": {
 								"class": "torchvision.transforms.ToTensor"
@@ -75,7 +75,7 @@ DEFAULT_OPTIONS = {
 						}
 					},
 					{
-						"class": "ai.models.pytorch.bboxTransforms.DefaultTransform",
+						"class": "ai.models.pytorch.detection.DefaultTransform",
 						"kwargs": {
 							"transform": {
 								"class": "torchvision.transforms.Normalize",
@@ -101,16 +101,16 @@ DEFAULT_OPTIONS = {
 	},
 	"inference": {
 		"transform": {
-			"class": "ai.models.pytorch.bboxTransforms.Compose",
+			"class": "ai.models.pytorch.detection.Compose",
 			"kwargs": {
 				"transforms": [{
-						"class": "ai.models.pytorch.bboxTransforms.Resize",
+						"class": "ai.models.pytorch.detection.Resize",
 						"kwargs": {
 							"size": [800, 600]
 						}
 					},
 					{
-						"class": "ai.models.pytorch.bboxTransforms.DefaultTransform",
+						"class": "ai.models.pytorch.detection.DefaultTransform",
 						"kwargs": {
 							"transform": {
 								"class": "torchvision.transforms.ToTensor"
@@ -118,7 +118,7 @@ DEFAULT_OPTIONS = {
 						}
 					},
 					{
-						"class": "ai.models.pytorch.bboxTransforms.DefaultTransform",
+						"class": "ai.models.pytorch.detection.DefaultTransform",
 						"kwargs": {
 							"transform": {
 								"class": "torchvision.transforms.Normalize",
@@ -132,6 +132,11 @@ DEFAULT_OPTIONS = {
 				]
 			}
 		},
-		"batch_size": 256
+		"dataLoader": {
+			"kwargs": {
+				"shuffle": False,
+				"batch_size": 32
+			}
+		}
 	}
 }

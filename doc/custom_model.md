@@ -6,6 +6,9 @@ In detail, the following portions are customizable:
 * The ranking model (_i.e._, the model providing priority scores for predictions)
 * The annotation filtering model (TBA)
 
+Note that some models are already built-in and can be configured, so that you might not need to write a custom model at all. Check out the associated [manual page](builtin_models.md) for details.
+
+
 Once a custom model is implemented, it can be plugged into a platform instance by providing its Python package path as an argument to the [configuration *.ini file](configure_settings.md).
 
 The following sections will provide details on how to implement custom models for each portion.

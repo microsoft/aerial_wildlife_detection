@@ -87,6 +87,11 @@ _AIWorker_ modules need to be launched using Celery:
 ```
 
 
+## Using a built-in AI model
+AIde ships with a series of built-in models that can be configured and customized for a number of tasks (image classification, object detection, etc.).
+See [this page](doc/builtin_models.md) for further instructions on how to use one of the built-ins.
+
+
 ## Writing your own AI model
 AIde is fully modular and supports custom AI models, as long as they provide a Python interface and can handle the different annotation and prediction types appropriately. See [here](doc/custom_model.md) for details.
 

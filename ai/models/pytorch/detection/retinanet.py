@@ -10,7 +10,6 @@ from .. import parse_transforms, get_device
 from ai.models.pytorch.functional._retinanet import DEFAULT_OPTIONS
 from ai.models.pytorch.functional._retinanet import collation, encoder, loss
 from ai.models.pytorch.functional._retinanet.model import RetinaNet as Model
-# import ai.models.pytorch.functional._util.bboxTransforms as bboxTr
 from ai.models.pytorch.functional.datasets.bboxDataset import BoundingBoxDataset
 from util.helpers import get_class_executable, check_args
 
@@ -69,10 +68,9 @@ class RetinaNet(AIModel):
         dataEncoder = encoder.DataEncoder(minIoU_pos=0.5, maxIoU_neg=0.4)   #TODO: implement into options
         collator = collation.Collator(inputSize, dataEncoder)
         dataLoader = DataLoader(
-            dataset,
-            batch_size=self.options['train']['batch_size'],
-            shuffle=True,
-            collate_fn=collator.collate_fn
+            dataset=dataset,
+            collate_fn=collator.collate_fn,
+            **self.options['train']['dataLoader']['kwargs']
         )
 
         # optimizer
@@ -168,10 +166,9 @@ class RetinaNet(AIModel):
         dataEncoder = encoder.DataEncoder(minIoU_pos=0.5, maxIoU_neg=0.4)   #TODO: ditto
         collator = collation.Collator(inputSize, dataEncoder)
         dataLoader = DataLoader(
-            dataset,
-            batch_size=16,  #TODO: self.options['inference']['batch_size'],
-            shuffle=False,
-            collate_fn=collator.collate_fn
+            dataset=dataset,
+            collate_fn=collator.collate_fn,
+            **self.options['inference']['dataLoader']['kwargs']
         )
 
         # perform inference

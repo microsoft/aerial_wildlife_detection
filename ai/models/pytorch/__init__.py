@@ -27,8 +27,11 @@ from .functional.datasets.bboxDataset import BoundingBoxDataset
 
 ''' Transforms '''
 
+# classification
+from .functional.transforms import classification as ClassificationTransforms
+
 # detection
-from .functional._util import bboxTransforms
+from .functional.transforms import detection as DetectionTransforms
 
 
 
@@ -36,13 +39,25 @@ from .functional._util import bboxTransforms
 import torch
 from util.helpers import get_class_executable
 
+
 def parse_transforms(options):
     '''
         Recursively iterates through the options and initializes transform
         functions based on the given class executable name and kwargs.
     '''
+    def _get_transform_executable(className):
+        #TODO: dirty hack to be able to import custom transform functions...
+        tokens = className.split('.')
+        if tokens[-2] == 'classification':
+            return getattr(ClassificationTransforms, tokens[-1])
+        elif tokens[-2] == 'detection':
+            return getattr(DetectionTransforms, tokens[-1])
+        else:
+            return get_class_executable(className)
+
+
     if isinstance(options, dict) and 'class' in options:
-        tr_class = get_class_executable(options['class'])
+        tr_class = _get_transform_executable(options['class'])
         if 'kwargs' in options:
             for kw in options['kwargs']:
                 options['kwargs'][kw] = parse_transforms(options['kwargs'][kw])
