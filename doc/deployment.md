@@ -6,7 +6,7 @@ This affects the following instances:
 * The _AIController_ module;
 * The file server.
 
-The commands below retrieve parameters from the *.ini configuration file on the respective instance and thus require to be run in the AIde root and with the `AIDE_CONFIG_PATH` environment variable set properly.
+The commands below retrieve parameters from the *.ini configuration file on the respective instance and thus require to be run in the AIde root and with the `AIDE_CONFIG_PATH` environment variable [set properly](launch_aide.md).
 
 
 

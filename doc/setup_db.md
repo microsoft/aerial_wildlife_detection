@@ -11,7 +11,7 @@ Note that AIde requires PostgreSQL >= 9.5 (it has been tested with version 10).
 The instructions below assume you have [installed the AIde project](install.md) and [configured the project configuration file](configure_settings.md) on the machine that is dedicated to running the database.
 However, for the database operation, this is not required. If you wish to skip these steps you will have to manually provide the four parameters below (`$(python util/configDef.py ...)`).
 
-```
+```bash
     dbName=$(python util/configDef.py --section=Database --parameter=name)
     dbUser=$(python util/configDef.py --section=Database --parameter=user)
     dbPassword=$(python util/configDef.py --section=Database --parameter=user)
@@ -21,7 +21,7 @@ However, for the database operation, this is not required. If you wish to skip t
 
 ## Install PostgreSQL server
 
-```
+```bash
     # specify postgres version you wish to use (must be >= 9.5)
     version=10
 
@@ -33,7 +33,7 @@ However, for the database operation, this is not required. If you wish to skip t
     sudo apt-get update && sudo apt-get install -y postgresql-$version
 
 
-    # update postgres configuration with correct port
+    # update the postgres configuration with the correct port
     sudo sed -e "s/\s*port\s*=\s[0-9]*/port = $dbPort/g" /etc/postgresql/$version/main/postgresql.conf
 
 
@@ -62,7 +62,7 @@ However, for the database operation, this is not required. If you wish to skip t
 ## Create a new database and the main user account. This needs to be done from the installation root of AIde,
    with the correct environment activated.
 
-```
+```bash
     sudo -u postgres psql -c "CREATE USER $dbUser WITH PASSWORD '$dbPassword';"
     sudo -u postgres psql -c "CREATE DATABASE $dbName WITH OWNER $dbUser CONNECTION LIMIT -1;"
     sudo -u postgres psql -c "GRANT CONNECT ON DATABASE $dbName TO $dbUser;"
@@ -75,11 +75,11 @@ However, for the database operation, this is not required. If you wish to skip t
 
 ## Setup the database schema. We do that using the newly created user account instead of the postgres user:
 
-```
+```bash
     python projectCreation/setupDB.py
 ```
 
 
 ## Cleanup
 
-If you wish you can remove the AIde code base (and Python environment) from the database server now, unless the server hosts any other AIde module.
+If you have used the settings file [above](#define-database-details) to get the database details, you can now remove the AIde code base (and Python environment) from the database server, unless the machine hosts any other AIde module(s).
