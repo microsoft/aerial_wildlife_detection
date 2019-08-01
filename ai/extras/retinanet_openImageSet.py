@@ -20,7 +20,7 @@ from PIL import Image
 import rawpy
 from util.helpers import check_args
 from ai.models.pytorch import parse_transforms, get_device
-from ai.models.pytorch.detection.retinanet import RetinaNet
+from ai.models.pytorch.boundingBoxes.retinanet import RetinaNet
 from ai.models.pytorch.functional._retinanet.model import RetinaNet as Model
 from ai.models.pytorch.functional._retinanet import encoder
 from ai.models.pytorch.functional._retinanet.utils import box_nms

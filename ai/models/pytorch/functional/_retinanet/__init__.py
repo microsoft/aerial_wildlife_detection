@@ -38,22 +38,22 @@ DEFAULT_OPTIONS = {
 			}
 		},
 		"transform": {
-			"class": "ai.models.pytorch.detection.Compose",
+			"class": "ai.models.pytorch.boundingBoxes.Compose",
 			"kwargs": {
 				"transforms": [{
-						"class": "ai.models.pytorch.detection.Resize",
+						"class": "ai.models.pytorch.boundingBoxes.Resize",
 						"kwargs": {
 							"size": [800, 600]
 						}
 					},
 					{
-						"class": "ai.models.pytorch.detection.RandomHorizontalFlip",
+						"class": "ai.models.pytorch.boundingBoxes.RandomHorizontalFlip",
 						"kwargs": {
 							"p": 0.5
 						}
 					},
 					{
-						"class": "ai.models.pytorch.detection.DefaultTransform",
+						"class": "ai.models.pytorch.boundingBoxes.DefaultTransform",
 						"kwargs": {
 							"transform": {
 								"class": "torchvision.transforms.ColorJitter",
@@ -67,7 +67,7 @@ DEFAULT_OPTIONS = {
 						}
 					},
 					{
-						"class": "ai.models.pytorch.detection.DefaultTransform",
+						"class": "ai.models.pytorch.boundingBoxes.DefaultTransform",
 						"kwargs": {
 							"transform": {
 								"class": "torchvision.transforms.ToTensor"
@@ -75,7 +75,7 @@ DEFAULT_OPTIONS = {
 						}
 					},
 					{
-						"class": "ai.models.pytorch.detection.DefaultTransform",
+						"class": "ai.models.pytorch.boundingBoxes.DefaultTransform",
 						"kwargs": {
 							"transform": {
 								"class": "torchvision.transforms.Normalize",
@@ -101,16 +101,16 @@ DEFAULT_OPTIONS = {
 	},
 	"inference": {
 		"transform": {
-			"class": "ai.models.pytorch.detection.Compose",
+			"class": "ai.models.pytorch.boundingBoxes.Compose",
 			"kwargs": {
 				"transforms": [{
-						"class": "ai.models.pytorch.detection.Resize",
+						"class": "ai.models.pytorch.boundingBoxes.Resize",
 						"kwargs": {
 							"size": [800, 600]
 						}
 					},
 					{
-						"class": "ai.models.pytorch.detection.DefaultTransform",
+						"class": "ai.models.pytorch.boundingBoxes.DefaultTransform",
 						"kwargs": {
 							"transform": {
 								"class": "torchvision.transforms.ToTensor"
@@ -118,7 +118,7 @@ DEFAULT_OPTIONS = {
 						}
 					},
 					{
-						"class": "ai.models.pytorch.detection.DefaultTransform",
+						"class": "ai.models.pytorch.boundingBoxes.DefaultTransform",
 						"kwargs": {
 							"transform": {
 								"class": "torchvision.transforms.Normalize",

@@ -10,10 +10,10 @@ from torch.utils.data import Dataset
 from PIL import Image
 
 
-class ClassificationDataset(Dataset):
+class LabelsDataset(Dataset):
 
     def __init__(self, data, fileServer, labelclassMap, transform, ignoreUnsure=False, **kwargs):
-        super(ClassificationDataset, self).__init__()
+        super(LabelsDataset, self).__init__()
         self.fileServer = fileServer
         self.labelclassMap = labelclassMap
         self.transform = transform
@@ -33,16 +33,17 @@ class ClassificationDataset(Dataset):
         self.data = []
         for key in data['images']:
             nextMeta = data['images'][key]
-            labels = []
+            label_img = 0       #TODO: default: background
             if 'annotations' in nextMeta:
-                for anno in nextMeta['annotations']:
+                # only extract first annotation, since we're dealing with image classification
+                if len(nextMeta['annotations']):
+                    anno = nextMeta['annotations'][0]
                     label = anno['label']
-                    if label is None or ('unsure' in anno and anno['unsure'] and self.ignoreUnsure):
+                    unsure = (anno['unsure'] if 'unsure' in anno else False)
+                    if label is None or (self.ignoreUnsure and unsure):
                         continue
                     else:
-                        label = self.labelclassMap[label]
-
-                    labels.append(label)
+                        label_img = self.labelclassMap[label]
 
             # feature vector
             #TODO
@@ -53,7 +54,7 @@ class ClassificationDataset(Dataset):
             #     fVec = None
             
             imagePath = nextMeta['filename']
-            self.data.append((labels, key, fVec, imagePath))
+            self.data.append((label_img, key, fVec, imagePath))
     
 
     def __len__(self):
@@ -62,15 +63,12 @@ class ClassificationDataset(Dataset):
 
     def __getitem__(self, idx):
 
-        labels, imageID, fVec, imagePath = self.data[idx]
+        label, imageID, fVec, imagePath = self.data[idx]
 
         # load image
         img = Image.open(BytesIO(self.fileServer.getFile(imagePath)))
 
-        # convert data     
-        labels = torch.tensor(labels).long()
-
         if self.transform is not None and img is not None:
             img = self.transform(img)
 
-        return img, labels, fVec, imageID
+        return img, label, fVec, imageID

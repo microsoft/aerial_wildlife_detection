@@ -20,7 +20,7 @@ DEFAULT_OPTIONS = {
 		}
 	},
     "dataset": {
-		"class": "ai.models.pytorch.ClassificationDataset"
+		"class": "ai.models.pytorch.LabelsDataset"
 	},
 	"train": {
         "dataLoader": {

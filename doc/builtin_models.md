@@ -51,7 +51,7 @@ Notes:
 
 
 
-#### Classification
+#### Classification (labels)
 
 ##### ResNet
 
@@ -70,7 +70,7 @@ Notes:
 		}
 	},
     "dataset": {
-		"class": "ai.models.pytorch.ClassificationDataset"
+		"class": "ai.models.pytorch.LabelsDataset"
 	},
 	"train": {
         "dataLoader": {
@@ -148,7 +148,7 @@ Notes:
 ```
 
 
-#### Detection
+#### Detection (boundingBoxes)
 
 ##### RetinaNet
 
@@ -182,22 +182,22 @@ Notes:
 			}
 		},
 		"transform": {
-			"class": "ai.models.pytorch.detection.Compose",
+			"class": "ai.models.pytorch.boundingBoxes.Compose",
 			"kwargs": {
 				"transforms": [{
-						"class": "ai.models.pytorch.detection.Resize",
+						"class": "ai.models.pytorch.boundingBoxes.Resize",
 						"kwargs": {
 							"size": [800, 600]
 						}
 					},
 					{
-						"class": "ai.models.pytorch.detection.RandomHorizontalFlip",
+						"class": "ai.models.pytorch.boundingBoxes.RandomHorizontalFlip",
 						"kwargs": {
 							"p": 0.5
 						}
 					},
 					{
-						"class": "ai.models.pytorch.detection.DefaultTransform",
+						"class": "ai.models.pytorch.boundingBoxes.DefaultTransform",
 						"kwargs": {
 							"transform": {
 								"class": "torchvision.transforms.ColorJitter",
@@ -211,7 +211,7 @@ Notes:
 						}
 					},
 					{
-						"class": "ai.models.pytorch.detection.DefaultTransform",
+						"class": "ai.models.pytorch.boundingBoxes.DefaultTransform",
 						"kwargs": {
 							"transform": {
 								"class": "torchvision.transforms.ToTensor"
@@ -219,7 +219,7 @@ Notes:
 						}
 					},
 					{
-						"class": "ai.models.pytorch.detection.DefaultTransform",
+						"class": "ai.models.pytorch.boundingBoxes.DefaultTransform",
 						"kwargs": {
 							"transform": {
 								"class": "torchvision.transforms.Normalize",
@@ -245,16 +245,16 @@ Notes:
 	},
 	"inference": {
 		"transform": {
-			"class": "ai.models.pytorch.detection.Compose",
+			"class": "ai.models.pytorch.boundingBoxes.Compose",
 			"kwargs": {
 				"transforms": [{
-						"class": "ai.models.pytorch.detection.Resize",
+						"class": "ai.models.pytorch.boundingBoxes.Resize",
 						"kwargs": {
 							"size": [800, 600]
 						}
 					},
 					{
-						"class": "ai.models.pytorch.detection.DefaultTransform",
+						"class": "ai.models.pytorch.boundingBoxes.DefaultTransform",
 						"kwargs": {
 							"transform": {
 								"class": "torchvision.transforms.ToTensor"
@@ -262,7 +262,7 @@ Notes:
 						}
 					},
 					{
-						"class": "ai.models.pytorch.detection.DefaultTransform",
+						"class": "ai.models.pytorch.boundingBoxes.DefaultTransform",
 						"kwargs": {
 							"transform": {
 								"class": "torchvision.transforms.Normalize",
@@ -292,21 +292,21 @@ Notes:
 For object detection, certain transforms naturally should not be carried out on the image alone. For example, random horizontal flips affect both the image and the labeled bounding boxes.
 AIde therefore treats object detection transforms differently by always applying them to the image, bounding boxes and labels in union. This means that object detection models, such as `RetinaNet`, only accept one of the following transforms as a top-level transform object:
 
-* `ai.models.pytorch.detection.Compose`
+* `ai.models.pytorch.boundingBoxes.Compose`
   Accepts an iterable of custom, detection-ready transforms and applies them in order.
 
   Args:
   * transforms (iterable): Iterable (list, tuple, etc.) of transforms from this list here.
 
 
-* `ai.models.pytorch.detection.DefaultTransform`
+* `ai.models.pytorch.boundingBoxes.DefaultTransform`
   Receives one of the standard PyTorch transforms (e.g. from `torchvision.transforms`) and, at runtime, applies it to the image or tensor only (not to bounding boxes or labels). This is useful for image manipulations that do not result in a geometric change, such as color distortions.
 
   Args:
   * transform: a callable object that works on either PIL images or torch tensors, depending on where in the transform stack the 'DefaultTransform' is inserted.
 
 
-* `ai.models.pytorch.detection.Resize`
+* `ai.models.pytorch.boundingBoxes.Resize`
   Resize an image and associated bounding boxes to a given size.
 
   Args:
@@ -314,14 +314,14 @@ AIde therefore treats object detection transforms differently by always applying
   * interpolation (int, optional): Desired interpolation. Default is ``PIL.Image.BILINEAR``.
 
 
-* `ai.models.pytorch.detection.RandomHorizontalFlip`
+* `ai.models.pytorch.boundingBoxes.RandomHorizontalFlip`
   Horizontally flip the given PIL Image and bounding boxes randomly with a given probability.
 
   Args:
   * p (float): probability of the image and boxes being flipped. Default value is 0.5
 
 
-* `ai.models.pytorch.detection.RandomFlip`
+* `ai.models.pytorch.boundingBoxes.RandomFlip`
   Horizontally and/or vertically flip the given PIL Image and bounding boxes randomly with a given probability.
 
   Args:
@@ -329,7 +329,7 @@ AIde therefore treats object detection transforms differently by always applying
   * p_v (float): probability of the image and boxes being flipped vertically. Default value is 0.5
 
 
-* `ai.models.pytorch.detection.RandomClip`
+* `ai.models.pytorch.boundingBoxes.RandomClip`
   Random image clip of fixed size with custom properties.
 
   Args:
@@ -341,8 +341,8 @@ AIde therefore treats object detection transforms differently by always applying
                        If set to None, the patch will be clipped completely at random.
 
 
-* `ai.models.pytorch.detection.RandomSizedClip`
-  Random image clip with custom size and custom properties. Similar to `ai.models.pytorch.detection.RandomClip`, but with two additional parameters.
+* `ai.models.pytorch.boundingBoxes.RandomSizedClip`
+  Random image clip with custom size and custom properties. Similar to `ai.models.pytorch.boundingBoxes.RandomClip`, but with two additional parameters.
   
   Args:
   * patchSizeMin (sequence or int): int (square side) or iterable of size 2 (width, height) denoting the minimum patch size to be clipped

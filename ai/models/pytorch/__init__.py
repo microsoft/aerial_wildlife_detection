@@ -7,6 +7,9 @@
 
 ''' Models '''
 
+# abstract base
+from .genericPyTorchModel import GenericPyTorchModel
+
 # classification
 from .functional.classification.resnet import ResNet
 
@@ -18,20 +21,20 @@ from .functional._retinanet.model import RetinaNet
 ''' Datasets '''
 
 # classification
-from .functional.datasets.classificationDataset import ClassificationDataset
+from .functional.datasets.classificationDataset import LabelsDataset
 
 # detection
-from .functional.datasets.bboxDataset import BoundingBoxDataset
+from .functional.datasets.bboxDataset import BoundingBoxesDataset
 
 
 
 ''' Transforms '''
 
 # classification
-from .functional.transforms import classification as ClassificationTransforms
+from .functional.transforms import labels as LabelsTransforms
 
 # detection
-from .functional.transforms import detection as DetectionTransforms
+from .functional.transforms import boundingBoxes as BoundingBoxesTransforms
 
 
 
@@ -48,10 +51,10 @@ def parse_transforms(options):
     def _get_transform_executable(className):
         #TODO: dirty hack to be able to import custom transform functions...
         tokens = className.split('.')
-        if tokens[-2] == 'classification':
-            return getattr(ClassificationTransforms, tokens[-1])
-        elif tokens[-2] == 'detection':
-            return getattr(DetectionTransforms, tokens[-1])
+        if tokens[-2] == 'labels':
+            return getattr(LabelsTransforms, tokens[-1])
+        elif tokens[-2] == 'boundingBoxes':
+            return getattr(BoundingBoxesTransforms, tokens[-1])
         else:
             return get_class_executable(className)
 

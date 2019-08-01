@@ -11,7 +11,7 @@ import numpy as np
 from PIL import Image
 
 
-class BoundingBoxDataset(Dataset):
+class BoundingBoxesDataset(Dataset):
     '''
         PyTorch-conform wrapper for a dataset containing bounding boxes.
         Inputs:
@@ -26,18 +26,19 @@ class BoundingBoxDataset(Dataset):
                          to the model.
         - targetFormat: str for output bounding box format, either 'xywh' (xy = center coordinates, wh = width & height)
                         or 'xyxy' (top left and bottom right coordinates)
-        - transform: Instance of classes defined in 'ai.functional.pytorch._util.bboxTransforms'. May be None for no transformation at all.
+        - transform: Instance of classes defined in 'ai.models.pytorch.functional.transforms.boundingBoxes'. May be None for no transformation at all.
         - ignoreUnsure: if True, all annotations with flag 'unsure' will get a label of -1 (i.e., 'ignore')
 
         The '__getitem__' function returns the data entry at given index as a tuple with the following contents:
-        - img: the loaded and transformed (if specified) image. Note: if 'loadImage' is set to False, 'img' will be None.
+        - img: the loaded and transformed (if specified) image.
         - boundingBoxes: transformed bounding boxes for the image.
         - labels: labels for each bounding box according to the dataset's 'labelclassMap' LUT (i.e., the labelClass indices).
+                  May also be -1; in this case the bounding box is flagged as "unsure."
         - fVec: a torch tensor of feature vectors (if available; else None)
         - imageID: str, filename of the image loaded
     '''
     def __init__(self, data, fileServer, labelclassMap, targetFormat='xywh', transform=None, ignoreUnsure=False):
-        super(BoundingBoxDataset, self).__init__()
+        super(BoundingBoxesDataset, self).__init__()
         self.fileServer = fileServer
         self.labelclassMap = labelclassMap
         self.targetFormat = targetFormat
@@ -77,8 +78,9 @@ class BoundingBoxDataset(Dataset):
                             anno['height']
                         )
                     label = anno['label']
-                    if 'unsure' in anno and anno['unsure'] and self.ignoreUnsure:
-                        label = -1      # will automatically be ignored (TODO: also true for models other than RetinaNet?)
+                    unsure = (anno['unsure'] if 'unsure' in anno else False)
+                    if unsure and self.ignoreUnsure:
+                        label = -1      # will automatically be ignored
                     elif label is None:
                         # this usually does not happen for bounding boxes, but we account for it nonetheless
                         continue

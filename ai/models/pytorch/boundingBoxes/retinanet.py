@@ -7,10 +7,12 @@ from torch.utils.data import DataLoader
 # import numpy as np
 from ai.models import AIModel
 from .. import parse_transforms, get_device
+
+#TODO: clean up imports
 from ai.models.pytorch.functional._retinanet import DEFAULT_OPTIONS
 from ai.models.pytorch.functional._retinanet import collation, encoder, loss
 from ai.models.pytorch.functional._retinanet.model import RetinaNet as Model
-from ai.models.pytorch.functional.datasets.bboxDataset import BoundingBoxDataset
+from ai.models.pytorch.functional.datasets.bboxDataset import BoundingBoxesDataset
 from util.helpers import get_class_executable, check_args
 
 
@@ -59,7 +61,7 @@ class RetinaNet(AIModel):
         #     bboxTr.DefaultTransform(tr.Normalize(mean=[0.485, 0.456, 0.406],
         #                                         std=[0.229, 0.224, 0.225]))
         # ])  #TODO: ditto, also write functional.pytorch util to compose transformations
-        dataset = BoundingBoxDataset(data=data,
+        dataset = BoundingBoxesDataset(data=data,
                                     fileServer=self.fileServer,
                                     labelclassMap=labelclassMap,
                                     targetFormat='xyxy',
@@ -75,7 +77,7 @@ class RetinaNet(AIModel):
 
         # optimizer
         optimizer_class = get_class_executable(self.options['train']['optim']['class'])
-        optimizer = optimizer_class(params=model.parameters(), **self.options['train']['optim']['kwargs'])        
+        optimizer = optimizer_class(params=model.parameters(), **self.options['train']['optim']['kwargs'])
 
         # loss criterion
         criterion_class = get_class_executable(self.options['train']['criterion']['class'])
@@ -159,7 +161,7 @@ class RetinaNet(AIModel):
         # ])  #TODO: ditto, also write functional.pytorch util to compose transformations
 
         
-        dataset = BoundingBoxDataset(data=data,
+        dataset = BoundingBoxesDataset(data=data,
                                     fileServer=self.fileServer,
                                     labelclassMap=labelclassMap,
                                     transform=transform)

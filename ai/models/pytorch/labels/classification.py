@@ -10,24 +10,17 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from celery import current_task
 
-from ai.models import AIModel
-from .. import parse_transforms, get_device
+from .. import GenericPyTorchModel, parse_transforms, get_device
 from . import DEFAULT_OPTIONS
 
 from util.helpers import get_class_executable, check_args
 
 
 
-class ClassificationModel(AIModel):
+class ClassificationModel(GenericPyTorchModel):
 
     def __init__(self, config, dbConnector, fileServer, options):
-        super(ClassificationModel, self).__init__(config, dbConnector, fileServer, options)
-        self.options = check_args(self.options, DEFAULT_OPTIONS)
-
-        # retrieve executables
-        self.model_class = get_class_executable(self.options['model']['class'])
-        self.criterion_class = get_class_executable(self.options['train']['criterion']['class'])
-        self.optim_class = get_class_executable(self.options['train']['optim']['class'])
+        super(ClassificationModel, self).__init__(config, dbConnector, fileServer, options, DEFAULT_OPTIONS)
 
 
     def train(self, stateDict, data):
@@ -38,29 +31,30 @@ class ClassificationModel(AIModel):
             Returns a serializable state dict of the resulting model.
         '''
 
-        # initialize model
-        if stateDict is not None:
-            stateDict = torch.load(io.BytesIO(stateDict), map_location=lambda storage, loc: storage)
-            model = self.model_class.loadFromStateDict(stateDict)
-            
-            # mapping labelclass (UUID) to index in model (number)
-            labelclassMap = stateDict['labelclassMap']
-        else:
-            # create new label class map
-            labelclassMap = {}
-            for index, lcID in enumerate(data['labelClasses']):
-                labelclassMap[lcID] = index
-            self.options['model']['labelclassMap'] = labelclassMap
+        model, labelclassMap = self.initializeModel(stateDict, data)
 
-            # initialize a fresh model
-            model = self.model_class.loadFromStateDict(self.options['model']['kwargs'])
+        # # initialize model
+        # if stateDict is not None:
+        #     stateDict = torch.load(io.BytesIO(stateDict), map_location=lambda storage, loc: storage)
+        #     model = self.model_class.loadFromStateDict(stateDict)
+            
+        #     # mapping labelclass (UUID) to index in model (number)
+        #     labelclassMap = stateDict['labelclassMap']
+        # else:
+        #     # create new label class map
+        #     labelclassMap = {}
+        #     for index, lcID in enumerate(data['labelClasses']):
+        #         labelclassMap[lcID] = index
+        #     self.options['model']['labelclassMap'] = labelclassMap
+
+        #     # initialize a fresh model
+        #     model = self.model_class.loadFromStateDict(self.options['model']['kwargs'])
 
 
         # setup transform, data loader, dataset, optimizer, criterion
         transform = parse_transforms(self.options['train']['transform'])
 
-        dataset_class = get_class_executable(self.options['dataset']['class'])
-        dataset = dataset_class(data, self.fileServer, labelclassMap,
+        dataset = self.dataset_class(data, self.fileServer, labelclassMap,
                                 transform, self.options['train']['ignore_unsure'],
                                 **self.options['dataset']['kwargs']
                                 )
@@ -97,33 +91,16 @@ class ClassificationModel(AIModel):
             current_task.update_state(state='PROGRESS', meta={'done': imgCount, 'total': len(dataLoader.dataset), 'message': 'training'})
 
         # all done; return state dict as bytes
-        if 'cuda' in device:
-            torch.cuda.empty_cache()
-        model.cpu()
+        return self.exportModelState(model)
+        # if 'cuda' in device:
+        #     torch.cuda.empty_cache()
+        # model.cpu()
 
-        bio = io.BytesIO()
-        torch.save(model.getStateDict(), bio)
+        # bio = io.BytesIO()
+        # torch.save(model.getStateDict(), bio)
 
-        return bio.getvalue()
+        # return bio.getvalue()
 
-
-    def average_model_states(self, stateDicts):
-        '''
-            Receives a list of model states (as bytes) and calls the model's
-            averaging function to return a single, unified model state.
-        '''
-
-        # read state dicts from bytes
-        for s in range(len(stateDicts)):
-            stateDict = io.BytesIO(stateDicts[s])
-            stateDicts[s] = torch.load(stateDict, map_location=lambda storage, loc: storage)
-
-        average_states = self.model_class.averageStateDicts(stateDicts)
-
-        # all done; return state dict as bytes
-        bio = io.BytesIO()
-        torch.save(average_states, bio)
-        return bio.getvalue()
 
     
     def inference(self, stateDict, data):
@@ -139,18 +116,19 @@ class ClassificationModel(AIModel):
             raise Exception('No trained model state found, but required for inference.')
 
         # read state dict from bytes
-        stateDict = io.BytesIO(stateDict)
-        stateDict = torch.load(stateDict, map_location=lambda storage, loc: storage)
-        model = self.model_class.loadFromStateDict(stateDict)
+        model, labelclassMap = self.initializeModel(stateDict, data)
 
-        # mapping labelClass (UUID) to index in model (number)
-        labelclassMap = stateDict['labelclassMap']
+        # stateDict = io.BytesIO(stateDict)
+        # stateDict = torch.load(stateDict, map_location=lambda storage, loc: storage)
+        # model = self.model_class.loadFromStateDict(stateDict)
+
+        # # mapping labelClass (UUID) to index in model (number)
+        # labelclassMap = stateDict['labelclassMap']
 
         # setup transform, data loader, dataset, optimizer, criterion
         transform = parse_transforms(self.options['inference']['transform'])
 
-        dataset_class = get_class_executable(self.options['dataset']['class'])
-        dataset = dataset_class(data, self.fileServer, labelclassMap,
+        dataset = self.dataset_class(data, self.fileServer, labelclassMap,
                                 transform, False,
                                 **self.options['dataset']['kwargs']
                                 )
@@ -161,12 +139,11 @@ class ClassificationModel(AIModel):
 
         # perform inference
         response = {}
-        device = get_device(self.options)
-        model.to(device)
+        model.to(self.device)
         imgCount = 0
         for (img, _, _, fVec, imgID) in tqdm(dataLoader):
 
-            dataItem = img.to(device)
+            dataItem = img.to(self.device)
             with torch.no_grad():
                 pred_batch = model(dataItem)
             
@@ -190,7 +167,7 @@ class ClassificationModel(AIModel):
             current_task.update_state(state='PROGRESS', meta={'done': imgCount, 'total': len(dataLoader.dataset), 'message': 'predicting'})
 
         model.cpu()
-        if 'cuda' in device:
+        if 'cuda' in self.device:
             torch.cuda.empty_cache()
 
         return response
