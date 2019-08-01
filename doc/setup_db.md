@@ -34,12 +34,12 @@ However, for the database operation, this is not required. If you wish to skip t
 
 
     # update the postgres configuration with the correct port
-    sudo sed -e "s/\s*port\s*=\s[0-9]*/port = $dbPort/g" /etc/postgresql/$version/main/postgresql.conf
+    sudo sed -i "s/\s*port\s*=\s[0-9]*/port = $dbPort/g" /etc/postgresql/$version/main/postgresql.conf
 
 
     # modify authentication
     # NOTE: you might want to manually adapt these commands for increased security; the following makes postgres listen to all global connections
-    sudo sed -e "s/\s#\s*listen_addresses\s=\s'localhost'/listen_addresses = '\*'/g" /etc/postgresql/$version/main/postgresql.conf
+    sudo sed -i "s/\s#\s*listen_addresses\s=\s'localhost'/listen_addresses = '\*'/g" /etc/postgresql/$version/main/postgresql.conf
     sudo echo "host    all             all             0.0.0.0/0               md5" >> /etc/postgresql/$version/main/pg_hba.conf
 
 

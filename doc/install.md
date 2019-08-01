@@ -81,6 +81,13 @@ See [here](setup_db.md)
 
 
 
+### Set up the message broker
+
+If you only want to use AIde as a labeling platform (i.e, without any AI model in the background), you can skip this step. Otherwise see [here](installation_aiTrainer.md).
+
+
+
+
 
 ### Import existing data
 
