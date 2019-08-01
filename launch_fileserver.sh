@@ -7,16 +7,14 @@
 #
 # 2019 Benjamin Kellenberger
 
-
-# # Settings filepath
-# export AIDE_CONFIG_PATH=config/settings.ini
-# #TODO
-# export AIDE_CONFIG_PATH=settings_windowCropping.ini
-# export AIDE_CONFIG_PATH=settings_wcsaerialblobs.ini
-
 # modules to run
 export AIDE_MODULES=FileServer
 
+# get host and port from configuration file
+host=$(python util/configDef.py --section=Server --parameter=host)
+port=$(python util/configDef.py --section=Server --parameter=port)
+
+
 # HTTP server
-python runserver.py --settings_filepath=$AIDE_CONFIG_PATH --instance=FileServer
-#gunicorn application:app -b=0.0.0.0:8086
+#python runserver.py --settings_filepath=$AIDE_CONFIG_PATH --instance=FileServer
+gunicorn application:app -b=$host:$port6
