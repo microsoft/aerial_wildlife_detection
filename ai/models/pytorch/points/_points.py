@@ -31,9 +31,9 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from celery import current_task
 
-from ai.models import AIModel
-from .. import GenericPyTorchModel, parse_transforms
-from .points import DEFAULT_OPTIONS
+from ..genericPyTorchModel import GenericPyTorchModel
+from .. import parse_transforms
+from ._default_options import DEFAULT_OPTIONS
 from ..functional._wsodPoints import encoder, collation
 
 from util.helpers import get_class_executable, check_args
@@ -62,7 +62,7 @@ class PointModel(GenericPyTorchModel):
         targetSize = model.getOutputSize(inputSize)
 
 
-        # setup transform, data loader, dataset, optimizer, criterion   #TODO: custom transforms for points; adjust parse_transforms function
+        # setup transform, data loader, dataset, optimizer, criterion
         transform = parse_transforms(self.options['train']['transform'])
 
         dataset = self.dataset_class(data, self.fileServer, labelclassMap,

@@ -1,23 +1,10 @@
 '''
-    Built-in PyTorch (wrapper) classes are registered here for convenience.
+    Built-in PyTorch (wrapper) classes other than trainers and models
+    are registered here for convenience.
+    TODO: replace all with dedicated files.
 
     2019 Benjamin Kellenberger
 '''
-
-
-''' Models '''
-
-# abstract base
-from .genericPyTorchModel import GenericPyTorchModel
-
-# labels
-from .functional.classification.resnet import ResNet
-
-# points
-# from .functional._wsodPoints.model import WSODPointModel      #TODO: implement
-
-# boundingBoxes
-from .functional._retinanet.model import RetinaNet
 
 
 
@@ -40,7 +27,7 @@ from .functional.datasets.bboxDataset import BoundingBoxesDataset
 from .functional.transforms import labels as LabelsTransforms
 
 # points
-# from .functional.transforms imoprt points as PointsTransforms     #TODO: implement
+from .functional.transforms import points as PointsTransforms
 
 # boundingBoxes
 from .functional.transforms import boundingBoxes as BoundingBoxesTransforms
@@ -63,8 +50,7 @@ def parse_transforms(options):
         if tokens[-2] == 'labels':
             return getattr(LabelsTransforms, tokens[-1])
         elif tokens[-2] == 'points':
-            # return getattr(PointsTransforms, tokens[-1])  #TODO: implement
-            return None
+            return getattr(PointsTransforms, tokens[-1])
         elif tokens[-2] == 'boundingBoxes':
             return getattr(BoundingBoxesTransforms, tokens[-1])
         else:

@@ -10,8 +10,9 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from celery import current_task
 
-from .. import GenericPyTorchModel, parse_transforms
-from . import DEFAULT_OPTIONS
+from ..genericPyTorchModel import GenericPyTorchModel
+from .. import parse_transforms
+from ._default_options import DEFAULT_OPTIONS
 
 from util.helpers import get_class_executable, check_args
 

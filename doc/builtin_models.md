@@ -9,13 +9,17 @@ If you instead wish to completely write your own module(s) for either (or both) 
 
 AIde ships with the following AI models built-in:
 * Classification (labels):
-  * ResNet (He, Kaiming, et al. "Deep residual learning for image recognition." Proceedings of the IEEE conference on computer vision and pattern recognition. 2016), including ResNet-18, 34, 50, 101 and 152.
+  * `ai.models.pytorch.labels.ResNet`
+  (He, Kaiming, et al. "Deep residual learning for image recognition." Proceedings of the IEEE conference on computer vision and pattern recognition. 2016), including ResNet-18, 34, 50, 101 and 152.
+  
 * Object detection:
   * Points:
-    * ResNet-based heatmap model ([Kellenberger et al., 2019](http://openaccess.thecvf.com/content_CVPRW_2019/papers/EarthVision/Kellenberger_When_a_Few_Clicks_Make_All_the_Difference_Improving_Weakly-Supervised_CVPRW_2019_paper.pdf)).
+    * `ai.models.pytorch.points.WSODPointModel`
+	([Kellenberger et al., 2019](http://openaccess.thecvf.com/content_CVPRW_2019/papers/EarthVision/Kellenberger_When_a_Few_Clicks_Make_All_the_Difference_Improving_Weakly-Supervised_CVPRW_2019_paper.pdf)).
 	  Note that this model is special insofar as it accepts both spatially explicit point annotations as well as image-wide classification labels for training, both of which may be mixed. In the second cased, the model requires images where the label class is both present and completely absent in order to be able to localize the class objects. Also, the objects should be of similar size throughout the images. See the [paper](http://openaccess.thecvf.com/content_CVPRW_2019/papers/EarthVision/Kellenberger_When_a_Few_Clicks_Make_All_the_Difference_Improving_Weakly-Supervised_CVPRW_2019_paper.pdf) for details.
   * Bounding boxes:
-  	* RetinaNet (Lin, Tsung-Yi, et al. "Focal loss for dense object detection." Proceedings of the IEEE international conference on computer vision. 2017), based on the [implementation by Kuangliu](https://github.com/kuangliu/pytorch-retinanet).
+  	* `ai.models.pytorch.boundingBoxes.RetinaNet`
+	  (Lin, Tsung-Yi, et al. "Focal loss for dense object detection." Proceedings of the IEEE international conference on computer vision. 2017), based on the [implementation by Kuangliu](https://github.com/kuangliu/pytorch-retinanet).
 
 All models are implemented using [PyTorch](https://pytorch.org/) and support a number of custom configuration parameters.
 
@@ -27,8 +31,8 @@ For example, to use ResNet for image classification:
 ```ini
 [AIController]
 
-model_lib_path = ai.models.pytorch.ResNet
-model_options_path = /path/to/your/settings.json
+model_lib_path = ai.models.pytorch.ResNet			# replace value with the code string of the model you wish to use
+model_options_path = /path/to/your/settings.json	# replace with the JSON file path
 ```
 
 
@@ -67,7 +71,6 @@ Notes:
         "seed": 0
 	},
 	"model": {
-        "class": "ai.models.pytorch.ResNet",
         "kwargs": {
 			"featureExtractor": "resnet50",
 			"pretrained": true
@@ -157,7 +160,128 @@ Notes:
 ##### Heatmap model (Kellenberger et al., 2019)
 
 ```json
-	TODO
+{
+	"general": {
+		"image_size": [800, 600],
+		"device": "cuda",
+        "seed": 0
+	},
+	"model": {
+        "kwargs": {
+			"featureExtractor": "resnet50",
+			"pretrained": true
+		}
+	},
+    "dataset": {
+		"class": "ai.models.pytorch.PointsDataset"
+	},
+	"train": {
+        "dataLoader": {
+            "kwargs": {
+                "shuffle": true,
+                "batch_size": 32
+            }
+        },
+		"optim": {
+			"class": "torch.optim.Adam",
+			"kwargs": {
+				"lr": 1e-7,
+				"weight_decay": 0.0
+			}
+		},
+        "transform": {
+			"class": "ai.models.pytorch.points.Compose",
+			"kwargs": {
+				"transforms": [{
+						"class": "ai.models.pytorch.points.Resize",
+						"kwargs": {
+							"size": [800, 600]
+						}
+					},
+					{
+						"class": "ai.models.pytorch.points.RandomHorizontalFlip",
+						"kwargs": {
+							"p": 0.5
+						}
+					},
+					{
+						"class": "ai.models.pytorch.points.DefaultTransform",
+						"kwargs": {
+							"transform": {
+								"class": "torchvision.transforms.ColorJitter",
+								"kwargs": {
+									"brightness": 0.25,
+									"contrast": 0.25,
+									"saturation": 0.25,
+									"hue": 0.01
+								}
+							}
+						}
+					},
+					{
+						"class": "ai.models.pytorch.points.DefaultTransform",
+						"kwargs": {
+							"transform": {
+								"class": "torchvision.transforms.ToTensor"
+							}
+						}
+					},
+					{
+						"class": "ai.models.pytorch.points.DefaultTransform",
+						"kwargs": {
+							"transform": {
+								"class": "torchvision.transforms.Normalize",
+								"kwargs": {
+									"mean": [0.485, 0.456, 0.406],
+									"std": [0.229, 0.224, 0.225]
+								}
+							}
+						}
+					}
+				]
+			}
+		},
+        "criterion": {
+			"class": "torch.nn.CrossEntropyLoss"
+		},
+        "ignore_unsure": true
+	},
+	"inference": {
+		"transform": {
+			"class": "ai.models.pytorch.points.Compose",
+			"kwargs": {
+				"transforms": [{
+						"class": "ai.models.pytorch.points.Resize",
+						"kwargs": {
+							"size": [800, 600]
+						}
+					},
+					{
+						"class": "ai.models.pytorch.points.DefaultTransform",
+						"kwargs": {
+							"transform": {
+								"class": "torchvision.transforms.ToTensor"
+							}
+						}
+					},
+					{
+						"class": "ai.models.pytorch.points.DefaultTransform",
+						"kwargs": {
+							"transform": {
+								"class": "torchvision.transforms.Normalize",
+								"kwargs": {
+									"mean": [0.485, 0.456, 0.406],
+									"std": [0.229, 0.224, 0.225]
+								}
+							}
+						}
+					}
+				]
+			}
+		},
+		"batch_size": 256
+	}
+}
 ```
 
 
@@ -302,8 +426,8 @@ Notes:
 
 ### About object detection transforms
 
-For object detection, certain transforms naturally should not be carried out on the image alone. For example, random horizontal flips affect both the image and the labeled bounding boxes.
-AIde therefore treats object detection transforms differently by always applying them to the image, bounding boxes and labels in union. This means that object detection models, such as `RetinaNet`, only accept one of the following transforms as a top-level transform object:
+For object detection (i.e., points and bounding boxes), certain transforms naturally should not be carried out on the image alone. For example, random horizontal flips affect both the image and the labeled points, resp. bounding boxes.
+AIde therefore treats object detection transforms differently by always applying them to the image, points/bounding boxes and label classes in union. This means that object detection models, such as `RetinaNet`, only accept one of the following transforms as a top-level transform object:
 
 * `ai.models.pytorch.boundingBoxes.Compose`
   Accepts an iterable of custom, detection-ready transforms and applies them in order.
@@ -363,3 +487,6 @@ AIde therefore treats object detection transforms differently by always applying
   * jitter (sequence, int or float)
   * limitBorders (boolean)
   * objectProbability (float)
+
+
+Similarly, point models have an identical set of transforms; for these cases simply replace the substring `ai.models.pytorch.boundingBoxes` with `ai.models.pytorch.points`.

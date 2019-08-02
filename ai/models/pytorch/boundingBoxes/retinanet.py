@@ -10,7 +10,8 @@ from celery import current_task
 import torch
 from torch.utils.data import DataLoader
 
-from .. import GenericPyTorchModel, parse_transforms
+from ..genericPyTorchModel import GenericPyTorchModel
+from .. import parse_transforms
 
 from ..functional._retinanet import DEFAULT_OPTIONS, collation, encoder, loss
 from ..functional._retinanet.model import RetinaNet as Model
