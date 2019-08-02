@@ -24,6 +24,14 @@ class RetinaNet(GenericPyTorchModel):
     def __init__(self, config, dbConnector, fileServer, options):
         super(RetinaNet, self).__init__(config, dbConnector, fileServer, options, DEFAULT_OPTIONS)
 
+        # set defaults if not explicitly overridden
+        if self.model_class is None:
+            self.model_class = Model
+        if self.criterion_class is None:
+            self.criterion_class = loss.FocalLoss
+        if self.dataset_class is None:
+            self.dataset_class = BoundingBoxesDataset
+
 
     def train(self, stateDict, data):
         '''
@@ -40,7 +48,7 @@ class RetinaNet(GenericPyTorchModel):
         inputSize = tuple(self.options['general']['image_size'])
         transform = parse_transforms(self.options['train']['transform'])
         
-        dataset = BoundingBoxesDataset(data=data,
+        dataset = self.dataset_class(data=data,
                                     fileServer=self.fileServer,
                                     labelclassMap=labelclassMap,
                                     targetFormat='xyxy',
@@ -55,12 +63,10 @@ class RetinaNet(GenericPyTorchModel):
         )
 
         # optimizer
-        optimizer_class = get_class_executable(self.options['train']['optim']['class'])
-        optimizer = optimizer_class(params=model.parameters(), **self.options['train']['optim']['kwargs'])
+        optimizer = self.optim_class(params=model.parameters(), **self.options['train']['optim']['kwargs'])
 
         # loss criterion
-        criterion_class = get_class_executable(self.options['train']['criterion']['class'])
-        criterion = criterion_class(**self.options['train']['criterion']['kwargs'])
+        criterion = self.criterion_class(**self.options['train']['criterion']['kwargs'])
 
         # train model
         device = self.get_device()
@@ -103,7 +109,7 @@ class RetinaNet(GenericPyTorchModel):
         inputSize = tuple(self.options['general']['image_size'])
         transform = parse_transforms(self.options['inference']['transform'])
         
-        dataset = BoundingBoxesDataset(data=data,
+        dataset = self.dataset_class(data=data,
                                     fileServer=self.fileServer,
                                     labelclassMap=labelclassMap,
                                     transform=transform)

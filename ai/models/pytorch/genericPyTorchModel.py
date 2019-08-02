@@ -10,6 +10,7 @@
 
 import io
 import torch
+from torch.optim import SGD
 from ai.models import AIModel
 from util.helpers import get_class_executable, check_args
 
@@ -23,13 +24,28 @@ class GenericPyTorchModel(AIModel):
         self.options = check_args(self.options, defaultOptions)
 
         # retrieve executables
-        self.model_class = get_class_executable(self.options['model']['class'])
-        self.criterion_class = get_class_executable(self.options['train']['criterion']['class'])
-        self.optim_class = get_class_executable(self.options['train']['optim']['class'])
-        self.dataset_class = get_class_executable(self.options['dataset']['class'])
+        try:
+            self.model_class = get_class_executable(self.options['model']['class'])
+        except:
+            self.model_class = None
+        try:
+            self.criterion_class = get_class_executable(self.options['train']['criterion']['class'])
+        except:
+            self.criterion_class = None
+        try:
+            self.optim_class = get_class_executable(self.options['train']['optim']['class'])
+        except:
+            self.optim_class = SGD
+        try:
+            self.dataset_class = get_class_executable(self.options['dataset']['class'])
+        except:
+            self.dataset_class = None
 
         # get device (CPU, CUDA:x)
-        self.device = self.get_device()
+        try:
+            self.device = self.get_device()
+        except:
+            self.device = 'cpu'
 
 
     def get_device(self):
