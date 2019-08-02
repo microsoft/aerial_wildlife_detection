@@ -17,7 +17,7 @@ class LabelUI():
     def __init__(self, config, app):
         self.config = config
         self.app = app
-        self.staticDir = 'modules/LabelUI/static'   #self.config.getProperty('LabelUI', 'staticfiles_dir')
+        self.staticDir = 'modules/LabelUI/static'
         self.middleware = DBMiddleware(config)
 
         self.login_check = None

@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS &schema.USER (
 
 CREATE TABLE IF NOT EXISTS &schema.IMAGE (
     id uuid DEFAULT uuid_generate_v4(),
-    filename VARCHAR NOT NULL,
+    filename VARCHAR UNIQUE NOT NULL,
     exif VARCHAR,
     fVec bytea,
     PRIMARY KEY (id)

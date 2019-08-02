@@ -1,19 +1,14 @@
 '''
     Wrapper/entry point for WSGI servers like Gunicorn.
-    Can launch multiple modules at once, similar to the "runserver" file,
+    Can launch multiple modules at once,
     but requires environment variables to be set to do so.
 
     2019 Benjamin Kellenberger
 '''
 
 
-#TODO: manually set env. variables for development stage
-import os
-#os.environ['AIDE_CONFIG_PATH'] = 'settings_wcsaerialblobs.ini'
-#os.environ['AIDE_MODULES'] = 'LabelUI,AIController'
-
-
 ''' import resources and initialize app '''
+import os
 from bottle import Bottle
 from util.configDef import Config
 from modules import REGISTERED_MODULES
@@ -29,14 +24,8 @@ def _verify_unique(instances, moduleClass):
             if moduleClass.__class__.__name__ == i.__class__.__name__:
                 raise Exception('Module {} already launched on this server.'.format(moduleClass.__class__.__name__))
 
-
+# load configuration
 config = Config()
-
-# set host and port from configuration
-os.environ['GUNICORN_CMD_ARGS'] = '--bind={host}:{port} --workers=5'.format(
-    host=config.getProperty('Server', 'host'),
-    port=config.getProperty('Server', 'port')
-)
 
 
 # prepare bottle
@@ -70,4 +59,8 @@ for i in instance_args:
 
 
 if __name__ == '__main__':
-    app.run()
+
+    # run using server selected by Bottle
+    host = config.getProperty('Server', 'host')
+    port = config.getProperty('Server', 'port')
+    app.run(host=host, port=port)

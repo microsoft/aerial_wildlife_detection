@@ -46,14 +46,15 @@ This section contains parameters for all the individual instances' addresses.
 ## [LabelUI]
 
 | Name | Values | Default value | Required | Comments |
-|------------------------------|--------------------------|-----------------|----------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| numImages_x | (numeric > 0) |  | YES | Number of images in horizontal direction to show on the interface page at a time. This follows [Bootstrap](https://getbootstrap.com/)'s 12-column layout, so numbers must be divisible accordingly. You might want to increase this number for classification tasks having images with large objects, or else set to a low value (e.g. 1) for detection projects and/or small targets. |
-| numImages_y | (numeric > 0) |  | YES | Number of images in vertical direction to show on the interface page at a time. You might want to increase this number for classification tasks having  images with large objects, or else set to a low value (e.g. 1) for  detection projects and/or small targets. |
-| showPredictions | 'yes' | 'no' | 'yes' |  | If set to 'yes', model predictions in/of an image _might_ be shown to the user, if all further requirements match as well (see below). |
+|------------------------------|-----------------|---------------|-----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| numImagesPerBatch | (numeric > 0) | 1 |  | Number of images to load and display at a time in the user interface. |
+| minImageWidth | (numeric > 0) | 300 |  | Minimum image width in pixels displayed in the user interface. The actual width of the image(s) displayed might be larger, depending on the browser window size and the number of images shown, but never smaller than the value provided here. If the browser window gets too small to display even just one image completely, scrollbars appear that require the user to pan around in the portion of the image displayed. |
+| numImageColumns_max | (numeric > 0) | 1 |  |  Number of columns to show at maximum, if more than one image is displayed in the user interface at a time. This provides an additional visualization constraint to control the number of visuals to be shown in the interface at a time. |
+| showPredictions | 'yes' | 'no' | 'yes' |  |
 | showPredictions_minConf | (numeric) | 0.5 |  | Minimum confidence value per prediction to be shown to the user in the interface. |
-| carryOverPredictions | 'yes' | 'no' | 'no' |  | If set to 'yes', predictions _might_ get "carried over", meaning that they will automatically be converted into annotations at loading time.  Note that this also works if the type of predictions and annotations (labels, bounding boxes, etc.) differ--see below. |
+| carryOverPredictions | 'yes' | 'no' | 'no' |  |
 | carryOverPredictions_minConf | (numeric) | 0.75 |  | Minimum confidence value per prediction to be converted to an annotation. |
-| carryOverRule | 'maxConfidence' | 'mode' | 'maxConfidence' |  | Required in case when the annotation and prediction types differ; in particular in a "many-to-one" mapping (e.g. predictions = bounding boxes, annotations = labels). If set to "maxConfidence", the label class of the prediction with the highest confidence value (per image) will be used. If set to "mode", the most frequently occurring label class of all the predictions in the image will be assigned as the image-wide label. Has no effect if the annotation type is != "labels". |
+| carryOverRule | 'maxConfidence' | 'mode' | 'maxConfidence' |  |
 
 
 ## [AIController]

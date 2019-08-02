@@ -11,5 +11,4 @@ port=$(python util/configDef.py --section=Server --parameter=port)
 
 
 # HTTP server
-# python runserver.py --settings_filepath=$AIDE_CONFIG_PATH --instance=$AIDE_MODULES
-gunicorn application:app -b=$host:$port
+gunicorn application:app --bind=$host:$port --workers=6

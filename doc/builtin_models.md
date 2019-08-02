@@ -8,10 +8,14 @@ If you instead wish to completely write your own module(s) for either (or both) 
 ## AI models
 
 AIde ships with the following AI models built-in:
-* Classification:
+* Classification (labels):
   * ResNet (He, Kaiming, et al. "Deep residual learning for image recognition." Proceedings of the IEEE conference on computer vision and pattern recognition. 2016), including ResNet-18, 34, 50, 101 and 152.
 * Object detection:
-  * RetinaNet (Lin, Tsung-Yi, et al. "Focal loss for dense object detection." Proceedings of the IEEE international conference on computer vision. 2017), based on the [implementation by Kuangliu](https://github.com/kuangliu/pytorch-retinanet).
+  * Points:
+    * ResNet-based heatmap model ([Kellenberger et al., 2019](http://openaccess.thecvf.com/content_CVPRW_2019/papers/EarthVision/Kellenberger_When_a_Few_Clicks_Make_All_the_Difference_Improving_Weakly-Supervised_CVPRW_2019_paper.pdf)).
+	  Note that this model is special insofar as it accepts both spatially explicit point annotations as well as image-wide classification labels for training, both of which may be mixed. In the second cased, the model requires images where the label class is both present and completely absent in order to be able to localize the class objects. Also, the objects should be of similar size throughout the images. See the [paper](http://openaccess.thecvf.com/content_CVPRW_2019/papers/EarthVision/Kellenberger_When_a_Few_Clicks_Make_All_the_Difference_Improving_Weakly-Supervised_CVPRW_2019_paper.pdf) for details.
+  * Bounding boxes:
+  	* RetinaNet (Lin, Tsung-Yi, et al. "Focal loss for dense object detection." Proceedings of the IEEE international conference on computer vision. 2017), based on the [implementation by Kuangliu](https://github.com/kuangliu/pytorch-retinanet).
 
 All models are implemented using [PyTorch](https://pytorch.org/) and support a number of custom configuration parameters.
 
@@ -34,7 +38,7 @@ model_options_path = /path/to/your/settings.json
 Below follow the default parameters for each of the built-in models. You may use these as a template for your JSON file to override parameters.
 
 Notes:
-* Not all of the arguments specified in the defaults are required. If an argument (or argument block) is missing in your custom JSON file, it will be replaced with the defaults (printed above) instead.
+* Not all of the arguments specified in the defaults are required. If an argument (or argument block) is missing in your custom JSON file, it will be replaced with the defaults listed below.
 * Any entry named `kwargs` accepts all arguments of the respective Python class (given by the `class` specifier in the same JSON block). For example, you could add the keyword `eps` to the `kwargs` entry of the `optim` section, since this is a valid parameter for e.g. the [Adam optimizer](https://pytorch.org/docs/stable/optim.html#torch.optim.Adam).
 * You can further provide custom class executable paths. For example, to add a custom transform function:
     1. Create a new package on the Python path, such as `custom.transforms`.
@@ -145,6 +149,15 @@ Notes:
 		"batch_size": 256
 	}
 }
+```
+
+
+#### Detection (points)
+
+##### Heatmap model (Kellenberger et al., 2019)
+
+```json
+	TODO
 ```
 
 

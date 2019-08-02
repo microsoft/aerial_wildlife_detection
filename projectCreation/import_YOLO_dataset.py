@@ -4,6 +4,7 @@
     This assumes that the images of the dataset have already been placed in the
     folder of the connected file server (parameter "staticfiles_dir" in section [FileServer]
     of .ini file), and that the labels provided here match with a simple file directory lookup.
+    Also pushes images to the database if they are not already in there.
 
     Inputs:
     - labelFolder: path string for a directory with label files (see conventions below)
@@ -93,6 +94,20 @@ if __name__ == '__main__':
         raise Exception('Error connecting to database.')
     dbSchema = config.getProperty('Database', 'schema')
     
+    valid_image_extensions = (
+        '.jpg',
+        '.jpeg',
+        '.png',
+        '.gif',
+        '.tif',
+        '.tiff',
+        '.bmp',
+        '.ico',
+        '.jfif',
+        '.pjpeg',
+        '.pjp'
+    )
+
 
     # check if running on file server
     imgBaseDir = config.getProperty('FileServer', 'staticfiles_dir')
@@ -170,15 +185,32 @@ if __name__ == '__main__':
             continue
         
         basePath, ext = os.path.splitext(i)
+
+        if ext.lower() not in valid_image_extensions:
+            continue
+
         baseName = basePath.replace(imgBaseDir, '')
         imgs[baseName] = i
 
-        # push image to database
-        dbConn.execute('''
-            INSERT INTO {}.IMAGE (filename)
-            VALUES (%s)
-        '''.format(dbSchema),
-        (baseName,))
+
+    # ignore images that are already in database
+    print('Filter images already in database...')
+    imgs_filenames = set(imgs.values())
+    imgs_existing = dbConn.execute('''
+        SELECT filename FROM {}.image;
+    '''.format(dbSchema), None, 'all')
+    imgs_existing = set([i['filename'] for i in imgs_existing])
+
+    imgs_filenames = list(imgs_filenames.difference(imgs_existing))
+    imgs_filenames = [(i,) for i in imgs_filenames]
+
+    # push image to database
+    print('Adding to database...')
+    dbConn.insert('''
+        INSERT INTO {}.image (filename)
+        VALUES %s;
+    '''.format(dbSchema),
+    imgs_filenames)
 
     
     # locate all label files

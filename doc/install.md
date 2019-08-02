@@ -9,6 +9,7 @@ The AIde label interface (without the AI backend) requires the following librari
 * tqdm>=4.32.1
 * bcrypt>=3.1.6
 * netifaces>=0.10.9
+* gunicorn>=19.9.0
 
 The AI backend core further relies on:
 
@@ -39,21 +40,19 @@ It is strongly recommended to run AIde in a self-contained Python environment, s
     # specify the root folder where you wish to install AIde
     targetDir=/path/to/desired/source/folder
 
-    # install required software
-    sudo apt-get update && sudo apt-get install -y git
-
     # create environment (requires conda or miniconda)
     conda create -y -n aide python=3.7
     conda activate aide
+
+    # download AIde source code
+    sudo apt-get update && sudo apt-get install -y git
+    cd $targetDir
+    git clone git+https://github.com/microsoft/aerial_wildlife_detection.git
 
     # install basic requirements
     pip install -U -r requirements.txt
 
     # at this point you may want to install the additonal packages listed above, if required
-
-    # download AIde source code
-    cd $targetDir
-    git clone git+https://github.com/microsoft/aerial_wildlife_detection.git
 ```
 
 

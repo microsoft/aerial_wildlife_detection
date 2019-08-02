@@ -9,7 +9,7 @@ Note that AIde requires PostgreSQL >= 9.5 (it has been tested with version 10).
 ## Define database details
 
 The instructions below assume you have [installed the AIde project](install.md) and [configured the project configuration file](configure_settings.md) on the machine that is dedicated to running the database.
-However, for the database operation, this is not required. If you wish to skip these steps you will have to manually provide the four parameters below (`$(python util/configDef.py ...)`).
+However, for the database operation, this is not required. If you wish to skip these steps you will have to manually provide the four parameters below (replace `$(python util/configDef.py ...)` with the respective values).
 
 ```bash
     dbName=$(python util/configDef.py --section=Database --parameter=name)
@@ -59,8 +59,8 @@ However, for the database operation, this is not required. If you wish to skip t
 ```
 
 
-## Create a new database and the main user account. This needs to be done from the installation root of AIde,
-   with the correct environment activated.
+## Create a new database and the main user account
+This needs to be done from the installation root of AIde, with the correct environment activated.
 
 ```bash
     sudo -u postgres psql -c "CREATE USER $dbUser WITH PASSWORD '$dbPassword';"
@@ -73,13 +73,14 @@ However, for the database operation, this is not required. If you wish to skip t
 ```
 
 
-## Setup the database schema. We do that using the newly created user account instead of the postgres user:
+## Setup the database schema
+We do that using the newly created user account instead of the postgres user:
 
 ```bash
     python projectCreation/setupDB.py
 ```
 
 
-## Cleanup
+## Clean up
 
 If you have used the settings file [above](#define-database-details) to get the database details, you can now remove the AIde code base (and Python environment) from the database server, unless the machine hosts any other AIde module(s).

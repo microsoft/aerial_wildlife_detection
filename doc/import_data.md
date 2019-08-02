@@ -5,7 +5,26 @@ AIde ships with a couple of helper scripts that allow importing existing dataset
 
 ## Import images only
 
-TODO
+Importing unlabeled images into AIde can be achieved with the helper script `projectCreation/import_images.py`.
+This script scans the _FileServer_'s image directory folder for images that have no entry in the database and adds them accordingly. Images that are already in the database are skipped, and so are unsupported image formats and other files.
+In essence, this means that you have to first copy your images to the _FileServer_'s directory manually.
+
+All in all, you can import images into AIde as follows:
+1. Organize your images into a folder. Arbitrary subfolders and nested directories are allowed, too (directories will be prepended to the individual file names in the database).
+2. Make sure the images are of one of the following formats:
+    * TIFF
+    * JPEG
+    * PNG
+    * GIF
+    * BMP
+    i.e., convert all images from custom formats, such as RAW (Canon CR2, Nikon NEF, etc.) to one of the above before continuing. Images with incorrect file extensions are automatically ignored.
+3. Copy the image folder with contents to the _FileServer_'s image root directory, as specified under `staticfiles_dir` in the [configuration *.ini file](configure_settings.md).
+4. From the _FileServer_ instance and AIde's root directory, execute the import script:
+    ```bash
+        conda activate aide
+        export AIDE_CONFIG_PATH=config/settings.ini     # set and adjust environment variable if not already done
+        python projectCreation/import_images.py
+    ```
 
 
 ## Import an object detection dataset
@@ -15,13 +34,13 @@ We provide a script that automatically parses and imports an object detection da
 ### Requirements
 This procedure requires the dataset to be organized as follows:
 
-* One folder contains all images (may or may not be hierarchical, with sub-folders)
+* One folder contains all images (may or may not be hierarchical, with sub-folders; see [above](#import-images-only))
 * A second folder contains annotations as follows:
     - There must be one annotation text file for every image with at least one object in it
     - Annotation text files must be organized in exactly the same way as the images w.r.t. folder hierarchies
     - The only permitted differences between the annotation files' and the images' file names are the source folder and the file extension
     - Annotation text files must list the bounding boxes in [YOLO](https://www.cv-foundation.org/openaccess/content_cvpr_2016/papers/Redmon_You_Only_Look_CVPR_2016_paper.pdf) format (see below)
-    - The annotations folder must further contain a "classes.txt" file that lists the class names in the dataset (one human-friendly class name per line)
+    - The annotations folder must further contain a `classes.txt` file that lists the class names in the dataset (one human-friendly class name per line)
 
 
 Example for a valid dataset structure:
@@ -96,14 +115,15 @@ In this case, every annotation (or prediction) with class label zero is treated 
 
 ### Importing the data
 
-1. Copy all the _contents_ of the `images/` folder into the `staticfiles_dir` of the _FileServer_ instance, as defined in the [configuration file](configure_settings.md). This copies the images over to the file server; the script run in the steps below will then add them to the database accordingly.
-
+1. Copy all the _contents_ of the `images/` folder into the `staticfiles_dir` of the _FileServer_ instance, as defined in the [configuration file](configure_settings.md).
 
 2. Once finished, run the import script from the AIde root with environment variables set on the _FileServer_ instance:
-```
-    python projectCreation/import_YOLO_dataset.py --label_folder=labels
-```
-Replace `labels` with the path to the labels folder of your dataset.
+    ```bash
+        conda activate aide
+        export AIDE_CONFIG_PATH=config/settings.ini     # set and adjust environment variable if not already done
+        python projectCreation/import_YOLO_dataset.py --label_folder=labels
+    ```
+    Replace `labels` with the path to the labels folder of your dataset.
 
 This will import all image paths from the _FileServer_'s `staticfiles_dir`, all label classes with names as defined in `classes.txt`, and all labels present as type `annotation` into the database. The annotation/prediction columns `timeRequired` and `timeCreated` will be set to the value -1 and the current date, respectively.
 
