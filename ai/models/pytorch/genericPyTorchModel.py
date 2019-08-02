@@ -29,7 +29,14 @@ class GenericPyTorchModel(AIModel):
         self.dataset_class = get_class_executable(self.options['dataset']['class'])
 
         # get device (CPU, CUDA:x)
-        self.device = get_device(self.options)
+        self.device = self.get_device()
+
+
+    def get_device(self):
+        device = self.options['general']['device']
+        if 'cuda' in device and not torch.cuda.is_available():
+            device = 'cpu'
+        return device
 
     
     def initializeModel(self, stateDict, data):
@@ -76,13 +83,6 @@ class GenericPyTorchModel(AIModel):
         torch.save(model.getStateDict(), bio)
 
         return bio.getvalue()
-
-
-    def get_device(self):
-        device = self.options['general']['device']
-        if 'cuda' in device and not torch.cuda.is_available():
-            device = 'cpu'
-        return device
 
     
     def average_model_states(self, stateDicts):

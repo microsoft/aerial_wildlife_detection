@@ -1,34 +1,28 @@
+'''
+    RetinaNet trainer for PyTorch.
+
+    2019 Benjamin Kellenberger
+'''
+
 import io
 from tqdm import tqdm
 from celery import current_task
 import torch
 from torch.utils.data import DataLoader
-# from torchvision import transforms as tr
-# import numpy as np
-from ai.models import AIModel
-from .. import parse_transforms
 
-#TODO: clean up imports
-from ai.models.pytorch.functional._retinanet import DEFAULT_OPTIONS
-from ai.models.pytorch.functional._retinanet import collation, encoder, loss
-from ai.models.pytorch.functional._retinanet.model import RetinaNet as Model
-from ai.models.pytorch.functional.datasets.bboxDataset import BoundingBoxesDataset
+from .. import GenericPyTorchModel, parse_transforms
+
+from ..functional._retinanet import DEFAULT_OPTIONS, collation, encoder, loss
+from ..functional._retinanet.model import RetinaNet as Model
+from ..functional.datasets.bboxDataset import BoundingBoxesDataset
 from util.helpers import get_class_executable, check_args
 
 
 
-class RetinaNet(AIModel):
+class RetinaNet(GenericPyTorchModel):
 
     def __init__(self, config, dbConnector, fileServer, options):
-        super(RetinaNet, self).__init__(config, dbConnector, fileServer, options)
-        self.options = check_args(self.options, DEFAULT_OPTIONS)
-
-
-    def get_device(self):
-        device = self.options['general']['device']
-        if 'cuda' in device and not torch.cuda.is_available():
-            device = 'cpu'
-        return device
+        super(RetinaNet, self).__init__(config, dbConnector, fileServer, options, DEFAULT_OPTIONS)
 
 
     def train(self, stateDict, data):
@@ -40,34 +34,12 @@ class RetinaNet(AIModel):
         '''
 
         # initialize model
-        if stateDict is not None:
-            stateDict = torch.load(io.BytesIO(stateDict), map_location=lambda storage, loc: storage)
-            model = Model.loadFromStateDict(stateDict)
-            
-            # mapping labelclass (UUID) to index in model (number)
-            labelclassMap = stateDict['labelclassMap']
-        else:
-            # create new label class map
-            labelclassMap = {}
-            for index, lcID in enumerate(data['labelClasses']):
-                labelclassMap[lcID] = index
-            self.options['model']['labelclassMap'] = labelclassMap
+        model, labelclassMap = self.initializeModel(stateDict, data)
 
-            # initialize a fresh model
-            model = Model.loadFromStateDict(self.options['model']['kwargs'])
-
-
-        # initialize data loader, dataset, transforms, optimizer, criterion
+        # setup transform, data loader, dataset, optimizer, criterion
         inputSize = tuple(self.options['general']['image_size'])
         transform = parse_transforms(self.options['train']['transform'])
-        # transforms = bboxTr.Compose([
-        #     bboxTr.Resize(inputSize),
-        #     bboxTr.RandomHorizontalFlip(p=0.5),
-        #     bboxTr.DefaultTransform(tr.ColorJitter(0.25, 0.25, 0.25, 0.01)),
-        #     bboxTr.DefaultTransform(tr.ToTensor()),
-        #     bboxTr.DefaultTransform(tr.Normalize(mean=[0.485, 0.456, 0.406],
-        #                                         std=[0.229, 0.224, 0.225]))
-        # ])  #TODO: ditto, also write functional.pytorch util to compose transformations
+        
         dataset = BoundingBoxesDataset(data=data,
                                     fileServer=self.fileServer,
                                     labelclassMap=labelclassMap,
@@ -112,32 +84,7 @@ class RetinaNet(AIModel):
             current_task.update_state(state='PROGRESS', meta={'done': imgCount, 'total': len(dataLoader.dataset), 'message': 'training'})
 
         # all done; return state dict as bytes
-        if 'cuda' in device:
-            torch.cuda.empty_cache()
-        model.cpu()
-
-        bio = io.BytesIO()
-        torch.save(model.getStateDict(), bio)
-
-        return bio.getvalue()
-
-
-    def average_model_states(self, stateDicts):
-        '''
-            TODO
-        '''
-
-        # read state dicts from bytes
-        for s in range(len(stateDicts)):
-            stateDict = io.BytesIO(stateDicts[s])
-            stateDicts[s] = torch.load(stateDict, map_location=lambda storage, loc: storage)
-
-        average_states = Model.averageStateDicts(stateDicts)
-
-        # all done; return state dict as bytes
-        bio = io.BytesIO()
-        torch.save(average_states, bio)
-        return bio.getvalue()
+        return self.exportModelState(model)
 
     
     def inference(self, stateDict, data):
@@ -150,23 +97,11 @@ class RetinaNet(AIModel):
             raise Exception('No trained model state found, but required for inference.')
 
         # read state dict from bytes
-        stateDict = io.BytesIO(stateDict)
-        stateDict = torch.load(stateDict, map_location=lambda storage, loc: storage)
-        model = Model.loadFromStateDict(stateDict)
-
-        # mapping labelClass (UUID) to index in model (number)
-        labelclassMap = stateDict['labelclassMap']
+        model, labelclassMap = self.initializeModel(stateDict, data)
 
         # initialize data loader, dataset, transforms
         inputSize = tuple(self.options['general']['image_size'])
         transform = parse_transforms(self.options['inference']['transform'])
-        # transforms = bboxTr.Compose([
-        #     bboxTr.Resize(inputSize),
-        #     bboxTr.DefaultTransform(tr.ToTensor()),
-        #     bboxTr.DefaultTransform(tr.Normalize(mean=[0.485, 0.456, 0.406],
-        #                                         std=[0.229, 0.224, 0.225]))
-        # ])  #TODO: ditto, also write functional.pytorch util to compose transformations
-
         
         dataset = BoundingBoxesDataset(data=data,
                                     fileServer=self.fileServer,

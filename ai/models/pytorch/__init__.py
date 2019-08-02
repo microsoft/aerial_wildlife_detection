@@ -10,30 +10,39 @@
 # abstract base
 from .genericPyTorchModel import GenericPyTorchModel
 
-# classification
+# labels
 from .functional.classification.resnet import ResNet
 
-# detection
+# points
+# from .functional._wsodPoints.model import WSODPointModel      #TODO: implement
+
+# boundingBoxes
 from .functional._retinanet.model import RetinaNet
 
 
 
 ''' Datasets '''
 
-# classification
+# labels
 from .functional.datasets.classificationDataset import LabelsDataset
 
-# detection
+# points
+from .functional.datasets.pointsDataset import PointsDataset
+
+# boundingBoxes
 from .functional.datasets.bboxDataset import BoundingBoxesDataset
 
 
 
 ''' Transforms '''
 
-# classification
+# labels
 from .functional.transforms import labels as LabelsTransforms
 
-# detection
+# points
+# from .functional.transforms imoprt points as PointsTransforms     #TODO: implement
+
+# boundingBoxes
 from .functional.transforms import boundingBoxes as BoundingBoxesTransforms
 
 
@@ -53,6 +62,9 @@ def parse_transforms(options):
         tokens = className.split('.')
         if tokens[-2] == 'labels':
             return getattr(LabelsTransforms, tokens[-1])
+        elif tokens[-2] == 'points':
+            # return getattr(PointsTransforms, tokens[-1])  #TODO: implement
+            return None
         elif tokens[-2] == 'boundingBoxes':
             return getattr(BoundingBoxesTransforms, tokens[-1])
         else:

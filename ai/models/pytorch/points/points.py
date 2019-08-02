@@ -32,7 +32,7 @@ from tqdm import tqdm
 from celery import current_task
 
 from ai.models import AIModel
-from .. import GenericPyTorchModel, parse_transforms, get_device
+from .. import GenericPyTorchModel, parse_transforms
 from .points import DEFAULT_OPTIONS
 from ..functional._wsodPoints import encoder, collation
 

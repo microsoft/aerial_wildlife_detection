@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from celery import current_task
 
-from .. import GenericPyTorchModel, parse_transforms, get_device
+from .. import GenericPyTorchModel, parse_transforms
 from . import DEFAULT_OPTIONS
 
 from util.helpers import get_class_executable, check_args
@@ -31,25 +31,8 @@ class ClassificationModel(GenericPyTorchModel):
             Returns a serializable state dict of the resulting model.
         '''
 
+        # initialize model
         model, labelclassMap = self.initializeModel(stateDict, data)
-
-        # # initialize model
-        # if stateDict is not None:
-        #     stateDict = torch.load(io.BytesIO(stateDict), map_location=lambda storage, loc: storage)
-        #     model = self.model_class.loadFromStateDict(stateDict)
-            
-        #     # mapping labelclass (UUID) to index in model (number)
-        #     labelclassMap = stateDict['labelclassMap']
-        # else:
-        #     # create new label class map
-        #     labelclassMap = {}
-        #     for index, lcID in enumerate(data['labelClasses']):
-        #         labelclassMap[lcID] = index
-        #     self.options['model']['labelclassMap'] = labelclassMap
-
-        #     # initialize a fresh model
-        #     model = self.model_class.loadFromStateDict(self.options['model']['kwargs'])
-
 
         # setup transform, data loader, dataset, optimizer, criterion
         transform = parse_transforms(self.options['train']['transform'])
@@ -70,15 +53,14 @@ class ClassificationModel(GenericPyTorchModel):
         criterion = criterion_class(**self.options['train']['criterion']['kwargs'])
 
         # train model
-        device = get_device(self.options)
         torch.manual_seed(self.options['general']['seed'])
-        if 'cuda' in device:
+        if 'cuda' in self.device:
             torch.cuda.manual_seed(self.options['general']['seed'])
 
-        model.to(device)
+        model.to(self.device)
         imgCount = 0
         for (img, bboxes_target, labels_target, fVec, _) in tqdm(dataLoader):
-            img, bboxes_target, labels_target = img.to(device), bboxes_target.to(device), labels_target.to(device)
+            img, bboxes_target, labels_target = img.to(self.device), bboxes_target.to(self.device), labels_target.to(self.device)
 
             optimizer.zero_grad()
             bboxes_pred, labels_pred = model(img)
@@ -92,15 +74,6 @@ class ClassificationModel(GenericPyTorchModel):
 
         # all done; return state dict as bytes
         return self.exportModelState(model)
-        # if 'cuda' in device:
-        #     torch.cuda.empty_cache()
-        # model.cpu()
-
-        # bio = io.BytesIO()
-        # torch.save(model.getStateDict(), bio)
-
-        # return bio.getvalue()
-
 
     
     def inference(self, stateDict, data):
@@ -117,13 +90,6 @@ class ClassificationModel(GenericPyTorchModel):
 
         # read state dict from bytes
         model, labelclassMap = self.initializeModel(stateDict, data)
-
-        # stateDict = io.BytesIO(stateDict)
-        # stateDict = torch.load(stateDict, map_location=lambda storage, loc: storage)
-        # model = self.model_class.loadFromStateDict(stateDict)
-
-        # # mapping labelClass (UUID) to index in model (number)
-        # labelclassMap = stateDict['labelclassMap']
 
         # setup transform, data loader, dataset, optimizer, criterion
         transform = parse_transforms(self.options['inference']['transform'])
