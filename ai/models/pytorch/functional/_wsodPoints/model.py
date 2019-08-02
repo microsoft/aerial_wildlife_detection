@@ -71,7 +71,7 @@ class WSODPointModel(nn.Module):
     def loadFromStateDict(stateDict):
         # parse args
         labelclassMap = stateDict['labelclassMap']
-        backbone = (stateDict['backbone'] if 'backbone' in stateDict else resnet.resnet50)
+        backbone = (stateDict['backbone'] if 'backbone' in stateDict else 'resnet18')
         pretrained = (stateDict['pretrained'] if 'pretrained' in stateDict else True)
         convertToInstanceNorm = (stateDict['convertToInstanceNorm'] if 'convertToInstanceNorm' in stateDict else False)
         state = (stateDict['model_state'] if 'model_state' in stateDict else None)
@@ -110,7 +110,7 @@ class WSODPointModel(nn.Module):
 
 
     def getOutputSize(self, inputSize):
-        if isinstance(inputSize, torch.Size):
+        if not isinstance(inputSize, torch.Tensor):
             inputSize = torch.tensor(inputSize)
         outputSize = inputSize.clone().float()
 

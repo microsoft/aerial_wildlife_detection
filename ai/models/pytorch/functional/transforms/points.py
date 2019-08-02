@@ -29,7 +29,6 @@ def _verticalFlip(img, points=None, labels=None):
 def _pointTranslate(points, sz_orig, sz_new):
     sz_orig = [float(s) for s in sz_orig]
     sz_new = [float(s) for s in sz_new]
-
     points[:,0] *= sz_new[0] / sz_orig[0]
     points[:,1] *= sz_new[1] / sz_orig[1]
     return points

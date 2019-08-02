@@ -49,7 +49,7 @@ class ResNet(nn.Module):
     def loadFromStateDict(stateDict):
         # parse args
         labelclassMap = stateDict['labelclassMap']
-        featureExtractor = (stateDict['featureExtractor'] if 'featureExtractor' in stateDict else resnet.resnet50)
+        featureExtractor = (stateDict['featureExtractor'] if 'featureExtractor' in stateDict else 'resnet50')
         pretrained = (stateDict['pretrained'] if 'pretrained' in stateDict else True)
         state = (stateDict['model_state'] if 'model_state' in stateDict else None)
 

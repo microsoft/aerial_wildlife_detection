@@ -117,8 +117,12 @@ class PointsDataset(Dataset):
         points, labels, label_img, imageID, fVec, imagePath = self.data[idx]
 
         # load image
-        img = Image.open(BytesIO(self.fileServer.getFile(imagePath)))
-                
+        img = Image.open(BytesIO(self.fileServer.getFile(imagePath))).convert('RGB')
+
+        points = torch.tensor(points).clone()
+        if len(points):
+            if points.dim() == 1:
+                points = points.unsqueeze(0)
         labels = torch.tensor(labels).long()
 
         if self.transform is not None and img is not None:

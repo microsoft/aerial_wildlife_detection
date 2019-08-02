@@ -115,7 +115,7 @@ class BoundingBoxesDataset(Dataset):
         boundingBoxes, labels, imageID, fVec, imagePath = self.data[idx]
 
         # load image
-        img = Image.open(BytesIO(self.fileServer.getFile(imagePath)))
+        img = Image.open(BytesIO(self.fileServer.getFile(imagePath))).convert('RGB')
 
         # convert data
         sz = img.size

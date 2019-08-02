@@ -66,7 +66,7 @@ class LabelsDataset(Dataset):
         label, imageID, fVec, imagePath = self.data[idx]
 
         # load image
-        img = Image.open(BytesIO(self.fileServer.getFile(imagePath)))
+        img = Image.open(BytesIO(self.fileServer.getFile(imagePath))).convert('RGB')
 
         if self.transform is not None and img is not None:
             img = self.transform(img)

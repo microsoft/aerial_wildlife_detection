@@ -36,7 +36,7 @@ class Collator():
         # prepare outputs
         imgs = torch.stack(imgs)
         loc_targets = []
-        cls_images = torch.stack(image_labels)
+        cls_images = torch.tensor(image_labels).long()
         fVecs_targets = []
         imageIDs_targets = []
 
