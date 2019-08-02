@@ -72,10 +72,3 @@ def parse_transforms(options):
         for o in range(len(options)):
             options[o] = parse_transforms(options[o])
     return options
-
-
-def get_device(options):
-    device = options['general']['device']
-    if 'cuda' in device and not torch.cuda.is_available():
-        device = 'cpu'
-    return device

@@ -19,7 +19,7 @@ from torchvision import transforms as tr
 from PIL import Image
 import rawpy
 from util.helpers import check_args
-from ai.models.pytorch import parse_transforms, get_device
+from ai.models.pytorch import parse_transforms
 from ai.models.pytorch.boundingBoxes.retinanet import RetinaNet
 from ai.models.pytorch.functional._retinanet.model import RetinaNet as Model
 from ai.models.pytorch.functional._retinanet import encoder
@@ -126,7 +126,7 @@ class RetinaNet_ois(RetinaNet):
             identified bounding boxes under the patch names as a dict.
         '''
 
-        device = get_device(self.options)
+        device = self.get_device()
 
         # load image
         filePath = os.path.join(self.baseFolder_unlabeled, filename)
@@ -264,7 +264,7 @@ class RetinaNet_ois(RetinaNet):
             TODO: Requires to be running on the same instance as the FileServer.
         '''
 
-        device = get_device(self.options)
+        device = self.get_device()
 
         # prepare return metadata
         print('Doing inference on new images...')

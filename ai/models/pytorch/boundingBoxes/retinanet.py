@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 # from torchvision import transforms as tr
 # import numpy as np
 from ai.models import AIModel
-from .. import parse_transforms, get_device
+from .. import parse_transforms
 
 #TODO: clean up imports
 from ai.models.pytorch.functional._retinanet import DEFAULT_OPTIONS
@@ -22,6 +22,13 @@ class RetinaNet(AIModel):
     def __init__(self, config, dbConnector, fileServer, options):
         super(RetinaNet, self).__init__(config, dbConnector, fileServer, options)
         self.options = check_args(self.options, DEFAULT_OPTIONS)
+
+
+    def get_device(self):
+        device = self.options['general']['device']
+        if 'cuda' in device and not torch.cuda.is_available():
+            device = 'cpu'
+        return device
 
 
     def train(self, stateDict, data):
@@ -84,7 +91,7 @@ class RetinaNet(AIModel):
         criterion = criterion_class(**self.options['train']['criterion']['kwargs'])
 
         # train model
-        device = get_device(self.options)
+        device = self.get_device()
         torch.manual_seed(self.options['general']['seed'])
         if 'cuda' in device:
             torch.cuda.manual_seed(self.options['general']['seed'])
@@ -175,7 +182,7 @@ class RetinaNet(AIModel):
 
         # perform inference
         response = {}
-        device = get_device(self.options)
+        device = self.get_device()
         model.to(device)
         imgCount = 0
         for (img, _, _, fVec, imgID) in tqdm(dataLoader):
