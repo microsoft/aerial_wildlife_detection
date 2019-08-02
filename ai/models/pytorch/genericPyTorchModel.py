@@ -85,7 +85,7 @@ class GenericPyTorchModel(AIModel):
             database.
             Also puts the model back on CPU and empties the CUDA cache (if available).
         '''
-        if 'cuda' in self.device:
+        if 'cuda' in self.get_device():
             torch.cuda.empty_cache()
         model.cpu()
 
