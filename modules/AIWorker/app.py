@@ -75,7 +75,7 @@ class AIWorker():
 
         # create AI model instance
         self.modelInstance = modelClass(config=self.config, dbConnector=self.dbConnector, fileServer=self.fileServer, options=modelOptions)
-
+        
 
     def _init_al_instance(self):
         '''

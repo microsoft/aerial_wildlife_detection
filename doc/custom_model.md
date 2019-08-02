@@ -325,3 +325,13 @@ To debug your model in the platform itself, you can make use of Celery's built-i
 ```
 
 You then need to telnet into the _AIWorker_ instance to debug the task. The rdb debugger then behaves like [pdb](https://docs.python.org/3/library/pdb.html).
+
+
+
+### Pitfalls
+
+#### Avoiding CUDA initialization errors
+
+These errors occur when a library using CUDA, such as PyTorch, tries to initialize the framework twice.
+A very common mistake that induces this behavior is to use a CUDA-related function in the AI model constructor and then again in one of the main functions (train, inference, etc.).
+**Solution:** Avoid calling the CUDA backend in any way in the constructors.

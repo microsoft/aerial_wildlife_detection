@@ -87,16 +87,17 @@ class PointModel(GenericPyTorchModel):
         criterion = criterion_class(**self.options['train']['criterion']['kwargs'])
 
         # train model
+        device = self.get_device()
         torch.manual_seed(self.options['general']['seed'])
-        if 'cuda' in self.device:
+        if 'cuda' in device:
             torch.cuda.manual_seed(self.options['general']['seed'])
 
-        model.to(self.device)
+        model.to(device)
         imgCount = 0
         for (img, locs_target, cls_images, fVec, _) in tqdm(dataLoader):
-            img, locs_target, cls_images = img.to(self.device), \
-                                                locs_target.to(self.device), \
-                                                cls_images.to(self.device)
+            img, locs_target, cls_images = img.to(device), \
+                                                locs_target.to(device), \
+                                                cls_images.to(device)
             
             optimizer.zero_grad()
             locs_pred = model(img)
@@ -144,12 +145,13 @@ class PointModel(GenericPyTorchModel):
         )
         
         # perform inference
+        device = self.get_device()
         response = {}
-        model.to(self.device)
+        model.to(device)
         imgCount = 0
         for (img, _, _, fVec, imgID) in tqdm(dataLoader):
 
-            dataItem = img.to(self.device)
+            dataItem = img.to(device)
             with torch.no_grad():
                 pred_batch = model(dataItem)
             
@@ -178,7 +180,7 @@ class PointModel(GenericPyTorchModel):
             current_task.update_state(state='PROGRESS', meta={'done': imgCount, 'total': len(dataLoader.dataset), 'message': 'predicting'})
 
         model.cpu()
-        if 'cuda' in self.device:
+        if 'cuda' in device:
             torch.cuda.empty_cache()
 
         return response

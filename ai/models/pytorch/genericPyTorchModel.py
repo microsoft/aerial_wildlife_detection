@@ -41,12 +41,6 @@ class GenericPyTorchModel(AIModel):
         except:
             self.dataset_class = None
 
-        # get device (CPU, CUDA:x)
-        try:
-            self.device = self.get_device()
-        except:
-            self.device = 'cpu'
-
 
     def get_device(self):
         device = self.options['general']['device']
@@ -80,7 +74,7 @@ class GenericPyTorchModel(AIModel):
 
             # initialize a fresh model
             model = self.model_class.loadFromStateDict(self.options['model']['kwargs'])
-        
+
         return model, labelclassMap
 
     

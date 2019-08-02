@@ -45,8 +45,6 @@ worker = AIWorker(config, None)     #TODO: unneccessary second parameter for run
 
 
 
-
-
 @app.task(rate_limit=1)
 def call_train(data, subset):
     return worker.call_train(data, subset)

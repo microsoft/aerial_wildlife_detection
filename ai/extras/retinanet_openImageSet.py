@@ -99,6 +99,7 @@ class RetinaNet_ois(RetinaNet):
             TODO: ugly hack: since we do not yet have a model that can cope with all label classes,
             we simply ignore labels the model does not know.
         '''
+        
         if stateDict is not None:
             stateDict_parsed = torch.load(io.BytesIO(stateDict), map_location=lambda storage, loc: storage)
             known_classes = stateDict_parsed['labelclassMap']

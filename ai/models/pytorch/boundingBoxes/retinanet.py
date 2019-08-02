@@ -73,11 +73,12 @@ class RetinaNet(GenericPyTorchModel):
         torch.manual_seed(self.options['general']['seed'])
         if 'cuda' in device:
             torch.cuda.manual_seed(self.options['general']['seed'])
-
         model.to(device)
         imgCount = 0
         for (img, bboxes_target, labels_target, fVec, _) in tqdm(dataLoader):
-            img, bboxes_target, labels_target = img.to(device), bboxes_target.to(device), labels_target.to(device)
+            img, bboxes_target, labels_target = img.to(device), \
+                                                bboxes_target.to(device), \
+                                                labels_target.to(device)
 
             optimizer.zero_grad()
             bboxes_pred, labels_pred = model(img)
