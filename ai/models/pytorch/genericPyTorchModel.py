@@ -70,7 +70,7 @@ class GenericPyTorchModel(AIModel):
             labelclassMap = {}
             for index, lcID in enumerate(data['labelClasses']):
                 labelclassMap[lcID] = index
-            self.options['model']['labelclassMap'] = labelclassMap
+            self.options['model']['kwargs']['labelclassMap'] = labelclassMap
 
             # initialize a fresh model
             model = self.model_class.loadFromStateDict(self.options['model']['kwargs'])

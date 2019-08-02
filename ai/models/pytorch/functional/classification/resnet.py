@@ -112,9 +112,10 @@ class ResNet(nn.Module):
 
     
     def forward(self, x, isFeatureVector=False):
+        bs = x.size(0)
         if isFeatureVector:
-            yhat = self.classifier(x)
+            yhat = self.classifier(x.view(bs, -1))
         else:
             fVec = self.fe(x)
-            yhat = self.classifier(fVec)
+            yhat = self.classifier(fVec.view(bs, -1))
         return yhat

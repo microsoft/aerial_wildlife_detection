@@ -149,7 +149,12 @@ Notes:
 				]
 			}
 		},
-		"batch_size": 256
+		"dataLoader": {
+            "kwargs": {
+                "shuffle": false,
+                "batch_size": 32
+            }
+        }
 	}
 }
 ```
@@ -279,7 +284,12 @@ Notes:
 				]
 			}
 		},
-		"batch_size": 256
+		"dataLoader": {
+            "kwargs": {
+                "shuffle": false,
+                "batch_size": 32
+            }
+        }
 	}
 }
 ```

@@ -19,7 +19,8 @@ DEFAULT_OPTIONS = {
 		}
 	},
     "dataset": {
-		"class": "ai.models.pytorch.LabelsDataset"
+		"class": "ai.models.pytorch.LabelsDataset",
+		"kwargs": {}
 	},
 	"train": {
         "dataLoader": {
@@ -64,7 +65,8 @@ DEFAULT_OPTIONS = {
 			}
 		},
         "criterion": {
-			"class": "torch.nn.CrossEntropyLoss"
+			"class": "torch.nn.CrossEntropyLoss",
+			"kwargs": {}
 		},
         "ignore_unsure": True
 	},
@@ -91,6 +93,11 @@ DEFAULT_OPTIONS = {
 				]
 			}
 		},
-		"batch_size": 256
+		"dataLoader": {
+            "kwargs": {
+                "shuffle": False,
+                "batch_size": 32
+            }
+        }
 	}
 }

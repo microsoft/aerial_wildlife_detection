@@ -81,7 +81,7 @@ def __load_metadata(config, dbConnector, imageIDs, loadAnnotations):
 
     # annotations
     if loadAnnotations and len(imageIDs):
-        fieldNames = list(getattr(FieldNames_annotation, config.getProperty('Project', 'predictionType')).value)
+        fieldNames = list(getattr(FieldNames_annotation, config.getProperty('Project', 'annotationType')).value)
         sql = '''
             SELECT id AS annotationID, image, {fieldNames} FROM {schema}.annotation AS anno
             WHERE image IN %s;

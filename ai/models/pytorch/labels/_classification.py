@@ -13,6 +13,7 @@ from celery import current_task
 from ..genericPyTorchModel import GenericPyTorchModel
 from .. import parse_transforms
 from ._default_options import DEFAULT_OPTIONS
+from ..functional.classification.collation import collate
 
 from util.helpers import get_class_executable, check_args
 
@@ -44,6 +45,7 @@ class ClassificationModel(GenericPyTorchModel):
                                 )
 
         dataLoader = DataLoader(dataset,
+                                collate_fn=collate,
                                 **self.options['train']['dataLoader']['kwargs']
                                 )
 
@@ -61,12 +63,12 @@ class ClassificationModel(GenericPyTorchModel):
 
         model.to(device)
         imgCount = 0
-        for (img, bboxes_target, labels_target, fVec, _) in tqdm(dataLoader):
-            img, bboxes_target, labels_target = img.to(device), bboxes_target.to(device), labels_target.to(device)
+        for (img, labels, fVec, _) in tqdm(dataLoader):
+            img, labels = img.to(device), labels.to(device)
 
             optimizer.zero_grad()
-            bboxes_pred, labels_pred = model(img)
-            loss_value = criterion(bboxes_pred, bboxes_target, labels_pred, labels_target)
+            pred = model(img)
+            loss_value = criterion(pred, labels)
             loss_value.backward()
             optimizer.step()
             
@@ -102,6 +104,7 @@ class ClassificationModel(GenericPyTorchModel):
                                 )
 
         dataLoader = DataLoader(dataset,
+                                collate_fn=collate,
                                 **self.options['inference']['dataLoader']['kwargs']
                                 )
 
@@ -110,7 +113,7 @@ class ClassificationModel(GenericPyTorchModel):
         response = {}
         model.to(device)
         imgCount = 0
-        for (img, _, _, fVec, imgID) in tqdm(dataLoader):
+        for (img, _, fVec, imgID) in tqdm(dataLoader):
 
             dataItem = img.to(device)
             with torch.no_grad():
@@ -125,7 +128,7 @@ class ClassificationModel(GenericPyTorchModel):
                     'predictions': [
                         {
                             'label': dataset.labelclassMap_inv[label],
-                            'logits': logits.numpy().tolist(),        #TODO: for AL criterion?
+                            'logits': logits.cpu().numpy().tolist(),        #TODO: for AL criterion?
                             'confidence': torch.max(logits).item()
                         }
                     ]
