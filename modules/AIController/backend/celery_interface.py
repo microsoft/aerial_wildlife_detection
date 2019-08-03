@@ -40,30 +40,26 @@ app.conf.update(
 )
 
 
-# AIWorker singleton
-worker = None
-def _get_worker():
-    global worker
-    if worker is None:
-        worker = AIWorker(config, None)
-    return worker
+# init AIWorker
+worker = AIWorker(config, None)
+
 
 
 @app.task(rate_limit=1)
 def call_train(data, subset):
-    worker = _get_worker()
+    # worker = _get_worker()
     return worker.call_train(data, subset)
 
 
 @app.task(rate_limit=1)
 def call_average_model_states(*args):
-    worker = _get_worker()
+    # worker = _get_worker()
     return worker.call_average_model_states()
 
 
 @app.task()
 def call_inference(imageIDs):
-    worker = _get_worker()
+    # worker = _get_worker()
     return worker.call_inference(imageIDs)
 
 
