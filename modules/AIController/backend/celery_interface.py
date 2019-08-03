@@ -43,13 +43,10 @@ app.conf.update(
 # AIWorker singleton
 worker = None
 def _get_worker():
+    global worker
     if worker is None:
         worker = AIWorker(config, None)
     return worker
-
-# # load AIWorker     TODO: since this file gets imported through the AIController as well, it has to unnecessarily create an AIWorker instance...
-# worker = AIWorker(config, None)     #TODO: unneccessary second parameter for runserver compatibility
-
 
 
 @app.task(rate_limit=1)

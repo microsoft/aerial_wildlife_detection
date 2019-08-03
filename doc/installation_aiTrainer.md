@@ -74,9 +74,12 @@ Also on the _AIController_ machine, run the following code:
 ```bash
     sudo apt-get update && sudo apt-get install redis-server
 
-    # make sure Redis stores its messages in an accessible folder (we're using /tmp/aide.rdb here)
-    sudo sed -i "s/^\s*dir\s*.*/dir \/tmp/g" /etc/redis/redis.conf
+    # make sure Redis stores its messages in an accessible folder (we're using /var/lib/redis/aide.rdb here)
+    sudo sed -i "s/^\s*dir\s*.*/dir \/var\/lib\/redis/g" /etc/redis/redis.conf
     sudo sed -i "s/^\s*dbfilename\s*.*/dbfilename aide.rdb/g" /etc/redis/redis.conf
+
+    sudo mkdir -p /var/lib/redis
+    sudo chown -R redis:redis /var/lib/redis
 
     # optional: if the port is anything else than 6379, execute the following line:
     port=6379   # replace with your port
