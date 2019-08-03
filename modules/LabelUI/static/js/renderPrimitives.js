@@ -187,13 +187,13 @@ class ImageElement extends AbstractRenderElement {
         this.image.loadingText = 'loading image...';
         var self = this;
         this.image.onload = function() {
-            // calculate relative image offsets (X and Y)
-            var canvasSize = [self.viewport.canvas.width(), self.viewport.canvas.height()];
-            var scale = Math.min(canvasSize[0] / this.naturalWidth, canvasSize[1] / this.naturalHeight);
-            var offset = [(canvasSize[0] - (scale*this.naturalWidth))/2, (canvasSize[1] - (scale*this.naturalHeight))/2];
-            var sizeX = this.naturalWidth * scale;
-            var sizeY = this.naturalHeight * scale;
-            self.bounds = [offset[0]/canvasSize[0], offset[1]/canvasSize[1], sizeX/canvasSize[0], sizeY/canvasSize[1]];
+            // calculate image bounds
+            var limit = Math.max(this.naturalWidth, this.naturalHeight);
+            
+            var width = this.naturalWidth / limit;
+            var height = this.naturalHeight / limit;
+
+            self.bounds = [(1-width)/2, (1-height)/2, width, height];
 
             // define valid canvas area as per image offset
             self.viewport.setValidArea(self.bounds);
@@ -222,7 +222,7 @@ class ImageElement extends AbstractRenderElement {
 
     render(ctx, scaleFun) {
         super.render(ctx, scaleFun);
-        var targetCoords = scaleFun(this.bounds, 'validArea');
+        var targetCoords = scaleFun([0,0,1,1], 'validArea');
         if(this.image.loaded) {
             ctx.drawImage(this.image, targetCoords[0], targetCoords[1],
                 targetCoords[2],
