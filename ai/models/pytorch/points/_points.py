@@ -107,7 +107,7 @@ class PointModel(GenericPyTorchModel):
             
             # update worker state
             imgCount += img.size(0)
-            current_task.update_state(state='PROGRESS', meta={'done': imgCount, 'total': len(dataLoader.dataset), 'message': 'training'})
+            # current_task.update_state(state='PROGRESS', meta={'done': imgCount, 'total': len(dataLoader.dataset), 'message': 'training'})
 
         # all done; return state dict as bytes
         return self.exportModelState(model)
@@ -177,7 +177,7 @@ class PointModel(GenericPyTorchModel):
         
             # update worker state
             imgCount += len(imgID)
-            current_task.update_state(state='PROGRESS', meta={'done': imgCount, 'total': len(dataLoader.dataset), 'message': 'predicting'})
+            # current_task.update_state(state='PROGRESS', meta={'done': imgCount, 'total': len(dataLoader.dataset), 'message': 'predicting'})
 
         model.cpu()
         if 'cuda' in device:

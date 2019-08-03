@@ -26,7 +26,7 @@ DEFAULT_OPTIONS = {
         "dataLoader": {
             "kwargs": {
                 "shuffle": True,
-                "batch_size": 32
+                "batch_size": 1
             }
         },
 		"optim": {
@@ -89,8 +89,10 @@ DEFAULT_OPTIONS = {
 			}
 		},
         "criterion": {
-			"class": "torch.nn.CrossEntropyLoss",
-			"kwargs": {}
+			"class": "ai.models.pytorch.functional._wsodPoints.loss.PointsLoss",
+			"kwargs": {
+				"background_weight": 1.0
+			}
 		},
         "ignore_unsure": True
 	},
@@ -130,7 +132,7 @@ DEFAULT_OPTIONS = {
 		"dataLoader": {
             "kwargs": {
                 "shuffle": False,
-                "batch_size": 32
+                "batch_size": 1
             }
         }
 	}

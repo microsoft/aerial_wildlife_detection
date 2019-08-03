@@ -123,6 +123,7 @@ class PointsDataset(Dataset):
         if len(points):
             if points.dim() == 1:
                 points = points.unsqueeze(0)
+            points *= torch.tensor(img.size, dtype=points.dtype)
         labels = torch.tensor(labels).long()
 
         if self.transform is not None and img is not None:

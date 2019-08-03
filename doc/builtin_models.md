@@ -184,7 +184,7 @@ Notes:
         "dataLoader": {
             "kwargs": {
                 "shuffle": true,
-                "batch_size": 32
+                "batch_size": 1
             }
         },
 		"optim": {
@@ -247,7 +247,10 @@ Notes:
 			}
 		},
         "criterion": {
-			"class": "torch.nn.CrossEntropyLoss"
+			"class": "ai.models.pytorch.functional._wsodPoints.loss.PointsLoss",
+			"kwargs": {
+				"background_weight": 1.0
+			}
 		},
         "ignore_unsure": true
 	},
@@ -287,7 +290,7 @@ Notes:
 		"dataLoader": {
             "kwargs": {
                 "shuffle": false,
-                "batch_size": 32
+                "batch_size": 1
             }
         }
 	}

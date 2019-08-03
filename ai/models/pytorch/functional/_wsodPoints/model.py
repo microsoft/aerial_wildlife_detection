@@ -47,7 +47,7 @@ class WSODPointModel(nn.Module):
             nn.Conv2d(in_channels=self.in_channels[self.backbone],
                                     out_channels=1024, 
                                     kernel_size=1, bias=True),
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=False),
             nn.Dropout2d(p=0.5, inplace=True),
             nn.Conv2d(in_channels=1024,
                                     out_channels=self.numClasses, 
@@ -125,5 +125,4 @@ class WSODPointModel(nn.Module):
             return self.classifier(x)
         else:
             fms = self.fe(x)
-            print(fms.size())
             return self.classifier(fms)

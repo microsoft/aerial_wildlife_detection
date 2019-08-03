@@ -21,6 +21,8 @@ class PointsLoss(nn.Module):
     def __init__(self, background_weight=1.0):
         super(PointsLoss, self).__init__()
         self.background_weight = background_weight
+        if self.background_weight == 1:
+            self.background_weight = None
 
     
     def _wsod_loss(self, x, y):
@@ -49,19 +51,20 @@ class PointsLoss(nn.Module):
 
         # construct target
         valid = (y > 0)     # exclude unsure and zero classes for target
-        y_target = torch.FloatTensor(sz[0], sz[1]).zero_()
-        y_target[valid].scatter_(1, y[valid]-1, 1)
+        y_target = torch.zeros_like(x_sum)
+        y_target[valid,y[valid]] = 1
 
         # calc. base loss
         loss = F.smooth_l1_loss(x_sum, y_target, reduction='none')
 
-        # mask case A
-        case_a = (x_sum >= 1.0) * (y_target >= 1.0)     #TODO: batch size
-        loss[case_a] = 0.0
+        # mask binary case
+        case_binary = (x_sum >= 1.0) * (y_target >= 1.0)     #TODO: batch size
+        loss[case_binary] = 0.0
 
         # mask unsure cases
         unsure = (y == -1)
-        loss[unsure] = 0.0      #TODO: ditto
+        if torch.any(unsure).item():
+            loss[unsure] = 0.0      #TODO: ditto
 
         # normalize and return
         return torch.mean(loss)
@@ -82,23 +85,36 @@ class PointsLoss(nn.Module):
                 cls_images (tensor): image-wide labels, sized [batch_size]
         '''
 
+        device = loc_preds.device
+
         # find images where a direct spatial loss can be calculated
-        valid = (cls_images > -1)
+        valid = (cls_images == -1)
 
         # calculate spatial loss
-        loss_spatial = F.smooth_l1_loss(loc_preds[valid,...], loc_targets[valid,1:,...], reduction='none')
+        if torch.any(valid).item():
+            num_classes = loc_preds.size(1)
+            loss_spatial = F.smooth_l1_loss(loc_preds[valid,...], loc_targets[valid,1:,...], reduction='none')
 
-        # apply background weight
-        background = (loc_targets[valid,1:,...] == 0)   #TODO: sum along classes
-        loss_spatial[background] *= self.background_weight
+            # apply background weight
+            if self.background_weight is not None:
+                background = ((loc_targets[valid,1:,...] == 0).sum(1) == num_classes).unsqueeze(1).expand_as(loss_spatial)
+                loss_spatial[background] *= self.background_weight
 
-        # mask unsure cases
-        unsure = loc_targets[valid,0,...] > 0
-        loss_spatial[valid,unsure,...] = 0
-        loss_spatial = torch.mean(loss_spatial)
+            # mask unsure cases
+            unsure = (loc_targets[valid,0,...] > 0).squeeze()
+            if torch.any(unsure).item():
+                loss_spatial[valid,:,unsure] = 0
+            
+            # reduce loss
+            loss_spatial = torch.mean(loss_spatial)
+        else:
+            loss_spatial = torch.tensor([0.0]).to(device)
 
         # weak supervision
         valid = ~valid
-        loss_wsod = self._wsod_loss(loc_preds[valid,...], cls_images[valid,...])
+        if torch.any(valid).item(): 
+            loss_wsod = self._wsod_loss(loc_preds[valid,...], cls_images[valid,...])
+        else:
+            loss_wsod = torch.tensor([0.0]).to(device)
 
         return (loss_spatial + loss_wsod) / 2

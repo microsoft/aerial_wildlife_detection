@@ -34,7 +34,6 @@ class Collator():
         imageIDs = [x[5] for x in batch]
 
         # prepare outputs
-        imgs = torch.stack(imgs)
         loc_targets = []
         cls_images = torch.tensor(image_labels).long()
         fVecs_targets = []
@@ -45,11 +44,14 @@ class Collator():
         for i in range(num_imgs):
 
             # spatially explicit points
-            loc_target = self.encoder.encode(points[i], labels[i], self.target_size)
+            input_size = [imgs[i].size(2), imgs[i].size(1)]
+            loc_target = self.encoder.encode(points[i], labels[i], input_size, self.target_size)
             loc_targets.append(loc_target)
 
             # remainder
             fVecs_targets.append(fVecs[i])
             imageIDs_targets.append(imageIDs[i])
+        
+        imgs = torch.stack(imgs)
         
         return imgs, torch.stack(loc_targets), cls_images, fVecs_targets, imageIDs_targets
