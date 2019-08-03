@@ -327,6 +327,7 @@ class AIMiddleware():
             self.training = False
             return self.start_inference(forceUnlabeled_inference, maxNumImages_inference, maxNumWorkers_inference)
 
+        #TODO: chaining doesn't work properly this way...
         self.messageProcessor.register_job(job, 'train', chain_inference)
 
         return 'ok'

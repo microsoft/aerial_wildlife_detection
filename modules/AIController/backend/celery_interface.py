@@ -40,23 +40,33 @@ app.conf.update(
 )
 
 
-# load AIWorker     TODO: since this file gets imported through the AIController as well, it has to unnecessarily create an AIWorker instance...
-worker = AIWorker(config, None)     #TODO: unneccessary second parameter for runserver compatibility
+# AIWorker singleton
+worker = None
+def _get_worker():
+    if worker is None:
+        worker = AIWorker(config, None)
+    return worker
+
+# # load AIWorker     TODO: since this file gets imported through the AIController as well, it has to unnecessarily create an AIWorker instance...
+# worker = AIWorker(config, None)     #TODO: unneccessary second parameter for runserver compatibility
 
 
 
 @app.task(rate_limit=1)
 def call_train(data, subset):
+    worker = _get_worker()
     return worker.call_train(data, subset)
 
 
 @app.task(rate_limit=1)
 def call_average_model_states(*args):
+    worker = _get_worker()
     return worker.call_average_model_states()
 
 
 @app.task()
 def call_inference(imageIDs):
+    worker = _get_worker()
     return worker.call_inference(imageIDs)
 
 

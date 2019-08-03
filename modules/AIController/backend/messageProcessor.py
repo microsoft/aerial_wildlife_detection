@@ -132,6 +132,7 @@ class MessageProcessor(Thread):
                 nextJob.get(on_message=self._on_raw_message, propagate=False)
 
                 # job finished; handle success and failure cases
-                callback = self.on_complete[nextJob.id]
-                if callback is not None:
-                    callback(nextJob)
+                if nextJob.id in self.on_complete:
+                    callback = self.on_complete[nextJob.id]
+                    if callback is not None:
+                        callback(nextJob)
