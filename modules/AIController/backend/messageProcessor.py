@@ -45,7 +45,8 @@ class MessageProcessor(Thread):
         self.on_complete = {}
 
 
-    
+    #TODO: to query task messages:
+    # self.celery_app.backend.get_task_meta('3b1c2baf-938c-4068-bfc8-428044a0ee5f')
     def _on_raw_message(self, message):
         id = message['task_id']
         self.messages[id]['status'] = message['status']

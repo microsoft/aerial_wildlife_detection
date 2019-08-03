@@ -44,6 +44,10 @@ class LabelUI():
             else:
                 return static_file('index.html', root=os.path.join(self.staticDir, 'templates'))
 
+        @self.app.route('/favicon.ico')
+        def favicon():
+            return static_file('favicon.ico', root=os.path.join(self.staticDir, 'img'))
+
         @self.app.route('/about')
         def about():
             return static_file('about.html', root=os.path.join(self.staticDir, 'templates'))
