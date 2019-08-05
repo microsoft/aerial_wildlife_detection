@@ -9,6 +9,7 @@ import cgi
 from modules.AIController.backend import celery_interface
 import celery
 from celery import current_app, group
+from util.helpers import current_time
 from .messageProcessor import MessageProcessor
 from .annotationWatchdog import Watchdog
 from .sql_string_builder import SQLStringBuilder
@@ -211,9 +212,9 @@ class AIMiddleware():
         task_id = self.messageProcessor.task_id()
         if numWorkers > 1:
             # also append average model states job
-            job = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True, link=celery_interface.call_average_model_states.s())
+            job = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True, headers={'type':'train','submitted': str(current_time())}, link=celery_interface.call_average_model_states.s())
         else:
-            job = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True)
+            job = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True, headers={'type':'train','submitted': str(current_time())})
 
 
         # start listener
@@ -226,7 +227,7 @@ class AIMiddleware():
 
         # send job
         task_id = self.messageProcessor.task_id()
-        result = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True)
+        result = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True, headers={'type':'inference','submitted': str(current_time())})
 
         # start listener
         self.messageProcessor.register_job(result, 'inference', None)
@@ -317,9 +318,9 @@ class AIMiddleware():
         task_id = self.messageProcessor.task_id()
         if numWorkers_train > 1:
             # also append average model states job
-            job = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True, link=celery_interface.call_average_model_states.s())
+            job = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True, headers={'type':'train','submitted': str(current_time())}, link=celery_interface.call_average_model_states.s())
         else:
-            job = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True)
+            job = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True, headers={'type':'train','submitted': str(current_time())})
         
 
         # start listener thread
@@ -363,28 +364,32 @@ class AIMiddleware():
 
         # running tasks status
         if tasks:
-            status['tasks'] = {}
-            for key in self.messageProcessor.messages.keys():
-                msg = self.messageProcessor.messages[key]
-                if not len(msg):
-                    continue
+            
+            #TODO
+            # self.messageProcessor.poll_status()
 
-                # check for worker failures
-                if msg['status'] == celery.states.FAILURE:
-                    # append failure message
-                    if 'meta' in msg and isinstance(msg['meta'], BaseException):
-                        info = { 'message': cgi.escape(str(msg['meta']))}
-                    else:
-                        info = { 'message': 'an unknown error occurred'}
-                else:
-                    info = msg['meta']    #TODO
+            status['tasks'] = self.messageProcessor.poll_status()
+            # for key in self.messageProcessor.messages.keys():
+            #     msg = self.messageProcessor.messages[key]
+            #     if not len(msg):
+            #         continue
+
+            #     # check for worker failures
+            #     if msg['status'] == celery.states.FAILURE:
+            #         # append failure message
+            #         if 'meta' in msg and isinstance(msg['meta'], BaseException):
+            #             info = { 'message': cgi.escape(str(msg['meta']))}
+            #         else:
+            #             info = { 'message': 'an unknown error occurred'}
+            #     else:
+            #         info = msg['meta']    #TODO
                 
-                status['tasks'][key] = {
-                    'type': msg['type'],
-                    'submitted': msg['submitted'],
-                    'status': msg['status'],
-                    'meta': info
-                }
+            #     status['tasks'][key] = {
+            #         'type': msg['type'],
+            #         'submitted': msg['submitted'],
+            #         'status': msg['status'],
+            #         'meta': info
+            #     }
 
         # get worker status (this is very expensive, as each worker needs to be pinged)
         if workers:

@@ -23,7 +23,6 @@
 from threading import Thread
 import time
 import uuid
-import cgi
 import celery
 import kombu.five
 from util.helpers import current_time
@@ -46,31 +45,15 @@ class MessageProcessor(Thread):
         self.on_complete = {}
 
 
-    def poll_status(self):
-        status = {}
-        for key in self.messages.keys():
-            job = self.messages[key]
-            msg = self.celery_app.backend.get_task_meta(key)
-            if not len(msg):
-                continue
-
-            # check for worker failures
-            if msg['status'] == celery.states.FAILURE:
-                # append failure message
-                if 'meta' in msg and isinstance(msg['meta'], BaseException):
-                    info = { 'message': cgi.escape(str(msg['meta']))}
-                else:
-                    info = { 'message': 'an unknown error occurred'}
-            else:
-                info = msg['result']
-            
-            status[key] = {
-                'type': job['type'],
-                'submitted': job['submitted'],      #TODO: not broadcast across AIController threads...
-                'status': msg['status'],
-                'meta': info
-            }
-        return status
+    #TODO: to query task messages:
+    # self.celery_app.backend.get_task_meta('3b1c2baf-938c-4068-bfc8-428044a0ee5f')
+    def _on_raw_message(self, message):
+        id = message['task_id']
+        self.messages[id]['status'] = message['status']
+        if 'result' in message:
+            self.messages[id]['meta'] = message['result']
+        else:
+            self.messages[id]['meta'] = None
 
 
     def register_job(self, job, taskType, on_complete=None):
@@ -147,7 +130,7 @@ class MessageProcessor(Thread):
             
             else:
                 nextJob = self.jobs.pop()
-                nextJob.get(propagate=True)
+                nextJob.get(on_message=self._on_raw_message, propagate=False)
 
                 # job finished; handle success and failure cases
                 if nextJob.id in self.on_complete:
