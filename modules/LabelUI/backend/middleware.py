@@ -244,30 +244,6 @@ class DBMiddleware():
         with self.dbConnector.execute_cursor(sql, (limit,username,)) as cursor:
             response = self._assemble_annotations(cursor)
 
-            # #TODO
-            # if len(response) == 1:
-            #     import os
-            #     from PIL import Image
-            #     import matplotlib
-            #     matplotlib.use('TkAgg')
-            #     import matplotlib.pyplot as plt
-            #     from matplotlib.patches import Rectangle
-            #     img = Image.open(os.path.join('/datadrive/hfaerialblobs/bkellenb/predictions/A/sde-A_20180921A/images', b['filename']))
-            #     sz = img.size
-            #     plt.figure(1)
-            #     plt.imshow(img)
-            #     ax = plt.gca()
-            #     for key in response[imgID]['predictions']:
-            #         pred = response[imgID]['predictions'][key]
-            #         ax.add_patch(Rectangle(
-            #             (sz[0] * (pred['x'] - pred['width']/2), sz[1] * (pred['y'] - pred['height']/2),),
-            #             sz[0] * pred['width'], sz[1] * pred['height'],
-            #             fill=False,
-            #             ec='r'
-            #         ))
-            #     plt.draw()
-            #     plt.waitforbuttonpress()
-
         return { 'entries': response }
 
 
@@ -275,36 +251,6 @@ class DBMiddleware():
         '''
             Sends user-provided annotations to the database.
         '''
-        
-        # #TODO
-        # schema = self.config.getProperty('Database', 'schema')
-        # imageID = list(submissions['entries'].keys())[0]
-        # filename = self.dbConnector.execute("SELECT filename FROM {}.image WHERE id = %s".format(schema),(imageID,), numReturn=1)
-        # filename = filename[0]['filename']
-        # import os
-        # from PIL import Image
-        # import matplotlib
-        # matplotlib.use('TkAgg')
-        # import matplotlib.pyplot as plt
-        # from matplotlib.patches import Rectangle
-        # img = Image.open(os.path.join('/datadrive/hfaerialblobs/bkellenb/predictions/A/sde-A_20180921A/images', filename))
-        # sz = img.size
-        # plt.figure(2)
-        # plt.clf()
-        # plt.imshow(img)
-        # ax = plt.gca()
-        # annos = submissions['entries'][imageID]['annotations']
-        # for key in annos:
-        #     geom = annos[key]['geometry']['coordinates']
-        #     ax.add_patch(Rectangle(
-        #         (sz[0] * (geom[0] - geom[2]/2), sz[1] * (geom[1] - geom[3]/2),),
-        #         sz[0] * geom[2], sz[1] * geom[3],
-        #         fill=False,
-        #         ec='r'
-        #     ))
-        # plt.draw()
-        # plt.waitforbuttonpress()
-
 
         # assemble values
         colnames = getattr(QueryStrings_annotation, self.projectSettings['annotationType']).value[0]
@@ -321,8 +267,8 @@ class DBMiddleware():
             try:
                 lastChecked = entry['timeCreated']
                 lastTimeRequired = entry['timeRequired']
+                if lastTimeRequired is None: lastTimeRequired = 0
             except:
-                #TODO
                 lastChecked = datetime.now(tz=pytz.utc)
                 lastTimeRequired = 0
 
@@ -346,6 +292,10 @@ class DBMiddleware():
                                 annoValues.append(dateutil.parser.parse(annotationTokens[cname]))
                             except:
                                 annoValues.append(datetime.now(tz=pytz.utc))
+                        elif cname == 'timeRequired':
+                            timeReq = annotationTokens[cname]
+                            if timeReq is None: timeReq = 0
+                            annoValues.append(timeReq)
                         elif cname == 'username':
                             annoValues.append(username)
                         elif cname in annotationTokens:
@@ -407,6 +357,9 @@ class DBMiddleware():
             for col in colnames:
                 if col == 'label':
                     updateCols += '{col} = UUID(e.{col}),'.format(col=col)
+                elif col == 'timeRequired':
+                    # we sum the required times together
+                    updateCols += '{col} = COALESCE(a.{col},0) + COALESCE(e.{col},0),'.format(col=col)
                 else:
                     updateCols += '{col} = e.{col},'.format(col=col)
 
