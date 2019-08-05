@@ -48,9 +48,8 @@ class MessageProcessor(Thread):
 
 
     def __add_worker_task(self, task):
-        # only add if still running
         result = AsyncResult(task['id'])
-        if not result.ready() and not task['id'] in self.messages:
+        if not task['id'] in self.messages:
             try:
                 timeSubmitted = datetime.fromtimestamp(time.time() - (kombu.five.monotonic() - t['time_start']))
             except:
@@ -61,7 +60,9 @@ class MessageProcessor(Thread):
                 'status': celery.states.PENDING,
                 'meta': {'message':'job at worker'}
             }
-        elif result.ready():
+
+        #TODO: needed?
+        if result.ready():
             result.forget()       
 
 
@@ -101,7 +102,7 @@ class MessageProcessor(Thread):
             # check for worker failures
             if msg['status'] == celery.states.FAILURE:
                 # append failure message
-                if 'meta' in msg and isinstance(msg['meta'], BaseException):
+                if 'meta' in msg:       #TODO: and isinstance(msg['meta'], BaseException):
                     info = { 'message': cgi.escape(str(msg['meta']))}
                 else:
                     info = { 'message': 'an unknown error occurred'}
@@ -122,7 +123,6 @@ class MessageProcessor(Thread):
 
 
     def poll_status(self):
-                
         status, task_ongoing = self.__poll_tasks()
 
         # make sure to locally poll for jobs not in current AIController thread's stack
@@ -130,7 +130,6 @@ class MessageProcessor(Thread):
         if not task_ongoing:
             self.poll_worker_status()
             status, _ = self.__poll_tasks()
-
         return status
 
 
