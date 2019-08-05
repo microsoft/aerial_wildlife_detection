@@ -77,7 +77,7 @@ class MessageProcessor(Thread):
                 workerName = key.replace('celery@', '')
 
                 activeTasks = []
-                for task in active_tasks:
+                for task in active_tasks[key]:
                     activeTasks.append(task['id'])
 
                     # also add active tasks to current set if not already there
