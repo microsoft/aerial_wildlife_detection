@@ -128,6 +128,7 @@ class UserMiddleware():
             }
         else:
             self.usersLoggedIn[username]['timestamp'] = now
+            self.usersLoggedIn[username]['sessionToken'] = sessionToken
 
         expires = now + timedelta(0, self.config.getProperty('UserHandler', 'time_login', type=int))
 
@@ -200,8 +201,17 @@ class UserMiddleware():
             # check locally
             if not self._compare_tokens(self.usersLoggedIn[username]['sessionToken'],
                     sessionToken):
-                # invalid session token provided
-                return False
+                # invalid session token provided; check database if token has updated
+                # (can happen if user logs in again from another machine)
+                result = self._get_user_data(username)
+                if not self._compare_tokens(result['session_token'],
+                            sessionToken):
+                    return False
+                
+                else:
+                    # update local cache
+                    self.usersLoggedIn[username]['sessionToken'] = result['session_token']
+                    self.usersLoggedIn[username]['timestamp'] = now
 
             if (now - self.usersLoggedIn[username]['timestamp']).total_seconds() <= time_login:
                 # user still logged in
@@ -229,12 +239,16 @@ class UserMiddleware():
             return False
         
         elif not admin:
+            self._init_or_extend_session(username, sessionToken)
             return True
 
         else:
-            return username in self.usersLoggedIn and \
+            if username in self.usersLoggedIn and \
                 'isAdmin' in self.usersLoggedIn[username] and \
-                    self.usersLoggedIn[username]['isAdmin'] is True
+                    self.usersLoggedIn[username]['isAdmin'] is True:
+                    # is logged in *and* admin
+                    self._init_or_extend_session(username, sessionToken)
+                    return True
 
 
     def getLoginData(self, username, sessionToken):

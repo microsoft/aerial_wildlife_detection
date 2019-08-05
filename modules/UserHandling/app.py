@@ -162,7 +162,7 @@ class UserHandler():
                 else:
                     raise Exception('not authenticated.')
             except Exception as e:
-                    abort(401, str(e))
+                abort(401, str(e))
             return response
 
 
