@@ -364,48 +364,10 @@ class AIMiddleware():
 
         # running tasks status
         if tasks:
-            
-            #TODO
-            # self.messageProcessor.poll_status()
-
             status['tasks'] = self.messageProcessor.poll_status()
-            # for key in self.messageProcessor.messages.keys():
-            #     msg = self.messageProcessor.messages[key]
-            #     if not len(msg):
-            #         continue
-
-            #     # check for worker failures
-            #     if msg['status'] == celery.states.FAILURE:
-            #         # append failure message
-            #         if 'meta' in msg and isinstance(msg['meta'], BaseException):
-            #             info = { 'message': cgi.escape(str(msg['meta']))}
-            #         else:
-            #             info = { 'message': 'an unknown error occurred'}
-            #     else:
-            #         info = msg['meta']    #TODO
-                
-            #     status['tasks'][key] = {
-            #         'type': msg['type'],
-            #         'submitted': msg['submitted'],
-            #         'status': msg['status'],
-            #         'meta': info
-            #     }
 
         # get worker status (this is very expensive, as each worker needs to be pinged)
         if workers:
-            workerStatus = {}
-            i = self.celery_app.control.inspect()
-            stats = i.stats()
-            if stats is not None and len(stats):
-                active_tasks = i.active()
-                scheduled_tasks = i.scheduled()
-                for key in stats:
-                    workerName = key.replace('celery@', '')
-                    activeTasks = [t['id'] for t in active_tasks[key]]
-                    workerStatus[workerName] = {
-                        'active_tasks': activeTasks,
-                        'scheduled_tasks': scheduled_tasks[key]
-                    }
-            status['workers'] = workerStatus
+            status['workers'] = self.messageProcessor.poll_worker_status()
         
         return status

@@ -439,7 +439,7 @@ class AIWorkerHandler {
             url: 'startInference',
             method: 'POST',
             success: function(data) {
-                console.log(data);
+                // console.log(data);
             },
             error: function(xhr, status, error) {
                 if(error == 'Unauthorized') {
@@ -456,7 +456,7 @@ class AIWorkerHandler {
             url: 'startTraining',
             method: 'POST',
             success: function(data) {
-                console.log(data);
+                // console.log(data);
             },
             error: function(xhr, status, error) {
                 if(error == 'Unauthorized') {
@@ -499,7 +499,7 @@ class AIWorkerHandler {
             contentType: 'application/json; charset=utf-8',
             dataType: 'json',
             success: function(response) {
-                console.log(response);  //TODO
+                // console.log(response);  //TODO
             },
             error: function(xhr, status, error) {
                 if(error == 'Unauthorized') {

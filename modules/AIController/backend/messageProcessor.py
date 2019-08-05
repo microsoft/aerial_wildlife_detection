@@ -25,6 +25,7 @@ import time
 import uuid
 import cgi
 import celery
+from celery.result import AsyncResult
 import kombu.five
 from util.helpers import current_time
 
@@ -46,8 +47,51 @@ class MessageProcessor(Thread):
         self.on_complete = {}
 
 
-    def poll_status(self):
+    def __add_worker_task(self, task):
+        # only add if still running
+        result = AsyncResult(task['id'])
+        if not result.ready() and not task['id'] in self.messages:
+            try:
+                timeSubmitted = datetime.fromtimestamp(time.time() - (kombu.five.monotonic() - t['time_start']))
+            except:
+                timeSubmitted = str(current_time()) #TODO: dirty hack to make failsafe with UI
+            self.messages[task['id']] = {
+                'type': ('train' if 'train' in task['name'] else 'inference'),        #TODO
+                'submitted': timeSubmitted,
+                'status': celery.states.PENDING,
+                'meta': {'message':'job at worker'}
+            }
+        elif result.ready():
+            result.forget()       
+
+
+    def poll_worker_status(self):
+        workerStatus = {}
+        i = self.celery_app.control.inspect()
+        stats = i.stats()
+        if stats is not None and len(stats):
+            active_tasks = i.active()
+            scheduled_tasks = i.scheduled()
+            for key in stats:
+                workerName = key.replace('celery@', '')
+
+                activeTasks = []
+                for task in active_tasks:
+                    activeTasks.append(task['id'])
+
+                    # also add active tasks to current set if not already there
+                    self.__add_worker_task(task)
+
+                workerStatus[workerName] = {
+                    'active_tasks': activeTasks,
+                    'scheduled_tasks': scheduled_tasks[key]
+                }
+        return workerStatus
+
+
+    def __poll_tasks(self):
         status = {}
+        task_ongoing = False
         for key in self.messages.keys():
             job = self.messages[key]
             msg = self.celery_app.backend.get_task_meta(key)
@@ -70,6 +114,23 @@ class MessageProcessor(Thread):
                 'status': msg['status'],
                 'meta': info
             }
+            
+            # check if ongoing
+            if not AsyncResult(key).ready():
+                task_ongoing = True
+        return status, task_ongoing
+
+
+    def poll_status(self):
+                
+        status, task_ongoing = self.__poll_tasks()
+
+        # make sure to locally poll for jobs not in current AIController thread's stack
+        #TODO: could be a bit too expensive...
+        if not task_ongoing:
+            self.poll_worker_status()
+            status, _ = self.__poll_tasks()
+
         return status
 
 
@@ -154,3 +215,5 @@ class MessageProcessor(Thread):
                     callback = self.on_complete[nextJob.id]
                     if callback is not None:
                         callback(nextJob)
+
+                nextJob.forget()
