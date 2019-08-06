@@ -20,11 +20,6 @@ AIde is primarily developed and maintained by [Benjamin Kellenberger](https://ww
 * **Modular:** AIde is separated into individual _Modules_, each of which can be run on separate machines for scalability, if needed. It even supports on-the-fly addition of computational workers forcomputationally intensive model training!
 
 
-## Installation
-
-See the instructions [here](doc/install.md).
-
-
 ## Framework Overview
 
 In its full form, AIde comprises individual instances (called _modules_), organized as follows:
@@ -56,12 +51,17 @@ See [this page](doc/builtin_models.md) for further instructions on how to use on
 AIde is fully modular and supports custom AI models, as long as they provide a Python interface and can handle the different annotation and prediction types appropriately. See [here](doc/custom_model.md) for details.
 
 
+## Installation
+
+See the instructions [here](doc/install.md) to configure an instance of AIde.
+
+
 ## Launching AIde
 
 See [here](doc/launch_aide.md) for instructions on launching an instance of AIde.
 
 
-# Contributing
+## Contributing
 
 This project welcomes contributions and suggestions.  Most contributions require you to agree to a
 Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
