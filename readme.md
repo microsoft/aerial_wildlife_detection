@@ -1,4 +1,4 @@
-# AIde - Assisted Interface that does everything
+# AIde &ndash; Assisted Interface that does everything
 
 AIde is a modular Web framework for labeling image datasets with AI assistance and active learning support. AIde is configurable for a variety of tasks, but is particularly intended for acclerating aerial wildlife surveys.
 
