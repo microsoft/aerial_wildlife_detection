@@ -33,24 +33,23 @@ AIde consists of individual _modules_, organized as follows:
 
 
 The framework can be configured in two ways:
-1. As a static labeling tool (_i.e._, using only the modules in (a)). In this case there will be no AI assistance for learning and prioritizing the relevant images.
+1. As a static labeling tool (_i.e._, using only the modules in (a)). In this case there will be no AI assistance for labeling or prioritizing the relevant images.
 2. As a full suite with AI support, using all modules.
 
-The individual modules need not be run on separate instances; it is possible to combine the components in any way and launch multiple (or all) modules on one machine. Also, the example shows three _AIWorker_ instances, but the number of workers can be chosen arbitrarily, and workers may be added or removed on-the-fly.
+The individual modules need not be run on separate instances; it is possible to combine the components in any way and launch multiple (or all) modules on one machine. For example, the diagram above shows three _AIWorker_ instances, but the number of workers can be chosen arbitrarily, and workers may be added or removed on-the-fly.
 
 
 ## Using a built-in AI model
-AIde ships with a series of built-in models that can be configured and customized for a number of tasks (image classification, object detection, etc.).
-See [this page](doc/builtin_models.md) for further instructions on how to use one of the built-in models.
+AIde ships with a set of built-in models that can be configured and customized for a number of tasks (image classification, object detection, etc.).  See [this page](doc/builtin_models.md) for further instructions on how to use one of the built-in models.
 
 
 ## Writing your own AI model
-AIde is fully modular and supports custom AI models, as long as they provide a Python interface and can handle the different annotation and prediction types appropriately. See [here](doc/custom_model.md) for details.
+AIde is fully modular and supports custom AI models, as long as they provide a Python interface and can handle the different annotation and prediction types appropriately. See [here](doc/custom_model.md) for details on using custom models.
 
 
 ## Installation
 
-See the instructions [here](doc/install.md) to configure an instance of AIde.
+See [here](doc/install.md) for instructions on configuring an instance of AIde.
 
 
 ## Launching AIde
