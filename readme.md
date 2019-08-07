@@ -1,14 +1,11 @@
 # AIde: Assisted Interface that does everything
 
-AIde is a modular Web framework for labeling image datasets with AI assistance. AIde is configurable for a variety of tasks, but it is particularly intended for acclerating aerial wildlife surveys. AIde is primarily developed and maintained by [Benjamin Kellenberger](https://www.wur.nl/en/Persons/Benjamin-BA-Benjamin-Kellenberger-MSc.htm), supported by the [Microsoft AI for Earth](https://www.microsoft.com/en-us/ai/ai-for-earth) program.
+AIde is a modular Web framework for labeling image datasets with AI assistance. AIde is configurable for a variety of tasks, but it is particularly intended for acclerating wildlife surveys that use aerial images. AIde is primarily developed by [Benjamin Kellenberger](https://www.wur.nl/en/Persons/Benjamin-BA-Benjamin-Kellenberger-MSc.htm), supported by the [Microsoft AI for Earth](https://www.microsoft.com/en-us/ai/ai-for-earth) program.
 
 ![AIde overview](doc/figures/AIde_animal_hero_1100.jpg)
 
 
-
 ## Highlights
-
-![AIde highlights](doc/figures/Aide_highlights.png)
 
 * **Powerful:** AIde explicitly integrates humans and AI models in an annotation loop.
 * **Fast:** AIde has been designed with speed in mind, both in terms of computations and workflow.
@@ -17,6 +14,8 @@ AIde is a modular Web framework for labeling image datasets with AI assistance. 
     * A number of AI models and Active Learning criteria [built-in](doc/builtin_models.md)
     * Interfaces for custom AI models and criteria, using any framework or library you want (see how to [write your own model](doc/custom_model.md)).
 * **Modular:** AIde is separated into individual _Modules_, each of which can be run on separate machines for scalability, if needed. It even supports on-the-fly addition of computational workers forcomputationally intensive model training!
+
+![AIde highlights](doc/figures/Aide_highlights.png)
 
 
 ## Framework Overview
