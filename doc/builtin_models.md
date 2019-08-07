@@ -25,8 +25,8 @@ For example, to use ResNet for image classification:
 ```ini
 [AIController]
 
-model_lib_path = ai.models.pytorch.ResNet			# replace value with the code string of the model you wish to use
-model_options_path = /path/to/your/settings.json	# replace with the JSON file path
+model_lib_path = ai.models.pytorch.ResNet         # replace value with the code string of the model you wish to use
+model_options_path = /path/to/your/settings.json  # replace with the JSON file path
 ```
 
 
