@@ -78,6 +78,10 @@ Also on the _AIController_ machine, run the following code:
     sudo sed -i "s/^\s*dir\s*.*/dir \/var\/lib\/redis/g" /etc/redis/redis.conf
     sudo sed -i "s/^\s*dbfilename\s*.*/dbfilename aide.rdb/g" /etc/redis/redis.conf
 
+    # also tell systemd
+    sudo mkdir -p /etc/systemd/system/redis.service.d
+    echo -e "[Service]\nReadWriteDirectories=-/var/lib/redis" | sudo tee -a /etc/systemd/system/redis.service.d/override.conf > /dev/null
+
     sudo mkdir -p /var/lib/redis
     sudo chown -R redis:redis /var/lib/redis
 
@@ -86,6 +90,7 @@ Also on the _AIController_ machine, run the following code:
     sudo sed -i "s/^\s*port\s*.*/port $port/g" /etc/redis/redis.conf
 
     # restart
+    sudo systemctl daemon-reload
     sudo systemctl enable redis-server.service
     sudo systemctl restart redis-server.service
 ```

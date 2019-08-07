@@ -97,9 +97,6 @@ class AbstractRenderElement {
         if(!['id', 'isActive', 'visible', 'zIndex'].includes(propertyName)) {
             this.changed = true;
             this.lastUpdated = new Date();
-        } else {
-            //TODO: find out relevant elements to mark as changed
-            console.log(propertyName)
         }
     }
 
@@ -319,31 +316,18 @@ class PointElement extends AbstractRenderElement {
     }
 
     /* interaction events */
-    _click_event(event, viewport) {
-        if(!this.visible || window.interfaceControls.action != window.interfaceControls.actions.DO_NOTHING) return;
-        var mousePos = viewport.getRelativeCoordinates(event, 'validArea');
-        
-        // activate if position within tolerance
-        var tolerance = viewport.transformCoordinates([0,0,window.annotationProximityTolerance,0], 'canvas', true)[2];
-        if(this.euclideanDistance(mousePos) <= tolerance) {
-            this.setActive(true, viewport);
-        } else {
-            this.setActive(false, viewport);
-        }
-    }
-
-    _mousedown_event(event, viewport) {
-        if(!this.visible) return;
+    _mousedown_event(event, viewport, force) {
+        if(!this.visible ||
+            !force && (!([ACTIONS.DO_NOTHING, ACTIONS.ADD_ANNOTATION].includes(window.uiControlHandler.getAction())))) return;
         this.mousePos_current = viewport.getRelativeCoordinates(event, 'validArea');
         this.mouseDrag = (event.which === 1);
         var tolerance = viewport.transformCoordinates([0,0,window.annotationProximityTolerance,0], 'canvas', true)[2];
         if(this.euclideanDistance(this.mousePos_current) <= tolerance) {
-            // center of a box clicked; set globally so that other active boxes don't falsely resize
             viewport.canvas.css('cursor', 'move');
         }
     }
 
-    _mousemove_event(event, viewport) {
+    _mousemove_event(event, viewport, force) {
         /*
             On mousemove, we update the target coordinates and the point:
             - always: update cursor
@@ -375,35 +359,49 @@ class PointElement extends AbstractRenderElement {
         this.changed = true;
     }
 
-    _mouseup_event(event, viewport) {
+    _mouseup_event(event, viewport, force) {
         this.mouseDrag = false;
-        // viewport.canvas.css('cursor', 'crosshair');
+        if(!this.visible ||
+            !force && (!(window.uiControlHandler.getAction() === ACTIONS.DO_NOTHING ||
+            window.uiControlHandler.getAction() === ACTIONS.ADD_ANNOTATION))) return;
+        
+        var mousePos = viewport.getRelativeCoordinates(event, 'validArea');
+        
+        // activate if position within tolerance
+        var tolerance = viewport.transformCoordinates([0,0,window.annotationProximityTolerance,0], 'canvas', true)[2];
+        if(this.euclideanDistance(mousePos) <= tolerance) {
+            this.setActive(true, viewport);
+        } else {
+            this.setActive(false, viewport);
+        }
+    }
+
+    _mouseleave_event(event, viewport, force) {
+        this.mouseDrag = false;
+        if(force || window.uiControlHandler.getAction() === ACTIONS.ADD_ANNOTATION) {
+            window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
+        }
     }
 
     _get_active_handle_callback(type, viewport) {
         var self = this;
-        if(type == 'click') {
-            /*
-                Activates or deactivates this point, depending on where
-                the click landed.
-            */
+        if(type === 'mousedown') {
             return function(event) {
-                self._click_event(event, viewport);
-            }
-
-        } else if(type === 'mousedown') {
-            return function(event) {
-                self._mousedown_event(event, viewport);
+                self._mousedown_event(event, viewport, false);
             };
 
         } else if(type === 'mousemove') {
             return function(event) {
-                self._mousemove_event(event, viewport);
+                self._mousemove_event(event, viewport, false);
             }
 
-        } else if(type === 'mouseup' || type === 'mouseleave') {
+        } else if(type === 'mouseup') {
             return function(event) {
-                self._mouseup_event(event, viewport);
+                self._mouseup_event(event, viewport, false);
+            }
+        } else if(type === 'mouseleave') {
+            return function(event) {
+                self._mouseleave_event(event, viewport, false);
             }
         }
     }
@@ -414,7 +412,6 @@ class PointElement extends AbstractRenderElement {
         */
         super.setActive(active, viewport);
         if(active) {
-            // viewport.addCallback(this, 'click', this._get_active_handle_callback('click', viewport));
             viewport.addCallback(this.id, 'mousedown', this._get_active_handle_callback('mousedown', viewport));
             viewport.addCallback(this.id, 'mousemove', this._get_active_handle_callback('mousemove', viewport));
             viewport.addCallback(this.id, 'mouseup', this._get_active_handle_callback('mouseup', viewport));
@@ -422,7 +419,6 @@ class PointElement extends AbstractRenderElement {
         } else {
 
             // remove active properties
-            // viewport.removeCallback(this.id, 'click');
             viewport.removeCallback(this.id, 'mousedown');
             viewport.removeCallback(this.id, 'mousemove');
             viewport.removeCallback(this.id, 'mouseup');
@@ -436,12 +432,12 @@ class PointElement extends AbstractRenderElement {
             Adds this instance to the viewport.
             This makes the entry user-modifiable in terms of position.
         */
-        viewport.addCallback(this.id, 'click', this._get_active_handle_callback('click', viewport));
+        viewport.addCallback(this.id, 'mouseup', this._get_active_handle_callback('mouseup', viewport));
     }
 
     deregisterAsCallback(viewport) {
         this.setActive(false, viewport);
-        viewport.removeCallback(this.id, 'click');
+        viewport.removeCallback(this.id, 'mouseup');
     }
 
     render(ctx, scaleFun) {
@@ -538,8 +534,8 @@ class LineElement extends AbstractRenderElement {
             this.endX == null || this.endY == null)
             return;
         
-        var startPos = scaleFun([this.startX, this.startY], 'canvas');
-        var endPos = scaleFun([this.endX, this.endY], 'canvas');
+        var startPos = scaleFun([this.startX, this.startY], 'validArea');
+        var endPos = scaleFun([this.endX, this.endY], 'validArea');
         
         if(this.style.strokeColor != null) ctx.strokeStyle = this.style.strokeColor;
         if(this.style.lineWidth != null) ctx.lineWidth = this.style.lineWidth;
@@ -597,21 +593,14 @@ class RectangleElement extends PointElement {
             (coordinates[1] >= extent[1] && coordinates[1] <= extent[3]);
     }
 
-    isInDistance(coordinates, tolerance, forceCorner) {
+    isInDistance(coordinates, tolerance) {
         /*
             Returns true if any parts of the bounding box are
             within a tolerance's distance of the provided coordinates.
-            If 'forceCorner' is true, coordinates have to be within
-            reach of one of the bounding box's corners.
         */
-        if(forceCorner) {
-            return (this.getClosestHandle(coordinates, tolerance) != null);
-
-        } else {
-            var extentsTolerance = [this.x-this.width/2, this.y-this.height/2, this.x+this.width/2, this.y+this.height/2];
-            return (coordinates[0] >= extentsTolerance[0] && coordinates[0] <= extentsTolerance[2]) &&
-                (coordinates[1] >= extentsTolerance[1] && coordinates[1] <= extentsTolerance[3]);
-        }
+        var extentsTolerance = [this.x-this.width/2-tolerance, this.y-this.height/2-tolerance, this.x+this.width/2+tolerance, this.y+this.height/2+tolerance];
+        return (coordinates[0] >= extentsTolerance[0] && coordinates[0] <= extentsTolerance[2]) &&
+            (coordinates[1] >= extentsTolerance[1] && coordinates[1] <= extentsTolerance[3]);
     }
 
     _createResizeHandles() {
@@ -678,22 +667,28 @@ class RectangleElement extends PointElement {
         // check first if cursor is within reach
         if(!this.isInDistance(coordinates, tolerance)) return null;
 
-        var matchL = Math.abs((this.x - this.width/2) - coordinates[0]) <= tolerance;
-        var matchT = Math.abs((this.y - this.height/2) - coordinates[1]) <= tolerance;
-        var matchR = Math.abs((this.x + this.width/2) - coordinates[0]) <= tolerance;
-        var matchB = Math.abs((this.y + this.height/2) - coordinates[1]) <= tolerance;
+        var distL = Math.abs((this.x - this.width/2) - coordinates[0]);
+        var distT = Math.abs((this.y - this.height/2) - coordinates[1]);
+        var distR = Math.abs((this.x + this.width/2) - coordinates[0]);
+        var distB = Math.abs((this.y + this.height/2) - coordinates[1]);
+        
+        var distCorner = Math.min(distL, distT, distR, distB);
+        var distCenter = Math.sqrt(Math.pow(this.x-coordinates[0], 2) + Math.pow(this.y-coordinates[1], 2));
 
-        if(matchT) {
-            if(matchL) return 'nw';
-            if(matchR) return 'ne';
+        if(distCenter < distCorner && distCenter <= tolerance) {
+            return 'c';
+
+        } else if(distT <= tolerance) {
+            if(distL <= tolerance) return 'nw';
+            if(distR <= tolerance) return 'ne';
             return 'n';
-        } else if(matchB) {
-            if(matchL) return 'sw';
-            if(matchR) return 'se';
+        } else if(distB <= tolerance) {
+            if(distL <= tolerance) return 'sw';
+            if(distR <= tolerance) return 'se';
             return 's';
-        } else if(matchL) {
+        } else if(distL <= tolerance) {
             return 'w';
-        } else if(matchR) {
+        } else if(distR <= tolerance) {
             return 'e';
         } else if(this.containsPoint(coordinates)) {
             return 'c';
@@ -704,21 +699,9 @@ class RectangleElement extends PointElement {
 
     
     /* interaction events */
-    _click_event(event, viewport) {
-        if(!this.visible || window.interfaceControls.action != window.interfaceControls.actions.DO_NOTHING) return;
-        var mousePos = viewport.getRelativeCoordinates(event, 'validArea');
-        this.activeHandle = this.getClosestHandle(mousePos, window.annotationProximityTolerance / Math.min(viewport.canvas.width(), viewport.canvas.height()));
-        if(this.activeHandle == null) {
-            this.setActive(false, viewport);
-        } else {
-            if(!this.active) {
-                this.setActive(true, viewport);
-            }
-        }
-    }
-
-    _mousedown_event(event, viewport) {
-        if(!this.visible) return;
+    _mousedown_event(event, viewport, force) {
+        if(!this.visible ||
+            !force && (!([ACTIONS.DO_NOTHING, ACTIONS.ADD_ANNOTATION].includes(window.uiControlHandler.getAction())))) return;
         this.mousePos_current = viewport.getRelativeCoordinates(event, 'validArea');
         this.mouseDrag = (event.which === 1);
         this.activeHandle = this.getClosestHandle(this.mousePos_current, window.annotationProximityTolerance / Math.min(viewport.canvas.width(), viewport.canvas.height()));
@@ -728,14 +711,16 @@ class RectangleElement extends PointElement {
         }
     }
 
-    _mousemove_event(event, viewport) {
+    _mousemove_event(event, viewport, force) {
         /*
             On mousemove, we update the target coordinates and the bounding box:
             - always: update cursor
             - if drag and close to resize handle: resize rectangle and move resize handles
             - if drag and inside rectangle: move rectangle and resize handles
         */
-        if(!this.visible) return;
+        if(!this.visible || 
+            !force && (!(window.uiControlHandler.getAction() === ACTIONS.DO_NOTHING || window.uiControlHandler.getAction() === ACTIONS.ADD_ANNOTATION)
+            )) return;
         var coords = viewport.getRelativeCoordinates(event, 'validArea');
         // var handle = this.getClosestHandle(coords, window.annotationProximityTolerance / Math.min(viewport.canvas.width(), viewport.canvas.height()));
         if(this.mousePos_current == null) {
@@ -806,8 +791,8 @@ class RectangleElement extends PointElement {
         this._updateResizeHandles();
 
         // update cursor
-        if(window.interfaceControls.action === window.interfaceControls.actions.ADD_ANNOTATION || this.activeHandle == null) {
-            // viewport.canvas.css('cursor', 'crosshair');     //TODO: default cursor?
+        if(window.uiControlHandler.getAction() === ACTIONS.ADD_ANNOTATION || this.activeHandle == null) {
+            viewport.canvas.css('cursor', window.uiControlHandler.getDefaultCursor());
         } else if(this.activeHandle == 'c') {
             viewport.canvas.css('cursor', 'move');
         } else {
@@ -821,12 +806,24 @@ class RectangleElement extends PointElement {
         this.changed = true;
     }
 
-    _mouseup_event(event, viewport) {
+    _mouseup_event(event, viewport, force) {
         this._clamp_min_box_size(viewport);
+        if(!this.visible ||
+            !force && (!(window.uiControlHandler.getAction() === ACTIONS.DO_NOTHING ||
+            window.uiControlHandler.getAction() === ACTIONS.ADD_ANNOTATION))) return;
+        var mousePos = viewport.getRelativeCoordinates(event, 'validArea');
+        this.activeHandle = this.getClosestHandle(mousePos, window.annotationProximityTolerance / Math.min(viewport.canvas.width(), viewport.canvas.height()));
+        if(this.activeHandle == null) {
+            this.setActive(false, viewport);
+        } else {
+            if(!this.active) {
+                this.setActive(true, viewport);
+            }
+        }
 
         this.mouseDrag = false;
-        // viewport.canvas.css('cursor', 'crosshair');
     }
+
 
     _clamp_min_box_size(viewport) {
         // Make sure box is of correct size
@@ -838,34 +835,6 @@ class RectangleElement extends PointElement {
     }
 
 
-    _get_active_handle_callback(type, viewport) {
-        var self = this;
-        if(type == 'click') {
-            /*
-                Activates or deactivates this rectangle, depending on where
-                the click landed.
-            */
-            return function(event) {
-                self._click_event(event, viewport);
-            }
-
-        } else if(type === 'mousedown') {
-            return function(event) {
-                self._mousedown_event(event, viewport);
-            };
-
-        } else if(type === 'mousemove') {
-            return function(event) {
-                self._mousemove_event(event, viewport);
-            }
-
-        } else if(type === 'mouseup' || type === 'mouseleave') {
-            return function(event) {
-                self._mouseup_event(event, viewport);
-            }
-        }
-    }
-
     setActive(active, viewport) {
         /*
             Sets the 'active' property to the given value.
@@ -876,7 +845,6 @@ class RectangleElement extends PointElement {
         if(active) {
             this._createResizeHandles();
             viewport.addRenderElement(this.resizeHandles);
-            // viewport.addCallback(this, 'click', this._get_active_handle_callback('click', viewport));
             viewport.addCallback(this.id, 'mousedown', this._get_active_handle_callback('mousedown', viewport));
             viewport.addCallback(this.id, 'mousemove', this._get_active_handle_callback('mousemove', viewport));
             viewport.addCallback(this.id, 'mouseup', this._get_active_handle_callback('mouseup', viewport));
@@ -887,7 +855,6 @@ class RectangleElement extends PointElement {
 
             // remove active properties
             viewport.removeRenderElement(this.resizeHandles);
-            viewport.removeCallback(this.id, 'click');
             viewport.removeCallback(this.id, 'mousedown');
             viewport.removeCallback(this.id, 'mousemove');
             viewport.removeCallback(this.id, 'mouseup');
@@ -924,7 +891,6 @@ class RectangleElement extends PointElement {
             ctx.strokeRect(coords[0], coords[1], coords[2], coords[3]);
             ctx.closePath();
         }
-        // console.log(scaleFun([0,0,0,this.style.lineWidth], 'canvas'))
         if(this.unsure) {
             var text = 'unsure';
             var scaleFactors = scaleFun([0,0,ctx.canvas.width,ctx.canvas.height], 'canvas', true).slice(2,4);
@@ -1274,7 +1240,7 @@ class MiniMap extends AbstractRenderElement {
     }
 
     render(ctx, scaleFun) {
-        if(this.position == null) return;
+        if(!this.visible || this.position == null) return;
         super.render(ctx, scaleFun);
 
         // position of minimap on parent viewport

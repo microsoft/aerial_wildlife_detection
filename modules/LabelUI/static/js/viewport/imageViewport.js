@@ -62,8 +62,9 @@ class ImageViewport {
                         self.callbacks[event.type][key](event);
                     }
                     if(event.type === 'mouseup') {
-                        // reset action
-                        window.interfaceControls.action = window.interfaceControls.actions.DO_NOTHING;
+                        // reset action, unless in panning mode
+                        if(window.uiControlHandler.getAction() != ACTIONS.PAN)
+                            window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
                     }
                     self.render();
                 });
@@ -74,11 +75,13 @@ class ImageViewport {
 
     _zoom(event, amount) {
         var mousePos = this.transformCoordinates(this.getRelativeCoordinates(event),
-        'canvas', true);
+        'validArea', true);
         var currViewport = this.getViewport();
+        var size = [(1+amount)*currViewport[2], (1+amount)*currViewport[3]];
+        var pos = [(mousePos[0]-size[0]/2 + currViewport[0])/2, (mousePos[1]-size[1]/2 + currViewport[1])/2];
         this.setViewport([
-            mousePos[0], mousePos[1],
-            (1+amount)*currViewport[2], (1+amount)*currViewport[3]
+            pos[0], pos[1],
+            size[0], size[1]
         ]);
     }
 
@@ -88,10 +91,10 @@ class ImageViewport {
 
         this.mousePos = this.transformCoordinates(this.getRelativeCoordinates(event),
                 'validArea', true);
-
+        
         if(event.which === 1) {
             // set position if zoom to area and show zooming rectangle
-            if(window.interfaceControls.action === window.interfaceControls.actions.ZOOM_AREA) {
+            if(window.uiControlHandler.getAction() === ACTIONS.ZOOM_AREA) {
                 // create rectangle
                 var style = {
                     strokeColor: '#000000',
@@ -102,7 +105,7 @@ class ImageViewport {
                     'zoomRect', this.mousePos[0], this.mousePos[1], 0, 0, style, false, 100
                 );
 
-                this.zoomRectangle._mousedown_event(event, this);
+                this.zoomRectangle._mousedown_event(event, this, true);
             }
         }
     }
@@ -158,13 +161,11 @@ class ImageViewport {
 
         // ditto for zoom rectangle
         if(this.zoomRectangle != null) {
-            this.zoomRectangle._mousemove_event(event, this);
+            this.zoomRectangle._mousemove_event(event, this, true);
         }
-
         
-        
-        if(this.mouseButton === 2) {
-            // pan around if middle mouse button
+        if(this.mousePos != undefined && (this.mouseButton === 2 || (this.mouseButton != 0 && window.uiControlHandler.getAction() === ACTIONS.PAN))) {
+            // pan around if middle mouse button pressed or if the "pan" button is active
             var diffX = newMousePos[0] - this.mousePos[0];
             var diffY = newMousePos[1] - this.mousePos[1];
             var vp = this.getViewport();
@@ -177,16 +178,8 @@ class ImageViewport {
             this.__shift_viewport_auto();
         }
 
-
         // update cursor
-        if(window.interfaceControls.action === window.interfaceControls.actions.ZOOM_IN ||
-            window.interfaceControls.action === window.interfaceControls.actions.ZOOM_AREA) {
-            this.canvas.css('cursor', 'zoom-in');
-        } else if(window.interfaceControls.action === window.interfaceControls.actions.ZOOM_OUT) {
-            this.canvas.css('cursor', 'zoom-out');
-        } else {
-            this.canvas.css('cursor', 'pointer');
-        }
+        this.canvas.css('cursor', window.uiControlHandler.getDefaultCursor());
 
         this.mousePos = newMousePos;
     }
@@ -207,11 +200,11 @@ class ImageViewport {
         this.mouseButton = 0;
 
         // zoom functionality
-        if(window.interfaceControls.action === window.interfaceControls.actions.ZOOM_IN) {
+        if(window.uiControlHandler.getAction() === ACTIONS.ZOOM_IN) {
             this._zoom(event, -0.2);
-        } else if(window.interfaceControls.action === window.interfaceControls.actions.ZOOM_OUT) {
+        } else if(window.uiControlHandler.getAction() === ACTIONS.ZOOM_OUT) {
             this._zoom(event, 0.2);
-        } else if(window.interfaceControls.action === window.interfaceControls.actions.ZOOM_AREA) {
+        } else if(window.uiControlHandler.getAction() === ACTIONS.ZOOM_AREA) {
             // zoom to area spanned by rectangle
             var ext = this.zoomRectangle.getExtent();
             if(ext[2] - ext[0] > 0 && ext[3] - ext[1] > 0) {
@@ -221,8 +214,8 @@ class ImageViewport {
                 ]);
             }
         }
-        // window.interfaceControls.action = window.interfaceControls.actions.DO_NOTHING;
-        this.canvas.css('cursor', 'pointer');
+
+        this.canvas.css('cursor', window.uiControlHandler.getDefaultCursor());
 
         // destroy zoom rectangle
         this.zoomRectangle = null;
@@ -230,14 +223,14 @@ class ImageViewport {
 
 
     __mouseleave_event(event) {
-        if(window.interfaceControls.action === window.interfaceControls.actions.ZOOM_AREA && this.zoomRectangle != null) {
+        if(window.uiControlHandler.getAction() === ACTIONS.ZOOM_AREA && this.zoomRectangle != null) {
             // zoom to area spanned by rectangle
             var ext = this.zoomRectangle.getExtent();
             this.setViewport([
                 ext[0], ext[1],
                 ext[2]-ext[0], ext[3]-ext[1]
             ]);
-            // window.interfaceControls.action = window.interfaceControls.actions.DO_NOTHING;
+            // window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
             this.zoomRectangle = null;
         }
         this.mouseButton = 0;
@@ -422,7 +415,7 @@ class ImageViewport {
         }
 
         // show loupe if enabled
-        if(window.interfaceControls.showLoupe) {
+        if(window.uiControlHandler.loupeVisible()) {
             this.loupe.render(this.ctx, (this.transformCoordinates).bind(this));
         }
     }
@@ -449,6 +442,11 @@ class ImageViewport {
 
     setValidArea(area) {
         this.validArea = area;
+        this.render();
+    }
+
+    setMinimapVisible(visible) {
+        this.minimap.setVisible(visible);
         this.render();
     }
 

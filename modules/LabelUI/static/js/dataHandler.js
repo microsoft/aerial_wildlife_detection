@@ -9,157 +9,23 @@ class DataHandler {
     constructor(parentDiv) {
         this.parentDiv = parentDiv;
         this.dataEntries = [];
-        this.numImagesPerBatch = window.numImagesPerBatch;  //parseInt(window.numImages_x) * parseInt(window.numImages_y);
+        this.numImagesPerBatch = window.numImagesPerBatch;
 
         this.undoStack = [];
         this.redoStack = [];
-
-        this._setup_controls();
-    }
-
-    _setup_controls() {
-        var parentElement = $('#interface-controls');
-        var self = this;
-
-        if(!(window.annotationType === 'labels')) {
-            // add and remove buttons
-            var addAnnoCallback = function() {
-                if(window.uiBlocked) return;
-                window.interfaceControls.action=window.interfaceControls.actions.ADD_ANNOTATION;
-            }
-            var removeAnnoCallback = function() {
-                if(window.uiBlocked) return;
-                window.interfaceControls.action=window.interfaceControls.actions.REMOVE_ANNOTATIONS;
-            }
-            var addAnnoBtn = $('<button id="add-annotation" class="btn btn-sm btn-primary">+</button>');
-            addAnnoBtn.click(addAnnoCallback);
-            var removeAnnoBtn = $('<button id="remove-annotation" class="btn btn-sm btn-primary">-</button>');
-            removeAnnoBtn.click(removeAnnoCallback);
-            parentElement.append(addAnnoBtn);
-            parentElement.append(removeAnnoBtn);
-
-            $(window).keyup(function(event) {
-                if(window.uiBlocked || window.shortcutsDisabled) return;
-                var key = String.fromCharCode(event.which);
-                if(key === '+' || key === 'W') {
-                    window.interfaceControls.action = window.interfaceControls.actions.ADD_ANNOTATION;
-                } else if(key === '-' || key === 'R') {
-                    window.interfaceControls.action = window.interfaceControls.actions.REMOVE_ANNOTATIONS;
-                } else if(event.which === 46) {
-                    // Del key; remove all active annotations
-                    self.removeActiveAnnotations();
-                }
-            });
-        }
-
-        // assign/remove all labels buttons
-        if(window.annotationType != 'labels' || window.enableEmptyClass) {
-            parentElement.append($('<button class="btn btn-sm btn-warning" id="clearAll-button" onclick="window.dataHandler.clearLabelInAll()">Clear All</button>'));
-            $(window).keyup(function(event) {
-                if(window.uiBlocked || window.shortcutsDisabled) return;
-                if(String.fromCharCode(event.which) === 'C') {
-                    self.clearLabelInAll();
-                }
-            });
-        }
-        
-        parentElement.append($('<button class="btn btn-sm btn-primary" id="labelAll-button" onclick="window.dataHandler.assignLabelToAll()">Label All</button>'));
-        parentElement.append($('<button class="btn btn-sm btn-warning" id="unsure-button" onclick="window.dataHandler.toggleActiveAnnotationsUnsure()">Unsure</button>'));
-        $(window).keyup(function(event) {
-            if(window.uiBlocked || window.shortcutsDisabled) return;
-            if(String.fromCharCode(event.which) === 'A') {
-                self.assignLabelToAll();
-            } else if(event.which === 46 || event.which === 8) {
-                // Del/backspace key; remove all active annotations
-                self.removeActiveAnnotations();
-            } else if(String.fromCharCode(event.which) === 'U') {
-                self.toggleActiveAnnotationsUnsure();
-            } else if(String.fromCharCode(event.which) === 'B') {
-                // loupe
-                self.toggleLoupe();
-            } else if(String.fromCharCode(event.which) === 'R') {
-                // reset zoom
-                self.resetZoom();
-            }
-        });
-
-
-        /* viewport functionalities */
-        var vpControls = $('#viewport-controls');
-
-        // loupe
-        vpControls.append($('<button id="loupe-button" class="btn btn-sm btn-secondary" title="Toggle Loupe (B)"><img src="static/img/controls/loupe.svg" style="height:18px" /></button>'));
-        $('#loupe-button').click(function(e) {
-            e.preventDefault();
-            self.toggleLoupe();
-        });
-
-        // zoom buttons
-        vpControls.append($('<button id="zoom-in-button" class="btn btn-sm btn-secondary" title="Zoom In"><img src="static/img/controls/zoom_in.svg" style="height:18px" /></button>'));
-        $('#zoom-in-button').click(function() {
-            window.interfaceControls.action = window.interfaceControls.actions.ZOOM_IN;
-        });
-        vpControls.append($('<button id="zoom-out-button" class="btn btn-sm btn-secondary" title="Zoom Out"><img src="static/img/controls/zoom_out.svg" style="height:18px" /></button>'));
-        $('#zoom-out-button').click(function() {
-            window.interfaceControls.action = window.interfaceControls.actions.ZOOM_OUT;
-        });
-        vpControls.append($('<button id="zoom-area-button" class="btn btn-sm btn-secondary" title="Zoom to Area"><img src="static/img/controls/zoom_area.svg" style="height:18px" /></button>'));
-        $('#zoom-area-button').click(function() {
-            window.interfaceControls.action = window.interfaceControls.actions.ZOOM_AREA;
-        });
-        vpControls.append($('<button id="zoom-reset-button" class="btn btn-sm btn-secondary" title="Original Extent (R)"><img src="static/img/controls/zoom_extent.svg" style="height:18px" /></button>'));
-        $('#zoom-reset-button').click(function() {
-            self.resetZoom();
-        });
-
-
-        // next and previous batch buttons
-        parentElement.append($('<button id="previous-button" class="btn btn-sm btn-primary float-left" onclick="window.dataHandler.previousBatch()">Previous</button>'));
-        $(window).keyup(function(event) {
-            if(window.uiBlocked || window.shortcutsDisabled) return;
-            if(event.which === 37) {
-                // left arrow key
-                //TODO: confirmation request if no annotations got changed by the user?
-                self.previousBatch();
-            }
-        });
-
-        parentElement.append($('<button id="next-button" class="btn btn-sm btn-primary float-right" onclick="window.dataHandler.nextBatch()">Next</button>'));
-        $(window).keyup(function(event) {
-            if(window.uiBlocked || window.shortcutsDisabled) return;
-            if(event.which === 39) {
-                // right arrow key
-                //TODO: confirmation request if no annotations got changed by the user?
-                self.nextBatch();
-            }
-        });
-
-        // hide predictions (annotations) if shift (ctrl) key held down
-        $(window).keydown(function(event) {
-            if(window.uiBlocked || window.shortcutsDisabled) return;
-            if(event.which === 16) {
-                self.setPredictionsVisible(false);
-            } else if(event.which === 17) {
-                self.setAnnotationsVisible(false);
-            }
-        });
-        $(window).keyup(function(event) {
-            if(window.uiBlocked || window.shortcutsDisabled) return;
-            if(event.which === 16) {
-                self.setPredictionsVisible(true);
-            } else if(event.which === 17) {
-                self.setAnnotationsVisible(true);
-            } else if(event.which === 27) {
-                // Esc key; cancel ongoing operation
-                window.interfaceControls.action = window.interfaceControls.actions.DO_NOTHING;
-            }
-        });
     }
 
 
     renderAll() {
         for(var i=0; i<this.dataEntries.length; i++) {
             this.dataEntries[i].render();
+        }
+    }
+
+
+    resetZoom() {
+        for(var e=0; e<this.dataEntries.length; e++) {
+            this.dataEntries[e].viewport.resetViewport();
         }
     }
 
@@ -235,6 +101,13 @@ class DataHandler {
         }
     }
 
+    setMinimapVisible(visible) {
+        if(window.uiBlocked) return;
+        for(var i=0; i<this.dataEntries.length; i++) {
+            this.dataEntries[i].setMinimapVisible(visible);
+        }
+    }
+
 
     getAllPresentClassIDs() {
         /*
@@ -263,24 +136,6 @@ class DataHandler {
         // for(var key in presentClassIDs) {
         //     container.append(window.labelClassHandler.getClass(key).getMarkup(true));
         // }
-    }
-
-
-    toggleLoupe() {
-        window.interfaceControls.showLoupe = !window.interfaceControls.showLoupe;
-        if(window.interfaceControls.showLoupe) {
-            $('#loupe-button').addClass('active');
-        } else {
-            $('#loupe-button').removeClass('active');
-        }
-        this.renderAll();
-    }
-
-
-    resetZoom() {
-        for(var e=0; e<this.dataEntries.length; e++) {
-            this.dataEntries[e].viewport.resetViewport();
-        }
     }
 
 
@@ -320,7 +175,6 @@ class DataHandler {
                 // update present classes list
                 self.updatePresentClasses();
 
-                //TODO: needs to be put here instead of init script
                 // adjust width of entries
                 window.windowResized();
             },
@@ -422,6 +276,9 @@ class DataHandler {
 
                 // update present classes list
                 self.updatePresentClasses();
+
+                // adjust width of entries
+                window.windowResized();
 
                 window.setUIblocked(false);
             },

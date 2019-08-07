@@ -205,11 +205,6 @@ $(document).ready(function() {
         return window.getProjectSettings();
     });
 
-    // command listener
-    promise = promise.then(function() {
-        window.commandListener = new CommandListener();
-    });
-
     // set up label class handler
     promise = promise.done(function() {
         window.labelClassHandler = new LabelClassHandler($('#legend-entries'));
@@ -235,6 +230,12 @@ $(document).ready(function() {
     });
 
 
+    // set up UI control
+    promise = promise.then(function() {
+        window.uiControlHandler = new UIControlHandler(window.dataHandler);
+    });
+
+
     promise = promise.then(function() {
         // events
         window.eventTypes = [
@@ -251,18 +252,19 @@ $(document).ready(function() {
         ];
 
         // interface
-        window.interfaceControls = {
-            actions: {
-                DO_NOTHING: 0,
-                ADD_ANNOTATION: 1,
-                REMOVE_ANNOTATIONS: 2,
-                ZOOM_IN: 3,
-                ZOOM_OUT: 4,
-                ZOOM_AREA: 5
-            }
-        };
-        window.interfaceControls.action = window.interfaceControls.actions.DO_NOTHING;
-        window.interfaceControls.showLoupe = false;
+        // window.interfaceControls = {
+        //     actions: {
+        //         DO_NOTHING: 0,
+        //         ADD_ANNOTATION: 1,
+        //         REMOVE_ANNOTATIONS: 2,
+        //         ZOOM_IN: 3,
+        //         ZOOM_OUT: 4,
+        //         ZOOM_AREA: 5,
+        //         PAN: 6
+        //     }
+        // };
+        // window.interfaceControls.action = window.interfaceControls.actions.DO_NOTHING;
+        // window.interfaceControls.showLoupe = false;
         window.shortcutsDisabled = false;       // if true, keystrokes like "A" for "label all" are disabled
         window.setUIblocked(true);
 
