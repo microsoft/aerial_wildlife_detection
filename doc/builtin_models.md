@@ -1,30 +1,24 @@
-# Configure the built-ins
+# Configure the built-in models
 
-AIde comes with a number of built-in models for both the AI model as well as the ranker. These are, to a certain extent, customizable, the procedure of which will be explained below.
-If you instead wish to completely write your own module(s) for either (or both) of the tasks, you can do so by referring to the instructions [here](custom_model.md).
-
+AIde comes with a number of built-in models for both the AI model and the ranker. These are, to a certain extent, customizable, which we will discuss below.  If you instead wish to completely write your own module(s) for modeling and/or ranking, you can do so by referring to the instructions [here](custom_model.md).
 
 
 ## AI models
 
-AIde ships with the following AI models built-in:
-* Classification (labels):
-  * `ai.models.pytorch.labels.ResNet`
-  (He, Kaiming, et al. "Deep residual learning for image recognition." Proceedings of the IEEE conference on computer vision and pattern recognition. 2016), including ResNet-18, 34, 50, 101 and 152.
-  
+AIde ships with the following AI models built in:
+* Classification:
+  * `ai.models.pytorch.labels.ResNet` ([Kaiming et al., 2015](https://arxiv.org/abs/1512.03385)).
 * Object detection:
   * Points:
     * `ai.models.pytorch.points.WSODPointModel`
 	([Kellenberger et al., 2019](http://openaccess.thecvf.com/content_CVPRW_2019/papers/EarthVision/Kellenberger_When_a_Few_Clicks_Make_All_the_Difference_Improving_Weakly-Supervised_CVPRW_2019_paper.pdf)).
-	  Note that this model is special insofar as it accepts both spatially explicit point annotations as well as image-wide classification labels for training, both of which may be mixed. In the second cased, the model requires images where the label class is both present and completely absent in order to be able to localize the class objects. Also, the objects should be of similar size throughout the images. See the [paper](http://openaccess.thecvf.com/content_CVPRW_2019/papers/EarthVision/Kellenberger_When_a_Few_Clicks_Make_All_the_Difference_Improving_Weakly-Supervised_CVPRW_2019_paper.pdf) for details.
+	  Note that this model is special insofar as it accepts both spatially explicit point annotations as well as image-wide classification labels for training. In the second case, the model requires images where the label class is both present and completely absent in order to be able to localize the class objects. Also, the objects should be of similar size throughout the images. See the [paper](http://openaccess.thecvf.com/content_CVPRW_2019/papers/EarthVision/Kellenberger_When_a_Few_Clicks_Make_All_the_Difference_Improving_Weakly-Supervised_CVPRW_2019_paper.pdf) for details.
   * Bounding boxes:
-  	* `ai.models.pytorch.boundingBoxes.RetinaNet`
-	  (Lin, Tsung-Yi, et al. "Focal loss for dense object detection." Proceedings of the IEEE international conference on computer vision. 2017), based on the [implementation by Kuangliu](https://github.com/kuangliu/pytorch-retinanet).
+  	* `ai.models.pytorch.boundingBoxes.RetinaNet` ([Lin, Tsung-Yi, 2017](https://arxiv.org/abs/1708.02002), based on the [implementation by Kuangliu](https://github.com/kuangliu/pytorch-retinanet)).
 
-All models are implemented using [PyTorch](https://pytorch.org/) and support a number of custom configuration parameters.
+All models are implemented using [PyTorch](https://pytorch.org/) and support a number of configuration parameters.
 
-
-To use and configure one of the built-in AI models, you may proceed as follows:
+To use and configure one of the built-in AI models:
 1. Create a JSON file with your custom settings for the model. The default settings per model are outlined below.
 2. Provide the correct details in the [configuration *.ini file](configure_settings.md).
 For example, to use ResNet for image classification:
@@ -36,10 +30,9 @@ model_options_path = /path/to/your/settings.json	# replace with the JSON file pa
 ```
 
 
-
 ### Default model settings
 
-Below follow the default parameters for each of the built-in models. You may use these as a template for your JSON file to override parameters.
+This section presents the default parameters for each of the built-in models. You may use these as a template for your JSON file to override parameters.
 
 Notes:
 * Not all of the arguments specified in the defaults are required. If an argument (or argument block) is missing in your custom JSON file, it will be replaced with the defaults listed below.
@@ -55,8 +48,6 @@ Notes:
     }
     ```
     Again, `kwargs` is optional, but may contain key-value pairs of class constructor arguments for your custom class.
-
-
 
 
 #### Classification (labels)
@@ -439,8 +430,9 @@ Notes:
 
 ### About object detection transforms
 
-For object detection (i.e., points and bounding boxes), certain transforms naturally should not be carried out on the image alone. For example, random horizontal flips affect both the image and the labeled points, resp. bounding boxes.
-AIde therefore treats object detection transforms differently by always applying them to the image, points/bounding boxes and label classes in union. This means that object detection models, such as `RetinaNet`, only accept one of the following transforms as a top-level transform object:
+For object detection (i.e., points and bounding boxes), certain transforms naturally should not be carried out on the image alone. For example, random horizontal flips affect both the image and the labeled points or bounding boxes.
+
+AIde therefore applies transforms to the image, points/bounding boxes, and class labels. This means that object detection models, such as `RetinaNet`, only accept one of the following transforms as a top-level transform object:
 
 * `ai.models.pytorch.boundingBoxes.Compose`
   Accepts an iterable of custom, detection-ready transforms and applies them in order.
