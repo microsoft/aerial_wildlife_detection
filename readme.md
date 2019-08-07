@@ -13,18 +13,17 @@ AIde is a modular Web framework for labeling image datasets with AI assistance. 
     * Support for image classification, point annotations, and bounding boxes (object detection)
     * A number of AI models and Active Learning criteria [built-in](doc/builtin_models.md)
     * Interfaces for custom AI models and criteria, using any framework or library you want (see how to [write your own model](doc/custom_model.md)).
-* **Modular:** AIde is separated into individual _Modules_, each of which can be run on separate machines for scalability, if needed. It even supports on-the-fly addition of computational workers forcomputationally intensive model training!
+* **Modular:** AIde is separated into individual _modules_, each of which can be run on separate machines for scalability. It even supports on-the-fly addition of computational workers for computationally intensive model training!
 
 ![AIde highlights](doc/figures/Aide_highlights.png)
 
 
 ## Framework Overview
 
-In its full form, AIde comprises individual instances (called _modules_), organized as follows:
+AIde consists of individual _modules_, organized as follows:
 
 ![AIde module diagram](doc/figures/AIde_diagram.png)
 
-...where the following modules are run:
 * **LabelUI**: responsible for delivering and accepting predictions and annotations to and from the user/labeler
 * **AIWorker**: runs the AI model in the background to train and predict data
 * **AIController**: distributes and manages jobs to and from the individual _AIWorker_ instance(s)
