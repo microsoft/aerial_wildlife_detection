@@ -115,12 +115,11 @@ class UserMiddleware():
                 'isAdmin': userData['isadmin']
             }
 
-
-
         # update local cache as well
         if not username in self.usersLoggedIn:
             # fetch user metadata and store locally
             userData = self._get_user_data(username)
+            
             self.usersLoggedIn[username] = {
                 'timestamp': now,
                 'sessionToken': sessionToken,

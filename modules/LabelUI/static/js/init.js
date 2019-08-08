@@ -383,64 +383,6 @@ $(document).ready(function() {
             }
         }
 
-
-        // confirmation dialog
-        window.showConfirmationDialog = function(requestID, callback_yes, callback_no, title, message, buttonText_yes, buttonText_no) {
-            /*
-                Shows a confirmation dialog with Yes/No buttons if, and only if, the requestID
-                provided is defined and not found in the cookies. If the requestID is provided,
-                the user is also presented with a checkbox that allows them to not show the
-                message anymore, but skip directly to the confirmation callback the next time.
-            */
-            
-            // go to callback directly if user requested not to show message anymore
-            if(requestID != undefined && requestID != null) {
-                var skip = window.getCookie(requestID);
-                if(skip != undefined && skip != null) {
-                    callback_yes();
-                    return;
-                }
-            }
-
-            // create markup
-            if(title === undefined || title === null) title = 'Confirm';
-            if(message === undefined || message === null) message = 'Would you like to proceed?';
-            if(buttonText_yes === undefined || buttonText_yes === null) buttonText_yes = 'Yes';
-            if(buttonText_no === undefined || buttonText_no === null) buttonText_no = 'No';
-
-            var cookieCheckbox = $('<input type="checkbox" style="margin-right:10px" />');
-            var cookieLabel = $('<label style="margin-top:20px">Do not show this message again.</label>').prepend(cookieCheckbox);
-            var button_yes = $('<button class="btn btn-primary btn-sm" style="display:inline;float:right">' + buttonText_yes + '</button>');
-            var button_no = $('<button class="btn btn-secondary btn-sm" style="display:inline">' + buttonText_no + '</button>');
-            var buttons = $('<div></div>').append(button_no).append(button_yes);
-            var markup = $('<div><h2>' + title + '</h2><div>' + message + '</div></div>').append(cookieLabel).append(buttons);
-
-            // wrap callbacks
-            var dispose = function() {
-                // check if cookie is to be set
-                var skipMsg = cookieCheckbox.is(':checked');
-                if(skipMsg) {
-                    window.setCookie(requestID, true, 365);
-                }
-                window.showOverlay(null);
-            }
-            var action_yes = function() {
-                dispose();
-                callback_yes();
-            }
-            var action_no = function() {
-                dispose();
-                if(callback_no != undefined && callback_no != null) {
-                    callback_no();
-                }
-            }
-            button_yes.click(action_yes);
-            button_no.click(action_no);
-
-            window.showOverlay(markup, false, false);
-        }
-
-
         // login verification screen
         window.showVerificationOverlay = function(callback) {
             var loginFun = function(callback) {
@@ -491,11 +433,11 @@ $(document).ready(function() {
 
         // logout and reload functionality
         window.onbeforeunload = function() {
-            window.dataHandler.submitAnnotations(true);
+            window.dataHandler._submitAnnotations(true);
         };
 
         $('#logout').click(function() {
-            window.dataHandler.submitAnnotations(true);
+            window.dataHandler._submitAnnotations(true);
             window.location.href = '/logout';
         });
     });

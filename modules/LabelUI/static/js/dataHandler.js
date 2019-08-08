@@ -199,8 +199,7 @@ class DataHandler {
     }
 
 
-    submitAnnotations(silent) {
-        if(window.uiBlocked) return;
+    _submitAnnotations(silent) {
         var self = this;
         var entries = this._entriesToJSON(true, false);
         return $.ajax({
@@ -211,7 +210,6 @@ class DataHandler {
             dataType: 'json',
             success: function(response) {
                 // check status
-                
                 if(response['status'] !== 0) {
                     // error
                     if(!silent) {
@@ -223,7 +221,7 @@ class DataHandler {
             },
             error: function(xhr, status, error) {
                 if(error == 'Unauthorized') {
-                    return window.verifyLogin((self.submitAnnotations).bind(self));
+                    return window.verifyLogin((self._submitAnnotations).bind(self));
 
                 } else {
                     // error
@@ -238,10 +236,9 @@ class DataHandler {
     }
 
     _loadFixedBatch(batch) {
-        if(window.uiBlocked) return;
         var self = this;
 
-        //TODO: check if changed and then submit current annotations first
+        // check if changed and then submit current annotations first
         $.ajax({
             url: 'getImages',
             contentType: "application/json; charset=utf-8",
@@ -299,21 +296,24 @@ class DataHandler {
         
         var self = this;
 
-        // add current image IDs to history
-        var historyEntry = [];
-        for(var i=0; i<this.dataEntries.length; i++) {
-            historyEntry.push(this.dataEntries[i]['entryID']);
-        }
-        this.undoStack.push(historyEntry);
-        
-        this.submitAnnotations().done(function() {
-            if(self.redoStack.length > 0) {
-                var nb = self.redoStack.pop();
-                self._loadFixedBatch(nb.slice());
-            } else {
-                self._loadNextBatch();
+        var _next_batch = function() {
+            // add current image IDs to history
+            var historyEntry = [];
+            for(var i=0; i<this.dataEntries.length; i++) {
+                historyEntry.push(this.dataEntries[i]['entryID']);
             }
-        });
+            this.undoStack.push(historyEntry);
+            
+            this._submitAnnotations().done(function() {
+                if(self.redoStack.length > 0) {
+                    var nb = self.redoStack.pop();
+                    self._loadFixedBatch(nb.slice());
+                } else {
+                    self._loadNextBatch();
+                }
+            });
+        }
+        this._showConfirmationDialog((_next_batch).bind(this));
     }
 
 
@@ -323,18 +323,64 @@ class DataHandler {
         
         var self = this;
 
-        // add current image IDs to history
-        var historyEntry = [];
-        for(var i=0; i<this.dataEntries.length; i++) {
-            historyEntry.push(this.dataEntries[i]['entryID']);
+        var _previous_batch = function() {
+            // add current image IDs to history
+            var historyEntry = [];
+            for(var i=0; i<this.dataEntries.length; i++) {
+                historyEntry.push(this.dataEntries[i]['entryID']);
+            }
+            this.redoStack.push(historyEntry);
+
+            var pb = this.undoStack.pop();
+
+            // load
+            this._submitAnnotations().done(function() {
+                self._loadFixedBatch(pb.slice());
+            })
+        };
+        this._showConfirmationDialog((_previous_batch).bind(this));
+    }
+
+
+    _showConfirmationDialog(callback_yes) {
+        
+        // go to callback directly if user requested not to show message anymore
+        var skip = window.getCookie('skipAnnotationConfirmation');
+        if(skip != undefined && skip != null) {
+            callback_yes();
+            return;
         }
-        this.redoStack.push(historyEntry);
 
-        var pb = this.undoStack.pop();
+        // create markup
+        if(this.confirmationDialog_markup === undefined) {
+            this.confirmationDialog_markup = {};
+            this.confirmationDialog_markup.cookieCheckbox = $('<input type="checkbox" style="margin-right:10px" />');
+            var cookieLabel = $('<label style="margin-top:20px">Do not show this message again.</label>').prepend(this.confirmationDialog_markup.cookieCheckbox);
+            this.confirmationDialog_markup.button_yes = $('<button class="btn btn-primary btn-sm" style="display:inline;float:right">Yes</button>');
+            var button_no = $('<button class="btn btn-secondary btn-sm" style="display:inline">No</button>');
+            button_no.click(function() {
+                window.showOverlay(null);
+            });
+            var buttons = $('<div></div>').append(button_no).append(this.confirmationDialog_markup.button_yes);
+            this.confirmationDialog_markup.markup = $('<div><h2>Confirm annotations</h2><div>Are you satisfied with your annotations?</div></div>').append(cookieLabel).append(buttons);
+        }
 
-        // load
-        this.submitAnnotations().done(function() {
-            self._loadFixedBatch(pb.slice());
-        })
+        // wrap callbacks
+        var self = this;
+        var dispose = function() {
+            // check if cookie is to be set
+            var skipMsg = self.confirmationDialog_markup.cookieCheckbox.is(':checked');
+            if(skipMsg) {
+                window.setCookie('skipAnnotationConfirmation', true, 365);
+            }
+            window.showOverlay(null);
+        }
+        var action_yes = function() {
+            dispose();
+            callback_yes();
+        }
+        this.confirmationDialog_markup.button_yes.click(action_yes);
+
+        window.showOverlay(this.confirmationDialog_markup.markup, false, false);
     }
 }
