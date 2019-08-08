@@ -41,7 +41,8 @@ if __name__ == '__main__':
 
     # setup
     print('Setup...\n')
-    os.environ['AIDE_CONFIG_PATH'] = str(args.settings_filepath)
+    if not 'AIDE_CONFIG_PATH' in os.environ:
+        os.environ['AIDE_CONFIG_PATH'] = str(args.settings_filepath)
 
     from tqdm import tqdm
     from util.configDef import Config

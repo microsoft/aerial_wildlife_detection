@@ -24,7 +24,8 @@ if __name__ == '__main__':
 
     # setup
     print('Setup...')
-    os.environ['AIDE_CONFIG_PATH'] = str(args.settings_filepath)
+    if not 'AIDE_CONFIG_PATH' in os.environ:
+        os.environ['AIDE_CONFIG_PATH'] = str(args.settings_filepath)
 
     from util.configDef import Config
     from modules import Database
