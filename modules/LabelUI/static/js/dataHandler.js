@@ -13,6 +13,8 @@ class DataHandler {
 
         this.undoStack = [];
         this.redoStack = [];
+
+        this.skipConfirmationDialog = window.getCookie('skipAnnotationConfirmation');
     }
 
 
@@ -345,8 +347,7 @@ class DataHandler {
     _showConfirmationDialog(callback_yes) {
         
         // go to callback directly if user requested not to show message anymore
-        var skip = window.getCookie('skipAnnotationConfirmation');
-        if(skip != undefined && skip != null) {
+        if(this.skipConfirmationDialog) {
             callback_yes();
             return;
         }
@@ -372,6 +373,7 @@ class DataHandler {
             var skipMsg = self.confirmationDialog_markup.cookieCheckbox.is(':checked');
             if(skipMsg) {
                 window.setCookie('skipAnnotationConfirmation', true, 365);
+                self.skipConfirmationDialog = true;
             }
             window.showOverlay(null);
         }

@@ -73,16 +73,16 @@ class UIControlHandler {
         });
 
         // zoom buttons
-        vpControls.append($('<button id="zoom-in-button" class="btn btn-sm btn-secondary" title="Zoom In"><img src="static/img/controls/zoom_in.svg" style="height:18px" /></button>'));
+        vpControls.append($('<button id="zoom-in-button" class="btn btn-sm btn-secondary" title="Zoom In (I)"><img src="static/img/controls/zoom_in.svg" style="height:18px" /></button>'));
         $('#zoom-in-button').click(function() {
             self.setAction(ACTIONS.ZOOM_IN);
         });
-        vpControls.append($('<button id="zoom-out-button" class="btn btn-sm btn-secondary" title="Zoom Out"><img src="static/img/controls/zoom_out.svg" style="height:18px" /></button>'));
+        vpControls.append($('<button id="zoom-out-button" class="btn btn-sm btn-secondary" title="Zoom Out (O)"><img src="static/img/controls/zoom_out.svg" style="height:18px" /></button>'));
         $('#zoom-out-button').click(function() {
             self.setAction(ACTIONS.ZOOM_OUT);
         });
 
-        var zoomAreaButton = $('<button id="zoom-area-button" class="btn btn-sm btn-secondary" title="Zoom to Area"><img src="static/img/controls/zoom_area.svg" style="height:18px" /></button>');
+        var zoomAreaButton = $('<button id="zoom-area-button" class="btn btn-sm btn-secondary" title="Zoom to Area (Z)"><img src="static/img/controls/zoom_area.svg" style="height:18px" /></button>');
         this.staticButtons[ACTIONS.ZOOM_AREA] = zoomAreaButton;
         vpControls.append(zoomAreaButton);
         zoomAreaButton.click(function() {
@@ -213,6 +213,12 @@ class UIControlHandler {
 
                 } else if(ccode === 'E') {
                     self.resetZoom();
+
+                } else if(ccode === 'I') {
+                    self.setAction(ACTIONS.ZOOM_IN);
+
+                } else if(ccode === 'O') {
+                    self.setAction(ACTIONS.ZOOM_OUT);
                 
                 } else if(ccode === 'P') {
                     self.setAction(ACTIONS.PAN);
@@ -229,6 +235,8 @@ class UIControlHandler {
                 } else if(ccode === 'W') {
                     self.setAction(ACTIONS.ADD_ANNOTATION);
 
+                } else if(ccode === 'Z') {
+                    self.setAction(ACTIONS.ZOOM_AREA);
                 }
             }
         });
