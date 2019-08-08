@@ -85,6 +85,10 @@ Also on the _AIController_ machine, run the following code:
     sudo mkdir -p /var/lib/redis
     sudo chown -R redis:redis /var/lib/redis
 
+    # disable persistence. In general, we don't need Redis to save snapshots as it is only used as a result
+    # (and therefore message) backend.
+    sudo sed -i "s/^\s*save/# save /g" /etc/redis/redis.conf
+
     # optional: if the port is anything else than 6379, execute the following line:
     port=6379   # replace with your port
     sudo sed -i "s/^\s*port\s*.*/port $port/g" /etc/redis/redis.conf
@@ -120,6 +124,24 @@ At this point you may want to test Redis:
         # > "Hello, world!"
     ```
 
+
+## Configure TCP keepalive settings
+
+As is the case for the [database](setup_db.md), also the message broker and result backend instance(s) _might_ require you to set TCP keepalive options, e.g. when run on [MS Azure](https://docs.microsoft.com/en-us/azure/load-balancer/load-balancer-outbound-connections#idletimeout).
+Run the following code block for your _AIController_ instance, resp. for the machine(s) running RabbitMQ and/or Redis.
+
+```bash
+    if ! sudo grep -q ^net.ipv4.tcp_keepalive_* /etc/sysctl.conf ; then
+        echo "net.ipv4.tcp_keepalive_time = 60" | sudo tee -a "/etc/sysctl.conf" > /dev/null
+        echo "net.ipv4.tcp_keepalive_intvl = 60" | sudo tee -a "/etc/sysctl.conf" > /dev/null
+        echo "net.ipv4.tcp_keepalive_probes = 20" | sudo tee -a "/etc/sysctl.conf" > /dev/null
+    else
+        sudo sed -i "s/^\s*net.ipv4.tcp_keepalive_time.*/net.ipv4.tcp_keepalive_time = 60 /g" /etc/sysctl.conf
+        sudo sed -i "s/^\s*net.ipv4.tcp_keepalive_intvl.*/net.ipv4.tcp_keepalive_intvl = 60 /g" /etc/sysctl.conf
+        sudo sed -i "s/^\s*net.ipv4.tcp_keepalive_probes.*/net.ipv4.tcp_keepalive_probes = 20 /g" /etc/sysctl.conf
+    fi
+    sudo sysctl -p
+```
 
 
 ## Add settings
