@@ -275,6 +275,15 @@ class AIWorkerHandler {
                 </table>
                 <button class="btn btn-primary btn-sm" id="launch-job-button" style="float:right;margin-top:10px;">Launch</button>`)
             );
+            // disable class hotkey switching on text field focus
+            $('#ai-manual-controls *').on({
+                focusin: function() {
+                    window.shortcutsDisabled = true;
+                },
+                focusout: function() {
+                    window.shortcutsDisabled = false;
+                }
+            });
             $('#launch-job-button').click(function() {
                 self.manualTrigger();
             })

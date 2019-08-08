@@ -107,7 +107,7 @@ class LabelClass {
         // listener for keypress if in [1, 9]
         if(this.index >= 0 && this.index < 9) {
             $(window).keyup(function(event) {
-                if(window.uiBlocked) return;
+                if(window.uiBlocked || window.shortcutsDisabled) return;
                 try {
                     var key = parseInt(String.fromCharCode(event.which));
                     if(key == self.index+1) {

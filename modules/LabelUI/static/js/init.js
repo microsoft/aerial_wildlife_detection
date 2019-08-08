@@ -252,19 +252,6 @@ $(document).ready(function() {
         ];
 
         // interface
-        // window.interfaceControls = {
-        //     actions: {
-        //         DO_NOTHING: 0,
-        //         ADD_ANNOTATION: 1,
-        //         REMOVE_ANNOTATIONS: 2,
-        //         ZOOM_IN: 3,
-        //         ZOOM_OUT: 4,
-        //         ZOOM_AREA: 5,
-        //         PAN: 6
-        //     }
-        // };
-        // window.interfaceControls.action = window.interfaceControls.actions.DO_NOTHING;
-        // window.interfaceControls.showLoupe = false;
         window.shortcutsDisabled = false;       // if true, keystrokes like "A" for "label all" are disabled
         window.setUIblocked(true);
 
@@ -331,7 +318,7 @@ $(document).ready(function() {
             var galleryHeight_visible = parseInt(gallery.height());
 
             // show tooltip if additional images invisible, hide if not
-            if(galleryHeight - scrollPos > galleryHeight_visible) {
+            if(galleryHeight - scrollPos - 1 > galleryHeight_visible) {
                 $('#gallery-scroll-tooltip-bottom').fadeIn();
             } else {
                 $('#gallery-scroll-tooltip-bottom').fadeOut();
