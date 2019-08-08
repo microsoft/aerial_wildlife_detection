@@ -46,23 +46,7 @@ window.showTutorial = function(autostart) {
     var nextTooltip = function() {
         window.setUIblocked(true);
 
-        if(index >= 0) {
-            // if(interfaceElements[index][0] === '#tools-container') {
-            //     // hide class drawer
-            //     let offset = -$('#tools-container').outerWidth() + 40;
-            //     $('#tools-container').animate({
-            //         right: offset
-            //     });
-
-            //     // re-enable original mouseleave command (TODO: ugly)
-            //     $('#tools-container').on('mouseleave', function() {
-            //         if(window.uiBlocked) return;
-            //         let offset = -$(this).outerWidth() + 40;
-            //         $('#tools-container').animate({
-            //             right: offset
-            //         });
-            //     });
-            // } else 
+        if(index >= 0) { 
             if(interfaceElements[index][0] === '#ai-worker-panel') {
                 // minimize AI panel
                 $('#ai-worker-panel').slideUp();
@@ -86,18 +70,6 @@ window.showTutorial = function(autostart) {
             scrollTop: $(interfaceElements[index][0]).offset().top
         }, 1000);
 
-        // if(interfaceElements[index][0] === '#tools-container') {
-        //     // show class drawer
-        //     $('#tools-container').animate({
-        //         right: 0
-        //     }, 500, function() {
-        //         $(interfaceElements[index][0]).tooltip({
-        //             title: interfaceElements[index][1],
-        //             placement: interfaceElements[index][2]
-        //         }).off("mouseover mouseout mouseleave").tooltip('show');
-        //     });
-
-        // } else 
         if(interfaceElements[index][0] === '#ai-worker-panel') {
             // show AI panel
             $('#ai-worker-panel').slideDown();

@@ -8,10 +8,11 @@
      /*
         Abstract base class for data entries.
      */
-    constructor(entryID, properties) {
+    constructor(entryID, properties, disableInteractions) {
         this.entryID = entryID;
         this.canvasID = entryID + '_canvas';
         this.fileName = properties['fileName'];
+        this.disableInteractions = disableInteractions;
 
         this._setup_viewport();
         this._setup_markup();
@@ -231,7 +232,8 @@
         this.markup = $('<div class="entry"></div>');
         this.markup.append(this.canvas);
         var self = this;
-        this.markup.on('click', (self._click).bind(self));
+        if(!this.disableInteractions)
+            this.markup.on('click', (self._click).bind(self));
     }
 
     getImageURI() {
@@ -466,74 +468,76 @@
             5);
         this.viewport.addRenderElement(this.hoverTextElement);
 
-        // click handler
-        this.markup.mouseup(function(event) {
-            if(window.uiBlocked) return;
-            else if(window.uiControlHandler.getAction() === ACTIONS.DO_NOTHING) {
-                if(window.unsureButtonActive) {
-                    self.labelInstance.setProperty('unsure', !self.labelInstance.getProperty('unsure'));
-                    window.unsureButtonActive = false;
-                    self.render();
-                } else {
-                    self.toggleUserLabel(event.altKey);
+        if(!this.disableInteractions) {
+            // click handler
+            this.markup.mouseup(function(event) {
+                if(window.uiBlocked) return;
+                else if(window.uiControlHandler.getAction() === ACTIONS.DO_NOTHING) {
+                    if(window.unsureButtonActive) {
+                        self.labelInstance.setProperty('unsure', !self.labelInstance.getProperty('unsure'));
+                        window.unsureButtonActive = false;
+                        self.render();
+                    } else {
+                        self.toggleUserLabel(event.altKey);
+                    }
                 }
-            }
 
-            window.dataHandler.updatePresentClasses();
-        });
+                window.dataHandler.updatePresentClasses();
+            });
 
-        // tooltip for label change
-        this.markup.mousemove(function(event) {
-            if(window.uiBlocked) return;
-            var pos = self.viewport.getRelativeCoordinates(event, 'validArea');
+            // tooltip for label change
+            this.markup.mousemove(function(event) {
+                if(window.uiBlocked) return;
+                var pos = self.viewport.getRelativeCoordinates(event, 'validArea');
 
-            // offset tooltip position if loupe is active
-            if(window.uiControlHandler.showLoupe) {
-                pos[0] += 0.2;  //TODO: does not account for zooming in
-            }
+                // offset tooltip position if loupe is active
+                if(window.uiControlHandler.showLoupe) {
+                    pos[0] += 0.2;  //TODO: does not account for zooming in
+                }
 
-            self.hoverTextElement.position = pos;
-            if(window.uiControlHandler.getAction() in [ACTIONS.DO_NOTHING,
-                ACTIONS.ADD_ANNOTATION,
-                ACTIONS.REMOVE_ANNOTATIONS]) {
-                if(event.altKey) {
-                    self.hoverTextElement.setProperty('text', 'mark as unlabeled');
-                    self.hoverTextElement.setProperty('fillColor', window.styles.hoverText.box.fill);
-                } else if(window.unsureButtonActive) {
-                    self.hoverTextElement.setProperty('text', 'toggle unsure');
-                    self.hoverTextElement.setProperty('fillColor', window.styles.hoverText.box.fill);
-                } else if(self.labelInstance == null) {
-                    self.hoverTextElement.setProperty('text', 'set label to "' + window.labelClassHandler.getActiveClassName() + '"');
-                    self.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getActiveColor());
-                } else if(self.labelInstance.label != window.labelClassHandler.getActiveClassID()) {
-                    self.hoverTextElement.setProperty('text', 'change label to "' + window.labelClassHandler.getActiveClassName() + '"');
-                    self.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getActiveColor());
+                self.hoverTextElement.position = pos;
+                if(window.uiControlHandler.getAction() in [ACTIONS.DO_NOTHING,
+                    ACTIONS.ADD_ANNOTATION,
+                    ACTIONS.REMOVE_ANNOTATIONS]) {
+                    if(event.altKey) {
+                        self.hoverTextElement.setProperty('text', 'mark as unlabeled');
+                        self.hoverTextElement.setProperty('fillColor', window.styles.hoverText.box.fill);
+                    } else if(window.unsureButtonActive) {
+                        self.hoverTextElement.setProperty('text', 'toggle unsure');
+                        self.hoverTextElement.setProperty('fillColor', window.styles.hoverText.box.fill);
+                    } else if(self.labelInstance == null) {
+                        self.hoverTextElement.setProperty('text', 'set label to "' + window.labelClassHandler.getActiveClassName() + '"');
+                        self.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getActiveColor());
+                    } else if(self.labelInstance.label != window.labelClassHandler.getActiveClassID()) {
+                        self.hoverTextElement.setProperty('text', 'change label to "' + window.labelClassHandler.getActiveClassName() + '"');
+                        self.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getActiveColor());
+                    } else {
+                        self.hoverTextElement.setProperty('text', null);
+                    }
                 } else {
                     self.hoverTextElement.setProperty('text', null);
                 }
-            } else {
+
+                // flip text color if needed
+                var htFill = self.hoverTextElement.getProperty('fillColor');
+                if(htFill != null && window.getBrightness(htFill) >= 92) {
+                    self.hoverTextElement.setProperty('textColor', '#000000');
+                } else {
+                    self.hoverTextElement.setProperty('textColor', '#FFFFFF');
+                }
+
+                // set active (for e.g. "unsure" functionality)
+                self.labelInstance.setActive(true);
+
+                self.render();
+            });
+            this.markup.mouseout(function(event) {
+                if(window.uiBlocked) return;
                 self.hoverTextElement.setProperty('text', null);
-            }
-
-            // flip text color if needed
-            var htFill = self.hoverTextElement.getProperty('fillColor');
-            if(htFill != null && window.getBrightness(htFill) >= 92) {
-                self.hoverTextElement.setProperty('textColor', '#000000');
-            } else {
-                self.hoverTextElement.setProperty('textColor', '#FFFFFF');
-            }
-
-            // set active (for e.g. "unsure" functionality)
-            self.labelInstance.setActive(true);
-
-            self.render();
-        });
-        this.markup.mouseout(function(event) {
-            if(window.uiBlocked) return;
-            self.hoverTextElement.setProperty('text', null);
-            self.labelInstance.setActive(false);
-            self.render();
-        });
+                self.labelInstance.setActive(false);
+                self.render();
+            });
+        }
     }
 
     setLabel(label) {
@@ -649,10 +653,12 @@ class PointAnnotationEntry extends AbstractDataEntry {
         this.viewport.addRenderElement(this.hoverTextElement);
 
         // interaction handlers
-        this.viewport.addCallback(this.entryID, 'mousedown', (self._canvas_mousedown).bind(self));
-        this.viewport.addCallback(this.entryID, 'mousemove', (self._canvas_mousemove).bind(self));
-        this.viewport.addCallback(this.entryID, 'mouseup', (self._canvas_mouseup).bind(self));
-        this.viewport.addCallback(this.entryID, 'mouseleave', (self._canvas_mouseleave).bind(self));
+        if(!this.disableInteractions) {
+            this.viewport.addCallback(this.entryID, 'mousedown', (self._canvas_mousedown).bind(self));
+            this.viewport.addCallback(this.entryID, 'mousemove', (self._canvas_mousemove).bind(self));
+            this.viewport.addCallback(this.entryID, 'mouseup', (self._canvas_mouseup).bind(self));
+            this.viewport.addCallback(this.entryID, 'mouseleave', (self._canvas_mouseleave).bind(self));
+        }
     }
 
     _toggleActive(event) {
@@ -926,18 +932,20 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
         this.viewport.addRenderElement(this.hoverTextElement);
 
         // interaction handlers
-        this.viewport.addCallback(this.entryID, 'mousedown', function(event) {
-            self._canvas_mousedown(event);
-        });
-        this.viewport.addCallback(this.entryID, 'mousemove', function(event) {
-            self._canvas_mousemove(event);
-        });
-        this.viewport.addCallback(this.entryID, 'mouseup', function(event) {
-            self._canvas_mouseup(event);
-        });
-        this.viewport.addCallback(this.entryID, 'mouseleave', function(event) {
-            self._canvas_mouseleave(event);
-        });
+        if(!this.disableInteractions) {
+            this.viewport.addCallback(this.entryID, 'mousedown', function(event) {
+                self._canvas_mousedown(event);
+            });
+            this.viewport.addCallback(this.entryID, 'mousemove', function(event) {
+                self._canvas_mousemove(event);
+            });
+            this.viewport.addCallback(this.entryID, 'mouseup', function(event) {
+                self._canvas_mouseup(event);
+            });
+            this.viewport.addCallback(this.entryID, 'mouseleave', function(event) {
+                self._canvas_mouseleave(event);
+            });
+        }
     }
 
     _toggleActive(event) {

@@ -1,0 +1,21 @@
+{
+    "basePath": "modules/LabelUI/static/img/backdrops",
+    "images": [
+        {
+            "file": "bingdesktop.com_gallery_2784.jpg",
+            "copyright": "&copy; Mint Images/SuperStock"
+        },
+        {
+            "file": "bingdesktop.com_gallery_24998.jpg",
+            "copyright": "&copy; Minden Pictures/Masterfile"
+        },
+        {
+            "file": "bingdesktop.com_gallery_25789.jpg",
+            "copyright": "&copy; Conor Barry/Aurora Photo"
+        },
+        {
+            "file": "bingdesktop.com_gallery_28190.jpg",
+            "copyright": "&copy; Patrick Bay/Getty Images"
+        }
+    ]
+}

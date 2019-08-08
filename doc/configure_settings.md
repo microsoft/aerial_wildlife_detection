@@ -20,6 +20,8 @@ General project settings go here.
 | adminName | (string) |  | YES | Username of the AIde account with administrator rights added by default to the database. |
 | adminEmail | (e-mail string) |  | YES | E-mail address of the AIde administrator account. |
 | adminPassword | (string) |  | YES | Plain text password of the AIde administrator account. |
+| welcome_message_file | (file path) | modules/LabelUI/static/templates/welcome_message.html |  | File path to a text file containing a message to be shown in the tutorial. The message may be formatted with HTML tags and is embedded into the tutorial page, visible when the user first logs in, or else clicks the "Help" button in the top right corner. See file "config/welcome_message.html" for an example. |
+| backdrops_file | (file path) | modules/LabelUI/static/json/backdrops.json |  | File path to a JSON-formatted file containing information on the images to be shown in the background of non-interface pages (index, about, etc.). File must contain a root directory in the file system of the _LabelUI_ instance where the images are to be found, as well as an array of image names and, optionally, a string defining copyright information. See file "config/backdrops.json" for an example. |
 
 
 ## [Server]
@@ -46,15 +48,16 @@ This section contains parameters for all the individual instances' addresses.
 ## [LabelUI]
 
 | Name | Values | Default value | Required | Comments |
-|------------------------------|-----------------|---------------|-----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|------------------------------|-------------------------|--------------------------------------------|----------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | numImagesPerBatch | (numeric > 0) | 1 |  | Number of images to load and display at a time in the user interface. |
 | minImageWidth | (numeric > 0) | 300 |  | Minimum image width in pixels displayed in the user interface. The actual width of the image(s) displayed might be larger, depending on the browser window size and the number of images shown, but never smaller than the value provided here. If the browser window gets too small to display even just one image completely, scrollbars appear that require the user to pan around in the portion of the image displayed. |
-| numImageColumns_max | (numeric > 0) | 1 |  |  Number of columns to show at maximum, if more than one image is displayed in the user interface at a time. This provides an additional visualization constraint to control the number of visuals to be shown in the interface at a time. |
-| showPredictions | 'yes' | 'no' | 'yes' |  |
+| numImageColumns_max | (numeric > 0) | 1 |  | Number of columns to show at maximum, if more than one image is displayed in the user interface at a time. This provides an additional visualization constraint to control the number of visuals to be shown in the interface at a time. |
+| showPredictions | 'yes' | 'no' |  | Whether to display model predictions in the user interface or not. Note that predictions might still be "carried over" (i.e., converted to annotations) if they meet the criterion defined. See next fields for details. |
 | showPredictions_minConf | (numeric) | 0.5 |  | Minimum confidence value per prediction to be shown to the user in the interface. |
-| carryOverPredictions | 'yes' | 'no' | 'no' |  |
+| carryOverPredictions | 'yes' | 'no' |  | Whether to "carry over" predictions (i.e., auto-generate annotations from them). If 'yes', predictions with a confidence of a threshold set (next field) or higher will be auto-converted into annotations. |
 | carryOverPredictions_minConf | (numeric) | 0.75 |  | Minimum confidence value per prediction to be converted to an annotation. |
-| carryOverRule | 'maxConfidence' | 'mode' | 'maxConfidence' |  |
+| carryOverRule | 'maxConfidence', 'mode' | 'mode' |  | Prediction carry-over rule for conversions across different annotation/prediction types. This applies if e.g. multiple points are to be converted to a single, image-wide label.  If set to 'maxConfidence', the label class of the prediction with the highest confidence in the image will be used. Option 'mode' creates an image label based on the most frequently occurring label class in the image. |
+| styles_file | (file path) | modules/LabelUI/static/json/styles.json |  |  File path to a JSON-formatted file defining user interface styles. See file "config/styles.json" for an example. |
 
 
 ## [AIController]

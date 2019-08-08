@@ -57,7 +57,7 @@ function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
 
 class AbstractRenderElement {
 
-    constructor(id, style, zIndex) {
+    constructor(id, style, zIndex, disableInteractions) {
         this.id = id;
         this.style = style;
         if(this.style === null || this.style === undefined) {
@@ -69,6 +69,7 @@ class AbstractRenderElement {
             }
         }
         this.zIndex = (zIndex == null? 0 : zIndex);
+        this.disableInteractions = disableInteractions;
         this.isActive = false;
         this.changed = false;   // will be set to true if user modifies the initial geometry
         this.lastUpdated = new Date();  // timestamp of last update
@@ -130,8 +131,8 @@ class AbstractRenderElement {
 
 class ElementGroup extends AbstractRenderElement {
 
-    constructor(id, elements, zIndex) {
-        super(id, null, zIndex);
+    constructor(id, elements, zIndex, disableInteractions) {
+        super(id, null, zIndex, disableInteractions);
         this.elements = elements;
         if(this.elements == null) {
             this.elements = [];
@@ -170,8 +171,8 @@ class ElementGroup extends AbstractRenderElement {
 
 class ImageElement extends AbstractRenderElement {
 
-    constructor(id, viewport, imageURI, zIndex) {
-        super(id, null, zIndex);
+    constructor(id, viewport, imageURI, zIndex, disableInteractions) {
+        super(id, null, zIndex, disableInteractions);
         this.viewport = viewport;
         this.imageURI = imageURI;
         // default parameter until image is loaded
@@ -241,8 +242,8 @@ class ImageElement extends AbstractRenderElement {
 
 class HoverTextElement extends AbstractRenderElement {
 
-    constructor(id, hoverText, position, reference, style, zIndex) {
-        super(id, style, zIndex);
+    constructor(id, hoverText, position, reference, style, zIndex, disableInteractions) {
+        super(id, style, zIndex, disableInteractions);
         this.text = hoverText;
         this.position = position;
         this.reference = reference;
@@ -287,8 +288,8 @@ class HoverTextElement extends AbstractRenderElement {
 
 class PointElement extends AbstractRenderElement {
 
-    constructor(id, x, y, style, unsure, zIndex) {
-        super(id, style, zIndex);
+    constructor(id, x, y, style, unsure, zIndex, disableInteractions) {
+        super(id, style, zIndex, disableInteractions);
         if(!this.style.hasOwnProperty('fillColor') && this.style.hasOwnProperty('color')) {
             this.style['fillColor'] = window.addAlpha(this.style.color, this.style.fillOpacity);
         }
@@ -410,20 +411,22 @@ class PointElement extends AbstractRenderElement {
         /*
             Sets the 'active' property to the given value.
         */
-        super.setActive(active, viewport);
-        if(active) {
-            viewport.addCallback(this.id, 'mousedown', this._get_active_handle_callback('mousedown', viewport));
-            viewport.addCallback(this.id, 'mousemove', this._get_active_handle_callback('mousemove', viewport));
-            viewport.addCallback(this.id, 'mouseup', this._get_active_handle_callback('mouseup', viewport));
-            viewport.addCallback(this.id, 'mouseleave', this._get_active_handle_callback('mouseleave', viewport));
-        } else {
+        if(!this.disableInteractions) {
+            super.setActive(active, viewport);
+            if(active) {
+                viewport.addCallback(this.id, 'mousedown', this._get_active_handle_callback('mousedown', viewport));
+                viewport.addCallback(this.id, 'mousemove', this._get_active_handle_callback('mousemove', viewport));
+                viewport.addCallback(this.id, 'mouseup', this._get_active_handle_callback('mouseup', viewport));
+                viewport.addCallback(this.id, 'mouseleave', this._get_active_handle_callback('mouseleave', viewport));
+            } else {
 
-            // remove active properties
-            viewport.removeCallback(this.id, 'mousedown');
-            viewport.removeCallback(this.id, 'mousemove');
-            viewport.removeCallback(this.id, 'mouseup');
-            viewport.removeCallback(this.id, 'mouseleave');
-            this.mouseDrag = false;
+                // remove active properties
+                viewport.removeCallback(this.id, 'mousedown');
+                viewport.removeCallback(this.id, 'mousemove');
+                viewport.removeCallback(this.id, 'mouseup');
+                viewport.removeCallback(this.id, 'mouseleave');
+                this.mouseDrag = false;
+            }
         }
     }
 
@@ -432,7 +435,8 @@ class PointElement extends AbstractRenderElement {
             Adds this instance to the viewport.
             This makes the entry user-modifiable in terms of position.
         */
-        viewport.addCallback(this.id, 'mouseup', this._get_active_handle_callback('mouseup', viewport));
+        if(!this.disableInteractions)
+            viewport.addCallback(this.id, 'mouseup', this._get_active_handle_callback('mouseup', viewport));
     }
 
     deregisterAsCallback(viewport) {
@@ -496,8 +500,8 @@ class PointElement extends AbstractRenderElement {
 
 class LineElement extends AbstractRenderElement {
 
-    constructor(id, startX, startY, endX, endY, style, unsure, zIndex) {
-        super(id, style, zIndex);
+    constructor(id, startX, startY, endX, endY, style, unsure, zIndex, disableInteractions) {
+        super(id, style, zIndex, disableInteractions);
         if(!this.style.hasOwnProperty('strokeColor') && this.style.hasOwnProperty('color')) {
             this.style['strokeColor'] = window.addAlpha(this.style.color, this.style.lineOpacity);
         }
@@ -551,8 +555,8 @@ class LineElement extends AbstractRenderElement {
 
 class RectangleElement extends PointElement {
 
-    constructor(id, x, y, width, height, style, unsure, zIndex) {
-        super(id, x, y, style, unsure, zIndex);
+    constructor(id, x, y, width, height, style, unsure, zIndex, disableInteractions) {
+        super(id, x, y, style, unsure, zIndex, disableInteractions);
         if(!this.style.hasOwnProperty('strokeColor') && this.style.hasOwnProperty('color')) {
             this.style['strokeColor'] = window.addAlpha(this.style.color, this.style.lineOpacity);
         }
@@ -841,6 +845,8 @@ class RectangleElement extends PointElement {
             Also draws resize handles to the viewport if active
             and makes them resizable through callbacks.
         */
+        if(this.disableInteractions) return;
+
         super.setActive(active, viewport);
         if(active) {
             this._createResizeHandles();
@@ -914,8 +920,8 @@ class BorderStrokeElement extends AbstractRenderElement {
         Draws a border around the viewport.
         Specifically intended for classification tasks.
     */
-    constructor(id, text, style, unsure, zIndex) {
-        super(id, style, zIndex);
+    constructor(id, text, style, unsure, zInde, disableInteractions) {
+        super(id, style, zIndex, disableInteractions);
         if(this.style.textColor == null || this.style.textColor == undefined) {
             this.style['textColor'] = window.styles.hoverText.text.color;
         }
@@ -983,8 +989,8 @@ class ResizeHandle extends AbstractRenderElement {
         Draws a small square at a given position that is fixed in size
         (but not in position), irrespective of scale.
     */
-    constructor(id, x, y, zIndex) {
-        super(id, null, zIndex);
+    constructor(id, x, y, zIndex, disableInteractions) {
+        super(id, null, zIndex, disableInteractions);
         this.x = x;
         this.y = y;
     }
@@ -1023,8 +1029,8 @@ class MiniViewport extends AbstractRenderElement {
         and position on the parent viewport.
         Useful when only a sub-part of the viewport's area is to be shown.
     */
-    constructor(id, parentViewport, parentExtent, x, y, size, zIndex) {
-        super(id, null, zIndex);
+    constructor(id, parentViewport, parentExtent, x, y, size, zIndex, disableInteractions) {
+        super(id, null, zIndex, disableInteractions);
         this.parentViewport = parentViewport;
         this.parentExtent = parentExtent;
         this.position = null;
@@ -1076,8 +1082,8 @@ class MiniMap extends AbstractRenderElement {
         canvas elements and also offers an interactive rectangle, showing
         the position of the parent viewport's current extent.
     */
-    constructor(id, parentViewport, x, y, size, interactive, zIndex) {
-        super(id, null, zIndex);
+    constructor(id, parentViewport, x, y, size, interactive, zIndex, disableInteractions) {
+        super(id, null, zIndex, disableInteractions);
         this.parentViewport = parentViewport;
 
         this.position = null;
@@ -1158,6 +1164,8 @@ class MiniMap extends AbstractRenderElement {
         /*
             Makes parent viewport move on drag of extent rectangle.
         */
+        if(this.disableInteractions) return;
+        
         this.mouseDown = false;
         this.parentViewport.addCallback(this.id, 'mousedown', this.__get_callback('mousedown'));
         this.parentViewport.addCallback(this.id, 'mousemove', this.__get_callback('mousemove'));

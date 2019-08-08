@@ -72,6 +72,7 @@ window.getProjectSettings = function() {
         window.defaultImage_w = parseInt(data['settings']['defaultImage_w']);
         window.defaultImage_h = parseInt(data['settings']['defaultImage_h']);
         window.styles = data['settings']['styles'];
+        window.welcomeMessage = data['settings']['welcomeMessage'];
 
 
         // set interface page title and description

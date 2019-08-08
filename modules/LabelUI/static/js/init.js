@@ -403,7 +403,7 @@ $(document).ready(function() {
             }
 
             var overlayHtml = $('<h2>Renew Session</h2><div class="row fieldRow"><label for="password" class="col-sm">Password:</label><input type="password" name="password" id="password" required class="col-sm" /></div><div class="row fieldRow"><div class="col-sm"><div id="invalid-password" style="display:none;color:red;">invalid password entered</div><button id="abort" class="btn btn-sm btn-danger">Cancel</button><button id="confirm-password" class="btn btn-sm btn-primary float-right">OK</button></div></div>');
-            window.showOverlay(overlayHtml);
+            window.showOverlay(overlayHtml, false, false);
 
             $('#abort').click(function() {
                 window.location.href = '/';

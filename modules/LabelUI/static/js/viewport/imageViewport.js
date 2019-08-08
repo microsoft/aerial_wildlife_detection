@@ -6,7 +6,7 @@
 
 class ImageViewport {
 
-    constructor(canvas) {
+    constructor(canvas, disableInteractions) {
         this.canvas = canvas;
         this.loadingText = 'loading...';
         this.ctx = canvas[0].getContext('2d');
@@ -22,6 +22,7 @@ class ImageViewport {
                 return 0;
             }
         });
+
         this._setupCallbacks();
 
         // mini-map to be shown in the corner if zoomed in
@@ -36,7 +37,8 @@ class ImageViewport {
         this.zoomRectangle = null;
         
         // viewport interactions
-        this._setup_interactions();
+        if(!disableInteractions)
+            this._setup_interactions();
     }
 
     _setupCallbacks() {

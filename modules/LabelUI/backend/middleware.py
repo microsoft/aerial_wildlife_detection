@@ -33,8 +33,16 @@ class DBMiddleware():
             aiControllerURI = None
 
         # LabelUI drawing styles
-        with open(self.config.getProperty('LabelUI', 'styles_file', type=str, fallback='config/styles.json'), 'r') as f:
+        with open(self.config.getProperty('LabelUI', 'styles_file', type=str, fallback='modules/LabelUI/static/json/styles.json'), 'r') as f:
             styles = json.load(f)
+
+        # Image backdrops for index screen
+        with open(self.config.getProperty('Project', 'backdrops_file', type=str, fallback='modules/LabelUI/static/json/backdrops.json'), 'r') as f:
+            backdrops = json.load(f)
+
+        # Welcome message for UI tutorial
+        with open(self.config.getProperty('Project', 'welcome_message_file', type=str, fallback='modules/LabelUI/static/templates/welcome_message.html'), 'r') as f:
+            welcomeMessage = f.readlines()
 
         self.projectSettings = {
             'projectName': self.config.getProperty('Project', 'projectName'),
@@ -60,7 +68,9 @@ class DBMiddleware():
             'numImageColumns_max': self.config.getProperty('LabelUI', 'numImageColumns_max', type=int, fallback=1),
             'defaultImage_w': self.config.getProperty('LabelUI', 'defaultImage_w', type=int, fallback=800),
             'defaultImage_h': self.config.getProperty('LabelUI', 'defaultImage_h', type=int, fallback=600),
-            'styles': styles['styles']
+            'styles': styles['styles'],
+            'backdrops': backdrops,
+            'welcomeMessage': welcomeMessage
         }
 
 
@@ -118,7 +128,8 @@ class DBMiddleware():
         '''
         return {
             'projectName' : self.projectSettings['projectName'],
-            'projectDescription' : self.projectSettings['projectDescription']
+            'projectDescription' : self.projectSettings['projectDescription'],
+            'backdrops': self.projectSettings['backdrops']['images']
         }
 
 

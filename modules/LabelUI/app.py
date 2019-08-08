@@ -75,6 +75,13 @@ class LabelUI():
             return static_file(filename, root=self.staticDir)
 
 
+        @self.app.route('/backdrops/<filename:re:.*>')
+        def send_backdrop_image(filename):
+            try:
+                return static_file(filename, root=self.middleware.projectSettings['backdrops']['basePath'])
+            except:
+                abort(404, 'backdrop not found')
+
         ''' dynamic routings '''
         @self.app.get('/getProjectInfo')
         def get_project_info():

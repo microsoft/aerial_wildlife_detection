@@ -72,32 +72,7 @@
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
     <script type="text/javascript">
         $(document).ready(function() {
-            // cycle through backdrops
-            var backdropURLs = [
-                'bingdesktop.com_gallery_2784.jpg',
-                'bingdesktop.com_gallery_24998.jpg',
-                'bingdesktop.com_gallery_25789.jpg',
-                'bingdesktop.com_gallery_28190.jpg',
-            ];
-            var backdropSources = [
-                '&copy; Mint Images/SuperStock',
-                '&copy; Minden Pictures/Masterfile',
-                '&copy; Conor Barry/Aurora Photo',
-                '&copy; Patrick Bay/Getty Images'
-            ]
-            
-            var currentBackdropIdx = Math.floor(Math.random() * backdropURLs.length);
-            $('#backdrop-copyright').html(backdropSources[currentBackdropIdx]);
-            $('#backdrop').css('background-image', 'url(static/img/backdrops/' + backdropURLs[currentBackdropIdx] + ')');
-            // var cycleBackdrops = function() {
-            //     currentBackdropIdx = ++currentBackdropIdx % backdropURLs.length;
-            //     $('#backdrop-copyright').html(backdropSources[currentBackdropIdx]);
-            //     $('#backdrop').fadeIn(500).css('background-image', 'url(static/img/backdrops/' + backdropURLs[currentBackdropIdx] + ')').delay(2000).fadeOut(500, function () { cycleBackdrops(); });
-            // }
-            // cycleBackdrops();        //TODO: too hectic; causes white transition
-
-
-            // set title and description
+            // set title, description and backdrops
             $.get('getProjectInfo', function(data) {
                 if(data.hasOwnProperty('info')) {
                     if(data['info'].hasOwnProperty('projectName')) {
@@ -105,6 +80,23 @@
                     }
                     if(data['info'].hasOwnProperty('projectDescription')) {
                         $('#project-description').html(data['info']['projectDescription']);
+                    }
+
+                    // backdrops
+                    if(data['info'].hasOwnProperty('backdrops')) {
+                        var currentBackdropIdx = Math.floor(Math.random() * data['info']['backdrops'].length);
+                        var filename = data['info']['backdrops'][currentBackdropIdx]['file'];
+                        $('#backdrop').css('background-image', 'url(backdrops/' + filename + ')');
+                        try {
+                            var copyright = data['info']['backdrops'][currentBackdropIdx]['copyright'];
+                            if(copyright != '') {
+                                $('#backdrop-copyright').html(copyright);
+                            } else {
+                                $('#backdrop-copyright').hide();
+                            }
+                        } catch {
+                            $('#backdrop-copyright').hide();
+                        }
                     }
                 }
             });
