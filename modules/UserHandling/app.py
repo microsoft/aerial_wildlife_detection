@@ -171,7 +171,7 @@ class UserHandler():
             username = cgi.escape(request.get_cookie('username'))
             sessionToken = cgi.escape(request.get_cookie('session_token'))
             return self.middleware.isAuthenticated(username, sessionToken, admin)
-        except Exception:
+        except:
             return False
 
 

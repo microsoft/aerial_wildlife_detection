@@ -141,9 +141,21 @@ class UIControlHandler {
 
         // next and previous batch buttons
         var nextBatchCallback = function() {
+            //TODO: BUGGY
+            // self.resetZoom();
+            // window.showConfirmationDialog('skipAnnoConfirmDialog',
+            //             (self.dataHandler.nextBatch).bind(self.dataHandler), null,
+            //             'Please confirm',
+            //             'Are you satisfied with your annotations?');
             self.dataHandler.nextBatch();
         }
         var prevBatchCallback = function() {
+            //TODO: BUGGY
+            // self.resetZoom();
+            // window.showConfirmationDialog('skipAnnoConfirmDialog',
+            //             (self.dataHandler.previousBatch).bind(self.dataHandler), null,
+            //             'Please confirm',
+            //             'Are you satisfied with your annotations?');
             self.dataHandler.previousBatch();
         }
         var prevBatchBtn = $('<button id="previous-button" class="btn btn-sm btn-primary float-left">Previous</button>');
@@ -177,11 +189,11 @@ class UIControlHandler {
 
             } else if(event.which === 37) {
                 // left arrow key
-                self.dataHandler.previousBatch();
+                prevBatchCallback();
 
             } else if(event.which === 39) {
                 // right arrow key
-                self.dataHandler.nextBatch();
+                nextBatchCallback();
 
             } else if(event.which === 46 || event.which === 8) {
                 // Del/backspace key; remove all active annotations

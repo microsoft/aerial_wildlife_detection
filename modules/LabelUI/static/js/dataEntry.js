@@ -488,7 +488,7 @@
             var pos = self.viewport.getRelativeCoordinates(event, 'validArea');
 
             // offset tooltip position if loupe is active
-            if(window.interfaceControls.showLoupe) {
+            if(window.uiControlHandler.showLoupe) {
                 pos[0] += 0.2;  //TODO: does not account for zooming in
             }
 
