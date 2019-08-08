@@ -1,4 +1,4 @@
-# Setup the database
+# Set up the database
 
 AIde uses [PostgreSQL](https://www.postgresql.org/) to store labels, predictions, file paths and metadata. The following instructions apply for recent versions of Debian-based Linux distributions, such as Ubuntu.
 Note that AIde requires PostgreSQL >= 9.5 (it has been tested with version 10).

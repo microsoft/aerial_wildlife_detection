@@ -1,14 +1,5 @@
 /* 
-    Template for database setup. Requires strings to be escaped:
-    - &dbName
-    - &schema
-    - &owner
-    - &user
-    - &password
-    - etc.
-
-    TODO: just here for orientation; needs massive restructuring to actually work.
-    Probably has tons of bugs as well; need to try out...
+    Template for database setup, to be used by the "projectCreation/setupDB.py" script only.
 
     2019 Benjamin Kellenberger
 */
