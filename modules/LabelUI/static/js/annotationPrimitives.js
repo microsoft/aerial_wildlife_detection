@@ -1,19 +1,33 @@
 class Annotation {
 
-    constructor(annotationID, properties, type) {
+    constructor(annotationID, properties, geometryType, type) {
         this.annotationID = annotationID;
+        this.geometryType = geometryType;
         this.type = type;
         this._parse_properties(properties);
     }
 
     _parse_properties(properties) {
-        this.label = properties['label'];
-        var unsure = (properties['unsure'] == null || properties['unsure'] == undefined ? false : properties['unsure']);    //TODO: should be property of "Annotation", but for drawing reasons we assign it to the geometry...
+        if(properties.hasOwnProperty('label')) {
+            this.label = properties['label'];
+        } else {
+            this.label = null;
+        }
+        
+        var unsure = false;
+        if(properties.hasOwnProperty('unsure')) {
+            var unsure = (properties['unsure'] == null || properties['unsure'] == undefined ? false : properties['unsure']);    //TODO: should be property of "Annotation", but for drawing reasons we assign it to the geometry...
+        }
         if(!window.enableEmptyClass && this.label == null) {
             // no empty class allowed; assign selected label
             this.label = window.labelClassHandler.getActiveClassID();
         }
-        this.confidence = properties['confidence'];
+
+        if(properties.hasOwnProperty('confidence')) {
+            this.confidence = properties['confidence'];
+        } else {
+            this.confidence = null;
+        }
 
         // drawing styles
         var color = window.labelClassHandler.getColor(this.label);
@@ -24,16 +38,19 @@ class Annotation {
         style['strokeColor'] = window.addAlpha(color, style.lineOpacity);
         style['fillColor'] = window.addAlpha(color, style.fillOpacity);
 
-
-        if('segMapFileName' in properties) {
+        
+        if(this.geometryType === 'segmentationMasks') {
             // Semantic segmentation map
-            throw Error('Segmentation maps not yet implemented');
+            this.geometry = new SegmentationElement(
+                this.annotationID + '_geom',
+                properties['segmentationMask']
+            );
 
-        } else if('coordinates' in properties) {
+        } else if(this.geometryType === 'polygons') {
             // Polygon
-            throw Error('Polygons not yet implemented');
+            throw Error('Polygons not yet implemented.');
 
-        } else if('width' in properties) {
+        } else if(this.geometryType === 'boundingBoxes') {
             // Bounding Box
             this.geometry = new RectangleElement(
                 this.annotationID + '_geom',
@@ -42,7 +59,7 @@ class Annotation {
                 style,
                 unsure);
 
-        } else if('x' in properties) {
+        } else if(this.geometryType === 'points') {
             // Point
             this.geometry = new PointElement(
                 this.annotationID + '_geom',
@@ -50,7 +67,7 @@ class Annotation {
                 style,
                 unsure
             );
-        } else {
+        } else if(this.geometryType === 'labels') {
             // Classification label
             var borderText = window.labelClassHandler.getName(this.label);
             if(this.confidence != null) {
@@ -62,6 +79,8 @@ class Annotation {
                 style,
                 unsure
             )
+        } else {
+            throw Error('Unknown geometry type (' + this.geometryType + ').')
         }
     }
 

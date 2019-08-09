@@ -98,6 +98,9 @@
             Might automatically convert predictions and carry them over to the annotations
             if applicable and specified in the project settings.
         */
+        var geometryType_pred = String(window.predictionType);
+        var geometryType_anno = String(window.annotationType);
+
         this.predictions = {};
         this.annotations = {};
         var hasAnnotations = (properties.hasOwnProperty('annotations') && Object.keys(properties['annotations']).length > 0);
@@ -108,7 +111,7 @@
             if(window.showPredictions && !hasAnnotations) {
                 // add predictions as static, immutable objects (only if entry has not yet been screened by user)
                 for(var key in properties['predictions']) {
-                    var prediction = new Annotation(key, properties['predictions'][key], 'prediction');
+                    var prediction = new Annotation(key, properties['predictions'][key], geometryType_pred, 'prediction');
                     if(prediction.confidence >= window.showPredictions_minConf) {
                         this._addElement(prediction);
                     }
@@ -142,14 +145,14 @@
                                 // construct new classification entry
                                 var id = properties['predictions'][key]['id'];
                                 var label = properties['predictions'][key]['label'];
-                                var anno = new Annotation(window.getRandomID(), {'id':id, 'label':label, 'confidence':maxConf}, 'annotation');
+                                var anno = new Annotation(window.getRandomID(), {'id':id, 'label':label, 'confidence':maxConf}, geometryType_anno, 'annotation');
                                 anno.setProperty('changed', true);
                                 this._addElement(anno);
                             }
                         } else if(window.carryOverRule == 'mode') {
                             var counts = {};
                             for(var key in properties['predictions']) {
-                                var prediction = new Annotation(window.getRandomID(), properties['predictions'][key], 'prediction');
+                                var prediction = new Annotation(window.getRandomID(), properties['predictions'][key], geometryType_anno, 'prediction');
                                 if(!(counts.hasOwnProperty(prediction.label))) {
                                     counts[label] = 0;
                                 }
@@ -166,7 +169,7 @@
                             }
                             // add new label annotation
                             if(argMax != null) {
-                                var anno = new Annotation(window.getRandomID(), {'label':argMax}, 'annotation');
+                                var anno = new Annotation(window.getRandomID(), {'label':argMax}, geometryType_anno, 'annotation');
                                 anno.setProperty('changed', true);
                                 this._addElement(anno);
                             }
@@ -179,7 +182,7 @@
                         if(props['confidence'] >= window.carryOverPredictions_minConf) {
                             delete props['width'];
                             delete props['height'];
-                            var anno = new Annotation(window.getRandomID(), props, 'annotation');
+                            var anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation');
                             this._addElement(anno);
                         }
                     }
@@ -190,7 +193,7 @@
                         if(props['confidence'] >= window.carryOverPredictions_minConf) {
                             props['width'] = window.defaultBoxSize_w;
                             props['height'] = window.defaultBoxSize_h;
-                            var anno = new Annotation(window.getRandomID(), props, 'annotation');
+                            var anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation');
                             anno.setProperty('changed', true);
                             this._addElement(anno);
                         }
@@ -200,7 +203,7 @@
                     for(var key in properties['predictions']) {
                         var props = properties['predictions'][key];
                         if(props['confidence'] >= window.carryOverPredictions_minConf) {
-                            var anno = new Annotation(window.getRandomID(), props, 'annotation');
+                            var anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation');
                             anno.setProperty('changed', true);
                             this._addElement(anno);
                         }
@@ -213,7 +216,7 @@
         if(hasAnnotations) {
             for(var key in properties['annotations']) {
                 //TODO: make more failsafe?
-                var annotation = new Annotation(key, properties['annotations'][key], 'annotation');
+                var annotation = new Annotation(key, properties['annotations'][key], geometryType_anno, 'annotation');
                 // Only add annotation if it is of the correct type.
                 // if(annotation.getAnnotationType() == this.getAnnotationType()) {     //TODO: disabled for debugging purposes
                 this._addElement(annotation);
@@ -408,7 +411,7 @@
         if(this.labelInstance == null) {
             // add a default, blank instance if nothing has been predicted or annotated yet
             var label = (window.enableEmptyClass ? null : window.labelClassHandler.getActiveClassID());
-            this._addElement(new Annotation(window.getRandomID(), {'label':label}, 'annotation'));
+            this._addElement(new Annotation(window.getRandomID(), {'label':label}, 'labels', 'annotation'));
         }
 
         this._setup_markup();
@@ -431,7 +434,7 @@
 
             // add new annotation from existing
             var unsure = element['geometry']['unsure'];
-            var anno = new Annotation(key, {'label':element['label'], 'unsure':unsure}, element['type']);
+            var anno = new Annotation(key, {'label':element['label'], 'unsure':unsure}, 'labels', element['type']);
             this.annotations[key] = anno;
             this.viewport.addRenderElement(anno.getRenderElement());
             this.labelInstance = anno;
@@ -543,7 +546,7 @@
     setLabel(label) {
         if(this.labelInstance == null) {
             // add new annotation
-            var anno = new Annotation(window.getRandomID(), {'label':label}, 'annotation');
+            var anno = new Annotation(window.getRandomID(), {'label':label}, 'labels', 'annotation');
             this._addElement(anno);
 
         } else {
@@ -579,7 +582,7 @@
             var activeLabel = window.labelClassHandler.getActiveClassID();
             if(this.labelInstance == null) {
                 // add new annotation
-                var anno = new Annotation(window.getRandomID(), {'label':activeLabel}, 'annotation');
+                var anno = new Annotation(window.getRandomID(), {'label':activeLabel}, 'labels', 'annotation');
                 this._addElement(anno);
 
             } else {
@@ -721,7 +724,7 @@ class PointAnnotationEntry extends AbstractDataEntry {
             'y': coords[1],
             'label': window.labelClassHandler.getActiveClassID()
         };
-        var anno = new Annotation(window.getRandomID(), props, 'annotation');
+        var anno = new Annotation(window.getRandomID(), props, 'points', 'annotation');
         this._addElement(anno);
         anno.getRenderElement().registerAsCallback(this.viewport);
         anno.getRenderElement().setActive(true, this.viewport);
@@ -1014,7 +1017,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
             'height': 0,
             'label': window.labelClassHandler.getActiveClassID()
         };
-        var anno = new Annotation(window.getRandomID(), props, 'annotation');
+        var anno = new Annotation(window.getRandomID(), props, 'boundingBoxes', 'annotation');
         this._addElement(anno);
         anno.getRenderElement().registerAsCallback(this.viewport);
         anno.getRenderElement().setActive(true, this.viewport);
@@ -1210,5 +1213,150 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
         this.hoverTextElement.setProperty('text', null);
         this._drawCrosshairLines(null, false);
         this.render();
+    }
+}
+
+
+
+
+class SemanticSegmentationEntry extends AbstractDataEntry {
+    /*
+        Implementation for segmentation maps.
+     */
+    constructor(entryID, properties) {
+        super(entryID, properties);
+
+        this._init_data(properties);
+        this._setup_markup();
+    }
+
+    getAnnotationType() {
+        return 'segmentationMap';
+    }
+
+    setAnnotationsVisible(visible) {
+        super.setAnnotationsVisible(visible);
+        this.annotation.setVisible(visible);
+    }
+
+    _init_data(properties) {
+        if('segmentationMap' in properties) {
+            this.segmentationMap = properties['segmentationMap'];
+        } else {
+            this.segmentationMap = null;
+        }
+
+        this.annotation = new Annotation(window.getRandomID(), properties, 'segmentationMasks', 'annotation');
+        this.segMap = this.annotation.geometry;
+        this.size = this.viewport.transformCoordinates([1,1], 'validArea', false);
+        this.segMap.setSize(this.size);
+        this._addElement(this.annotation);
+    }
+
+    _setup_markup() {
+        var self = this;
+        super._setup_markup();
+        this.canvas.css('cursor', window.uiControlHandler.getDefaultCursor());
+
+        // brush symbol
+        var brushStyle = {
+            strokeColor: '#333333',
+            lineWidth: 1,
+            lineDash: [],
+            lineOpacity: 1.0
+        };
+        this.brushes = {
+            rectangle: new RectangleElement(this.id+'_brush_rect', null, null, null, null,
+                        brushStyle, false, 5),
+            // circle: new PointElement(this.id+'_brush_circ', null, null, brushStyle, false, 5)    //TODO: implement circle element
+        };
+        this.brush = this.brushes['rectangle'];
+        this.viewport.addRenderElement(this.brush);
+        // this._set_default_brush();
+
+        // interaction handlers
+        if(!this.disableInteractions) {
+            this.viewport.addCallback(this.entryID, 'mousedown', function(event) {
+                self._canvas_mousedown(event);
+            });
+            this.viewport.addCallback(this.entryID, 'mousemove', function(event) {
+                self._canvas_mousemove(event);
+            });
+            this.viewport.addCallback(this.entryID, 'mouseup', function(event) {
+                self._canvas_mouseup(event);
+            });
+            this.viewport.addCallback(this.entryID, 'mouseleave', function(event) {
+                self._canvas_mouseleave(event);
+            });
+        }
+    }
+
+    _set_default_brush() {
+        this.viewport.removeRenderElement(this.brush);
+        this.brush = this.brushes[window.uiControlHandler.getBrushType()];
+        this.viewport.addRenderElement(this.brush);
+    }
+
+
+    __paint(event) {
+        if([ACTIONS.ADD_ANNOTATION, ACTIONS.REMOVE_ANNOTATIONS].includes(window.uiControlHandler.getAction())) {
+
+            // update mouse position
+            this.mousePos = this.viewport.getRelativeCoordinates(event, 'validArea');
+            var mousePos_abs = [
+                this.mousePos[0] * this.size[0],
+                this.mousePos[1] * this.size[1]
+            ];
+
+            // show brush
+            // this._set_default_brush();  //TODO: expensive
+            var brushSize = this.viewport.transformCoordinates([window.uiControlHandler.segmentation_properties.brushSize,
+                window.uiControlHandler.segmentation_properties.brushSize],
+                'canvas', true);
+            this.brush.setProperty('x', this.mousePos[0]);
+            this.brush.setProperty('y', this.mousePos[1]);
+            this.brush.setProperty('width', brushSize[0]);
+            this.brush.setProperty('height', brushSize[1]);
+
+            // paint with brush at current position
+            if(this.mouseDown) {
+                if(window.uiControlHandler.getAction() === ACTIONS.REMOVE_ANNOTATIONS || event.altKey) {
+                    this.segMap.clear(mousePos_abs,
+                        window.uiControlHandler.segmentation_properties.brushType,
+                        window.uiControlHandler.segmentation_properties.brushSize);
+                } else {
+                    this.segMap.paint(mousePos_abs,
+                        window.labelClassHandler.getActiveColor(),
+                        window.uiControlHandler.segmentation_properties.brushType,
+                        window.uiControlHandler.segmentation_properties.brushSize);
+                }
+            }
+
+        } else {
+            // hide brush
+            this.brush.setProperty('x', null);
+        }
+        this.render();
+    }
+
+
+    // callbacks
+    _canvas_mousedown(event) {
+        if(window.uiBlocked) return;
+        this.mouseDown = true;
+        this.__paint(event);
+    }
+
+    _canvas_mousemove(event) {
+        if(window.uiBlocked) return;
+        this.__paint(event);
+    }
+
+    _canvas_mouseup(event) {
+        this.mouseDown = false;
+    }
+
+    _canvas_mouseleave(event) {
+        this.mouseDown = false;
     }
 }

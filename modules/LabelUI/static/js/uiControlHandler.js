@@ -35,6 +35,12 @@ class UIControlHandler {
 
         this.default_cursor = 'pointer';    // changes depending on action
 
+        // tools for semantic segmentation - ignored by others
+        this.segmentation_properties = {
+            brushType: 'rectangle',
+            brushSize: 20
+        };
+
         this._setup_controls();
     }
 
@@ -139,23 +145,39 @@ class UIControlHandler {
         unsureBtn.click(unsureCallback);
         dtControls.append(unsureBtn);
 
+
+        if(window.annotationType === 'segmentationMasks') {
+            // semantic segmentation controls
+            this.segmentation_controls = {
+                brush_rectangle: $('<button class="btn btn-sm btn-secondary inline-control active">Rect</button>'),
+                brush_circle: $('<button class="btn btn-sm btn-secondary inline-control">Circ</button>'),
+                brush_size: $('<input class="inline-control" type="range" min="1" max="255" value="20" />')
+            };  //TODO: ranges, default
+
+            this.segmentation_controls.brush_rectangle.click(function() {
+                self.setBrushType('rectangle');
+            });
+            this.segmentation_controls.brush_circle.click(function() {
+                self.setBrushType('circle');
+            });
+            this.segmentation_controls.brush_size.on('change', function() {
+                self.setBrushSize(this.value);
+            });
+
+            var segControls = $('<div class="inline-control"></div>');
+            segControls.append(this.segmentation_controls.brush_rectangle);
+            segControls.append(this.segmentation_controls.brush_circle);
+            segControls.append($('<span>Size:</span>'));
+            segControls.append(this.segmentation_controls.brush_size);
+            dtControls.append(segControls);
+        }
+
+
         // next and previous batch buttons
         var nextBatchCallback = function() {
-            //TODO: BUGGY
-            // self.resetZoom();
-            // window.showConfirmationDialog('skipAnnoConfirmDialog',
-            //             (self.dataHandler.nextBatch).bind(self.dataHandler), null,
-            //             'Please confirm',
-            //             'Are you satisfied with your annotations?');
             self.dataHandler.nextBatch();
         }
         var prevBatchCallback = function() {
-            //TODO: BUGGY
-            // self.resetZoom();
-            // window.showConfirmationDialog('skipAnnoConfirmDialog',
-            //             (self.dataHandler.previousBatch).bind(self.dataHandler), null,
-            //             'Please confirm',
-            //             'Are you satisfied with your annotations?');
             self.dataHandler.previousBatch();
         }
         var prevBatchBtn = $('<button id="previous-button" class="btn btn-sm btn-primary float-left">Previous</button>');
@@ -270,6 +292,34 @@ class UIControlHandler {
         }
 
         this.default_cursor = CURSORS[this.action];
+    }
+
+    getBrushType() {
+        return this.segmentation_properties.brushType;
+    }
+
+    setBrushType(type) {
+        if(type === 'rectangle') {
+            this.segmentation_properties.brushType = 'rectangle';
+            this.segmentation_controls.brush_rectangle.addClass('active');
+            this.segmentation_controls.brush_circle.removeClass('active');
+        } else if(type === 'circle') {
+            this.segmentation_properties.brushType = 'circle';
+            this.segmentation_controls.brush_rectangle.removeClass('active');
+            this.segmentation_controls.brush_circle.addClass('active');
+        } else {
+            throw Error('Invalid brush type ('+type+').');
+        }
+    }
+
+    getBrushSize() {
+        return this.segmentation_properties.brushSize;
+    }
+
+    setBrushSize(size) {
+        size = Math.min(Math.max(size, 1), 255);        //TODO: max
+        this.segmentation_properties.brushSize = size;
+        $(this.segmentation_controls.brush_size).attr('value', size);
     }
 
     getDefaultCursor() {

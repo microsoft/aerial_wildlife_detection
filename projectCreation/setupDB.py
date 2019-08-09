@@ -70,9 +70,8 @@ def _constructAnnotationFields(annoType, table, doublePrecision=False):
     elif annoType == 'segmentationMasks':
         additionalTables = None     # not needed for semantic segmentation
         annoFields = '''
-            filename VARCHAR
+            segmentationMask VARCHAR,
         '''
-        raise NotImplementedError('Segmentation masks are not (yet) implemented.')
 
     else:
         raise ValueError('{} is not a recognized annotation type.'.format(annoType))

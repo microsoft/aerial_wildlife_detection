@@ -64,8 +64,8 @@ class ImageViewport {
                         self.callbacks[event.type][key](event);
                     }
                     if(event.type === 'mouseup') {
-                        // reset action, unless in panning mode
-                        if(window.uiControlHandler.getAction() != ACTIONS.PAN)
+                        // reset action, unless in panning or segmentation map mode
+                        if(window.uiControlHandler.getAction() != ACTIONS.PAN && window.annotationType != 'segmentationMasks')
                             window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
                     }
                     self.render();
@@ -368,13 +368,13 @@ class ImageViewport {
                 }
             } else if(target === 'validArea') {
 
-                // adjust coordinates according to viewport
-            coords_out[0] = (coords_out[0] - this.viewport[0]) / this.viewport[2];
-            coords_out[1] = (coords_out[1] - this.viewport[1]) / this.viewport[3];
-            if(coords_out.length == 4) {
-                coords_out[2] /= this.viewport[2];
-                coords_out[3] /= this.viewport[3];
-            }
+                    // adjust coordinates according to viewport
+                coords_out[0] = (coords_out[0] - this.viewport[0]) / this.viewport[2];
+                coords_out[1] = (coords_out[1] - this.viewport[1]) / this.viewport[3];
+                if(coords_out.length == 4) {
+                    coords_out[2] /= this.viewport[2];
+                    coords_out[3] /= this.viewport[3];
+                }
 
                 var validSize = [this.validArea[2]*canvasSize[0], this.validArea[3]*canvasSize[1]];
                 coords_out[0] = (coords_out[0]*validSize[0]) + (this.validArea[0]*canvasSize[0]);

@@ -165,6 +165,9 @@ class DataHandler {
                         case 'boundingBoxes':
                             var entry = new BoundingBoxAnnotationEntry(d, data['entries'][d]);
                             break;
+                        case 'segmentationMasks':
+                            var entry = new SemanticSegmentationEntry(d, data['entries'][d]);
+                            break;
                         default:
                             break;
                     }
@@ -263,6 +266,9 @@ class DataHandler {
                             break;
                         case 'boundingBoxes':
                             var entry = new BoundingBoxAnnotationEntry(entryID, data['entries'][entryID]);
+                            break;
+                        case 'segmentationMasks':
+                            var entry = new SemanticSegmentationEntry(entryID, data['entries'][entryID]);
                             break;
                         default:
                             break;

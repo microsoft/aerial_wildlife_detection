@@ -920,7 +920,7 @@ class BorderStrokeElement extends AbstractRenderElement {
         Draws a border around the viewport.
         Specifically intended for classification tasks.
     */
-    constructor(id, text, style, unsure, zInde, disableInteractions) {
+    constructor(id, text, style, unsure, zIndex, disableInteractions) {
         super(id, style, zIndex, disableInteractions);
         if(this.style.textColor == null || this.style.textColor == undefined) {
             this.style['textColor'] = window.styles.hoverText.text.color;
@@ -1165,7 +1165,7 @@ class MiniMap extends AbstractRenderElement {
             Makes parent viewport move on drag of extent rectangle.
         */
         if(this.disableInteractions) return;
-        
+
         this.mouseDown = false;
         this.parentViewport.addCallback(this.id, 'mousedown', this.__get_callback('mousedown'));
         this.parentViewport.addCallback(this.id, 'mousemove', this.__get_callback('mousemove'));
@@ -1289,5 +1289,76 @@ class MiniMap extends AbstractRenderElement {
         roundRect(ctx, this.pos_abs[0] - ctx.lineWidth/2, this.pos_abs[1] - ctx.lineWidth/2,
             this.pos_abs[2] + ctx.lineWidth, this.pos_abs[3] + ctx.lineWidth,
             5, false, true);
+    }
+}
+
+
+
+class SegmentationElement extends AbstractRenderElement {
+
+    constructor(id, imageData, zIndex, disableInteractions) {
+        super(id, null, zIndex, disableInteractions);
+        this._create_canvas(imageData);
+    }
+
+    _create_canvas(imageData) {
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        
+        // add image data to canvas if available
+        if(imageData != undefined && imageData != null) {
+            this.ctx.putImageData(imageData, 0, 0)
+        }
+    }
+
+    setSize(size) {
+        this.canvas.width = size[0];
+        this.canvas.height = size[1];
+    }
+
+    /* painting functions */
+    _clear_circle(x, y, radius) {
+        this.ctx.beginPath();
+        this.ctx.globalCompositeOperation = 'destination-out'
+        this.ctx.arc(x, y, radius, 0, Math.PI*2, true);
+        this.ctx.fill();
+        this.ctx.closePath();
+        this.ctx.globalCompositeOperation = 'source-over';
+    }
+
+    paint(coords, color, brushType, brushSize) {
+        this.ctx.fillStyle = color;
+        if(brushType === 'rectangle') {
+            this.ctx.fillRect(coords[0] - brushSize/2, coords[1] - brushSize/2,
+                brushSize, brushSize);
+        } else if(brushType === 'circle') {
+            this.ctx.beginPath();
+            this.ctx.arc(coords[0], coords[1], brushSize/2, 0, 2*Math.PI);
+            this.ctx.fill();
+            this.ctx.closePath();
+        }
+    }
+
+    clear(coords, brushType, brushSize) {
+        if(brushType === 'rectangle') {
+            this.ctx.clearRect(coords[0] - brushSize/2, coords[1] - brushSize/2,
+                brushSize, brushSize);
+        } else if(brushType === 'circle') {
+            this._clear_circle(coords[0], coords[1], brushSize/2)
+        }
+    }
+
+    render(ctx, scaleFun) {
+        if(!this.visible) return;
+        super.render(ctx, scaleFun);
+        
+        var targetCoords = scaleFun([0,0,1,1], 'validArea');
+        
+        // draw canvas as an image
+        ctx.drawImage(
+            this.canvas,
+            targetCoords[0], targetCoords[1],
+            targetCoords[2], targetCoords[3]
+        )
     }
 }

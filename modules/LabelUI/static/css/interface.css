@@ -91,6 +91,9 @@ h3 {
 #viewport-controls > * {
     margin-bottom: 5px;
 }
+.inline-control {
+    display: inline;
+}
 .entry {
     display: inline-block;
     padding: 18px;
