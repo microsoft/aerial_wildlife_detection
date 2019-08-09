@@ -47,7 +47,11 @@ window.initClassColors = function(numColors) {
             window._rainbow(numColors, c)
         );
     }
-};
+}
+
+window.getDefaultColor = function(idx) {
+    return window.defaultColors[idx % window.defaultColors.length];
+}
 
 
 class LabelClass {
@@ -55,7 +59,7 @@ class LabelClass {
         this.classID = classID;
         this.name = (properties['name']===null || properties['name'] === undefined ? '[Label Class '+this.classID+']' : properties['name']);
         this.index = properties['index'];
-        this.color = (properties['color']===null  || properties['color'] === undefined ? window.defaultColors[this.index-1] : properties['color']);
+        this.color = (properties['color']===null  || properties['color'] === undefined ? window.getDefaultColor(this.index-1) : properties['color']);
         this.colorValues = window.getColorValues(this.color);   // [R, G, B, A]
 
 
