@@ -71,6 +71,8 @@ def _constructAnnotationFields(annoType, table, doublePrecision=False):
         additionalTables = None     # not needed for semantic segmentation
         annoFields = '''
             segmentationMask VARCHAR,
+            width INTEGER,
+            height INTEGER,
         '''
 
     else:

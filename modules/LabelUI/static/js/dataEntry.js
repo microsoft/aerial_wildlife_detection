@@ -1250,6 +1250,29 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
         return;
     }
 
+    _addElement(element) {
+        // allow only one annotation for segmentation entry
+        var key = element['annotationID'];
+        if(element['type'] == 'annotation') {
+            if(Object.keys(this.annotations).length > 0) {
+                // replace current annotation
+                var currentKey = Object.keys(this.annotations)[0];
+                this.viewport.removeRenderElement(this.annotations[currentKey]);
+                delete this.annotations[currentKey];
+            }
+
+            // add new item
+            this.annotations[key] = element;
+            this.viewport.addRenderElement(element.getRenderElement());            
+        }
+        // else if(element['type'] == 'prediction' && window.showPredictions) {
+        //     this.predictions[key] = element;
+        //     this.viewport.addRenderElement(element.getRenderElement());
+        // }
+
+        window.dataHandler.updatePresentClasses();
+    }
+
     _init_data(properties) {
         if('segmentationMap' in properties) {
             this.segmentationMap = properties['segmentationMap'];
@@ -1321,13 +1344,13 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
 
             // show brush
             // this._set_default_brush();  //TODO: expensive
-            var brushSize = this.viewport.transformCoordinates([window.uiControlHandler.segmentation_properties.brushSize,
+            var brushSize = this.viewport.transformCoordinates([0,0,window.uiControlHandler.segmentation_properties.brushSize,
                 window.uiControlHandler.segmentation_properties.brushSize],
-                'canvas', true);
+                'validArea', true);
             this.brush.setProperty('x', this.mousePos[0]);
             this.brush.setProperty('y', this.mousePos[1]);
-            this.brush.setProperty('width', brushSize[0]);
-            this.brush.setProperty('height', brushSize[1]);
+            this.brush.setProperty('width', brushSize[2]);
+            this.brush.setProperty('height', brushSize[3]);
 
             // paint with brush at current position
             if(this.mouseDown) {

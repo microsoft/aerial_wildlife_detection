@@ -1296,15 +1296,18 @@ class MiniMap extends AbstractRenderElement {
 
 class SegmentationElement extends AbstractRenderElement {
 
-    constructor(id, imageData, zIndex, disableInteractions) {
+    constructor(id, imageData, width, height, zIndex, disableInteractions) {
         super(id, null, zIndex, disableInteractions);
-        this._create_canvas(imageData);
+        this._create_canvas(imageData, width, height);
     }
 
-    _create_canvas(imageData) {
+    _create_canvas(imageData, width, height) {
         this.canvas = document.createElement('canvas');
         this.ctx = this.canvas.getContext('2d');
         this.ctx.imageSmoothingEnabled = false;
+        if(width && height) {
+            this.setSize([width, height]);
+        }
         
         // add image data to canvas if available
         if(imageData != undefined && imageData != null) {
@@ -1322,7 +1325,9 @@ class SegmentationElement extends AbstractRenderElement {
     getGeometry() {
         return {
             'type': 'segmentationMask',
-            'segmentationMask': window.bufferToBase64(this._export_map())   //TODO
+            'segmentationMask': window.bufferToBase64(this._export_map()),
+            'width': this.canvas.width,
+            'height': this.canvas.height
         };
     }
 
@@ -1340,17 +1345,25 @@ class SegmentationElement extends AbstractRenderElement {
         // iterate over index data and assign
         var nothing = [0,0,0];
         var offset = 0;
+        var color = nothing;
+        var alpha = 0;
         for(var i=0; i<indexedData.length; i++) {
             // find label class color at position
             var lc = window.labelClassHandler.getByIndex(indexedData[i]);
-            var color = (lc === null || lc === undefined ? nothing : lc.colorValues);
+            if(lc) {
+                color = lc.colorValues;
+                alpha = 255;
+            } else {
+                color = nothing;
+                alpha = 0;
+            }
             data[offset] = color[0];
             data[offset+1] = color[1];
             data[offset+2] = color[2];
-
+            data[offset+3] = alpha;
             offset += 4;
         }
-        this.ctx.putImageData(data);
+        this.ctx.putImageData(new ImageData(data, this.canvas.width, this.canvas.height), 0, 0);
     }
 
     _export_map() {

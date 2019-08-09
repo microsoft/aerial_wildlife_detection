@@ -13,17 +13,17 @@ from uuid import UUID
 
 
 class QueryStrings_prediction(Enum):
-    labels = ['id', 'image', 'label', 'confidence', 'priority'],
-    points = ['id', 'image', 'x', 'y', 'label', 'confidence', 'priority'],
-    boundingBoxes = ['id', 'image', 'x', 'y', 'width', 'height', 'label', 'confidence', 'priority'],
+    labels = ['id', 'image', 'label', 'confidence', 'priority']
+    points = ['id', 'image', 'x', 'y', 'label', 'confidence', 'priority']
+    boundingBoxes = ['id', 'image', 'x', 'y', 'width', 'height', 'label', 'confidence', 'priority']
     segmentationMasks = ['id', 'image', 'segmentationMask', 'priority']
 
 
 class QueryStrings_annotation(Enum):
-    labels = ['id', 'image', 'label', 'username', 'timeCreated', 'timeRequired', 'unsure'],
-    points = ['id', 'image', 'x', 'y', 'label', 'username', 'timeCreated', 'timeRequired', 'unsure'],
-    boundingBoxes = ['id', 'image', 'x', 'y', 'width', 'height', 'label', 'username', 'timeCreated', 'timeRequired', 'unsure'],
-    segmentationMasks = ['id', 'image', 'segmentationMask', 'username', 'timeCreated', 'timeRequired', 'unsure']
+    labels = ['id', 'image', 'label', 'username', 'timeCreated', 'timeRequired', 'unsure']
+    points = ['id', 'image', 'x', 'y', 'label', 'username', 'timeCreated', 'timeRequired', 'unsure']
+    boundingBoxes = ['id', 'image', 'x', 'y', 'width', 'height', 'label', 'username', 'timeCreated', 'timeRequired', 'unsure']
+    segmentationMasks = ['id', 'image', 'segmentationMask', 'width', 'height', 'username', 'timeCreated', 'timeRequired']
 
 
 

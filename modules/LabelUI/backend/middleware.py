@@ -11,7 +11,7 @@ import dateutil.parser
 import json
 from modules.Database.app import Database
 from .sql_string_builder import SQLStringBuilder
-from .annotation_sql_tokens import QueryStrings_annotation, QueryStrings_prediction, AnnotationParser
+from .annotation_sql_tokens import QueryStrings_annotation, AnnotationParser
 
 
 class DBMiddleware():
@@ -229,8 +229,8 @@ class DBMiddleware():
             try:
                 response = self._assemble_annotations(cursor)
                 # self.dbConnector.conn.commit()
-            except:
-                pass
+            except Exception as e:
+                print(e)
                 # self.dbConnector.conn.rollback()
             finally:
                 pass
@@ -264,7 +264,7 @@ class DBMiddleware():
         '''
 
         # assemble values
-        colnames = getattr(QueryStrings_annotation, self.projectSettings['annotationType']).value[0]
+        colnames = getattr(QueryStrings_annotation, self.projectSettings['annotationType']).value
         values_insert = []
         values_update = []
 

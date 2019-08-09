@@ -79,7 +79,7 @@ class LabelClass {
         var self = this;
         var name = this.name;
         if(this.index >= 0 && this.index < 9) {
-            name = '(' + (this.index+1) + ') ' + this.name;
+            name = '(' + (this.index) + ') ' + this.name;
         }
         var foregroundStyle = '';
         if(altStyle || this.darkForeground) {
@@ -109,7 +109,7 @@ class LabelClass {
                 if(window.uiBlocked || window.shortcutsDisabled) return;
                 try {
                     var key = parseInt(String.fromCharCode(event.which));
-                    if(key == self.index+1) {
+                    if(key == self.index) {
                         self.parent.setActiveClass(self);
 
                         window.dataHandler.renderAll();

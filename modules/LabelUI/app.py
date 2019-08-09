@@ -12,6 +12,9 @@ from bottle import request, response, static_file, redirect, abort, SimpleTempla
 from .backend.middleware import DBMiddleware
 
 
+#TODO
+bottle.BaseRequest.MEMFILE_MAX = 1024**3
+
 class LabelUI():
 
     def __init__(self, config, app):
@@ -164,16 +167,3 @@ class LabelUI():
                     }
             else:
                 abort(401, 'not logged in')
-
-
-
-''' Convenience launcher (FOR DEBUGGING ONLY) '''
-if __name__ == '__main__':
-    
-    import argparse
-    from runserver import Launcher
-
-    parser = argparse.ArgumentParser(description='Run CV4Wildlife AL Service.')
-    parser.add_argument('--instance', type=str, default='LabelUI', const=1, nargs='?')
-    args = parser.parse_args()
-    Launcher(args)

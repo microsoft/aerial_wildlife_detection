@@ -43,7 +43,9 @@ class Annotation {
             // Semantic segmentation map
             this.geometry = new SegmentationElement(
                 this.annotationID + '_geom',
-                properties['segmentationMask']
+                properties['segmentationmask'],
+                properties['width'],
+                properties['height']
             );
 
         } else if(this.geometryType === 'polygons') {

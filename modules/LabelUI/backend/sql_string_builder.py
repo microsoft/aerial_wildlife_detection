@@ -112,9 +112,9 @@ class SQLStringBuilder:
             subsetFragment = 'WHERE viewcount IS NULL OR viewcount = 0'
 
         if order == 'unlabeled':
-            orderSpec = 'ORDER BY viewcount ASC NULLS FIRST, score DESC'
+            orderSpec = 'ORDER BY viewcount ASC NULLS FIRST, score DESC NULLS LAST'
         elif order == 'labeled':
-            orderSpec = 'ORDER BY viewcount DESC NULLS LAST, score DESC'
+            orderSpec = 'ORDER BY viewcount DESC NULLS LAST, score DESC NULLS LAST'
         orderSpec += ', timeCreated DESC'
 
         sql = '''
