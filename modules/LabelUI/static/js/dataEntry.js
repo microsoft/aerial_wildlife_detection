@@ -1239,6 +1239,17 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
         this.annotation.setVisible(visible);
     }
 
+    removeAllAnnotations() {
+        this.segMap.clearAll();
+        this.render();
+
+        window.dataHandler.updatePresentClasses();
+    }
+
+    setLabel(label) {
+        return;
+    }
+
     _init_data(properties) {
         if('segmentationMap' in properties) {
             this.segmentationMap = properties['segmentationMap'];

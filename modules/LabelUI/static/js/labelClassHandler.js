@@ -47,9 +47,6 @@ window.initClassColors = function(numColors) {
             window._rainbow(numColors, c)
         );
     }
-
-    // shuffle order for easier discrimination
-    // window.shuffle(window.defaultColors);    //TODO: gets re-shuffled at load, which is confusing
 };
 
 
@@ -58,7 +55,9 @@ class LabelClass {
         this.classID = classID;
         this.name = (properties['name']===null || properties['name'] === undefined ? '[Label Class '+this.classID+']' : properties['name']);
         this.index = properties['index'];
-        this.color = (properties['color']===null  || properties['color'] === undefined ? window.defaultColors[this.index] : properties['color']);
+        this.color = (properties['color']===null  || properties['color'] === undefined ? window.defaultColors[this.index-1] : properties['color']);
+        this.colorValues = window.getColorValues(this.color);   // [R, G, B, A]
+
 
         // flip active foreground color if background is too bright
         this.darkForeground = (window.getBrightness(this.color) >= 92);
@@ -274,10 +273,11 @@ class LabelClassHandler {
     _setupLabelClasses() {
         // parse label classes and class groups
         this.labelClasses = {};
+        this.indexToLabelclassMapping = []; // LUT for indices to label classes
+        this.labelToColorMapping = {};  // LUT for color hex strings to label classes
 
         // initialize default rainbow colors
         window.initClassColors(window.classes.numClasses)
-
         for(var c in window.classes['entries']) {
             var nextItem = window.parseClassdefEntry(c, window.classes['entries'][c], this);
             if(nextItem === null) continue;
@@ -292,6 +292,14 @@ class LabelClassHandler {
 
             // append to div
             this.classLegendDiv.append(nextItem.getMarkup());
+        }
+
+        // create labelclass color LUT
+        for(var lc in this.labelClasses) {
+            var nextItem = this.labelClasses[lc];
+            var colorString = window.rgbToHex(nextItem.color);
+            this.labelToColorMapping[colorString] = nextItem;
+            this.indexToLabelclassMapping[nextItem.index] = nextItem;
         }
     }
 
@@ -356,6 +364,32 @@ class LabelClassHandler {
         */
         for(var c=0; c<this.items.length; c++) {
             this.items[c].filter(keywords);
+        }
+    }
+
+
+    getByIndex(index) {
+        /*
+            Returns the label class whose assigned index matches the value
+            provided. Returns null if no match found.
+        */
+        try {
+            return this.indexToLabelclassMapping[index];
+        } catch {
+            return null;
+        }
+    }
+
+    getByColor(color) {
+        /*
+            Returns the label class whose assigned color matches the values
+            provided. Returns null if no match found.
+        */
+        color = window.rgbToHex(color);
+        try {
+            return this.labelToColorMapping[color];
+        } catch {
+            return null;
         }
     }
 }

@@ -1304,10 +1304,11 @@ class SegmentationElement extends AbstractRenderElement {
     _create_canvas(imageData) {
         this.canvas = document.createElement('canvas');
         this.ctx = this.canvas.getContext('2d');
+        this.ctx.imageSmoothingEnabled = false;
         
         // add image data to canvas if available
         if(imageData != undefined && imageData != null) {
-            this.ctx.putImageData(imageData, 0, 0)
+            this._parse_map(window.base64ToBuffer(imageData));
         }
     }
 
@@ -1315,6 +1316,65 @@ class SegmentationElement extends AbstractRenderElement {
         this.canvas.width = size[0];
         this.canvas.height = size[1];
     }
+
+
+    /* export and conversion functions */
+    getGeometry() {
+        return {
+            'type': 'segmentationMask',
+            'segmentationMask': window.bufferToBase64(this._export_map())   //TODO
+        };
+    }
+
+    _parse_map(indexedData) {
+        /*
+            Receives an array of pixel values corresponding to class
+            indices. Fills the canvas with RGB values of the respective
+            class, or zeros if no class match could be found.
+        */
+        
+        // get current canvas pixel values for a quick template
+        var pixels = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+        var data = pixels.data;
+
+        // iterate over index data and assign
+        var nothing = [0,0,0];
+        var offset = 0;
+        for(var i=0; i<indexedData.length; i++) {
+            // find label class color at position
+            var lc = window.labelClassHandler.getByIndex(indexedData[i]);
+            var color = (lc === null || lc === undefined ? nothing : lc.colorValues);
+            data[offset] = color[0];
+            data[offset+1] = color[1];
+            data[offset+2] = color[2];
+
+            offset += 4;
+        }
+        this.ctx.putImageData(data);
+    }
+
+    _export_map() {
+        /*
+            Parses the RGBA canvas map and returns an array with
+            pixel values that correspond to the class index at the given position,
+            indicated by the canvas color.
+            Pixels receive value -1 if no class match could be found.
+        */
+
+        // get pixel values
+        var pixels = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+        var data = pixels.data;
+
+        // convert to labelclass idx
+        var indexedData = [];
+        for(var i=0; i<data.length; i+=4) {
+            // find label class at position
+            var lc = window.labelClassHandler.getByColor(data.slice(i,i+3));
+            indexedData.push(lc === null || lc === undefined ? -1 : lc.index);
+        }
+        return new Uint8Array(indexedData);
+    }
+
 
     /* painting functions */
     _clear_circle(x, y, radius) {
@@ -1346,6 +1406,10 @@ class SegmentationElement extends AbstractRenderElement {
         } else if(brushType === 'circle') {
             this._clear_circle(coords[0], coords[1], brushSize/2)
         }
+    }
+
+    clearAll() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     }
 
     render(ctx, scaleFun) {

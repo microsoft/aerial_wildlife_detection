@@ -146,15 +146,15 @@ class DBMiddleware():
 
         # query data
         sql = '''
-            SELECT 'group' AS type, id, name, color, parent FROM {schema}.labelclassgroup
+            SELECT 'group' AS type, id, NULL as idx, name, color, parent FROM {schema}.labelclassgroup
             UNION ALL
-            SELECT 'class' AS type, id, name, color, labelclassgroup FROM {schema}.labelclass;
+            SELECT 'class' AS type, id, idx, name, color, labelclassgroup FROM {schema}.labelclass;
         '''.format(schema=schema)
         classData = self.dbConnector.execute(sql, None, 'all')
 
         # assemble entries first
         allEntries = {}
-        classIndex = 0      #TODO: dirty solution to have classes with different indices
+        numClasses = 0
         for cl in classData:
             id = str(cl['id'])
             entry = {
@@ -166,8 +166,8 @@ class DBMiddleware():
             if cl['type'] == 'group':
                 entry['entries'] = {}
             else:
-                entry['index'] = classIndex
-                classIndex += 1
+                entry['index'] = cl['idx']
+                numClasses += 1
             allEntries[id] = entry
         
 
@@ -213,7 +213,7 @@ class DBMiddleware():
                     del allEntries['entries'][key]
 
         classdef = allEntries
-        classdef['numClasses'] = classIndex
+        classdef['numClasses'] = numClasses
         return classdef
 
 

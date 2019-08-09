@@ -132,22 +132,23 @@ class UIControlHandler {
         }
 
         // label all and unsure buttons
-        var labelAllCallback = function() {
-            self.dataHandler.assignLabelToAll();
+        if(window.annotationType != 'segmentationMasks') {
+            var labelAllCallback = function() {
+                self.dataHandler.assignLabelToAll();
+            }
+            var unsureCallback = function() {
+                self.dataHandler.toggleActiveAnnotationsUnsure();
+            }
+            var labelAllBtn = $('<button class="btn btn-sm btn-primary" id="labelAll-button">Label All</button>');
+            labelAllBtn.click(labelAllCallback);
+            dtControls.append(labelAllBtn);
+            var unsureBtn = $('<button class="btn btn-sm btn-warning" id="unsure-button">Unsure</button>');
+            unsureBtn.click(unsureCallback);
+            dtControls.append(unsureBtn);
         }
-        var unsureCallback = function() {
-            self.dataHandler.toggleActiveAnnotationsUnsure();
-        }
-        var labelAllBtn = $('<button class="btn btn-sm btn-primary" id="labelAll-button">Label All</button>');
-        labelAllBtn.click(labelAllCallback);
-        dtControls.append(labelAllBtn);
-        var unsureBtn = $('<button class="btn btn-sm btn-warning" id="unsure-button">Unsure</button>');
-        unsureBtn.click(unsureCallback);
-        dtControls.append(unsureBtn);
 
-
+        // semantic segmentation controls
         if(window.annotationType === 'segmentationMasks') {
-            // semantic segmentation controls
             this.segmentation_controls = {
                 brush_rectangle: $('<button class="btn btn-sm btn-secondary inline-control active">Rect</button>'),
                 brush_circle: $('<button class="btn btn-sm btn-secondary inline-control">Circ</button>'),

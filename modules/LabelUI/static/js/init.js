@@ -69,7 +69,34 @@ $(document).ready(function() {
     }
 
 
-    // color converter: adds alpha channel to existing color string
+    /* color functions */
+    window.getColorValues = function(color) {
+        if(color instanceof Array || color instanceof Uint8ClampedArray) return color;
+        color = color.toLowerCase();
+        if(color.startsWith('rgb')) {
+            var match = /rgba?\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(,\s*\d+[\.\d+]*)*\)/g.exec(color);
+            return [parseInt(match[1]), parseInt(match[2]), parseInt(match[3]), (match.length===4 ? parseInt(match[4]) : 255)];
+        } else {
+            return window.getColorValues(window.hexToRgb(color));
+        }
+    }
+
+    window.rgbToHex = function(rgb) {
+        var componentToHex = function(c) {
+            var hex = c.toString(16);
+            return hex.length == 1 ? "0" + hex : hex;
+        }
+        if(!(rgb instanceof Array || rgb instanceof Uint8ClampedArray)) {
+            rgb = rgb.toLowerCase();
+            if(rgb.startsWith('#')) {
+                return rgb;
+            } else if(rgb.startsWith('rgb')) {
+                rgb = /rgba?\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(,\s*\d+[\.\d+]*)*\)/g.exec(rgb);
+            }
+        }
+        return "#" + componentToHex(rgb[0]) + componentToHex(rgb[1]) + componentToHex(rgb[2]);
+    }
+
     window.hexToRgb = function(hex) {
         if(hex.toLowerCase().startsWith('rgb')) return hex;
         // Expand shorthand form (e.g. "03F") to full form (e.g. "0033FF")
@@ -91,7 +118,7 @@ $(document).ready(function() {
             // HEX color string
             color = window.hexToRgb(color);
         }
-        match = /rgba?\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(,\s*\d+[\.\d+]*)*\)/g.exec(color);
+        var match = /rgba?\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(,\s*\d+[\.\d+]*)*\)/g.exec(color);
         return "rgba(" + [match[1],match[2],match[3],a].join(',') +")";
     }
 
@@ -106,7 +133,7 @@ $(document).ready(function() {
 
     window.getBrightness = function(color) {
         var rgb = window.hexToRgb(color);
-        match = /rgba?\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(,\s*\d+[\.\d+]*)*\)/g.exec(rgb);
+        var match = /rgba?\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(,\s*\d+[\.\d+]*)*\)/g.exec(rgb);
         return (parseInt(match[1]) + parseInt(match[2]) + parseInt(match[3])) / 3;
     }
     
@@ -184,6 +211,24 @@ $(document).ready(function() {
     
         // Step 7
         return d[n][m];
+    }
+
+
+    // base64 conversion
+    window.bufferToBase64 = function(buf) {
+        var binstr = Array.prototype.map.call(buf, function (ch) {
+            return String.fromCharCode(ch);
+        }).join('');
+        return btoa(binstr);
+    }
+
+    window.base64ToBuffer = function(base64) {
+        var binstr = atob(base64);
+        var buf = new Uint8Array(binstr.length);
+        Array.prototype.forEach.call(binstr, function (ch, i) {
+          buf[i] = ch.charCodeAt(0);
+        });
+        return buf;
     }
 
 
