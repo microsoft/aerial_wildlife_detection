@@ -57,6 +57,7 @@ class BoundingBoxesDataset(Dataset):
         
         # parse images
         self.data = []
+        hasUnknownClasses = False
         for key in data['images']:
             nextMeta = data['images'][key]
             boundingBoxes = []
@@ -85,6 +86,10 @@ class BoundingBoxesDataset(Dataset):
                         # this usually does not happen for bounding boxes, but we account for it nonetheless
                         continue
                     else:
+                        if label not in self.labelclassMap:
+                            # unknown class
+                            hasUnknownClasses = True
+                            continue
                         label = self.labelclassMap[label]
                     
                     # sanity check
@@ -104,7 +109,9 @@ class BoundingBoxesDataset(Dataset):
             
             imagePath = nextMeta['filename']
             self.data.append((boundingBoxes, labels, key, fVec, imagePath))
-
+        
+        if hasUnknownClasses:
+            print('WARNING: encountered unknown label classes.')
 
     def __len__(self):
         return len(self.data)

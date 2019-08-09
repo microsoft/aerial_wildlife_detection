@@ -66,7 +66,7 @@ def __load_metadata(config, dbConnector, imageIDs, loadAnnotations):
     result = dbConnector.execute(sql, None, 'all')
     if len(result):
         for r in result:
-            labels[r['id']] = r     #TODO: make more elegant?
+            labels[r['id']] = r
     meta['labelClasses'] = labels
 
     # image data
@@ -76,7 +76,7 @@ def __load_metadata(config, dbConnector, imageIDs, loadAnnotations):
         result = dbConnector.execute(sql, (tuple(imageIDs),), 'all')
         if len(result):
             for r in result:
-                imageMeta[r['id']] = r  #TODO: make more elegant?
+                imageMeta[r['id']] = r
 
 
     # annotations
@@ -91,7 +91,7 @@ def __load_metadata(config, dbConnector, imageIDs, loadAnnotations):
             for r in result:
                 if not 'annotations' in imageMeta[r['image']]:
                     imageMeta[r['image']]['annotations'] = []
-                imageMeta[r['image']]['annotations'].append(r)      #TODO: make more elegant?
+                imageMeta[r['image']]['annotations'].append(r)
     meta['images'] = imageMeta
 
     return meta
@@ -116,8 +116,7 @@ def _call_train(dbConnector, config, imageIDs, subset, trainingFun, fileServer):
         - TODO: more?
     '''
 
-    #TODO
-    print('initiate training')
+    print('Initiated training...')
 
     
     # load model state
@@ -159,6 +158,8 @@ def _call_train(dbConnector, config, imageIDs, subset, trainingFun, fileServer):
         raise Exception('error during data committing')
 
     current_task.update_state(state=states.SUCCESS, meta={'message':'trained on {} images'.format(len(imageIDs))})
+
+    print('Training completed successfully.')
     return 0
 
 
@@ -171,7 +172,7 @@ def _call_average_model_states(dbConnector, config, averageFun, fileServer):
     '''
 
     #TODO: sanity checks?
-    print('initiate epoch averaging')
+    print('Initiated epoch averaging...')
     schema = config.getProperty('Database', 'schema')
 
     # get all model states
@@ -226,6 +227,8 @@ def _call_average_model_states(dbConnector, config, averageFun, fileServer):
 
     # all done
     current_task.update_state(state=states.SUCCESS, meta={'message':'averaged {} model states'.format(len(modelStates))})
+
+    print('Model averaging completed successfully.')
     return 0
 
 
@@ -235,7 +238,7 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
 
     '''
 
-    print('initiated inference on {} images'.format(len(imageIDs)))
+    print('Initiated inference on {} images...'.format(len(imageIDs)))
 
 
     # load model state
@@ -337,6 +340,8 @@ def _call_inference(dbConnector, config, imageIDs, inferenceFun, rankFun, fileSe
 
     
     current_task.update_state(state=states.SUCCESS, meta={'message':'predicted on {} images'.format(len(imageIDs))})
+
+    print('Inference completed successfully.')
     return 0
 
 

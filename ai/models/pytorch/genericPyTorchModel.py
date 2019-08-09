@@ -68,8 +68,8 @@ class GenericPyTorchModel(AIModel):
         else:
             # create new label class map
             labelclassMap = {}
-            for index, lcID in enumerate(data['labelClasses']):
-                labelclassMap[lcID] = index
+            for lcID in enumerate(data['labelClasses']):
+                labelclassMap[lcID] = data['labelClasses']['idx'] - 1       # -1 since the indices start at one
             self.options['model']['kwargs']['labelclassMap'] = labelclassMap
 
             # initialize a fresh model

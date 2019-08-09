@@ -31,6 +31,7 @@ class LabelsDataset(Dataset):
         
         # parse images
         self.data = []
+        hasUnknownClasses = False
         for key in data['images']:
             nextMeta = data['images'][key]
             label_img = 0       #TODO: default: background
@@ -43,6 +44,10 @@ class LabelsDataset(Dataset):
                     if label is None or (self.ignoreUnsure and unsure):
                         continue
                     else:
+                        if label not in self.labelclassMap:
+                            # unknown class
+                            hasUnknownClasses = True
+                            continue
                         label_img = self.labelclassMap[label]
 
             # feature vector
@@ -55,7 +60,9 @@ class LabelsDataset(Dataset):
             
             imagePath = nextMeta['filename']
             self.data.append((label_img, key, fVec, imagePath))
-    
+        
+        if hasUnknownClasses:
+            print('WARNING: encountered unknown label classes.')
 
     def __len__(self):
         return len(self.data)

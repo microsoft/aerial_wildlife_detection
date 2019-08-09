@@ -56,6 +56,7 @@ class PointsDataset(Dataset):
         
         # parse images
         self.data = []
+        hasUnknownClasses = False
         for key in data['images']:
             nextMeta = data['images'][key]
             points = []
@@ -74,6 +75,10 @@ class PointsDataset(Dataset):
                         # empty label; assign background
                         label_img = 0
                     else:
+                        if label not in self.labelclassMap:
+                            # unknown class
+                            hasUnknownClasses = True
+                            continue
                         label_img = self.labelclassMap[label]
 
                 else:
@@ -106,7 +111,9 @@ class PointsDataset(Dataset):
             
             imagePath = nextMeta['filename']
             self.data.append((points, labels, label_img, key, fVec, imagePath))
-
+        
+        if hasUnknownClasses:
+            print('WARNING: encountered unknown label classes.')
 
     def __len__(self):
         return len(self.data)
