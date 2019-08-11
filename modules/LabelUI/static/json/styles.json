@@ -37,6 +37,11 @@
             "strokeColor": "#000000",
             "lineWidth": 1
         },
+        "paintbrush": {
+            "strokeColor": "#000000",
+            "lineWidth": 1,
+            "lineDash": []
+        },
         "crosshairLines": {
             "strokeColor": "#000000",
             "lineWidth": 1,

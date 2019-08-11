@@ -1292,20 +1292,8 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
         this.canvas.css('cursor', window.uiControlHandler.getDefaultCursor());
 
         // brush symbol
-        var brushStyle = {
-            strokeColor: '#333333',
-            lineWidth: 1,
-            lineDash: [],
-            lineOpacity: 1.0
-        };
-        this.brushes = {
-            rectangle: new RectangleElement(this.id+'_brush_rect', null, null, null, null,
-                        brushStyle, false, 5),
-            // circle: new PointElement(this.id+'_brush_circ', null, null, brushStyle, false, 5)    //TODO: implement circle element
-        };
-        this.brush = this.brushes['rectangle'];
+        this.brush = new PaintbrushElement(this.id+'_brush', null, null, 5);
         this.viewport.addRenderElement(this.brush);
-        // this._set_default_brush();
 
         // interaction handlers
         if(!this.disableInteractions) {
@@ -1342,26 +1330,25 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
             ];
 
             // show brush
-            // this._set_default_brush();  //TODO: expensive
-            var brushSize = this.viewport.transformCoordinates([0,0,window.uiControlHandler.segmentation_properties.brushSize,
-                window.uiControlHandler.segmentation_properties.brushSize],
-                'validArea', true);
             this.brush.setProperty('x', this.mousePos[0]);
             this.brush.setProperty('y', this.mousePos[1]);
-            this.brush.setProperty('width', brushSize[2]);
-            this.brush.setProperty('height', brushSize[3]);
 
             // paint with brush at current position
             if(this.mouseDown) {
+                var canvasScale = this.viewport.canvas.width() / this.viewport.canvas[0].width;
+                var brushSize = [
+                    window.uiControlHandler.segmentation_properties.brushSize / this.viewport.validArea[2] * canvasScale,
+                    window.uiControlHandler.segmentation_properties.brushSize / this.viewport.validArea[3] * canvasScale
+                ];
                 if(window.uiControlHandler.getAction() === ACTIONS.REMOVE_ANNOTATIONS || event.altKey) {
                     this.segMap.clear(mousePos_abs,
                         window.uiControlHandler.segmentation_properties.brushType,
-                        window.uiControlHandler.segmentation_properties.brushSize);
+                        brushSize);
                 } else {
                     this.segMap.paint(mousePos_abs,
                         window.labelClassHandler.getActiveColor(),
                         window.uiControlHandler.segmentation_properties.brushType,
-                        window.uiControlHandler.segmentation_properties.brushSize);
+                        brushSize);
                 }
             }
 

@@ -999,13 +999,7 @@ class ResizeHandle extends AbstractRenderElement {
         super.render(ctx, scaleFun);
         if(!this.visible || this.x == null || this.y == null) return;
 
-        var coords = [this.x, this.y];
-
-        // adjust coordinates w.r.t. bounds
-        // coords[0] = (coords[0] * limits[2]) + limits[0];
-        // coords[1] = (coords[1] * limits[3]) + limits[1];
-
-        coords = scaleFun(coords, 'validArea');
+        var coords = scaleFun([this.x, this.y], 'validArea');
 
         var sz = window.styles.resizeHandles.size;
 
@@ -1017,6 +1011,42 @@ class ResizeHandle extends AbstractRenderElement {
         ctx.beginPath();
         ctx.strokeRect(coords[0] - sz/2, coords[1] - sz/2, sz, sz);
         ctx.closePath();
+    }
+}
+
+
+class PaintbrushElement extends AbstractRenderElement {
+    /*
+        Convenience class that either displays a square or circle,
+        depending on the global setting, over the mouse position.
+    */
+    constructor(id, x, y, zIndex, disableInteractions) {
+        super(id, null, zIndex, disableInteractions);
+        this.x = x;
+        this.y = y;
+    }
+
+    render(ctx, scaleFun) {
+        super.render(ctx, scaleFun);
+        if(!this.visible || this.x == null || this.y == null) return;
+
+        var coords = scaleFun([this.x, this.y], 'validArea');
+        var size = window.uiControlHandler.segmentation_properties.brushSize;
+        size = scaleFun(scaleFun([0,0,size,size], 'canvas', true), 'canvas')[2];
+
+        ctx.strokeStyle = window.styles.paintbrush.strokeColor;
+        ctx.lineWidth = window.styles.paintbrush.lineWidth;
+        ctx.setLineDash(window.styles.paintbrush.lineDash === undefined ? [] : window.styles.paintbrush.lineDash);
+        if(window.uiControlHandler.getBrushType() === 'rectangle') {
+            ctx.strokeRect(coords[0] - size/2, coords[1] - size/2,
+                size, size);
+        } else {
+            // circle
+            ctx.beginPath();
+            ctx.arc(coords[0], coords[1], size/2, 0, 2*Math.PI);
+            ctx.stroke();
+            ctx.closePath();
+        }
     }
 }
 
@@ -1266,9 +1296,10 @@ class MiniMap extends AbstractRenderElement {
         // elements
         for(var e=0; e<this.parentViewport.renderStack.length; e++) {
 
-            //TODO: dirty hack to avoid rendering HoverTextElement instances and resize handles
+            //TODO: dirty hack to avoid rendering HoverTextElement instances, resize handles and paintbrush
             if(this.parentViewport.renderStack[e].hasOwnProperty('text') ||
-                this.parentViewport.renderStack[e] instanceof ElementGroup) continue;
+                this.parentViewport.renderStack[e] instanceof ElementGroup ||
+                this.parentViewport.renderStack[e] instanceof PaintbrushElement) continue;
             this.parentViewport.renderStack[e].render(ctx, (this.minimapScaleFun).bind(this));
         }
 
@@ -1459,10 +1490,11 @@ class SegmentationElement extends AbstractRenderElement {
 
 
     /* painting functions */
-    _clear_circle(x, y, radius) {
+    _clear_circle(x, y, size) {
         this.ctx.beginPath();
         this.ctx.globalCompositeOperation = 'destination-out'
-        this.ctx.arc(x, y, radius, 0, Math.PI*2, true);
+        this.ctx.ellipse(x, y, size[0]/2, size[1]/2, 2*Math.PI, 0, 2*Math.PI)
+        // this.ctx.arc(x, y, radius, 0, Math.PI*2, true);
         this.ctx.fill();
         this.ctx.closePath();
         this.ctx.globalCompositeOperation = 'source-over';
@@ -1471,11 +1503,11 @@ class SegmentationElement extends AbstractRenderElement {
     paint(coords, color, brushType, brushSize) {
         this.ctx.fillStyle = color;
         if(brushType === 'rectangle') {
-            this.ctx.fillRect(coords[0] - brushSize/2, coords[1] - brushSize/2,
-                brushSize, brushSize);
+            this.ctx.fillRect(coords[0] - brushSize[0]/2, coords[1] - brushSize[1]/2,
+                brushSize[0], brushSize[1]);
         } else if(brushType === 'circle') {
             this.ctx.beginPath();
-            this.ctx.arc(coords[0], coords[1], brushSize/2, 0, 2*Math.PI);
+            this.ctx.ellipse(coords[0], coords[1], brushSize[0]/2, brushSize[1]/2, 2*Math.PI, 0, 2*Math.PI)
             this.ctx.fill();
             this.ctx.closePath();
         }
@@ -1484,9 +1516,9 @@ class SegmentationElement extends AbstractRenderElement {
     clear(coords, brushType, brushSize) {
         if(brushType === 'rectangle') {
             this.ctx.clearRect(coords[0] - brushSize/2, coords[1] - brushSize/2,
-                brushSize, brushSize);
+                brushSize[0], brushSize[1]);
         } else if(brushType === 'circle') {
-            this._clear_circle(coords[0], coords[1], brushSize/2)
+            this._clear_circle(coords[0], coords[1], brushSize)
         }
     }
 
