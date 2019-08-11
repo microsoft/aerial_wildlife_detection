@@ -126,11 +126,11 @@
                     to have visually screened the provided converted predictions, even if they
                     are unchanged (i.e., deemed correct by the user).
                 */
-                if(window.annotationType == 'labels') {
+                if(window.annotationType === 'labels') {
                     // need image-wide labels
-                    if(window.predictionType == 'points' || window.predictionType == 'boundingBoxes') {
+                    if(window.predictionType === 'points' || window.predictionType === 'boundingBoxes') {
                         // check carry-over rule
-                        if(window.carryOverRule == 'maxConfidence') {
+                        if(window.carryOverRule === 'maxConfidence') {
                             // select arg max
                             var maxConf = -1;
                             var argMax = null;
@@ -149,7 +149,7 @@
                                 anno.setProperty('changed', true);
                                 this._addElement(anno);
                             }
-                        } else if(window.carryOverRule == 'mode') {
+                        } else if(window.carryOverRule === 'mode') {
                             var counts = {};
                             for(var key in properties['predictions']) {
                                 var prediction = new Annotation(window.getRandomID(), properties['predictions'][key], geometryType_anno, 'prediction');
@@ -175,7 +175,7 @@
                             }
                         }
                     }
-                } else if(window.annotationType == 'points' && window.predictionType == 'boundingBoxes') {
+                } else if(window.annotationType === 'points' && window.predictionType === 'boundingBoxes') {
                     // remove width and height
                     for(var key in properties['predictions']) {
                         var props = properties['predictions'][key];
@@ -186,7 +186,7 @@
                             this._addElement(anno);
                         }
                     }
-                } else if(window.annotationType == 'boundingBoxes' && window.predictionType == 'points') {
+                } else if(window.annotationType === 'boundingBoxes' && window.predictionType === 'points') {
                     // add default width and height
                     for(var key in properties['predictions']) {
                         var props = properties['predictions'][key];
@@ -198,7 +198,7 @@
                             this._addElement(anno);
                         }
                     }
-                } else if(window.annotationType == window.predictionType) {
+                } else if(window.annotationType === window.predictionType) {
                     // no conversion required
                     for(var key in properties['predictions']) {
                         var props = properties['predictions'][key];
@@ -1274,17 +1274,16 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
     }
 
     _init_data(properties) {
-        if('segmentationMap' in properties) {
-            this.segmentationMap = properties['segmentationMap'];
+        var annoKeys = Object.keys(this.annotations);
+        if(annoKeys.length) {
+            this.annotation = this.annotations[annoKeys[0]]; 
         } else {
-            this.segmentationMap = null;
+            this.annotation = new Annotation(window.getRandomID(), properties, 'segmentationMasks', 'annotation');
+            this.annotation.geometry.setSize(this.viewport.transformCoordinates([1,1], 'validArea', false));
+            this._addElement(this.annotation);
         }
-
-        this.annotation = new Annotation(window.getRandomID(), properties, 'segmentationMasks', 'annotation');
         this.segMap = this.annotation.geometry;
-        this.size = this.viewport.transformCoordinates([1,1], 'validArea', false);
-        this.segMap.setSize(this.size);
-        this._addElement(this.annotation);
+        this.size = this.segMap.getSize();
     }
 
     _setup_markup() {

@@ -143,7 +143,7 @@ class RetinaNet(GenericPyTorchModel):
                 bboxes_pred_batch, labels_pred_batch = model(dataItem, False)   #TODO: isFeatureVector
                 bboxes_pred_batch, labels_pred_batch, confs_pred_batch = dataEncoder.decode(bboxes_pred_batch.squeeze(0).cpu(),
                                     labels_pred_batch.squeeze(0).cpu(),
-                                    (inputSize[1],inputSize[0],),
+                                    (inputSize[0],inputSize[1],),
                                     cls_thresh=0.1, nms_thresh=0.1,
                                     return_conf=True)       #TODO: ditto
 

@@ -1296,12 +1296,12 @@ class MiniMap extends AbstractRenderElement {
 
 class SegmentationElement extends AbstractRenderElement {
 
-    constructor(id, imageData, width, height, zIndex, disableInteractions) {
+    constructor(id, annotationMap, predictionMap, width, height, zIndex, disableInteractions) {
         super(id, null, zIndex, disableInteractions);
-        this._create_canvas(imageData, width, height);
+        this._create_canvas(annotationMap, predictionMap, width, height);
     }
 
-    _create_canvas(imageData, width, height) {
+    _create_canvas(annotationMap, predictionMap, width, height) {
         this.canvas = document.createElement('canvas');
         this.ctx = this.canvas.getContext('2d');
         this.ctx.imageSmoothingEnabled = false;
@@ -1310,9 +1310,22 @@ class SegmentationElement extends AbstractRenderElement {
         }
         
         // add image data to canvas if available
-        if(imageData != undefined && imageData != null) {
-            this._parse_map(window.base64ToBuffer(imageData));
+        if(annotationMap != undefined && annotationMap != null) {
+            if(predictionMap != undefined && predictionMap != null) {
+                // both annotations and predictions available; blend
+                this._blend_maps(annotationMap, predictionMap);
+            } else {
+                // only annotations available
+                this._parse_map(window.base64ToBuffer(annotationMap));
+            }
+        } else if(predictionMap != undefined && predictionMap != null) {
+            // only predictions available
+            this._parse_map(window.base64ToBuffer(annotationMap));
         }
+    }
+
+    getSize() {
+        return [this.canvas.width, this.canvas.height];
     }
 
     setSize(size) {
@@ -1356,6 +1369,62 @@ class SegmentationElement extends AbstractRenderElement {
             } else {
                 color = nothing;
                 alpha = 0;
+            }
+            data[offset] = color[0];
+            data[offset+1] = color[1];
+            data[offset+2] = color[2];
+            data[offset+3] = alpha;
+            offset += 4;
+        }
+        this.ctx.putImageData(new ImageData(data, this.canvas.width, this.canvas.height), 0, 0);
+    }
+
+    _blend_maps(annotation_indexed, prediction_indexed) {
+        /**
+            Merges two maps:
+            @param annotation_indexed A linear array of size (WxH) corresponding to
+                                    annotations made by the user and holding integer
+                                    class indices at each position.
+            @param prediction_indexed A linear array of size (WxH), corresponding to
+                                    predicted classes at each position.
+            
+            The result is an array of size (WxHx4) with RGBA values of the two maps
+            blended together. For blending, the annotation values are always preferred;
+            prediction values are adopted if the annotation values are invalid or <0.
+            This array is then set as image data for the canvas.
+        */
+        //TODO: make more failsafe (e.g. if sizes don't match)
+        
+        if(prediction_indexed === undefined || prediction_indexed === null) {
+            return this._parse_map(annotation_indexed);
+        }
+
+        // get current canvas pixel values for a quick template
+        var pixels = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+        var data = pixels.data;
+
+        // iterate over index data and assign
+        var nothing = [0,0,0];
+        var offset = 0;
+        var color = nothing;
+        var alpha = 0;
+        for(var i=0; i<annotation_indexed.length; i++) {
+            // find label class color at position
+            var lc_anno = window.labelClassHandler.getByIndex(annotation_indexed[i]);
+            if(lc_anno) {
+                color = lc_anno.colorValues;
+                alpha = 255;
+            } else {
+                // try prediction instead
+                var lc_pred = window.labelClassHandler.getByIndex(prediction_indexed[i]);
+                if(lc_pred) {
+                    color = lc_pred.colorValues;
+                    alpha = 255;
+                } else {
+                    // no prediction; set empty
+                    color = nothing;
+                    alpha = 0;
+                }
             }
             data[offset] = color[0];
             data[offset+1] = color[1];

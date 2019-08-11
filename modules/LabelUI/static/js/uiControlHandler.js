@@ -112,9 +112,9 @@ class UIControlHandler {
             var removeAnnoCallback = function() {
                 self.setAction(ACTIONS.REMOVE_ANNOTATIONS);
             }
-            var addAnnoBtn = $('<button id="add-annotation" class="btn btn-sm btn-primary">+</button>');
+            var addAnnoBtn = $('<button id="add-annotation" class="btn btn-sm btn-primary" title="Add Annotation (W)">+</button>');
             addAnnoBtn.click(addAnnoCallback);
-            var removeAnnoBtn = $('<button id="remove-annotation" class="btn btn-sm btn-primary">-</button>');
+            var removeAnnoBtn = $('<button id="remove-annotation" class="btn btn-sm btn-primary" title="Remove Annotation (R)">-</button>');
             removeAnnoBtn.click(removeAnnoCallback);
             this.staticButtons[ACTIONS.ADD_ANNOTATION] = addAnnoBtn;
             this.staticButtons[ACTIONS.REMOVE_ANNOTATIONS] = removeAnnoBtn;
@@ -125,7 +125,7 @@ class UIControlHandler {
                 var clearAllCallback = function() {
                     self.dataHandler.clearLabelInAll();
                 }
-                var clearAllBtn = $('<button class="btn btn-sm btn-warning" id="clearAll-button">Clear All</button>');
+                var clearAllBtn = $('<button class="btn btn-sm btn-warning" id="clearAll-button" title="Clear all Annotations (C)">Clear All</button>');
                 clearAllBtn.click(clearAllCallback);
                 dtControls.append(clearAllBtn);
             }
@@ -139,10 +139,10 @@ class UIControlHandler {
             var unsureCallback = function() {
                 self.dataHandler.toggleActiveAnnotationsUnsure();
             }
-            var labelAllBtn = $('<button class="btn btn-sm btn-primary" id="labelAll-button">Label All</button>');
+            var labelAllBtn = $('<button class="btn btn-sm btn-primary" id="labelAll-button" title="Assign label to all Annotations (A)">Label All</button>');
             labelAllBtn.click(labelAllCallback);
             dtControls.append(labelAllBtn);
-            var unsureBtn = $('<button class="btn btn-sm btn-warning" id="unsure-button">Unsure</button>');
+            var unsureBtn = $('<button class="btn btn-sm btn-warning" id="unsure-button" title="Toggle Unsure flag for Annotation (U)">Unsure</button>');
             unsureBtn.click(unsureCallback);
             dtControls.append(unsureBtn);
         }
@@ -150,9 +150,9 @@ class UIControlHandler {
         // semantic segmentation controls
         if(window.annotationType === 'segmentationMasks') {
             this.segmentation_controls = {
-                brush_rectangle: $('<button class="btn btn-sm btn-secondary inline-control active">Rect</button>'),
-                brush_circle: $('<button class="btn btn-sm btn-secondary inline-control">Circ</button>'),
-                brush_size: $('<input class="inline-control" type="range" min="1" max="255" value="20" />')
+                brush_rectangle: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="static/img/controls/rectangle.svg" style="height:18px" title="Square brush" /></button>'),
+                brush_circle: $('<button class="btn btn-sm btn-secondary inline-control"><img src="static/img/controls/circle.svg" style="height:18px" title="Circular brush" /></button>'),
+                brush_size: $('<input class="inline-control" type="number" min="1" max="255" value="20" title="Brush size" />')
             };  //TODO: ranges, default
 
             this.segmentation_controls.brush_rectangle.click(function() {
@@ -161,15 +161,26 @@ class UIControlHandler {
             this.segmentation_controls.brush_circle.click(function() {
                 self.setBrushType('circle');
             });
-            this.segmentation_controls.brush_size.on('change', function() {
-                self.setBrushSize(this.value);
+            this.segmentation_controls.brush_size.on({
+                change: function() {
+                    var val = Math.max(1, Math.min(255, this.value));
+                    $(this).val(val);
+                    self.setBrushSize(val);
+                },
+                focusin: function() {
+                    window.shortcutsDisabled = true;
+                },
+                focusout: function() {
+                    window.shortcutsDisabled = false;
+                }
             });
 
             var segControls = $('<div class="inline-control"></div>');
             segControls.append(this.segmentation_controls.brush_rectangle);
             segControls.append(this.segmentation_controls.brush_circle);
-            segControls.append($('<span>Size:</span>'));
+            segControls.append($('<span style="margin-left:10px;margin-right:5px;color:white">Size:</span>'));
             segControls.append(this.segmentation_controls.brush_size);
+            segControls.append($('<span style="margin-left:5px;color:white">px</span>'));
             dtControls.append(segControls);
         }
 

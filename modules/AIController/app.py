@@ -83,7 +83,7 @@ class AIController:
                         maxNumImages_inference = int(params['maxNum_inference'])
                     else:
                         maxNumImages_inference = self.maxNumImages_inference
-                    status = self.middleware.start_inference(forceUnlabeled=True, 
+                    status = self.middleware.start_inference(forceUnlabeled=False,      #TODO 
                                             maxNumImages=maxNumImages_inference,
                                             maxNumWorkers=self.maxNumWorkers_inference)
                 except Exception as e:
