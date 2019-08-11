@@ -255,7 +255,7 @@ class Resize(object):
     def __init__(self, size, interpolation=Image.BILINEAR):
         if isinstance(size,int):
             size = tuple((size,size))
-        self.size = size
+        self.size = (size[1], size[0],)
         self.interpolation = interpolation
     
 

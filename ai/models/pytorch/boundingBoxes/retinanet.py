@@ -56,7 +56,7 @@ class RetinaNet(GenericPyTorchModel):
                                     transform=transform,
                                     ignoreUnsure=self.options['train']['ignore_unsure'])
         dataEncoder = encoder.DataEncoder(minIoU_pos=0.5, maxIoU_neg=0.4)   #TODO: implement into options
-        collator = collation.Collator(inputSize, dataEncoder)
+        collator = collation.Collator((inputSize[1], inputSize[0],), dataEncoder)
         dataLoader = DataLoader(
             dataset=dataset,
             collate_fn=collator.collate_fn,
@@ -116,7 +116,7 @@ class RetinaNet(GenericPyTorchModel):
                                     labelclassMap=labelclassMap,
                                     transform=transform)
         dataEncoder = encoder.DataEncoder(minIoU_pos=0.5, maxIoU_neg=0.4)   #TODO: ditto
-        collator = collation.Collator(inputSize, dataEncoder)
+        collator = collation.Collator((inputSize[1], inputSize[0],), dataEncoder)
         dataLoader = DataLoader(
             dataset=dataset,
             collate_fn=collator.collate_fn,
@@ -130,7 +130,7 @@ class RetinaNet(GenericPyTorchModel):
         imgCount = 0
         for (img, _, _, fVec, imgID) in tqdm(dataLoader):
 
-            # TODO: implement feature vectors and make compatible with larger batch sizes
+            # TODO: implement feature vectors
             # if img is not None:
             #     dataItem = img.to(device)
             #     isFeatureVector = False
@@ -143,7 +143,7 @@ class RetinaNet(GenericPyTorchModel):
                 bboxes_pred_batch, labels_pred_batch = model(dataItem, False)   #TODO: isFeatureVector
                 bboxes_pred_batch, labels_pred_batch, confs_pred_batch = dataEncoder.decode(bboxes_pred_batch.squeeze(0).cpu(),
                                     labels_pred_batch.squeeze(0).cpu(),
-                                    (inputSize[0],inputSize[1],),
+                                    inputSize,
                                     cls_thresh=0.1, nms_thresh=0.1,
                                     return_conf=True)       #TODO: ditto
 

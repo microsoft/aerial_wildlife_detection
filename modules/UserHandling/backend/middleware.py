@@ -63,7 +63,7 @@ class UserMiddleware():
         return result
 
 
-    def _extend_session_database(self, username):
+    def _extend_session_database(self, username, sessionToken):
         '''
             Updates the last login timestamp of the user to the current
             time and commits the changes to the database.
@@ -72,12 +72,13 @@ class UserMiddleware():
         def _extend_session():
             now = self._current_time()
 
-            self.dbConnector.execute('''UPDATE {}.user SET last_login = %s
+            self.dbConnector.execute('''UPDATE {}.user SET last_login = %s,
+                    session_token = %s
                     WHERE name = %s
                 '''.format(
                     self.config.getProperty('Database', 'schema')
                 ),
-                (now, username,),
+                (now, sessionToken, username,),
                 numReturn=None)
             
             # also update local cache
@@ -128,6 +129,9 @@ class UserMiddleware():
         else:
             self.usersLoggedIn[username]['timestamp'] = now
             self.usersLoggedIn[username]['sessionToken'] = sessionToken
+
+            # also tell DB about updated tokens
+            self._extend_session_database(username, sessionToken)
 
         expires = now + timedelta(0, self.config.getProperty('UserHandler', 'time_login', type=int))
 
@@ -185,7 +189,7 @@ class UserMiddleware():
 
                 # extend user session (commit to DB) if needed
                 if time_diff >= 0.75 * time_login:
-                    self._extend_session_database(username)
+                    self._extend_session_database(username, sessionToken)
 
                 return True
 
