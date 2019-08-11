@@ -13,6 +13,9 @@ from util.helpers import get_class_executable
 class AIWorker():
 
     def __init__(self, config, app):
+        if config.getProperty('Project', 'demoMode', type=bool, fallback=False):
+            raise Exception('AIWorker cannot be launched in demo mode.')
+        
         self.config = config
         self.dbConnector = Database(config)
         self._init_fileserver()

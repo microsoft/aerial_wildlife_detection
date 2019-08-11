@@ -20,6 +20,8 @@ from util.configDef import Config
 if not 'AIDE_CONFIG_PATH' in os.environ:
     raise ValueError('Missing system environment variable "AIDE_CONFIG_PATH".')
 config = Config()
+if config.getProperty('Project', 'demoMode', type=bool, fallback=False):
+    raise Exception('AIController and AIWorkers cannot be launched in demo mode.')
 
 app = Celery('AIController',
             broker=config.getProperty('AIController', 'broker_URL'),

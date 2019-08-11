@@ -11,6 +11,9 @@ from modules.AIController.backend.middleware import AIMiddleware
 class AIController:
 
     def __init__(self, config, app):
+        if config.getProperty('Project', 'demoMode', type=bool, fallback=False):
+            raise Exception('AIController cannot be launched in demo mode.')
+
         self.config = config
         self.app = app
 
