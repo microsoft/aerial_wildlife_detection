@@ -31,7 +31,7 @@ class SQLStringBuilder:
         return baseNames
 
 
-    def getFixedImagesQueryString(self):
+    def getFixedImagesQueryString(self, demoMode=False):
         schema = self.config.getProperty('Database', 'schema')
 
         # assemble column names
@@ -53,6 +53,10 @@ class SQLStringBuilder:
         string_pred = string_pred.strip(',')
         string_all = string_all.strip(',')
 
+        usernameString = 'WHERE username = %s'
+        if demoMode:
+            usernameString = ''
+
         sql = '''
             SELECT id, image, cType, viewcount, filename, {allCols} FROM (
                 SELECT id AS image, filename FROM {schema}.image
@@ -60,17 +64,17 @@ class SQLStringBuilder:
             ) AS img
             LEFT OUTER JOIN (
                 SELECT id, image AS imID, 'annotation' AS cType, {annoCols} FROM {schema}.annotation AS anno
-                WHERE username = %s
+                {usernameString}
                 UNION ALL
                 SELECT id, image AS imID, 'prediction' AS cType, {predCols} FROM {schema}.prediction AS pred
             ) AS contents ON img.image = contents.imID
             LEFT OUTER JOIN (SELECT image AS iu_image, viewcount, username FROM {schema}.image_user
-            WHERE username = %s) AS iu ON img.image = iu.iu_image;
-        '''.format(schema=schema, allCols=string_all, annoCols=string_anno, predCols=string_pred)
+            {usernameString}) AS iu ON img.image = iu.iu_image;
+        '''.format(schema=schema, allCols=string_all, annoCols=string_anno, predCols=string_pred, usernameString=usernameString)
         return sql
 
 
-    def getNextBatchQueryString(self, order='unlabeled', subset='default'):
+    def getNextBatchQueryString(self, order='unlabeled', subset='default', demoMode=False):
         '''
             Assembles a DB query string. Inputs:
             - order: specifies sorting criterion for request:
@@ -117,6 +121,11 @@ class SQLStringBuilder:
             orderSpec = 'ORDER BY viewcount DESC NULLS LAST, score DESC NULLS LAST'
         orderSpec += ', timeCreated DESC'
 
+        usernameString = 'WHERE username = %s'
+        if demoMode:
+            usernameString = ''
+            orderSpec = 'ORDER BY RANDOM()'
+
         sql = '''
             SELECT id, image, cType, viewcount, filename, {allCols} FROM (
             SELECT id AS image, filename, viewcount, score, timeCreated FROM {schema}.image AS img
@@ -134,11 +143,17 @@ class SQLStringBuilder:
             ) AS img_query
             LEFT OUTER JOIN (
                 SELECT id, image AS imID, 'annotation' AS cType, {annoCols} FROM {schema}.annotation AS anno
-                WHERE username = %s
+                {usernameString}
                 UNION ALL
                 SELECT id, image AS imID, 'prediction' AS cType, {predCols} FROM {schema}.prediction AS pred
             ) AS contents ON img_query.image = contents.imID
             {order};
-        '''.format(schema=schema, allCols=string_all, annoCols=string_anno, predCols=string_pred, order=orderSpec, subset=subsetFragment)
+        '''.format(schema=schema,
+                    allCols=string_all,
+                    annoCols=string_anno,
+                    predCols=string_pred,
+                    order=orderSpec,
+                    subset=subsetFragment,
+                    usernameString=usernameString)
 
         return sql

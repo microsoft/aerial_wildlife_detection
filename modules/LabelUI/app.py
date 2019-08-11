@@ -23,17 +23,20 @@ class LabelUI():
         self.staticDir = 'modules/LabelUI/static'
         self.middleware = DBMiddleware(config)
 
+        self.demoMode = config.getProperty('Project', 'demoMode', type=bool, fallback=False)
+
         self.login_check = None
 
         self._initBottle()
 
 
     def loginCheck(self, needBeAdmin=False):
-        return True if self.login_check is None else self.login_check(needBeAdmin)
+        return True if self.demoMode or self.login_check is None else self.login_check(needBeAdmin)
 
 
     def addLoginCheckFun(self, loginCheckFun):
-        self.login_check = loginCheckFun
+        if not self.demoMode:
+            self.login_check = loginCheckFun
 
 
     def _initBottle(self):
@@ -62,7 +65,7 @@ class LabelUI():
         @self.app.route('/interface')
         def interface():
             if self.loginCheck():
-                username = cgi.escape(request.get_cookie('username'))
+                username = 'Demo mode' if self.demoMode else cgi.escape(request.get_cookie('username'))
                 response = self.interface_template.render(username=username,
                     projectTitle=self.config.getProperty('Project', 'projectName'), projectDescr=self.config.getProperty('Project', 'projectDescription'))
                 # response.set_header("Cache-Control", "public, max-age=604800")
@@ -150,6 +153,9 @@ class LabelUI():
 
         @self.app.post('/submitAnnotations')
         def submit_annotations():
+            if self.demoMode:
+                return { 'status': 'not allowed in demo mode' }
+            
             if self.loginCheck():
                 # parse
                 try:

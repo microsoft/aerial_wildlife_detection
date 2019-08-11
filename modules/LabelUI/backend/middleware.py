@@ -70,7 +70,8 @@ class DBMiddleware():
             'defaultImage_h': self.config.getProperty('LabelUI', 'defaultImage_h', type=int, fallback=600),
             'styles': styles['styles'],
             'backdrops': backdrops,
-            'welcomeMessage': welcomeMessage
+            'welcomeMessage': welcomeMessage,
+            'demoMode': self.config.getProperty('Project', 'demoMode', type=bool, fallback=False)
         }
 
 
@@ -222,10 +223,14 @@ class DBMiddleware():
             Returns entries from the database based on the list of data entry identifiers specified.
         '''
         # query
-        sql = self.sqlBuilder.getFixedImagesQueryString()
+        sql = self.sqlBuilder.getFixedImagesQueryString(self.projectSettings['demoMode'])
 
         # parse results
-        with self.dbConnector.execute_cursor(sql, (tuple(UUID(d) for d in data), username, username,)) as cursor:
+        queryVals = (tuple(UUID(d) for d in data), username, username,)
+        if self.projectSettings['demoMode']:
+            queryVals = (tuple(UUID(d) for d in data),)
+
+        with self.dbConnector.execute_cursor(sql, queryVals) as cursor:
             try:
                 response = self._assemble_annotations(cursor)
                 # self.dbConnector.conn.commit()
@@ -243,7 +248,7 @@ class DBMiddleware():
             TODO: description
         '''
         # query
-        sql = self.sqlBuilder.getNextBatchQueryString(order, subset)
+        sql = self.sqlBuilder.getNextBatchQueryString(order, subset, self.projectSettings['demoMode'])
 
         # limit (TODO: make 128 a hyperparameter)
         if limit is None:
@@ -252,7 +257,11 @@ class DBMiddleware():
             limit = min(int(limit), 128)
 
         # parse results
-        with self.dbConnector.execute_cursor(sql, (limit,username,)) as cursor:
+        queryVals = (limit,username,)
+        if self.projectSettings['demoMode']:
+            queryVals = (limit,)
+
+        with self.dbConnector.execute_cursor(sql, queryVals) as cursor:
             response = self._assemble_annotations(cursor)
 
         return { 'entries': response }
@@ -262,6 +271,8 @@ class DBMiddleware():
         '''
             Sends user-provided annotations to the database.
         '''
+        if self.projectSettings['demoMode']:
+            return 0
 
         # assemble values
         colnames = getattr(QueryStrings_annotation, self.projectSettings['annotationType']).value

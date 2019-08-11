@@ -205,6 +205,10 @@ class DataHandler {
 
 
     _submitAnnotations(silent) {
+        if(window.demoMode) {
+            return $.Deferred().promise();
+        }
+
         var self = this;
         var entries = this._entriesToJSON(true, false);
         return $.ajax({
@@ -301,7 +305,11 @@ class DataHandler {
 
     nextBatch() {
         if(window.uiBlocked) return;
-        
+        if(window.demoMode) {
+            this._loadNextBatch();
+            return;
+        }
+
         var self = this;
 
         var _next_batch = function() {
@@ -326,8 +334,7 @@ class DataHandler {
 
 
     previousBatch() {
-        if(window.uiBlocked) return;
-        if(this.undoStack.length === 0) return;
+        if(window.uiBlocked || window.demoMode || this.undoStack.length === 0) return;
         
         var self = this;
 

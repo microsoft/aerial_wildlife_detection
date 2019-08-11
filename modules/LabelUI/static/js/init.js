@@ -477,20 +477,25 @@ $(document).ready(function() {
 
 
         // logout and reload functionality
-        window.onbeforeunload = function() {
-            window.dataHandler._submitAnnotations(true);
-        };
-
-        $('#logout').click(function() {
-            window.dataHandler._submitAnnotations(true);
-            window.location.href = '/logout';
-        });
+        if(window.demoMode) {
+            $('.dropdown-menu').hide();
+            // $('.dropdown-toggle').hide();
+        } else {
+            window.onbeforeunload = function() {
+                window.dataHandler._submitAnnotations(true);
+            };
+    
+            $('#logout').click(function() {
+                window.dataHandler._submitAnnotations(true);
+                window.location.href = '/logout';
+            });
+        }
     });
 
 
     // AI backend
     promise = promise.then(function() {
-        if(window.aiControllerURI != null) {
+        if(window.aiControllerURI != null && ! window.demoMode) {
             window.aiWorkerHandler = new AIWorkerHandler($('.ai-worker-entries'));
             $('#ai-worker-minipanel').show();
         }

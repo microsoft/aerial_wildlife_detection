@@ -192,9 +192,11 @@ class UIControlHandler {
         var prevBatchCallback = function() {
             self.dataHandler.previousBatch();
         }
-        var prevBatchBtn = $('<button id="previous-button" class="btn btn-sm btn-primary float-left">Previous</button>');
-        prevBatchBtn.click(prevBatchCallback);
-        dtControls.append(prevBatchBtn);
+        if(!window.demoMode) {
+            var prevBatchBtn = $('<button id="previous-button" class="btn btn-sm btn-primary float-left">Previous</button>');
+            prevBatchBtn.click(prevBatchCallback);
+            dtControls.append(prevBatchBtn);
+        }
         var nextBatchBtn = $('<button id="next-button" class="btn btn-sm btn-primary float-right">Next</button>');
         nextBatchBtn.click(nextBatchCallback);
         dtControls.append(nextBatchBtn);

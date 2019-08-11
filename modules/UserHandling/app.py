@@ -18,6 +18,8 @@ class UserHandler():
         self.staticDir = 'modules/UserHandling/static'
         self.middleware = UserMiddleware(config)
 
+        self.demoMode = config.getProperty('Project', 'demoMode', type=bool, fallback=False)
+
         self._initBottle()
 
 
@@ -31,6 +33,9 @@ class UserHandler():
 
         @self.app.route('/login', method='POST')
         def login():
+            if self.demoMode:
+                return redirect('/interface')
+
             # check provided credentials
             try:
                 username = cgi.escape(self._parse_parameter(request.forms, 'username'))
@@ -57,6 +62,13 @@ class UserHandler():
 
         @self.app.route('/loginCheck', method='POST')
         def loginCheck():
+            if self.demoMode:
+                response.set_cookie('username', 'demo mode')   #, expires=expires)
+                response.set_cookie('isAdmin', 'n', httponly=False)    #, expires=expires)
+                return {
+                    'expires': '-1' #expires.strftime('%H:%M:%S')
+                }
+
             try:
                 username = request.get_cookie('username')
                 if username is None:
@@ -81,6 +93,9 @@ class UserHandler():
         @self.app.route('/logout', method='GET')        
         @self.app.route('/logout', method='POST')
         def logout():
+            if self.demoMode:
+                return redirect('/interface')
+
             try:
                 username = cgi.escape(request.get_cookie('username'))
                 sessionToken = cgi.escape(request.get_cookie('session_token'))
@@ -101,6 +116,9 @@ class UserHandler():
 
         @self.app.route('/createAccount', method='POST')
         def createAccount():
+            if self.demoMode:
+                return redirect('/interface')
+
             #TODO: make secret token match
             try:
                 username = cgi.escape(self._parse_parameter(request.forms, 'username'))
@@ -123,6 +141,9 @@ class UserHandler():
 
         @self.app.route('/createAccountScreen')
         def showNewAccountPage():
+            if self.demoMode:
+                return redirect('/interface')
+
             # check if token is required; if it is and wrong token provided, show login screen instead
             targetToken = cgi.escape(self.config.getProperty('UserHandler', 'create_account_token'))
             if targetToken is not None and not(targetToken == ''):
@@ -146,6 +167,9 @@ class UserHandler():
 
         @self.app.route('/accountExists', method='POST')
         def checkAccountExists():
+            if self.demoMode:
+                return { 'response': False }
+
             try:
                 username = cgi.escape(self._parse_parameter(request.forms, 'username'))
                 if len(username) == 0:
@@ -156,6 +180,9 @@ class UserHandler():
 
         @self.app.route('/checkAuthenticated', method='POST')
         def checkAuthenticated():
+            if self.demoMode:
+                return True
+
             try:
                 if self.checkAuthenticated():
                     return True
@@ -167,6 +194,9 @@ class UserHandler():
 
 
     def checkAuthenticated(self, admin=False):
+        if self.demoMode:
+            return True
+
         try:
             username = cgi.escape(request.get_cookie('username'))
             sessionToken = cgi.escape(request.get_cookie('session_token'))
