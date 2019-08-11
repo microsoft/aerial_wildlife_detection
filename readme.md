@@ -1,6 +1,8 @@
 # AIde: Assisted Interface that does everything
 
-AIde is a modular Web framework for labeling image datasets with AI assistance. AIde is configurable for a variety of tasks, but it is particularly intended for acclerating wildlife surveys that use aerial images. AIde is primarily developed by [Benjamin Kellenberger](https://www.wur.nl/en/Persons/Benjamin-BA-Benjamin-Kellenberger-MSc.htm), supported by the [Microsoft AI for Earth](https://www.microsoft.com/en-us/ai/ai-for-earth) program.
+OK, maybe not <i>everything</i>, but it is two things in one: <i>a tool for manually annotating images</i> and <i>a tool for training and running deep detectors</i>. Those two things are coupled in an <i>active learning loop</i>: the human annotates a few images, the system trains a model, that model is used to make predictions and to select more images for the human to annotate, etc.
+   
+More generally, AIde is a modular Web framework for labeling image datasets with AI assistance.  AIde is configurable for a variety of tasks, but it is particularly intended for acclerating wildlife surveys that use aerial images. AIde is primarily developed by [Benjamin Kellenberger](https://www.wur.nl/en/Persons/Benjamin-BA-Benjamin-Kellenberger-MSc.htm), supported by the [Microsoft AI for Earth](https://www.microsoft.com/en-us/ai/ai-for-earth) program.
 
 ![AIde overview](doc/figures/AIde_animal_hero_1100.jpg)
 
