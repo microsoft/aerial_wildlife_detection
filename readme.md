@@ -1,72 +1,63 @@
-# AIde - Assisted Interface that does everything
+# AIde: Assisted Interface that does everything
 
-AIde is a modular, multi-tier web framework for labeling image datasets with AI assistance and Active Learning support.
+AIde is a modular Web framework for labeling image datasets with AI assistance. AIde is configurable for a variety of tasks, but it is particularly intended for acclerating wildlife surveys that use aerial images. AIde is primarily developed by [Benjamin Kellenberger](https://www.wur.nl/en/Persons/Benjamin-BA-Benjamin-Kellenberger-MSc.htm), supported by the [Microsoft AI for Earth](https://www.microsoft.com/en-us/ai/ai-for-earth) program.
 
-![AIde overview](doc/figures/AIde_animal_hero.png)
-TODO: GIF/video of platform
-
-
-AIde is primarily developed and maintained by [Benjamin Kellenberger](https://www.wur.nl/en/Persons/Benjamin-BA-Benjamin-Kellenberger-MSc.htm), in the context of the [Microsoft AI for Earth](https://www.microsoft.com/en-us/ai/ai-for-earth) initiative.
+![AIde overview](doc/figures/AIde_animal_hero_1100.jpg)
 
 
 ## Highlights
 
-![AIde highlights](doc/figures/Aide_highlights.png)
-
-* **Powerful:** To the best of the authors' knowledge, AIde is the first platform that explicitly integrates humans and AI models in a loop (cf. Active Learning).
+* **Powerful:** AIde explicitly integrates humans and AI models in an annotation loop.
 * **Fast:** AIde has been designed with speed in mind, both in terms of computations and workflow.
-* **Flexible:** The framework allows full customizability, from hyperparameters and models over annotation types to libraries. It provides:
-    * Full support for image classification, point annotations and bounding boxes (object detection);
-    * a number of AI models and Active Learning criteria [built-in](doc/builtin_models.md);
-    * interfaces for custom AI models and criteria, using any framework or library you want (see how to [write your own model](doc/custom_model.md)).
-* **Modular:** AIde is separated into individual _Modules_, each of which can be run on separate machines for scalability, if needed. It even supports on-the-fly additions of new computational workers for the heavy model training part!
+* **Flexible:** The framework allows full customizability, from hyperparameters to models to annotation types to libraries. It provides:
+    * Support for image classification, point annotations, and bounding boxes (object detection)
+    * A number of AI models and Active Learning criteria [built-in](doc/builtin_models.md)
+    * Interfaces for custom AI models and criteria, using any framework or library you want (see how to [write your own model](doc/custom_model.md)).
+* **Modular:** AIde is separated into individual _modules_, each of which can be run on separate machines for scalability. It even supports on-the-fly addition of computational workers for computationally intensive model training!
 
-
-
-
-## Installation
-
-See the instructions [here](doc/install.md).
-
+![AIde highlights](doc/figures/Aide_highlights.png)
 
 
 ## Framework Overview
 
-In its full form, AIde comprises individual instances (called _modules_) in an organization such as follows:
+AIde consists of individual _modules_, organized as follows:
 
 ![AIde module diagram](doc/figures/AIde_diagram.png)
 
-where the following modules are run:
-* **LabelUI**: module responsible for delivering and accepting predictions and annotations to and from the user/labeler;
-* **AIWorker**: node that runs the AI model in the background to train and predict data;
-* **AIController**: coordinator that distributes and manages jobs to and from the individual _AIWorker_ instance(s);
-* **Database**: stores all metadata (image paths, viewcounts, user annotations, model predictions, user account data, etc.);
-* **FileServer**: provides image files to both the _LabelUI_ and _AIWorker_ instances;
-* message broker: AIde makes use of [Celery](http://www.celeryproject.org/), a distributed task queue piggybacking on message brokers like [RabbitMQ](https://www.rabbitmq.com/) or [Redis](https://redis.io/).
+* **LabelUI**: responsible for delivering and accepting predictions and annotations to and from the user/labeler
+* **AIWorker**: runs the AI model in the background to train and predict data
+* **AIController**: distributes and manages jobs to and from the individual _AIWorker_ instance(s)
+* **Database**: stores all metadata (image paths, viewcounts, user annotations, model predictions, user account data, etc.)
+* **FileServer**: provides image files to both the _LabelUI_ and _AIWorker_ instances
+* **Message Broker**: AIde makes use of [Celery](http://www.celeryproject.org/), a distributed task queue leveraging message brokers like [RabbitMQ](https://www.rabbitmq.com/) or [Redis](https://redis.io/).
 
 
 The framework can be configured in two ways:
-1. As a static labeling tool (_i.e._, using only the modules in (a.)). In this case there will be no AI assistance for learning and prioritizing the relevant images.
+1. As a static labeling tool (_i.e._, using only the modules in (a)). In this case there will be no AI assistance for labeling or prioritizing the relevant images.
 2. As a full suite with AI support, using all modules.
 
-Also note that the individual modules need not necessarily be run on separate instances; it is possible to combine the components in any way and launch multiple (or all) modules on one machine. Also, the example shows three _AIWorker_ instances, but the number of workers can be chosen arbitrarily, and workers may be added or removed on-the-fly.
+The individual modules need not be run on separate instances; it is possible to combine the components in any way and launch multiple (or all) modules on one machine. For example, the diagram above shows three _AIWorker_ instances, but the number of workers can be chosen arbitrarily, and workers may be added or removed on-the-fly.
 
 
 ## Using a built-in AI model
-AIde ships with a series of built-in models that can be configured and customized for a number of tasks (image classification, object detection, etc.).
-See [this page](doc/builtin_models.md) for further instructions on how to use one of the built-ins.
+AIde ships with a set of built-in models that can be configured and customized for a number of tasks (image classification, object detection, etc.).  See [this page](doc/builtin_models.md) for instructions on how to use one of the built-in models.
 
 
 ## Writing your own AI model
-AIde is fully modular and supports custom AI models, as long as they provide a Python interface and can handle the different annotation and prediction types appropriately. See [here](doc/custom_model.md) for details.
+AIde is fully modular and supports custom AI models, as long as they provide a Python interface and can handle the different annotation and prediction types appropriately. See [here](doc/custom_model.md) for instructions on using custom models.
+
+
+## Installation
+
+See [here](doc/install.md) for instructions on configuring an instance of AIde.
 
 
 ## Launching AIde
 
-See [here](doc/launch_aide.md)
+See [here](doc/launch_aide.md) for instructions on launching an instance of AIde.
 
 
-# Contributing
+## Contributing
 
 This project welcomes contributions and suggestions.  Most contributions require you to agree to a
 Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
