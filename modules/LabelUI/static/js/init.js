@@ -233,13 +233,17 @@ $(document).ready(function() {
 
 
     // login check
-    var promise = $.ajax({
-        url: '/loginCheck',
-        method: 'post',
-        error: function() {
-            window.location.href = '/';
-        }
-    });
+    if(window.demoMode) {
+        var promise = $.Deferred().promise();
+    } else {
+        var promise = $.ajax({
+            url: '/loginCheck',
+            method: 'post',
+            error: function() {
+                window.location.href = window.indexURI;
+            }
+        });
+    }
 
     // set up general config
     promise = promise.then(function() {
@@ -451,7 +455,7 @@ $(document).ready(function() {
             window.showOverlay(overlayHtml, false, false);
 
             $('#abort').click(function() {
-                window.location.href = '/';
+                window.location.href = window.indexURI;
             })
 
             $('#confirm-password').click(function() {

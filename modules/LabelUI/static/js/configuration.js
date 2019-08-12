@@ -43,6 +43,7 @@ window.getProjectSettings = function() {
     return $.get('getProjectSettings', function(data) {
         window.projectName = data['settings']['projectName'];
         window.projectDescription = data['settings']['projectDescription'];
+        window.indexURI = data['settings']['indexURI']
         window.dataServerURI = data['settings']['dataServerURI'];
         if(!window.dataServerURI.endsWith('/')) {
             window.dataServerURI += '/';

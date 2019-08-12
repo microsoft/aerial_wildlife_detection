@@ -47,6 +47,7 @@ class DBMiddleware():
         self.projectSettings = {
             'projectName': self.config.getProperty('Project', 'projectName'),
             'projectDescription': self.config.getProperty('Project', 'projectDescription'),
+            'indexURI': self.config.getProperty('Server', 'index_uri', type=str, fallback='/'),
             'dataServerURI': self.config.getProperty('Server', 'dataServer_uri'),
             'aiControllerURI': aiControllerURI,
             'dataType': self.config.getProperty('Project', 'dataType', fallback='images'),

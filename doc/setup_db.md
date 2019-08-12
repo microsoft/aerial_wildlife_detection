@@ -14,7 +14,7 @@ However, for the database operation, this is not required. If you wish to skip t
 ```bash
     dbName=$(python util/configDef.py --section=Database --parameter=name)
     dbUser=$(python util/configDef.py --section=Database --parameter=user)
-    dbPassword=$(python util/configDef.py --section=Database --parameter=user)
+    dbPassword=$(python util/configDef.py --section=Database --parameter=password)
     dbPort=$(python util/configDef.py --section=Database --parameter=port)
 ```
 
@@ -39,8 +39,8 @@ However, for the database operation, this is not required. If you wish to skip t
 
     # modify authentication
     # NOTE: you might want to manually adapt these commands for increased security; the following makes postgres listen to all global connections
-    sudo sed -i "s/\s#\s*listen_addresses\s=\s'localhost'/listen_addresses = '\*'/g" /etc/postgresql/$version/main/postgresql.conf
-    sudo echo "host    all             all             0.0.0.0/0               md5" >> /etc/postgresql/$version/main/pg_hba.conf
+    sudo sed -i "s/\s*#\s*listen_addresses\s=\s'localhost'/listen_addresses = '\*'/g" /etc/postgresql/$version/main/postgresql.conf
+    echo "host    all             all             0.0.0.0/0               md5" | sudo tee -a /etc/postgresql/$version/main/pg_hba.conf > /dev/null
 
 
     # restart postgres and auto-launch it on boot

@@ -18,6 +18,7 @@ class UserHandler():
         self.staticDir = 'modules/UserHandling/static'
         self.middleware = UserMiddleware(config)
 
+        self.indexURI = self.config.getProperty('Server', 'index_uri', type=str, fallback='/')
         self.demoMode = config.getProperty('Project', 'demoMode', type=bool, fallback=False)
 
         self._initBottle()
@@ -107,7 +108,7 @@ class UserHandler():
 
                 # send redirect
                 response.status = 303
-                response.set_header('Location', '/')
+                response.set_header('Location', self.indexURI)
                 return response
 
             except Exception as e:

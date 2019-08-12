@@ -33,13 +33,22 @@ If an instance is supposed to run multiple modules at once (e.g. both the _Label
 
 
 ```bash
-    envDir=/path/to/python/environment/bin/python                           # absolute path of the Python executable. Example: "/data/anaconda/envs/py36/bin/python". See command: "conda info --envs".
+    gunicornDir=$(which gunicorn)                                           # the same for Gunicorn.
     aideDir=/path/to/aide/root                                              # absolute directory where the AIde code base is installed in
     configFilePath=/path/to/settings.ini                                    # absolute directory where the project's *.ini configuration file lies
     modules='LabelUI,AIController'                                          # modules to be run on this very server. You may add multiple as a comma-separated string (the order does not matter)
-    port=$(python util/configDef.py --section=Server --parameter=port);     # port under which you wish to run the _LabelUI_ frontend
-    user=$whoami;                                                           # user name under which to run the AIde instance
+    host=$(python util/configDef.py --section=Server --parameter=host);     # host of the server you wish to run the modules
+    port=$(python util/configDef.py --section=Server --parameter=port);     # port under which you wish to run the modules
+    user=$(whoami);                                                         # user name under which to run the AIde instance
     numWorkers=5;                                                           # number of threads to run the Gunicorn server in
+
+    
+    # create gunicorn start script
+    echo "#!/bin/bash
+    export AIDE_CONFIG_PATH=$configFilePath
+    export AIDE_MODULES=$modules
+    $gunicornDir application:app --bind=$host:$port --workers=$numWorkers" >> $aideDir/startup.sh
+    chmod +x $aideDir/startup.sh
 
 
     # set up gunicorn service
@@ -50,22 +59,30 @@ If an instance is supposed to run multiple modules at once (e.g. both the _Label
 
     [Service]
     User=$user
-    Group=#TODO
+    Group=www-data
     WorkingDirectory=$aideDIR
     Environment=AIDE_CONFIG_PATH=$configFilePath
-    Environment=PATH=
-    ExecStart=gunicorn --workers $numWorkers --bind unix:aide.sock -m 007 application:app
+    Environment=AIDE_MODULES=$modules
+    ExecStart=$aideDir/startup.sh
 
 
     [Install]
     WantedBy=multi-user.target
-    " | sudo tee -a "/etc/systemd/system/aide.service" 
+    " | sudo tee -a "/etc/systemd/system/aide.service" >> /dev/null
+    sudo systemctl daemon-reload
+    sudo systemctl start aide.service
 
 
     # configure nginx proxy
     echo "
         server {
-            listen $port;
+            listen 80;
+            location / {
+                proxy_pass http://localhost:$port/;
+            }
+            location /static/ {
+                proxy_pass http://localhost:$port/static/;
+            }
         }
         #TODO: proxy_pass
     " | sudo tee -a "/etc/nginx/sites-available/aide" >> /dev/null
