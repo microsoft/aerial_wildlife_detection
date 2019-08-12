@@ -74,7 +74,7 @@ window.getProjectSettings = function() {
         window.defaultImage_h = parseInt(data['settings']['defaultImage_h']);
         window.styles = data['settings']['styles'];
         window.welcomeMessage = data['settings']['welcomeMessage'];
-        window.demoMode = data['settings']['demoMode'];
+        window.demoMode = parseBoolean(data['settings']['demoMode']);
 
 
         // set interface page title and description
