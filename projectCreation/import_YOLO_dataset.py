@@ -58,9 +58,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Parse YOLO annotations and import into database.')
     parser.add_argument('--settings_filepath', type=str, default='config/settings.ini', const=1, nargs='?',
                     help='Directory of the settings.ini file used for this machine (default: "config/settings.ini").')
-    parser.add_argument('--label_folder', type=str, default='/datadrive/hfaerialblobs/bkellenb/predictions/A/sde-A_20180921A/labels', const=1, nargs='?',
+    parser.add_argument('--label_folder', type=str, default='/datadrive/arcticseals/labels', const=1, nargs='?',
                     help='Directory (absolute path) on this machine that contains the YOLO label text files.')
-    parser.add_argument('--annotation_type', type=str, default='prediction', const=1, nargs='?',
+    parser.add_argument('--annotation_type', type=str, default='annotation', const=1, nargs='?',
                     help='Kind of the provided annotations. One of {"annotation", "prediction"} (default: annotation)')
     parser.add_argument('--al_criterion', type=str, default='TryAll', const=1, nargs='?',
                     help='Criterion for the priority field (default: TryAll)')
@@ -151,7 +151,7 @@ if __name__ == '__main__':
             sql = '''
             INSERT INTO {}.ANNOTATION (username, image, timeCreated, timeRequired, label, x, y, width, height)
             VALUES(
-                {},
+                '{}',
                 (SELECT id FROM {}.IMAGE WHERE filename LIKE %s),
                 (TIMESTAMP %s),
                 -1,
@@ -160,7 +160,7 @@ if __name__ == '__main__':
                 %s,
                 %s,
                 %s
-            )'''.format(dbSchema, dbSchema, config.getProperty('Project', 'adminName'))
+            )'''.format(dbSchema, config.getProperty('Project', 'adminName'), dbSchema)
         elif args.annotation_type == 'prediction':
             sql = '''
             INSERT INTO {}.PREDICTION (image, timeCreated, label, confidence, x, y, width, height, priority)
@@ -190,7 +190,7 @@ if __name__ == '__main__':
             continue
 
         baseName = basePath.replace(imgBaseDir, '')
-        imgs[baseName] = i
+        imgs[baseName] = i.replace(imgBaseDir, '')
 
 
     # ignore images that are already in database
