@@ -50,6 +50,7 @@ It is strongly recommended to run AIde in a self-contained Python environment, s
     git clone git+https://github.com/microsoft/aerial_wildlife_detection.git
 
     # install basic requirements
+    sudo apt-get install -y libpq-dev python-dev
     pip install -U -r requirements.txt
 
     # at this point you may want to install the additonal packages listed above, if required
