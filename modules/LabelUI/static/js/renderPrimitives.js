@@ -708,7 +708,7 @@ class RectangleElement extends PointElement {
             !force && (!([ACTIONS.DO_NOTHING, ACTIONS.ADD_ANNOTATION].includes(window.uiControlHandler.getAction())))) return;
         this.mousePos_current = viewport.getRelativeCoordinates(event, 'validArea');
         this.mouseDrag = (event.which === 1);
-        this.activeHandle = this.getClosestHandle(this.mousePos_current, window.annotationProximityTolerance / Math.min(viewport.canvas.width(), viewport.canvas.height()));
+        this.activeHandle = this.getClosestHandle(this.mousePos_current, Math.min(this.width, this.height)/3);
         if(this.activeHandle === 'c') {
             // center of a box clicked; set globally so that other active boxes don't falsely resize
             viewport.canvas.css('cursor', 'move');
@@ -788,7 +788,7 @@ class RectangleElement extends PointElement {
             // update timestamp
             this.lastUpdated = new Date();
         } else {
-            this.activeHandle = this.getClosestHandle(mpc, window.annotationProximityTolerance / Math.min(viewport.canvas.width(), viewport.canvas.height()));
+            this.activeHandle = this.getClosestHandle(mpc, Math.min(this.width, this.height)/3);
         }
 
         // update resize handles
@@ -816,7 +816,7 @@ class RectangleElement extends PointElement {
             !force && (!(window.uiControlHandler.getAction() === ACTIONS.DO_NOTHING ||
             window.uiControlHandler.getAction() === ACTIONS.ADD_ANNOTATION))) return;
         var mousePos = viewport.getRelativeCoordinates(event, 'validArea');
-        this.activeHandle = this.getClosestHandle(mousePos, window.annotationProximityTolerance / Math.min(viewport.canvas.width(), viewport.canvas.height()));
+        this.activeHandle = this.getClosestHandle(mousePos, Math.min(this.width, this.height)/3);
         if(this.activeHandle == null) {
             this.setActive(false, viewport);
         } else {
@@ -831,6 +831,7 @@ class RectangleElement extends PointElement {
 
     _clamp_min_box_size(viewport) {
         // Make sure box is of correct size
+        // TODO: does not scale independently of canvas size
         var minWidth = window.minBoxSize_w;
         var minHeight = window.minBoxSize_h;
         var minSize = viewport.transformCoordinates([0, 0, minWidth, minHeight], 'validArea', true).slice(2,4);

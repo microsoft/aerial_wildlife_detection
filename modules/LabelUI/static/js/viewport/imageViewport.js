@@ -171,8 +171,8 @@ class ImageViewport {
             var diffX = newMousePos[0] - this.mousePos[0];
             var diffY = newMousePos[1] - this.mousePos[1];
             var vp = this.getViewport();
-            vp[0] -= diffX;
-            vp[1] -= diffY;
+            vp[0] -= diffX * this.viewport[2];
+            vp[1] -= diffY * this.viewport[3];
             this.setViewport(vp);
 
         } else {
@@ -221,6 +221,8 @@ class ImageViewport {
 
         // destroy zoom rectangle
         this.zoomRectangle = null;
+
+        this.mousePos = null;
     }
 
 
