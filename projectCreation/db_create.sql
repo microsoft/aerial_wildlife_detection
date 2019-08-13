@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS &schema.LABELCLASSGROUP (
 
 CREATE TABLE IF NOT EXISTS &schema.LABELCLASS (
     id uuid DEFAULT uuid_generate_v4(),
-    name VARCHAR NOT NULL,
+    name VARCHAR UNIQUE NOT NULL,
     idx SERIAL UNIQUE NOT NULL,
     color VARCHAR,
     labelclassgroup uuid,

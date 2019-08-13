@@ -124,10 +124,11 @@ if __name__ == '__main__':
     # parse class names and indices
     if args.label_folder is not None:
         classdef = {}
+
         with open(os.path.join(args.label_folder, 'classes.txt'),'r') as f:
             lines = f.readlines()
         for idx, line in enumerate(lines):
-            className = line.strip()
+            className = line.strip()            
 
             # push to database
             dbConn.execute('''
@@ -135,6 +136,7 @@ if __name__ == '__main__':
                 VALUES (
                     %s
                 )
+                ON CONFLICT (name) DO NOTHING;
             '''.format(dbSchema),
             (className,))
 
@@ -160,7 +162,7 @@ if __name__ == '__main__':
                 %s,
                 %s,
                 %s
-            )'''.format(dbSchema, config.getProperty('Project', 'adminName'), dbSchema)
+            );'''.format(dbSchema, config.getProperty('Project', 'adminName'), dbSchema)
         elif args.annotation_type == 'prediction':
             sql = '''
             INSERT INTO {}.PREDICTION (image, timeCreated, label, confidence, x, y, width, height, priority)
@@ -174,7 +176,7 @@ if __name__ == '__main__':
                 %s,
                 %s,
                 %s
-            )'''.format(dbSchema, dbSchema)
+            );'''.format(dbSchema, dbSchema)
 
     # locate all images and their base names
     print('\nAdding image paths...')

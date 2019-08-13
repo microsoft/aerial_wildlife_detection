@@ -306,53 +306,89 @@ class DataHandler {
     nextBatch() {
         if(window.uiBlocked) return;
         if(window.demoMode) {
+            // in demo mode we add the entire objects to the history
+            this.undoStack.push(this.dataEntries.slice());
+
             this._loadNextBatch();
             return;
         }
 
         var self = this;
 
-        var _next_batch = function() {
-            // add current image IDs to history
-            var historyEntry = [];
-            for(var i=0; i<this.dataEntries.length; i++) {
-                historyEntry.push(this.dataEntries[i]['entryID']);
-            }
-            this.undoStack.push(historyEntry);
-            
-            this._submitAnnotations().done(function() {
+        if(window.demoMode) {
+            var _next_batch = function() {
+                // in demo mode we add the entire objects to the history
+                self.undoStack.push(self.dataEntries.slice());
                 if(self.redoStack.length > 0) {
-                    var nb = self.redoStack.pop();
-                    self._loadFixedBatch(nb.slice());
+                    // re-initialize stored data entries
+                    var entries = self.redoStack.pop();
+                    self.dataEntries = entries;
+                    self.parentDiv.empty();
+                    for(var e=0; e<self.dataEntries.length; e++) {
+                        self.parentDiv.append(self.dataEntries[e].markup);
+                    }
                 } else {
                     self._loadNextBatch();
                 }
-            });
+            }
+
+        } else {
+            var _next_batch = function() {
+                // add current image IDs to history
+                var historyEntry = [];
+                for(var i=0; i<this.dataEntries.length; i++) {
+                    historyEntry.push(this.dataEntries[i]['entryID']);
+                }
+                this.undoStack.push(historyEntry);
+                
+                this._submitAnnotations().done(function() {
+                    if(self.redoStack.length > 0) {
+                        var nb = self.redoStack.pop();
+                        self._loadFixedBatch(nb.slice());
+                    } else {
+                        self._loadNextBatch();
+                    }
+                });
+            }
         }
         this._showConfirmationDialog((_next_batch).bind(this));
     }
 
 
     previousBatch() {
-        if(window.uiBlocked || window.demoMode || this.undoStack.length === 0) return;
+        if(window.uiBlocked || this.undoStack.length === 0) return;
         
         var self = this;
 
-        var _previous_batch = function() {
-            // add current image IDs to history
-            var historyEntry = [];
-            for(var i=0; i<this.dataEntries.length; i++) {
-                historyEntry.push(this.dataEntries[i]['entryID']);
+        if(window.demoMode) {
+            var _previous_batch = function() {
+                self.redoStack.push(self.dataEntries.slice());
+
+                // re-initialize stored data entries
+                var entries = self.undoStack.pop();
+                self.dataEntries = entries;
+                self.parentDiv.empty();
+                for(var e=0; e<self.dataEntries.length; e++) {
+                    self.parentDiv.append(self.dataEntries[e].markup);
+                }
             }
-            this.redoStack.push(historyEntry);
-
-            var pb = this.undoStack.pop();
-
-            // load
-            this._submitAnnotations().done(function() {
-                self._loadFixedBatch(pb.slice());
-            })
-        };
+        } else {
+            var _previous_batch = function() {
+                // add current image IDs to history
+                var historyEntry = [];
+                for(var i=0; i<this.dataEntries.length; i++) {
+                    historyEntry.push(this.dataEntries[i]['entryID']);
+                }
+                this.redoStack.push(historyEntry);
+    
+                var pb = this.undoStack.pop();
+    
+                // load
+                this._submitAnnotations().done(function() {
+                    self._loadFixedBatch(pb.slice());
+                })
+            };
+        }
         this._showConfirmationDialog((_previous_batch).bind(this));
     }
 
