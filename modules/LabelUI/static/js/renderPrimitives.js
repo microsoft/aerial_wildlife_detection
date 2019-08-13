@@ -1347,11 +1347,19 @@ class SegmentationElement extends AbstractRenderElement {
                 this._blend_maps(annotationMap, predictionMap);
             } else {
                 // only annotations available
-                this._parse_map(window.base64ToBuffer(annotationMap));
+                try {
+                    this._parse_map(window.base64ToBuffer(annotationMap));
+                } catch {
+                    console.log('WARNING: failed to read annotation segmentation map.');
+                }
             }
         } else if(predictionMap != undefined && predictionMap != null) {
             // only predictions available
-            this._parse_map(window.base64ToBuffer(annotationMap));
+            try {
+                this._parse_map(window.base64ToBuffer(annotationMap));
+            } catch {
+                console.log('WARNING: failed to read prediction segmentation map.');
+            }
         }
     }
 

@@ -13,7 +13,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Parse YOLO annotations and import into database.')
     parser.add_argument('--settings_filepath', type=str, default='config/settings.ini', const=1, nargs='?',
                     help='Directory of the settings.ini file used for this machine (default: "config/settings.ini").')
-    parser.add_argument('--label_folder', type=str, default='/datadrive/arcticseals/patches_800x600/labels', const=1, nargs='?',
+    parser.add_argument('--label_folder', type=str, default='/datadrive/landcover/labels', const=1, nargs='?',
                     help='Directory (absolute path) on this machine that contains the YOLO label text files.')
     parser.add_argument('--annotation_type', type=str, default='annotation', const=1, nargs='?',
                     help='Kind of the provided annotations. One of {"annotation", "prediction"} (default: annotation)')
@@ -28,6 +28,7 @@ if __name__ == '__main__':
     import glob
     from tqdm import tqdm
     import datetime
+    import numpy as np
     from PIL import Image
     import base64
     from io import BytesIO
@@ -104,7 +105,7 @@ if __name__ == '__main__':
                 -1,
                 %s,
                 %s,
-                %s,
+                %s
             );'''.format(dbSchema, config.getProperty('Project', 'adminName'), dbSchema)
         elif args.annotation_type == 'prediction':
             sql = '''
@@ -114,8 +115,7 @@ if __name__ == '__main__':
                 (TIMESTAMP %s),
                 %s,
                 %s,
-                %s,
-                %s,
+                %s
             );'''.format(dbSchema, dbSchema)
 
     # locate all images and their base names
@@ -176,8 +176,8 @@ if __name__ == '__main__':
             sz = segMask.size
 
             # convert
-            segMask_buffered = segMask.save(BytesIO(), format='TIFF')
-            b64str = base64.b64encode(segMask_buffered.getValue())
+            dataArray = np.array(segMask).astype(np.uint8)
+            b64str = base64.b64encode(dataArray)
 
             # add to database
             dbConn.execute(sql,

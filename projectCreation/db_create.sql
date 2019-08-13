@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS &schema.ANNOTATION (
     image uuid NOT NULL,
     timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     timeRequired BIGINT,
-    
+    unsure boolean NOT NULL DEFAULT false,
     &annotationFields
     PRIMARY KEY (id),
     FOREIGN KEY (username) REFERENCES &schema.USER(name),
@@ -106,6 +106,7 @@ CREATE TABLE IF NOT EXISTS &schema.PREDICTION (
     image uuid NOT NULL,
     timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     cnnstate UUID,
+    confidence real,
     &predictionFields
     priority real,
     PRIMARY KEY (id),

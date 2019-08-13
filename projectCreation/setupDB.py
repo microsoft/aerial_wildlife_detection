@@ -16,15 +16,10 @@ def _constructAnnotationFields(annoType, table, doublePrecision=False):
     if doublePrecision:
         coordType = 'double precision'
 
-    confString = ''
-    if table == 'prediction':
-        confString = 'conidence real,'
-
-    unsureString = ''
-    if table == 'annotation':
-        unsureString = 'unsure boolean NOT NULL DEFAULT false,'
-
     if False:       #TODO: separate confidence values for all labelclasses? How to handle empty class? (table == 'prediction'):
+        confString = ''
+        if table == 'prediction':
+            confString = 'conidence real,'
         additionalTables = '''CREATE TABLE IF NOT EXISTS &schema.PREDICTION_LABELCLASS (
             prediction uuid NOT NULL,
             labelclass uuid NOT NULL,
@@ -40,32 +35,26 @@ def _constructAnnotationFields(annoType, table, doublePrecision=False):
     if annoType == 'labels':
         annoFields = '''
             label uuid &labelclassNotNull,
-            confidence real,
-            {unsureString}
             FOREIGN KEY (label) REFERENCES &schema.LABELCLASS(id),
-        '''.format(unsureString=unsureString)
+        '''
     
     elif annoType == 'points':
         annoFields = '''
             label uuid &labelclassNotNull,
-            confidence real,
             x {coordType},
             y {coordType},
-            {unsureString}
             FOREIGN KEY (label) REFERENCES &schema.LABELCLASS(id),
-        '''.format(coordType=coordType, unsureString=unsureString)
+        '''.format(coordType=coordType)
 
     elif annoType == 'boundingBoxes':
         annoFields = '''
             label uuid &labelclassNotNull,
-            confidence real,
             x {coordType},
             y {coordType},
             width {coordType},
             height {coordType},
-            {unsureString}
             FOREIGN KEY (label) REFERENCES &schema.LABELCLASS(id),
-        '''.format(coordType=coordType, unsureString=unsureString)
+        '''.format(coordType=coordType)
 
     elif annoType == 'segmentationMasks':
         additionalTables = None     # not needed for semantic segmentation

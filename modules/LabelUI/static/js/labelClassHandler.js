@@ -59,7 +59,7 @@ class LabelClass {
         this.classID = classID;
         this.name = (properties['name']===null || properties['name'] === undefined ? '[Label Class '+this.classID+']' : properties['name']);
         this.index = properties['index'];
-        this.color = (properties['color']===null  || properties['color'] === undefined ? window.getDefaultColor(this.index-1) : properties['color']);
+        this.color = (properties['color']===null  || properties['color'] === undefined ? window.getDefaultColor(this.index) : properties['color']);
         this.colorValues = window.getColorValues(this.color);   // [R, G, B, A]
 
 
@@ -281,7 +281,7 @@ class LabelClassHandler {
         this.labelToColorMapping = {};  // LUT for color hex strings to label classes
 
         // initialize default rainbow colors
-        window.initClassColors(window.classes.numClasses)
+        window.initClassColors(window.classes.numClasses+1)
         for(var c in window.classes['entries']) {
             var nextItem = window.parseClassdefEntry(c, window.classes['entries'][c], this);
             if(nextItem === null) continue;
