@@ -234,7 +234,7 @@ $(document).ready(function() {
 
     // project info
     var promise = $.ajax({
-        url: '/getProjectInfo',
+        url: 'getProjectInfo',
         method: 'get',
         success: function(data) {
             if(data.hasOwnProperty('info')) {
@@ -257,7 +257,7 @@ $(document).ready(function() {
     if(!window.demoMode) {
         promise = promise.then(function() {
             return $.ajax({
-                url: '/loginCheck',
+                url: 'loginCheck',
                 method: 'post',
                 error: function() {
                     window.location.href = window.indexURI;
@@ -459,7 +459,7 @@ $(document).ready(function() {
                 var username = $('#navbar-user-dropdown').html();       // cannot use cookie since it has already been deleted by the server
                 var password = $('#password').val();
                 $.ajax({
-                    url: '/login',
+                    url: 'login',
                     method: 'post',
                     data: {username: username, password: password},
                     success: function(response) {
@@ -486,7 +486,7 @@ $(document).ready(function() {
 
         window.verifyLogin = function(callback) {
             return $.ajax({
-                url: '/loginCheck',
+                url: 'loginCheck',
                 method: 'post',
                 success: function() {
                     window.showOverlay(null);

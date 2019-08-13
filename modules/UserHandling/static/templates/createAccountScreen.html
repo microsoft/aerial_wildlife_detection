@@ -15,7 +15,7 @@
                 return false;
             }
             var promise = $.ajax({
-                url: '/accountExists',
+                url: 'accountExists',
                 method: 'post',
                 data: {
                     'username': currName
@@ -35,7 +35,7 @@
             var currName = $('#username').val();
             if(currName != null && currName.length > 0) {
                 $.ajax({
-                    url: '/accountExists',
+                    url: 'accountExists',
                     method: 'post',
                     data: {
                         'username': currName
@@ -124,7 +124,7 @@
 
 
             $.ajax({
-                url: '/createAccount',
+                url: 'createAccount',
                 method: 'post',
                 data: {
                     'username': username,

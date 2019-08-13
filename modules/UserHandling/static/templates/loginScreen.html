@@ -7,7 +7,7 @@
             var password = $(this).find('[name=password]').val();
 
             $.ajax({
-                url: '/login',
+                url: 'login',
                 method: 'POST',
                 data: {
                     'username': $('form').find('[name=username]').val(),
