@@ -254,7 +254,7 @@ $(document).ready(function() {
 
 
     // login check
-    promise = promise.then(function() {
+    promise = promise.done(function() {
         if(!window.demoMode) {
             return $.ajax({
                 url: '/loginCheck',
