@@ -131,6 +131,7 @@ class DBMiddleware():
         return {
             'projectName' : self.projectSettings['projectName'],
             'projectDescription' : self.projectSettings['projectDescription'],
+            'demoMode': self.config.getProperty('Project', 'demoMode', type=bool, fallback=False),
             'backdrops': self.projectSettings['backdrops']['images']
         }
 

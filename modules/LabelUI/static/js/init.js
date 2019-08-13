@@ -232,18 +232,41 @@ $(document).ready(function() {
     }
 
 
-    // login check
-    if(window.demoMode) {
-        var promise = $.Deferred().promise();
-    } else {
-        var promise = $.ajax({
-            url: '/loginCheck',
-            method: 'post',
-            error: function() {
-                window.location.href = window.indexURI;
+    // project info
+    var promise = $.ajax({
+        url: '/getProjectInfo',
+        method: 'get',
+        success: function(data) {
+            if(data.hasOwnProperty('info')) {
+                // demo mode
+                try {
+                    window.demoMode = parseBoolean(data['info']['demoMode']);
+                } catch {
+                    window.demoMode = false;
+                }
             }
-        });
-    }
+        },
+        error: function() {
+            console.log('Error retrieving project info.');
+            window.demoMode = false;
+        }
+    });
+
+
+    // login check
+    promise = promise.then(function() {
+        if(!window.demoMode) {
+            return $.ajax({
+                url: '/loginCheck',
+                method: 'post',
+                error: function() {
+                    window.location.href = window.indexURI;
+                }
+            });
+        } else {
+            return $.Deferred().promise();
+        }
+    });
 
     // set up general config
     promise = promise.then(function() {
