@@ -254,8 +254,8 @@ $(document).ready(function() {
 
 
     // login check
-    promise = promise.done(function() {
-        if(!window.demoMode) {
+    if(!window.demoMode) {
+        promise = promise.then(function() {
             return $.ajax({
                 url: '/loginCheck',
                 method: 'post',
@@ -263,10 +263,8 @@ $(document).ready(function() {
                     window.location.href = window.indexURI;
                 }
             });
-        } else {
-            return $.Deferred().promise();
-        }
-    });
+        });
+    }
 
     // set up general config
     promise = promise.then(function() {
