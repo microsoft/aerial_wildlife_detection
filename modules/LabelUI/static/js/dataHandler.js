@@ -305,25 +305,20 @@ class DataHandler {
 
     nextBatch() {
         if(window.uiBlocked) return;
-        if(window.demoMode) {
-            // in demo mode we add the entire objects to the history
-            this.undoStack.push(this.dataEntries.slice());
-
-            this._loadNextBatch();
-            return;
-        }
 
         var self = this;
 
         if(window.demoMode) {
             var _next_batch = function() {
                 // in demo mode we add the entire objects to the history
+                for(var e=0; e<self.dataEntries.length; e++) {
+                    self.dataEntries[e].markup.detach();
+                }
                 self.undoStack.push(self.dataEntries.slice());
                 if(self.redoStack.length > 0) {
                     // re-initialize stored data entries
                     var entries = self.redoStack.pop();
                     self.dataEntries = entries;
-                    self.parentDiv.empty();
                     for(var e=0; e<self.dataEntries.length; e++) {
                         self.parentDiv.append(self.dataEntries[e].markup);
                     }
@@ -362,12 +357,14 @@ class DataHandler {
 
         if(window.demoMode) {
             var _previous_batch = function() {
+                for(var e=0; e<self.dataEntries.length; e++) {
+                    self.dataEntries[e].markup.detach();
+                }
                 self.redoStack.push(self.dataEntries.slice());
 
                 // re-initialize stored data entries
                 var entries = self.undoStack.pop();
                 self.dataEntries = entries;
-                self.parentDiv.empty();
                 for(var e=0; e<self.dataEntries.length; e++) {
                     self.parentDiv.append(self.dataEntries[e].markup);
                 }

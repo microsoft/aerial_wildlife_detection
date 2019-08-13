@@ -26,6 +26,12 @@
         this.mouseDrag = false;
     }
 
+    setupListeners() {
+        if(!this.disableInteractions)
+            var self = this;
+            this.markup.on('click', (self._click).bind(self));
+    }
+
     _click(event) {
         /*
             Click listener to disable active annotations in other
@@ -234,9 +240,7 @@
         // var colSize = Math.round(12 / window.numImages_x);  // for bootstrap
         this.markup = $('<div class="entry"></div>');
         this.markup.append(this.canvas);
-        var self = this;
-        if(!this.disableInteractions)
-            this.markup.on('click', (self._click).bind(self));
+        this.setupListeners();
     }
 
     getImageURI() {
@@ -421,57 +425,11 @@
         return 'label';
     }
 
-    _addElement(element) {
-        // allow only one label for classification entry
-        var key = element['annotationID'];
-        if(element['type'] == 'annotation') {
-            if(Object.keys(this.annotations).length > 0) {
-                // replace current annotation
-                var currentKey = Object.keys(this.annotations)[0];
-                this.viewport.removeRenderElement(this.annotations[currentKey]);
-                delete this.annotations[currentKey];
-            }
-
-            // add new annotation from existing
-            var unsure = element['geometry']['unsure'];
-            var anno = new Annotation(key, {'label':element['label'], 'unsure':unsure}, 'labels', element['type']);
-            this.annotations[key] = anno;
-            this.viewport.addRenderElement(anno.getRenderElement());
-            this.labelInstance = anno;
-
-            // flip text color of BorderStrokeElement if needed
-            var htFill = this.labelInstance.geometry.getProperty('fillColor');
-            if(htFill != null && window.getBrightness(htFill) >= 92) {
-                this.labelInstance.geometry.setProperty('textColor', '#000000');
-            } else {
-                this.labelInstance.geometry.setProperty('textColor', '#FFFFFF');
-            }
-            
-        } else if(element['type'] == 'prediction' && window.showPredictions) {
-            this.predictions[key] = element;
-            this.viewport.addRenderElement(element.getRenderElement());
-        }
-
-        window.dataHandler.updatePresentClasses();
-    }
-
-    _setup_markup() {
-        var self = this;
-        super._setup_markup();
-        $(this.canvas).css('cursor', window.uiControlHandler.getDefaultCursor());
-
-        var htStyle = {
-            fillColor: window.styles.hoverText.box.fill,
-            textColor: window.styles.hoverText.text.color,
-            strokeColor: window.styles.hoverText.box.stroke.color,
-            lineWidth: window.styles.hoverText.box.stroke.lineWidth
-        };
-        this.hoverTextElement = new HoverTextElement(this.entryID + '_hoverText', null, null, 'validArea',
-            htStyle,
-            5);
-        this.viewport.addRenderElement(this.hoverTextElement);
-
+    setupListeners() {
+        super.setupListeners();
         if(!this.disableInteractions) {
+            var self = this;
+
             // click handler
             this.markup.mouseup(function(event) {
                 if(window.uiBlocked) return;
@@ -541,6 +499,59 @@
                 self.render();
             });
         }
+    }
+
+    _addElement(element) {
+        // allow only one label for classification entry
+        var key = element['annotationID'];
+        if(element['type'] == 'annotation') {
+            if(Object.keys(this.annotations).length > 0) {
+                // replace current annotation
+                var currentKey = Object.keys(this.annotations)[0];
+                this.viewport.removeRenderElement(this.annotations[currentKey]);
+                delete this.annotations[currentKey];
+            }
+
+            // add new annotation from existing
+            var unsure = element['geometry']['unsure'];
+            var anno = new Annotation(key, {'label':element['label'], 'unsure':unsure}, 'labels', element['type']);
+            this.annotations[key] = anno;
+            this.viewport.addRenderElement(anno.getRenderElement());
+            this.labelInstance = anno;
+
+            // flip text color of BorderStrokeElement if needed
+            var htFill = this.labelInstance.geometry.getProperty('fillColor');
+            if(htFill != null && window.getBrightness(htFill) >= 92) {
+                this.labelInstance.geometry.setProperty('textColor', '#000000');
+            } else {
+                this.labelInstance.geometry.setProperty('textColor', '#FFFFFF');
+            }
+            
+        } else if(element['type'] == 'prediction' && window.showPredictions) {
+            this.predictions[key] = element;
+            this.viewport.addRenderElement(element.getRenderElement());
+        }
+
+        window.dataHandler.updatePresentClasses();
+    }
+
+    _setup_markup() {
+        var self = this;
+        super._setup_markup();
+        $(this.canvas).css('cursor', window.uiControlHandler.getDefaultCursor());
+
+        var htStyle = {
+            fillColor: window.styles.hoverText.box.fill,
+            textColor: window.styles.hoverText.text.color,
+            strokeColor: window.styles.hoverText.box.stroke.color,
+            lineWidth: window.styles.hoverText.box.stroke.lineWidth
+        };
+        this.hoverTextElement = new HoverTextElement(this.entryID + '_hoverText', null, null, 'validArea',
+            htStyle,
+            5);
+        this.viewport.addRenderElement(this.hoverTextElement);
+
+        this.setupListeners();
     }
 
     setLabel(label) {
@@ -626,6 +637,17 @@ class PointAnnotationEntry extends AbstractDataEntry {
         return 'point';
     }
 
+    setupListeners() {
+        super.setupListeners();
+        if(!this.disableInteractions) {
+            var self = this;
+            this.viewport.addCallback(this.entryID, 'mousedown', (self._canvas_mousedown).bind(self));
+            this.viewport.addCallback(this.entryID, 'mousemove', (self._canvas_mousemove).bind(self));
+            this.viewport.addCallback(this.entryID, 'mouseup', (self._canvas_mouseup).bind(self));
+            this.viewport.addCallback(this.entryID, 'mouseleave', (self._canvas_mouseleave).bind(self));
+        }
+    }
+
     setLabel(label) {
         for(var key in this.annotations) {
             if(label == null) {
@@ -656,12 +678,7 @@ class PointAnnotationEntry extends AbstractDataEntry {
         this.viewport.addRenderElement(this.hoverTextElement);
 
         // interaction handlers
-        if(!this.disableInteractions) {
-            this.viewport.addCallback(this.entryID, 'mousedown', (self._canvas_mousedown).bind(self));
-            this.viewport.addCallback(this.entryID, 'mousemove', (self._canvas_mousemove).bind(self));
-            this.viewport.addCallback(this.entryID, 'mouseup', (self._canvas_mouseup).bind(self));
-            this.viewport.addCallback(this.entryID, 'mouseleave', (self._canvas_mouseleave).bind(self));
-        }
+        this.setupListeners();
     }
 
     _toggleActive(event) {
@@ -905,6 +922,25 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
         return 'boundingBox';
     }
 
+    setupListeners() {
+        super.setupListeners();
+        if(!this.disableInteractions) {
+            var self = this;
+            this.viewport.addCallback(this.entryID, 'mousedown', function(event) {
+                self._canvas_mousedown(event);
+            });
+            this.viewport.addCallback(this.entryID, 'mousemove', function(event) {
+                self._canvas_mousemove(event);
+            });
+            this.viewport.addCallback(this.entryID, 'mouseup', function(event) {
+                self._canvas_mouseup(event);
+            });
+            this.viewport.addCallback(this.entryID, 'mouseleave', function(event) {
+                self._canvas_mouseleave(event);
+            });
+        }
+    }
+
     setLabel(label) {
         for(var key in this.annotations) {
             if(label == null) {
@@ -935,20 +971,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
         this.viewport.addRenderElement(this.hoverTextElement);
 
         // interaction handlers
-        if(!this.disableInteractions) {
-            this.viewport.addCallback(this.entryID, 'mousedown', function(event) {
-                self._canvas_mousedown(event);
-            });
-            this.viewport.addCallback(this.entryID, 'mousemove', function(event) {
-                self._canvas_mousemove(event);
-            });
-            this.viewport.addCallback(this.entryID, 'mouseup', function(event) {
-                self._canvas_mouseup(event);
-            });
-            this.viewport.addCallback(this.entryID, 'mouseleave', function(event) {
-                self._canvas_mouseleave(event);
-            });
-        }
+        this.setupListeners();
     }
 
     _toggleActive(event) {
@@ -1230,6 +1253,25 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
         this._setup_markup();
     }
 
+    setupListeners() {
+        super.setupListeners();
+        if(!this.disableInteractions) {
+            var self = this;
+            this.viewport.addCallback(this.entryID, 'mousedown', function(event) {
+                self._canvas_mousedown(event);
+            });
+            this.viewport.addCallback(this.entryID, 'mousemove', function(event) {
+                self._canvas_mousemove(event);
+            });
+            this.viewport.addCallback(this.entryID, 'mouseup', function(event) {
+                self._canvas_mouseup(event);
+            });
+            this.viewport.addCallback(this.entryID, 'mouseleave', function(event) {
+                self._canvas_mouseleave(event);
+            });
+        }
+    }
+
     getAnnotationType() {
         return 'segmentationMap';
     }
@@ -1296,20 +1338,7 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
         this.viewport.addRenderElement(this.brush);
 
         // interaction handlers
-        if(!this.disableInteractions) {
-            this.viewport.addCallback(this.entryID, 'mousedown', function(event) {
-                self._canvas_mousedown(event);
-            });
-            this.viewport.addCallback(this.entryID, 'mousemove', function(event) {
-                self._canvas_mousemove(event);
-            });
-            this.viewport.addCallback(this.entryID, 'mouseup', function(event) {
-                self._canvas_mouseup(event);
-            });
-            this.viewport.addCallback(this.entryID, 'mouseleave', function(event) {
-                self._canvas_mouseleave(event);
-            });
-        }
+        this.setupListeners();
     }
 
     _set_default_brush() {

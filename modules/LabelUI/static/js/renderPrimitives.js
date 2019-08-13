@@ -1030,7 +1030,6 @@ class PaintbrushElement extends AbstractRenderElement {
     render(ctx, scaleFun) {
         super.render(ctx, scaleFun);
         if(!this.visible || this.x == null || this.y == null) return;
-
         var coords = scaleFun([this.x, this.y], 'validArea');
         var size = window.uiControlHandler.segmentation_properties.brushSize;
         size = scaleFun(scaleFun([0,0,size,size], 'canvas', true), 'canvas')[2];
