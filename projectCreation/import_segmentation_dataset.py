@@ -177,7 +177,7 @@ if __name__ == '__main__':
 
             # convert
             dataArray = np.array(segMask).astype(np.uint8)
-            b64str = base64.b64encode(dataArray)
+            b64str = base64.b64encode(dataArray.ravel()).decode('utf-8')
 
             # add to database
             dbConn.execute(sql,
