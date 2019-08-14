@@ -167,7 +167,7 @@ if __name__ == '__main__':
             sql = '''
             INSERT INTO {}.PREDICTION (image, timeCreated, label, confidence, x, y, width, height, priority)
             VALUES(
-                (SELECT id FROM {}.IMAGE WHERE filename LIKE %s),
+                (SELECT id FROM {}.IMAGE WHERE filename = %s),
                 (TIMESTAMP %s),
                 %s,
                 %s,
@@ -274,4 +274,4 @@ if __name__ == '__main__':
                         finally:
                             # no values provided
                             dbConn.execute(sql,
-                                (baseName+'%', currentDT, classdef[label], maxConf, bbox[0], bbox[1], bbox[2], bbox[3], priority))
+                                (imgs[baseName], currentDT, classdef[label], maxConf, bbox[0], bbox[1], bbox[2], bbox[3], priority))

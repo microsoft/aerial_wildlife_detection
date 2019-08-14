@@ -93,6 +93,7 @@ h3 {
 }
 .inline-control {
     display: inline;
+    vertical-align: middle;
 }
 .entry {
     display: inline-block;

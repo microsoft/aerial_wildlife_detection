@@ -13,7 +13,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Parse YOLO annotations and import into database.')
     parser.add_argument('--settings_filepath', type=str, default='config/settings.ini', const=1, nargs='?',
                     help='Directory of the settings.ini file used for this machine (default: "config/settings.ini").')
-    parser.add_argument('--label_folder', type=str, default='/datadrive/landcover/labels', const=1, nargs='?',
+    parser.add_argument('--label_folder', type=str, default='/datadrive/landcover/patches_800x600/labels', const=1, nargs='?',
                     help='Directory (absolute path) on this machine that contains the YOLO label text files.')
     parser.add_argument('--annotation_type', type=str, default='annotation', const=1, nargs='?',
                     help='Kind of the provided annotations. One of {"annotation", "prediction"} (default: annotation)')
@@ -111,7 +111,7 @@ if __name__ == '__main__':
             sql = '''
             INSERT INTO {}.PREDICTION (image, timeCreated, segmentationmask, width, height)
             VALUES(
-                (SELECT id FROM {}.IMAGE WHERE filename LIKE %s),
+                (SELECT id FROM {}.IMAGE WHERE filename = %s),
                 (TIMESTAMP %s),
                 %s,
                 %s,
@@ -181,4 +181,4 @@ if __name__ == '__main__':
 
             # add to database
             dbConn.execute(sql,
-                (baseName+'%', currentDT, b64str, sz[0], sz[1]))
+                (imgs[baseName], currentDT, b64str, sz[0], sz[1]))

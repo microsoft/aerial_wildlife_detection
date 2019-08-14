@@ -38,7 +38,8 @@ class UIControlHandler {
         // tools for semantic segmentation - ignored by others
         this.segmentation_properties = {
             brushType: 'rectangle',
-            brushSize: 20
+            brushSize: 20,
+            opacity: 0.75
         };
 
         this._setup_controls();
@@ -152,7 +153,8 @@ class UIControlHandler {
             this.segmentation_controls = {
                 brush_rectangle: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="static/img/controls/rectangle.svg" style="height:18px" title="Square brush" /></button>'),
                 brush_circle: $('<button class="btn btn-sm btn-secondary inline-control"><img src="static/img/controls/circle.svg" style="height:18px" title="Circular brush" /></button>'),
-                brush_size: $('<input class="inline-control" type="number" min="1" max="255" value="20" title="Brush size" />')
+                brush_size: $('<input class="inline-control" type="number" min="1" max="255" value="20" title="Brush size" style="width:50px" />'),
+                opacity: $('<input class="inline-control" type="range" min="0" max="255" value="220" title="Segmentation opacity" style="width:100px" />')        //TODO: make available for other annotation types as well?
             };  //TODO: ranges, default
 
             this.segmentation_controls.brush_rectangle.click(function() {
@@ -174,6 +176,13 @@ class UIControlHandler {
                     window.shortcutsDisabled = false;
                 }
             });
+            this.segmentation_controls.opacity.on({
+                input: function() {
+                    var val = Math.max(0, Math.min(255, this.value));
+                    $(this).val(val);
+                    self.setSegmentationOpacity(parseInt(val)/255.0);
+                }
+            });
 
             var segControls = $('<div class="inline-control"></div>');
             segControls.append(this.segmentation_controls.brush_rectangle);
@@ -181,6 +190,8 @@ class UIControlHandler {
             segControls.append($('<span style="margin-left:10px;margin-right:5px;color:white">Size:</span>'));
             segControls.append(this.segmentation_controls.brush_size);
             segControls.append($('<span style="margin-left:5px;color:white">px</span>'));
+            segControls.append($('<span style="margin-left:10px;margin-right:5px;color:white">Opacity:</span>'));
+            segControls.append(this.segmentation_controls.opacity);
             dtControls.append(segControls);
         }
 
@@ -332,6 +343,12 @@ class UIControlHandler {
         size = Math.min(Math.max(size, 1), 255);        //TODO: max
         this.segmentation_properties.brushSize = size;
         $(this.segmentation_controls.brush_size).attr('value', size);
+    }
+
+    setSegmentationOpacity(value) {
+        value = Math.max(0, Math.min(1, value));
+        this.segmentation_properties.opacity = value;
+        this.renderAll();
     }
 
     getDefaultCursor() {

@@ -1541,10 +1541,12 @@ class SegmentationElement extends AbstractRenderElement {
         var targetCoords = scaleFun([0,0,1,1], 'validArea');
         
         // draw canvas as an image
+        ctx.globalAlpha = window.uiControlHandler.segmentation_properties.opacity;
         ctx.drawImage(
             this.canvas,
             targetCoords[0], targetCoords[1],
             targetCoords[2], targetCoords[3]
         )
+        ctx.globalAlpha = 1.0;
     }
 }
