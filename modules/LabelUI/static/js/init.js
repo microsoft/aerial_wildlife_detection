@@ -541,7 +541,7 @@ $(document).ready(function() {
 
     // show interface tutorial
     promise.then(function() {
-        if(!(window.getCookie('skipTutorial')))
+        if(!(window.getCookie('skipTutorial')) && !(window.annotationType === 'segmentationMasks'))     //TODO: implement tutorial for segmentation
             window.showTutorial(true);
     });
 });
