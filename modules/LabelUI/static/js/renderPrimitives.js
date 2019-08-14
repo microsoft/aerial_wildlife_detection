@@ -1523,7 +1523,7 @@ class SegmentationElement extends AbstractRenderElement {
 
     clear(coords, brushType, brushSize) {
         if(brushType === 'rectangle') {
-            this.ctx.clearRect(coords[0] - brushSize/2, coords[1] - brushSize/2,
+            this.ctx.clearRect(coords[0] - brushSize[0]/2, coords[1] - brushSize[1]/2,
                 brushSize[0], brushSize[1]);
         } else if(brushType === 'circle') {
             this._clear_circle(coords[0], coords[1], brushSize)
