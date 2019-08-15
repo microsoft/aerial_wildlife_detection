@@ -74,9 +74,9 @@ def _constructAnnotationFields(annoType, table, doublePrecision=False):
 if __name__ == '__main__':
 
     # setup
-    parser = argparse.ArgumentParser(description='Run CV4Wildlife AL Service.')
+    parser = argparse.ArgumentParser(description='Set up AIde database schema.')
     parser.add_argument('--settings_filepath', type=str, default='config/settings.ini', const=1, nargs='?',
-                    help='Directory of the settings.ini file used for this machine (default: "config/settings.ini").')
+                    help='Manual specification of the directory of the settings.ini file; only considered if environment variable unset (default: "config/settings.ini").')
     args = parser.parse_args()
 
     if not 'AIDE_CONFIG_PATH' in os.environ:

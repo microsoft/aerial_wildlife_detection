@@ -19,13 +19,13 @@ def _replace(string, oldTokens, newToken):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Export annotations from database to YOLO format.')
-    parser.add_argument('--settings_filepath', type=str, default='settings_windowCropping.ini', const=1, nargs='?',
-                    help='Directory of the settings.ini file used for this machine (default: "config/settings.ini").')
+    parser.add_argument('--settings_filepath', type=str, default='config/settings.ini', const=1, nargs='?',
+                    help='Manual specification of the directory of the settings.ini file; only considered if environment variable unset (default: "config/settings.ini").')
     parser.add_argument('--target_folder', type=str, default='export', const=1, nargs='?',
                     help='Export directory for the annotation text files.')
     parser.add_argument('--export_annotations', type=bool, default=True, const=1, nargs='?',
                     help='Whether to export annotations (default: True).')
-    parser.add_argument('--limit_users', type=str, default='bkellenb', const=1, nargs='?',
+    parser.add_argument('--limit_users', type=str,
                     help='Which users (comma-separated list of usernames) to limit annotations to (default: None).')
     parser.add_argument('--exclude_users', type=str, default=None, const=1, nargs='?',
                     help='Comma-separated list of usernames whose annotations not to include (default: None).')

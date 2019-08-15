@@ -1,9 +1,10 @@
 class Annotation {
 
-    constructor(annotationID, properties, geometryType, type) {
+    constructor(annotationID, properties, geometryType, type, autoConverted) {
         this.annotationID = annotationID;
         this.geometryType = geometryType;
         this.type = type;
+        this.autoConverted = autoConverted;
         this._parse_properties(properties);
     }
 
@@ -32,8 +33,11 @@ class Annotation {
         // drawing styles
         var color = window.labelClassHandler.getColor(this.label);
         var style = JSON.parse(JSON.stringify(window.styles.annotations));  // copy default style
-        if(this.type == 'prediction') {
+        if(this.type === 'prediction') {
             style = JSON.parse(JSON.stringify(window.styles.predictions));
+        } else if(this.autoConverted) {
+            // special style for annotations converted from predictions
+            style = JSON.parse(JSON.stringify(window.styles.annotations_converted));
         }
         style['strokeColor'] = window.addAlpha(color, style.lineOpacity);
         style['fillColor'] = window.addAlpha(color, style.fillOpacity);
@@ -111,7 +115,7 @@ class Annotation {
     getProperties() {
         return {
             'id' : this.annotationID,
-            'type' : this.type,
+            'type' : (this.type.includes('annotation') ? 'annotation' : 'prediction'),
             'label' : this.label,
             'confidence' : this.confidence,
             'geometry' : this.geometry.getGeometry()

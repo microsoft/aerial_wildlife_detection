@@ -12,8 +12,8 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Parse YOLO annotations and import into database.')
     parser.add_argument('--settings_filepath', type=str, default='config/settings.ini', const=1, nargs='?',
-                    help='Directory of the settings.ini file used for this machine (default: "config/settings.ini").')
-    parser.add_argument('--label_folder', type=str, default='/datadrive/landcover/patches_800x600/labels', const=1, nargs='?',
+                    help='Manual specification of the directory of the settings.ini file; only considered if environment variable unset (default: "config/settings.ini").')
+    parser.add_argument('--label_folder', type=str,
                     help='Directory (absolute path) on this machine that contains the YOLO label text files.')
     parser.add_argument('--annotation_type', type=str, default='annotation', const=1, nargs='?',
                     help='Kind of the provided annotations. One of {"annotation", "prediction"} (default: annotation)')

@@ -14,6 +14,13 @@
             "lineOpacity": 1.0,
             "fillOpacity": 0.2
         },
+        "annotations_converted": {
+            "pointSize": 8,
+            "lineWidth": 4,
+            "lineDash": [],
+            "lineOpacity": 1.0,
+            "fillOpacity": 0.0
+        },
         "hoverText": {
             "offsetH": 10,
             "box": {

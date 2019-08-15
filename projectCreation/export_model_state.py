@@ -15,8 +15,8 @@ import torch
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Retrieve latest CNN model state and save to disk.')
-    parser.add_argument('--settings_filepath', type=str, default='settings_windowCropping.ini', const=1, nargs='?',
-                    help='Directory of the settings.ini file used for this machine (default: "config/settings.ini").')
+    parser.add_argument('--settings_filepath', type=str, default='config/settings.ini', const=1, nargs='?',
+                    help='Manual specification of the directory of the settings.ini file; only considered if environment variable unset (default: "config/settings.ini").')
     parser.add_argument('--target_file', type=str, default='model_state.pth', const=1, nargs='?',
                     help='Target filename for the model.')
     args = parser.parse_args()

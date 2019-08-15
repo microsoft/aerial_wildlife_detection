@@ -13,9 +13,9 @@ import torch
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Load model state from disk and commit to DB.')
-    parser.add_argument('--settings_filepath', type=str, default='settings_windowCropping.ini', const=1, nargs='?',
-                    help='Directory of the settings.ini file used for this machine (default: "config/settings.ini").')
-    parser.add_argument('--modelPath', type=str, default='/datadrive/projects/ai4edevelopment/BeniKellenberger2019/cnn_states/ste/retinanet_resnet18/laterEpochs/199.pth', const=1, nargs='?',
+    parser.add_argument('--settings_filepath', type=str, default='config/settings.ini', const=1, nargs='?',
+                    help='Manual specification of the directory of the settings.ini file; only considered if environment variable unset (default: "config/settings.ini").')
+    parser.add_argument('--modelPath', type=str,
                     help='Directory (absolute path) on this machine of the model state file to be considered.')
     args = parser.parse_args()
     
@@ -34,7 +34,7 @@ if __name__ == '__main__':
     # load model class function
     print('Load and verify state dict...')
     from util.helpers import get_class_executable, current_time
-    modelClass = get_class_executable('ai.models.pytorch.functional._retinanet.model.RetinaNet')   #config.getProperty('AIController', 'model_lib_path'))     #TODO
+    modelClass = get_class_executable(config.getProperty('AIController', 'model_lib_path'))
 
     # load state dict
     stateDict = torch.load(open(args.modelPath, 'rb'))

@@ -145,7 +145,7 @@ class AbstractDataEntry {
                                // construct new classification entry
                                var id = properties['predictions'][key]['id'];
                                var label = properties['predictions'][key]['label'];
-                               var anno = new Annotation(window.getRandomID(), {'id':id, 'label':label, 'confidence':maxConf}, geometryType_anno, 'annotation');
+                               var anno = new Annotation(window.getRandomID(), {'id':id, 'label':label, 'confidence':maxConf}, geometryType_anno, 'annotation', true);
                                anno.setProperty('changed', true);
                                this._addElement(anno);
                            }
@@ -169,7 +169,7 @@ class AbstractDataEntry {
                            }
                            // add new label annotation
                            if(argMax != null) {
-                               var anno = new Annotation(window.getRandomID(), {'label':argMax}, geometryType_anno, 'annotation');
+                               var anno = new Annotation(window.getRandomID(), {'label':argMax}, geometryType_anno, 'annotation', true);
                                anno.setProperty('changed', true);
                                this._addElement(anno);
                            }
@@ -182,7 +182,7 @@ class AbstractDataEntry {
                        if(props['confidence'] >= window.carryOverPredictions_minConf) {
                            delete props['width'];
                            delete props['height'];
-                           var anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation');
+                           var anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation', true);
                            this._addElement(anno);
                        }
                    }
@@ -193,7 +193,7 @@ class AbstractDataEntry {
                        if(props['confidence'] >= window.carryOverPredictions_minConf) {
                            props['width'] = window.defaultBoxSize_w;
                            props['height'] = window.defaultBoxSize_h;
-                           var anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation');
+                           var anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation', true);
                            anno.setProperty('changed', true);
                            this._addElement(anno);
                        }
@@ -203,7 +203,7 @@ class AbstractDataEntry {
                    for(var key in properties['predictions']) {
                        var props = properties['predictions'][key];
                        if(props['confidence'] >= window.carryOverPredictions_minConf) {
-                           var anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation');
+                           var anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation', true);
                            anno.setProperty('changed', true);
                            this._addElement(anno);
                        }
