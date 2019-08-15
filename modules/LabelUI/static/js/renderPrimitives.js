@@ -364,7 +364,8 @@ class PointElement extends AbstractRenderElement {
         this.mouseDrag = false;
         if(!this.visible ||
             !force && (!(window.uiControlHandler.getAction() === ACTIONS.DO_NOTHING ||
-            window.uiControlHandler.getAction() === ACTIONS.ADD_ANNOTATION))) return;
+            window.uiControlHandler.getAction() === ACTIONS.ADD_ANNOTATION)) ||
+            (window.uiControlHandler.getAction() === ACTIONS.ADD_ANNOTATION && window.uiControlHandler.burstMode)) return;
         
         var mousePos = viewport.getRelativeCoordinates(event, 'validArea');
         
