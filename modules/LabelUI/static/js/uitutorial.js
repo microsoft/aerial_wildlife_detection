@@ -32,6 +32,7 @@ window.showTutorial = function(autostart) {
         [ '#add-annotation', 'Click to add a new annotation (hint: you can also use the W key).', 'top' ],
         [ '#gallery', addAnnotationString, 'top' ],
         [ '#gallery', changeAnnotationString, 'top' ],
+        [ '#burst-mode-check', 'Want to add many annotations without re-clicking "Add"? Check burst mode (or press the M key)', 'top' ],
         [ '#labelAll-button', 'Label everything with the foreground class (or press the A key)', 'top'],
         [ '#unsure-button', unsureString, 'top' ],
         [ '#remove-annotation', removeAnnotationString, 'top' ],

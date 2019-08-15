@@ -133,11 +133,11 @@ class UIControlHandler {
                 chkbx.prop('checked', self.burstMode);
                 window.setCookie('burstModeEnabled', self.burstMode);
             };
-            var burstModeCheck = $('<input type="checkbox" id="burst-mode-check" class="inline-control" style="margin-right:2px" />');
+            var burstModeCheck = $('<input type="checkbox" id="burst-mode-check" class="inline-control" style="margin-right:2px" title="Enable burst mode (M)" />');
             burstModeCheck.change(burstModeCallback);
             burstModeCheck.prop('checked', this.burstMode);
             dtControls.append(burstModeCheck);
-            var burstModeLabel = $('<label for="#burst-mode-check" class="inline-control" style="margin-left:0px;margin-right:10px;color:white;cursor:pointer;">burst mode</label>');
+            var burstModeLabel = $('<label for="#burst-mode-check" class="inline-control" style="margin-left:0px;margin-right:10px;color:white;cursor:pointer;" title="Enable burst mode (M)">burst mode</label>');
             burstModeLabel.click(burstModeCallback);
             dtControls.append(burstModeLabel);
 
@@ -280,6 +280,10 @@ class UIControlHandler {
 
                 } else if(ccode === 'I') {
                     self.setAction(ACTIONS.ZOOM_IN);
+
+                } else if(ccode === 'M') {
+                    if(burstModeCallback)
+                        burstModeCallback();
 
                 } else if(ccode === 'O') {
                     self.setAction(ACTIONS.ZOOM_OUT);
