@@ -127,14 +127,14 @@ class AIController:
                             status = self.middleware.start_train_and_inference(minTimestamp='lastState',
                                     minNumAnnoPerImage=minNumAnnoPerImage,
                                     maxNumWorkers_train=self.maxNumWorkers_train,
-                                    forceUnlabeled_inference=True, maxNumImages_inference=maxNumImages_inference, maxNumWorkers_inference=self.maxNumWorkers_inference)
+                                    forceUnlabeled_inference=False, maxNumImages_inference=maxNumImages_inference, maxNumWorkers_inference=self.maxNumWorkers_inference)
                         else:
                             status = self.middleware.start_training(minTimestamp='lastState',
                                     minNumAnnoPerImage=minNumAnnoPerImage,
                                     maxNumImages=maxNumImages_train,
                                     maxNumWorkers=self.maxNumWorkers_train)
                     else:
-                        status = self.middleware.start_inference(forceUnlabeled=True, 
+                        status = self.middleware.start_inference(forceUnlabeled=False, 
                                     maxNumImages=maxNumImages_inference, 
                                     maxNumWorkers=self.maxNumWorkers_inference)
 
