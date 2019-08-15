@@ -191,8 +191,6 @@ class AIWorkerHandler {
         this._setup_markup();
         this._query_worker_status();
         this._query_task_status();
-
-        // this.startInference();  //TODO
     }
 
     __toggle_panel() {
@@ -321,7 +319,7 @@ class AIWorkerHandler {
                     setTimeout(function() { self._query_worker_status(); }, 60000);   //TODO: make parameter
                 }
             }
-        })
+        });
     }
 
 
@@ -378,7 +376,7 @@ class AIWorkerHandler {
                     // parse task progress
                     if(!(tasks[key].status === 'SUCCESS' || tasks[key].status === 'FAILURE')) {
                         numTasksInProgress += 1;
-                        if(tasks[key].hasOwnProperty('meta')) {
+                        if(tasks[key].hasOwnProperty('meta') && tasks[key]['meta'] != null) {
                             if(tasks[key]['meta'].hasOwnProperty('total')) {
                                 numTotal += tasks[key]['meta']['total'];
                             }

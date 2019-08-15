@@ -79,8 +79,8 @@ class AIMiddleware():
             to False to allow another round of model training.
         '''
 
-        # re-enable training
-        self.training = False
+        # re-enable training if no other training job is ongoing
+        self.training = self.messageProcessor.task_ongoing('train')
 
 
 
@@ -89,7 +89,7 @@ class AIMiddleware():
             Assembles (but does not submit) a training job based on the provided parameters.
         '''
         # check if training is still in progress
-        if self.training:
+        if self.messageProcessor.task_ongoing('train'):
             raise Exception('Training process already running.')
 
         self.training = True
@@ -138,7 +138,7 @@ class AIMiddleware():
             return process, num_workers
 
         except:
-            self.training = False
+            self.training = self.messageProcessor.task_ongoing('train')
             return None
 
 
@@ -325,7 +325,7 @@ class AIMiddleware():
 
         # start listener thread
         def chain_inference(*args):
-            self.training = False
+            self.training = self.messageProcessor.task_ongoing('train')
             return self.start_inference(forceUnlabeled_inference, maxNumImages_inference, maxNumWorkers_inference)
 
         #TODO: chaining doesn't work properly this way...
