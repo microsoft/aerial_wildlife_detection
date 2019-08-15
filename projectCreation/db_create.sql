@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS &schema.IMAGE_USER (
     viewcount SMALLINT DEFAULT 1,
     last_checked TIMESTAMPTZ,
     last_time_required BIGINT,
+    meta VARCHAR,
 
     PRIMARY KEY (username, image),
     FOREIGN KEY (username) REFERENCES &schema.USER(name),
@@ -63,6 +64,7 @@ CREATE TABLE IF NOT EXISTS &schema.ANNOTATION (
     id uuid DEFAULT uuid_generate_v4(),
     username VARCHAR NOT NULL,
     image uuid NOT NULL,
+    meta VARCHAR,
     timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     timeRequired BIGINT,
     unsure boolean NOT NULL DEFAULT false,

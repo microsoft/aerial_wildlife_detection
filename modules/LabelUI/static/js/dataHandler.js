@@ -15,6 +15,11 @@ class DataHandler {
         this.redoStack = [];
 
         this.skipConfirmationDialog = window.getCookie('skipAnnotationConfirmation');
+
+        // prepare user statistics (e.g. browser)
+        this._navigator = {};
+        for (var i in navigator) this._navigator[i] = navigator[i];
+        // this._navigator = JSON.stringify(this._navigator);
     }
 
 
@@ -194,12 +199,24 @@ class DataHandler {
 
 
     _entriesToJSON(minimal, onlyUserAnnotations) {
+        // assemble entries
         var entries = {};
         for(var e=0; e<this.dataEntries.length; e++) {
             entries[this.dataEntries[e].entryID] = this.dataEntries[e].getProperties(minimal, onlyUserAnnotations);
         }
+
+        // also append client statistics
+        var meta = {
+            browser: this._navigator,
+            windowSize: [$(window).width(), $(window).height()],
+            uiControls: {
+                burstModeEnabled: window.uiControlHandler.burstMode
+            }
+        };
+
         return JSON.stringify({
-            'entries': entries
+            'entries': entries,
+            'meta': meta
         })
     }
 

@@ -64,8 +64,8 @@ class ImageViewport {
                         self.callbacks[event.type][key](event);
                     }
                     if(event.type === 'mouseup') {
-                        // reset action, unless in panning or segmentation map mode
-                        if(window.uiControlHandler.getAction() != ACTIONS.PAN && window.annotationType != 'segmentationMasks')
+                        // reset action, unless in panning or burst mode
+                        if(window.uiControlHandler.getAction() != ACTIONS.PAN && !window.uiControlHandler.burstMode)
                             window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
                     }
                     self.render();

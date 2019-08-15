@@ -281,6 +281,8 @@ class DBMiddleware():
         values_insert = []
         values_update = []
 
+        meta = (None if not 'meta' in submissions else json.dumps(submissions['meta']))
+
         # for deletion: remove all annotations whose image ID matches but whose annotation ID is not among the submitted ones
         ids = []
 
@@ -329,6 +331,8 @@ class DBMiddleware():
                                 annoValues.append(annotationTokens[cname])
                             else:
                                 annoValues.append(False)
+                        elif cname == 'meta':
+                            annoValues.append(meta)
                         else:
                             annoValues.append(None)
                     if 'id' in annotationTokens:
@@ -338,7 +342,7 @@ class DBMiddleware():
                         # new annotation
                         values_insert.append(tuple(annoValues))
                     
-            viewcountValues.append((username, imageKey, 1, lastChecked, lastTimeRequired))
+            viewcountValues.append((username, imageKey, 1, lastChecked, lastTimeRequired, meta))
 
 
         schema = self.config.getProperty('Database', 'schema')
@@ -402,9 +406,9 @@ class DBMiddleware():
 
         # viewcount table
         sql = '''
-            INSERT INTO {}.image_user (username, image, viewcount, last_checked, last_time_required)
+            INSERT INTO {}.image_user (username, image, viewcount, last_checked, last_time_required, meta)
             VALUES %s 
-            ON CONFLICT (username, image) DO UPDATE SET viewcount = image_user.viewcount + 1, last_checked = EXCLUDED.last_checked, last_time_required = EXCLUDED.last_time_required;
+            ON CONFLICT (username, image) DO UPDATE SET viewcount = image_user.viewcount + 1, last_checked = EXCLUDED.last_checked, last_time_required = EXCLUDED.last_time_required, meta = EXCLUDED.meta;
         '''.format(schema)
 
         self.dbConnector.insert(sql, viewcountValues)

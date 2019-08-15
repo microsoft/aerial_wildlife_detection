@@ -13,7 +13,7 @@ class FieldNames_prediction(Enum):
     segmentationMasks = set(['segmentationmask', 'priority', 'width', 'height'])
 
 class FieldNames_annotation(Enum):
-    labels = set(['label', 'unsure'])
-    points = set(['label', 'x', 'y', 'unsure'])
-    boundingBoxes = set(['label', 'x', 'y', 'width', 'height', 'unsure'])
-    segmentationMasks = set(['segmentationmask', 'width', 'height'])
+    labels = set(['meta', 'label', 'unsure'])
+    points = set(['meta', 'label', 'x', 'y', 'unsure'])
+    boundingBoxes = set(['meta', 'label', 'x', 'y', 'width', 'height', 'unsure'])
+    segmentationMasks = set(['meta', 'segmentationmask', 'width', 'height'])

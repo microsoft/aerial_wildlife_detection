@@ -20,10 +20,10 @@ class QueryStrings_prediction(Enum):
 
 
 class QueryStrings_annotation(Enum):
-    labels = ['id', 'image', 'label', 'username', 'timeCreated', 'timeRequired', 'unsure']
-    points = ['id', 'image', 'x', 'y', 'label', 'username', 'timeCreated', 'timeRequired', 'unsure']
-    boundingBoxes = ['id', 'image', 'x', 'y', 'width', 'height', 'label', 'username', 'timeCreated', 'timeRequired', 'unsure']
-    segmentationMasks = ['id', 'image', 'segmentationMask', 'width', 'height', 'username', 'timeCreated', 'timeRequired']
+    labels = ['id', 'image', 'meta', 'label', 'username', 'timeCreated', 'timeRequired', 'unsure']
+    points = ['id', 'image', 'meta', 'x', 'y', 'label', 'username', 'timeCreated', 'timeRequired', 'unsure']
+    boundingBoxes = ['id', 'image', 'meta', 'x', 'y', 'width', 'height', 'label', 'username', 'timeCreated', 'timeRequired', 'unsure']
+    segmentationMasks = ['id', 'image', 'meta', 'segmentationMask', 'width', 'height', 'username', 'timeCreated', 'timeRequired']
 
 
 

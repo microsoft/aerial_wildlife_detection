@@ -35,6 +35,10 @@ class UIControlHandler {
 
         this.default_cursor = 'pointer';    // changes depending on action
 
+        this.burstMode = window.getCookie('burstModeEnabled');             // if true, add and remove annotation buttons stay active upon user interaction
+        if(this.burstMode === undefined) this.burstMode = false;
+        else this.burstMode = window.parseBoolean(this.burstMode);
+
         // tools for semantic segmentation - ignored by others
         this.segmentation_properties = {
             brushType: 'rectangle',
@@ -121,6 +125,21 @@ class UIControlHandler {
             this.staticButtons[ACTIONS.REMOVE_ANNOTATIONS] = removeAnnoBtn;
             dtControls.append(addAnnoBtn);
             dtControls.append(removeAnnoBtn);
+
+            // burst mode checkbox
+            var burstModeCallback = function() {
+                var chkbx = $('#burst-mode-check');
+                self.burstMode = !self.burstMode;
+                chkbx.prop('checked', self.burstMode);
+                window.setCookie('burstModeEnabled', self.burstMode);
+            };
+            var burstModeCheck = $('<input type="checkbox" id="burst-mode-check" class="inline-control" style="margin-right:2px" />');
+            burstModeCheck.change(burstModeCallback);
+            burstModeCheck.prop('checked', this.burstMode);
+            dtControls.append(burstModeCheck);
+            var burstModeLabel = $('<label for="#burst-mode-check" class="inline-control" style="margin-left:0px;margin-right:10px;color:white;cursor:pointer;">burst mode</label>');
+            burstModeLabel.click(burstModeCallback);
+            dtControls.append(burstModeLabel);
 
             if(window.enableEmptyClass) {
                 var clearAllCallback = function() {
