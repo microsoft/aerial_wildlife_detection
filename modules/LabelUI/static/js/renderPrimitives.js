@@ -379,7 +379,7 @@ class PointElement extends AbstractRenderElement {
 
     _mouseleave_event(event, viewport, force) {
         this.mouseDrag = false;
-        if(force || window.uiControlHandler.getAction() === ACTIONS.ADD_ANNOTATION) {
+        if(force || (window.uiControlHandler.getAction() === ACTIONS.ADD_ANNOTATION && !window.uiControlHandler.burstMode)) {
             window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
         }
     }
