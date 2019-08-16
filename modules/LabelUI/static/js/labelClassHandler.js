@@ -160,7 +160,8 @@ class LabelClass {
                 if(this.markup_alt != null) {
                     this.markup_alt.show();
                 }
-                if(target.includes(kw)) minLevDist = 0;
+                if(target === kw) minLevDist = 0;
+                else if(target.includes(kw)) minLevDist = 0.5;
                 return { dist: minLevDist, bestMatch: this };
             }
         }
