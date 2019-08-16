@@ -389,7 +389,7 @@ class LabelClassHandler {
             }
         }
 
-        if(autoActivateBestMatch && bestMatch != null) {
+        if(autoActivateBestMatch && bestMatch != null && minDist <= 3) {
             this.setActiveClass(bestMatch);
         }
     }
