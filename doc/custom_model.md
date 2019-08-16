@@ -234,7 +234,7 @@ These may look as follows:
   * Each item in the predictions list may contain the following variables:
     * `label`: a stringified UUID of the predicted label class
     * `confidence`: a float denoting the model confidence value of the prediction
-    * `logits` (optional): a list of floats of class logits, used by the `Breaking Ties` Active Learning criterion (TODO)
+    * `logits` (optional): a list of floats of class logits, used by the `Breaking Ties` Active Learning criterion
     * Any variable required through the 'predictionType' setting in the [configuration *.ini file](configure_settings.md). For example, if 'predictionType' is set to 'boundingBoxes', you also have to provide `x`, `y`, `width` and `height` values.
 
 
@@ -309,8 +309,9 @@ For example, the following snippet sets the job status to "in progress" and make
 Note that `done` and `total` need to be present if the progress bar is to be filled only partially. Values need to be integers, but the maximum is not limited to 100 (e.g., you can set it to the total number of images).
 
 `state` may take one of the following values:
-* `PROGRESS`: shows a partially filled progress bar; requires the `done` and `total` values to be set in the `meta` argument
-* (anything else): shows an indefinite progress bar
+* `PROGRESS`: This shows a partially filled progress bar; requires the `done` and `total` values to be set in the `meta` argument.
+* `SUCCESS`, `FAILURE`: These status values indicate a completed or failed task. Avoid them and instead raise an Exception if you encounter an unsolvable problem in your AI model (the _AIWorker_ will take care of catching Exceptions and reporting completed and failed tasks).
+* (anything else): Other values show an indefinite progress bar.
 
 
 ### Debugging your model
