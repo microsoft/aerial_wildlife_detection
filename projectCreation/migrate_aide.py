@@ -10,7 +10,7 @@ import argparse
 
 
 MODIFICATIONS_sql = [
-    'ALTER TABLE {schema}.annotation ADD COLUMN meta VARCHAR; ALTER TABLE {schema}.image_user ADD COLUMN meta VARCHAR;'
+    'ALTER TABLE {schema}.annotation ADD COLUMN IF NOT EXISTS meta VARCHAR; ALTER TABLE {schema}.image_user ADD COLUMN IF NOT EXISTS meta VARCHAR;'
 ]
 
 
