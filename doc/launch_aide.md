@@ -1,7 +1,7 @@
 # Launching AIde
 
-The instructions below launch AIde using the [Gunicorn server](https://gunicorn.org/).
-If you wish to deploy AIde properly, see [here](deployment.md) instead.
+The instructions below manually launch AIde using the [Gunicorn server](https://gunicorn.org/).
+If you wish to deploy AIde properly, you might want to set up Gunicorn as a service and wrap it in a web server. To do so, see [here](deployment.md).
 
 
 
