@@ -152,13 +152,28 @@ $(document).ready(function() {
 
 
     // search function for label classes
-    window.filterLabels = function() {
-        var keywords = $('#labelclass-search-box').val();
+    window.filterLabels = function(e) {
+        // automatically select top hit on enter press
+        var autoSelect = false;
+        try {
+            if(e.which === 13) {
+                autoSelect = true;
+            }
+        } catch {}
+
+        var searchBox = $('#labelclass-search-box');
+        var keywords = searchBox.val();
         if(keywords != null && keywords != undefined) {
             keywords = keywords.split(/s[\s ]+/);
         }
         if(keywords.length === 0 || (keywords.length === 1 && keywords[0] === '')) keywords = null;
-        window.labelClassHandler.filter(keywords);
+        window.labelClassHandler.filter(keywords, autoSelect);
+
+        if(autoSelect) {
+            // clear focus and search field after hitting enter
+            searchBox.val('');
+            searchBox.blur();
+        }
     }
 
     // Levenshtein distance for word comparison

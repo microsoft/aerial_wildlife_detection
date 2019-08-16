@@ -278,6 +278,9 @@ class UIControlHandler {
                 } else if(ccode === 'E') {
                     self.resetZoom();
 
+                } else if(ccode === 'F') {
+                    $('#labelclass-search-box').focus();
+
                 } else if(ccode === 'I') {
                     self.setAction(ACTIONS.ZOOM_IN);
 

@@ -145,19 +145,23 @@ class LabelClass {
             if(this.markup_alt != null) {
                 this.markup_alt.show();
             }
-            return true;
+            return { dist: 0, bestMatch: this };
         }
         var target = this.name.toLowerCase();
+        var minLevDist = 1e9;
         for(var k=0; k<keywords.length; k++) {
             var kw = keywords[k].toLowerCase();
-            if(target.includes(kw) || window.levDist(target, kw) <= 3) {
+            var levDist = window.levDist(target, kw);
+            minLevDist = Math.min(minLevDist, levDist);
+            if(target.includes(kw) || levDist <= 3) {
                 if(this.markup != null) {
                     this.markup.show();
                 }
                 if(this.markup_alt != null) {
                     this.markup_alt.show();
                 }
-                return true;
+                if(target.includes(kw)) minLevDist = 0;
+                return { dist: minLevDist, bestMatch: this };
             }
         }
 
@@ -168,7 +172,7 @@ class LabelClass {
         if(this.markup_alt != null) {
             this.markup_alt.hide();
         }
-        return false;
+        return { dist: minLevDist, bestMatch: this };
     }
 }
 
@@ -251,16 +255,23 @@ class LabelClassGroup {
             statement.
         */
         var childVisible = false;
+        var minLevDist = 1e9;
+        var argMin = null;
         for(var c=0; c<this.children.length; c++) {
-            if(this.children[c].filter(keywords)) {
-                childVisible = true;
+            var result = this.children[c].filter(keywords);
+            if(result != null && result.dist < minLevDist) {
+                minLevDist = Math.min(result.dist, minLevDist);
+                argMin = result.bestMatch;
+                if(result.dist <= 3) {
+                    childVisible = true;
+                }
             }
         }
 
         // show or hide group depending on children's visibility
         if(childVisible) this.markup.show();
         else this.markup.hide();
-        return childVisible;
+        return { dist: minLevDist, bestMatch: argMin };
     }
 }
 
@@ -360,14 +371,26 @@ class LabelClassHandler {
     }
 
 
-    filter(keywords) {
+    filter(keywords, autoActivateBestMatch) {
         /*
             Hides label class entries and groups if they do not match
             one or more of the keywords given.
             Matching is done through the Levenshtein distance.
+            If autoActivateBestMatch is true, the best-matching entry
+            (with the lowest Lev. dist.) is automatically set active.
         */
+        var minDist = 1e9;
+        var bestMatch = null;
         for(var c=0; c<this.items.length; c++) {
-            this.items[c].filter(keywords);
+            var response = this.items[c].filter(keywords);
+            if(autoActivateBestMatch && response != null && response.dist <= minDist) {
+                minDist = response.dist;
+                bestMatch = response.bestMatch;
+            }
+        }
+
+        if(autoActivateBestMatch && bestMatch != null) {
+            this.setActiveClass(bestMatch);
         }
     }
 
