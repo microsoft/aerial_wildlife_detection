@@ -17,6 +17,8 @@ from util.helpers import get_class_executable, check_args
 
 class GenericPyTorchModel(AIModel):
 
+    model_class = None
+
     def __init__(self, config, dbConnector, fileServer, options, defaultOptions):
         super(GenericPyTorchModel, self).__init__(config, dbConnector, fileServer, options)
 

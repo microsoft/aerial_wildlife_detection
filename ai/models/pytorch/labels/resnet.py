@@ -10,6 +10,8 @@ from ..functional.datasets.classificationDataset import LabelsDataset
 
 class ResNet(ClassificationModel):
 
+    model_class = Model
+
     def __init__(self, config, dbConnector, fileServer, options):
         super(ResNet, self).__init__(config, dbConnector, fileServer, options)
         self.model_class = Model

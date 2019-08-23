@@ -113,3 +113,4 @@ venv.bak/
 #config/
 
 /*.ini
+*.pth

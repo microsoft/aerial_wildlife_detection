@@ -22,6 +22,8 @@ from util.helpers import get_class_executable, check_args
 
 class RetinaNet(GenericPyTorchModel):
 
+    model_class = Model
+
     def __init__(self, config, dbConnector, fileServer, options):
         super(RetinaNet, self).__init__(config, dbConnector, fileServer, options, DEFAULT_OPTIONS)
 

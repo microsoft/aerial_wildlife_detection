@@ -11,6 +11,8 @@ from ..functional.datasets.pointsDataset import PointsDataset
 
 class WSODPointModel(PointModel):
 
+    model_class = Model
+
     def __init__(self, config, dbConnector, fileServer, options):
         super(WSODPointModel, self).__init__(config, dbConnector, fileServer, options)
         self.model_class = Model
