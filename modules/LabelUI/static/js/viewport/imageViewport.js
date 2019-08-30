@@ -149,16 +149,18 @@ class ImageViewport {
 
     __mousemove_event(event) {
         // update position and extent shown of loupe
-        var newMousePos = this.transformCoordinates(this.getRelativeCoordinates(event),
+        var canvasMousePos = this.transformCoordinates(this.getRelativeCoordinates(event),
             'canvas', true);
-        this.loupe.setPosition(newMousePos[0] - 0.2,
-            newMousePos[1] - 0.2,
+        var newMousePos = this.transformCoordinates(this.getRelativeCoordinates(event),
+            'validArea', true);
+        this.loupe.setPosition(canvasMousePos[0] - 0.2,
+            canvasMousePos[1] - 0.2,
             0.4);
         this.loupe.setParentExtent([
-            newMousePos[0] - 0.05,
-            newMousePos[1] - 0.05,
-            newMousePos[0] + 0.05,
-            newMousePos[1] + 0.05
+            canvasMousePos[0] - 0.05,
+            canvasMousePos[1] - 0.05,
+            canvasMousePos[0] + 0.05,
+            canvasMousePos[1] + 0.05
         ]);
 
         // ditto for zoom rectangle
