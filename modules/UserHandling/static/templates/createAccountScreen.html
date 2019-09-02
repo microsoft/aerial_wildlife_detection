@@ -30,19 +30,29 @@
             return promise;
         }
 
-        $('#username').change(function() {
-            // check if username is valid
+        var checkAccountValid = function() {
+            // check if username and password are valid
             var currName = $('#username').val();
-            if(currName != null && currName.length > 0) {
+            var currEmail = $('#email').val();
+            if((currName != null && currName.length > 0) || (currEmail != null && currEmail.length > 0)) {
                 $.ajax({
                     url: 'accountExists',
                     method: 'post',
                     data: {
-                        'username': currName
+                        'username': currName,
+                        'email': currEmail
                     },
                     success: function(data) {
-                        if(data['response'] == true) {
-                            $('#account-exists-message').html('Name unavailable');
+                        var msg = '';
+                        if(data['response']['username'] === true) {
+                            msg = 'Name unavailable';
+                        }
+                        if(data['response']['email'] === true) {
+                            msg = 'E-mail address already registered';
+                        }
+
+                        if(msg.length) {
+                            $('#account-exists-message').html(msg);
                             $('#account-exists-message').css('color', 'red');
                             $('#account-exists-message').css('display', 'inline');
                             $('#submit-button').prop("disabled",true);
@@ -72,7 +82,10 @@
             } else {
                 $('#submit-button').prop("disabled",false);
             }
-        });
+        }
+
+        $('#username').change(checkAccountValid);
+        $('#email').change(checkAccountValid);
 
         var checkPass = function() {
             var password = $('#account-create-form').find('[name=password]').val();
@@ -164,7 +177,7 @@
     </div>
     <div class="row fieldRow">
         <label for="email" class="col-sm">E-Mail Address:</label>
-        <input type="email" name="email" required class="col-sm" />
+        <input type="email" name="email" id="email" required class="col-sm" />
     </div>
     <input type="submit" value="Create" id="submit-button" class="btn btn-sm btn-primary" disabled />
     <div id="account-exists-message" style="display:none;color:red;"></div>

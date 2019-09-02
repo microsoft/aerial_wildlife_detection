@@ -150,13 +150,23 @@ class UserMiddleware():
         #TODO: feedback that everything is ok?
 
 
-    def _check_account_exists(self, username):
-        result = self.dbConnector.execute('SELECT name FROM {}.user WHERE name = %s'.format(
-            self.config.getProperty('Database', 'schema')
+    def _check_account_exists(self, username, email):
+        response = {
+            'username': True,
+            'email': True
+        }
+        if username is None or not len(username): username = ''
+        if email is None or not len(email): email = ''
+        result = self.dbConnector.execute('SELECT COUNT(name) AS c FROM {schema}.user WHERE name = %s UNION ALL SELECT COUNT(name) AS c FROM {schema}.user WHERE email = %s'.format(
+            schema=self.config.getProperty('Database', 'schema')
         ),
-        (username,),
-        numReturn=1)
-        return len(result)>0
+        (username,email,),
+        numReturn=2)
+
+        response['username'] = (result[0]['c'] > 0)
+        response['email'] = (result[1]['c'] > 0)
+
+        return response
 
 
     def _check_logged_in(self, username, sessionToken):
@@ -315,12 +325,12 @@ class UserMiddleware():
             self._invalidate_session(username)
 
 
-    def accountExists(self, username):
-        return self._check_account_exists(username)
+    def accountExists(self, username, email):
+        return self._check_account_exists(username, email)
 
 
     def createAccount(self, username, password, email):
-        if self._check_account_exists(username):
+        if self._check_account_exists(username, email):
             raise AccountExistsException(username)
 
         else:

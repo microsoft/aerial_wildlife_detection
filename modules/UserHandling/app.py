@@ -169,13 +169,17 @@ class UserHandler():
         @self.app.route('/accountExists', method='POST')
         def checkAccountExists():
             if self.demoMode:
-                return { 'response': False }
-
+                return { 'response': { 'username': False, 'email': False } }
+            username = ''
+            email = ''
             try:
                 username = cgi.escape(self._parse_parameter(request.forms, 'username'))
-                if len(username) == 0:
-                    raise Exception('invalid request.')
-                return { 'response': self.middleware.accountExists(username) }
+            except: pass
+            try:
+                email = cgi.escape(self._parse_parameter(request.forms, 'email'))
+            except: pass
+            try:
+                return { 'response': self.middleware.accountExists(username, email) }
             except Exception as e:
                 abort(401, str(e))
 
