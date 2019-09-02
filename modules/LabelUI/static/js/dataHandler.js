@@ -198,6 +198,81 @@ class DataHandler {
     }
 
 
+
+    _loadReviewBatch() {
+        var self = this;
+
+        // check current time range
+        if(this.minTimestamp === undefined || this.minTimestamp === null) {
+            // start at the bottom
+            this.minTimestamp = 0;
+        }
+        // if(this.maxTimestamp === undefined) {
+        //     this.maxTimestamp = null;
+        // }
+
+        var url = 'getImages_timestamp'; //?order=unlabeled&subset=default&limit=' + this.numImagesPerBatch;
+        return $.ajax({
+            url: url,
+            method: 'POST',
+            contentType: "application/json; charset=utf-8",
+            dataType: 'json',
+            data: JSON.stringify({
+                minTimestamp: self.minTimestamp,
+                // maxTimestamp: self.maxTimestamp,
+                //users: [],     //TODO: implement routine for admins
+                limit: this.numImagesPerBatch
+            }),
+            success: function(data) {
+                // clear current entries
+                self.parentDiv.empty();
+                self.dataEntries = [];
+
+                for(var d in data['entries']) {
+                    // create new data entry
+                    switch(String(window.annotationType)) {
+                        case 'labels':
+                            var entry = new ClassificationEntry(d, data['entries'][d]);
+                            break;
+                        case 'points':
+                            var entry = new PointAnnotationEntry(d, data['entries'][d]);
+                            break;
+                        case 'boundingBoxes':
+                            var entry = new BoundingBoxAnnotationEntry(d, data['entries'][d]);
+                            break;
+                        case 'segmentationMasks':
+                            var entry = new SemanticSegmentationEntry(d, data['entries'][d]);
+                            break;
+                        default:
+                            break;
+                    }
+
+                    // append
+                    self.parentDiv.append(entry.markup);
+                    self.dataEntries.push(entry);
+
+                    // update min and max timestamp
+                    var nextTimestamp = data['entries'][d]['last_checked'];
+                    self.minTimestamp = Math.max(self.minTimestamp, nextTimestamp+1e-6);
+                }
+
+                // update present classes list
+                self.updatePresentClasses();
+
+                // adjust width of entries
+                window.windowResized();
+            },
+            error: function(xhr, status, error) {
+                if(error == 'Unauthorized') {
+                    // ask user to provide password again
+                    window.verifyLogin((self._loadReviewBatch).bind(self));
+                }
+            }
+        });
+    }
+
+
+
     _entriesToJSON(minimal, onlyUserAnnotations) {
         // assemble entries
         var entries = {};
@@ -358,7 +433,16 @@ class DataHandler {
                         var nb = self.redoStack.pop();
                         self._loadFixedBatch(nb.slice());
                     } else {
-                        self._loadNextBatch();
+                        //TODO: temporary mode to ensure compatibility with running instances
+                        try {
+                            if($('#imorder-review').prop('checked')) {
+                                self._loadReviewBatch();
+                            } else {
+                                self._loadNextBatch();
+                            }
+                        } catch {
+                            self._loadNextBatch();
+                        }
                     }
                 });
             }

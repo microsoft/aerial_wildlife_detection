@@ -122,10 +122,40 @@ class LabelUI():
             if self.loginCheck():
                 username = cgi.escape(request.get_cookie('username'))
                 dataIDs = request.json['imageIDs']
-                json = self.middleware.getBatch(username, dataIDs)
+                json = self.middleware.getBatch_fixed(username, dataIDs)
                 return json
             else:
                 abort(401, 'not logged in')
+
+
+        @self.app.post('/getImages_timestamp')
+        def get_images_timestamp():
+            # check if user requests to see other user names; only permitted if admin
+            try:
+                users = request.json['users']
+            except:
+                users = None
+            
+            if self.loginCheck(users is not None):
+                username = cgi.escape(request.get_cookie('username'))
+                try:
+                    minTimestamp = request.json['minTimestamp']
+                except:
+                    minTimestamp = None
+                try:
+                    maxTimestamp = request.json['maxTimestamp']
+                except:
+                    maxTimestamp = None
+                try:
+                    limit = request.json['limit']
+                except:
+                    limit = None
+
+                # query and return
+                json = self.middleware.getBatch_timeRange(username, minTimestamp, maxTimestamp, users, limit)
+                return json
+            else:
+                abort(401, 'unauthorized')
 
 
         @self.app.get('/getLatestImages')
@@ -144,7 +174,7 @@ class LabelUI():
                     subset = int(request.query['subset'])
                 except:
                     subset = 'default'  
-                json = self.middleware.getNextBatch(username=username, order=order, subset=subset, limit=limit)
+                json = self.middleware.getBatch_auto(username=username, order=order, subset=subset, limit=limit)
 
                 return json
             else:

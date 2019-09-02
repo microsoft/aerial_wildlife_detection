@@ -88,11 +88,15 @@ class DBMiddleware():
                 response[imgID] = {
                     'fileName': b['filename'],
                     'predictions': {},
-                    'annotations': {}
+                    'annotations': {},
+                    'last_checked': None
                 }
             viewcount = b['viewcount']
             if viewcount is not None:
                 response[imgID]['viewcount'] = viewcount
+            last_checked = b['last_checked']
+            if last_checked is not None:
+                response[imgID]['last_checked'] = last_checked.timestamp()
 
             # parse annotations and predictions
             entryID = str(b['id'])
@@ -220,7 +224,7 @@ class DBMiddleware():
         return classdef
 
 
-    def getBatch(self, username, data):
+    def getBatch_fixed(self, username, data):
         '''
             Returns entries from the database based on the list of data entry identifiers specified.
         '''
@@ -244,8 +248,47 @@ class DBMiddleware():
                 # cursor.close()
         return { 'entries': response }
         
+
+    def getBatch_timeRange(self, username, minTimestamp, maxTimestamp, userList, limit=None):
+        '''
+            Returns images that have been annotated within the given time range and/or
+            by the given user(s). All arguments are optional.
+            Useful for reviewing existing annotations.
+        '''
+        # query string
+        sql = self.sqlBuilder.getDateQueryString(minTimestamp, maxTimestamp, userList)
+
+        # check validity and provide arguments
+        queryVals = []
+        if userList is not None:
+            queryVals.append(userList)
+        if minTimestamp is not None:
+            queryVals.append(minTimestamp)
+        if maxTimestamp is not None:
+            queryVals.append(maxTimestamp)
+
+        # limit (TODO: make 128 a hyperparameter)
+        if limit is None:
+            limit = 128
+        else:
+            limit = min(int(limit), 128)
+        queryVals.append(limit)
+
+        # query and parse results
+        with self.dbConnector.execute_cursor(sql, tuple(queryVals)) as cursor:
+            try:
+                response = self._assemble_annotations(cursor)
+                # self.dbConnector.conn.commit()
+            except Exception as e:
+                print(e)
+                # self.dbConnector.conn.rollback()
+            finally:
+                pass
+                # cursor.close()
+        return { 'entries': response }
+
     
-    def getNextBatch(self, username, order='unlabeled', subset='default', limit=None):
+    def getBatch_auto(self, username, order='unlabeled', subset='default', limit=None):
         '''
             TODO: description
         '''
