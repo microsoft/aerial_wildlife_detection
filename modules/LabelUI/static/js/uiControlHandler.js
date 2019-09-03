@@ -322,6 +322,101 @@ class UIControlHandler {
                 self.dataHandler.setMinimapVisible(false);
             }
         });
+
+
+        // Annotation Reviewing
+        if(!window.demoMode) {
+            // set up slider range
+            var initSliderRange = function() {
+                var slider = $('#review-timerange');
+                var dateSpan = $('#review-time-text');
+                return $.ajax({
+                    url: 'getTimeRange',
+                    method: 'POST',
+                    contentType: "application/json; charset=utf-8",
+                    dataType: 'json',
+                    data: JSON.stringify({
+                        // users: [],  //TODO: implement for admins
+                        skipEmpty: $('#review-skip-empty').prop('checked')
+                    }),
+                    success: function(data) {
+                        slider.prop('min', parseInt(data['minTimestamp'])-1);
+                        slider.prop('max', parseInt(data['maxTimestamp'])+1);
+                        slider.val(parseInt(data['minTimestamp'])-1);
+                        dateSpan.html(new Date(data['minTimestamp']*1000 - 1).toLocaleString());
+                    }
+                });
+            };
+            var onChange = function() {
+                if($('#imorder-review').prop('checked')) {
+                    $('#review-controls').slideDown();
+                    initSliderRange().done(function() {
+                        window.dataHandler.nextBatch();
+                    });
+                } else {
+                    $('#review-controls').slideUp();
+                    window.dataHandler.nextBatch();
+                }
+            }
+            $('#imorder-auto').change(onChange);
+            $('#imorder-review').change(onChange);
+            $('#review-skip-empty').change(onChange);
+
+            $('#review-timerange').on({
+                'input': function() {
+                    var timestamp = parseInt($('#review-timerange').val());
+                    $('#review-time-text').html(new Date(timestamp * 1000).toLocaleString());
+                },
+                'change': function() {
+                    if($('#imorder-review').prop('checked')) {
+                        window.dataHandler.nextBatch();
+                    }
+                }
+            });
+
+            // show user list if admin
+            if(window.getCookie('isAdmin') === 'y') {
+                var uTable = $('<table class="limit-users-table"><thead><tr><td><input type="checkbox" id="review-users-checkall" /></td><td>Name</td></tr></thead></table>');
+                this.reviewUsersTable = $('<tbody></tbody>');
+                uTable.append(this.reviewUsersTable);
+
+                // get all the users
+                $.ajax({
+                    url: 'getUserNames',
+                    method: 'POST',
+                    contentType: "application/json; charset=utf-8",
+                    dataType: 'json',
+                    success: function(data) {
+                        if(data.hasOwnProperty('users')) {
+                            for(var u=0;u<data['users'].length; u++) {
+                                var uName = data['users'][u];
+                                if(uName === $('#navbar-user-dropdown').html()) {
+                                    continue;
+                                }
+                                self.reviewUsersTable.append(
+                                    $('<tr><td><input type="checkbox" /></td><td class="user-list-name">' + uName + '</td></tr>')
+                                );
+                            }
+                            self.reviewUsersTable.find(':checkbox').change(onChange);
+                            $('#review-controls').append($('<div style="margin-top:10px">View other user annotations:</div>'));
+                            $('#review-controls').append(uTable);
+                            $('#review-controls').append($('<div style="color:gray;font-size:9pt;font-style:italic;">If no user is selected, only your own annotations are shown.</div>'));
+
+                            var checkAll = function() {
+                                var isChecked = $('#review-users-checkall').prop('checked');
+                                self.reviewUsersTable.find(':checkbox').each(function() {
+                                    $(this).prop('checked', isChecked);
+                                });
+                                onChange();
+                            }
+                            $('#review-users-checkall').change(checkAll);
+                        }
+                    }
+                });
+            }
+
+            initSliderRange();
+        }
     }
 
 

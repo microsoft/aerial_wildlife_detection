@@ -115,6 +115,20 @@ class UserHandler():
                 abort(403, str(e))
 
 
+        @self.app.route('/getUserNames', method='POST')
+        def get_user_names():
+            if self.demoMode:
+                return redirect('/interface')
+
+            if self.checkAuthenticated(True):
+                return {
+                    'users': self.middleware.getUserNames()
+                }
+
+            else:
+                abort(401, 'forbidden') 
+
+
         @self.app.route('/createAccount', method='POST')
         def createAccount():
             if self.demoMode:

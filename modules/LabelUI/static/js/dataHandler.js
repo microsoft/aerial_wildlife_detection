@@ -202,25 +202,30 @@ class DataHandler {
     _loadReviewBatch() {
         var self = this;
 
-        // check current time range
-        if(this.minTimestamp === undefined || this.minTimestamp === null) {
-            // start at the bottom
-            this.minTimestamp = 0;
+        // get properties
+        var minTimestamp = parseFloat($('#review-timerange').val());  ///1000;
+        var skipEmptyImgs = $('#review-skip-empty').prop('checked');
+        var userNames = [];
+        if(window.uiControlHandler.hasOwnProperty('reviewUsersTable')) {
+            // user is admin; check which names are selected
+            window.uiControlHandler.reviewUsersTable.children().each(function() {
+                var checked = $(this).find(':checkbox').prop('checked');
+                if(checked) {
+                    userNames.push($(this).find('.user-list-name').html());
+                }
+            })
         }
-        // if(this.maxTimestamp === undefined) {
-        //     this.maxTimestamp = null;
-        // }
 
-        var url = 'getImages_timestamp'; //?order=unlabeled&subset=default&limit=' + this.numImagesPerBatch;
+        var url = 'getImages_timestamp';
         return $.ajax({
             url: url,
             method: 'POST',
             contentType: "application/json; charset=utf-8",
             dataType: 'json',
             data: JSON.stringify({
-                minTimestamp: self.minTimestamp,
-                // maxTimestamp: self.maxTimestamp,
-                //users: [],     //TODO: implement routine for admins
+                minTimestamp: minTimestamp,
+                users: userNames,
+                skipEmpty: skipEmptyImgs,
                 limit: this.numImagesPerBatch
             }),
             success: function(data) {
@@ -253,11 +258,15 @@ class DataHandler {
 
                     // update min and max timestamp
                     var nextTimestamp = data['entries'][d]['last_checked'];
-                    self.minTimestamp = Math.max(self.minTimestamp, nextTimestamp+1e-6);
+                    minTimestamp = Math.max(minTimestamp, nextTimestamp+1);
                 }
 
                 // update present classes list
                 self.updatePresentClasses();
+
+                // update slider and date text
+                $('#review-timerange').val(Math.min($('#review-timerange').prop('max'), minTimestamp));
+                $('#review-time-text').html(new Date(minTimestamp * 1000).toLocaleString());
 
                 // adjust width of entries
                 window.windowResized();
@@ -427,8 +436,8 @@ class DataHandler {
                     historyEntry.push(this.dataEntries[i]['entryID']);
                 }
                 this.undoStack.push(historyEntry);
-                
-                this._submitAnnotations().done(function() {
+
+                var callback = function() {
                     if(self.redoStack.length > 0) {
                         var nb = self.redoStack.pop();
                         self._loadFixedBatch(nb.slice());
@@ -444,7 +453,16 @@ class DataHandler {
                             self._loadNextBatch();
                         }
                     }
-                });
+                };
+
+                // check if annotation commitment is enabled
+                var doSubmit = $('#imorder-auto').prop('checked') || $('#review-enable-editing').prop('checked');
+                if(doSubmit) {
+                    this._submitAnnotations().done(callback);
+                } else {
+                    // only go to next batch, don't submit annotations
+                    callback();
+                }
             }
         }
         this._showConfirmationDialog((_next_batch).bind(this));
@@ -480,11 +498,25 @@ class DataHandler {
                 this.redoStack.push(historyEntry);
     
                 var pb = this.undoStack.pop();
-    
-                // load
-                this._submitAnnotations().done(function() {
+
+                // check if annotation commitment is enabled
+                var doSubmit = $('#imorder-auto').prop('checked') || $('#review-enable-editing').prop('checked');
+                if(doSubmit) {
+                    this._submitAnnotations().done(function() {
+                        self._loadFixedBatch(pb.slice());
+                    });
+                } else {
+                    // only go to next batch, don't submit annotations
                     self._loadFixedBatch(pb.slice());
-                })
+                }
+                // if(dontCommit) {
+                //     self._loadFixedBatch(pb.slice());
+
+                // } else {
+                //     this._submitAnnotations().done(function() {
+                //         self._loadFixedBatch(pb.slice());
+                //     });
+                // }
             };
         }
         this._showConfirmationDialog((_previous_batch).bind(this));

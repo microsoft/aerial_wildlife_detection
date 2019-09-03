@@ -78,9 +78,13 @@ h3 {
     max-width: 1920px;
 }
 #interface-controls {
+    justify-content: center;
+    overflow-x: auto;
     margin-top: 10px;
 }
 #interface-controls > * {
+    display: inline;
+    white-space: nowrap;
     margin-left: 10px;
     margin-right: 10px;
 }
@@ -108,16 +112,34 @@ canvas {
     height: 100%;
     /* max-height: 100%; */
 }
+
+/* tools */
+#tools-container-resize-handle {
+    height: calc(100vh - 140px);
+    flex-shrink: 0;
+    margin-left: 5px;
+}
+
+.toolbox {
+    padding: 10px;
+    overflow-y: auto;
+}
+
 #tools-container {
+    display: flex;
+    flex-direction: column;
     float: right;
     height: calc(100vh - 140px);
+    max-height: calc(100vh - 140px);
     color: white;
-    width: 400px;
-    min-width: 400px;
+    width: 500px;
+    /* min-width: 400px; */
     padding-left: 5px;
     padding-right: 5px;
     padding-top: 75px;
     padding-bottom: 10px;
+    overflow-x: auto;
+    white-space: nowrap;
 }
 #labelclass-search-box {
     margin: 10px;
@@ -128,7 +150,7 @@ canvas {
 #legend-entries {
     padding: 10px;
     overflow-y: auto;
-    height: 100%;
+    /* height: 100%; */
 }
 .legend-color-dot {
     display: inline-block;
@@ -146,6 +168,10 @@ canvas {
     margin: 10px;
     border-radius: 2px;
     padding-left: 10px;
+    width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .label-text {
     font-size: 14px;
@@ -334,6 +360,34 @@ canvas {
     padding-right: 0px !important;
 }
 
+/* annotation reviewing */
+#imorder-title {
+    cursor: pointer;
+}
+#imorderBox {
+    overflow-y: auto;
+}
+#review-controls {
+    margin-left: 25px;
+}
+.limit-users-table {
+    width: 90%;
+    background: #575352;
+    border: 1px solid white;
+    overflow-x: auto;
+}
+.limit-users-table tbody {
+    display: block;
+    overflow-y: auto;
+    max-height: 200px;
+}
+.limit-users-table thead {
+    background: #3e3e3e;
+}
+.limit-users-table thead tr {
+    display: block;
+}
+
 /* AI controller window */
 .ai-worker-panel {
     position: absolute;
@@ -387,10 +441,6 @@ canvas {
     background: #575352F0;
     border-top-left-radius: 5px;
     border-top-right-radius: 5px;
-}
-
-.ai-entries {
-    /* padding-left: 15px; */
 }
 
 .number-box {

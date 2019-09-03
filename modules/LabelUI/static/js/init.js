@@ -376,13 +376,14 @@ $(document).ready(function() {
             })
 
             // gallery: account for width, center entries
-            var toolsWidth = $('#tools-container').width() + $('#viewport-controls').width();
-            $('#gallery').css({
-                'width': 'calc(100vw - '+toolsWidth+'px)',
-            });
+            // var toolsWidth = $('#tools-container').width() + $('#viewport-controls').width();
+            // $('#gallery').css({
+            //     'width': 'calc(100vw - '+toolsWidth+'px)',
+            // });
+            // $('#classes-container').css('max-height', $('#tools-container').height() - $('#review-controls-container').height() - 76);
 
             // label class entries
-            $('#legend-entries').css('height', gallery.height() - 60 + 'px');   // -60 for search bar
+            // $('#legend-entries').css('height', $('#classes-container').height() - 100); //gallery.height() - revCtrlHeight - 60 + 'px');   // -60 for search bar
             window.dataHandler.renderAll();
 
             // show or hide tooltip if scollable & adjust position
@@ -393,6 +394,43 @@ $(document).ready(function() {
             window.galleryScrolled();
         }
         $(window).resize(windowResized);
+
+
+        if(!window.demoMode) {
+            $('#toolbox-divider').show();
+            $('#review-controls-container').show();
+            // // adjustable toolbox divider
+            // $('#toolbox-divider').on({
+            //     mousedown: function() {
+            //         this.mouseDown = true;
+            //     },
+            //     mouseup: function() {
+            //         this.mouseDown = false;
+            //     },
+            //     mousemove: function(event) {
+            //         if(this.mouseDown) {
+            //             // adjust space between legend and review toolboxes
+            //             var container = $('#tools-container');
+            //             var cHeight = container.height();
+            //             var cTop = container.position().top + 75;   // 75 for padding at top
+            //             var dividerPos = event.pageY;
+            //             var divVal = 100*(dividerPos - cTop)/cHeight;
+            //             $('#classes-container').css('height', divVal + '%');
+            //             $('#review-controls-container').css('height', 100 - divVal + '%');
+            //         }
+            //     }
+            // })
+
+            // show or hide image review pane on title click
+            $('#imorder-title').click(function() {
+                var imorderBox = $('#imorder-box');
+                if(imorderBox.is(':visible')) {
+                    imorderBox.slideUp();
+                } else {
+                    imorderBox.slideDown();
+                }
+            });          
+        }
 
 
         // show or hide tooltip in case of scrollable gallery

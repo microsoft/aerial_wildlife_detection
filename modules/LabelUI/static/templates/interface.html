@@ -79,10 +79,12 @@
 
                 <div id="viewport-controls"></div>
 
-                <!-- Label Classes -->
-                <div id="tools-container">
-                    <div class="grad-border-v" id="tools-container-resize-handle" style="float:left"></div>
-                    <div class="container">
+                <div class="grad-border-v" id="tools-container-resize-handle"></div>
+
+                <!-- Toolboxes -->
+                <div id="tools-container">                
+                    <!-- Label Classes -->
+                    <div id="classes-container" class="toolbox" style="order:1;flex-grow:1e5;height:100%">
                         <h2>Classes</h2>
                         <input type="search" id="labelclass-search-box" placeholder="find..." />
                         <!-- <div class="labelGroup" id="legend-entries-active">
@@ -91,16 +93,30 @@
                         </div> -->
                         <div id="legend-entries"></div>
                     </div>
-                    <div class="grad-border-h"></div>
-                    <!-- <div class="container" style="position:absolute;top:500px">
-                        <h2>Image Order</h2>
-                        <div>
+                    
+                    <div id="toolbox-divider" class="grad-border-h" style="order:2;flex-shrink:0;margin-top:10px;margin-bottom:10px;display:none;"></div>
+                    
+                    <!-- Image sequence controls -->
+                    <div id="review-controls-container" class="toolbox" style="order:3;display:none;">
+                        <h2 id="imorder-title">Image Order</h2>
+                        <div id="imorder-box" style="display:none;">
                             <input type="radio" id="imorder-auto" name="imorder" value="imorder-auto" checked />
                             <label for="imorder-auto">automatic</label><br />
                             <input type="radio" id="imorder-review" name="imorder" value="imorder-review" />
-                            <label for="imorder-review">review checked images</label>
+                            <label for="imorder-review">review annotations</label><br />
+                            
+                            <div id="review-controls" style="display:none">
+                                <input type="checkbox" id="review-enable-editing" />
+                                <label for="review-enable-editing">enable editing</label><br />
+                                <div style="margin-left:20px;color:gray;font-size:9pt;font-style:italic;white-space:normal;word-wrap:break-word;">If editing is enabled, all annotations on screen will be copied and committed under your account.</div>
+                                <input type="checkbox" id="review-skip-empty" />
+                                <label for="review-skip-empty">skip empty images</label><br />
+                                <div>Date and time:</div>
+                                <input type="range" id="review-timerange" min="0" max="0" value="0" /><br />
+                                <div id="review-time-text" style="color:gray"></div>
+                            </div>
                         </div>
-                    </div> -->
+                    </div>
                 </div>
             </div>
         </div>

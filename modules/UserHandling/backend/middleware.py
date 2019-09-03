@@ -345,3 +345,10 @@ class UserMiddleware():
             numReturn=None)
             sessionToken, timestamp, _, expires = self._init_or_extend_session(username)
             return sessionToken, timestamp, expires
+
+    
+    def getUserNames(self):
+        sql = 'SELECT name FROM {}.user'.format(self.config.getProperty('Database', 'schema'))
+        result = self.dbConnector.execute(sql, None, 'all')
+        response = [r['name'] for r in result]
+        return response

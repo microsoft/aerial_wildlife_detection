@@ -127,37 +127,7 @@ class LabelUI():
             else:
                 abort(401, 'not logged in')
 
-
-        @self.app.post('/getImages_timestamp')
-        def get_images_timestamp():
-            # check if user requests to see other user names; only permitted if admin
-            try:
-                users = request.json['users']
-            except:
-                users = None
-            
-            if self.loginCheck(users is not None):
-                username = cgi.escape(request.get_cookie('username'))
-                try:
-                    minTimestamp = request.json['minTimestamp']
-                except:
-                    minTimestamp = None
-                try:
-                    maxTimestamp = request.json['maxTimestamp']
-                except:
-                    maxTimestamp = None
-                try:
-                    limit = request.json['limit']
-                except:
-                    limit = None
-
-                # query and return
-                json = self.middleware.getBatch_timeRange(username, minTimestamp, maxTimestamp, users, limit)
-                return json
-            else:
-                abort(401, 'unauthorized')
-
-
+        
         @self.app.get('/getLatestImages')
         def get_latest_images():
             if self.loginCheck():
@@ -179,6 +149,83 @@ class LabelUI():
                 return json
             else:
                 abort(401, 'not logged in')
+
+
+        @self.app.post('/getImages_timestamp')
+        def get_images_timestamp():
+            if self.demoMode:
+                return { 'status': 'not allowed in demo mode' }
+
+            # check if user requests to see other user names; only permitted if admin
+            try:
+                users = request.json['users']
+                if not len(users):
+                    users = None
+            except:
+                users = None
+            
+            username = cgi.escape(request.get_cookie('username'))
+
+            if not self.loginCheck(True):
+                # user no admin: can only query their own labels
+                users = [username]
+            
+            elif not self.loginCheck():
+                # not logged in
+                abort(401, 'unauthorized')
+                
+            try:
+                minTimestamp = request.json['minTimestamp']
+            except:
+                minTimestamp = None
+            try:
+                maxTimestamp = request.json['maxTimestamp']
+            except:
+                maxTimestamp = None
+            try:
+                skipEmpty = request.json['skipEmpty']
+            except:
+                skipEmpty = False
+            try:
+                limit = request.json['limit']
+            except:
+                limit = None
+
+            # query and return
+            json = self.middleware.getBatch_timeRange(minTimestamp, maxTimestamp, users, skipEmpty, limit)
+            return json
+
+        
+        @self.app.post('/getTimeRange')
+        def get_time_range():
+            if self.demoMode:
+                return { 'status': 'not allowed in demo mode' }
+
+            # check if user requests to see other user names; only permitted if admin
+            try:
+                users = request.json['users']
+            except:
+                users = None
+            
+            username = cgi.escape(request.get_cookie('username'))
+
+            if not self.loginCheck(True):
+                # user no admin: can only query their own labels
+                users = [username]
+            
+            elif not self.loginCheck():
+                # not logged in
+                abort(401, 'unauthorized')
+
+            try:
+                skipEmpty = request.json['skipEmpty']
+            except:
+                skipEmpty = False
+
+            # query and return
+            json = self.middleware.get_timeRange(users, skipEmpty)
+            return json
+
 
 
         @self.app.post('/submitAnnotations')
