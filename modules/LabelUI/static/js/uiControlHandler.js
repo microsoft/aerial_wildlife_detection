@@ -346,7 +346,7 @@ class UIControlHandler {
 
                         } else {
                             slider.prop('disabled', false);
-                            
+
                             if(data.hasOwnProperty('minTimestamp')) {
                                 slider.prop('min', parseInt(data['minTimestamp'])-1);
                                 slider.val(parseInt(data['minTimestamp'])-1);
@@ -412,7 +412,7 @@ class UIControlHandler {
                             self.reviewUsersTable.find(':checkbox').change(onChange);
                             $('#review-controls').append($('<div style="margin-top:10px">View other user annotations:</div>'));
                             $('#review-controls').append(uTable);
-                            $('#review-controls').append($('<div style="color:gray;font-size:9pt;font-style:italic;">If no user is selected, only your own annotations are shown.</div>'));
+                            $('#review-controls').append($('<div style="color:gray;font-size:9pt;font-style:italic;white-space:normal;word-wrap:break-word;">If no user is selected, only your own annotations are shown.</div>'));
 
                             var checkAll = function() {
                                 var isChecked = $('#review-users-checkall').prop('checked');

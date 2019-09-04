@@ -156,15 +156,19 @@ class LabelUI():
             if self.demoMode:
                 return { 'status': 'not allowed in demo mode' }
 
+            username = cgi.escape(request.get_cookie('username'))
+
             # check if user requests to see other user names; only permitted if admin
+            # also, by default we limit labels to the current user,
+            # even for admins, to provide a consistent experience.
             try:
                 users = request.json['users']
                 if not len(users):
-                    users = None
+                    users = [username]
             except:
-                users = None
+                users = [username]
             
-            username = cgi.escape(request.get_cookie('username'))
+            
 
             if not self.loginCheck(True):
                 # user no admin: can only query their own labels
@@ -201,13 +205,15 @@ class LabelUI():
             if self.demoMode:
                 return { 'status': 'not allowed in demo mode' }
 
+            username = cgi.escape(request.get_cookie('username'))
+
             # check if user requests to see other user names; only permitted if admin
             try:
                 users = request.json['users']
             except:
-                users = None
+                # no users provided; restrict to current account
+                users = [username]
             
-            username = cgi.escape(request.get_cookie('username'))
 
             if not self.loginCheck(True):
                 # user no admin: can only query their own labels

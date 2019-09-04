@@ -83,14 +83,18 @@
 
                 <!-- Toolboxes -->
                 <div id="tools-container">                
-                    <!-- Label Classes -->
-                    <div id="classes-container" class="toolbox" style="order:1;flex-grow:1e5;height:100%">
+                    <!-- Label Classes search box -->
+                    <div id="classes-container" class="toolbox" style="order:0;flex-shrink:0">
                         <h2>Classes</h2>
                         <input type="search" id="labelclass-search-box" placeholder="find..." />
                         <!-- <div class="labelGroup" id="legend-entries-active">
                             <h3 class="expanded">In use</h3>
                             <div class="labelGroup-children" id="legend-entries-active-container"></div>
                         </div> -->
+                    </div>
+
+                    <!-- Label Classes -->
+                    <div id="classes-container" class="toolbox" style="order:1;height:100%">
                         <div id="legend-entries"></div>
                     </div>
                     
