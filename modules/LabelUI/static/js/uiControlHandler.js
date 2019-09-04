@@ -110,45 +110,50 @@ class UIControlHandler {
         var dtControls = $('#interface-controls');
 
         if(!(window.annotationType === 'labels')) {
-            // add and remove buttons
+            // add button
             var addAnnoCallback = function() {
                 self.setAction(ACTIONS.ADD_ANNOTATION);
             }
-            var removeAnnoCallback = function() {
-                self.setAction(ACTIONS.REMOVE_ANNOTATIONS);
-            }
             var addAnnoBtn = $('<button id="add-annotation" class="btn btn-sm btn-primary" title="Add Annotation (W)">+</button>');
             addAnnoBtn.click(addAnnoCallback);
-            var removeAnnoBtn = $('<button id="remove-annotation" class="btn btn-sm btn-primary" title="Remove Annotation (R)">-</button>');
-            removeAnnoBtn.click(removeAnnoCallback);
+            
             this.staticButtons[ACTIONS.ADD_ANNOTATION] = addAnnoBtn;
-            this.staticButtons[ACTIONS.REMOVE_ANNOTATIONS] = removeAnnoBtn;
+            
             dtControls.append(addAnnoBtn);
-            dtControls.append(removeAnnoBtn);
+        }
 
-            // burst mode checkbox
-            var burstModeCallback = function() {
-                var chkbx = $('#burst-mode-check');
-                self.burstMode = !self.burstMode;
-                chkbx.prop('checked', self.burstMode);
-                window.setCookie('burstModeEnabled', self.burstMode);
-            };
-            var burstModeCheck = $('<input type="checkbox" id="burst-mode-check" class="inline-control" style="margin-right:2px" title="Enable burst mode (M)" />');
-            burstModeCheck.change(burstModeCallback);
-            burstModeCheck.prop('checked', this.burstMode);
-            dtControls.append(burstModeCheck);
-            var burstModeLabel = $('<label for="#burst-mode-check" class="inline-control" style="margin-left:0px;margin-right:10px;color:white;cursor:pointer;" title="Enable burst mode (M)">burst mode</label>');
-            burstModeLabel.click(burstModeCallback);
-            dtControls.append(burstModeLabel);
 
-            if(window.enableEmptyClass) {
-                var clearAllCallback = function() {
-                    self.dataHandler.clearLabelInAll();
-                }
-                var clearAllBtn = $('<button class="btn btn-sm btn-warning" id="clearAll-button" title="Clear all Annotations (C)">Clear All</button>');
-                clearAllBtn.click(clearAllCallback);
-                dtControls.append(clearAllBtn);
+        // remove button
+        var removeAnnoCallback = function() {
+            self.setAction(ACTIONS.REMOVE_ANNOTATIONS);
+        }
+        var removeAnnoBtn = $('<button id="remove-annotation" class="btn btn-sm btn-primary" title="Remove Annotation (R)">-</button>');
+        removeAnnoBtn.click(removeAnnoCallback);
+        this.staticButtons[ACTIONS.REMOVE_ANNOTATIONS] = removeAnnoBtn;
+        dtControls.append(removeAnnoBtn);
+
+        // burst mode checkbox
+        var burstModeCallback = function() {
+            var chkbx = $('#burst-mode-check');
+            self.burstMode = !self.burstMode;
+            chkbx.prop('checked', self.burstMode);
+            window.setCookie('burstModeEnabled', self.burstMode);
+        };
+        var burstModeCheck = $('<input type="checkbox" id="burst-mode-check" class="inline-control" style="margin-right:2px" title="Enable burst mode (M)" />');
+        burstModeCheck.change(burstModeCallback);
+        burstModeCheck.prop('checked', this.burstMode);
+        dtControls.append(burstModeCheck);
+        var burstModeLabel = $('<label for="#burst-mode-check" class="inline-control" style="margin-left:0px;margin-right:10px;color:white;cursor:pointer;" title="Enable burst mode (M)">burst mode</label>');
+        burstModeLabel.click(burstModeCallback);
+        dtControls.append(burstModeLabel);
+
+        if(window.enableEmptyClass) {
+            var clearAllCallback = function() {
+                self.dataHandler.clearLabelInAll();
             }
+            var clearAllBtn = $('<button class="btn btn-sm btn-warning" id="clearAll-button" title="Clear all Annotations (C)">Clear All</button>');
+            clearAllBtn.click(clearAllCallback);
+            dtControls.append(clearAllBtn);
         }
 
         // label all and unsure buttons
@@ -174,7 +179,7 @@ class UIControlHandler {
                 brush_circle: $('<button class="btn btn-sm btn-secondary inline-control"><img src="static/img/controls/circle.svg" style="height:18px" title="Circular brush" /></button>'),
                 brush_size: $('<input class="inline-control" type="number" min="1" max="255" value="20" title="Brush size" style="width:50px" />'),
                 opacity: $('<input class="inline-control" type="range" min="0" max="255" value="220" title="Segmentation opacity" style="width:100px" />')        //TODO: make available for other annotation types as well?
-            };  //TODO: ranges, default
+            };
 
             this.segmentation_controls.brush_rectangle.click(function() {
                 self.setBrushType('rectangle');
