@@ -340,10 +340,22 @@ class UIControlHandler {
                         skipEmpty: $('#review-skip-empty').prop('checked')
                     }),
                     success: function(data) {
-                        slider.prop('min', parseInt(data['minTimestamp'])-1);
-                        slider.prop('max', parseInt(data['maxTimestamp'])+1);
-                        slider.val(parseInt(data['minTimestamp'])-1);
-                        dateSpan.html(new Date(data['minTimestamp']*1000 - 1).toLocaleString());
+                        if(data.hasOwnProperty('error')) {
+                            // e.g. no annotations made yet
+                            slider.prop('disabled', true);
+
+                        } else {
+                            slider.prop('disabled', false);
+                            
+                            if(data.hasOwnProperty('minTimestamp')) {
+                                slider.prop('min', parseInt(data['minTimestamp'])-1);
+                                slider.val(parseInt(data['minTimestamp'])-1);
+                                dateSpan.html(new Date(data['minTimestamp']*1000 - 1).toLocaleString());
+                            }
+                            if(data.hasOwnProperty('maxTimestamp')) {
+                                slider.prop('max', parseInt(data['maxTimestamp'])+1);
+                            }
+                        }
                     }
                 });
             };

@@ -334,13 +334,18 @@ class DBMiddleware():
         # query string
         sql = self.sqlBuilder.getTimeRangeQueryString(userList, skipEmptyImages)
 
-        arguments = (None if userList is None else (userList,))
-        result = self.dbConnector.execute(sql, arguments, numReturn=1)
+        arguments = (None if userList is None else tuple(userList))
+        result = self.dbConnector.execute(sql, (arguments,), numReturn=1)
 
-        return {
-            'minTimestamp': result[0]['mintimestamp'],
-            'maxTimestamp': result[0]['maxtimestamp'],
-        }
+        if result is not None and len(result):
+            return {
+                'minTimestamp': result[0]['mintimestamp'],
+                'maxTimestamp': result[0]['maxtimestamp'],
+            }
+        else:
+            return {
+                'error': 'no annotations made'
+            }
 
 
     def submitAnnotations(self, username, submissions):

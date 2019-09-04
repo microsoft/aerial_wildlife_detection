@@ -330,7 +330,8 @@ class UserMiddleware():
 
 
     def createAccount(self, username, password, email):
-        if self._check_account_exists(username, email):
+        accExstChck = self._check_account_exists(username, email)
+        if accExstChck['username'] or accExstChck['email']:
             raise AccountExistsException(username)
 
         else:

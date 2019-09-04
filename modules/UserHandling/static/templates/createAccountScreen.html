@@ -84,8 +84,8 @@
             }
         }
 
-        $('#username').change(checkAccountValid);
-        $('#email').change(checkAccountValid);
+        $('#username').focusout(checkAccountValid);
+        $('#email').focusout(checkAccountValid);
 
         var checkPass = function() {
             var password = $('#account-create-form').find('[name=password]').val();
@@ -105,7 +105,7 @@
             }
         }
 
-        $('#password').change(function() {
+        $('#password').focusout(function() {
             checkPass();
             if(!checkOK()) {
                 $('#submit-button').prop("disabled",true);
@@ -114,7 +114,7 @@
             }
         });
 
-        $('#password-check').change(function() {
+        $('#password-check').focusout(function() {
             checkPass();
             if(!checkOK()) {
                 $('#submit-button').prop("disabled",true);
