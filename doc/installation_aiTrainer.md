@@ -48,6 +48,10 @@ Carry out these steps on the instance running the _AIController_ module:
     port=5672   # replace with your port
     sudo sed -i "s/^\s*#\s*NODE_PORT\s*=.*/NODE_PORT=$port/g" /etc/rabbitmq/rabitmq-env.conf
 
+    # start RabbitMQ server
+    sudo systemctl enable rabbitmq-server.service
+    sudo service rabbitmq-server start
+
     # install Celery (if not already done)
     conda activate aide
     pip install celery[librabbitmq,redis,auth,msgpack]
@@ -108,7 +112,7 @@ At this point you may want to test Redis:
 
     redis-cli -h localhost -p $port ping
     # > PONG
-    redis-cli -h localhost -p $port set test "Hello, world!"
+    redis-cli -h localhost -p $port set test "Hello, world"
     # > OK
   ```
 
@@ -121,7 +125,7 @@ At this point you may want to test Redis:
         redis-cli -h $host -p $port ping
         # > PONG
         redis-cli -h $host -p $port get test
-        # > "Hello, world!"
+        # > "Hello, world"
     ```
 
 
