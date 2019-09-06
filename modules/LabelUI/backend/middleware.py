@@ -156,9 +156,9 @@ class DBMiddleware():
 
         # query data
         sql = '''
-            SELECT 'group' AS type, id, NULL as idx, name, color, parent FROM {schema}.labelclassgroup
+            SELECT 'group' AS type, id, NULL as idx, name, color, parent, NULL AS keystroke FROM {schema}.labelclassgroup
             UNION ALL
-            SELECT 'class' AS type, id, idx, name, color, labelclassgroup FROM {schema}.labelclass;
+            SELECT 'class' AS type, id, idx, name, color, labelclassgroup, keystroke FROM {schema}.labelclass;
         '''.format(schema=schema)
         classData = self.dbConnector.execute(sql, None, 'all')
 
@@ -171,12 +171,13 @@ class DBMiddleware():
                 'id': id,
                 'name': cl['name'],
                 'color': cl['color'],
-                'parent': str(cl['parent']) if cl['parent'] is not None else None
+                'parent': str(cl['parent']) if cl['parent'] is not None else None,
             }
             if cl['type'] == 'group':
                 entry['entries'] = {}
             else:
                 entry['index'] = cl['idx']
+                entry['keystroke'] = cl['keystroke']
                 numClasses += 1
             allEntries[id] = entry
         

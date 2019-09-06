@@ -62,6 +62,8 @@ class LabelClass {
         this.color = (properties['color']===null  || properties['color'] === undefined ? window.getDefaultColor(this.index) : properties['color']);
         this.colorValues = window.getColorValues(this.color);   // [R, G, B, A]
 
+        this.keystroke = properties['keystroke'];
+
 
         // flip active foreground color if background is too bright
         this.darkForeground = (window.getBrightness(this.color) >= 92);
@@ -82,9 +84,13 @@ class LabelClass {
 
         var self = this;
         var name = this.name;
-        if(this.index >= 0 && this.index < 9) {
-            name = '(' + (this.index) + ') ' + this.name;
+        var hasKeystroke = false;
+        if(this.keystroke != null && this.keystroke != undefined && Number.isInteger(this.keystroke) &&
+            this.keystroke > 0 && this.keystroke <= 9) {
+            name = '(' + (this.keystroke) + ') ' + this.name;
+            hasKeystroke = true;
         }
+
         var foregroundStyle = '';
         if(altStyle || this.darkForeground) {
             foregroundStyle = 'color:black;';
@@ -107,13 +113,13 @@ class LabelClass {
             self.parent.setActiveClass(self);
         });
 
-        // listener for keypress if in [1, 9]
-        if(this.index >= 0 && this.index < 9) {
+        // listener for keypress if keystroke defined
+        if(hasKeystroke) {
             $(window).keyup(function(event) {
                 if(window.uiBlocked || window.shortcutsDisabled) return;
                 try {
                     var key = parseInt(String.fromCharCode(event.which));
-                    if(key == self.index) {
+                    if(key == self.keystroke) {
                         self.parent.setActiveClass(self);
 
                         window.dataHandler.renderAll();

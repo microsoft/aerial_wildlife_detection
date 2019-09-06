@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS &schema.LABELCLASS (
     idx SERIAL UNIQUE NOT NULL,
     color VARCHAR,
     labelclassgroup uuid,
+    keystroke SMALLINT UNIQUE,
     PRIMARY KEY (id),
     FOREIGN KEY (labelclassgroup) REFERENCES &schema.LABELCLASSGROUP(id)
 );
