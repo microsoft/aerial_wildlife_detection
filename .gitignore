@@ -114,3 +114,4 @@ venv.bak/
 
 /*.ini
 *.pth
+/*.json

@@ -119,7 +119,7 @@ class SQLStringBuilder:
             subsetFragment = 'WHERE viewcount IS NULL OR viewcount = 0'
 
         if order == 'unlabeled':
-            orderSpec = 'ORDER BY viewcount ASC NULLS FIRST, score DESC NULLS LAST'
+            orderSpec = 'ORDER BY viewcount ASC NULLS FIRST, annoCount ASC NULLS FIRST, score DESC NULLS LAST'
         elif order == 'labeled':
             orderSpec = 'ORDER BY viewcount DESC NULLS LAST, score DESC NULLS LAST'
         orderSpec += ', timeCreated DESC'
@@ -131,7 +131,7 @@ class SQLStringBuilder:
 
         sql = '''
             SELECT id, image, cType, viewcount, EXTRACT(epoch FROM last_checked) as last_checked, filename, {allCols} FROM (
-            SELECT id AS image, filename, viewcount, last_checked, score, timeCreated FROM {schema}.image AS img
+            SELECT id AS image, filename, viewcount, annoCount, last_checked, score, timeCreated FROM {schema}.image AS img
             LEFT OUTER JOIN (
                 SELECT * FROM {schema}.image_user
             ) AS iu ON img.id = iu.image
@@ -140,6 +140,12 @@ class SQLStringBuilder:
                 FROM {schema}.prediction
                 GROUP BY image, timeCreated
             ) AS img_score ON img.id = img_score.image
+            LEFT OUTER JOIN (
+				SELECT image, COUNT(*) AS annoCount
+				FROM {schema}.annotation
+				{usernameString}
+				GROUP BY image
+			) AS anno_score ON img.id = anno_score.image
             {subset}
             {order}
             LIMIT %s

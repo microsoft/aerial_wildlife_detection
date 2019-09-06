@@ -19,8 +19,6 @@ if __name__ == '__main__':
                     help='Directory (absolute path) on this machine of the model state file to be considered.')
     args = parser.parse_args()
     
-    #TODO
-    args.modelPath = 'model_state.pth'
 
     # setup
     print('Setup...')

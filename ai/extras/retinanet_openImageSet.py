@@ -45,6 +45,8 @@ class RetinaNet_ois(RetinaNet):
         else:
             self.options['contrib'] = check_args(self.options['contrib'], defaultContribOptions)
 
+        if not self.options['contrib']['baseFolder_unlabeled'].endswith('/'):
+            self.options['contrib']['baseFolder_unlabeled'] += '/'
 
         # parameters
         self.batchSize = self.options['inference']['dataLoader']['kwargs']['batch_size']
@@ -133,6 +135,7 @@ class RetinaNet_ois(RetinaNet):
 
         # load image
         filePath = os.path.join(self.baseFolder_unlabeled, filename)
+        
         _, fileExt = os.path.splitext(filePath)
         if fileExt.lower() in ['.nef', '.cr2']:
             img = Image.fromarray(rawpy.imread(filePath).postprocess())

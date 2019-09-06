@@ -266,7 +266,7 @@ class DBMiddleware():
             limit = min(int(limit), 128)
 
         # parse results
-        queryVals = (limit,username,)
+        queryVals = (username,limit,username,)
         if self.projectSettings['demoMode']:
             queryVals = (limit,)
 
