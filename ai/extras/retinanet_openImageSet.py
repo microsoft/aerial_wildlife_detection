@@ -103,6 +103,8 @@ class RetinaNet_ois(RetinaNet):
         if stateDict is not None:
             stateDict_parsed = torch.load(io.BytesIO(stateDict), map_location=lambda storage, loc: storage)
             known_classes = stateDict_parsed['labelclassMap']
+        else:
+            known_classes = []
         
         self.options['train']['ignore_unsure'] = True
         for key in data['images']:

@@ -252,7 +252,7 @@ if __name__ == '__main__':
                     # push to database
                     if args.annotation_type == 'annotation':
                         dbConn.execute(sql,
-                            (baseName+'%', currentDT, classdef[label], bbox[0], bbox[1], bbox[2], bbox[3]))
+                            (imgs[baseName], currentDT, classdef[label], bbox[0], bbox[1], bbox[2], bbox[3]))
                             
                     elif args.annotation_type == 'prediction':
                         # calculate additional properties
