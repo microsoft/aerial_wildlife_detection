@@ -62,6 +62,12 @@ for i in instance_args:
     if hasattr(instance, 'addLoginCheckFun'):
         instance.addLoginCheckFun(userHandler.checkAuthenticated)
 
+    
+    if moduleName == 'LabelUI':
+        # also launch configurator
+        configurator = REGISTERED_MODULES['ProjectConfigurator'](config, app)
+        configurator.addLoginCheckFun(userHandler.checkAuthenticated)
+
 
 if __name__ == '__main__':
 

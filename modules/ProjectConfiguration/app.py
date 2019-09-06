@@ -35,6 +35,29 @@ class ProjectConfigurator:
     
     def _initBottle(self):
 
+
+        with open(os.path.abspath(os.path.join('modules/ProjectConfiguration/static/templates/projectConfiguration.html')), 'r') as f:
+            self.projConf_template = SimpleTemplate(f.read())
+
+        @self.app.route('/configuration')
+        def configuration_page():
+            if self.loginCheck(True):
+                username = cgi.escape(request.get_cookie('username'))
+                response = self.projConf_template.render(
+                    username=username,
+                    projectTitle=self.config.getProperty('Project', 'projectName'),
+                    projectDescr=self.config.getProperty('Project', 'projectDescription'),
+                    numImagesPerBatch=self.config.getProperty('LabelUI', 'numImagesPerBatch'),
+                    minImageWidth=self.config.getProperty('LabelUI', 'minImageWidth')
+                )
+                # response.set_header("Cache-Control", "public, max-age=604800")
+            else:
+                response = bottle.response
+                response.status = 303
+                response.set_header('Location', '/')
+            return response
+
+
         @self.app.post('/getProjectConfiguration')
         def get_project_configuration():
             if not self.loginCheck(True):
