@@ -39,6 +39,12 @@ class ProjectConfigurator:
         with open(os.path.abspath(os.path.join('modules/ProjectConfiguration/static/templates/projectConfiguration.html')), 'r') as f:
             self.projConf_template = SimpleTemplate(f.read())
 
+
+        @self.app.route('/config/static/<filename:re:.*>')
+        def send_static(filename):
+            return static_file(filename, root=self.staticDir)
+
+
         @self.app.route('/configuration')
         def configuration_page():
             if self.loginCheck(True):
