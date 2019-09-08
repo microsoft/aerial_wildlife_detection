@@ -13,6 +13,7 @@ import re
 import random
 import numpy as np
 from tqdm import tqdm
+from psycopg2 import sql
 from celery import current_task
 import torch
 from torchvision import transforms as tr
@@ -29,8 +30,8 @@ from ai.extras._functional import tensorSharding, windowCropping
 
 class RetinaNet_ois(RetinaNet):
 
-    def __init__(self, config, dbConnector, fileServer, options):
-        super(RetinaNet_ois, self).__init__(config, dbConnector, fileServer, options)
+    def __init__(self, project, config, dbConnector, fileServer, options):
+        super(RetinaNet_ois, self).__init__(project, config, dbConnector, fileServer, options)
 
         # add contrib options
         defaultContribOptions = {
@@ -295,8 +296,8 @@ class RetinaNet_ois(RetinaNet):
 
         # get all image filenames from DB
         current_task.update_state(state='PREPARING', meta={'message':'identifying images'})
-        sql = 'SELECT filename FROM {schema}.image;'.format(schema=self.config.getProperty('Database', 'schema'))
-        filenames = self.dbConnector.execute(sql, None, 'all')
+        queryStr = sql.SQL('SELECT filename FROM {};').format(sql.Identifier(self.project, 'image'))
+        filenames = self.dbConnector.execute(queryStr, None, 'all')
         filenames = [f['filename'] for f in filenames]
 
         # get valid filename substring (pattern: path/base_x_y_w_h.JPG)
@@ -349,18 +350,18 @@ class RetinaNet_ois(RetinaNet):
 
             # commit to DB
             current_task.update_state(state='PREPARING', meta={'message':'adding new images to database'})
-            sql = '''
-                INSERT INTO {schema}.image (filename)
+            queryStr = sql.SQL('''
+                INSERT INTO {} (filename)
                 VALUES %s;
-            '''.format(schema=self.config.getProperty('Database', 'schema'))
-            self.dbConnector.insert(sql, [(key,) for key in list(response.keys())])
+            ''').format(sql.Identifier(self.project, 'image'))
+            self.dbConnector.insert(queryStr, [(key,) for key in list(response.keys())])
 
             
             # get IDs of newly inserted patches
-            sql = '''
-                SELECT id, filename FROM {schema}.image WHERE filename IN %s;
-            '''.format(schema=self.config.getProperty('Database', 'schema'))
-            patchIDs = self.dbConnector.execute(sql, (tuple(response.keys()),), 'all')
+            queryStr = sql.SQL('''
+                SELECT id, filename FROM {} WHERE filename IN %s;
+            ''').format(sql.Identifier(self.project, 'image'))
+            patchIDs = self.dbConnector.execute(queryStr, (tuple(response.keys()),), 'all')
 
             # replace IDs of responses
             new_response = {}
@@ -376,96 +377,3 @@ class RetinaNet_ois(RetinaNet):
             response[key] = response_regular[key]
 
         return response
-
-
-
-# #TODO
-# if __name__ == '__main__':
-
-
-#     os.environ['AIDE_CONFIG_PATH'] = 'settings_windowCropping.ini'
-#     from util.configDef import Config
-#     from modules.Database.app import Database
-#     from modules.AIWorker.backend.worker.fileserver import FileServer
-#     config = Config()
-#     dbConnector = Database(config)
-#     fileServer = FileServer(config)
-
-#     rn = RetinaNet_ois(config, dbConnector, fileServer, None)
-
-
-#     # do inference on unlabeled
-#     def __load_model_state(config, dbConnector):
-#         # load model state from database
-#         sql = '''
-#             SELECT query.statedict FROM (
-#                 SELECT statedict, timecreated
-#                 FROM {schema}.cnnstate
-#                 ORDER BY timecreated ASC NULLS LAST
-#                 LIMIT 1
-#             ) AS query;
-#         '''.format(schema=config.getProperty('Database', 'schema'))
-#         stateDict = dbConnector.execute(sql, None, numReturn=1)     #TODO: issues Celery warning if no state dict found
-#         if not len(stateDict):
-#             # force creation of new model
-#             stateDict = None
-        
-#         else:
-#             # extract
-#             stateDict = stateDict[0]['statedict']
-
-#         return stateDict
-#     stateDict = __load_model_state(config, dbConnector)
-
-
-#     #TODO TODO
-#     from constants.dbFieldNames import FieldNames_annotation
-#     def __load_metadata(config, dbConnector, imageIDs, loadAnnotations):
-#         schema = config.getProperty('Database', 'schema')
-
-#         # prepare
-#         meta = {}
-
-#         # label names
-#         labels = {}
-#         sql = 'SELECT * FROM {schema}.labelclass;'.format(schema=schema)
-#         result = dbConnector.execute(sql, None, 'all')
-#         for r in result:
-#             labels[r['id']] = r     #TODO: make more elegant?
-#         meta['labelClasses'] = labels
-
-#         # image data
-#         imageMeta = {}
-#         sql = 'SELECT * FROM {schema}.image WHERE id IN %s'.format(schema=schema)
-#         result = dbConnector.execute(sql, (tuple(imageIDs),), 'all')
-#         for r in result:
-#             imageMeta[r['id']] = r  #TODO: make more elegant?
-
-
-#         # annotations
-#         if loadAnnotations:
-#             fieldNames = list(getattr(FieldNames_annotation, config.getProperty('Project', 'predictionType')).value)
-#             sql = '''
-#                 SELECT id AS annotationID, image, {fieldNames} FROM {schema}.annotation AS anno
-#                 WHERE image IN %s;
-#             '''.format(schema=schema, fieldNames=','.join(fieldNames))
-#             result = dbConnector.execute(sql, (tuple(imageIDs),), 'all')
-#             for r in result:
-#                 if not 'annotations' in imageMeta[r['image']]:
-#                     imageMeta[r['image']]['annotations'] = []
-#                 imageMeta[r['image']]['annotations'].append(r)      #TODO: make more elegant?
-#         meta['images'] = imageMeta
-
-#         return meta
-
-#     sql = '''SELECT image FROM aerialelephants_wc.image_user WHERE viewcount > 0 LIMIT 2''' 
-#     imageIDs = dbConnector.execute(sql, None, 2)
-#     imageIDs = [i['image'] for i in imageIDs]
-
-#     data = __load_metadata(config, dbConnector, imageIDs, False)
-
-#     # stateDict = rn.train(stateDict, data)
-
-#     print('debug')
-
-#     result = rn.inference(stateDict, data)

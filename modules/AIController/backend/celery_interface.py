@@ -48,21 +48,21 @@ worker = AIWorker(config, None)
 
 
 @app.task(rate_limit=1)
-def call_train(data, subset):
+def call_train(project, data, subset):
     # worker = _get_worker()
-    return worker.call_train(data, subset)
+    return worker.call_train(project, data, subset)
 
 
 @app.task(rate_limit=1)
-def call_average_model_states(*args):
+def call_average_model_states(project, *args):
     # worker = _get_worker()
-    return worker.call_average_model_states()
+    return worker.call_average_model_states(project)
 
 
 @app.task()
-def call_inference(imageIDs):
+def call_inference(project, imageIDs):
     # worker = _get_worker()
-    return worker.call_inference(imageIDs)
+    return worker.call_inference(project, imageIDs)
 
 
 

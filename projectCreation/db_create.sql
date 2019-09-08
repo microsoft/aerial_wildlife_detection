@@ -5,12 +5,61 @@
 */
 
 
-/* schema */
+/* administrative schema */
+CREATE SCHEMA IF NOT EXISTS aide_admin
+    AUTHORIZATION &user;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'labeltype') THEN
+        create type labelType AS ENUM ('labels', 'points', 'boundingBoxes', 'segmentationMasks');
+    END IF;
+END
+$$;
+
+CREATE TABLE IF NOT EXISTS aide_admin.project (
+    shortname VARCHAR UNIQUE NOT NULL,
+    name VARCHAR UNIQUE NOT NULL,
+    description VARCHAR,
+    isPublic BOOLEAN DEFAULT FALSE,
+    demoMode BOOLEAN DEFAULT FALSE,
+    annotationType labelType NOT NULL,
+    predictionType labelType,
+    ui_settings VARCHAR,
+    ai_model_library VARCHAR,
+    ai_model_settings VARCHAR,
+    ai_alCriterion_library VARCHAR,
+    ai_alCriterion_settings VARCHAR,
+    PRIMARY KEY(shortname)
+);
+
+CREATE TABLE IF NOT EXISTS aide_admin.user (
+    name VARCHAR UNIQUE NOT NULL,
+    email VARCHAR,
+    hash BYTEA,
+    isSuperuser BOOLEAN DEFAULT FALSE,
+    session_token VARCHAR,
+    last_login TIMESTAMPTZ,
+    PRIMARY KEY (name)
+);
+
+
+
+/* project schema */
 CREATE SCHEMA IF NOT EXISTS &schema
     AUTHORIZATION &user;
 
 
 /* tables */
+CREATE TABLE IF NOT EXISTS &schema.AUTHENTICATION (
+    username VARCHAR UNIQUE NOT NULL,
+    isAdmin BOOLEAN DEFAULT FALSE,
+    PRIMARY KEY (username),
+    FOREIGN KEY (username) REFERENCES aide_admin.project (name)
+);
+
+
+/*
 CREATE TABLE IF NOT EXISTS &schema.USER (
     name VARCHAR UNIQUE NOT NULL,
     email VARCHAR,
@@ -20,6 +69,7 @@ CREATE TABLE IF NOT EXISTS &schema.USER (
     last_login TIMESTAMPTZ,
     PRIMARY KEY (name)
 );
+*/
 
 CREATE TABLE IF NOT EXISTS &schema.IMAGE (
     id uuid DEFAULT uuid_generate_v4(),
@@ -38,7 +88,7 @@ CREATE TABLE IF NOT EXISTS &schema.IMAGE_USER (
     meta VARCHAR,
 
     PRIMARY KEY (username, image),
-    FOREIGN KEY (username) REFERENCES &schema.USER(name),
+    FOREIGN KEY (username) REFERENCES aide_admin.user(name),
     FOREIGN KEY (image) REFERENCES &schema.IMAGE(id)
 );
 
@@ -71,7 +121,7 @@ CREATE TABLE IF NOT EXISTS &schema.ANNOTATION (
     unsure boolean NOT NULL DEFAULT false,
     &annotationFields
     PRIMARY KEY (id),
-    FOREIGN KEY (username) REFERENCES &schema.USER(name),
+    FOREIGN KEY (username) REFERENCES aide_admin.user(name),
     FOREIGN KEY (image) REFERENCES &schema.IMAGE(id)
 );
 
@@ -97,6 +147,7 @@ CREATE TABLE IF NOT EXISTS &schema.CNN_LABELCLASS (
 CREATE TABLE IF NOT EXISTS &schema.CNNSTATE (
     id uuid DEFAULT uuid_generate_v4(),
     --cnn uuid NOT NULL,
+    model_library VARCHAR,
     timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     stateDict bytea NOT NULL,
     partial boolean NOT NULL,

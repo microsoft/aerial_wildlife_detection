@@ -8,6 +8,7 @@
 from threading import Thread
 from modules.Database.app import Database
 import psycopg2
+from psycopg2 import sql
 from datetime import timedelta
 from util.helpers import current_time
 import secrets
@@ -53,10 +54,8 @@ class UserMiddleware():
 
 
     def _get_user_data(self, username):
-        sql = 'SELECT last_login, session_token, isAdmin FROM {}.user WHERE name = %s;'.format(
-            self.config.getProperty('Database', 'schema')
-        )
-        result = self.dbConnector.execute(sql, (username,), numReturn=1)
+        result = self.dbConnector.execute('SELECT last_login, session_token FROM aide_admin.user WHERE name = %s;',
+                                (username,), numReturn=1)
         if not len(result):
             return None
         result = result[0]
@@ -72,12 +71,10 @@ class UserMiddleware():
         def _extend_session():
             now = self._current_time()
 
-            self.dbConnector.execute('''UPDATE {}.user SET last_login = %s,
+            self.dbConnector.execute('''UPDATE aide_admin.user SET last_login = %s,
                     session_token = %s
                     WHERE name = %s
-                '''.format(
-                    self.config.getProperty('Database', 'schema')
-                ),
+                ''',
                 (now, sessionToken, username,),
                 numReturn=None)
             
@@ -100,11 +97,9 @@ class UserMiddleware():
             sessionToken = self._create_token()
 
             # new session created; add to database
-            self.dbConnector.execute('''UPDATE {}.user SET last_login = %s, session_token = %s
+            self.dbConnector.execute('''UPDATE aide_admin.user SET last_login = %s, session_token = %s
                 WHERE name = %s
-            '''.format(
-                self.config.getProperty('Database', 'schema')
-            ),
+            ''',
             (now, sessionToken, username,),
             numReturn=None)
             
@@ -112,8 +107,7 @@ class UserMiddleware():
             userData = self._get_user_data(username)
             self.usersLoggedIn[username] = {
                 'timestamp': now,
-                'sessionToken': sessionToken,
-                'isAdmin': userData['isadmin']
+                'sessionToken': sessionToken
             }
 
         # update local cache as well
@@ -123,8 +117,7 @@ class UserMiddleware():
             
             self.usersLoggedIn[username] = {
                 'timestamp': now,
-                'sessionToken': sessionToken,
-                'isAdmin': userData['isadmin']
+                'sessionToken': sessionToken
             }
         else:
             self.usersLoggedIn[username]['timestamp'] = now
@@ -135,16 +128,14 @@ class UserMiddleware():
 
         expires = now + timedelta(0, self.config.getProperty('UserHandler', 'time_login', type=int))
 
-        return sessionToken, now, self.usersLoggedIn[username]['isAdmin'], expires
+        return sessionToken, now, expires
 
 
     def _invalidate_session(self, username):
         if username in self.usersLoggedIn:
             del self.usersLoggedIn[username]
         self.dbConnector.execute(
-            'UPDATE {}.user SET session_token = NULL WHERE name = %s'.format(
-                self.config.getProperty('Database', 'schema')
-            ),
+            'UPDATE aide_admin.user SET session_token = NULL WHERE name = %s',
             (username,),
             numReturn=None)
         #TODO: feedback that everything is ok?
@@ -157,11 +148,9 @@ class UserMiddleware():
         }
         if username is None or not len(username): username = ''
         if email is None or not len(email): email = ''
-        result = self.dbConnector.execute('SELECT COUNT(name) AS c FROM {schema}.user WHERE name = %s UNION ALL SELECT COUNT(name) AS c FROM {schema}.user WHERE email = %s'.format(
-            schema=self.config.getProperty('Database', 'schema')
-        ),
-        (username,email,),
-        numReturn=2)
+        result = self.dbConnector.execute('SELECT COUNT(name) AS c FROM aide_admin.user WHERE name = %s UNION ALL SELECT COUNT(name) AS c FROM aide_admin.user WHERE email = %s',
+                (username,email,),
+                numReturn=2)
 
         response['username'] = (result[0]['c'] > 0)
         response['email'] = (result[1]['c'] > 0)
@@ -191,8 +180,7 @@ class UserMiddleware():
                 if not username in self.usersLoggedIn:
                     self.usersLoggedIn[username] = {
                         'timestamp': now,
-                        'sessionToken': sessionToken,
-                        'isAdmin': result['isadmin']
+                        'sessionToken': sessionToken
                     }
                 else:
                     self.usersLoggedIn[username]['timestamp'] = now
@@ -241,27 +229,54 @@ class UserMiddleware():
         return False
 
 
-    def isAuthenticated(self, username, sessionToken, admin=False):
+    def _check_authorized(self, project, username, admin):
         '''
-            Checks if the user is logged in.
-            If 'admin' is True, returns True only if the user is
-            logged in and an administrator.
+            Verifies whether a user has access rights to a project.
+
+            TODO: cache or not?
         '''
-        loggedIn = self._check_logged_in(username, sessionToken)
-        if not loggedIn:
-            return False
-        
-        elif not admin:
-            self._init_or_extend_session(username, sessionToken)
+        if not project:
             return True
 
+        if admin:
+            queryStr = sql.SQL('SELECT COUNT(*) AS cnt FROM {} WHERE username = %s AND isAdmin = %s').format(
+                sql.Identifier(project, 'authentication')
+            )
+            queryVals = (username,admin,)
         else:
-            if username in self.usersLoggedIn and \
-                'isAdmin' in self.usersLoggedIn[username] and \
-                    self.usersLoggedIn[username]['isAdmin'] is True:
-                    # is logged in *and* admin
-                    self._init_or_extend_session(username, sessionToken)
-                    return True
+            queryStr = sql.SQL('SELECT COUNT(*) AS cnt FROM {} WHERE username = %s').format(
+                sql.Identifier(project, 'authentication')
+            )
+            queryVals = (username,)
+        result = self.dbConnector.execute(queryStr, queryVals, 1)
+        return result[0]['cnt'] == 1
+
+
+    def isAuthenticated(self, username, sessionToken, project=None, admin=False, superuser=False, extend_session=False):
+        '''
+            Checks if the user is authenticated to access a service.
+            Returns False if one or more of the following conditions holds:
+            - user is not logged in
+            - 'project' (shortname) is provided, project is configured to be private and user is not in the
+                authenticated users list
+            - 'admin' is True, 'project' (shortname) is provided and user is not an admin of the project
+            - 'superuser' is True and user is not a super user
+
+            If 'extend_session' is True, the user's session will automatically be prolonged by the max login time
+            specified in the configuration file.
+        '''
+        if not self._check_logged_in(username, sessionToken):
+            return False
+
+        if not self._check_authorized(project, username, admin):
+            return False
+
+        #TODO: superuser
+        
+        if extend_session:
+            self._init_or_extend_session(username, sessionToken)
+        
+        return True
 
 
     def getLoginData(self, username, sessionToken):
@@ -277,13 +292,24 @@ class UserMiddleware():
         '''
         if self._check_logged_in(username, sessionToken):
             # still logged in; extend session
-            sessionToken, now, isAdmin, expires = self._init_or_extend_session(username, sessionToken)
-            return sessionToken, now, isAdmin, expires
+            sessionToken, now, expires = self._init_or_extend_session(username, sessionToken)
+            return sessionToken, now, expires
 
         else:
             # not logged in or error
             raise Exception('Not logged in.')
 
+
+    def getUserPermissions(self, project, username):
+        '''
+            Returns the user-to-project relation (e.g., if user is admin)
+        '''
+        queryStr = sql.SQL('SELECT * FROM {id_auth} WHERE username = %s').format(
+            id_auth=sql.Identifier(project, 'authentication'))
+        result = self.dbConnector.execute(queryStr, (username,), 1)[0]
+        return {
+            'isAdmin': result['isadmin']
+        }
 
 
     def login(self, username, password, sessionToken):
@@ -291,14 +317,12 @@ class UserMiddleware():
         # check if logged in
         if self._check_logged_in(username, sessionToken):
             # still logged in; extend session
-            sessionToken, now, isAdmin, expires = self._init_or_extend_session(username, sessionToken)
-            return sessionToken, now, isAdmin, expires
+            sessionToken, now, expires = self._init_or_extend_session(username, sessionToken)
+            return sessionToken, now, expires
 
         # get user info
         userData = self.dbConnector.execute(
-            'SELECT hash FROM {}.user WHERE name = %s;'.format(
-                self.config.getProperty('Database', 'schema')
-            ),
+            'SELECT hash FROM aide_admin.user WHERE name = %s;',
             (username,),
             numReturn=1
         )
@@ -310,8 +334,8 @@ class UserMiddleware():
         # verify provided password
         if self._check_password(password.encode('utf8'), bytes(userData['hash'])):
             # correct
-            sessionToken, timestamp, isAdmin, expires = self._init_or_extend_session(username, None)
-            return sessionToken, timestamp, isAdmin, expires
+            sessionToken, timestamp, expires = self._init_or_extend_session(username, None)
+            return sessionToken, timestamp, expires
 
         else:
             # incorrect
@@ -337,19 +361,22 @@ class UserMiddleware():
         else:
             hash = self._create_hash(password.encode('utf8'))
 
-            sql = '''
-                INSERT INTO {}.user (name, email, hash)
+            queryStr = '''
+                INSERT INTO aide_admin.user (name, email, hash)
                 VALUES (%s, %s, %s);
-            '''.format(self.config.getProperty('Database', 'schema'))
-            self.dbConnector.execute(sql,
+            '''
+            self.dbConnector.execute(queryStr,
             (username, email, hash,),
             numReturn=None)
             sessionToken, timestamp, _, expires = self._init_or_extend_session(username)
             return sessionToken, timestamp, expires
 
     
-    def getUserNames(self):
-        sql = 'SELECT name FROM {}.user'.format(self.config.getProperty('Database', 'schema'))
-        result = self.dbConnector.execute(sql, None, 'all')
+    def getUserNames(self, project=None):
+        if not project:
+            queryStr = 'SELECT name FROM aide_admin.user'
+        else:
+            queryStr = 'SELECT username AS name FROM {}.authentication'.format(project)
+        result = self.dbConnector.execute(queryStr, None, 'all')
         response = [r['name'] for r in result]
         return response

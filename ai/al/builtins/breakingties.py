@@ -9,7 +9,7 @@ from ai.al.functional.noarch.functional import _breaking_ties
 
 class BreakingTies:
     
-    def __init__(self, config, dbConnector, fileServer, options):
+    def __init__(self, project, config, dbConnector, fileServer, options):
         pass
 
     

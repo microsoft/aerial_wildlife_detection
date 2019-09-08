@@ -12,12 +12,12 @@ class SQLStringBuilder:
         self.config = config
 
     
-    def getFixedImageIDQueryString(self, ids):
+    def getFixedImageIDQueryString(self, project, ids):
         pass
 
     
-    def getLatestQueryString(self, minNumAnnoPerImage=0, limit=None):
-
+    def getLatestQueryString(self, project, minNumAnnoPerImage=0, limit=None):
+        #TODO: re-formulate for project
         if limit is None or limit == -1:
             # cap by limit specified in settings
             limit = self.config.getProperty('AIController', 'maxNumImages_train', type=int)

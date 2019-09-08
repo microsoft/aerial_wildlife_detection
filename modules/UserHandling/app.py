@@ -33,7 +33,8 @@ class UserHandler():
     def _initBottle(self):
 
         @self.app.route('/login', method='POST')
-        def login():
+        @self.app.route('/<project>/login', method='POST')
+        def login(project=None):
             if self.demoMode:
                 return redirect('/interface')
 
@@ -43,15 +44,14 @@ class UserHandler():
                 password = self._parse_parameter(request.forms, 'password')
 
                 # check if session token already provided; renew login if correct
-                sessionToken = request.get_cookie('session_token')
+                sessionToken = request.get_cookie('session_token', secret=self.config.getProperty('Project', 'secret_token'))
                 if sessionToken is not None:
                     sessionToken = cgi.escape(sessionToken)
 
-                sessionToken, _, isAdmin, expires = self.middleware.login(username, password, sessionToken)
+                sessionToken, _, expires = self.middleware.login(username, password, sessionToken)
                 
-                response.set_cookie('username', username)   #, expires=expires)
-                response.set_cookie('session_token', sessionToken, httponly=True)    #, expires=expires)
-                response.set_cookie('isAdmin', ('y' if isAdmin else 'n'), httponly=False)    #, expires=expires)
+                response.set_cookie('username', username, path='/')   #, expires=expires, same_site='strict')
+                response.set_cookie('session_token', sessionToken, httponly=True, path='/', secret=self.config.getProperty('Project', 'secret_token'))    #, expires=expires, same_site='strict')
 
                 return {
                     'expires': expires.strftime('%H:%M:%S')
@@ -62,10 +62,10 @@ class UserHandler():
         
 
         @self.app.route('/loginCheck', method='POST')
-        def loginCheck():
+        @self.app.route('/<project>/loginCheck', method='POST')
+        def loginCheck(project=None):
             if self.demoMode:
-                response.set_cookie('username', 'demo mode')   #, expires=expires)
-                response.set_cookie('isAdmin', 'n', httponly=False)    #, expires=expires)
+                response.set_cookie('username', 'Demo mode', path='/')   #, expires=expires, same_site='strict')
                 return {
                     'expires': '-1' #expires.strftime('%H:%M:%S')
                 }
@@ -76,13 +76,12 @@ class UserHandler():
                     username = self._parse_parameter(request.forms, 'username')
                 username = cgi.escape(username)
 
-                sessionToken = cgi.escape(request.get_cookie('session_token'))
+                sessionToken = cgi.escape(request.get_cookie('session_token', secret=self.config.getProperty('Project', 'secret_token')))
 
-                _, _, isAdmin, expires = self.middleware.getLoginData(username, sessionToken)
+                _, _, expires = self.middleware.getLoginData(username, sessionToken)
                 
-                response.set_cookie('username', username)   #, expires=expires)
-                response.set_cookie('session_token', sessionToken, httponly=True)    #, expires=expires)
-                response.set_cookie('isAdmin', ('y' if isAdmin else 'n'), httponly=False)    #, expires=expires)
+                response.set_cookie('username', username, path='/')   #, expires=expires, same_site='strict')
+                response.set_cookie('session_token', sessionToken, httponly=True, path='/', secret=self.config.getProperty('Project', 'secret_token'))    #, expires=expires, same_site='strict')
                 return {
                     'expires': expires.strftime('%H:%M:%S')
                 }
@@ -93,18 +92,19 @@ class UserHandler():
 
         @self.app.route('/logout', method='GET')        
         @self.app.route('/logout', method='POST')
-        def logout():
+        @self.app.route('/<project>/logout', method='GET')        
+        @self.app.route('/<project>/logout', method='POST')
+        def logout(project=None):
             if self.demoMode:
                 return redirect('/interface')
 
             try:
                 username = cgi.escape(request.get_cookie('username'))
-                sessionToken = cgi.escape(request.get_cookie('session_token'))
+                sessionToken = cgi.escape(request.get_cookie('session_token', secret=self.config.getProperty('Project', 'secret_token')))
                 self.middleware.logout(username, sessionToken)
 
-                response.set_cookie('username', '', expires=0)
-                response.set_cookie('session_token', '', expires=0, httponly=True)
-                response.set_cookie('isAdmin', '', expires=0, httponly=False)    #, expires=expires)
+                response.set_cookie('username', username, path='/')   #, expires=expires, same_site='strict')
+                response.set_cookie('session_token', sessionToken, httponly=True, path='/', secret=self.config.getProperty('Project', 'secret_token'))    #, expires=expires, same_site='strict')
 
                 # send redirect
                 response.status = 303
@@ -115,14 +115,40 @@ class UserHandler():
                 abort(403, str(e))
 
 
+        @self.app.route('/<project>/getPermissions', method='POST')
+        def get_user_permissions(project):
+            if self.demoMode:
+                return {
+                    'error': 'not allowed in demo mode'
+                }
+            try:
+                username = cgi.escape(request.get_cookie('username'))
+                if not self.checkAuthenticated(project=project):
+                    abort(401, 'not permitted')
+
+                return {
+                    'permissions': self.middleware.getUserPermissions(project, username)
+                }
+            except:
+                abort(400, 'bad request')
+
+
         @self.app.route('/getUserNames', method='POST')
-        def get_user_names():
+        @self.app.route('/<project>/getUserNames', method='POST')
+        def get_user_names(project=None):
             if self.demoMode:
                 return redirect('/interface')
 
-            if self.checkAuthenticated(True):
+            if project is None:
+                try:
+                    project = request.json['project']
+                except:
+                    # no project specified (all users); need be superuser for this
+                    project = None
+
+            if self.checkAuthenticated(project, admin=True, superuser=(project is None), extend_session=True):
                 return {
-                    'users': self.middleware.getUserNames()
+                    'users': self.middleware.getUserNames(project)
                 }
 
             else:
@@ -144,9 +170,8 @@ class UserHandler():
                     username, password, email
                 )
 
-                response.set_cookie('username', username)   #, expires=expires)
-                response.set_cookie('session_token', sessionToken, httponly=True)    #, expires=expires)
-                response.set_cookie('isAdmin', 'n', httponly=False)    #, expires=expires)
+                response.set_cookie('username', username, path='/')   #, expires=expires, same_site='strict')
+                response.set_cookie('session_token', sessionToken, httponly=True, path='/', secret=self.config.getProperty('Project', 'secret_token'))    #, expires=expires, same_site='strict')
                 return {
                     'expires': expires.strftime('%H:%M:%S')
                 }
@@ -197,29 +222,15 @@ class UserHandler():
             except Exception as e:
                 abort(401, str(e))
 
-        @self.app.route('/checkAuthenticated', method='POST')
-        def checkAuthenticated():
-            if self.demoMode:
-                return True
 
-            try:
-                if self.checkAuthenticated():
-                    return True
-                else:
-                    raise Exception('not authenticated.')
-            except Exception as e:
-                abort(401, str(e))
-            return response
-
-
-    def checkAuthenticated(self, admin=False):
+    def checkAuthenticated(self, project=None, admin=False, superuser=False, extend_session=False):
         if self.demoMode:
             return True
 
         try:
             username = cgi.escape(request.get_cookie('username'))
-            sessionToken = cgi.escape(request.get_cookie('session_token'))
-            return self.middleware.isAuthenticated(username, sessionToken, admin)
+            sessionToken = cgi.escape(request.get_cookie('session_token', secret=self.config.getProperty('Project', 'secret_token')))
+            return self.middleware.isAuthenticated(username, sessionToken, project, admin, superuser, extend_session)
         except:
             return False
 

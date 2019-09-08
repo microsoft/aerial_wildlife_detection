@@ -268,12 +268,19 @@ $(document).ready(function() {
     });
 
 
-    // login check
+    // authentication (+ login check)
     if(!window.demoMode) {
         promise = promise.then(function() {
             return $.ajax({
-                url: 'loginCheck',
+                url: 'getPermissions',
                 method: 'post',
+                success: function(data) {
+                    try {
+                        window.isAdmin = window.parseBoolean(data['permissions']['isAdmin']);
+                    } catch {
+                        window.location.href = window.indexURI;
+                    }
+                },
                 error: function() {
                     window.location.href = window.indexURI;
                 }

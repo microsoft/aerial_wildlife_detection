@@ -8,7 +8,7 @@ from util.helpers import get_class_executable
 
 class Compose:
 
-    def __init__(self, config, dbConnector, fileServer, options):
+    def __init__(self, project, config, dbConnector, fileServer, options):
         
         # parse provided functions
         self.heuristics = []

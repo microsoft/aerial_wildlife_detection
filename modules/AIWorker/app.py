@@ -5,7 +5,8 @@
 import importlib
 import inspect
 import json
-from modules.AIWorker.backend.worker import functional, fileserver
+from modules.AIWorker.backend.worker import functional
+from modules.AIWorker.backend import fileserver
 from modules.Database.app import Database
 from util.helpers import get_class_executable
 
@@ -13,15 +14,12 @@ from util.helpers import get_class_executable
 class AIWorker():
 
     def __init__(self, config, app):
-        if config.getProperty('Project', 'demoMode', type=bool, fallback=False):
+        if config.getProperty('Project', 'demoMode', type=bool, fallback=False):    #TODO: project-specific?
             raise Exception('AIWorker cannot be launched in demo mode.')
         
         self.config = config
         self.dbConnector = Database(config)
         self._init_fileserver()
-        self._init_model_instance()
-        self._init_al_instance()
-    
 
 
     def _init_fileserver(self):
@@ -33,117 +31,162 @@ class AIWorker():
         self.fileServer = fileserver.FileServer(self.config)
 
 
-    def _init_model_instance(self):
-        # parse AI model path
-        modelOptionsPath = self.config.getProperty('AIController', 'model_options_path')
-        if modelOptionsPath is not None and modelOptionsPath.strip() != '':
+    def _init_model_instance(self, project, modelLibrary, modelSettings):
+
+        # try to parse model settings
+        if modelSettings is not None and len(modelSettings):
             try:
-                with open(modelOptionsPath, 'r') as f:
-                    modelOptions = json.load(f)
+                modelSettings = json.loads(modelSettings)
             except Exception as err:
-                print('WARNING: could not read model options (file "{filepath}"). Error message: {message}.'.format(
-                    filepath=modelOptionsPath,
+                print('WARNING: could not read model options. Error message: {message}.'.format(
                     message=str(err)
                 ))
-                modelOptions = None
+                modelSettings = None
         else:
-            modelOptions = None
-
-        modelLibPath = self.config.getProperty('AIController', 'model_lib_path')
+            modelSettings = None
 
         # import class object
-        modelClass = get_class_executable(modelLibPath)
+        modelClass = get_class_executable(modelLibrary)
 
         # verify functions and arguments
         requiredFunctions = {
-            '__init__' : ['config', 'dbConnector', 'fileServer', 'options'],
+            '__init__' : ['project', 'config', 'dbConnector', 'fileServer', 'options'],
             'train' : ['stateDict', 'data'],
             'average_model_states' : ['stateDicts'],
             'inference' : ['stateDict', 'data']
-        }   #TODO: make more elegant?
+        }
         functionNames = [func for func in dir(modelClass) if callable(getattr(modelClass, func))]
 
         for key in requiredFunctions:
             if not key in functionNames:
-                raise Exception('Class {} is missing required function {}.'.format(modelLibPath, key))
+                raise Exception('Class {} is missing required function {}.'.format(modelLibrary, key))
 
             # check function arguments bidirectionally
             funArgs = inspect.getargspec(getattr(modelClass, key))
             for arg in requiredFunctions[key]:
                 if not arg in funArgs.args:
-                    raise Exception('Method {} of class {} is missing required argument {}.'.format(modelLibPath, key, arg))
+                    raise Exception('Method {} of class {} is missing required argument {}.'.format(modelLibrary, key, arg))
             for arg in funArgs.args:
                 if arg != 'self' and not arg in requiredFunctions[key]:
-                    raise Exception('Unsupported argument {} of method {} in class {}.'.format(arg, key, modelLibPath))
+                    raise Exception('Unsupported argument {} of method {} in class {}.'.format(arg, key, modelLibrary))
 
         # create AI model instance
-        self.modelInstance = modelClass(config=self.config, dbConnector=self.dbConnector, fileServer=self.fileServer, options=modelOptions)
+        return modelClass(config=self.config, dbConnector=self.dbConnector, fileServer=self.fileServer.get_secure_instance(project), options=modelSettings)
         
 
-    def _init_al_instance(self):
+    def _init_alCriterion_instance(self, project, alLibrary, alSettings):
         '''
-            Creates the Active Learning (AL) criterion provider based on the configuration file.
+            Creates the Active Learning (AL) criterion provider instance.
         '''
-        modelOptionsPath = self.config.getProperty('AIController', 'al_criterion_options_path')
-        if modelOptionsPath is not None and modelOptionsPath.strip() != '':
+        # try to parse settings
+        if alSettings is not None and len(alSettings):
             try:
-                with open(self.config.getProperty('AIController', 'al_criterion_options_path'), 'r') as f:
-                    modelOptions = json.load(f)
+                alSettings = json.loads(alSettings)
             except Exception as err:
-                print('WARNING: could not read AL criterion options (file "{filepath}"). Error message: {message}.'.format(
-                    filepath=modelOptionsPath,
+                print('WARNING: could not read AL criterion options. Error message: {message}.'.format(
                     message=str(err)
                 ))
+                alSettings = None
         else:
-            modelOptions = None
+            alSettings = None
 
-        modelLibPath = self.config.getProperty('AIController', 'al_criterion_lib_path')
-
-        # import superclass first, then retrieve class object
-        modelClass = get_class_executable(modelLibPath)
+        # import class object
+        modelClass = get_class_executable(alLibrary)
 
         # verify functions and arguments
         requiredFunctions = {
-            '__init__' : ['config', 'dbConnector', 'fileServer', 'options'],
+            '__init__' : ['project', 'config', 'dbConnector', 'fileServer', 'options'],
             'rank' : ['data']
-        }   #TODO: make more elegant?
+        }
         functionNames = [func for func in dir(modelClass) if callable(getattr(modelClass, func))]
 
         for key in requiredFunctions:
             if not key in functionNames:
-                raise Exception('Class {} is missing required function {}.'.format(modelLibPath, key))
+                raise Exception('Class {} is missing required function {}.'.format(alLibrary, key))
 
             # check function arguments bidirectionally
             funArgs = inspect.getargspec(getattr(modelClass, key))
             for arg in requiredFunctions[key]:
                 if not arg in funArgs.args:
-                    raise Exception('Method {} of class {} is missing required argument {}.'.format(modelLibPath, key, arg))
+                    raise Exception('Method {} of class {} is missing required argument {}.'.format(alLibrary, key, arg))
             for arg in funArgs.args:
                 if arg != 'self' and not arg in requiredFunctions[key]:
-                    raise Exception('Unsupported argument {} of method {} in class {}.'.format(arg, key, modelLibPath))
+                    raise Exception('Unsupported argument {} of method {} in class {}.'.format(arg, key, alLibrary))
 
         # create AI model instance
-        self.alInstance = modelClass(config=self.config, dbConnector=self.dbConnector, fileServer=self.fileServer, options=modelOptions)
+        return modelClass(config=self.config, dbConnector=self.dbConnector, fileServer=self.fileServer.get_secure_instance(project), options=alSettings)
+
+
+    def _get_model_instance(self, project):
+        '''
+            Returns the class instance of the model specified in the given
+            project.
+            TODO: cache models?
+        '''
+        # get model settings for project
+        queryStr = '''
+            SELECT ai_model_library, ai_model_settings FROM aide_admin.project
+            WHERE shortname = %s;
+        '''
+        result = self.dbConnector.execute(queryStr, (project,), 1)
+        modelLibrary = result[0]['ai_model_library']
+        modelSettings = result[0]['ai_model_settings']
+
+        # create new model instance
+        modelInstance = self._init_model_instance(project, modelLibrary, modelSettings)
+
+        return modelInstance
+
+
+    def _get_alCriterion_instance(self, project):
+        '''
+            Returns the class instance of the Active Learning model
+            specified in the project.
+            TODO: cache models?
+        '''
+        # get model settings for project
+        queryStr = '''
+            SELECT ai_alCriterion_library, ai_alCriterion_settings FROM aide_admin.project
+            WHERE shortname = %s;
+        '''
+        result = self.dbConnector.execute(queryStr, (project,), 1)
+        modelLibrary = result[0]['ai_alcriterion_library']
+        modelSettings = result[0]['ai_alcriterion_settings']
+
+        # create new model instance
+        modelInstance = self._init_alCriterion_instance(project, modelLibrary, modelSettings)
+
+        return modelInstance
 
 
 
-    def call_train(self, data, subset):
-        return functional._call_train(self.dbConnector, self.config, data, subset, getattr(self.modelInstance, 'train'), self.fileServer)
+    def call_train(self, project, data, subset):
+
+        # get project-specific model
+        modelInstance = self._get_model_instance(project)
+
+        return functional._call_train(project, data, subset, getattr(modelInstance, 'train'),
+                self.dbConnector, self.fileServer, self.config)
     
 
 
-    def call_average_model_states(self):
-        return functional._call_average_model_states(self.dbConnector, self.config, getattr(self.modelInstance, 'average_model_states'), self.fileServer)
+    def call_average_model_states(self, project):
+
+        # get project-specific model
+        modelInstance = self._get_model_instance(project)
+
+        return functional._call_average_model_states(project, getattr(modelInstance, 'average_model_states'),
+                self.dbConnector, self.fileServer, self.config)
 
 
 
-    def call_inference(self, imageIDs):
-        return functional._call_inference(self.dbConnector, self.config, imageIDs,
-                getattr(self.modelInstance, 'inference'),
-                getattr(self.alInstance, 'rank'),
-                self.fileServer)
+    def call_inference(self, project, imageIDs):
 
-    
+        # get project-specific model and AL criterion
+        modelInstance = self._get_model_instance(project)
+        alCriterionInstance = self._get_alCriterion_instance(project)
 
-    # def call_rank(self, data):
-    #     return functional._call_rank(self.dbConnector, self.config, data, getattr(self.alInstance, 'rank'), self.fileServer)
+        return functional._call_inference(project, imageIDs,
+                getattr(modelInstance, 'inference'),
+                getattr(alCriterionInstance, 'rank'),
+                self.dbConnector, self.fileServer, self.config)

@@ -8,7 +8,7 @@ from ai.al.functional.noarch.functional import _max_confidence
 
 class MaxConfidence:
 
-    def __init__(self, config, dbConnector, fileServer, options):
+    def __init__(self, project, config, dbConnector, fileServer, options):
         pass
 
     

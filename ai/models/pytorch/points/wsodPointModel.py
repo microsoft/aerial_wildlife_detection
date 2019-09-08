@@ -13,7 +13,7 @@ class WSODPointModel(PointModel):
 
     model_class = Model
 
-    def __init__(self, config, dbConnector, fileServer, options):
-        super(WSODPointModel, self).__init__(config, dbConnector, fileServer, options)
+    def __init__(self, project, config, dbConnector, fileServer, options):
+        super(WSODPointModel, self).__init__(project, config, dbConnector, fileServer, options)
         self.model_class = Model
         self.dataset_class = PointsDataset

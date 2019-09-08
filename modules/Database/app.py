@@ -56,13 +56,13 @@ class Database():
             self.connectionPool.putconn(conn, close=False)
 
 
-    def execute(self, sql, arguments, numReturn=None):
+    def execute(self, query, arguments, numReturn=None):
         with self._get_connection() as conn:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
 
             # execute statement
             try:
-                cursor.execute(sql, arguments)
+                cursor.execute(query, arguments)
                 conn.commit()
             except Exception as e:
                 if not conn.closed:
@@ -73,7 +73,7 @@ class Database():
                 # retry execution
                 try:
                     cursor = conn.cursor(cursor_factory=RealDictCursor)
-                    cursor.execute(sql, arguments)
+                    cursor.execute(query, arguments)
                     conn.commit()
                 except:
                     if not conn.closed:
@@ -105,11 +105,11 @@ class Database():
                 print(e)
     
 
-    def execute_cursor(self, sql, arguments):
+    def execute_cursor(self, query, arguments):
         with self._get_connection() as conn:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
             try:
-                cursor.execute(sql, arguments)
+                cursor.execute(query, arguments)
                 conn.commit()
                 return cursor
             except:
@@ -121,7 +121,7 @@ class Database():
                 conn = self.connectionPool.getconn()
                 try:
                     cursor = conn.cursor(cursor_factory=RealDictCursor)
-                    cursor.execute(sql, arguments)
+                    cursor.execute(query, arguments)
                     conn.commit()
                 except Exception as e:
                     if not conn.closed:
@@ -129,13 +129,13 @@ class Database():
                     print(e)
 
 
-    def insert(self, sql, values):
+    def insert(self, query, values):
         with self._get_connection() as conn:
             cursor = conn.cursor()
             try:
-                execute_values(cursor, sql, values)
+                execute_values(cursor, query, values)
                 conn.commit()
-            except:
+            except Exception as e:
                 if not conn.closed:
                     conn.rollback()
                 # cursor.close()
@@ -144,7 +144,7 @@ class Database():
                 conn = self.connectionPool.getconn()
                 try:
                     cursor = conn.cursor(cursor_factory=RealDictCursor)
-                    execute_values(cursor, sql, values)
+                    execute_values(cursor, query, values)
                     conn.commit()
                 except Exception as e:
                     if not conn.closed:

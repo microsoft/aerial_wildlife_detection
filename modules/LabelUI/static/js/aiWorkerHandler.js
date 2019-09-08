@@ -256,7 +256,7 @@ class AIWorkerHandler {
 
 
         // manual control (if admin)
-        if(window.getCookie('isAdmin') === 'y') {
+        if(window.isAdmin) {        // if(window.getCookie('isAdmin') === 'y') {
             $('#ai-manual-controls').append(
                 $(`<table style="width:100%">
                     <tr>

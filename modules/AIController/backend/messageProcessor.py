@@ -38,7 +38,7 @@ class MessageProcessor(Thread):
         self.celery_app = celery_app
 
         # job store
-        self.jobs = []
+        self.jobs = {}          # dict of lists (one list for each project)
 
         # message store
         self.messages = {}
@@ -66,7 +66,9 @@ class MessageProcessor(Thread):
             result.forget()       
 
 
-    def poll_worker_status(self):
+    def poll_worker_status(self, project):
+        #TODO: project
+        
         workerStatus = {}
         i = self.celery_app.control.inspect()
         stats = i.stats()

@@ -24,8 +24,8 @@ class RetinaNet(GenericPyTorchModel):
 
     model_class = Model
 
-    def __init__(self, config, dbConnector, fileServer, options):
-        super(RetinaNet, self).__init__(config, dbConnector, fileServer, options, DEFAULT_OPTIONS)
+    def __init__(self, project, config, dbConnector, fileServer, options):
+        super(RetinaNet, self).__init__(project, config, dbConnector, fileServer, options, DEFAULT_OPTIONS)
 
         # set defaults if not explicitly overridden
         if self.model_class is None:

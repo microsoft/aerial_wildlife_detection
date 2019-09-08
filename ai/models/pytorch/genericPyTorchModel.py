@@ -19,8 +19,8 @@ class GenericPyTorchModel(AIModel):
 
     model_class = None
 
-    def __init__(self, config, dbConnector, fileServer, options, defaultOptions):
-        super(GenericPyTorchModel, self).__init__(config, dbConnector, fileServer, options)
+    def __init__(self, project, config, dbConnector, fileServer, options, defaultOptions):
+        super(GenericPyTorchModel, self).__init__(project, config, dbConnector, fileServer, options)
 
         # parse the options and compare with the provided defaults
         self.options = check_args(self.options, defaultOptions)

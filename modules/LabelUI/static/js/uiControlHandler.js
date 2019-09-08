@@ -392,7 +392,7 @@ class UIControlHandler {
             });
 
             // show user list if admin
-            if(window.getCookie('isAdmin') === 'y') {
+            if(window.isAdmin) {        //if(window.getCookie('isAdmin') === 'y') {
                 var uTable = $('<table class="limit-users-table"><thead><tr><td><input type="checkbox" id="review-users-checkall" /></td><td>Name</td></tr></thead></table>');
                 this.reviewUsersTable = $('<tbody></tbody>');
                 uTable.append(this.reviewUsersTable);

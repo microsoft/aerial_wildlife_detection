@@ -25,7 +25,8 @@ class AIMiddleware():
         self.dbConn = Database(config)
         self.sqlBuilder = SQLStringBuilder(config)
 
-        self.training = False   # will be set to True once start_training is called (and False as soon as everything about the training process has finished)
+        #TODO: replace with messageProcessor property:
+        self.training = {}   # dict of bools for each project; will be set to True once start_training is called (and False as soon as everything about the training process has finished)
 
         self.celery_app = current_app
         self.celery_app.set_current()
@@ -47,12 +48,11 @@ class AIMiddleware():
             The thread will be terminated and destroyed; a new thread will only be
             re-created once the training process has finished.
         '''
-        if self.training:
-            return
-        
-        numImages_autoTrain = self.config.getProperty('AIController', 'numImages_autoTrain', type=int, fallback=-1)
-        if numImages_autoTrain == -1:
-            return
+
+        #TODO: project-specific:
+        # numImages_autoTrain = self.config.getProperty('AIController', 'numImages_autoTrain', type=int, fallback=-1)
+        # if numImages_autoTrain == -1:
+        #     return
             
         self.watchdog = Watchdog(self.config, self.dbConn, self)
         self.watchdog.start()
@@ -70,7 +70,7 @@ class AIMiddleware():
 
 
 
-    def _training_completed(self, trainingJob):
+    def _training_completed(self, project, trainingJob):
         '''
             To be called after a training process has been completed.
             If there is more than one worker, the 'average_model_states'
@@ -80,19 +80,19 @@ class AIMiddleware():
         '''
 
         # re-enable training if no other training job is ongoing
-        self.training = self.messageProcessor.task_ongoing('train')
+        self.training[project] = self.messageProcessor.task_ongoing(project, 'train')    #TODO
 
 
 
-    def _get_training_job_signature(self, minTimestamp='lastState', minNumAnnoPerImage=0, maxNumImages=None, maxNumWorkers=-1):
+    def _get_training_job_signature(self, project, minTimestamp='lastState', minNumAnnoPerImage=0, maxNumImages=None, maxNumWorkers=-1):
         '''
             Assembles (but does not submit) a training job based on the provided parameters.
         '''
         # check if training is still in progress
-        if self.messageProcessor.task_ongoing('train'):
+        if self.messageProcessor.task_ongoing(project, 'train'):
             raise Exception('Training process already running.')
 
-        self.training = True
+        self.training[project] = True
 
 
         try:
@@ -127,13 +127,13 @@ class AIMiddleware():
 
                 processes = []
                 for subset in images_subset:
-                    processes.append(celery_interface.call_train.si(subset, True))
+                    processes.append(celery_interface.call_train.si(project, subset, True))
                 process = group(processes)
 
             else:
                 # call one worker directly
                 # process = celery_interface.call_train.delay(data) #TODO: route to specific worker? http://docs.celeryproject.org/en/latest/userguide/routing.html#manual-routing
-                process = celery_interface.call_train.si(imageIDs, False)
+                process = celery_interface.call_train.si(project, imageIDs, False)
             
             return process, num_workers
 
@@ -142,7 +142,7 @@ class AIMiddleware():
             return None
 
 
-    def _get_inference_job_signature(self, imageIDs, maxNumWorkers=-1):
+    def _get_inference_job_signature(self, project, imageIDs, maxNumWorkers=-1):
         '''
             Assembles (but does not submit) an inference job based on the provided parameters.
         '''
@@ -159,14 +159,14 @@ class AIMiddleware():
         images_subset = array_split(imageIDs, max(1, len(imageIDs) // maxNumWorkers))
         jobs = []
         for subset in images_subset:
-            job = celery_interface.call_inference.si(imageIDs=subset)
+            job = celery_interface.call_inference.si(project=project, imageIDs=subset)
             jobs.append(job)
 
         jobGroup = group(jobs)
         return jobGroup
 
     
-    def start_training(self, minTimestamp='lastState', minNumAnnoPerImage=0, maxNumImages=None, maxNumWorkers=-1):
+    def start_training(self, project, minTimestamp='lastState', minNumAnnoPerImage=0, maxNumImages=None, maxNumWorkers=-1):
         '''
             Initiates a training round for the model, based on the set of data (images, annotations)
             as specified in the parameters. Distributes data to the set of registered AIWorker instan-
@@ -179,6 +179,7 @@ class AIMiddleware():
             Retrieving images is part of the AI model's 'train' function. TODO: feature vectors?
 
             Input parameters:
+            - project: The project to perform training on
             - minTimestamp: Defines the earliest point in time of the annotations to be considered for
                             model training. May take one of the following values:
                             - 'lastState' (default): Limits the annotations to those made after the time-
@@ -202,7 +203,9 @@ class AIMiddleware():
                 - TODO: status ok, fail, no annotations, etc. Make threaded so that it immediately returns something.
         '''
 
-        process, numWorkers = self._get_training_job_signature(minTimestamp=minTimestamp,
+        process, numWorkers = self._get_training_job_signature(
+                                        project=project,
+                                        minTimestamp=minTimestamp,
                                         minNumAnnoPerImage=minNumAnnoPerImage,
                                         maxNumImages=maxNumImages,
                                         maxNumWorkers=maxNumWorkers)
@@ -212,9 +215,9 @@ class AIMiddleware():
         task_id = self.messageProcessor.task_id()
         if numWorkers > 1:
             # also append average model states job
-            job = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True, headers={'type':'train','submitted': str(current_time())}, link=celery_interface.call_average_model_states.s())
+            job = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True, headers={'project':project,'type':'train','submitted': str(current_time())}, link=celery_interface.call_average_model_states.s(project))
         else:
-            job = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True, headers={'type':'train','submitted': str(current_time())})
+            job = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True, headers={'project':project,'type':'train','submitted': str(current_time())})
 
 
         # start listener
@@ -223,11 +226,11 @@ class AIMiddleware():
         return 'ok'
 
 
-    def _do_inference(self, process):
+    def _do_inference(self, project, process):
 
         # send job
         task_id = self.messageProcessor.task_id()
-        result = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True, headers={'type':'inference','submitted': str(current_time())})
+        result = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True, headers={'project':project,'type':'inference','submitted': str(current_time())})
 
         # start listener
         self.messageProcessor.register_job(result, 'inference', None)
@@ -235,7 +238,7 @@ class AIMiddleware():
         return
 
 
-    def start_inference(self, forceUnlabeled=True, maxNumImages=-1, maxNumWorkers=-1):
+    def start_inference(self, project, forceUnlabeled=True, maxNumImages=-1, maxNumWorkers=-1):
         '''
             Performs inference (prediction) on a set of data (images) as specified in the parameters. Distributes
             data to the set of registered AIWorker instances, which then call the 'inference' function of the AI
@@ -250,6 +253,7 @@ class AIMiddleware():
             at each inference time to accelerate the process.
 
             Input parameters:
+            - project: The project to perform inference in
             - forceUnlabeled: If True, only images that have not been labeled (i.e., with a viewcount of 0) will be
                               predicted on (default).
             - maxNumImages: Manually override the project settings' maximum number of images to do inference on.
@@ -258,22 +262,22 @@ class AIMiddleware():
                              time. If set to -1 (default), the data will be divided across all registered workers.
         '''
         
-        # setup
+        # setup TODO: project-specific
         if maxNumImages is None or maxNumImages == -1:
             maxNumImages = self.config.getProperty('AIController', 'maxNumImages_inference', type=int)
 
         # load the IDs of the images that are being subjected to inference
-        sql = self.sqlBuilder.getInferenceQueryString(forceUnlabeled, maxNumImages)
+        sql = self.sqlBuilder.getInferenceQueryString(project, forceUnlabeled, maxNumImages)
         imageIDs = self.dbConn.execute(sql, None, 'all')
         imageIDs = [i['image'] for i in imageIDs]
 
-        process = self._get_inference_job_signature(imageIDs, maxNumWorkers)
-        self._do_inference(process)
+        process = self._get_inference_job_signature(project, imageIDs, maxNumWorkers)
+        self._do_inference(project, process)
         return 'ok'
 
 
     
-    def inference_fixed(self, imageIDs, maxNumWorkers=-1):
+    def inference_fixed(self, project, imageIDs, maxNumWorkers=-1):
         '''
             Performs inference (prediction) on a fixed set of data (images), as provided by the parameter 'imageIDs'.
             Distributes data to the set of registered AIWorker instances, which then call the 'inference' function of
@@ -288,18 +292,19 @@ class AIMiddleware():
             at each inference time to accelerate the process.
 
             Input parameters:
+            - project: The project to perform inference in
             - imageIDs: An array containing the UUIDs (or equivalent strings) of the images that need to be inferred on.
             - maxNumWorkers: Manually set the maximum number of AIWorker instances to perform inference at the same
                              time. If set to -1 (default), the data will be divided across all registered workers.
         '''
 
-        process = self._get_inference_job_signature(imageIDs, maxNumWorkers)
-        self._do_inference(process)
+        process = self._get_inference_job_signature(project, imageIDs, maxNumWorkers)
+        self._do_inference(project, process)
         return 'ok'
     
 
 
-    def start_train_and_inference(self, minTimestamp='lastState', minNumAnnoPerImage=0, maxNumImages_train=None, 
+    def start_train_and_inference(self, project, minTimestamp='lastState', minNumAnnoPerImage=0, maxNumImages_train=None, 
                                     maxNumWorkers_train=1,
                                     forceUnlabeled_inference=True, maxNumImages_inference=None, maxNumWorkers_inference=1):
         '''
@@ -309,7 +314,9 @@ class AIMiddleware():
         '''
 
         # get training job signature
-        process, numWorkers_train = self._get_training_job_signature(minTimestamp=minTimestamp,
+        process, numWorkers_train = self._get_training_job_signature(
+                                        project=project,
+                                        minTimestamp=minTimestamp,
                                         minNumAnnoPerImage=minNumAnnoPerImage,
                                         maxNumImages=maxNumImages_train,
                                         maxNumWorkers=maxNumWorkers_train)
@@ -318,25 +325,25 @@ class AIMiddleware():
         task_id = self.messageProcessor.task_id()
         if numWorkers_train > 1:
             # also append average model states job
-            job = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True, headers={'type':'train','submitted': str(current_time())}, link=celery_interface.call_average_model_states.s())
+            job = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True, headers={'project':project,'type':'train','submitted': str(current_time())}, link=celery_interface.call_average_model_states.s(project))
         else:
-            job = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True, headers={'type':'train','submitted': str(current_time())})
+            job = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True, headers={'project':project,'type':'train','submitted': str(current_time())})
         
 
         # start listener thread
         def chain_inference(*args):
-            self.training = self.messageProcessor.task_ongoing('train')
-            return self.start_inference(forceUnlabeled_inference, maxNumImages_inference, maxNumWorkers_inference)
+            self.training = self.messageProcessor.task_ongoing(project, 'train')
+            return self.start_inference(project, forceUnlabeled_inference, maxNumImages_inference, maxNumWorkers_inference)
 
         #TODO: chaining doesn't work properly this way...
-        self.messageProcessor.register_job(job, 'train', chain_inference)
+        self.messageProcessor.register_job(job, project, 'train', chain_inference)
 
         return 'ok'
 
 
 
 
-    def check_status(self, project, tasks, workers):
+    def check_status(self, project, checkProject, checkTasks, checkWorkers):
         '''
             Queries the Celery worker results depending on the parameters specified.
             Returns their status accordingly if they exist.
@@ -345,7 +352,7 @@ class AIMiddleware():
 
 
         # project status
-        if project:
+        if checkProject:
             if self.training:
                 status['project'] = {}
             else:
@@ -355,19 +362,19 @@ class AIMiddleware():
                 if self.watchdog is not None:
                     self.watchdog.nudge()
                     status['project'] = {
-                        'num_annotated': self.watchdog.lastCount,
-                        'num_next_training': self.watchdog.annoThreshold
+                        'num_annotated': self.watchdog.lastCount[project],
+                        'num_next_training': self.watchdog.annoThreshold[project]
                     }
                 else:
                     status['project'] = {}
 
 
         # running tasks status
-        if tasks:
-            status['tasks'] = self.messageProcessor.poll_status()
+        if checkTasks:
+            status['tasks'] = self.messageProcessor.poll_status(project)
 
         # get worker status (this is very expensive, as each worker needs to be pinged)
-        if workers:
-            status['workers'] = self.messageProcessor.poll_worker_status()
+        if checkWorkers:
+            status['workers'] = self.messageProcessor.poll_worker_status(project)
         
         return status

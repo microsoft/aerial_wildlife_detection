@@ -5,16 +5,18 @@
 '''
 
 class AIModel:
-    def __init__(self, config, dbConnector, fileServer, options):
+    def __init__(self, project, config, dbConnector, fileServer, options):
         """
             Model constructor. This is called by both the AIWorker and AIController
             modules when starting up.
             Args:
-                config: Configuration for the current AIde project
+                project: str, name of the current AIde project
+                config: Configuration for the platform
                 dbConnector: Access to the project database
                 fileServer: Access to the instance storing the images
                 options: A custom set of options in JSON format for this model
         """
+        self.project = project
         self.config = config
         self.dbConnector = dbConnector
         self.fileServer = fileServer

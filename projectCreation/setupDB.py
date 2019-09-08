@@ -120,14 +120,18 @@ if __name__ == '__main__':
 
     # add admin user
     sql = '''
-        INSERT INTO {}.user (name, email, hash, isadmin)
+        INSERT INTO aide_admin.user (name, email, hash, issuperuser)
         VALUES (%s, %s, %s, %s)
-    '''.format(config.getProperty('Database', 'schema'))
-
+    '''
     adminPass = config.getProperty('Project', 'adminPassword')
     uHandler = UserHandling.backend.middleware.UserMiddleware(config)
     adminPass = uHandler._create_hash(adminPass.encode('utf8'))
 
     values = (config.getProperty('Project', 'adminName'), config.getProperty('Project', 'adminEmail'), adminPass, True,)
-
     dbConn.execute(sql, values, None)
+
+    # sql = '''
+    #     INSERT INTO {}.authentication (username, isAdmin)
+    #     VALUES (%s, TRUE);
+    # '''.format(config.getProperty('Database', 'schema'))
+    # dbConn.execute(sql, (config.getProperty('Project', 'adminName'),), None)

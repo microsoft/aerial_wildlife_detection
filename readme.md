@@ -1,7 +1,6 @@
-# Multi-Project support branch
+# Multi-project support branch
 
-Big update for AIde to come: support for multiple projects!
-This will require lots of code changes, so stay tuned until this branch gets merged into the main code...
+Big update for AIde to come: support for multiple projects! This will require lots of code changes, so stay tuned until this branch gets merged into the main code...
 
 
 # AIde: Assisted Interface that does everything

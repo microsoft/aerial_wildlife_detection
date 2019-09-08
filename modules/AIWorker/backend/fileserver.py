@@ -68,7 +68,7 @@ class FileServer:
 
     
 
-    def getFile(self, filename):
+    def getFile(self, project, filename):
         '''
             Returns the file as a byte array.
             If FileServer module runs on same instance as AIWorker,
@@ -78,12 +78,19 @@ class FileServer:
 
         try:
             #TODO: make generator that yields bytes?
-            queryPath = os.path.join(self.baseURI, filename)
+            if project is not None:
+                queryPath = os.path.join(self.baseURI, project, filename)
+            else:
+                queryPath = os.path.join(self.baseURI, filename)
+            
+            if '..' in queryPath or filename.startswith('/'):
+                # parent and absolute paths are not allowed (to protect the system and other projects)
+                raise Exception('Parent accessors ("..") and absolute paths ("/path") are not allowed.')
+
             if self.isLocal:
                 # load file from disk
                 with open(queryPath, 'rb') as f:
                     bytea = f.read()
-
             else:
                 response = request.urlopen(queryPath)
                 bytea = response.read()
@@ -99,15 +106,38 @@ class FileServer:
 
         return bytea
 
-    
 
-    def putFile(self, bytea, filename):
+    def putFile(self, project, bytea, filename):
         '''
             Saves a file to disk.
             TODO: requires locally running FileServer instance for now.
         '''
         #TODO: What about remote file server? Might need to do authentication and sanity checks...
-        
-        with open(os.path.join(self.baseURI, filename), 'wb') as f:
+        if project is not None:
+            path = os.path.join(self.baseURI, project, filename)
+        else:
+            path = os.path.join(self.baseURI, filename)
+
+        if '..' in path or filename.startswith('/'):
+            # parent and absolute paths are not allowed (to protect the system and other projects)
+            raise Exception('Parent accessors ("..") and absolute paths ("/path") are not allowed.')
+
+        with open(path, 'wb') as f:
             f.write(bytea)
         print('Wrote file to disk: ' + filename)    #TODO
+
+    
+    def get_secure_instance(self, project):
+        '''
+            Returns a wrapper class to the "getFile" and "putFile"
+            functions that disallow access to other projects
+            than the one included.
+        '''
+        this = self
+        class _secure_file_server:
+            def getFile(self, filename):
+                return this.getFile(project, filename)
+            def putFile(self, bytea, filename):
+                return this.putFile(project, bytea, filename)
+        
+        return _secure_file_server()

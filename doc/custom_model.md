@@ -21,12 +21,13 @@ Below is a sample code shell for a custom prediction model:
 ```python
 
     class MyCustomModel:
-        def __init__(self, config, dbConnector, fileServer, options):
+        def __init__(self, project, config, dbConnector, fileServer, options):
             """
                 Model constructor. This is called by both the AIWorker and AIController
                 modules when starting up.
                 Args:
-                    config: Configuration for the current AIde project
+                    project: String, name of the project the model is run in
+                    config: Configuration for the general AIde setup
                     dbConnector: Access to the project database
                     fileServer: Access to the instance storing the images
                     options: A custom set of options in JSON format for this model
@@ -102,10 +103,10 @@ This example would return the `annotationType` entry under section `Project`, or
 * **dbConnector:** Provides access to the project database. Note: this is only needed under exceptional circumstances. **There is no need to manually store annotations or model states; this is taken care of by the _AIWorker_ directly.**
 If you do need to access the database, you can do so as follows (example):
 ```python
-    sql = 'SELECT * FROM {schema}.annotation WHERE x > %s;'.format(schema=config.getProperty('Database', 'schema'))
+    sql = 'SELECT * FROM {project}.annotation WHERE x > %s;'.format(project=self.project)
     arguments = 0.5
     numReturn = 'all'
-    result = dbConnector.execute(sql, (arguments,), numReturn)
+    result = self.dbConnector.execute(sql, (arguments,), numReturn)
 ```
 This would return a list of dicts with values from the `annotation` table.
 
@@ -114,12 +115,15 @@ Example:
 ```python
     import io
     from PIL import Image
-    filename = '/local/path/IMG_0001.JPG'
+    filename = 'relative/local/path/IMG_0001.JPG'
     imgBytes = BytesIO(fileServer.getFile(filename))
     image = Image.open(imgBytes)
 ```
 This code requests an image with given path from the _FileServer_ instance and opens it as a [PIL Image](https://pillow.readthedocs.io/en/stable/). You may also use other libraries and formats than PIL, such as [TensorFlow records](https://www.tensorflow.org/tutorials/load_data/images). Note that results are returned as bytes and need to be read and converted.
-**Note:** if an image cannot be found, or any other error occurs, `None` is returned.
+**Notes:**
+    * You can only access files from within your own project (i.e., `<file server root>/<projectName>/<your path here>`).
+    * Parent accessors (`..`) and absolute paths (`/path/etc/`) are forbidden and will return `None`.
+    * If an image cannot be found, or any other error occurs, `None` is returned.
 
 * **options:** These are parameters specific to the model. Use this for e.g. setting the model's learning rate, batch size, etc. Options can be provided through a JSON file; this requires setting the 'model_options_path' to the file path of the file in the [configuration *.ini file](configure_settings.md).
 
@@ -239,7 +243,7 @@ These may look as follows:
 
 
 
-## Implement a custom ranking model
+## Implement a custom AL criterion model
 
 Custom rankers can be used to implement more sophisticated Active Learning criteria.
 All a ranker does is to accept a list of images and (fresh) predictions, to return a `priority` float value for each prediction (note: prediction, not image) that specifies how important the image with the respective prediction(s) is.
@@ -249,16 +253,18 @@ The following snippet shows a code shell for bare rankers:
 
     class MyCustomRanker:
 
-        def __init__(self, config, dbConnector, fileServer, options):
+        def __init__(self, project, config, dbConnector, fileServer, options):
             """
                 Ranker constructor. This is called by both the AIWorker and AIController
                 modules when starting up.
                 Args:
-                    config: Configuration for the current AIde project
+                    project: String, name of the project this model is run in
+                    config: Configuration for the general AIde setup
                     dbConnector: Access to the project database
                     fileServer: Access to the instance storing the images
                     options: A custom set of options in JSON format for this ranker
             """
+            self.project = project
             self.config = config
             self.dbConnector = dbConnector
             self.fileServer = fileServer
