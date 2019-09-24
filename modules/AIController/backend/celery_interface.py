@@ -38,7 +38,14 @@ app.conf.update(
     worker_max_tasks_per_child = 1,      # required to free memory (also CUDA) after each process
     task_default_rate_limit = 3,         #TODO
     worker_prefetch_multiplier = 1,          #TODO
-    task_acks_late = True
+    task_acks_late = True,
+    task_queues = ('aide',),
+    task_routes = {
+        'aide': {
+            'queue': 'aide',
+            'exchange': 'aide'
+        }
+    }
 )
 
 
