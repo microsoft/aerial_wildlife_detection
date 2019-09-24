@@ -45,7 +45,8 @@ app.conf.update(
             'queue': 'aide',
             'exchange': 'aide'
         }
-    }
+    },
+    task_default_queue = 'aide'
 )
 
 
