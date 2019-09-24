@@ -39,13 +39,6 @@ app.conf.update(
     task_default_rate_limit = 3,         #TODO
     worker_prefetch_multiplier = 1,          #TODO
     task_acks_late = True,
-    task_queues = ('aide',),
-    task_routes = {
-        'aide': {
-            'queue': 'aide',
-            'exchange': 'aide'
-        }
-    },
     task_default_queue = 'aide'
 )
 
