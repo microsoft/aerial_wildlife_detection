@@ -13,7 +13,7 @@ class BreakingTies:
         pass
 
     
-    def rank(self, data, **kwargs):
+    def rank(self, data, updateStateFun, **kwargs):
         
         # iterate through the images and predictions
         for imgID in data.keys():

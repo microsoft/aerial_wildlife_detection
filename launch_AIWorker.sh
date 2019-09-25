@@ -5,4 +5,4 @@
 # 2019 Benjamin Kellenberger
 
 # Celery
-celery -A modules.AIController.backend.celery_interface worker
+celery -A modules.AIController.backend.celery_interface worker --hostname multibranch@%h

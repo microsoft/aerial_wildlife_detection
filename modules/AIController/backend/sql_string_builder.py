@@ -5,6 +5,8 @@
 '''
 
 from datetime import datetime
+from psycopg2 import sql
+
 
 class SQLStringBuilder:
 
@@ -12,33 +14,40 @@ class SQLStringBuilder:
         self.config = config
 
     
-    def getFixedImageIDQueryString(self, project, ids):
-        pass
+    # def getFixedImageIDQueryString(self, project, ids):
+    #     #TODO: implement
+    #     pass
 
     
     def getLatestQueryString(self, project, minNumAnnoPerImage=0, limit=None):
-        #TODO: re-formulate for project
         if limit is None or limit == -1:
-            # cap by limit specified in settings
-            limit = self.config.getProperty('AIController', 'maxNumImages_train', type=int)
-        if minNumAnnoPerImage is None or minNumAnnoPerImage == -1:
-            minNumAnnoPerImage = self.config.getProperty('AIController', 'minNumAnnoPerImage', type=int)
+            limitStr = sql.SQL('')
+        else:
+            limitStr = sql.SQL('LIMIT %s')
+
+        #     # cap by limit specified in settings
+        #     limit = self.config.getProperty('AIController', 'maxNumImages_train', type=int)
+        # if minNumAnnoPerImage is None or minNumAnnoPerImage == -1:
+        #     minNumAnnoPerImage = self.config.getProperty('AIController', 'minNumAnnoPerImage', type=int)
+
 
         if minNumAnnoPerImage <= 0:
             # no restriction on number of annotations per image
-            sql = '''
+            queryStr = sql.SQL('''
                 SELECT newestAnno.image FROM (
-                    SELECT image, last_checked FROM {schema}.image_user AS iu
-                    -- WHERE iu.last_checked > COALESCE(to_timestamp(0), (SELECT MAX(timecreated) FROM {schema}.cnnstate))
+                    SELECT image, last_checked FROM {id_iu} AS iu
+                    -- WHERE iu.last_checked > COALESCE(to_timestamp(0), (SELECT MAX(timecreated) FROM {id_cnnstate}))
                     ORDER BY iu.last_checked ASC
-                    LIMIT {limit}
+                    {limit}
                 ) AS newestAnno;
-            '''.format(schema=self.config.getProperty('Database', 'schema'),
-                    limit=limit)
+            ''').format(
+                id_iu=sql.Identifier(project, 'image_user'),
+                id_cnnstate=sql.Identifier(project, 'cnn_state'),
+                limit=limitStr)
         else:
-            sql = '''
+            queryStr = sql.SQL('''
                 SELECT newestAnno.image FROM (
-                    SELECT image, last_checked FROM {schema}.image_user AS iu
+                    SELECT image, last_checked FROM {id_iu} AS iu
                     WHERE image IN (
                         SELECT image FROM (
                             SELECT image, COUNT(*) AS cnt
@@ -50,39 +59,44 @@ class SQLStringBuilder:
                     ORDER BY iu.last_checked ASC
                     LIMIT {limit}
                 ) AS newestAnno;
-            '''.format(schema=self.config.getProperty('Database', 'schema'),
-                    minAnnoCount=minNumAnnoPerImage,
-                    limit=limit)
-        return sql
+            ''').format(
+                id_iu=sql.Identifier(project, 'image_user'),
+                minAnnoCount=minNumAnnoPerImage,
+                limit=limit)
+        return queryStr
 
     
 
-    def getInferenceQueryString(self, forceUnlabeled=True, limit=None):
+    def getInferenceQueryString(self, project, forceUnlabeled=True, limit=None):
 
         if forceUnlabeled:
-            unlabeledString = 'WHERE image_user.viewcount IS NULL'
+            unlabeledString = sql.SQL('WHERE {id_iu}.viewcount IS NULL').format(
+                id_iu=sql.Identifier(project, 'image_user')
+            )
         else:
-            unlabeledString = ''
+            unlabeledString = sql.SQL('')
         
         if limit is None or limit == -1:
-            limitString = ''
+            limitString = sql.SQL('')
         else:
             try:
-                limitString = 'LIMIT {}'.format(int(limit))
+                limitString = sql.SQL('LIMIT %s')
             except:
                 raise ValueError('Invalid value for limit ({})'.format(limit))
 
-        sql = '''
+        queryStr = sql.SQL('''
             SELECT query.imageID AS image FROM (
-                SELECT image.id AS imageID, image_user.viewcount FROM {schema}.image
-                LEFT OUTER JOIN {schema}.image_user
+                SELECT image.id AS imageID, image_user.viewcount FROM {id_img}
+                LEFT OUTER JOIN {id_iu}
                 ON image.id = image_user.image
                 {unlabeledString}
                 ORDER BY image_user.viewcount ASC NULLS FIRST
                 {limit}
             ) AS query;
-        '''.format(schema=self.config.getProperty('Database', 'schema'),
+        ''').format(
+            id_img=sql.Identifier(project, 'image'),
+            id_iu=sql.Identifier(project, 'image_user'),
             unlabeledString=unlabeledString,
             limit=limitString
         )
-        return sql
+        return queryStr

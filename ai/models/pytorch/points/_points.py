@@ -29,7 +29,6 @@ import io
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from celery import current_task
 
 from ..genericPyTorchModel import GenericPyTorchModel
 from .. import parse_transforms
@@ -45,7 +44,7 @@ class PointModel(GenericPyTorchModel):
         super(PointModel, self).__init__(config, dbConnector, fileServer, options, DEFAULT_OPTIONS)
     
 
-    def train(self, stateDict, data):
+    def train(self, stateDict, data, updateStateFun):
         '''
             Initializes a model based on the given stateDict and a data loader from the
             provided data and trains the model, taking into account the parameters speci-
@@ -107,13 +106,13 @@ class PointModel(GenericPyTorchModel):
             
             # update worker state
             imgCount += img.size(0)
-            # current_task.update_state(state='PROGRESS', meta={'done': imgCount, 'total': len(dataLoader.dataset), 'message': 'training'})
+            updateStateFun(state='PROGRESS', message='training', done=imgCount, total=len(dataLoader.dataset))
 
         # all done; return state dict as bytes
         return self.exportModelState(model)
 
 
-    def inference(self, stateDict, data):
+    def inference(self, stateDict, data, updateStateFun):
         '''
             TODO
         '''
@@ -177,7 +176,7 @@ class PointModel(GenericPyTorchModel):
         
             # update worker state
             imgCount += len(imgID)
-            # current_task.update_state(state='PROGRESS', meta={'done': imgCount, 'total': len(dataLoader.dataset), 'message': 'predicting'})
+            updateStateFun(state='PROGRESS', message='predicting', done=imgCount, total=len(dataLoader.dataset))
 
         model.cpu()
         if 'cuda' in device:

@@ -26,6 +26,11 @@ CREATE TABLE IF NOT EXISTS aide_admin.project (
     annotationType labelType NOT NULL,
     predictionType labelType,
     ui_settings VARCHAR,
+    numImages_autoTrain BIGINT,
+    minNumAnnoPerImage INTEGER,
+    maxNumImages_train BIGINT,
+    maxNumImages_inference BIGINT,
+    ai_model_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     ai_model_library VARCHAR,
     ai_model_settings VARCHAR,
     ai_alCriterion_library VARCHAR,
@@ -43,6 +48,15 @@ CREATE TABLE IF NOT EXISTS aide_admin.user (
     PRIMARY KEY (name)
 );
 
+CREATE TABLE IF NOT EXISTS aide_admin.AUTHENTICATION (
+    username VARCHAR UNIQUE NOT NULL,
+    project VARCHAR NOT NULL,
+    isAdmin BOOLEAN DEFAULT FALSE,
+    PRIMARY KEY (username, project),
+    FOREIGN KEY (username) REFERENCES aide_admin.user (name),
+    FOREIGN KEY (project) REFERENCES aide_admin.project (shortname)
+);
+
 
 
 /* project schema */
@@ -51,14 +65,6 @@ CREATE SCHEMA IF NOT EXISTS &schema
 
 
 /* tables */
-CREATE TABLE IF NOT EXISTS &schema.AUTHENTICATION (
-    username VARCHAR UNIQUE NOT NULL,
-    isAdmin BOOLEAN DEFAULT FALSE,
-    PRIMARY KEY (username),
-    FOREIGN KEY (username) REFERENCES aide_admin.project (name)
-);
-
-
 /*
 CREATE TABLE IF NOT EXISTS &schema.USER (
     name VARCHAR UNIQUE NOT NULL,

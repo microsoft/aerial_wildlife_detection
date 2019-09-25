@@ -14,7 +14,6 @@ import random
 import numpy as np
 from tqdm import tqdm
 from psycopg2 import sql
-from celery import current_task
 import torch
 from torchvision import transforms as tr
 from PIL import Image
@@ -97,7 +96,7 @@ class RetinaNet_ois(RetinaNet):
         return all_images
     
 
-    def train(self, stateDict, data):
+    def train(self, stateDict, data, updateStateFun):
         '''
             TODO: ugly hack: since we do not yet have a model that can cope with all label classes,
             we simply ignore labels the model does not know.
@@ -119,7 +118,7 @@ class RetinaNet_ois(RetinaNet):
                         data['images'][key]['annotations'][idx]['unsure'] = True
         
         # now start ordinary training
-        return super().train(stateDict, data)
+        return super().train(stateDict, data, updateStateFun)
 
 
     def _inference_image(self, model, transform, filename):
@@ -261,7 +260,7 @@ class RetinaNet_ois(RetinaNet):
         return result
 
 
-    def inference(self, stateDict, data):
+    def inference(self, stateDict, data, updateStateFun):
         '''
             Augmented implementation of RetinaNet's regular inference function.
             In addition to (or instead of, depending on the settings) performing
@@ -295,7 +294,7 @@ class RetinaNet_ois(RetinaNet):
             labelclassMap_inv[val] = key
 
         # get all image filenames from DB
-        current_task.update_state(state='PREPARING', meta={'message':'identifying images'})
+        updateStateFun(state='PREPARING', message='identifying images')
         queryStr = sql.SQL('SELECT filename FROM {};').format(sql.Identifier(self.project, 'image'))
         filenames = self.dbConnector.execute(queryStr, None, 'all')
         filenames = [f['filename'] for f in filenames]
@@ -335,7 +334,7 @@ class RetinaNet_ois(RetinaNet):
                 response[key] = meta[key]
 
             # update worker state
-            current_task.update_state(state='PROGRESS', meta={'done': u+1, 'total': len(unlabeled), 'message': 'predicting new images'})
+            updateStateFun(state='PROGRESS', message='predicting new images', done=u+1, total=len(unlabeled))
     
         model.cpu()
         if 'cuda' in device:
@@ -349,7 +348,7 @@ class RetinaNet_ois(RetinaNet):
                     response[key]['predictions'][p]['label'] = labelclassMap_inv[response[key]['predictions'][p]['label']]
 
             # commit to DB
-            current_task.update_state(state='PREPARING', meta={'message':'adding new images to database'})
+            updateStateFun(state='PREPARING', message='adding new images to database')
             queryStr = sql.SQL('''
                 INSERT INTO {} (filename)
                 VALUES %s;
@@ -372,7 +371,7 @@ class RetinaNet_ois(RetinaNet):
 
         # also do regular inference
         print('Doing inference on existing patches...')
-        response_regular = super(RetinaNet_ois, self).inference(stateDict, data)
+        response_regular = super(RetinaNet_ois, self).inference(stateDict, data, updateStateFun)
         for key in response_regular.keys():
             response[key] = response_regular[key]
 

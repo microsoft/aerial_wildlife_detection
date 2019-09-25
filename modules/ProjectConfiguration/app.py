@@ -10,6 +10,7 @@ import cgi
 from urllib.parse import urljoin
 import bottle
 from bottle import request, response, static_file, redirect, abort, SimpleTemplate
+from .backend.middleware import ProjectConfigMiddleware
 
 
 class ProjectConfigurator:
@@ -18,15 +19,16 @@ class ProjectConfigurator:
 
         self.config = config
         self.app = app
-        self.staticDir = 'modules/ProjectConfigurator/static'
+        self.staticDir = 'modules/ProjectConfiguration/static'
+        self.middleware = ProjectConfigMiddleware(config)
 
         self.login_check = None
 
         self._initBottle()
     
 
-    def loginCheck(self, needBeAdmin=False):
-        return self.login_check(needBeAdmin)
+    def loginCheck(self, project=None, admin=False, superuser=False, extend_session=False):
+        return self.login_check(project, admin, superuser, extend_session)
 
 
     def addLoginCheckFun(self, loginCheckFun):
@@ -36,7 +38,7 @@ class ProjectConfigurator:
     def _initBottle(self):
 
 
-        with open(os.path.abspath(os.path.join('modules/ProjectConfiguration/static/templates/projectConfiguration.html')), 'r') as f:
+        with open(os.path.abspath(os.path.join(self.staticDir, 'templates/projectConfiguration.html')), 'r') as f:
             self.projConf_template = SimpleTemplate(f.read())
 
 
@@ -45,17 +47,22 @@ class ProjectConfigurator:
             return static_file(filename, root=self.staticDir)
 
 
-        @self.app.route('/configuration')
-        def configuration_page():
-            if self.loginCheck(True):
+        @self.app.route('/<project>/configuration')
+        def configuration_page(project):
+            if self.loginCheck(project=project, admin=True):
                 username = cgi.escape(request.get_cookie('username'))
-                response = self.projConf_template.render(
-                    username=username,
-                    projectTitle=self.config.getProperty('Project', 'projectName'),
-                    projectDescr=self.config.getProperty('Project', 'projectDescription'),
-                    numImagesPerBatch=self.config.getProperty('LabelUI', 'numImagesPerBatch'),
-                    minImageWidth=self.config.getProperty('LabelUI', 'minImageWidth')
-                )
+
+                projData = self.middleware.getProjectInfo(project)
+                projData['username'] = username
+
+                response = self.projConf_template.render(**projData)
+                # response = self.projConf_template.render(
+                #     username=username,
+                #     projectTitle=projData['projectTitle'],
+                #     projectDescr=projData['projectDescr'],
+                #     numImagesPerBatch=projData['numImagesPerBatch'],
+                #     minImageWidth=projData['minImageWidth']
+                # )
                 # response.set_header("Cache-Control", "public, max-age=604800")
             else:
                 response = bottle.response
@@ -64,14 +71,13 @@ class ProjectConfigurator:
             return response
 
 
-        @self.app.post('/getProjectConfiguration')
-        def get_project_configuration():
-            if not self.loginCheck(True):
-                abort(401, 'forbidden')
-            
+        # @self.app.post('/getProjectConfiguration')
+        # def get_project_configuration():
+        #     if not self.loginCheck(admin=True):
+        #         abort(401, 'forbidden')
 
         
-        @self.app.post('/saveProjectConfiguration')
-        def save_project_configuration():
-            if not self.loginCheck(True):
+        @self.app.post('/<project>/saveProjectConfiguration')
+        def save_project_configuration(project):
+            if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')

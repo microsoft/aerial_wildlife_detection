@@ -9,13 +9,14 @@ import cgi
 from modules.AIController.backend import celery_interface
 import celery
 from celery import current_app, group
+from psycopg2 import sql
 from util.helpers import current_time
 from .messageProcessor import MessageProcessor
 from .annotationWatchdog import Watchdog
-from .sql_string_builder import SQLStringBuilder
 from modules.Database.app import Database
 from util.helpers import array_split
 
+from .sql_string_builder import SQLStringBuilder
 
 
 class AIMiddleware():
@@ -32,15 +33,13 @@ class AIMiddleware():
         self.celery_app.set_current()
         self.celery_app.set_default()
 
+        self.watchdogs = {}    # one watchdog per project. Note: watchdog only created if users poll status (i.e., if there's activity)
 
-        self.watchdog = None    # note: watchdog only created if users poll status (i.e., if there's activity)
-
-        #TODO
         self.messageProcessor = MessageProcessor(self.celery_app)
         self.messageProcessor.start()
 
 
-    def _init_watchdog(self):
+    def _init_watchdog(self, project, nudge=False):
         '''
             Launches a thread that periodically polls the database for new
             annotations. Once the required number of new annotations is reached,
@@ -49,13 +48,31 @@ class AIMiddleware():
             re-created once the training process has finished.
         '''
 
-        #TODO: project-specific:
-        # numImages_autoTrain = self.config.getProperty('AIController', 'numImages_autoTrain', type=int, fallback=-1)
-        # if numImages_autoTrain == -1:
-        #     return
-            
-        self.watchdog = Watchdog(self.config, self.dbConn, self)
-        self.watchdog.start()
+        if project in self.watchdogs and self.watchdogs[project] == False:
+                # project does not need a watchdog
+                return
+        
+        else:
+            # check if auto-training enabled
+            projSettings = self.dbConn.execute('''
+                SELECT ai_model_enabled, numImages_autoTrain
+                FROM aide_admin.project
+                WHERE shortname = %s
+                ''', (project,), 1)
+
+            if projSettings is None or not len(projSettings) or \
+                not (projSettings[0]['ai_model_enabled']) or projSettings[0]['numimages_autotrain'] == -1:
+                # no watchdog to be configured; set flag to avoid excessive DB queries
+                #TODO: enable on-the-fly project settings updates to this end
+                self.watchdogs[project] = False
+
+
+        # init watchdog            
+        self.watchdogs[project] = Watchdog(project, self.config, self.dbConn, self)
+        self.watchdogs[project].start()
+
+        if nudge:
+            self.watchdogs[project].nudge()
 
 
     def _get_num_available_workers(self):
@@ -68,6 +85,12 @@ class AIMiddleware():
                 return len(i.stats())
         return 1    #TODO
 
+    def _get_project_settings(self, project):
+        queryStr = sql.SQL('''SELECT numImages_autoTrain,
+            minNumAnnoPerImage, maxNumImages_train,maxNumImages_inference
+            FROM aide_admin.project WHERE shortname = %s;''')
+        settings = self.dbConn.execute(queryStr, (project,), 1)[0]
+        return settings
 
 
     def _training_completed(self, project, trainingJob):
@@ -96,27 +119,89 @@ class AIMiddleware():
 
 
         try:
-
             # sanity checks
             if not (isinstance(minTimestamp, datetime) or minTimestamp == 'lastState' or
                     minTimestamp == -1 or minTimestamp is None):
                 raise ValueError('{} is not a recognized property for variable "minTimestamp"'.format(str(minTimestamp)))
 
-
+            # identify number of available workers
             if maxNumWorkers != 1:
                 # only query the number of available workers if more than one is specified to save time
                 num_workers = min(maxNumWorkers, self._get_num_available_workers())
             else:
                 num_workers = maxNumWorkers
 
-
             # query image IDs
-            sql = self.sqlBuilder.getLatestQueryString(minNumAnnoPerImage=minNumAnnoPerImage, limit=maxNumImages)
+            queryVals = []
 
-            if isinstance(minTimestamp, datetime):
-                imageIDs = self.dbConn.execute(sql, (minTimestamp,), 'all')
+            if minTimestamp is None:
+                timestampStr = sql.SQL('')
+            elif minTimestamp == 'lastState':
+                timestampStr = sql.SQL('''
+                WHERE iu.last_checked > COALESCE(to_timestamp(0),
+                (SELECT MAX(timecreated) FROM {id_cnnstate}))''').format(
+                    id_cnnstate=sql.Identifier(project, 'cnn_state')
+                )
+            elif isinstance(minTimestamp, datetime):
+                timestampStr = sql.SQL('WHERE iu.last_checked > COALESCE(to_timestamp(0), %s)')
+                queryVals.append(minTimestamp)
+            elif isinstance(minTimestamp, int) or isinstance(minTimestamp, float):
+                timestampStr = sql.SQL('WHERE iu.last_checked > COALESCE(to_timestamp(0), to_timestamp(%s))')
+                queryVals.append(minTimestamp)
+
+            if minNumAnnoPerImage > 0:
+                queryVals.append(minNumAnnoPerImage)
+
+            if maxNumImages is None:
+                limitStr = sql.SQL('')
             else:
-                imageIDs = self.dbConn.execute(sql, None, 'all')
+                limitStr = sql.SQL('LIMIT %s')
+                queryVals.append(maxNumImages)
+
+            if minNumAnnoPerImage <= 0:
+                queryStr = sql.SQL('''
+                    SELECT newestAnno.image FROM (
+                        SELECT image, last_checked FROM {id_iu} AS iu
+                        {timestampStr}
+                        ORDER BY iu.last_checked ASC
+                        {limitStr}
+                    ) AS newestAnno;
+                ''').format(
+                    id_iu=sql.Identifier(project, 'image_user'),
+                    timestampStr=timestampStr,
+                    limitStr=limitStr)
+
+            else:
+                queryStr = sql.SQL('''
+                SELECT newestAnno.image FROM (
+                    SELECT image, last_checked FROM {id_iu} AS iu
+                    {timestampStr}
+                    {conjunction} image IN (
+                        SELECT image FROM (
+                            SELECT image, COUNT(*) AS cnt
+                            FROM {id_anno}
+                            GROUP BY image
+                            ) AS annoCount
+                        WHERE annoCount.cnt > %s
+                    )
+                    ORDER BY iu.last_checked ASC
+                    {limitStr}
+                ) AS newestAnno;
+                ''').format(
+                    id_iu=sql.Identifier(project, 'image_user'),
+                    id_anno=sql.Identifier(project, 'annotation'),
+                    timestampStr=timestampStr,
+                    conjunction=(sql.SQL('WHERE') if minTimestamp is None else sql.SQL('AND')),
+                    limitStr=limitStr)
+
+            imageIDs = self.dbConn.execute(queryStr, tuple(queryVals), 'all')
+
+            # #TODO: OLD:
+            # sql = self.sqlBuilder.getLatestQueryString(minNumAnnoPerImage=minNumAnnoPerImage, limit=maxNumImages)
+            # if isinstance(minTimestamp, datetime):
+            #     imageIDs = self.dbConn.execute(queryStr, (minTimestamp,), 'all')
+            # else:
+            #     imageIDs = self.dbConn.execute(queryStr, None, 'all')
 
             imageIDs = [i['image'] for i in imageIDs]
 
@@ -138,7 +223,7 @@ class AIMiddleware():
             return process, num_workers
 
         except:
-            self.training = self.messageProcessor.task_ongoing('train')
+            self.training = self.messageProcessor.task_ongoing(project, 'train')
             return None
 
 
@@ -186,7 +271,8 @@ class AIMiddleware():
                                                      stamp of the latest model state. If no model state is
                                                      found, all annotations are considered.
                             - None, -1, or 'all': Includes all annotations.
-                            - (a datetime object): Includes annotations made after a custom timestamp.
+                            - (a datetime object), int or float: Includes annotations made after a custom
+                                                                 timestamp.
             - minNumAnnoPerImage: Minimum number of annotations per image to be considered for training.
                                   This may be useful for e.g. detection tasks with a lot of false alarms
                                   in order to limit the "forgetting factor" of the model subject to training.
@@ -212,16 +298,25 @@ class AIMiddleware():
 
 
         # submit job
-        task_id = self.messageProcessor.task_id()
+        task_id = self.messageProcessor.task_id(project)
         if numWorkers > 1:
             # also append average model states job
-            job = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True, headers={'project':project,'type':'train','submitted': str(current_time())}, link=celery_interface.call_average_model_states.s(project))
+            job = process.apply_async(task_id=task_id,
+                        queue=project,
+                        ignore_result=False,
+                        result_extended=True,
+                        headers={'headers':{'project':project,'type':'train','submitted': str(current_time())}},
+                        link=celery_interface.call_average_model_states.s(project))
         else:
-            job = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True, headers={'project':project,'type':'train','submitted': str(current_time())})
+            job = process.apply_async(task_id=task_id,
+                        queue=project,
+                        ignore_result=False,
+                        result_extended=True,
+                        headers={'headers':{'project':project,'type':'train','submitted': str(current_time())}})
 
 
         # start listener
-        self.messageProcessor.register_job(job, 'train', self._training_completed)
+        self.messageProcessor.register_job(project, job, 'train', self._training_completed)
 
         return 'ok'
 
@@ -229,11 +324,15 @@ class AIMiddleware():
     def _do_inference(self, project, process):
 
         # send job
-        task_id = self.messageProcessor.task_id()
-        result = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True, headers={'project':project,'type':'inference','submitted': str(current_time())})
+        task_id = self.messageProcessor.task_id(project)
+        result = process.apply_async(task_id=task_id,
+                        queue=project,
+                        ignore_result=False,
+                        result_extended=True,
+                        headers={'headers':{'project':project,'type':'inference','submitted': str(current_time())}})
 
         # start listener
-        self.messageProcessor.register_job(result, 'inference', None)
+        self.messageProcessor.register_job(project, result, 'inference', None)
 
         return
 
@@ -262,13 +361,20 @@ class AIMiddleware():
                              time. If set to -1 (default), the data will be divided across all registered workers.
         '''
         
-        # setup TODO: project-specific
+        # setup
         if maxNumImages is None or maxNumImages == -1:
-            maxNumImages = self.config.getProperty('AIController', 'maxNumImages_inference', type=int)
+            queryResult = self.dbConn.execute('''
+                SELECT maxNumImages_inference
+                FROM aide_admin.project
+                WHERE shortname = %s;''', (project,), 1)
+            maxNumImages = queryResult['maxnumimages_inference']    
+            # maxNumImages = self.config.getProperty('AIController', 'maxNumImages_inference', type=int)
+        
+        queryVals = (maxNumImages,)
 
         # load the IDs of the images that are being subjected to inference
         sql = self.sqlBuilder.getInferenceQueryString(project, forceUnlabeled, maxNumImages)
-        imageIDs = self.dbConn.execute(sql, None, 'all')
+        imageIDs = self.dbConn.execute(sql, queryVals, 'all')
         imageIDs = [i['image'] for i in imageIDs]
 
         process = self._get_inference_job_signature(project, imageIDs, maxNumWorkers)
@@ -322,12 +428,21 @@ class AIMiddleware():
                                         maxNumWorkers=maxNumWorkers_train)
 
         # submit job
-        task_id = self.messageProcessor.task_id()
+        task_id = self.messageProcessor.task_id(project)
         if numWorkers_train > 1:
             # also append average model states job
-            job = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True, headers={'project':project,'type':'train','submitted': str(current_time())}, link=celery_interface.call_average_model_states.s(project))
+            job = process.apply_async(task_id=task_id,
+                            queue=project,
+                            ignore_result=False,
+                            result_extended=True,
+                            headers={'headers':{'project':project,'type':'train','submitted': str(current_time())}},
+                            link=celery_interface.call_average_model_states.s(project))
         else:
-            job = process.apply_async(task_id=task_id, ignore_result=False, result_extended=True, headers={'project':project,'type':'train','submitted': str(current_time())})
+            job = process.apply_async(task_id=task_id,
+                            queue=project,
+                            ignore_result=False,
+                            result_extended=True,
+                            headers={'headers':{'project':project,'type':'train','submitted': str(current_time())}})
         
 
         # start listener thread
@@ -336,7 +451,7 @@ class AIMiddleware():
             return self.start_inference(project, forceUnlabeled_inference, maxNumImages_inference, maxNumWorkers_inference)
 
         #TODO: chaining doesn't work properly this way...
-        self.messageProcessor.register_job(job, project, 'train', chain_inference)
+        self.messageProcessor.register_job(project, job, 'train', chain_inference)
 
         return 'ok'
 
@@ -357,13 +472,13 @@ class AIMiddleware():
                 status['project'] = {}
             else:
                 # notify watchdog that users are active
-                if self.watchdog is None or self.watchdog.stopped():
-                    self._init_watchdog()
-                if self.watchdog is not None:
-                    self.watchdog.nudge()
+                if not project in self.watchdogs or \
+                    (self.watchdogs[project] != False and self.watchdogs[project].stopped()):
+                    self._init_watchdog(project, True)
+                if self.watchdogs[project] != False:
                     status['project'] = {
-                        'num_annotated': self.watchdog.lastCount[project],
-                        'num_next_training': self.watchdog.annoThreshold[project]
+                        'num_annotated': self.watchdogs[project].lastCount,
+                        'num_next_training': self.watchdogs[project].getThreshold()
                     }
                 else:
                     status['project'] = {}

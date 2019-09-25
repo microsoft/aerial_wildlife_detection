@@ -12,11 +12,12 @@
 from threading import Thread, Event
 # import time
 import math
+from psycopg2 import sql
 
 
 class Watchdog(Thread):
 
-    def __init__(self, config, dbConnector, middleware):
+    def __init__(self, project, config, dbConnector, middleware):
         super(Watchdog, self).__init__()
         self._stop_event = Event()
 
@@ -25,11 +26,9 @@ class Watchdog(Thread):
         self.middleware = middleware
 
         # initialize properties
-        self.annoThreshold = float(config.getProperty('AIController', 'numImages_autoTrain', type=int))
-        self.maxNumImages_train = self.config.getProperty('AIController', 'maxNumImages_train', type=int)
-        self.maxNumWorkers_train = self.config.getProperty('AIController', 'maxNumWorkers_train', type=int, fallback=-1)
-        self.maxNumWorkers_inference = self.config.getProperty('AIController', 'maxNumWorkers_inference', type=int, fallback=-1)
-        self.maxNumImages_inference = self.config.getProperty('AIController', 'maxNumImages_inference', type=int)
+        self.properties = self.dbConnector.execute('SELECT * FROM aide_admin.project WHERE shortname = %s',
+                        (project,), 1)
+        self.properties = self.properties[0]
 
         self.maxWaitingTime = 1800                      # seconds
         self.minWaitingTime = 20
@@ -37,24 +36,25 @@ class Watchdog(Thread):
 
         self.lastCount = 0                              # for difference tracking
 
-        minNumAnno = self.config.getProperty('AIController', 'minNumAnnoPerImage', type=int, fallback=0)
+        minNumAnno = self.properties['minnumannoperimage']
         if minNumAnno > 0:
-            minNumAnnoString = '''
+            minNumAnnoString = sql.SQL('''
                 WHERE image IN (
                     SELECT cntQ.image FROM (
-                        SELECT image, count(*) AS cnt FROM {schema}.annotation
+                        SELECT image, count(*) AS cnt FROM {id_anno}
                         GROUP BY image
-                    ) AS cntQ WHERE cntQ.cnt > {minNumAnno}
+                    ) AS cntQ WHERE cntQ.cnt > %s
                 )
-            '''.format(
-                schema=config.getProperty('Database', 'schema'),
-                minNumAnno=minNumAnno
+            ''').format(
+                id_anno=sql.Identifier(project, 'annotation')
             )
+            self.queryVals = (minNumAnno,)
         else:
             minNumAnnoString = ''
-        self.sql = '''
+            self.queryVals = None
+        self.queryStr = sql.SQL('''
             SELECT COUNT(image) AS count FROM (
-                SELECT image, MAX(last_checked) AS lastChecked FROM {schema}.image_user
+                SELECT image, MAX(last_checked) AS lastChecked FROM {id_iu}
                 {minNumAnnoString}
                 GROUP BY image
             ) AS query
@@ -62,11 +62,13 @@ class Watchdog(Thread):
                 SELECT MAX(timeCreated) FROM (
                     SELECT to_timestamp(0) AS timeCreated
                     UNION (
-                        SELECT MAX(timeCreated) AS timeCreated FROM {schema}.cnnstate
+                        SELECT MAX(timeCreated) AS timeCreated FROM {id_cnnstate}
                     )
             ) AS tsQ);
-        '''.format(schema=config.getProperty('Database', 'schema'),
-                minNumAnnoString=minNumAnnoString)
+        ''').format(
+            id_iu=sql.Identifier(project, 'image_user'),
+            id_cnnstate=sql.Identifier(project, 'cnnstate'),
+            minNumAnnoString=minNumAnnoString)
 
     
     def stop(self):
@@ -85,6 +87,10 @@ class Watchdog(Thread):
         self.currentWaitingTime = self.minWaitingTime   #TODO
 
 
+    def getThreshold(self):
+        return self.properties['numimages_autotrain']
+
+
     def run(self):
 
         while True:
@@ -94,23 +100,23 @@ class Watchdog(Thread):
                 break
 
             # poll database
-            count = self.dbConnector.execute(self.sql, None, 1)
+            count = self.dbConnector.execute(self.queryStr, self.queryVals, 1)
             count = count[0]['count']
 
-            if count >= self.annoThreshold:
+            if count >= self.properties['numimages_autotrain']:
                 # threshold exceeded; initiate training process followed by inference and return
                 self.middleware.start_train_and_inference(minTimestamp='lastState',
-                    maxNumImages_train=self.maxNumImages_train,
-                    maxNumWorkers_train=self.maxNumWorkers_train,
+                    maxNumImages_train=self.properties['maxnumimages_train'],
+                    maxNumWorkers_train=self.config.getProperty('AIController', 'maxNumWorkers_train', type=int, fallback=1),
                     forceUnlabeled_inference=True,
-                    maxNumImages_inference=self.maxNumImages_inference,
-                    maxNumWorkers_inference=self.maxNumWorkers_inference)
+                    maxNumImages_inference=self.properties['maxnumimages_inference'],
+                    maxNumWorkers_inference=self.config.getProperty('AIController', 'maxNumWorkers_inference', type=int, fallback=-1))
                 self.stop()
                 break
             
             else:
                 # update waiting time
-                progressPerc = count / self.annoThreshold
+                progressPerc = count / self.properties['numimages_autotrain']
                 waitTimeFrac = (0.8*(1 - math.pow(progressPerc, 4))) + \
                                             (0.2 * (1 - math.pow((count - self.lastCount)/max(1, count + self.lastCount), 2)))
 

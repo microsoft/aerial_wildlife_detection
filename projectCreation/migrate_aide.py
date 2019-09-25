@@ -32,6 +32,11 @@ MODIFICATIONS_sql = [
         annotationType labelType NOT NULL,
         predictionType labelType,
         ui_settings VARCHAR,
+        numImages_autoTrain BIGINT,
+        minNumAnnoPerImage INTEGER,
+        maxNumImages_train BIGINT,
+        maxNumImages_inference BIGINT,
+        ai_model_enabled BOOLEAN NOT NULL DEFAULT FALSE,
         ai_model_library VARCHAR,
         ai_model_settings VARCHAR,
         ai_alCriterion_library VARCHAR,
@@ -47,11 +52,13 @@ MODIFICATIONS_sql = [
         last_login TIMESTAMPTZ,
         PRIMARY KEY (name)
     );''',
-    '''CREATE TABLE IF NOT EXISTS {schema}.authentication (
+    '''CREATE TABLE IF NOT EXISTS aide_admin.authentication (
         username VARCHAR UNIQUE NOT NULL,
+        project VARCHAR NOT NULL,
         isAdmin BOOLEAN DEFAULT FALSE,
-        PRIMARY KEY (username),
-        FOREIGN KEY (username) REFERENCES aide_admin.user (name)
+        PRIMARY KEY (username, project),
+        FOREIGN KEY (username) REFERENCES aide_admin.user (name),
+        FOREIGN KEY (project) REFERENCES aide_admin.project (shortname)
     );''',
     'ALTER TABLE {schema}.image_user DROP CONSTRAINT image_user_image_fkey;',
     'ALTER TABLE {schema}.image_user ADD CONSTRAINT image_user_image_fkey FOREIGN KEY (username) REFERENCES aide_admin.USER (name);',
@@ -164,11 +171,18 @@ if __name__ == '__main__':
     dbConn.execute('''
         INSERT INTO aide_admin.project (shortname, name, description,
             annotationType, predictionType, ui_settings,
+            numImages_autoTrain,
+            minNumAnnoPerImage,
+            maxNumImages_train,
+            maxNumImages_inference,
+            ai_model_enabled,
             ai_model_library, ai_model_settings,
             ai_alCriterion_library, ai_alCriterion_settings
             )
         VALUES (
             %s, %s, %s, %s, %s, %s,
+            %s, %s, %s, %s,
+            %s,
             %s, %s, %s, %s
         )
         ON CONFLICT (shortname) DO NOTHING;
@@ -180,6 +194,11 @@ if __name__ == '__main__':
             config.getProperty('Project', 'annotationType'),
             config.getProperty('Project', 'predictionType'),
             json.dumps(uiSettings),
+            config.getProperty('AIController', 'numImages_autoTrain'),
+            config.getProperty('AIController', 'minNumAnnoPerImage'),
+            config.getProperty('AIController', 'maxNumImages_train'),
+            config.getProperty('AIController', 'maxNumImages_inference'),
+            (modelPath is not None),
             modelPath, modelSettings,
             alCriterionPath, alCriterionSettings
         )
@@ -265,8 +284,8 @@ if __name__ == '__main__':
 
     # add authentication
     dbConn.execute('''
-            INSERT INTO {schema}.authentication (username, isAdmin)
-            SELECT name, isAdmin FROM {schema}.user
+            INSERT INTO aide_admin.authentication (username, project, isAdmin)
+            SELECT name, {schema}, isAdmin FROM {schema}.user
             WHERE name IN (SELECT name FROM aide_admin.user)
             ON CONFLICT (username) DO NOTHING;
         '''.format(schema=config.getProperty('Database', 'schema')),

@@ -38,13 +38,15 @@ Below is a sample code shell for a custom prediction model:
             self.options = options
 
 
-        def train(self, stateDict, data):
+        def train(self, stateDict, data, updateStateFun):
             """
                 Training function. This function gets called by each individual AIWorkers
                 when the model is supposed to be trained for another round.
                 Args:
                     stateDict: a bytes object containing the model's current state
                     data: a dict object containing the image metadata to be trained on
+                    updateStateFun: function handle for updating the progress to the
+                                    AIController
                 
                 Returns:
                     stateDict: a bytes object containing the model's state after training
@@ -53,7 +55,7 @@ Below is a sample code shell for a custom prediction model:
             raise NotImplementedError('to be implemented')
         
 
-        def average_model_states(self, stateDicts):
+        def average_model_states(self, stateDicts, updateStateFun):
             """
                 Averaging function. If AIde is configured to distribute training to multiple
                 AIWorkers, and if multiple AIWorkers are attached, this function will be called
@@ -61,6 +63,8 @@ Below is a sample code shell for a custom prediction model:
                 Args:
                     stateDicts: a list of N bytes objects containing model states as trained by
                                 the N AIWorkers attached
+                    updateStateFun: function handle for updating the progress to the
+                                    AIController
 
                 Returns:
                     stateDict: a bytes object containing the combined model states
@@ -69,7 +73,7 @@ Below is a sample code shell for a custom prediction model:
             raise NotImplementedError('to be implemented')
 
 
-        def inference(self, stateDict, data):
+        def inference(self, stateDict, data, updateStateFun):
             """
                 Inference function. This gets called everytime the model is supposed to be run on
                 a set of images. The inference job might be distributed to multiple AIWorkers, but
@@ -79,6 +83,8 @@ Below is a sample code shell for a custom prediction model:
                     stateDict: a bytes object containing the latest model state
                     data: a dict object containing the metadata of the images the model needs to
                           predict
+                    updateStateFun: function handle for updating the progress to the
+                                    AIController
             """
 
             raise NotImplementedError('to be implemented')
@@ -271,7 +277,7 @@ The following snippet shows a code shell for bare rankers:
             self.options = options
 
 
-        def rank(self, data, **kwargs):
+        def rank(self, data, updateStateFun, **kwargs):
             """
                 Ranking function.
                 Args:
@@ -281,6 +287,8 @@ The following snippet shows a code shell for bare rankers:
                 Returns:
                     data: the same dict object as provided as input, but with an extra
                           'priority' entry for each prediction
+                    updateStateFun: function handle for updating the progress to the
+                                    AIController
             """
 ```
 
@@ -297,20 +305,22 @@ Notes:
 
 ### Progress and status updates
 
-Since model training and inference are likely to be long-running tasks, you are advised to regularly post progress updates to the _AIController_ instance. This can be done by using AIde's task queue [Celery](http://www.celeryproject.org/).
+Since model training and inference are likely to be long-running tasks, you are advised to regularly post progress updates to the _AIController_ instance. This can be done by using the "updateStateFun" that comes with every function to implement.
 
 For example, the following snippet sets the job status to "in progress" and makes the AIde interface display a message "predicting" as well as a progress bar:
 ```python
 
-    from celery import current_task
+    def train():
 
-    # place this anywhere in your model's train, inference, or other functions
-    current_task.update_state(state='PROGRESS',
-                              message='predicting',
-                              meta={
-                                  'done': 34,
-                                  'total': 100
-                              })
+        for idx in range(len(data['images'].keys())):
+            
+            # train model here...
+
+            # update state
+            updateStateFun(state='PROGRESS',
+                            message='predicting',
+                            done=idx,
+                            total=len(data))
 ```
 Note that `done` and `total` need to be present if the progress bar is to be filled only partially. Values need to be integers, but the maximum is not limited to 100 (e.g., you can set it to the total number of images).
 

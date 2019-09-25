@@ -8,7 +8,6 @@ import io
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from celery import current_task
 
 from ..genericPyTorchModel import GenericPyTorchModel
 from .. import parse_transforms
@@ -25,7 +24,7 @@ class ClassificationModel(GenericPyTorchModel):
         super(ClassificationModel, self).__init__(config, dbConnector, fileServer, options, DEFAULT_OPTIONS)
 
 
-    def train(self, stateDict, data):
+    def train(self, stateDict, data, updateStateFun):
         '''
             Initializes a model based on the given stateDict and a data loader from the
             provided data and trains the model, taking into account the parameters speci-
@@ -74,13 +73,13 @@ class ClassificationModel(GenericPyTorchModel):
             
             # update worker state
             imgCount += img.size(0)
-            current_task.update_state(state='PROGRESS', meta={'done': imgCount, 'total': len(dataLoader.dataset), 'message': 'training'})
+            updateStateFun(state='PROGRESS', message='training', done=imgCount, total=len(dataLoader.dataset))
 
         # all done; return state dict as bytes
         return self.exportModelState(model)
 
     
-    def inference(self, stateDict, data):
+    def inference(self, stateDict, data, updateStateFun):
         '''
             Initializes a model based on the given stateDict and a data loader from the
             provided data and performs inference on the images, taking into account the
@@ -136,7 +135,7 @@ class ClassificationModel(GenericPyTorchModel):
         
             # update worker state
             imgCount += len(imgID)
-            current_task.update_state(state='PROGRESS', meta={'done': imgCount, 'total': len(dataLoader.dataset), 'message': 'predicting'})
+            updateStateFun(state='PROGRESS', message='predicting', done=imgCount, total=len(dataLoader.dataset))
 
         model.cpu()
         if 'cuda' in device:

@@ -239,15 +239,15 @@ class UserMiddleware():
             return True
 
         if admin:
-            queryStr = sql.SQL('SELECT COUNT(*) AS cnt FROM {} WHERE username = %s AND isAdmin = %s').format(
-                sql.Identifier(project, 'authentication')
+            queryStr = sql.SQL('SELECT COUNT(*) AS cnt FROM {} WHERE project = %s AND username = %s AND isAdmin = %s').format(
+                sql.Identifier('aide_admin', 'authentication')
             )
-            queryVals = (username,admin,)
+            queryVals = (project,username,admin,)
         else:
-            queryStr = sql.SQL('SELECT COUNT(*) AS cnt FROM {} WHERE username = %s').format(
-                sql.Identifier(project, 'authentication')
+            queryStr = sql.SQL('SELECT COUNT(*) AS cnt FROM {} WHERE project = %s AND username = %s').format(
+                sql.Identifier('aide_admin', 'authentication')
             )
-            queryVals = (username,)
+            queryVals = (project,username,)
         result = self.dbConnector.execute(queryStr, queryVals, 1)
         return result[0]['cnt'] == 1
 
@@ -304,9 +304,9 @@ class UserMiddleware():
         '''
             Returns the user-to-project relation (e.g., if user is admin)
         '''
-        queryStr = sql.SQL('SELECT * FROM {id_auth} WHERE username = %s').format(
-            id_auth=sql.Identifier(project, 'authentication'))
-        result = self.dbConnector.execute(queryStr, (username,), 1)[0]
+        queryStr = sql.SQL('SELECT * FROM {id_auth} WHERE project = %s AND username = %s').format(
+            id_auth=sql.Identifier('aide_admin', 'authentication'))
+        result = self.dbConnector.execute(queryStr, (project,username,), 1)[0]
         return {
             'isAdmin': result['isadmin']
         }
@@ -375,8 +375,10 @@ class UserMiddleware():
     def getUserNames(self, project=None):
         if not project:
             queryStr = 'SELECT name FROM aide_admin.user'
+            queryVals = None
         else:
-            queryStr = 'SELECT username AS name FROM {}.authentication'.format(project)
-        result = self.dbConnector.execute(queryStr, None, 'all')
+            queryStr = 'SELECT username AS name FROM aide_admin.authentication WHERE project = %s'
+            queryVals = (project,)
+        result = self.dbConnector.execute(queryStr, queryVals, 'all')
         response = [r['name'] for r in result]
         return response

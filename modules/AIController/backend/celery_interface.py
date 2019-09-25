@@ -9,6 +9,7 @@ from configparser import ConfigParser
 from celery import Celery
 from celery import signals
 from celery.bin import Option
+from kombu.common import Broadcast
 
 from modules.AIWorker.app import AIWorker
 
@@ -38,13 +39,26 @@ app.conf.update(
     worker_max_tasks_per_child = 1,      # required to free memory (also CUDA) after each process
     task_default_rate_limit = 3,         #TODO
     worker_prefetch_multiplier = 1,          #TODO
-    task_acks_late = True
+    task_acks_late = True,
+    task_create_missing_queues = True,
+    task_queues = (Broadcast('aide_broadcast'),),
+    task_routes = {
+        'aide_admin': {
+            'queue': 'aide_broadcast',
+            'exchange': 'aide_broadcast'
+        }
+    }
+    #task_default_queue = Broadcast('aide_admin')
 )
 
 
 # init AIWorker
 worker = AIWorker(config, None)
 
+
+@app.task()
+def aide_internal_notify(message):
+    return worker.aide_internal_notify(message)
 
 
 @app.task(rate_limit=1)

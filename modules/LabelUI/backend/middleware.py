@@ -171,6 +171,10 @@ class DBMiddleware():
         # static and dynamic project settings and properties from configuration file
         projSettings = { **projSettings, **self.get_project_immutables(project), **self.get_dynamic_project_settings(project), **self.globalSettings }
 
+        # append project shorthand to AIController URI 
+        if 'aiControllerURI' in projSettings and len(projSettings['aiControllerURI']):
+            projSettings['aiControllerURI'] = os.path.join(projSettings['aiControllerURI'], project) + '/'
+
         return projSettings
 
 

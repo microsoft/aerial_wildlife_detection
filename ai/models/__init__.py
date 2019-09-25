@@ -23,13 +23,15 @@ class AIModel:
         self.options = options
 
 
-    def train(self, stateDict, data):
+    def train(self, stateDict, data, updateStateFun):
         """
             Training function. This function gets called by each individual AIWorkers
             when the model is supposed to be trained for another round.
             Args:
                 stateDict: a bytes object containing the model's current state
                 data: a dict object containing the image metadata to be trained on
+                updateStateFun: function handle for updating the progress to the
+                                AIController
             
             Returns:
                 stateDict: a bytes object containing the model's state after training
@@ -37,7 +39,7 @@ class AIModel:
         raise NotImplementedError('not implemented for base class.')
     
 
-    def average_model_states(self, stateDicts):
+    def average_model_states(self, stateDicts, updateStateFun):
         """
             Averaging function. If AIde is configured to distribute training to multiple
             AIWorkers, and if multiple AIWorkers are attached, this function will be called
@@ -45,6 +47,8 @@ class AIModel:
             Args:
                 stateDicts: a list of N bytes objects containing model states as trained by
                             the N AIWorkers attached
+                updateStateFun: function handle for updating the progress to the
+                                AIController
 
             Returns:
                 stateDict: a bytes object containing the combined model states
@@ -52,7 +56,7 @@ class AIModel:
         raise NotImplementedError('not implemented for base class.')
 
 
-    def inference(self, stateDict, data):
+    def inference(self, stateDict, data, updateStateFun):
         """
             Inference function. This gets called everytime the model is supposed to be run on
             a set of images. The inference job might be distributed to multiple AIWorkers, but
@@ -62,5 +66,7 @@ class AIModel:
                 stateDict: a bytes object containing the latest model state
                 data: a dict object containing the metadata of the images the model needs to
                         predict
+                updateStateFun: function handle for updating the progress to the
+                                AIController
         """
         raise NotImplementedError('not implemented for base class.')

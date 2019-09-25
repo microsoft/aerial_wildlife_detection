@@ -16,7 +16,7 @@ class Compose:
             self.heuristics.append(get_class_executable(h))
 
     
-    def rank(self, data, **kwargs):
+    def rank(self, data, updateStateFun, **kwargs):
         
         # iterate through the images and predictions
         for imgID in data.keys():

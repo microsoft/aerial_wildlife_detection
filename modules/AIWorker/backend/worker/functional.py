@@ -29,6 +29,25 @@ from util.helpers import current_time
 from constants.dbFieldNames import FieldNames_annotation, FieldNames_prediction
 
 
+
+def __get_message_fun(project):
+    def __on_message(state, message, done=None, total=None):
+        meta = {
+            'project': project
+        }
+        if (isinstance(done, int) or isinstance(done, float)) and \
+            (isinstance(total, int) or isinstance(total, float)):
+            meta['done'] = min(done, total)
+            meta['total'] = max(done, total)
+        if isinstance(message, str):
+            meta['message'] = message
+        current_task.update_state(
+            state=state,
+            meta=meta
+        )
+    return __on_message
+
+
 def __load_model_state(project, config, dbConnector):
     # load model state from database
     queryStr = sql.SQL('''
@@ -119,10 +138,11 @@ def _call_train(project, imageIDs, subset, trainingFun, dbConnector, fileServer,
     '''
 
     print('Initiated training...')
+    update_state = __get_message_fun(project)
 
-    
+
     # load model state
-    current_task.update_state(state='PREPARING', meta={'message':'loading model state'})
+    update_state(state='PREPARING', message='loading model state')
     try:
         stateDict, _ = __load_model_state(project, config, dbConnector)
     except Exception as e:
@@ -131,7 +151,7 @@ def _call_train(project, imageIDs, subset, trainingFun, dbConnector, fileServer,
 
 
     # load labels and other metadata
-    current_task.update_state(state='PREPARING', meta={'message':'loading metadata'})
+    update_state(state='PREPARING', message='loading metadata')
     try:
         data = __load_metadata(project, config, dbConnector, imageIDs, True)
     except Exception as e:
@@ -140,8 +160,8 @@ def _call_train(project, imageIDs, subset, trainingFun, dbConnector, fileServer,
 
     # call training function
     try:
-        current_task.update_state(state='PREPARING', meta={'message':'initiating training'})
-        stateDict = trainingFun(stateDict=stateDict, data=data)
+        update_state(state='PREPARING', message='initiating training')
+        stateDict = trainingFun(stateDict=stateDict, data=data, updateStateFun=update_state)
     except Exception as e:
         print(e)
         raise Exception('error during training')
@@ -149,7 +169,7 @@ def _call_train(project, imageIDs, subset, trainingFun, dbConnector, fileServer,
 
     # commit state dict to database
     try:
-        current_task.update_state(state='FINALIZING', meta={'message':'saving model state'})
+        update_state(state='FINALIZING', message='saving model state')
         queryStr = sql.SQL('''
             INSERT INTO {} (stateDict, partial)
             VALUES( %s, %s )
@@ -159,7 +179,7 @@ def _call_train(project, imageIDs, subset, trainingFun, dbConnector, fileServer,
         print(e)
         raise Exception('error during data committing')
 
-    current_task.update_state(state=states.SUCCESS, meta={'message':'trained on {} images'.format(len(imageIDs))})
+    update_state(state=states.SUCCESS, message='trained on {} images'.format(len(imageIDs)))
 
     print('Training completed successfully.')
     return 0
@@ -173,11 +193,11 @@ def _call_average_model_states(project, averageFun, dbConnector, fileServer, con
         the returning averaged model state into the database.
     '''
 
-    #TODO: sanity checks?
     print('Initiated epoch averaging...')
+    update_state = __get_message_fun(project)
 
     # get all model states
-    current_task.update_state(state='PREPARING', meta={'message':'loading model states'})
+    update_state(state='PREPARING', message='loading model states')
     try:
         queryStr = sql.SQL('''
             SELECT stateDict, model_library FROM {} WHERE partial IS TRUE;
@@ -189,11 +209,11 @@ def _call_average_model_states(project, averageFun, dbConnector, fileServer, con
 
     if not len(modelStates):
         # no states to be averaged; return
-        current_task.update_state(state=states.SUCCESS, meta={'message':'no model states to be averaged'})
+        update_state(state=states.SUCCESS, message='no model states to be averaged')
         return 0
 
     # do the work
-    current_task.update_state(state='PREPARING', meta={'message':'averaging models'})
+    update_state(state='PREPARING', message='averaging models')
     try:
         modelStates_avg = averageFun(stateDicts=modelStates)
     except Exception as e:
@@ -201,7 +221,7 @@ def _call_average_model_states(project, averageFun, dbConnector, fileServer, con
         raise Exception('error during model state fusion')
 
     # push to database
-    current_task.update_state(state='FINALIZING', meta={'message':'saving model state'})
+    update_state(state='FINALIZING', message='saving model state')
     try:
         model_library = modelStates[0]['model_library']
     except:
@@ -211,13 +231,13 @@ def _call_average_model_states(project, averageFun, dbConnector, fileServer, con
             INSERT INTO {} (stateDict, partial, model_library)
             VALUES ( %s )
         ''').format(sql.Identifier(project, 'cnnstate'))
-        dbConnector.insert(queryStr, (modelStates_avg, False, model_library))   #TODO
+        dbConnector.insert(queryStr, (modelStates_avg, False, model_library))
     except Exception as e:
         print(e)
         raise Exception('error during data committing')
 
     # delete partial model states
-    current_task.update_state(state='FINALIZING', meta={'message':'purging cache'})
+    update_state(state='FINALIZING', message='purging cache')
     try:
         queryStr = sql.SQL('''
             DELETE FROM {} WHERE partial IS TRUE;
@@ -228,7 +248,7 @@ def _call_average_model_states(project, averageFun, dbConnector, fileServer, con
         raise Exception('error during cache purging')
 
     # all done
-    current_task.update_state(state=states.SUCCESS, meta={'message':'averaged {} model states'.format(len(modelStates))})
+    update_state(state=states.SUCCESS, message='averaged {} model states'.format(len(modelStates)))
 
     print('Model averaging completed successfully.')
     return 0
@@ -240,10 +260,13 @@ def _call_inference(project, imageIDs, inferenceFun, rankFun, dbConnector, fileS
 
     '''
     print('Initiated inference on {} images...'.format(len(imageIDs)))
-
+    update_state = __get_message_fun(project)
 
     # load model state
-    current_task.update_state(state='PREPARING', meta={'message':'loading model state'})
+    update_state(state='PREPARING', message='loading model state')
+    # #TODO
+    # from celery.contrib import rdb
+    # rdb.set_trace()
     try:
         stateDict, stateDictID = __load_model_state(project, config, dbConnector)
     except Exception as e:
@@ -251,7 +274,7 @@ def _call_inference(project, imageIDs, inferenceFun, rankFun, dbConnector, fileS
         raise Exception('error during model state loading')
 
     # load remaining data (image filenames, class definitions)
-    current_task.update_state(state='PREPARING', meta={'message':'loading metadata'})
+    update_state(state='PREPARING', message='loading metadata')
     try:
         data = __load_metadata(project, config, dbConnector, imageIDs, False)
     except Exception as e:
@@ -259,25 +282,25 @@ def _call_inference(project, imageIDs, inferenceFun, rankFun, dbConnector, fileS
         raise Exception('error during metadata loading')
 
     # call inference function
-    current_task.update_state(state='PREPARING', meta={'message':'starting inference'})
+    update_state(state='PREPARING', message='starting inference')
     try:
-        result = inferenceFun(stateDict=stateDict, data=data)
+        result = inferenceFun(stateDict=stateDict, data=data, updateStateFun=update_state)
     except Exception as e:
         print(e)
         raise Exception('error during inference')
 
     # call ranking function (AL criterion)
     if rankFun is not None:
-        current_task.update_state(state='PREPARING', meta={'message':'calculating priorities'})
+        update_state(state='PREPARING', message='calculating priorities')
         try:
-            result = rankFun(data=result, **{'stateDict':stateDict})
+            result = rankFun(data=result, updateStateFun=update_state, **{'stateDict':stateDict})
         except Exception as e:
             print(e)
             raise Exception('error during ranking')
 
     # parse result
     try:
-        current_task.update_state(state='FINALIZING', meta={'message':'saving predictions'})
+        update_state(state='FINALIZING', message='saving predictions')
         fieldNames = list(getattr(FieldNames_prediction, config.getProperty('Project', 'predictionType')).value)
         fieldNames.append('image')      # image ID
         fieldNames.append('cnnstate')   # model state ID
@@ -315,18 +338,18 @@ def _call_inference(project, imageIDs, inferenceFun, rankFun, dbConnector, fileS
     # commit to database
     try:
         if len(values_pred):
-            # remove previous predictions first (TODO: set flag for this...)
+            # remove previous predictions first
             queryStr = sql.SQL('''
                 DELETE FROM {} WHERE image IN %s;
             ''').format(sql.Identifier(project, 'prediction'))
             dbConnector.insert(queryStr, (ids_img,))
-
+            
             queryStr = sql.SQL('''
                 INSERT INTO {id_pred} ( {fieldNames} )
                 VALUES %s;
             ''').format(
                 id_pred=sql.Identifier(project, 'prediction'),
-                fieldNames=sql.SQL(',').join(fieldNames))
+                fieldNames=sql.SQL(',').join([sql.SQL(f) for f in fieldNames]))
             dbConnector.insert(queryStr, values_pred)
 
         if len(values_img):
@@ -335,13 +358,12 @@ def _call_inference(project, imageIDs, inferenceFun, rankFun, dbConnector, fileS
                 VALUES %s
                 ON CONFLICT (id) DO UPDATE SET fVec = EXCLUDED.fVec;
             ''').format(sql.Identifier(project, 'image'))
-            dbConnector.insert(sql, values_img)
+            dbConnector.insert(queryStr, values_img)
     except Exception as e:
         print(e)
         raise Exception('error during data committing')
-
     
-    current_task.update_state(state=states.SUCCESS, meta={'message':'predicted on {} images'.format(len(imageIDs))})
+    update_state(state=states.SUCCESS, message='predicted on {} images'.format(len(imageIDs)))
 
     print('Inference completed successfully.')
     return 0

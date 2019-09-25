@@ -7,6 +7,7 @@ from .LabelUI.app import LabelUI
 from .Database.app import Database
 from .FileServer.app import FileServer
 from .UserHandling.app import UserHandler
+from .Reception.app import Reception
 from .ProjectConfiguration.app import ProjectConfigurator
 
 
@@ -17,6 +18,7 @@ REGISTERED_MODULES = {
     'Database': Database,
     'FileServer': FileServer,
     'UserHandler': UserHandler,
+    'Reception': Reception,
     'ProjectConfigurator': ProjectConfigurator
 }
 

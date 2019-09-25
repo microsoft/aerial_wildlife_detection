@@ -64,7 +64,9 @@ for i in instance_args:
 
     
     if moduleName == 'LabelUI':
-        # also launch configurator
+        # also launch project meta modules
+        reception = REGISTERED_MODULES['Reception'](config, app)
+        reception.addLoginCheckFun(userHandler.checkAuthenticated)
         configurator = REGISTERED_MODULES['ProjectConfigurator'](config, app)
         configurator.addLoginCheckFun(userHandler.checkAuthenticated)
 

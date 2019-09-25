@@ -97,7 +97,7 @@ class GenericPyTorchModel(AIModel):
         return bio.getvalue()
 
     
-    def average_model_states(self, stateDicts):
+    def average_model_states(self, stateDicts, updateStateFun):
         '''
             Receives a list of model states (as bytes) and calls the model's
             averaging function to return a single, unified model state.

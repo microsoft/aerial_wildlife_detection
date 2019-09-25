@@ -6,7 +6,6 @@
 
 import os
 import cgi
-from urllib.parse import urljoin
 import bottle
 from bottle import request, response, static_file, redirect, abort, SimpleTemplate
 from .backend.middleware import DBMiddleware
@@ -23,7 +22,7 @@ class LabelUI():
         self.staticDir = 'modules/LabelUI/static'
         self.middleware = DBMiddleware(config)
 
-        self.demoMode = config.getProperty('Project', 'demoMode', type=bool, fallback=False)
+        self.demoMode = config.getProperty('Project', 'demoMode', type=bool, fallback=False)    #TODO: project-specific
 
         self.login_check = None
 
@@ -49,26 +48,30 @@ class LabelUI():
     def _initBottle(self):
 
         ''' static routings '''
-        @self.app.route('/')
-        def index():
-            # redirect to interface if logged in    TODO
-            if self.loginCheck():
-                return redirect('/interface')
-            else:
-                return static_file('index.html', root=os.path.join(self.staticDir, 'templates'))
+        # @self.app.route('/')
+        # def index():
+        #     # redirect to interface if logged in    TODO
+        #     if self.loginCheck():
+        #         return redirect('/interface')
+        #     else:
+        #         return static_file('index.html', root=os.path.join(self.staticDir, 'templates'))
 
-        @self.app.route('/favicon.ico')
-        def favicon():
-            return static_file('favicon.ico', root=os.path.join(self.staticDir, 'img'))
+        # @self.app.route('/favicon.ico')
+        # def favicon():
+        #     return static_file('favicon.ico', root=os.path.join(self.staticDir, 'img'))
 
-        @self.app.route('/about')
-        def about():
-            return static_file('about.html', root=os.path.join(self.staticDir, 'templates'))
+        # @self.app.route('/about')
+        # def about():
+        #     return static_file('about.html', root=os.path.join(self.staticDir, 'templates'))
+
+        @self.app.route('/<project>')
+        def project_page(project):
+            #TODO: show advanced project controls
+            return redirect('/' + project + '/interface')
 
 
         with open(os.path.abspath(os.path.join('modules/LabelUI/static/templates/interface.html')), 'r') as f:
             self.interface_template = SimpleTemplate(f.read())
-
 
         @self.app.route('/<project>/interface')
         def interface(project):

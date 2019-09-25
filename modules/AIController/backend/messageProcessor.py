@@ -41,20 +41,24 @@ class MessageProcessor(Thread):
         self.jobs = {}          # dict of lists (one list for each project)
 
         # message store
-        self.messages = {}
+        self.messages = {}      # dict of dicts (one dict for each project)
 
         # callbacks
         self.on_complete = {}
 
 
     def __add_worker_task(self, task):
+        project = task['delivery_info']['routing_key']
+        if not project in self.messages:
+            self.messages[project] = {}
+
         result = AsyncResult(task['id'])
-        if not task['id'] in self.messages:
+        if not task['id'] in self.messages[project]:
             try:
                 timeSubmitted = datetime.fromtimestamp(time.time() - (kombu.five.monotonic() - t['time_start']))
             except:
                 timeSubmitted = str(current_time()) #TODO: dirty hack to make failsafe with UI
-            self.messages[task['id']] = {
+            self.messages[project][task['id']] = {
                 'type': ('train' if 'train' in task['name'] else 'inference'),        #TODO
                 'submitted': timeSubmitted,
                 'status': celery.states.PENDING,
@@ -67,8 +71,6 @@ class MessageProcessor(Thread):
 
 
     def poll_worker_status(self, project):
-        #TODO: project
-        
         workerStatus = {}
         i = self.celery_app.control.inspect()
         stats = i.stats()
@@ -80,7 +82,11 @@ class MessageProcessor(Thread):
 
                 activeTasks = []
                 for task in active_tasks[key]:
-                    activeTasks.append(task['id'])
+
+                    # append task if of correct project
+                    taskProject = task['delivery_info']['routing_key']
+                    if taskProject == project:
+                        activeTasks.append(task['id'])
 
                     # also add active tasks to current set if not already there
                     self.__add_worker_task(task)
@@ -90,19 +96,25 @@ class MessageProcessor(Thread):
                     'scheduled_tasks': scheduled_tasks[key]
                 }
             
-            # also update local cache for completed tasks
-            for key in self.messages.keys():
-                if not key in active_tasks and not key in scheduled_tasks:
-                    # task completed
-                    self.messages[key]['status'] = celery.states.SUCCESS    #TODO: what if failed?
+            #TODO
+            # # also update local cache for completed tasks
+            # if project in self.messages:    #TODO
+            #     for key in self.messages[project].keys():
+            #         if not key in active_tasks and not key in scheduled_tasks:
+            #             # task completed
+            #             self.messages[project][key]['status'] = celery.states.SUCCESS    #TODO: what if failed?
         return workerStatus
 
 
-    def __poll_tasks(self):
+    def __poll_tasks(self, project):
         status = {}
         task_ongoing = False
-        for key in self.messages.keys():
-            job = self.messages[key]
+        
+        if not project in self.messages:
+            return status, task_ongoing
+
+        for key in self.messages[project].keys():
+            job = self.messages[project][key]
             msg = self.celery_app.backend.get_task_meta(key)
             if not len(msg):
                 continue
@@ -125,37 +137,57 @@ class MessageProcessor(Thread):
             }
             
             # check if ongoing
-            if not AsyncResult(key).ready():
+            result = AsyncResult(key)
+            if not result.ready():
                 task_ongoing = True
+            else:
+                # remove from queue if done
+                result.forget()
         return status, task_ongoing
 
 
-    def poll_status(self):
-        status, task_ongoing = self.__poll_tasks()
+    def poll_status(self, project):
+        status, task_ongoing = self.__poll_tasks(project)
 
         # make sure to locally poll for jobs not in current AIController thread's stack
         #TODO: could be a bit too expensive...
         if not task_ongoing:
-            self.poll_worker_status()
-            status, _ = self.__poll_tasks()
+            self.poll_worker_status(project)
+            status, _ = self.__poll_tasks(project)
         return status
 
 
-    def register_job(self, job, taskType, on_complete=None):
-        self.jobs.append(job)
+    def register_job(self, project, job, taskType, on_complete=None):
+
+        if not project in self.jobs:
+            self.jobs[project] = []
+
+        self.jobs[project].append(job)
+
+        if not project in self.messages:
+            self.messages[project] = {}
+
+        # set up queue for project (if not already there)
+        #TODO: put in a more logical place... only needed if new project is being created!
+        from modules.AIController.backend import celery_interface
+        proc = celery_interface.aide_internal_notify.si(message={
+            'task': 'add_projects'
+        })
+        proc.apply_async(queue='aide_broadcast')
+
 
         # look out for children (if group result)
         if hasattr(job, 'children') and job.children is not None:
             for child in job.children:
-                self.messages[child.task_id] = {
+                self.messages[project][child.task_id] = {
                 'type': taskType,
                 'submitted': str(current_time()),
                 'status': celery.states.PENDING,
                 'meta': {'message':'sending job to worker'}
             }
-        elif not job.id in self.messages:
+        elif not job.id in self.messages[project]:
             # no children; add job itself
-            self.messages[job.id] = {
+            self.messages[project][job.id] = {
             'type': taskType,
             'submitted': str(current_time()),
             'status': celery.states.PENDING,
@@ -165,29 +197,32 @@ class MessageProcessor(Thread):
         self.on_complete[job.id] = on_complete
 
     
-    def task_id(self):
+    def task_id(self, project):
         '''
             Returns a UUID that is not already in use.
         '''
         while True:
-            id = str(uuid.uuid1())
-            if id not in self.jobs:
+            id = project + '__' + str(uuid.uuid1())
+            if project not in self.jobs or id not in self.jobs[project]:
                 return id
 
 
-    def task_ongoing(self, taskType):
+    def task_ongoing(self, project, taskType):
         '''
             Polls the workers for tasks and returns True if at least
             one of the tasks of given type (train, inference, etc.) is
             running.
         '''
+
         # poll for status
         self.pollNow()
 
         # identify types
-        for key in self.messages.keys():
-            if self.messages[key]['type'] == taskType and \
-                self.messages[key]['status'] not in (celery.states.SUCCESS, celery.states.FAILURE,):
+        if not project in self.messages:
+            return False
+        for key in self.messages[project].keys():
+            if self.messages[project][key]['type'] == taskType and \
+                self.messages[project][key]['status'] not in (celery.states.SUCCESS, celery.states.FAILURE,):
                 print('training ongoing')
                 return True
         return False
@@ -202,20 +237,28 @@ class MessageProcessor(Thread):
                 taskList = active_tasks[key]
                 for t in taskList:
                     taskID = t['id']
-                    if not taskID in self.messages:
+                    project = t['delivery_info']['routing_key']
+
+                    if not project in self.messages:
+                        self.messages[project] = {}
+
+                    if not taskID in self.messages[project]:
                         # task got lost (e.g. due to server restart); re-add
                         try:
                             timeSubmitted = datetime.fromtimestamp(time.time() - (kombu.five.monotonic() - t['time_start']))
                         except:
                             timeSubmitted = str(current_time()) #TODO: dirty hack to make failsafe with UI
-                        self.messages[taskID] = {
+                        self.messages[project][taskID] = {
                             'type': ('train' if 'train' in t['name'] else 'inference'),        #TODO
                             'submitted': timeSubmitted,
                             'status': celery.states.PENDING,
                             'meta': {'message':'job at worker'}
                         }
                         job = celery.result.AsyncResult(taskID)  #TODO: task.ready()
-                        self.jobs.append(job)
+
+                        if not project in self.jobs:
+                            self.jobs[project] = []
+                        self.jobs[project].append(job)
 
 
     def run(self):
@@ -236,13 +279,15 @@ class MessageProcessor(Thread):
                         time.sleep(10)
             
             else:
-                nextJob = self.jobs.pop()
-                nextJob.get(propagate=True)
+                #TODO: re-think chaining inference
+                pass
+                # nextJob = self.jobs.pop()   #TODO
+                # nextJob.get(propagate=True)
 
-                # job finished; handle success and failure cases
-                if nextJob.id in self.on_complete:
-                    callback = self.on_complete[nextJob.id]
-                    if callback is not None:
-                        callback(nextJob)
+                # # job finished; handle success and failure cases
+                # if nextJob.id in self.on_complete:
+                #     callback = self.on_complete[nextJob.id]
+                #     if callback is not None:
+                #         callback(nextJob)
 
-                nextJob.forget()
+                # nextJob.forget()

@@ -5,6 +5,9 @@
 import importlib
 import inspect
 import json
+from psycopg2 import sql
+from celery import current_app
+from kombu import Queue
 from modules.AIWorker.backend.worker import functional
 from modules.AIWorker.backend import fileserver
 from modules.Database.app import Database
@@ -20,7 +23,8 @@ class AIWorker():
         self.config = config
         self.dbConnector = Database(config)
         self._init_fileserver()
-
+        self._init_project_queues()
+            
 
     def _init_fileserver(self):
         '''
@@ -29,6 +33,30 @@ class AIWorker():
             going through the loopback network.
         '''
         self.fileServer = fileserver.FileServer(self.config)
+
+
+    def _init_project_queues(self):
+        '''
+            Queries the database for projects that support AIWorkers
+            and adds respective queues to Celery to listen to them.
+            TODO: implement custom project-to-AIWorker routing
+        '''
+        queues = list(current_app.conf.task_queues)
+        print('Existing queues: {}'.format(', '.join([c.name for c in queues])))
+        current_queue_names = set([c.name for c in queues])
+        log_updates = []
+        projects = self.dbConnector.execute('SELECT shortname FROM aide_admin.project WHERE ai_model_enabled = TRUE;', None, 'all')
+        if len(projects):
+            for project in projects:
+                pName = project['shortname']
+                if not pName in current_queue_names:
+                    current_queue_names.add(pName)
+                    queues.append(Queue(pName))
+                    current_app.control.add_consumer(pName)
+                    log_updates.append(pName)
+            
+            current_app.conf.update(task_queues=tuple(queues))
+            print('Added queue(s) for project(s): {}'.format(', '.join(log_updates)))
 
 
     def _init_model_instance(self, project, modelLibrary, modelSettings):
@@ -51,9 +79,9 @@ class AIWorker():
         # verify functions and arguments
         requiredFunctions = {
             '__init__' : ['project', 'config', 'dbConnector', 'fileServer', 'options'],
-            'train' : ['stateDict', 'data'],
-            'average_model_states' : ['stateDicts'],
-            'inference' : ['stateDict', 'data']
+            'train' : ['stateDict', 'data', 'updateStateFun'],
+            'average_model_states' : ['stateDicts', 'updateStateFun'],
+            'inference' : ['stateDict', 'data', 'updateStateFun']
         }
         functionNames = [func for func in dir(modelClass) if callable(getattr(modelClass, func))]
 
@@ -71,7 +99,11 @@ class AIWorker():
                     raise Exception('Unsupported argument {} of method {} in class {}.'.format(arg, key, modelLibrary))
 
         # create AI model instance
-        return modelClass(config=self.config, dbConnector=self.dbConnector, fileServer=self.fileServer.get_secure_instance(project), options=modelSettings)
+        return modelClass(project=project,
+                            config=self.config,
+                            dbConnector=self.dbConnector,
+                            fileServer=self.fileServer.get_secure_instance(project),
+                            options=modelSettings)
         
 
     def _init_alCriterion_instance(self, project, alLibrary, alSettings):
@@ -96,7 +128,7 @@ class AIWorker():
         # verify functions and arguments
         requiredFunctions = {
             '__init__' : ['project', 'config', 'dbConnector', 'fileServer', 'options'],
-            'rank' : ['data']
+            'rank' : ['data', 'updateStateFun']
         }
         functionNames = [func for func in dir(modelClass) if callable(getattr(modelClass, func))]
 
@@ -114,7 +146,11 @@ class AIWorker():
                     raise Exception('Unsupported argument {} of method {} in class {}.'.format(arg, key, alLibrary))
 
         # create AI model instance
-        return modelClass(config=self.config, dbConnector=self.dbConnector, fileServer=self.fileServer.get_secure_instance(project), options=alSettings)
+        return modelClass(project=project,
+                            config=self.config,
+                            dbConnector=self.dbConnector,
+                            fileServer=self.fileServer.get_secure_instance(project),
+                            options=alSettings)
 
 
     def _get_model_instance(self, project):
@@ -160,6 +196,17 @@ class AIWorker():
 
 
 
+    def aide_internal_notify(self, message):
+        '''
+            Used for AIde administrative communication between AIController
+            and AIWorker(s), e.g. for setting up queues.
+        '''
+        if 'task' in message:
+            if message['task'] == 'add_projects':
+                self._init_project_queues()
+
+
+
     def call_train(self, project, data, subset):
 
         # get project-specific model
@@ -182,6 +229,9 @@ class AIWorker():
 
     def call_inference(self, project, imageIDs):
 
+        # #TODO
+        # from celery.contrib import rdb
+        # rdb.set_trace()
         # get project-specific model and AL criterion
         modelInstance = self._get_model_instance(project)
         alCriterionInstance = self._get_alCriterion_instance(project)
