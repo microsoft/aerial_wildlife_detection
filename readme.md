@@ -2,6 +2,15 @@
 
 Big update for AIde to come: support for multiple projects! This will require lots of code changes, so stay tuned until this branch gets merged into the main code...
 
+Progress so far:
+
+:heavy_check_mark: Adapted core labeling UI front-end for multi-project support (incl. database communication).
+:heavy_check_mark: Updated migration scripts.
+:white_check_mark: Mostly updated documentation (still need to remove obsolete configuration parameters).
+:clock8: Mostly adapted AI backend for multi-project support. **TODO:** need to fix inference chaining, clean up message processor and watchdog code. Still needs extensive testing.
+:clock8: Update data import scripts (or replace with GUI solution).
+:clock8: Initiated meta modules for project overview and project settings editors for admins.
+
 
 # AIde: Assisted Interface that does everything
 
