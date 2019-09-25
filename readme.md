@@ -16,6 +16,8 @@ Progress so far:
 
 :clock8: Initiated meta modules for project overview and project settings editors for admins.
 
+:clock8: Update and polish the UI (backdrops, etc.).
+
 
 # AIde: Assisted Interface that does everything
 
