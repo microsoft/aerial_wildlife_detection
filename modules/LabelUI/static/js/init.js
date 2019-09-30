@@ -278,11 +278,11 @@ $(document).ready(function() {
                     try {
                         window.isAdmin = window.parseBoolean(data['permissions']['isAdmin']);
                     } catch {
-                        window.location.href = window.indexURI;
+                        window.location.href = '/login';  //window.indexURI;
                     }
                 },
                 error: function() {
-                    window.location.href = window.indexURI;
+                    window.location.href = '/login';  //window.indexURI;
                 }
             });
         });
@@ -519,7 +519,7 @@ $(document).ready(function() {
                 var username = $('#navbar-user-dropdown').html();       // cannot use cookie since it has already been deleted by the server
                 var password = $('#password').val();
                 $.ajax({
-                    url: 'login',
+                    url: 'doLogin',
                     method: 'post',
                     data: {username: username, password: password},
                     success: function(response) {
@@ -536,7 +536,7 @@ $(document).ready(function() {
             window.showOverlay(overlayHtml, false, false);
 
             $('#abort').click(function() {
-                window.location.href = window.indexURI;
+                window.location.href = '/login';  //window.indexURI;
             })
 
             $('#confirm-password').click(function() {

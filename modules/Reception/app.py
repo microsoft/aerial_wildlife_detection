@@ -7,7 +7,7 @@
 
 import os
 import cgi
-from bottle import request, response, static_file, redirect, SimpleTemplate
+from bottle import request, response, static_file, redirect, abort, SimpleTemplate
 from .backend.middleware import ReceptionMiddleware
 
 
@@ -43,33 +43,75 @@ class Reception:
             return static_file('favicon.ico', root=os.path.join(self.staticDir, 'img'))
 
         @self.app.route('/about')
-        def about():
+        @self.app.route('/<project>/about')
+        def about(project=None):
             return static_file('about.html', root=os.path.join(self.staticDir, 'templates'))
 
-        @self.app.route('/')
-        def index():
-            # redirect to project overview page
-            if self.loginCheck():
-                return redirect('/projects')
+
+        @self.app.route('/login')
+        def show_login_page():
+            if self.demoMode:
+                return redirect('/')
             else:
                 return static_file('index.html', root=os.path.join(self.staticDir, 'templates'))
+
 
 
         with open(os.path.abspath(os.path.join(self.staticDir, 'templates/projects.html')), 'r') as f:
             self.proj_template = SimpleTemplate(f.read())
 
-        @self.app.route('/projects')
+        @self.app.route('/')
         def projects():
-
-            username = 'Demo mode' if self.demoMode else cgi.escape(request.get_cookie('username'))
+            try:
+                if self.demoMode:
+                    username = 'Demo mode'
+                elif self.login_check():
+                    username = cgi.escape(request.get_cookie('username'))
+                else:
+                    username = ''
+            except:
+                username = ''
             return self.proj_template.render(username=username)
 
 
         @self.app.get('/getProjects')
-        def get_projects():
-            
-            username = cgi.escape(request.get_cookie('username'))
+        def get_projects(): 
+            try:
+                if self.login_check():
+                    username = cgi.escape(request.get_cookie('username'))
+                else:
+                    username = ''
+            except:
+                username = ''
             isSuperUser = self.loginCheck(superuser=True)
 
             projectInfo = self.middleware.get_project_info(username, isSuperUser)
             return {'projects': projectInfo}
+
+
+        @self.app.get('/<project>/enroll')
+        def enroll_in_project(project):
+            '''
+                Adds a user to the list of contributors to a project
+                if it is set to "public", or else if the secret token
+                provided matches.
+            '''
+            try:
+                if not self.login_check():
+                    abort(401)
+                
+                username = cgi.escape(request.get_cookie('username'))
+
+                # try to get secret token
+                try:
+                    providedToken = cgi.escape(request.query['t'])
+                except:
+                    providedToken = None
+
+                success = self.middleware.enroll_in_project(project, username, providedToken)
+                if not success:
+                    abort(401)
+                return redirect('/{}'.format(project))
+            except:
+                abort(400)
+            pass

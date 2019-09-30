@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS aide_admin.project (
     name VARCHAR UNIQUE NOT NULL,
     description VARCHAR,
     isPublic BOOLEAN DEFAULT FALSE,
+    secret_token VARCHAR,
     demoMode BOOLEAN DEFAULT FALSE,
     annotationType labelType NOT NULL,
     predictionType labelType,

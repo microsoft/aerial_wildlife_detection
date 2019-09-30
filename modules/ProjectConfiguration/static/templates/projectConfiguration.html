@@ -46,7 +46,7 @@
                             <div class="dropdown nav navbar-nav" style="float:right;">
                                 <a class="dropdown-toggle btn" id="navbar-user-dropdown" data-toggle="dropdown" href="#" style="color:white;font-weight:bold;" >{{ username }}</a>
                                 <ul class="dropdown-menu" role="menu" aria-labelledby="navbar-user-dropdown">
-                                    <li class="dropdown-item"><button id="logout" class="btn btn-sm btn-danger">Log Out</button></li>
+                                    <li class="dropdown-item"><a id="logout" href="logout" class="btn btn-sm btn-danger">Log Out</a></li>
                                 </ul>
                             </div>
                         </li>
@@ -66,6 +66,19 @@
                         </tr>
                     </table>
                     
+                    <br />
+
+                    <h2>Accessibility</h2>
+
+                    <input type="checkbox" id="public-checkbox" selected="{{ isPublic }}" />
+                    <label for="public-checkbox">Public project</label>
+                    <p style="font-style:italic;">If the project is set to be public, anyone with an account can join it
+                    by following the respective link. Otherwise joining a project requires knowing the appropriate link below.</p>
+
+                    <span>Secret link:</span>
+                    <input type="text" value="{{ secretToken }}" readonly />
+                    <button class="btn btn-sm btn-light">Reload</button>
+
                     <br />
                     
                     <h2>Label Classes</h2>
@@ -92,6 +105,14 @@
                             <td><input type="number" min="32" max="8192" value="{{ minImageWidth }}" /></td>
                         </tr>
                     </table>
+
+
+                    <br />
+
+                    <h2>AI Model</h2>
+                    
+                    <input type="checkbox" id="ai-model-enabled-checkbox" selected="{{ aiModelEnabled }}" />
+                    <label for="public-checkbox">AI model enabled</label>
 
 
                     <!-- Submit and abort buttons -->

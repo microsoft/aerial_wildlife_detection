@@ -8,15 +8,22 @@
         <link rel="stylesheet" href="static/css/interface.css" />
         <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
-        <script src="https://unpkg.com/tooltip.js"></script>
+        <!-- <script src="https://unpkg.com/tooltip.js"></script> -->
         <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
         <script type="text/javascript">
             //TODO: move to dedicated file
             $(document).ready(function() {
 
+                // hide name ta (log in button) if not logged in (out)
+                if($('#navbar-user-dropdown').html() === '') {
+                    $('#navbar-user-dropdown').hide();
+                } else {
+                    $('#login-button').hide();
+                }
+
                 // load project info
-                var memberProj = $('#member-projects > tbody');
-                var availProj = $('#available-projects > tbody');
+                var memberProj = $('#member-projects');
+                var availProj = $('#available-projects');
                 $.ajax({
                     url: 'getProjects',
                     method: 'GET',
@@ -24,20 +31,31 @@
                         if(data.hasOwnProperty('projects')) {
                             for(var key in data['projects']) {
                                 var role = data['projects'][key]['role'];
-                                if(role === 'superUser' || role === 'admin' || role === 'member') {
+                                if(role === 'super user' || role === 'admin' || role === 'member') {
                                     var isMember = true;
                                 } else {
-                                    role === '';
+                                    role = 'not a member';
                                     var isMember = false;
                                 }
 
-                                var markup = $('<tr><td>' +
-                                    '<a href="' + key + '">' + data['projects'][key]['name'] + '</a>' +
-                                    '</td><td>' +
-                                    data['projects'][key]['description'] +
-                                    '</td><td>' +
-                                    data['projects'][key]['role'] +
-                                    '</td></tr>');
+                                // var isPublic = '';
+                                // if(data['projects'][key]['public']) {
+                                //     isPublic = '&#10003;';
+                                // }
+
+                                var adminButton = '';
+                                if(role === 'admin' || role === 'super user') {
+                                    // show button to project configuration page
+                                    adminButton = '<a href="' + key + '/configuration" class="btn btn-secondary">Configure</a>'
+                                }
+
+                                var markup = $('<div class="project-entry">' +
+                                    '<h3>' + data['projects'][key]['name'] + '</h3>' +
+                                    '<p>' + data['projects'][key]['description'] + '</p>' +
+                                    '<p>You are <b>' + role + '</b> in this project.</p>' +
+                                    '<div><a href="' + key + '" class="btn btn-primary btn-lg">Start labeling</a>' +
+                                    adminButton +
+                                    '</div></div>');
                                 
                                 if(isMember) {
                                     memberProj.append(markup);
@@ -50,7 +68,7 @@
                     error: function(data) {
                         console.log(data);
                     }
-                })
+                });
             });
         </script>
     </head>
@@ -82,12 +100,13 @@
                             <h1>Projects</h1>
                         </li>
                     </ul>
-                    <ul class="nav navbar-nav ml-auto">
+                    <ul class="nav navbar-nav ml-auto" id="name-dropdown-menu">
                         <li class="nav-item dropdown float-right">
+                            <a id="login-button" class="btn btn-primary" href="login">Log in</a>
                             <div class="dropdown nav navbar-nav" style="float:right;">
                                 <a class="dropdown-toggle btn" id="navbar-user-dropdown" data-toggle="dropdown" href="#" style="color:white;font-weight:bold;" >{{ username }}</a>
                                 <ul class="dropdown-menu" role="menu" aria-labelledby="navbar-user-dropdown">
-                                    <li class="dropdown-item"><button id="logout" class="btn btn-sm btn-danger">Log Out</button></li>
+                                    <li class="dropdown-item"><a id="logout" href="logout" class="btn btn-sm btn-danger">Log Out</a></li>
                                 </ul>
                             </div>
                         </li>
@@ -98,32 +117,10 @@
                 <div style="color:white;padding:20px;overflow-y:auto;">
 
                     <h2>Your Projects</h2>
-                    <table id="member-projects">
-                        <thead>
-                            <tr>
-                                <td>Name</td>
-                                <td>Description</td>
-                                <td>Role</td>
-                                <!-- <td></td>  TODO: more info? -->
-                            </tr>
-                        </thead>
-                        <tbody> 
-                        </tbody>
-                    </table>
+                    <div id="member-projects"></div>
 
                     <h2>Available Projects</h2>
-                    <table id="available-projects">
-                        <thead>
-                            <tr>
-                                <td>Name</td>
-                                <td>Description</td>
-                                <td>Role</td>
-                                <!-- <td></td>  TODO: more info? -->
-                            </tr>
-                        </thead>
-                        <tbody> 
-                        </tbody>
-                    </table>
+                    <div id="available-projects"></div>
                 </div>
             </div>
 

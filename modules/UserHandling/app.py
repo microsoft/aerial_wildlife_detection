@@ -32,9 +32,10 @@ class UserHandler():
 
     def _initBottle(self):
 
-        @self.app.route('/login', method='POST')
-        @self.app.route('/<project>/login', method='POST')
-        def login(project=None):
+        
+        @self.app.route('/doLogin', method='POST')
+        @self.app.route('/<project>/doLogin', method='POST')
+        def do_login(project=None):
             if self.demoMode:
                 return redirect('/interface')
 
@@ -96,7 +97,7 @@ class UserHandler():
         @self.app.route('/<project>/logout', method='POST')
         def logout(project=None):
             if self.demoMode:
-                return redirect('/interface')
+                return redirect('/')
 
             try:
                 username = cgi.escape(request.get_cookie('username'))
@@ -137,7 +138,7 @@ class UserHandler():
         @self.app.route('/<project>/getUserNames', method='POST')
         def get_user_names(project=None):
             if self.demoMode:
-                return redirect('/interface')
+                return redirect('/')
 
             if project is None:
                 try:
@@ -158,7 +159,7 @@ class UserHandler():
         @self.app.route('/createAccount', method='POST')
         def createAccount():
             if self.demoMode:
-                return redirect('/interface')
+                return redirect('/')
 
             #TODO: make secret token match
             try:
@@ -182,7 +183,7 @@ class UserHandler():
         @self.app.route('/createAccountScreen')
         def showNewAccountPage():
             if self.demoMode:
-                return redirect('/interface')
+                return redirect('/')
 
             # check if token is required; if it is and wrong token provided, show login screen instead
             targetToken = cgi.escape(self.config.getProperty('UserHandler', 'create_account_token'))

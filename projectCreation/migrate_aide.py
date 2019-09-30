@@ -8,6 +8,7 @@
 import os
 import argparse
 import json
+import secrets
 
 
 MODIFICATIONS_sql = [
@@ -28,6 +29,7 @@ MODIFICATIONS_sql = [
         name VARCHAR UNIQUE NOT NULL,
         description VARCHAR,
         isPublic BOOLEAN DEFAULT FALSE,
+        secret_token VARCHAR,
         demoMode BOOLEAN DEFAULT FALSE,
         annotationType labelType NOT NULL,
         predictionType labelType,
@@ -168,8 +170,10 @@ if __name__ == '__main__':
 
 
     # register project
+    secretToken = secrets.token_urlsafe(32)
     dbConn.execute('''
         INSERT INTO aide_admin.project (shortname, name, description,
+            secret_token,
             annotationType, predictionType, ui_settings,
             numImages_autoTrain,
             minNumAnnoPerImage,
@@ -180,7 +184,9 @@ if __name__ == '__main__':
             ai_alCriterion_library, ai_alCriterion_settings
             )
         VALUES (
-            %s, %s, %s, %s, %s, %s,
+            %s, %s, %s,
+            %s,
+            %s, %s, %s,
             %s, %s, %s, %s,
             %s,
             %s, %s, %s, %s
@@ -191,6 +197,7 @@ if __name__ == '__main__':
             config.getProperty('Database', 'schema'),
             config.getProperty('Project', 'projectName'),
             config.getProperty('Project', 'projectDescription'),
+            secretToken,
             config.getProperty('Project', 'annotationType'),
             config.getProperty('Project', 'predictionType'),
             json.dumps(uiSettings),

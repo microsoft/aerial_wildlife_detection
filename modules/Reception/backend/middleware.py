@@ -62,7 +62,7 @@ class ReceptionMiddleware:
                     'aiModelEnabled': r['ai_model_enabled']
                 }
             if isSuperUser:
-                response[projShort]['role'] = 'superUser'
+                response[projShort]['role'] = 'super user'
             elif username is not None and r['username'] == username:
                 if r['isadmin']:
                     response[projShort]['role'] = 'admin'
@@ -70,3 +70,36 @@ class ReceptionMiddleware:
                     response[projShort]['role'] = 'member'
         
         return response
+
+    
+    def enroll_in_project(self, project, username, secretToken=None):
+        '''
+            Adds the user to the project if it allows arbitrary
+            users to join. Returns True if this succeeded, else
+            False.
+        '''
+        try:
+            # check if project is public, and whether user is already member of it
+            queryStr = sql.SQL('''SELECT isPublic, secret_token
+            FROM aide_admin.project
+            WHERE shortname = %s;
+            ''')
+            result = self.dbConnector.execute(queryStr, (project,), 1)
+
+            # only allow enrolment if project is public, or else if secret tokens match
+            if not len(result):
+                return False
+            elif not result[0]['ispublic']:
+                # check if secret tokens match
+                if secretToken is None or secretToken != result[0]['secret_token']:
+                    return False
+            
+            # add user
+            queryStr = sql.SQL('''INSERT INTO {} (username, isAdmin)
+            VALUES (%s, FALSE)
+            ON CONFLICT (username) DO NOTHING;
+            ''').format(sql.Identifier(project, 'authentication'))
+            self.dbConnector.execute(queryStr, (username,), None)
+            return True
+        except:
+            return False

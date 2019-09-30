@@ -7,14 +7,14 @@
             var password = $(this).find('[name=password]').val();
 
             $.ajax({
-                url: 'login',
+                url: 'doLogin',
                 method: 'POST',
                 data: {
                     'username': $('form').find('[name=username]').val(),
                     'password': $('form').find('[name=password]').val()
                 },
                 success: function(data) {
-                    window.location.href = '/projects';
+                    window.location.href = '/';
                 },
                 error: function(xhr, response, blank) {
                     console.log(xhr)
