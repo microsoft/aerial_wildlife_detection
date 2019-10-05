@@ -224,14 +224,14 @@ class UserHandler():
                 abort(401, str(e))
 
 
-    def checkAuthenticated(self, project=None, admin=False, superuser=False, extend_session=False):
+    def checkAuthenticated(self, project=None, admin=False, superuser=False, canCreateProjects=False, extend_session=False):
         if self.demoMode:
             return True
 
         try:
             username = cgi.escape(request.get_cookie('username'))
             sessionToken = cgi.escape(request.get_cookie('session_token', secret=self.config.getProperty('Project', 'secret_token')))
-            return self.middleware.isAuthenticated(username, sessionToken, project, admin, superuser, extend_session)
+            return self.middleware.isAuthenticated(username, sessionToken, project, admin, superuser, canCreateProjects, extend_session)
         except:
             return False
 

@@ -77,15 +77,6 @@ window.getProjectSettings = function() {
         // window.demoMode = parseBoolean(data['settings']['demoMode']);
 
 
-        // set interface page title and description
-        if(window.projectName != null) {
-            $('#project-title').html(window.projectName);
-        }
-        if(window.projectDescription != null) {
-            $('#project-description').html(window.projectDescription);
-        }
-
-
         // adjust number of images to one for mobile devices
         if (/Mobi|Android/i.test(navigator.userAgent)) {
             window.minImageWidth = '100%';

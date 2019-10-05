@@ -50,6 +50,7 @@ MODIFICATIONS_sql = [
         email VARCHAR,
         hash BYTEA,
         isSuperuser BOOLEAN DEFAULT FALSE,
+        canCreateProjects BOOLEAN DEFAULT FALSE,
         session_token VARCHAR,
         last_login TIMESTAMPTZ,
         PRIMARY KEY (name)

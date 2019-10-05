@@ -26,8 +26,8 @@ class Reception:
         self._initBottle()
 
     
-    def loginCheck(self, project=None, admin=False, superuser=False, extend_session=False):
-        return self.login_check(project, admin, superuser, extend_session)
+    def loginCheck(self, project=None, admin=False, superuser=False, canCreateProjects=False, extend_session=False):
+        return self.login_check(project, admin, superuser, canCreateProjects, extend_session)
 
     
     def addLoginCheckFun(self, loginCheckFun):

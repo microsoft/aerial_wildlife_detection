@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS aide_admin.user (
     email VARCHAR,
     hash BYTEA,
     isSuperuser BOOLEAN DEFAULT FALSE,
+    canCreateProjects BOOLEAN DEFAULT FALSE,
     session_token VARCHAR,
     last_login TIMESTAMPTZ,
     PRIMARY KEY (name)

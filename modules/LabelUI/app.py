@@ -29,8 +29,8 @@ class LabelUI():
         self._initBottle()
 
     
-    def loginCheck(self, project=None, admin=False, superuser=False, extend_session=False):
-        return True if self.demoMode or self.login_check is None else self.login_check(project, admin, superuser, extend_session)
+    def loginCheck(self, project=None, admin=False, superuser=False, canCreateProjects=False, extend_session=False):
+        return True if self.demoMode or self.login_check is None else self.login_check(project, admin, superuser, canCreateProjects, extend_session)
 
 
     def addLoginCheckFun(self, loginCheckFun):
@@ -93,6 +93,7 @@ class LabelUI():
             # render interface template
             username = 'Demo mode' if self.demoMode else cgi.escape(request.get_cookie('username'))
             return self.interface_template.render(username=username,
+                projectShortname=project,
                 projectTitle=projectData['projectName'], projectDescr=projectData['projectDescription'])
 
 

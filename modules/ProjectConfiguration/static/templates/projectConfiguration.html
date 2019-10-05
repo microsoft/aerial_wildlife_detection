@@ -38,7 +38,7 @@
                 <nav class="navbar navbar-expand-lg navbar-light bg-dark border-bottom">
                     <ul class="nav navbar-nav">
                         <li class="nav-item header-text">
-                            <h1>Configure Project</h1>
+                            <h1><a href="/">Projects</a> / <a href="/{{ projectShortname }}">{{ projectTitle }}</a> / Configure</h1>
                         </li>
                     </ul>
                     <ul class="nav navbar-nav ml-auto">
@@ -58,11 +58,11 @@
                     <table>
                         <tr>
                             <td>Project Name:</td>
-                            <td><h2 contenteditable="true">{{ projectTitle }}</h2></td>
+                            <td><input id="field-project-name" type="text" /></td>
                         </tr>
                         <tr>
                             <td>Short description:</td>
-                            <td><textarea rows="4" placeholder="Short project description">{{ projectDescr }}</textarea></td>
+                            <td><textarea id="field-project-description" rows="4" placeholder="Short project description"></textarea></td>
                         </tr>
                     </table>
                     
@@ -70,14 +70,21 @@
 
                     <h2>Accessibility</h2>
 
-                    <input type="checkbox" id="public-checkbox" selected="{{ isPublic }}" />
+                    <input type="checkbox" id="public-checkbox" />
                     <label for="public-checkbox">Public project</label>
                     <p style="font-style:italic;">If the project is set to be public, anyone with an account can join it
                     by following the respective link. Otherwise joining a project requires knowing the appropriate link below.</p>
 
                     <span>Secret link:</span>
-                    <input type="text" value="{{ secretToken }}" readonly />
+                    <input id="field-secret-token" type="text" readonly />
                     <button class="btn btn-sm btn-light">Reload</button>
+
+
+                    <input type="checkbox" id="demo-checkbox" />
+                    <label for="demo-checkbox">Demo mode</label>
+                    <p style="font-style:italic;">Demo mode opens the project to anyone (even without an account)
+                    and disables saving annotations and the AI model, if configured.
+                    Existing annotations will be retained as they are.</p>
 
                     <br />
                     
@@ -98,11 +105,11 @@
                     <table>
                         <tr>
                             <td>Number of images on screen:</td>
-                            <td><input type="number" min="1" max="128" value="{{ numImagesPerBatch }}" /></td>
+                            <td><input id="field-numImgsPerBatch" type="number" min="1" max="128" /></td>
                         </tr>
                         <tr>
                             <td>Minimum image width (pixels):</td>
-                            <td><input type="number" min="32" max="8192" value="{{ minImageWidth }}" /></td>
+                            <td><input id="field-minImageWidth" type="number" min="32" max="8192" /></td>
                         </tr>
                     </table>
 
@@ -111,8 +118,8 @@
 
                     <h2>AI Model</h2>
                     
-                    <input type="checkbox" id="ai-model-enabled-checkbox" selected="{{ aiModelEnabled }}" />
-                    <label for="public-checkbox">AI model enabled</label>
+                    <input type="checkbox" id="ai-model-enabled-checkbox" />
+                    <label for="ai-model-enabled-checkbox">AI model enabled</label>
 
 
                     <!-- Submit and abort buttons -->

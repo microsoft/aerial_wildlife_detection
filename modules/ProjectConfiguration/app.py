@@ -1,6 +1,7 @@
 '''
     Bottle routings for the ProjectConfigurator web frontend,
     handling project setup, data import requests, etc.
+    Also handles creation of new projects.
 
     2019 Benjamin Kellenberger
 '''
@@ -27,8 +28,8 @@ class ProjectConfigurator:
         self._initBottle()
     
 
-    def loginCheck(self, project=None, admin=False, superuser=False, extend_session=False):
-        return self.login_check(project, admin, superuser, extend_session)
+    def loginCheck(self, project=None, admin=False, superuser=False, canCreateProjects=False, extend_session=False):
+        return self.login_check(project, admin, superuser, canCreateProjects, extend_session)
 
 
     def addLoginCheckFun(self, loginCheckFun):
@@ -42,28 +43,23 @@ class ProjectConfigurator:
             self.projConf_template = SimpleTemplate(f.read())
 
 
-        @self.app.route('/config/static/<filename:re:.*>')
-        def send_static(filename):
+        @self.app.route('/<project>/config/static/<filename:re:.*>')
+        def send_static(project, filename):
             return static_file(filename, root=self.staticDir)
 
 
         @self.app.route('/<project>/configuration')
         def configuration_page(project):
             if self.loginCheck(project=project, admin=True):
-                username = cgi.escape(request.get_cookie('username'))
 
-                projData = self.middleware.getProjectInfo(project)
-                projData['username'] = username
+                # get project name for UI template
+                projectData = self.middleware.getProjectInfo(project)
 
-                response = self.projConf_template.render(**projData)
-                # response = self.projConf_template.render(
-                #     username=username,
-                #     projectTitle=projData['projectTitle'],
-                #     projectDescr=projData['projectDescr'],
-                #     numImagesPerBatch=projData['numImagesPerBatch'],
-                #     minImageWidth=projData['minImageWidth']
-                # )
                 # response.set_header("Cache-Control", "public, max-age=604800")
+                return self.projConf_template.render(
+                    projectShortname=project,
+                    projectTitle=projectData['projectTitle'],
+                    username=cgi.escape(request.get_cookie('username')))
             else:
                 response = bottle.response
                 response.status = 303
@@ -71,13 +67,56 @@ class ProjectConfigurator:
             return response
 
 
-        # @self.app.post('/getProjectConfiguration')
-        # def get_project_configuration():
-        #     if not self.loginCheck(admin=True):
-        #         abort(401, 'forbidden')
+        @self.app.get('/<project>/getConfig')
+        def get_project_configuration(project):
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+            try:
+                projData = self.middleware.getProjectInfo(project)
+                return { 'settings': projData }
+            except:
+                abort(400, 'bad request')
 
-        
+
         @self.app.post('/<project>/saveProjectConfiguration')
         def save_project_configuration(project):
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
+
+
+
+        ''' Project creation '''
+        @self.app.post('/createProject')
+        def create_project():
+            if not self.loginCheck(canCreateProjects=True):
+                abort(401, 'forbidden')
+
+            try:
+                username = cgi.escape(request.get_cookie('username'))
+
+                # check provided properties
+                projSettings = request.json
+
+                response = self.middleware.createProject(username, projSettings)
+                if not response:
+                    raise Exception('An unknown error occurred during project creation.')
+
+                return redirect('/{}'.format(projSettings['shortname']))
+
+            except Exception as e:
+                abort(400, str(e))
+
+        
+        @self.app.get('/verifyProjectName')
+        def check_shortname_valid():
+            if not self.loginCheck(canCreateProjects=True):
+                abort(401, 'forbidden')
+            
+            try:
+                projName = request.query['shorthand']
+                available = self.middleware.getProjectNameAvailable(projName)
+
+                return { 'available': available }
+
+            except:
+                abort(400, 'bad request')

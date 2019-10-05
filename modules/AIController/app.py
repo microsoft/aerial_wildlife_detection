@@ -33,8 +33,8 @@ class AIController:
         self.maxNumImages_inference = self.config.getProperty(self, 'maxNumImages_inference', type=int)
 
 
-    def loginCheck(self, project=None, admin=False, superuser=False, extend_session=False):
-        return self.login_check(project, admin, superuser, extend_session)
+    def loginCheck(self, project=None, admin=False, superuser=False, canCreateProjects=False, extend_session=False):
+        return self.login_check(project, admin, superuser, canCreateProjects, extend_session)
 
 
     def addLoginCheckFun(self, loginCheckFun):

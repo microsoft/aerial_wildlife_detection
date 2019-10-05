@@ -252,7 +252,22 @@ class UserMiddleware():
         return result[0]['cnt'] == 1
 
 
-    def isAuthenticated(self, username, sessionToken, project=None, admin=False, superuser=False, extend_session=False):
+    def _check_user_privileges(self, username, superuser=False, canCreateProjects=False):
+        result = self.dbConnector.execute('''SELECT isSuperUser, canCreateProjects
+            FROM aide_admin.user WHERE name = %s;''',
+            (username,),
+            1)
+        if not len(result):
+            return False
+        if superuser and not result[0]['issuperuser']:
+            return False
+        if canCreateProjects and not (
+            result[0]['cancreateprojects'] or result[0]['issuperuser']):
+            return False
+        return True
+
+
+    def isAuthenticated(self, username, sessionToken, project=None, admin=False, superuser=False, canCreateProjects=False, extend_session=False):
         '''
             Checks if the user is authenticated to access a service.
             Returns False if one or more of the following conditions holds:
@@ -261,6 +276,7 @@ class UserMiddleware():
                 authenticated users list
             - 'admin' is True, 'project' (shortname) is provided and user is not an admin of the project
             - 'superuser' is True and user is not a super user
+            - 'canCreateProjects' is True and user is not authenticated to create (or remove) projects
 
             If 'extend_session' is True, the user's session will automatically be prolonged by the max login time
             specified in the configuration file.
@@ -271,7 +287,8 @@ class UserMiddleware():
         if not self._check_authorized(project, username, admin):
             return False
 
-        #TODO: superuser
+        if not self._check_user_privileges(username, superuser, canCreateProjects):
+            return False
         
         if extend_session:
             self._init_or_extend_session(username, sessionToken)
