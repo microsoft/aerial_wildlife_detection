@@ -87,7 +87,7 @@ window.showTutorial = function(autostart) {
     var advance = function() {
         if(index === -2) {
             var welcomeContents = $('<div style="overflow-y:auto"></div>');
-            welcomeContents.load('static/templates/tutorial_welcome.html');
+            welcomeContents.load('interface/static/templates/tutorial_welcome.html');
             window.showOverlay(welcomeContents, true);
             index += 1;
         } else {

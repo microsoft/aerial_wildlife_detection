@@ -86,6 +86,19 @@ class ProjectConfigurator:
 
 
         ''' Project creation '''
+        with open(os.path.abspath(os.path.join('modules/ProjectConfiguration/static/templates/newProject.html')), 'r') as f:
+            self.newProject_template = SimpleTemplate(f.read())
+
+        @self.app.route('/newProject')
+        def new_project_page():
+            if not self.loginCheck(canCreateProjects=True):
+                abort(401, 'forbidden')
+            username = cgi.escape(request.get_cookie('username'))
+            return self.newProject_template.render(
+                username=username
+            )
+
+
         @self.app.post('/createProject')
         def create_project():
             if not self.loginCheck(canCreateProjects=True):
@@ -106,15 +119,30 @@ class ProjectConfigurator:
             except Exception as e:
                 abort(400, str(e))
 
-        
+
         @self.app.get('/verifyProjectName')
-        def check_shortname_valid():
+        def check_project_name_valid():
+            if not self.loginCheck(canCreateProjects=True):
+                abort(401, 'forbidden')
+            
+            try:
+                projName = request.query['name']
+                available = self.middleware.getProjectNameAvailable(projName)
+
+                return { 'available': available }
+
+            except:
+                abort(400, 'bad request')
+
+        
+        @self.app.get('/verifyProjectShort')
+        def check_project_shortname_valid():
             if not self.loginCheck(canCreateProjects=True):
                 abort(401, 'forbidden')
             
             try:
                 projName = request.query['shorthand']
-                available = self.middleware.getProjectNameAvailable(projName)
+                available = self.middleware.getProjectShortNameAvailable(projName)
 
                 return { 'available': available }
 

@@ -42,6 +42,12 @@ class Reception:
         def favicon():
             return static_file('favicon.ico', root=os.path.join(self.staticDir, 'img'))
 
+
+        @self.app.route('/static/<filename:re:.*>')
+        def send_static(filename):
+            return static_file(filename, root=self.staticDir)
+
+
         @self.app.route('/about')
         @self.app.route('/<project>/about')
         def about(project=None):

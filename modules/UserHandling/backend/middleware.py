@@ -296,6 +296,41 @@ class UserMiddleware():
         return True
 
 
+    def getAuthentication(self, username, project=None):
+        '''
+            Returns general authentication properties of the user, regardless of whether
+            they are logged in or not.
+            If a project shortname is specified, this will also return the user access
+            properties for the given project.
+        '''
+        
+        response = {}
+        if project is None:
+            result = self.dbConnector.execute(
+                '''SELECT * FROM aide_admin.user AS u
+                    WHERE name = %s;
+                ''',
+                (username,),
+                1)
+            response['canCreateProjects'] = result[0]['cancreateprojects']
+            response['isSuperUser'] = result[0]['issuperuser']
+        else:
+            result = self.dbConnector.execute(
+                '''SELECT * FROM aide_admin.user AS u
+                    JOIN aide_admin.authentication AS a
+                    ON u.name = a.username
+                    WHERE name = %s
+                    AND project = %s;
+                ''',
+                (username,project,),
+                1)
+            response['canCreateProjects'] = result[0]['cancreateprojects']
+            response['isSuperUser'] = result[0]['issuperuser']
+            response['isAdmin'] = result[0]['isadmin']
+
+        return response
+
+
     def getLoginData(self, username, sessionToken):
         '''
             Performs a lookup on the login timestamp dict.

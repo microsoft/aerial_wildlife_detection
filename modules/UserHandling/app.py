@@ -224,6 +224,34 @@ class UserHandler():
                 abort(401, str(e))
 
 
+        @self.app.get('/getAuthentication')
+        @self.app.post('/getAuthentication')
+        def getAuthentication():
+            if not self.checkAuthenticated():
+                return { 'authentication': {
+                        'canCreateProjects': False,
+                        'isSuperUser': False
+                    }
+                }
+            try:
+                username = cgi.escape(request.get_cookie('username'))
+
+                # optional: project
+                if 'project' in request.query:
+                    project = cgi.escape(request.query['project'])
+                else:
+                    project = None
+
+                return { 'authentication': self.middleware.getAuthentication(username, project) }
+
+            except:
+                return { 'authentication': {
+                        'canCreateProjects': False,
+                        'isSuperUser': False
+                    }
+                }
+
+
     def checkAuthenticated(self, project=None, admin=False, superuser=False, canCreateProjects=False, extend_session=False):
         if self.demoMode:
             return True

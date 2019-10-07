@@ -493,3 +493,22 @@ class AIMiddleware():
             status['workers'] = self.messageProcessor.poll_worker_status(project)
         
         return status
+
+
+    def getProjectModelInfo(self, project):
+        '''
+            Returns the AI and AL model properties for the given project,
+            as stored in the database.
+        '''
+
+        result = self.dbConn.execute('''SELECT ai_model_enabled,
+                ai_model_library, ai_model_settings,
+                ai_alcriterion_library, ai_alcriterion_settings,
+                numImages_autoTrain, minNumAnnoPerImage,
+                maxNumImages_train, maxNumImages_inference
+                FROM aide_admin.project
+                WHERE shortname = %s;
+            ''',
+            (project,),
+            1)
+        return result[0]

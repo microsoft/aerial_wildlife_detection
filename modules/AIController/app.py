@@ -174,3 +174,35 @@ class AIController:
 
             else:
                 abort(401, 'unauthorized')
+
+
+        @self.app.get('/<project>/getAImodelInfo')
+        def get_ai_model_info(project):
+            '''
+                Returns the model class and settings for the AI model
+                and the AL criterion.
+            '''
+            if not self.login_check(project=project, admin=True):
+                abort(401, 'unauthorized')
+            
+            return { 'info': self.middleware.getProjectModelInfo(project) }
+
+    
+        @self.app.get('/getAvailableAImodels')
+        def get_available_ai_models():
+            '''
+                Returns all available AI models (class, name) that are
+                installed in this instance of AIde.
+            '''
+            if not self.login_check(canCreateProjects=True):
+                abort(401, 'unauthorized')
+            
+            # import available modules
+            from ai import PREDICTION_MODELS, ALCRITERION_MODELS
+            
+            return {
+                'models': {
+                    'prediction': PREDICTION_MODELS,
+                    'ranking': ALCRITERION_MODELS
+                }
+            }

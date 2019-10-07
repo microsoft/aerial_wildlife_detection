@@ -5,72 +5,13 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
         <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous" />
-        <link rel="stylesheet" href="static/css/interface.css" />
+        <link rel="stylesheet" href="interface/static/css/interface.css" />
+        <link rel="stylesheet" href="static/css/projects.css" />
         <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
         <!-- <script src="https://unpkg.com/tooltip.js"></script> -->
         <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
-        <script type="text/javascript">
-            //TODO: move to dedicated file
-            $(document).ready(function() {
-
-                // hide name ta (log in button) if not logged in (out)
-                if($('#navbar-user-dropdown').html() === '') {
-                    $('#navbar-user-dropdown').hide();
-                } else {
-                    $('#login-button').hide();
-                }
-
-                // load project info
-                var memberProj = $('#member-projects');
-                var availProj = $('#available-projects');
-                $.ajax({
-                    url: 'getProjects',
-                    method: 'GET',
-                    success: function(data) {
-                        if(data.hasOwnProperty('projects')) {
-                            for(var key in data['projects']) {
-                                var role = data['projects'][key]['role'];
-                                if(role === 'super user' || role === 'admin' || role === 'member') {
-                                    var isMember = true;
-                                } else {
-                                    role = 'not a member';
-                                    var isMember = false;
-                                }
-
-                                // var isPublic = '';
-                                // if(data['projects'][key]['public']) {
-                                //     isPublic = '&#10003;';
-                                // }
-
-                                var adminButton = '';
-                                if(role === 'admin' || role === 'super user') {
-                                    // show button to project configuration page
-                                    adminButton = '<a href="' + key + '/configuration" class="btn btn-secondary">Configure</a>'
-                                }
-
-                                var markup = $('<div class="project-entry">' +
-                                    '<h3>' + data['projects'][key]['name'] + '</h3>' +
-                                    '<p>' + data['projects'][key]['description'] + '</p>' +
-                                    '<p>You are <b>' + role + '</b> in this project.</p>' +
-                                    '<div><a href="' + key + '" class="btn btn-primary btn-lg">Start labeling</a>' +
-                                    adminButton +
-                                    '</div></div>');
-                                
-                                if(isMember) {
-                                    memberProj.append(markup);
-                                } else {
-                                    availProj.append(markup);
-                                }
-                            }
-                        }
-                    },
-                    error: function(data) {
-                        console.log(data);
-                    }
-                });
-            });
-        </script>
+        <script type="text/javascript" src="static/js/projects.js"></script>
     </head>
 
     <body>
@@ -114,13 +55,15 @@
                 </nav>
                 <div class="grad-border-h"></div>
 
-                <div style="color:white;padding:20px;overflow-y:auto;">
+                <div class="main-container">
+                    <a id="new-project-button" class="btn btn-lg btn-outline-primary" href="newProject" style="display:none">+ New Project</a>
 
-                    <h2>Your Projects</h2>
-                    <div id="member-projects"></div>
+                    <div id="projects"></div>
 
-                    <h2>Available Projects</h2>
-                    <div id="available-projects"></div>
+                    <div id="projects-placeholder">
+                        <div style="margin:20px;">Log in to see available projects.</div>
+                        <a class="btn btn-lg btn-primary" href="login">Log In</a>
+                    </div>
                 </div>
             </div>
 

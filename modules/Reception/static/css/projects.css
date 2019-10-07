@@ -1,0 +1,26 @@
+.main-container {
+    padding: 40px;
+}
+
+#projects {
+    height: 100%;
+    overflow-y: auto;
+    margin-top: 20px;
+}
+
+.project-entry {
+    padding: 40px;
+    border-radius: 5px;
+    background: #565656;
+}
+
+.label-button {
+    float: right;
+}
+
+#projects-placeholder {
+    display: none;
+    text-align: center;
+    padding: 40px;
+    color: white;
+}

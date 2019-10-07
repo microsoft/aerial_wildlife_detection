@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <title>AIde: new project</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous" />
+        <link rel="stylesheet" href="interface/static/css/interface.css" />
+        <style>
+            .new-project-fields {
+                width:600px;
+                margin:0 auto;
+                color: white;
+            }
+            .new-project-fields > input, textarea {
+                width: 400px;
+            }
+            .new-project-fields > label {
+                margin-top: 20px;
+            }
+        </style>
+        <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+        <script src="https://unpkg.com/tooltip.js"></script>
+        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+        <script type="text/javascript">
+
+            function checkValuesCorrect() {
+                
+                var projName = $('#project-name-field').val();
+                var projShortname = $('#project-shortname-field').val();
+
+                var valuesOK = true;
+
+                if(projName.length) {
+                    var promise = checkNameAvailable('verifyProjectName?name=' + projName,
+                                                        $('#project-name-availability'));
+                    if(!promise['responseJSON']['available']) {
+                        valuesOK = false;
+                    }
+                } else {
+                    var promise = $.Deferred().promise();
+                    valuesOK = false;
+                }
+
+                if(projShortname.length) {
+                    promise.done(function() {
+                        var promise2 = checkNameAvailable('verifyProjectShort?shorthand=' + projShortname,
+                                    $('#project-shortname-availability'));
+
+                        if(!promise2['responseJSON']['available']) {
+                            valuesOK = false;
+                        }
+                    });
+                } else {
+                    valuesOK = false;
+                }
+
+                $('#create-project-button').prop('disabled', !valuesOK);
+            }
+
+            var checkNameAvailable = function checkNameAvailable(url, div) {
+                return $.ajax({
+                    url: url,
+                    method: 'GET',
+                    success: function(data) {
+                        return true;
+                        if(data.hasOwnProperty('available') && data['available']) {
+                            $(div).html('OK');
+                            $(div).css('color', 'green');
+                            $(div).css('display', 'inline');
+                            return true;
+                        } else {
+                            $(div).html('name unavailable');
+                            $(div).css('color', 'red');
+                            $(div).css('display', 'inline');
+                            $('#create-project-button').prop('disabled', true);
+                            return false;
+                        }
+                    },
+                    error: function(data) {
+                        $(div).html('an unknown error occurred');
+                        $(div).css('color', 'red');
+                        $(div).css('display', 'inline');
+                        $('#create-project-button').prop('disabled', true);
+                        return false;
+                    }
+                });
+            }
+
+            $(document).ready(function() {
+
+                // name and shortname availability
+                $('#project-name-field').change(checkValuesCorrect);
+                $('#project-shortname-field').change(function() {
+                    checkValuesCorrect();
+                    $('#project-shorthand-title').html($('#project-shortname-field').val());
+                });
+                // $('#project-name-field').change(function() {
+                //     checkNameAvailable('verifyProjectName?name=' + $(this).val(),
+                //                 $('#project-name-availability'));
+                // })
+                // $('#project-shortname-field').change(function() {
+                //     checkNameAvailable('verifyProjectShort?shorthand=' + $(this).val(),
+                //                 $('#project-shortname-availability'));
+                // })
+            });
+        </script>
+    </head>
+
+    <body>
+        <!-- Page Content -->
+        <div id="page-container">
+            <div id="content-wrapper">
+                <!-- Overlay -->
+                <div id="overlay" class="overlay">
+                    <div id="overlay-card" class="overlay-card card container"></div>
+                    <div id="overlay-loader">
+                        <div style="text-align:center;margin-bottom:20px;font-size:20px;text-align:center;">Loading...</div>
+                        <!-- blatant copy of MS azure's splash screen loading dots -->
+                        <div class="azure-loadingdots">
+                            <div></div>
+                            <div></div>
+                            <div></div>
+                            <div></div>
+                            <div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navigation bar -->
+                <nav class="navbar navbar-expand-lg navbar-light bg-dark border-bottom">
+                    <ul class="nav navbar-nav">
+                        <li class="nav-item header-text">
+                            <h1><a href="/">Projects</a> / <span id="project-shorthand-title"></span></h1>
+                        </li>
+                    </ul>
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item dropdown float-right">
+                            <div class="dropdown nav navbar-nav" style="float:right;">
+                                <a class="dropdown-toggle btn" id="navbar-user-dropdown" data-toggle="dropdown" href="#" style="color:white;font-weight:bold;" >{{ username }}</a>
+                                <ul class="dropdown-menu" role="menu" aria-labelledby="navbar-user-dropdown">
+                                    <li class="dropdown-item"><a id="logout" href="logout" class="btn btn-sm btn-danger">Log Out</a></li>
+                                </ul>
+                            </div>
+                        </li>
+                    </ul>
+                </nav>
+                <div class="grad-border-h"></div>
+
+
+                <div class="new-project-fields">
+
+                    <label for="project-name-field">Project name</label><br />
+                    <input type="text" id="project-name-field" /><br />
+                    <div id="project-name-availability" style="display:none"></div>
+
+                    <label for="project-shortname-field">Project shortname</label><br />
+                    <input type="text" id="project-shortname-field" /><br />
+                    <div id="project-shortname-availability" style="display:none"></div>
+
+                    <label for="project-description-field">Short description</label><br />
+                    <textarea type="text" id="project-description-field" placeholder="Short project description"></textarea><br />
+
+
+                    <label for="project-annotation-type">Annotation type</label><br />
+                    <select id="project-annotation-type">
+                        <option value="labels">Image Labels</option>
+                        <option value="points">Points</option>
+                        <option value="boundingBoxes">Bounding Boxes</option>
+                        <option value="segmentationMasks">Segmentation Masks</option>
+                    </select><br />
+
+                    <label for="project-prediction-type">Prediction type</label><br />
+                    <select id="project-prediction-type">
+                        <option value="labels">Image Labels</option>
+                        <option value="points">Points</option>
+                        <option value="boundingBoxes">Bounding Boxes</option>
+                        <option value="segmentationMasks">Segmentation Masks</option>
+                    </select><br />
+
+                    <!-- Submit and abort buttons -->
+                    <div style="margin-top:20px;">
+                        <a class="btn btn-secondary" href="/">Cancel</a>
+                        <button class="btn btn-primary" id="create-project-button" style="float:right" disabled="disabled">Create</button>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="page-footer" id="footer">
+                <div class="ms-logo">
+                    <a href="about"><img height="100%" src="static/img/ms_logo.png" /></a>
+                </div>
+            </footer>
+        </div>
+    </body>
+</html>

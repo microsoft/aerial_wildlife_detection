@@ -6,6 +6,18 @@
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
         <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous" />
         <link rel="stylesheet" href="static/css/interface.css" />
+        <style>
+            .settings-container {
+                color: white;
+                padding: 20px;
+                overflow-y: auto;
+                margin-bottom: 20px;
+                max-height: calc(100vh - 210px);
+            }
+            .settings-group {
+                margin-bottom: 30px;
+            }
+        </style>
         <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
         <script src="https://unpkg.com/tooltip.js"></script>
@@ -54,79 +66,82 @@
                 </nav>
                 <div class="grad-border-h"></div>
 
-                <div style="color:white;padding:20px;overflow-y:auto;">
-                    <table>
-                        <tr>
-                            <td>Project Name:</td>
-                            <td><input id="field-project-name" type="text" /></td>
-                        </tr>
-                        <tr>
-                            <td>Short description:</td>
-                            <td><textarea id="field-project-description" rows="4" placeholder="Short project description"></textarea></td>
-                        </tr>
-                    </table>
-                    
-                    <br />
+                <div class="settings-container">
+                    <h2>General</h2>
+                    <div class="settings-group">
+                        <label for="field-project-description">Project description</label><br />
+                        <textarea id="field-project-description" rows="6" placeholder="Short project description"></textarea>
+                    </div>
 
                     <h2>Accessibility</h2>
+                    <div class="settings-group">
+                        <input type="checkbox" id="public-checkbox" />
+                        <label for="public-checkbox">Public project</label>
+                        <p style="font-style:italic;">If the project is set to be public, anyone with an account can join it
+                        by following the respective link. Otherwise joining a project requires knowing the appropriate link below.</p>
 
-                    <input type="checkbox" id="public-checkbox" />
-                    <label for="public-checkbox">Public project</label>
-                    <p style="font-style:italic;">If the project is set to be public, anyone with an account can join it
-                    by following the respective link. Otherwise joining a project requires knowing the appropriate link below.</p>
-
-                    <span>Secret link:</span>
-                    <input id="field-secret-token" type="text" readonly />
-                    <button class="btn btn-sm btn-light">Reload</button>
+                        <span>Secret link:</span>
+                        <input id="field-secret-token" type="text" readonly />
+                        <button class="btn btn-sm btn-light">Reload</button>
+                        <br />
 
 
-                    <input type="checkbox" id="demo-checkbox" />
-                    <label for="demo-checkbox">Demo mode</label>
-                    <p style="font-style:italic;">Demo mode opens the project to anyone (even without an account)
-                    and disables saving annotations and the AI model, if configured.
-                    Existing annotations will be retained as they are.</p>
-
-                    <br />
+                        <input type="checkbox" id="demo-checkbox" />
+                        <label for="demo-checkbox">Demo mode</label>
+                        <p style="font-style:italic;">Demo mode opens the project to anyone (even without an account)
+                        and disables saving annotations and the AI model, if configured.
+                        Existing annotations will be retained as they are.</p>
+                    </div>
                     
                     <h2>Label Classes</h2>
+                    <div class="settings-group">
+                        <div id="label-class-definition"></div>
 
-                    <div id="label-class-definition"></div>
-
-                    <div id="label-class-controls">
-                        <button class="btn btn-sm btn-primary">Add new...</button>
-                        <button class="btn btn-sm btn-warning">Remove</button>
+                        <div id="label-class-controls">
+                            <button class="btn btn-sm btn-primary">Add new...</button>
+                            <button class="btn btn-sm btn-warning">Remove</button>
+                        </div>
                     </div>
 
 
-                    <br />
 
                     <h2>Interface</h2>
-
-                    <table>
-                        <tr>
-                            <td>Number of images on screen:</td>
-                            <td><input id="field-numImgsPerBatch" type="number" min="1" max="128" /></td>
-                        </tr>
-                        <tr>
-                            <td>Minimum image width (pixels):</td>
-                            <td><input id="field-minImageWidth" type="number" min="32" max="8192" /></td>
-                        </tr>
-                    </table>
-
-
-                    <br />
+                    <div class="settings-group">
+                        <table>
+                            <tr>
+                                <td>Number of images on screen:</td>
+                                <td><input id="field-numImgsPerBatch" type="number" min="1" max="128" /></td>
+                            </tr>
+                            <tr>
+                                <td>Minimum image width (pixels):</td>
+                                <td><input id="field-minImageWidth" type="number" min="32" max="8192" /></td>
+                            </tr>
+                        </table>
+                    </div>
 
                     <h2>AI Model</h2>
-                    
-                    <input type="checkbox" id="ai-model-enabled-checkbox" />
-                    <label for="ai-model-enabled-checkbox">AI model enabled</label>
-
-
-                    <!-- Submit and abort buttons -->
-                    <div>
-                        <button class="btn btn-danger">Cancel</button>
-                        <button class="btn btn-primary" style="float:right">Save</button>
+                    <div class="settings-group">
+                        <input type="checkbox" id="ai-model-enabled-checkbox" />
+                        <label for="ai-model-enabled-checkbox">AI model enabled</label><br />
                     </div>
+                    
+                    <div class="settings-group">
+                        <label for="ai-model-class">Prediction model</label><br />
+                        <select id="ai-model-class"></select>
+                        <p id="ai-model-class-descr"></p>
+                    </div>
+
+                    <div class="settings-group">
+                        <label for="al-model-class">Ranking model</label><br />
+                        <select id="al-model-class"></select>
+                        <p id="al-model-class-descr"></p>
+                    </div>
+                </div>
+
+                <!-- Submit and abort buttons -->
+                <div>
+                    <button class="btn btn-danger">Cancel</button>
+                    <button class="btn btn-primary" style="float:right">Save</button>
                 </div>
             </div>
 

@@ -36,6 +36,8 @@ class ProjectConfigMiddleware:
         response = {
             'projectTitle': result['name'],
             'projectDescr': result['description'],
+            'annotationType': result['annotationtype'],
+            'predictionType': result['predictiontype'],
             'isPublic': result['ispublic'],
             'secretToken': result['secret_token'],
             'demoMode': result['demomode'],
@@ -247,7 +249,25 @@ class ProjectConfigMiddleware:
 
     def getProjectNameAvailable(self, projectName):
         '''
-            Returns True if the provided projectName is available.
+            Returns True if the provided project (long) name is available.
+        '''
+
+        result = self.dbConnector.execute('''SELECT 1 AS result
+            FROM aide_admin.project
+            WHERE name = %s;
+            ''',
+            (projectName,),
+            1)
+        
+        if result is None or not len(result):
+            return True
+        else:
+            return result[0]['result'] != 1
+
+
+    def getProjectShortNameAvailable(self, projectName):
+        '''
+            Returns True if the provided project shortname is available.
             In essence, "available" means that a database schema with the given
             name can be created (this includes Postgres schema name conventions).
             Returns False otherwise.
