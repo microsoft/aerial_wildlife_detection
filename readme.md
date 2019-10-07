@@ -2,9 +2,9 @@
 
 OK, maybe not <i>everything</i>, but it is two things in one: <i>a tool for manually annotating images</i> and <i>a tool for training and running deep detectors</i>. Those two things are coupled in an <i>active learning loop</i>: the human annotates a few images, the system trains a model, that model is used to make predictions and to select more images for the human to annotate, etc.
    
-More generally, AIde is a modular Web framework for labeling image datasets with AI assistance.  AIde is configurable for a variety of tasks, but it is particularly intended for acclerating wildlife surveys that use aerial images. 
+More generally, AIde is a modular Web framework for labeling image datasets with AI assistance. The AIde is configurable for a variety of tasks, but it is particularly intended for accelerating wildlife surveys that use aerial images. 
 
-AIde is primarily developed by [Benjamin Kellenberger](https://www.wur.nl/en/Persons/Benjamin-BA-Benjamin-Kellenberger-MSc.htm), supported by the [Microsoft AI for Earth](https://www.microsoft.com/en-us/ai/ai-for-earth) program.
+The AIde is primarily developed by [Benjamin Kellenberger](https://www.wur.nl/en/Persons/Benjamin-BA-Benjamin-Kellenberger-MSc.htm), supported by the [Microsoft AI for Earth](https://www.microsoft.com/en-us/ai/ai-for-earth) program.
 
 ![AIde overview](doc/figures/AIde_animal_hero_1100.jpg)
 
@@ -29,7 +29,7 @@ You can try out the labeling frontend of AIde in a couple of demo instances:
 * **[Image labels](http://aerialannotationdemo.southcentralus.cloudapp.azure.com/snapshot-serengeti/interface)** on the [Snapshot Serengeti camera traps dataset](http://lila.science/datasets/snapshot-serengeti)
 * **[Points](http://aerialannotationdemo.southcentralus.cloudapp.azure.com/vgg-penguins/interface)** on the [VGG Penguins dataset](http://www.robots.ox.ac.uk/~vgg/data/penguins/)
 * **[Bounding boxes](http://aerialannotationdemo.southcentralus.cloudapp.azure.com/arcticseals/interface)** on the [NOAA Arctic Seals aerial imagery](http://lila.science/datasets/arcticseals)
-* **[Semantic segmentation](http://aerialannotationdemo.southcentralus.cloudapp.azure.com/landcover/interface)** on the [Chesapeake Land Cover satellite imagery](http://lila.science/datasets/chesapeakelandcover) _(early preview - stay tuned for official announcement of segmentation support!)_
+* **[Semantic segmentation](http://aerialannotationdemo.southcentralus.cloudapp.azure.com/landcover/interface)** on the [Chesapeake Land Cover satellite imagery](http://lila.science/datasets/chesapeakelandcover) _(early preview - stay tuned for the official announcement of segmentation support!)_
 
 
 ## Framework Overview
@@ -47,18 +47,18 @@ AIde consists of individual _modules_, organized as follows:
 
 
 The framework can be configured in two ways:
-1. As a static labeling tool (_i.e._, using only the modules in (a)). In this case there will be no AI assistance for labeling or prioritizing the relevant images.
+1. As a static labeling tool (_i.e._, using only the modules in (a)). In this case, there will be no AI assistance for labeling or prioritizing the relevant images.
 2. As a full suite with AI support, using all modules.
 
 The individual modules need not be run on separate instances; it is possible to combine the components in any way and launch multiple (or all) modules on one machine. For example, the diagram above shows three _AIWorker_ instances, but the number of workers can be chosen arbitrarily, and workers may be added or removed on-the-fly.
 
 
 ## Using a built-in AI model
-AIde ships with a set of built-in models that can be configured and customized for a number of tasks (image classification, object detection, etc.).  See [this page](doc/builtin_models.md) for instructions on how to use one of the built-in models.
+The AIde ships with a set of built-in models that can be configured and customized for a number of tasks (image classification, object detection, etc.).  See [this page](doc/builtin_models.md) for instructions on how to use one of the built-in models.
 
 
 ## Writing your own AI model
-AIde is fully modular and supports custom AI models, as long as they provide a Python interface and can handle the different annotation and prediction types appropriately. See [here](doc/custom_model.md) for instructions on using custom models.
+The AIde is fully modular and supports custom AI models, as long as they provide a Python interface and can handle the different annotation and prediction types appropriately. See [here](doc/custom_model.md) for instructions on using custom models.
 
 
 ## Installation
