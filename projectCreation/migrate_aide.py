@@ -56,7 +56,7 @@ MODIFICATIONS_sql = [
         PRIMARY KEY (name)
     );''',
     '''CREATE TABLE IF NOT EXISTS aide_admin.authentication (
-        username VARCHAR UNIQUE NOT NULL,
+        username VARCHAR NOT NULL,
         project VARCHAR NOT NULL,
         isAdmin BOOLEAN DEFAULT FALSE,
         PRIMARY KEY (username, project),

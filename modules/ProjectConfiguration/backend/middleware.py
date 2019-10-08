@@ -11,7 +11,7 @@ import secrets
 import json
 from psycopg2 import sql
 from modules.Database.app import Database
-from modules.LabelUI.backend.annotation_sql_tokens import QueryStrings_annotation, QueryStrings_prediction
+from .db_fields import Fields_annotation, Fields_prediction
 
 
 class ProjectConfigMiddleware:
@@ -84,7 +84,95 @@ class ProjectConfigMiddleware:
         pass
 
 
-    def createProject(self, username, projectSettings):
+    def createProject(self, username, properties):
+        '''
+            Receives the most basic, mostly non-changeable settings for a new project
+            ("properties") with the following entries:
+            - shortname
+            - name
+            - description
+            - annotationType
+            - predictionType
+
+            More advanced settings (UI config, AI model, etc.) will be configured after
+            the initial project creation stage.
+
+            Verifies whether these settings are available for a new project. If they are,
+            it creates a new database schema for the project, adds an entry for it to the
+            admin schema table and makes the current user admin. Returns True in this case.
+            Otherwise raises an exception.
+        '''
+
+        shortname = properties['shortname']
+
+        # verify availability of the project name and shortname
+        if not self.getProjectNameAvailable(properties['name']):
+            raise Exception('Project name "{}" unavailable.'.format(properties['name']))
+        if not self.getProjectShortNameAvailable(shortname):
+            raise Exception('Project shortname "{}" unavailable.'.format(shortname))
+
+        # load base SQL
+        with open('modules/ProjectConfiguration/static/sql/create_schema.sql', 'r') as f:
+            queryStr = sql.SQL(f.read())
+
+        
+        # determine annotation and prediction types and add fields accordingly
+        annotationFields = list(getattr(Fields_annotation, properties['annotationType']).value)
+        predictionFields = list(getattr(Fields_prediction, properties['predictionType']).value)
+
+
+        # create project schema
+        self.dbConnector.execute(queryStr.format(
+                id_schema=sql.Identifier(shortname),
+                id_auth=sql.Identifier(self.config.getProperty('Database', 'user')),
+                id_image=sql.Identifier(shortname, 'image'),
+                id_iu=sql.Identifier(shortname, 'image_user'),
+                id_labelclassGroup=sql.Identifier(shortname, 'labelclassGroup'),
+                id_labelclass=sql.Identifier(shortname, 'labelclass'),
+                id_annotation=sql.Identifier(shortname, 'annotation'),
+                id_cnnstate=sql.Identifier(shortname, 'cnnState'),
+                id_prediction=sql.Identifier(shortname, 'prediction'),
+                annotation_fields=sql.SQL(', ').join([sql.SQL(field) for field in annotationFields]),
+                prediction_fields=sql.SQL(', ').join([sql.SQL(field) for field in predictionFields])
+            ),
+            None,
+            None
+        )
+
+        # register project
+        self.dbConnector.execute('''
+            INSERT INTO aide_admin.project (shortname, name, description,
+                secret_token,
+                annotationType, predictionType)
+            VALUES (
+                %s, %s, %s,
+                %s,
+                %s, %s
+            );
+            ''',
+            (
+                shortname,
+                properties['name'],
+                (properties['description'] if 'description' in properties else ''),
+                secrets.token_urlsafe(32),
+                properties['annotationType'],
+                properties['predictionType'],
+            ),
+            None)
+
+        # register user in project
+        self.dbConnector.execute('''
+                INSERT INTO aide_admin.authentication (username, project, isAdmin)
+                VALUES (%s, %s, true);
+            ''',
+            (username, shortname,),
+            None)
+        
+        return True
+
+
+
+    def updateProjectSettings(self, username, projectSettings):
         '''
             Verifies the provided projectSettings dict, looking for the following fields:
             - shortname
@@ -96,12 +184,6 @@ class ProjectConfigMiddleware:
             - demoMode
             - ui_settings   (sub-dict; performs further verification of it)
             - TODO
-
-            Also checks if the project shorthand is available.
-            If all settings are correct, this sets up a new database schema for the project,
-            adds an entry for it to the admin schema table and makes the current user
-            admin in the project. Returns True in this case.
-            Otherwise raises an exception.
         '''
 
         # verify provided elements
@@ -151,96 +233,6 @@ class ProjectConfigMiddleware:
         if not self.getProjectNameAvailable(shortname):
             raise Exception('Project shortname ("{}") is not available.'.format(shortname))
 
-
-        # load base SQL
-        with open('ProjectConfiguration/static/sql/create_schema.sql', 'r') as f:
-            queryStr = f.readlines()
-
-        
-        # determine annotation and prediction types and add fields accordingly
-        fields_ignore = set([
-            'id',
-            'username',
-            'image',
-            'meta',
-            'timeCreated',
-            'timeRequired',
-            'unsure',
-            'cnnstate',
-            'confidence',
-            'priority'
-        ])
-        annotationFields = set(getattr(QueryStrings_annotation, projectSettings['annotationType']))
-        annotationFields = list(annotationFields.difference(fields_ignore))
-        predictionFields = set(getattr(QueryStrings_prediction, projectSettings['predictionType']))
-        predictionFields = list(predictionFields.difference(fields_ignore))
-
-
-        # create project schema
-        self.dbConnector.execute(queryStr.format(
-                id_image=sql.Identifier(shortname, 'image'),
-                id_iu=sql.Identifier(shortname, 'image_user'),
-                id_labelclassGroup=sql.Identifier(shortname, 'labelclassGroup'),
-                id_labelclass=sql.Identifier(shortname, 'labelclass'),
-                id_annotation=sql.Identifier(shortname, 'annotation'),
-                id_cnnstate=sql.Identifier(shortname, 'cnnState'),
-                id_prediction=sql.Identifier(shortname, 'prediction'),
-                annotation_fields=sql.SQL(', ').join([sql.SQL(field) for field in annotationFields]),
-                prediction_fields=sql.SQL(', ').join([sql.SQL(field) for field in predictionFields])
-            ),
-            (shortname, username,),
-            None
-        )
-
-        # register project
-        self.dbConnector.execute('''
-            INSERT INTO aide_admin.project (shortname, name, description,
-                secret_token,
-                annotationType, predictionType, ui_settings,
-                numImages_autoTrain,
-                minNumAnnoPerImage,
-                maxNumImages_train,
-                maxNumImages_inference,
-                ai_model_enabled,
-                ai_model_library, ai_model_settings,
-                ai_alCriterion_library, ai_alCriterion_settings
-                )
-            VALUES (
-                %s, %s, %s,
-                %s,
-                %s, %s, %s,
-                %s, %s, %s, %s,
-                %s,
-                %s, %s, %s, %s
-            )
-            ''',
-            (
-                shortname,
-                projectSettings['projectName'],
-                projectSettings['projectDescription'],
-                secrets.token_urlsafe(32),
-                projectSettings['annotationType'],
-                projectSettings['predictionType'],
-                json.dumps(projectSettings['uiSettings']),
-                projectSettings['numImages_autoTrain'],
-                projectSettings['minNumAnnoPerImage'],
-                projectSettings['maxNumImages_train'],
-                projectSettings['maxNumImages_inference'],
-                (projectSettings['modelPath'] is not None),
-                projectSettings['modelPath'],
-                projectSettings['modelSettings'],
-                projectSettings['alCriterionPath'],
-                projectSettings['alCriterionSettings']
-            ),
-            None)
-
-        # register user in project
-        self.dbConnector.execute('''
-                INSERT INTO aide_admin.authentication (username, project, isAdmin)
-                VALUES (%s, %s, true);
-            ''',
-            (username, shortname,),
-            None)
 
         #TODO
 

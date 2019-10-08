@@ -114,7 +114,7 @@ class ProjectConfigurator:
                 if not response:
                     raise Exception('An unknown error occurred during project creation.')
 
-                return redirect('/{}'.format(projSettings['shortname']))
+                return redirect('/{}/configuration'.format(projSettings['shortname']))
 
             except Exception as e:
                 abort(400, str(e))
@@ -126,9 +126,11 @@ class ProjectConfigurator:
                 abort(401, 'forbidden')
             
             try:
-                projName = request.query['name']
-                available = self.middleware.getProjectNameAvailable(projName)
-
+                projName = cgi.escape(request.query['name'])
+                if len(projName):
+                    available = self.middleware.getProjectNameAvailable(projName)
+                else:
+                    available = False
                 return { 'available': available }
 
             except:
@@ -141,9 +143,11 @@ class ProjectConfigurator:
                 abort(401, 'forbidden')
             
             try:
-                projName = request.query['shorthand']
-                available = self.middleware.getProjectShortNameAvailable(projName)
-
+                projName = cgi.escape(request.query['shorthand'])
+                if len(projName):
+                    available = self.middleware.getProjectShortNameAvailable(projName)
+                else:
+                    available = False
                 return { 'available': available }
 
             except:

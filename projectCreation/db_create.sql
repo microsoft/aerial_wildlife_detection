@@ -50,8 +50,8 @@ CREATE TABLE IF NOT EXISTS aide_admin.user (
     PRIMARY KEY (name)
 );
 
-CREATE TABLE IF NOT EXISTS aide_admin.AUTHENTICATION (
-    username VARCHAR UNIQUE NOT NULL,
+CREATE TABLE IF NOT EXISTS aide_admin.authentication (
+    username VARCHAR NOT NULL,
     project VARCHAR NOT NULL,
     isAdmin BOOLEAN DEFAULT FALSE,
     PRIMARY KEY (username, project),

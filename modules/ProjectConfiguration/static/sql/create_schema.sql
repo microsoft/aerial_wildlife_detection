@@ -9,8 +9,8 @@
 
 
 /* base schema */
-CREATE SCHEMA %s
-    AUTHORIZATION %s;
+CREATE SCHEMA {id_schema}
+    AUTHORIZATION {id_auth};
 
 
 /* base tables */

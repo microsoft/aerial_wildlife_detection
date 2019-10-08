@@ -24,86 +24,135 @@
         <script src="https://unpkg.com/tooltip.js"></script>
         <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
         <script type="text/javascript">
+            $(document).ready(function() {
+                // globals
+                window.projNameAvailable = false;
+                window.projShortnameAvailable = false;
 
-            function checkValuesCorrect() {
-                
-                var projName = $('#project-name-field').val();
-                var projShortname = $('#project-shortname-field').val();
+                var checkValuesCorrect = function() {
+                    
+                    var projName = $('#project-name-field').val();
+                    var projShortname = $('#project-shortname-field').val();
 
-                var valuesOK = true;
 
-                if(projName.length) {
-                    var promise = checkNameAvailable('verifyProjectName?name=' + projName,
-                                                        $('#project-name-availability'));
-                    if(!promise['responseJSON']['available']) {
-                        valuesOK = false;
+                    if(projName.length) {
+                        var promise = checkNameAvailable('verifyProjectName',
+                                                            { name: projName },
+                                                            $('#project-name-availability'));
+                    } else {
+                        window.projNameAvailable = false;
+                        $('#project-name-availability').hide();
+                        $('#create-project-button').prop('disabled', true);
+                        var promise = $.Deferred().promise();
                     }
-                } else {
-                    var promise = $.Deferred().promise();
-                    valuesOK = false;
-                }
+                    
+                    promise = promise.then(function() {
+                        if(projShortname.length) {
+                            return checkNameAvailable('verifyProjectShort',
+                                                            { shorthand: projShortname },
+                                                            $('#project-shortname-availability'));
+                        } else {
+                            window.projShortnameAvailable = false;
+                            $('#project-shortname-availability').hide();
+                            $('#create-project-button').prop('disabled', true);
+                            return $.Deferred().promise();
+                        }    
+                    });
 
-                if(projShortname.length) {
-                    promise.done(function() {
-                        var promise2 = checkNameAvailable('verifyProjectShort?shorthand=' + projShortname,
-                                    $('#project-shortname-availability'));
-
-                        if(!promise2['responseJSON']['available']) {
-                            valuesOK = false;
+                    promise = promise.then(function() {
+                        if(window.projNameAvailable && window.projShortnameAvailable) {
+                            $('#create-project-button').prop('disabled', false);
+                        } else {
+                            $('#create-project-button').prop('disabled', true);
                         }
                     });
-                } else {
-                    valuesOK = false;
+
+                    return promise;
                 }
 
-                $('#create-project-button').prop('disabled', !valuesOK);
-            }
-
-            var checkNameAvailable = function checkNameAvailable(url, div) {
-                return $.ajax({
-                    url: url,
-                    method: 'GET',
-                    success: function(data) {
-                        return true;
-                        if(data.hasOwnProperty('available') && data['available']) {
-                            $(div).html('OK');
-                            $(div).css('color', 'green');
-                            $(div).css('display', 'inline');
-                            return true;
-                        } else {
-                            $(div).html('name unavailable');
+                var checkNameAvailable = function checkNameAvailable(url, params, div) {
+                    return $.ajax({
+                        url: url,
+                        data: params,
+                        method: 'GET',
+                        success: function(data) {
+                            if(data.hasOwnProperty('available') && data['available']) {
+                                $(div).html('OK');
+                                $(div).css('color', 'green');
+                                $(div).css('display', 'inline');
+                                if(params.hasOwnProperty('shorthand')) {
+                                    window.projShortnameAvailable = true;
+                                } else {
+                                    window.projNameAvailable = true;
+                                }
+                                return true;
+                            } else {
+                                $(div).html('name unavailable');
+                                $(div).css('color', 'red');
+                                $(div).css('display', 'inline');
+                                $('#create-project-button').prop('disabled', true);
+                                if(params.hasOwnProperty('shorthand')) {
+                                    window.projShortnameAvailable = false;
+                                } else {
+                                    window.projNameAvailable = false;
+                                }
+                                return false;
+                            }
+                        },
+                        error: function() {
+                            $(div).html('an unknown error occurred');
                             $(div).css('color', 'red');
                             $(div).css('display', 'inline');
                             $('#create-project-button').prop('disabled', true);
+                            if(params.hasOwnProperty('shorthand')) {
+                                window.projShortnameAvailable = false;
+                            } else {
+                                window.projNameAvailable = false;
+                            }
                             return false;
                         }
-                    },
-                    error: function(data) {
-                        $(div).html('an unknown error occurred');
-                        $(div).css('color', 'red');
-                        $(div).css('display', 'inline');
-                        $('#create-project-button').prop('disabled', true);
-                        return false;
-                    }
-                });
-            }
-
-            $(document).ready(function() {
+                    });
+                }
 
                 // name and shortname availability
                 $('#project-name-field').change(checkValuesCorrect);
                 $('#project-shortname-field').change(function() {
                     checkValuesCorrect();
-                    $('#project-shorthand-title').html($('#project-shortname-field').val());
+                    if(window.projShortnameAvailable) {
+                        $('#project-shorthand-title').html($('#project-shortname-field').val());
+                    } else {
+                        $('#project-shorthand-title').html('');
+                    }
                 });
-                // $('#project-name-field').change(function() {
-                //     checkNameAvailable('verifyProjectName?name=' + $(this).val(),
-                //                 $('#project-name-availability'));
-                // })
-                // $('#project-shortname-field').change(function() {
-                //     checkNameAvailable('verifyProjectShort?shorthand=' + $(this).val(),
-                //                 $('#project-shortname-availability'));
-                // })
+
+                $('#create-project-button').click(function() {
+                    var promise = checkValuesCorrect();
+                    promise.then(function() {
+                        if(window.projNameAvailable && window.projShortnameAvailable) {
+                            // submit data and create new project
+                            $.ajax({
+                                url: '/createProject',
+                                method: 'POST',
+                                contentType: 'application/json; charset=utf-8',
+                                dataType: 'json',
+                                data: JSON.stringify({
+                                    name: $('#project-name-field').val(),
+                                    shortname: $('#project-shortname-field').val(),
+                                    description: $('#project-description-field').val(),
+                                    annotationType: $('#project-annotation-type').val(),
+                                    predictionType: $('#project-prediction-type').val()
+                                }),
+                                success: function(response) {
+                                    console.log(response);
+                                },
+                                error: function(response) {
+                                    console.log('ERROR')
+                                    console.log(response);
+                                }
+                            })
+                        }
+                    });
+                });
             });
         </script>
     </head>
@@ -152,12 +201,12 @@
                 <div class="new-project-fields">
 
                     <label for="project-name-field">Project name</label><br />
-                    <input type="text" id="project-name-field" /><br />
-                    <div id="project-name-availability" style="display:none"></div>
+                    <input type="text" id="project-name-field" />
+                    <div id="project-name-availability" style="display:none"></div><br />
 
                     <label for="project-shortname-field">Project shortname</label><br />
-                    <input type="text" id="project-shortname-field" /><br />
-                    <div id="project-shortname-availability" style="display:none"></div>
+                    <input type="text" id="project-shortname-field" />
+                    <div id="project-shortname-availability" style="display:none"></div><br />
 
                     <label for="project-description-field">Short description</label><br />
                     <textarea type="text" id="project-description-field" placeholder="Short project description"></textarea><br />
