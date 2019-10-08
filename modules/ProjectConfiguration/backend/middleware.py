@@ -143,9 +143,11 @@ class ProjectConfigMiddleware:
         self.dbConnector.execute('''
             INSERT INTO aide_admin.project (shortname, name, description,
                 secret_token,
+                interface_enabled,
                 annotationType, predictionType)
             VALUES (
                 %s, %s, %s,
+                %s,
                 %s,
                 %s, %s
             );
@@ -155,6 +157,7 @@ class ProjectConfigMiddleware:
                 properties['name'],
                 (properties['description'] if 'description' in properties else ''),
                 secrets.token_urlsafe(32),
+                False,
                 properties['annotationType'],
                 properties['predictionType'],
             ),

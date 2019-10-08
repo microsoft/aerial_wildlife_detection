@@ -34,11 +34,16 @@ $(document).ready(function() {
                         adminButton = '<a href="' + key + '/configuration" class="btn btn-secondary">Configure</a>'
                     }
 
+                    var labelButton = '<a href="' + key + '/interface" class="btn btn-primary label-button">Start labeling</a>';
+                    if(!data['projects'][key]['interfaceEnabled']) {
+                        labelButton = '<div class="btn btn-secondary label-button" style="cursor:not-allowed;" disabled="disabled">(interface disabled)</div>';
+                    }
+
                     var markup = $('<div class="project-entry">' +
                         '<h2>' + data['projects'][key]['name'] + '</h2>' +
                         '<p>' + data['projects'][key]['description'] + '</p>' +
                         '<p>You are <b>' + role + '</b> in this project.</p>' +
-                        '<div><a href="' + key + '/interface" class="btn btn-primary btn-lg label-button">Start labeling</a>' +
+                        '<div>' + labelButton +
                         adminButton +
                         '</div></div>');
                     projDiv.append(markup);

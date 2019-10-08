@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS aide_admin.project (
     description VARCHAR,
     isPublic BOOLEAN DEFAULT FALSE,
     secret_token VARCHAR,
+    interface_enabled BOOLEAN DEFAULT FALSE,
     demoMode BOOLEAN DEFAULT FALSE,
     annotationType labelType NOT NULL,
     predictionType labelType,

@@ -22,6 +22,7 @@ $(document).ready(function() {
             $('#field-project-name').val(settings['projectTitle']);
             $('#field-project-description').html(settings['projectDescr']);
             $('#public-checkbox').prop('checked', settings['isPublic']);
+            $('#interface-enabled-checkbox').prop('checked', settings['interfaceEnabled']);
             $('#field-secret-token').val(window.location.href.replace('/configuration', '/enroll') + '?t=' + settings['secretToken']);
             $('#demo-checkbox').prop('checked', settings['demoMode']);
             $('#field-numImgsPerBatch').val(settings['numImagesPerBatch']);

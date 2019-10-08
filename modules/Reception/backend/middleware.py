@@ -38,7 +38,7 @@ class ReceptionMiddleware:
             queryVals = None
         
         queryStr = sql.SQL('''SELECT shortname, name, description, username, isAdmin,
-            annotationType, predictionType, isPublic, demoMode, ai_model_enabled
+            annotationType, predictionType, isPublic, demoMode, interface_enabled, ai_model_enabled
             FROM aide_admin.project AS proj
             FULL OUTER JOIN (SELECT * FROM aide_admin.authentication
             ) AS auth ON proj.shortname = auth.project
@@ -59,6 +59,7 @@ class ReceptionMiddleware:
                     'predictionType': r['predictiontype'],
                     'isPublic': r['ispublic'],
                     'demoMode': r['demomode'],
+                    'interfaceEnabled': r['interface_enabled'],
                     'aiModelEnabled': r['ai_model_enabled']
                 }
             if isSuperUser:

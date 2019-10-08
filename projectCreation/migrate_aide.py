@@ -30,6 +30,7 @@ MODIFICATIONS_sql = [
         description VARCHAR,
         isPublic BOOLEAN DEFAULT FALSE,
         secret_token VARCHAR,
+        interface_enabled BOOLEAN DEFAULT FALSE,
         demoMode BOOLEAN DEFAULT FALSE,
         annotationType labelType NOT NULL,
         predictionType labelType,
@@ -175,6 +176,7 @@ if __name__ == '__main__':
     dbConn.execute('''
         INSERT INTO aide_admin.project (shortname, name, description,
             secret_token,
+            interface_enabled,
             annotationType, predictionType, ui_settings,
             numImages_autoTrain,
             minNumAnnoPerImage,
@@ -186,6 +188,7 @@ if __name__ == '__main__':
             )
         VALUES (
             %s, %s, %s,
+            %s,
             %s,
             %s, %s, %s,
             %s, %s, %s, %s,
@@ -199,6 +202,7 @@ if __name__ == '__main__':
             config.getProperty('Project', 'projectName'),
             config.getProperty('Project', 'projectDescription'),
             secretToken,
+            True,
             config.getProperty('Project', 'annotationType'),
             config.getProperty('Project', 'predictionType'),
             json.dumps(uiSettings),

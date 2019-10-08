@@ -184,7 +184,8 @@ class DBMiddleware():
             (i.e., users don't need to be part of the project to see these data).
         '''
         queryStr = '''
-            SELECT shortname, name, description, demoMode
+            SELECT shortname, name, description, demoMode,
+            interface_enabled
             FROM aide_admin.project
             WHERE shortname = %s
         '''
@@ -197,7 +198,8 @@ class DBMiddleware():
             'projectShortname': result['shortname'],
             'projectName': result['name'],
             'projectDescription': result['description'],
-            'demoMode': result['demomode']
+            'demoMode': result['demomode'],
+            'interfaceEnabled': result['interface_enabled']
         }
 
 

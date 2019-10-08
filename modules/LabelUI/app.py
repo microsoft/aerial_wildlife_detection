@@ -45,6 +45,13 @@ class LabelUI():
         return response
 
 
+    def __redirect_project_page(self, project):
+        response = bottle.response
+        response.status = 303
+        response.set_header('Location', '/')    #TODO: add project once loopback is resolved and project page initiated
+        return response
+
+
     def _initBottle(self):
 
         ''' static routings '''
@@ -90,6 +97,10 @@ class LabelUI():
             if not self.loginCheck(project=project, extend_session=True):
                 return self.__redirect_login_page()
             
+            # redirect to project page if interface not enabled
+            if not projectData['interfaceEnabled']:
+                return self.__redirect_project_page(project)
+
             # render interface template
             username = 'Demo mode' if self.demoMode else cgi.escape(request.get_cookie('username'))
             return self.interface_template.render(username=username,

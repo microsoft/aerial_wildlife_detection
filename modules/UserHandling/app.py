@@ -37,7 +37,7 @@ class UserHandler():
         @self.app.route('/<project>/doLogin', method='POST')
         def do_login(project=None):
             if self.demoMode:
-                return redirect('/interface')
+                return redirect('/')
 
             # check provided credentials
             try:
