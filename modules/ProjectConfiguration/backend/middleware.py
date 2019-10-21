@@ -12,6 +12,7 @@ import json
 from psycopg2 import sql
 from modules.Database.app import Database
 from .db_fields import Fields_annotation, Fields_prediction
+from util.helpers import parse_parameters
 
 
 class ProjectConfigMiddleware:
@@ -42,9 +43,7 @@ class ProjectConfigMiddleware:
             'secretToken': result['secret_token'],
             'demoMode': result['demomode'],
             'numImagesPerBatch': uiSettings['numImagesPerBatch'],
-            'minImageWidth': uiSettings['minImageWidth'],
-
-            'aiModelEnabled': result['ai_model_enabled']
+            'minImageWidth': uiSettings['minImageWidth']
         }
         return response
 
@@ -175,71 +174,73 @@ class ProjectConfigMiddleware:
 
 
 
-    def updateProjectSettings(self, username, projectSettings):
+    def updateProjectSettings(self, project, projectSettings):
         '''
-            Verifies the provided projectSettings dict, looking for the following fields:
-            - shortname
-            - name
-            - description
-            - annotationType
-            - predictionType
-            - isPublic
-            - demoMode
-            - ui_settings   (sub-dict; performs further verification of it)
-            - TODO
+            TODO
         '''
 
-        # verify provided elements
+        # check UI settings first
+        if 'ui_settings' in projectSettings:
+            fieldNames = [
+                ('welcomeMessage', str),
+                ('numImagesPerBatch', int),
+                ('minImageWidth', int),
+                ('numImageColumns_max', int),
+                ('defaultImage_w', int),
+                ('defaultImage_h', int),
+                ('styles', str),       #TODO
+                ('enableEmptyClass', bool),
+                ('showPredictions', bool),
+                ('showPredictions_minConf', float),
+                ('carryOverPredictions', bool),
+                ('carryOverRule', str),
+                ('carryOverPredictions_minConf', float),
+                ('defaultBoxSize_w', int),
+                ('defaultBoxSize_h', int),
+                ('minBoxSize_w', int),
+                ('minBoxSize_h', int)
+            ]
+            uiSettings_new, uiSettingsKeys_new = parse_parameters(projectSettings['ui_settings'], fieldNames, absent_ok=True, escape=True)   #TODO: escape
+            
+            # adopt current settings and replace values accordingly
+            uiSettings = self.dbConnector.execute('''SELECT ui_settings
+                    FROM aide_admin.project
+                    WHERE shortname = %s;            
+                ''', (project,), 1)
+            uiSettings = ast.literal_eval(uiSettings[0]['ui_settings'])
+            for kIdx in range(len(uiSettingsKeys_new)):
+                uiSettings[uiSettingsKeys_new[kIdx]] = uiSettings_new[kIdx]
+            projectSettings['ui_settings'] = json.dumps(uiSettings)
+
+
+        # parse remaining parameters
         fieldNames = [
-            'shortname',
-            'name',
-            'description',
-            'secretToken',
-            'annotationType',
-            'predictionType',
-            'isPublic',
-            'demoMode',
-            'ui_settings'
+            ('description', str),
+            ('annotationType', str),
+            ('predictionType', str),
+            ('isPublic', bool),
+            ('secret_token', str),
+            ('demoMode', bool),
+            ('ui_settings', str)
         ]
-        for fn in fieldNames:
-            if not fn in projectSettings:
-                raise Exception('Missing settings parameter {}.'.format(fn))
 
-        # check UI settings
-        fieldNames = [
-            'welcomeMessage',
-            'numImagesPerBatch',
-            'minImageWidth',
-            'numImageColumns_max',
-            'defaultImage_w',
-            'defaultImage_h',
-            'styles',       #TODO
-            'enableEmptyClass',
-            'showPredictions',
-            'showPredictions_minConf',
-            'carryOverPredictions',
-            'carryOverRule',
-            'carryOverPredictions_minConf',
-            'defaultBoxSize_w',
-            'defaultBoxSize_h',
-            'minBoxSize_w',
-            'minBoxSize_h'
-        ]
-        uiSettings = projectSettings['ui_settings']
-        for fn in fieldNames:
-            if not fn in uiSettings:
-                raise Exception('Missing UI settings parameter {}.'.format(fn))
+        vals, params = parse_parameters(projectSettings, fieldNames, absent_ok=True, escape=True)      #TODO: escape
+        vals.append(project)
 
-        
-        # check if project shortname available
-        shortname = projectSettings['shortname']
-        if not self.getProjectNameAvailable(shortname):
-            raise Exception('Project shortname ("{}") is not available.'.format(shortname))
+        # commit to DB
+        queryStr = sql.SQL('''UPDATE aide_admin.project
+            SET
+            {}
+            WHERE shortname = %s;
+            '''
+        ).format(
+            sql.SQL(',').join([sql.SQL('{} = %s'.format(item)) for item in params])
+        )
 
-
-        #TODO
+        self.dbConnector.execute(queryStr, tuple(vals), None)
 
         return True
+
 
 
     def getProjectNameAvailable(self, projectName):

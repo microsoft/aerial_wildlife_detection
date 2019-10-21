@@ -7,6 +7,7 @@
 import importlib
 from datetime import datetime
 import pytz
+import cgi
 
 
 
@@ -61,3 +62,39 @@ def check_args(options, defaultOptions):
         return defaultOptions
     else:
         return __check(options, defaultOptions)
+
+
+def parse_parameters(data, params, absent_ok=True, escape=True):
+    '''
+        Accepts a dict (data) and list (params) and assembles
+        an output list of the entries in data under keys of params, in order of
+        the latter.
+        If params is a list of lists, the first entry of the nested list is the
+        key, and the second the data type to which the value will be cast.
+        Raises an Exception if typecasting fails.
+        If absent_ok is True, missing keys will be skipped.
+        If escape is True, sensitive characters will be escaped from strings.
+
+        Also returns a list of the keys that were eventually added.
+    '''
+    outputVals = []
+    outputKeys = []
+    for idx in range(len(params)):
+        if isinstance(params[idx], str):
+            nextKey = params[idx]
+            dataType = str
+        else:
+            nextKey = params[idx][0]
+            dataType = params[idx][1]
+        
+        if not nextKey in data and absent_ok:
+            continue
+
+        value = data[nextKey]
+        if escape and isinstance(value, str):
+            value = cgi.escape(value)
+        value = dataType(value)
+        outputVals.append(value)
+        outputKeys.append(nextKey)
+    return outputVals, outputKeys
+        

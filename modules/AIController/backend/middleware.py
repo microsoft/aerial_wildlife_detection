@@ -495,7 +495,7 @@ class AIMiddleware():
         return status
 
 
-    def getProjectModelInfo(self, project):
+    def getProjectModelSettings(self, project):
         '''
             Returns the AI and AL model properties for the given project,
             as stored in the database.
@@ -512,3 +512,10 @@ class AIMiddleware():
             (project,),
             1)
         return result[0]
+
+
+    def saveProjectModelSettings(self, project, settings):
+        '''
+            TODO
+        '''
+        pass

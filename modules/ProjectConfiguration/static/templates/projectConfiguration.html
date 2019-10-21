@@ -6,6 +6,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
         <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous" />
         <link rel="stylesheet" href="static/css/interface.css" />
+        <!-- <link rel="stylesheet" href="config/static/css/bootstrap-treeview.css" /> -->
         <style>
             .settings-container {
                 color: white;
@@ -22,6 +23,7 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
         <script src="https://unpkg.com/tooltip.js"></script>
         <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+        <!-- <script type="text/javascript" src="config/static/js/bootstrap-treeview.js"></script> -->
         <script type="text/javascript" src="config/static/js/labelConfig.js"></script>
         <script type="text/javascript" src="config/static/js/init.js"></script>
     </head>
@@ -93,15 +95,15 @@
                         Existing annotations will be retained as they are.</p>
                     </div>
                     
-                    <h2>Label Classes</h2>
+                    <!-- <h2>Label Classes</h2>
                     <div class="settings-group">
-                        <div id="label-class-definition"></div>
+                        <div id="label-class-tree"></div>
 
                         <div id="label-class-controls">
-                            <button class="btn btn-sm btn-primary">Add new...</button>
-                            <button class="btn btn-sm btn-warning">Remove</button>
+                            <button id="add-lc-button" class="btn btn-sm btn-primary">Add new...</button>
+                            <button id="remove-lc-button" class="btn btn-sm btn-warning">Remove</button>
                         </div>
-                    </div>
+                    </div> -->
 
 
 
@@ -144,7 +146,7 @@
                 <!-- Submit and abort buttons -->
                 <div>
                     <button class="btn btn-danger">Cancel</button>
-                    <button class="btn btn-primary" style="float:right">Save</button>
+                    <button id="proj-settings-save-button" class="btn btn-primary" style="float:right">Save</button>
                 </div>
             </div>
 

@@ -81,6 +81,15 @@ class ProjectConfigurator:
         def save_project_configuration(project):
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
+            try:
+                settings = request.json
+                isValid = self.middleware.updateProjectSettings(project, settings)
+                if isValid:
+                    return {'success': isValid}
+                else:
+                    abort(400, 'bad request')
+            except:
+                abort(400, 'bad request')
 
 
 

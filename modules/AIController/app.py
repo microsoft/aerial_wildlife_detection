@@ -176,7 +176,7 @@ class AIController:
                 abort(401, 'unauthorized')
 
 
-        @self.app.get('/<project>/getAImodelInfo')
+        @self.app.get('/<project>/getAImodelSettings')
         def get_ai_model_info(project):
             '''
                 Returns the model class and settings for the AI model
@@ -185,7 +185,7 @@ class AIController:
             if not self.login_check(project=project, admin=True):
                 abort(401, 'unauthorized')
             
-            return { 'info': self.middleware.getProjectModelInfo(project) }
+            return { 'settings': self.middleware.getProjectModelSettings(project) }
 
     
         @self.app.get('/getAvailableAImodels')
