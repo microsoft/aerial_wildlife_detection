@@ -277,10 +277,8 @@ class Resize(object):
 
     def __call__(self, img, bboxes=None, labels=None):
         sz_orig = img.size
-        print(sz_orig)
         img = img.resize(self.size, self.interpolation)
         sz_new = img.size
-        print(sz_new)
 
         if bboxes is not None and len(bboxes) > 0:
             bboxes = _bboxResize(bboxes, sz_orig, sz_new)

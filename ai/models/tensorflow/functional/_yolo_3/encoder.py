@@ -35,114 +35,78 @@ def bbox_iou(box1, box2):
     return float(intersect) / union
 
 class DataEncoder:
-    def __init__(self):
-        self.anchor_areas = [32*32., 64*64., 92*92., 128*128., 192*192.]  # [32*32., 64*64., 128*128., 192*192., 256*256.]    # [32*32., 64*64., 128*128., 256*256., 512*512.]  # p3 -> p7
-        self.aspect_ratios = [1/2., 1/1., 2/1.]
-        self.scale_ratios = [1., pow(2,1/3.), pow(2,2/3.)]
-        self.anchor_wh = self._get_anchor_wh()
-
-    def _get_anchor_wh(self):
-        '''Compute anchor width and height for each feature map.
-
-        Returns:
-          anchor_wh: (tensor) anchor wh, sized [#fm, #anchors_per_cell, 2].
-        '''
-        anchor_wh = []
-        for s in self.anchor_areas:
-            for ar in self.aspect_ratios:  # w/h = ar
-                h = math.sqrt(s/ar)
-                w = ar * h
-                for sr in self.scale_ratios:  # scale
-                    anchor_h = h*sr
-                    anchor_w = w*sr
-                    anchor_wh.append([anchor_w, anchor_h])
-        num_fms = len(self.anchor_areas)
-        return torch.Tensor(anchor_wh).view(num_fms, -1, 2)
-
-    def _get_anchor_boxes(self, input_size):
-        '''Compute anchor boxes for each feature map.
-
-        Args:
-          input_size: (tensor) model input size of (w,h).
-
-        Returns:
-          boxes: (list) anchor boxes for each feature map. Each of size [#anchors,4],
-                        where #anchors = fmw * fmh * #anchors_per_cell
-        '''
-        num_fms = len(self.anchor_areas)
-        fm_sizes = [(input_size/pow(2.,i+3)).ceil() for i in range(num_fms)]  # p3 -> p7 feature map sizes
-
-        boxes = []
-        for i in range(num_fms):
-            fm_size = fm_sizes[i]
-            grid_size = input_size / fm_size
-            fm_w, fm_h = int(fm_size[0]), int(fm_size[1])
-            xy = meshgrid(fm_w,fm_h).float() + 0.5  # [fm_h*fm_w, 2]
-            xy = (xy*grid_size).view(fm_h,fm_w,1,2).expand(fm_h,fm_w,9,2)
-            wh = self.anchor_wh[i].view(1,1,9,2).expand(fm_h,fm_w,9,2)
-            box = torch.cat([xy,wh], 3)  # [x,y,w,h]
-            boxes.append(box.view(-1,4))
-        return torch.cat(boxes, 0)
+    def __init__(self, numClasses=1):
+        self.anchors = [[116,90],  [156,198],  [373,326],  [30,61], [62,45],  [59,119], [10,13],  [16,30],  [33,23]]
+        self.downscale = 32
+        self.numClasses = numClasses
 
     def encode(self, imgs, boxes, labels):
-        '''Encode target bounding boxes and class labels.
+        
 
-        We obey the Faster RCNN box coder:
-          tx = (x - anchor_x) / anchor_w
-          ty = (y - anchor_y) / anchor_h
-          tw = log(w / anchor_w)
-          th = log(h / anchor_h)
+        batch_size, net_w, net_h, _ = imgs.shape
+	# get image input size
+        base_grid_h, base_grid_w = net_h//self.downscale, net_w//self.downscale
 
-        Args:
-          boxes: (tensor) bounding boxes of (xmin,ymin,xmax,ymax), sized [#obj, 4].
-          labels: (tensor) object class labels, sized [#obj,].
-          input_size: (int/tuple) model input size of (w,h).
 
-        Returns:
-          loc_targets: (tensor) encoded bounding boxes, sized [#anchors,4].
-          cls_targets: (tensor) encoded class labels, sized [#anchors,].
-        '''
-        input_size = torch.Tensor([input_size,input_size]) if isinstance(input_size, int) \
-                     else torch.Tensor(input_size)
-        anchor_boxes = self._get_anchor_boxes(input_size)
+        # initialize the inputs and the outputs
+        yolo_1 = np.zeros((batch_size, 1*base_grid_h,  1*base_grid_w, 3, 4+1+self.numClasses)) # desired network output 1
+        yolo_2 = np.zeros((batch_size, 2*base_grid_h,  2*base_grid_w, 3, 4+1+self.numClasses)) # desired network output 2
+        yolo_3 = np.zeros((batch_size, 4*base_grid_h,  4*base_grid_w, 3, 4+1+self.numClasses)) # desired network output 3
+        yolos = [yolo_1, yolo_2, yolo_3]
 
-        if not len(labels):
-          # no objects in image
-          loc_targets = torch.zeros_like(anchor_boxes)
-          cls_targets = torch.LongTensor(anchor_boxes.size(0)).zero_()
-          return loc_targets, cls_targets
+        instance_count = 0
+        true_box_index = 0
 
-        boxes = change_box_order(boxes, 'xyxy2xywh')
+        # do the logic to fill in the inputs and the output
+        for b in range(batch_size):
 
-        ious = box_iou(anchor_boxes, boxes, order='xywh')
-        max_ious, max_ids = ious.max(1)
+             
+            # augment input image and fix object's position and size
+            all_objs = boxes[b]
+            obj_labl = labels[b]
 
-        # best-matching anchor per target (to make sure every target gets assigned)
-        _, max_ids_target = ious.max(0)
-        max_ids[max_ids_target] = torch.arange(boxes.size(0))
+            for obj in range(all_objs.shape[0]):
 
-        boxes = boxes[max_ids]
-        labels = labels[max_ids]
+                box = all_objs[obj]
+                label = int(obj_labl[obj])
+                if label<0:
+                    continue
+                # find the best anchor box for this object
+                max_anchor = None
+                max_index  = -1
+                max_iou    = -1
 
-        loc_xy = (boxes[:,:2]-anchor_boxes[:,:2]) / anchor_boxes[:,2:]
-        loc_wh = torch.log(boxes[:,2:]/anchor_boxes[:,2:])
-        loc_targets = torch.cat([loc_xy,loc_wh], 1)
+                shifted_box = np.array((0.0, 0.0, box[2], box[3]))
 
-        cls_targets = 1 + labels
-        cls_targets[max_ious<self.minIoU_pos] = 0
-        ignore = (max_ious>self.maxIoU_neg) & (max_ious<self.minIoU_pos)  # ignore ious between [0.4,0.5]
-        cls_targets[ignore] = -1  # for now just mark ignored to -1
+                for i in range(len(self.anchors)):
+                    anchor = np.array((0, 0, self.anchors[i][0], self.anchors[i][1]))
+                    iou    = bbox_iou(shifted_box, anchor)
 
-        # make sure every target gets assigned at least one anchor (the optimal one)
-        cls_targets[max_ids_target] = 1 + labels[max_ids_target]
+                    if max_iou < iou:
+                        max_anchor = anchor
+                        max_index  = i
+                        max_iou    = iou
 
-        # sanity check: remove NaNs and Infs
-        invalid = (torch.isinf(loc_targets) + \
-                  torch.isnan(loc_targets)).sum(1).type(torch.bool)
-        loc_targets[invalid,:] = 0
-        cls_targets[invalid] = -1
+                # determine the yolo to be responsible for this bounding box
+                yolo = yolos[max_index//3]
+                grid_h, grid_w = yolo.shape[1:3]
 
-        return loc_targets, cls_targets
+                # determine the position of the bounding box on the grid
+                g_center_x = box[0] / float(net_w) * grid_w # sigma(t_x) + c_x
+                g_center_y = box[1] / float(net_h) * grid_h # sigma(t_y) + c_y
+
+                # determine the location of the cell responsible for this object
+                grid_x = int(np.floor(g_center_x))
+                grid_y = int(np.floor(g_center_y))
+
+                # assign ground truth x, y, w, h, confidence and class probs to y_batch
+                yolo[b, grid_y, grid_x, max_index%3, 0:4] = box
+                yolo[b, grid_y, grid_x, max_index%3, 4  ] = 1.
+                yolo[b, grid_y, grid_x, max_index%3, 5+label] = 1
+
+
+        return imgs, [yolo_1, yolo_2, yolo_3]
+
 
 
     def decode(self, predictions, cls_thresh=0.5, nms_thresh=0.5, return_conf=False):

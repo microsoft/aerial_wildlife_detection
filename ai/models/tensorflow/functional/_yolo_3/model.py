@@ -234,14 +234,15 @@ def get_yolo_model(in_w=416,in_h=416, num_class=80, trainable=False, headtrainab
 
 class yolo_model():
 
-    def __init__(self, labelclassMap, state, width, height, pretrained=True):
+    def __init__(self, labelclassMap, state, width, height, pretrained=True, alltrain=False):
 
         self.labelclassMap = labelclassMap
         self.numClasses = len(labelclassMap.keys())
         self.pretrained = pretrained
+        self.alltrain = alltrain
         self.width = width
         self.height = height
-        self.yolo_nn = get_yolo_model(self.width, self.height, self.numClasses)
+        self.yolo_nn = get_yolo_model(self.width, self.height, self.numClasses, trainable=self.alltrain, headtrainable=True)
 
         self.state = (state if state is not None else 'weights/tmp_.h5')
 
@@ -258,9 +259,8 @@ class yolo_model():
         stateDict = {
             'model_state': self.state, 
             'labelclassMap': self.labelclassMap,
-            'pretrained': self.pretrained#,
- #           'width': self.width,
- #           'height': self.height
+            'pretrained': self.pretrained,
+            'alltrain': self.alltrain
         }
         return stateDict
 
@@ -270,8 +270,7 @@ class yolo_model():
         # parse args
         labelclassMap = stateDict['labelclassMap']
         pretrained = (stateDict['pretrained'] if 'pretrained' in stateDict else True)
-#        width = (stateDict['width'] if 'width' in stateDict else 864)
-#        height = (stateDict['height'] if 'height' in stateDict else 864)
+        alltrain = (stateDict['alltrain'] if 'alltrain' in stateDict else False)
         state = (stateDict['model_state'] if 'model_state' in stateDict else None)
         init_weights = (stateDict['init_weights'] if 'init_weights' in stateDict else None)
 

@@ -129,7 +129,7 @@ class BoundingBoxesDataset(Sequence):
             sz = img.size
             boundingBoxes = np.array(boundingBoxes)
             if len(boundingBoxes):
-                if boundingBoxes.ndim() == 1:
+                if boundingBoxes.ndim == 1:
                     boundingBoxes = boundingBoxes[None,...]
                 boundingBoxes[:,0] *= sz[0]
                 boundingBoxes[:,1] *= sz[1]
@@ -145,6 +145,8 @@ class BoundingBoxesDataset(Sequence):
             boundingBoxes_b.append(boundingBoxes)
             labels_b.append(labels)
             imageID_b.append(imageID)
+
+        img_b = np.asarray(img_b)
 
         if self.encoder is not None:
             # encode for training

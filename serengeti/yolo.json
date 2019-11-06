@@ -1,32 +1,22 @@
-'''
-    PyTorch implementation of the RetinaNet object detector:
-        Lin, Tsung-Yi, et al. "Focal loss for dense object detection." Proceedings of the IEEE international conference on computer vision. 2017.
-
-    Basic implementation forked and adapted from: https://github.com/kuangliu/pytorch-retinanet
-
-    2019 Benjamin Kellenberger
-'''
-
-
-# default options for the model, may be overridden in the custom configuration loaded at runtime
-DEFAULT_OPTIONS = {
+{
 	"general": {
 		"device": "cuda",
 		"seed": 1234
 	},
 	"model": {
 		"kwargs": {
-			"pretrained": True,
-			"alltrain": False,
-                        "init_weights": "weights/trained-camera-trap-yolo.h5"
+			"pretrained": true,
+			"alltrain": false,
+            "init_weights": "weights/trained-camera-trap-yolo.h5"
 		}
 	},
 	"train": {
         "width": 864,
         "height": 864,
+        "batch_size": 1,
 		"dataLoader": {
 			"kwargs": {
-				"shuffle": True,
+				"shuffle": true,
 				"batch_size": 1
 			}
 		},
@@ -63,10 +53,10 @@ DEFAULT_OPTIONS = {
                 "CLASS_SCALE": 2.0
 			}
 		},
-		"ignore_unsure": True
+		"ignore_unsure": true
 	},
 	"inference": {
-        "shuffle": False,
+        "shuffle": false,
         "batch_size": 1,
         "nms_thresh": 0.1,
         "cls_thresh": 0.1,
@@ -86,7 +76,7 @@ DEFAULT_OPTIONS = {
 		},
 		"dataLoader": {
 			"kwargs": {
-				"shuffle": False,
+				"shuffle": false,
 				"batch_size": 1
 			}
 		}

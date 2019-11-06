@@ -1,109 +1,58 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-
-from .utils import one_hot_embedding
+import tensorflow as tf
 
 
-class FocalLoss(nn.Module):
-    def __init__(self, alpha=0.25, gamma=2, background_weight=1.0):
-        super(FocalLoss, self).__init__()
-        self.alpha = alpha
-        self.gamma = gamma
-        self.background_weight = background_weight
 
-    def focal_loss(self, x, y, num_classes):
-        '''Focal loss.
+class YoloLoss():
+    def __init__(self, width, height, NO_OBJECT_SCALE=1.0, OBJECT_SCALE=1.0, COORD_SCALE=1.0, CLASS_SCALE=1.0):
+        self.IMAGE_W = width
+        self.IMAGE_H = height
+        self.NO_OBJECT_SCALE = NO_OBJECT_SCALE
+        self.OBJECT_SCALE = OBJECT_SCALE
+        self.COORD_SCALE = COORD_SCALE
+        self.CLASS_SCALE = CLASS_SCALE
 
-        Args:
-          x: (tensor) sized [N,D].
-          y: (tensor) sized [N,].
+    def yolo_loss(self, y_true, y_pred):
+        # compute grid factor and net factor
+        grid_h = tf.shape(y_true)[1]
+        grid_w = tf.shape(y_true)[2]
 
-        Return:
-          (tensor) focal loss.
-        '''
-        alpha = self.alpha
-        gamma = self.gamma
+        grid_factor = tf.reshape(
+            tf.cast([grid_w, grid_h], tf.float32), [1, 1, 1, 1, 2])
 
-        t = one_hot_embedding(y.detach().cpu(), 1+num_classes)  # [N,21]
-        t = t[:,1:]  # exclude background
-        t = t.to(y.device)  # [N,20]
-        if t.dim()<x.dim():
-          t = t.unsqueeze(0)
+        net_h = self.IMAGE_H / grid_h
+        net_w = self.IMAGE_W / grid_w
+        net_factor = tf.reshape(
+            tf.cast([net_w, net_h], tf.float32), [1, 1, 1, 1, 2])
 
-        p = x.sigmoid()
-        pt = p*t + (1-p)*(1-t)         # pt = p if t > 0 else 1-p
-        w = alpha*t + (1-alpha)*(1-t)  # w = alpha if t > 0 else 1-alpha
-        w = w * (1-pt).pow(gamma)
+        pred_box_xy = y_pred[..., 0:2]  # t_wh
+        pred_box_wh = tf.math.log(y_pred[..., 2:4])  # t_wh
+        pred_box_conf = tf.expand_dims(y_pred[..., 4], 4)
+        pred_box_class = y_pred[..., 5:]  # adjust class probabilities
+        # initialize the masks
+        object_mask = tf.expand_dims(y_true[..., 4], 4)
 
-        # custom background target weight
-        w[y==0,:] *= self.background_weight
+        true_box_xy = y_true[..., 0:2]  # (sigma(t_xy) + c_xy)
+        true_box_wh = tf.where(y_true[..., 2:4] > 0,
+                               tf.math.log(tf.cast(y_true[..., 2:4], tf.float32)),
+                               y_true[..., 2:4])
+        true_box_conf = tf.expand_dims(y_true[..., 4], 4)
+        true_box_class = y_true[..., 5:]
 
-        return F.binary_cross_entropy_with_logits(x, t, w.detach(), reduction='sum')
+        xy_delta = self.COORD_SCALE * object_mask * (pred_box_xy - true_box_xy)  #/net_factor #* xywh_scale
+        wh_delta = self.COORD_SCALE * object_mask * (pred_box_wh - true_box_wh)  #/ net_factor #* xywh_scale
 
-    def focal_loss_alt(self, x, y, num_classes):
-        '''Focal loss alternative.
+        obj_delta = self.OBJECT_SCALE * object_mask * (
+            pred_box_conf - true_box_conf)
+        no_obj_delta = self.NO_OBJECT_SCALE * (1 - object_mask) * pred_box_conf
+        class_delta = self.CLASS_SCALE * object_mask * (
+            pred_box_class - true_box_class)
 
-        Args:
-          x: (tensor) sized [N,D].
-          y: (tensor) sized [N,].
+        loss_xy = tf.reduce_sum(tf.square(xy_delta), list(range(1, 5)))
+        loss_wh = tf.reduce_sum(tf.square(wh_delta), list(range(1, 5)))
+        loss_obj = tf.reduce_sum(tf.square(obj_delta), list(range(1, 5)))
+        lossnobj = tf.reduce_sum(tf.square(no_obj_delta), list(range(1, 5)))
+        loss_cls = tf.reduce_sum(tf.square(class_delta), list(range(1, 5)))
 
-        Return:
-          (tensor) focal loss.
-        '''
-        alpha = self.alpha
-
-        t = one_hot_embedding(y.detach().cpu(), 1+num_classes)
-        t = t[:,1:]
-        t = t.to(y.device)
-
-        xt = x*(2*t-1)  # xt = x if t > 0 else -x
-        pt = (2*xt+1).sigmoid()
-
-        w = alpha*t + (1-alpha)*(1-t)
-        loss = -w*(pt+1e-12).log() / 2
-
-        # custom background target weight
-        w[y==0,:] *= self.background_weight
-
-        return loss.sum()
-
-    def forward(self, loc_preds, loc_targets, cls_preds, cls_targets):
-        '''Compute loss between (loc_preds, loc_targets) and (cls_preds, cls_targets).
-
-        Args:
-          loc_preds: (tensor) predicted locations, sized [batch_size, #anchors, 4].
-          loc_targets: (tensor) encoded target locations, sized [batch_size, #anchors, 4].
-          cls_preds: (tensor) predicted class confidences, sized [batch_size, #anchors, #classes].
-          cls_targets: (tensor) encoded target labels, sized [batch_size, #anchors].
-
-        loss:
-          (tensor) loss = SmoothL1Loss(loc_preds, loc_targets) + FocalLoss(cls_preds, cls_targets).
-        '''
-        pos = cls_targets > 0  # [N,#anchors]
-        num_pos = pos.detach().long().sum()
-
-        ################################################################
-        # loc_loss = SmoothL1Loss(pos_loc_preds, pos_loc_targets)
-        ################################################################
-        if num_pos:
-          mask = pos.unsqueeze(2).expand_as(loc_preds)       # [N,#anchors,4]
-          masked_loc_preds = loc_preds[mask].view(-1,4)      # [#pos,4]
-          masked_loc_targets = loc_targets[mask].view(-1,4)  # [#pos,4]
-          loc_loss = F.smooth_l1_loss(masked_loc_preds, masked_loc_targets, reduction='sum')
-
-        ################################################################
-        # cls_loss = FocalLoss(loc_preds, loc_targets)
-        ################################################################
-        num_classes = cls_preds.size(-1)
-        pos_neg = cls_targets > -1  # exclude ignored anchors
-        mask = pos_neg.unsqueeze(2).expand_as(cls_preds)
-        masked_cls_preds = cls_preds[mask].view(-1,num_classes)
-        cls_loss = self.focal_loss(masked_cls_preds, cls_targets[pos_neg], num_classes)
-
-        if num_pos:
-          loss = (loc_loss+cls_loss)/num_pos
-        else:
-          loss = cls_loss
-          
+        loss = loss_xy + loss_wh + loss_obj + lossnobj + loss_cls
         return loss
+

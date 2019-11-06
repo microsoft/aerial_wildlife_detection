@@ -49,29 +49,30 @@ class yolo(GenericTFModel):
         # initialize model
         model, labelclassMap = self.initializeModel(stateDict, data, inputSize[0], inputSize[1])
 
-        print('uh-oh still no training routine!')
 #
 #        # setup transform, data loader, dataset, optimizer, criterion
         transform = parse_transforms(self.options['train']['transform'])
-        dataEncoder = encoder.DataEncoder()  
+        dataEncoder = encoder.DataEncoder(numClasses=len(labelclassMap.keys()))  
         
         dataset = self.dataset_class(data=data,
                                     fileServer=self.fileServer,
                                     labelclassMap=labelclassMap,
-                                    targetFormat='xyxy',
+                                    targetFormat='xywh',
                                     transform=transform,
                                     ignoreUnsure=self.options['train']['ignore_unsure'],
+                                    batch_size=self.options['train']['batch_size'],
                                     encoder = dataEncoder.encode)
 
         # optimizer
+        print(self.options['train']['optim']['kwargs'])
         optimizer = self.optim_class(**self.options['train']['optim']['kwargs'])
 
         # loss criterion
-        loss = self.criterion_class(**self.options['train']['criterion']['kwargs'])
-	model.yolo_nn.compile(loss=loss, optimizer=optimizer)
+        loss = self.criterion_class(inputSize[0], inputSize[1], **self.options['train']['criterion']['kwargs'])
+        model.yolo_nn.compile(loss=loss.yolo_loss, optimizer=optimizer)
 
         epochs = (self.options['train']['epochs'] if 'epochs' in self.options['train'] else 1)
-	model.yolo_nn.fit_generator(generator = dataset, epochs = epochs) 
+        model.yolo_nn.fit_generator(generator = dataset, epochs = epochs) 
 #
 #        # train model
 #        device = self.get_device()
@@ -121,7 +122,7 @@ class yolo(GenericTFModel):
                                     batch_size=self.options['inference']['batch_size'],
                                     shuffle=self.options['inference']['shuffle'])
 
-        dataEncoder = encoder.DataEncoder()  
+        dataEncoder = encoder.DataEncoder(numClasses=len(labelclassMap.keys()))  
 
         cls_thresh = self.options['inference']['cls_thresh']
         nms_thresh = self.options['inference']['nms_thresh']
@@ -129,9 +130,8 @@ class yolo(GenericTFModel):
         # perform inference
         response = {}
         imgCount = 0
-        for (img_list, _, _, imgID) in tqdm(dataset):
+        for (img, _, _, imgID) in tqdm(dataset):
 
-            img = np.asarray(img_list)
             output = model.yolo_nn.predict(img)
             bboxes_pred_batch, labels_pred_batch, confs_pred_batch = dataEncoder.decode(output, cls_thresh=cls_thresh, nms_thresh=nms_thresh, return_conf=True) 
 
