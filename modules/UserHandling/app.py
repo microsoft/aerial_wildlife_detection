@@ -4,6 +4,7 @@
     2019 Benjamin Kellenberger
 '''
 
+import os
 import cgi
 from bottle import request, response, static_file, abort, redirect
 from .backend.middleware import UserMiddleware
@@ -31,6 +32,14 @@ class UserHandler():
 
 
     def _initBottle(self):
+
+
+        @self.app.route('/login')
+        def show_login_page():
+            if self.demoMode:
+                return redirect('/')
+            else:
+                return static_file('loginScreen.html', root=os.path.join(self.staticDir, 'templates'))
 
         
         @self.app.route('/doLogin', method='POST')
@@ -180,7 +189,8 @@ class UserHandler():
             except Exception as e:
                 abort(403, str(e))
 
-        @self.app.route('/createAccountScreen')
+
+        @self.app.route('/newAccount')
         def showNewAccountPage():
             if self.demoMode:
                 return redirect('/')
@@ -191,20 +201,22 @@ class UserHandler():
                 try:
                     providedToken = cgi.escape(request.query['t'])
                     if providedToken == targetToken:
-                        response = static_file('templates/createAccountScreen.html', root=self.staticDir)
+                        response = static_file('templates/newAccountScreen.html', root=self.staticDir)
                     else:
-                        response = static_file('templates/loginScreen.html', root=self.staticDir)
+                        response = redirect('/login')
                 except:
-                    response = static_file('templates/loginScreen.html', root=self.staticDir)
+                    response = redirect('/login')
             else:
                 # no token required
-                response = static_file('templates/createAccountScreen.html', root=self.staticDir)
+                response = static_file('templates/newAccountScreen.html', root=self.staticDir)
             response.set_header('Cache-Control', 'public, max-age=0')
             return response
+
 
         @self.app.route('/loginScreen')
         def showLoginPage():
             return static_file('templates/loginScreen.html', root=self.staticDir)
+
 
         @self.app.route('/accountExists', method='POST')
         def checkAccountExists():

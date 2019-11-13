@@ -1,6 +1,6 @@
 {
-    "basePath": "modules/Reception/static/img/backdrops",
-    "images": [
+    "basePath": "modules/LabelUI/static/img/backdrops",
+    "backdrops": [
         {
             "file": "bingdesktop.com_gallery_2784.jpg",
             "copyright": "&copy; Mint Images/SuperStock"

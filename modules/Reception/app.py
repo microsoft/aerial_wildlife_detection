@@ -7,6 +7,7 @@
 
 import os
 import cgi
+import json
 from bottle import request, response, static_file, redirect, abort, SimpleTemplate
 from .backend.middleware import ReceptionMiddleware
 
@@ -54,13 +55,12 @@ class Reception:
             return static_file('about.html', root=os.path.join(self.staticDir, 'templates'))
 
 
-        @self.app.route('/login')
-        def show_login_page():
-            if self.demoMode:
-                return redirect('/')
-            else:
-                return static_file('index.html', root=os.path.join(self.staticDir, 'templates'))
-
+        @self.app.get('/getBackdrops')
+        def get_backdrops():
+            try:
+                return {'info': json.load(open(os.path.join(self.staticDir, 'img/backdrops/backdrops.json'), 'r'))}
+            except:
+                abort(500)
 
 
         with open(os.path.abspath(os.path.join(self.staticDir, 'templates/projects.html')), 'r') as f:

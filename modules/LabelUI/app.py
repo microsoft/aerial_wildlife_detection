@@ -55,22 +55,6 @@ class LabelUI():
     def _initBottle(self):
 
         ''' static routings '''
-        # @self.app.route('/')
-        # def index():
-        #     # redirect to interface if logged in    TODO
-        #     if self.loginCheck():
-        #         return redirect('/interface')
-        #     else:
-        #         return static_file('index.html', root=os.path.join(self.staticDir, 'templates'))
-
-        # @self.app.route('/favicon.ico')
-        # def favicon():
-        #     return static_file('favicon.ico', root=os.path.join(self.staticDir, 'img'))
-
-        # @self.app.route('/about')
-        # def about():
-        #     return static_file('about.html', root=os.path.join(self.staticDir, 'templates'))
-
         @self.app.route('/<project>')
         @self.app.route('/<project>/')
         def project_page(project):
