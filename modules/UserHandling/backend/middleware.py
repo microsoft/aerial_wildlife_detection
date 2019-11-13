@@ -420,7 +420,7 @@ class UserMiddleware():
             self.dbConnector.execute(queryStr,
             (username, email, hash,),
             numReturn=None)
-            sessionToken, timestamp, _, expires = self._init_or_extend_session(username)
+            sessionToken, timestamp, expires = self._init_or_extend_session(username)
             return sessionToken, timestamp, expires
 
     
