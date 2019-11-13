@@ -117,7 +117,7 @@ class Reception:
                 success = self.middleware.enroll_in_project(project, username, providedToken)
                 if not success:
                     abort(401)
-                return redirect(project)     #TODO: doesn't work
+                return redirect('interface')     #TODO: doesn't work
             except Exception as e:
                 abort(400)
             pass
