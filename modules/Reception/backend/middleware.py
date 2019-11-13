@@ -102,5 +102,6 @@ class ReceptionMiddleware:
             '''
             self.dbConnector.execute(queryStr, (username,project,), None)
             return True
-        except:
+        except Exception as e:
+            print(e)
             return False
