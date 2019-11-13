@@ -31,10 +31,10 @@ class ReceptionMiddleware:
             authStr = sql.SQL('')
             queryVals = None
         elif username is not None:
-            authStr = sql.SQL('WHERE username = %s OR demoMode = TRUE')
+            authStr = sql.SQL('WHERE username = %s OR demoMode = TRUE OR isPublic = TRUE')
             queryVals = (username,)
         else:
-            authStr = sql.SQL('WHERE demoMode = TRUE')
+            authStr = sql.SQL('WHERE demoMode = TRUE OR isPublic = TRUE')
             queryVals = None
         
         queryStr = sql.SQL('''SELECT shortname, name, description, username, isAdmin,
