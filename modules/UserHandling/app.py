@@ -165,7 +165,7 @@ class UserHandler():
                 abort(401, 'forbidden') 
 
 
-        @self.app.route('/createAccount', method='POST')
+        @self.app.route('/doCreateAccount', method='POST')
         def createAccount():
             if self.demoMode:
                 return redirect('/')
@@ -190,7 +190,7 @@ class UserHandler():
                 abort(403, str(e))
 
 
-        @self.app.route('/newAccount')
+        @self.app.route('/createAccount')
         def showNewAccountPage():
             if self.demoMode:
                 return redirect('/')
