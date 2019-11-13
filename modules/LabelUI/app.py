@@ -69,8 +69,12 @@ class LabelUI():
         def interface(project):
             
             # check if user logged in
-            if not self.loginCheck(project=project):
+            if not self.loginCheck():
                 return self.__redirect_login_page()
+            
+            # check if user is enrolled in project; do so if not (redirects if project is not public)
+            if not self.loginCheck(project=project):
+                return redirect('enroll')
 
             # get project data (and check if project exists)
             projectData = self.middleware.getProjectInfo(project)

@@ -96,11 +96,11 @@ class ReceptionMiddleware:
                     return False
             
             # add user
-            queryStr = sql.SQL('''INSERT INTO {} (username, isAdmin)
-            VALUES (%s, FALSE)
+            queryStr = sql.SQL('''INSERT INTO {} (username, project, isAdmin)
+            VALUES (%s, %s, FALSE)
             ON CONFLICT (username) DO NOTHING;
-            ''').format(sql.Identifier(project, 'authentication'))
-            self.dbConnector.execute(queryStr, (username,), None)
+            ''').format(sql.Identifier('aide_admin', 'authentication'))
+            self.dbConnector.execute(queryStr, (username,project,), None)
             return True
         except:
             return False
