@@ -38,8 +38,8 @@ class YoloLoss():
         true_box_conf = tf.expand_dims(y_true[..., 4], 4)
         true_box_class = y_true[..., 5:]
 
-        xy_delta = self.COORD_SCALE * object_mask * (pred_box_xy - true_box_xy)  #/net_factor #* xywh_scale
-        wh_delta = self.COORD_SCALE * object_mask * (pred_box_wh - true_box_wh)  #/ net_factor #* xywh_scale
+        xy_delta = self.COORD_SCALE * object_mask * (pred_box_xy - true_box_xy) / net_factor #* xywh_scale
+        wh_delta = self.COORD_SCALE * object_mask * (pred_box_wh - true_box_wh) / net_factor #* xywh_scale
 
         obj_delta = self.OBJECT_SCALE * object_mask * (
             pred_box_conf - true_box_conf)

@@ -189,6 +189,7 @@ if __name__ == '__main__':
     print('\nAdding image paths...')
     imgs = {}
     imgFiles = glob.glob(os.path.join(imgBaseDir, '**'), recursive=True)    # os.listdir(imgBaseDir)
+    #imgFiles = glob.glob(os.path.join(imgBaseDir, '**'), recursive=False)    # os.listdir(imgBaseDir)
     for i in tqdm(imgFiles):
         if os.path.isdir(i):
             continue
@@ -224,8 +225,8 @@ if __name__ == '__main__':
     
     # locate all label files
     if args.label_folder is not None:
+#    if False:
         print('\nLoading labels file...')
-        labelFiles = glob.glob(os.path.join(args.label_folder, '**'), recursive=True)
         with open(os.path.join(args.label_folder, 'annotations-species.yml'),'r') as f:
             all_imgs = yaml.load(f)
         print('\nAdding labels...')

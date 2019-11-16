@@ -14,7 +14,7 @@ import numpy as np
 from ..genericTFModel import GenericTFModel
 from .. import parse_transforms
 
-from ..functional._yolo_3 import DEFAULT_OPTIONS, collation, encoder, loss
+from ..functional._yolo_3 import DEFAULT_OPTIONS, encoder, loss
 from ..functional._yolo_3.model import yolo_model as Model
 from ..functional.datasets.bboxDataset import BoundingBoxesDataset
 from util.helpers import get_class_executable, check_args
@@ -64,7 +64,6 @@ class yolo(GenericTFModel):
                                     encoder = dataEncoder.encode)
 
         # optimizer
-        print(self.options['train']['optim']['kwargs'])
         optimizer = self.optim_class(**self.options['train']['optim']['kwargs'])
 
         # loss criterion
@@ -72,33 +71,14 @@ class yolo(GenericTFModel):
         model.yolo_nn.compile(loss=loss.yolo_loss, optimizer=optimizer)
 
         epochs = (self.options['train']['epochs'] if 'epochs' in self.options['train'] else 1)
-        model.yolo_nn.fit_generator(generator = dataset, epochs = epochs) 
-#
-#        # train model
-#        device = self.get_device()
-#        torch.manual_seed(self.options['general']['seed'])
-#        if 'cuda' in device:
-#            torch.cuda.manual_seed(self.options['general']['seed'])
-#        model.to(device)
-#        imgCount = 0
-#        for (img, bboxes_target, labels_target, fVec, _) in tqdm(dataLoader):
-#            img, bboxes_target, labels_target = img.to(device), \
-#                                                bboxes_target.to(device), \
-#                                                labels_target.to(device)
-#
-#            optimizer.zero_grad()
-#            bboxes_pred, labels_pred = model(img)
-#            loss_value = criterion(bboxes_pred, bboxes_target, labels_pred, labels_target)
-#            loss_value.backward()
-#            optimizer.step()
-#            
-#            # update worker state
-#            imgCount += img.size(0)
-#            current_task.update_state(state='PROGRESS', meta={'done': imgCount, 'total': len(dataLoader.dataset), 'message': 'training'})
-#
-#        # all done; return state dict as bytes
+
+        print('this is where the training happens')
         return self.exportModelState(model)
-#
+        model.yolo_nn.fit_generator(generator = dataset, epochs = epochs) 
+
+        # all done; return state dict as bytes
+        return self.exportModelState(model)
+
     
     def inference(self, stateDict, data):
         '''

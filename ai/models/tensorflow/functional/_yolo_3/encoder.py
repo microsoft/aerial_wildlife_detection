@@ -1,9 +1,8 @@
 '''Encode object boxes and labels.'''
 import math
-import torch
 import numpy as np
 
-from .utils import meshgrid, box_iou, box_nms, change_box_order
+#from .utils import meshgrid, box_iou, box_nms, change_box_order
 
 def _interval_overlap(interval_a, interval_b):
     x1, x2 = interval_a
@@ -103,6 +102,8 @@ class DataEncoder:
                 yolo[b, grid_y, grid_x, max_index%3, 0:4] = box
                 yolo[b, grid_y, grid_x, max_index%3, 4  ] = 1.
                 yolo[b, grid_y, grid_x, max_index%3, 5+label] = 1
+
+                print(box)
 
 
         return imgs, [yolo_1, yolo_2, yolo_3]

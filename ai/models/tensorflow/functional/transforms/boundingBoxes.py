@@ -6,7 +6,7 @@
 
 import random
 import numpy as np      #TODO: replace np.random.choice with regular random.choice
-import torch
+#import torch
 import torchvision.transforms.functional as F
 from PIL import Image
 
@@ -98,12 +98,12 @@ def _clipPatch(img_in, bboxes_in, labels_in, patchSize, jitter=(0,0,), limitBord
             labels = labels.unsqueeze(0)
         numAnnotations = labels.size(0)
 
-    if isinstance(img_in, torch.Tensor):
-        sz = tuple((img_in.size(2), img_in.size(1)))
-        img = img_in.clone()
-    else:
-        sz = tuple((img_in.size[0], img_in.size[1]))
-        img = img_in.copy()
+ #   if isinstance(img_in, torch.Tensor):
+ #       sz = tuple((img_in.size(2), img_in.size(1)))
+ #       img = img_in.clone()
+ #   else:
+    sz = tuple((img_in.size[0], img_in.size[1]))
+    img = img_in.copy()
 
 
     # clip
@@ -116,7 +116,7 @@ def _clipPatch(img_in, bboxes_in, labels_in, patchSize, jitter=(0,0,), limitBord
     
     else:
         # clip at random
-        baseCoords = torch.tensor([np.random.choice(sz[0], 1), np.random.choice(sz[1], 1)], dtype=torch.float32).squeeze()
+        baseCoords = np.array([np.random.choice(sz[0], 1), np.random.choice(sz[1], 1)], dtype=np.float32).squeeze()
     
     # jitter
     jitterAmount = (2*jitter[0]*(random.random()-0.5), 2*jitter[1]*(random.random()-0.5),)
@@ -124,7 +124,7 @@ def _clipPatch(img_in, bboxes_in, labels_in, patchSize, jitter=(0,0,), limitBord
     baseCoords[1] += jitterAmount[1]
 
     # sanity check
-    baseCoords = torch.ceil(baseCoords).int()
+    baseCoords = np.ceil(baseCoords).int()
     if limitBorders:
         baseCoords[0] = max(0, baseCoords[0])
         baseCoords[1] = max(0, baseCoords[1])
@@ -136,12 +136,12 @@ def _clipPatch(img_in, bboxes_in, labels_in, patchSize, jitter=(0,0,), limitBord
 
 
     # do the clipping
-    if isinstance(img, torch.Tensor):
-        coordinates_input = tuple((coordinates[0], coordinates[1], min((sz[0]-coordinates[0]), coordinates[2]), min((sz[1]-coordinates[1]), coordinates[3])))
-        patch = torch.zeros((img.size(0), int(patchSize[1]), int(patchSize[0]),), dtype=img.dtype, device=img.device)
-        patch[:,0:coordinates_input[3],0:coordinates_input[2]] = img[:,coordinates_input[1]:(coordinates_input[1]+coordinates_input[3]), coordinates_input[0]:(coordinates_input[0]+coordinates_input[2])]
-    else:
-        patch = img.crop((coordinates[0], coordinates[1], coordinates[0]+coordinates[2], coordinates[1]+coordinates[3],))
+#    if isinstance(img, torch.Tensor):
+#        coordinates_input = tuple((coordinates[0], coordinates[1], min((sz[0]-coordinates[0]), coordinates[2]), min((sz[1]-coordinates[1]), coordinates[3])))
+#        patch = torch.zeros((img.size(0), int(patchSize[1]), int(patchSize[0]),), dtype=img.dtype, device=img.device)
+#        patch[:,0:coordinates_input[3],0:coordinates_input[2]] = img[:,coordinates_input[1]:(coordinates_input[1]+coordinates_input[3]), coordinates_input[0]:(coordinates_input[0]+coordinates_input[2])]
+#    else:
+    patch = img.crop((coordinates[0], coordinates[1], coordinates[0]+coordinates[2], coordinates[1]+coordinates[3],))
 
     
     # limit and translate bounding boxes
@@ -156,14 +156,14 @@ def _clipPatch(img_in, bboxes_in, labels_in, patchSize, jitter=(0,0,), limitBord
         # translate and limit to image borders
         bboxes[:,0] -= coords_f[0]
         bboxes[:,1] -= coords_f[1]
-        diffX = torch.zeros_like(bboxes[:,0]) - bboxes[:,0]
-        diffY = torch.zeros_like(bboxes[:,1]) - bboxes[:,1]
+        diffX = np.zeros_like(bboxes[:,0]) - bboxes[:,0]
+        diffY = np.zeros_like(bboxes[:,1]) - bboxes[:,1]
         bboxes[diffX>0,2] -= diffX[diffX>0]
         bboxes[diffY>0,3] -= diffY[diffY>0]
-        bboxes[:,0] = torch.max(torch.zeros_like(bboxes[:,0]), bboxes[:,0])
-        bboxes[:,1] = torch.max(torch.zeros_like(bboxes[:,1]), bboxes[:,1])
-        bboxes[:,2] = torch.min((patchSize[0]*torch.ones_like(bboxes[:,2]) - bboxes[:,0]), bboxes[:,2])
-        bboxes[:,3] = torch.min((patchSize[1]*torch.ones_like(bboxes[:,3]) - bboxes[:,1]), bboxes[:,3])
+        bboxes[:,0] = np.max(np.zeros_like(bboxes[:,0]), bboxes[:,0])
+        bboxes[:,1] = np.max(np.zeros_like(bboxes[:,1]), bboxes[:,1])
+        bboxes[:,2] = np.min((patchSize[0]*np.ones_like(bboxes[:,2]) - bboxes[:,0]), bboxes[:,2])
+        bboxes[:,3] = np.min((patchSize[1]*np.ones_like(bboxes[:,3]) - bboxes[:,1]), bboxes[:,3])
 
     return patch, bboxes, labels, coordinates
 

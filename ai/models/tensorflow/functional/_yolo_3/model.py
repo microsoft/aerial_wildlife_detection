@@ -5,6 +5,7 @@
 """
 
 
+from datetime import datetime
 
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Conv2D, Input, BatchNormalization, LeakyReLU, ZeroPadding2D, UpSampling2D, Dense, Flatten, Activation, Reshape, Lambda
@@ -244,7 +245,12 @@ class yolo_model():
         self.height = height
         self.yolo_nn = get_yolo_model(self.width, self.height, self.numClasses, trainable=self.alltrain, headtrainable=True)
 
-        self.state = (state if state is not None else 'weights/tmp_.h5')
+        timestampStr = datetime.now().strftime("%Y%m%d%H%M%S")
+
+        self.state = (state if state is not None else 'weights/' + timestampStr)
+
+
+
 
         if self.pretrained: 
             print('loading pretrained weights')
@@ -254,7 +260,8 @@ class yolo_model():
 
     def getStateDict(self):
         if self.state is not None:
-            self.yolo_nn.save_weights(self.state)
+            self.yolo_nn.save_weights(self.state + '.h5')
+            self.yolo_nn.save(self.state + '_full.h5')
 
         stateDict = {
             'model_state': self.state, 
@@ -278,7 +285,7 @@ class yolo_model():
         model = yolo_model(labelclassMap, state, width, height, pretrained)
         if state is not None:
             print('loading saved weights')
-            model.yolo_nn.load_weights(state)
+            model.yolo_nn.load_weights(state + '.h5')
         elif init_weights is not None:
             print('loading initial weights')
             model.yolo_nn.load_weights(init_weights)
