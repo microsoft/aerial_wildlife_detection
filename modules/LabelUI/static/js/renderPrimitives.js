@@ -186,10 +186,9 @@ class ImageElement extends AbstractRenderElement {
         var self = this;
         this.image.onload = function() {
             // calculate image bounds
-            var limit = Math.max(this.naturalWidth, this.naturalHeight);
             
-            var width = this.naturalWidth / limit;
-            var height = this.naturalHeight / limit;
+            var width = 1.0;
+            var height =1.0;
 
             self.bounds = [(1-width)/2, (1-height)/2, width, height];
 
