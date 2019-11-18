@@ -49,8 +49,8 @@ class yolo(GenericTFModel):
         # initialize model
         model, labelclassMap = self.initializeModel(stateDict, data, inputSize[0], inputSize[1])
 
-#
-#        # setup transform, data loader, dataset, optimizer, criterion
+
+        # setup transform, data loader, dataset, optimizer, criterion
         transform = parse_transforms(self.options['train']['transform'])
         dataEncoder = encoder.DataEncoder(numClasses=len(labelclassMap.keys()))  
         
@@ -72,8 +72,6 @@ class yolo(GenericTFModel):
 
         epochs = (self.options['train']['epochs'] if 'epochs' in self.options['train'] else 1)
 
-        print('this is where the training happens')
-        return self.exportModelState(model)
         model.yolo_nn.fit_generator(generator = dataset, epochs = epochs) 
 
         # all done; return state dict as bytes
