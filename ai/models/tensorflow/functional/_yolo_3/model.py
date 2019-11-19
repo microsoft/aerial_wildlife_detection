@@ -226,7 +226,7 @@ def get_yolo_model(in_w=416,in_h=416, num_class=80, trainable=False, headtrainab
         l_obj = Activation('sigmoid')(l_obj)
 
         # class scores
-        l_cls = crop(5,out_size)(final_large)
+        l_cls = crop(5,out_size)(final_shaped)
         l_cls = Activation('softmax')(l_cls)
 
         # combine results
