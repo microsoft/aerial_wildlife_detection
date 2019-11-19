@@ -74,6 +74,17 @@ def _clipPatch(img_in, bboxes_in, labels_in, patchSize, jitter=(0,0,), limitBord
         - coordinates:          tuple (X, Y, W, H coordinates of clipped patch)
     """
 
+    # debuggiang
+#    sz_orig = img_in.size
+#    img = img_in.resize(patchSize)
+#    sz_new = img.size
+#
+#    if bboxes_in is not None and len(bboxes_in) > 0:
+#        bboxes_in = _bboxResize(bboxes_in, sz_orig, sz_new)
+#
+#    return img, bboxes_in, labels_in, None
+    # end debugging
+
     # setup
     if isinstance(patchSize, int) or isinstance(patchSize, float):
         patchSize = tuple((patchSize, patchSize))
@@ -87,21 +98,14 @@ def _clipPatch(img_in, bboxes_in, labels_in, patchSize, jitter=(0,0,), limitBord
 
     if bboxes_in is None:
         numAnnotations = 0
-        bboxes = None
+        bboxes = bboxes_in
         labels = None
     else:
-        bboxes = bboxes_in.clone()
-        labels = labels_in.clone()
-        if bboxes.dim()==1:
-            bboxes = bboxes.unsqueeze(0)
-        if labels.dim()==0:
-            labels = labels.unsqueeze(0)
-        numAnnotations = labels.size(0)
 
- #   if isinstance(img_in, torch.Tensor):
- #       sz = tuple((img_in.size(2), img_in.size(1)))
- #       img = img_in.clone()
- #   else:
+        bboxes = bboxes_in.copy()
+        labels = np.array(labels_in)
+        numAnnotations = len(labels)
+
     sz = tuple((img_in.size[0], img_in.size[1]))
     img = img_in.copy()
 
@@ -124,15 +128,16 @@ def _clipPatch(img_in, bboxes_in, labels_in, patchSize, jitter=(0,0,), limitBord
     baseCoords[1] += jitterAmount[1]
 
     # sanity check
-    baseCoords = np.ceil(baseCoords).int()
+    baseCoords = np.ceil(baseCoords).astype(int)
     if limitBorders:
         baseCoords[0] = max(0, baseCoords[0])
         baseCoords[1] = max(0, baseCoords[1])
         baseCoords[0] = min(sz[0]-patchSize[0], baseCoords[0])
-        baseCoords[1] = min((sz[1]-patchSize[1]), baseCoords[1])
+        baseCoords[1] = min(sz[1]-patchSize[1], baseCoords[1])
 
     # assemble
-    coordinates = tuple((baseCoords[0].item(), baseCoords[1].item(), patchSize[0], patchSize[1]))
+    coordinates = tuple((baseCoords[0], baseCoords[1], patchSize[0], patchSize[1]))
+    
 
 
     # do the clipping
@@ -151,7 +156,7 @@ def _clipPatch(img_in, bboxes_in, labels_in, patchSize, jitter=(0,0,), limitBord
                 (bboxes[:,0] < (coords_f[0]+coords_f[2])) * (bboxes[:,1] < (coords_f[1]+coords_f[3]))
         
         bboxes = bboxes[valid,:]
-        labels = labels[valid]
+        labels = labels[valid].tolist()
 
         # translate and limit to image borders
         bboxes[:,0] -= coords_f[0]
@@ -160,10 +165,10 @@ def _clipPatch(img_in, bboxes_in, labels_in, patchSize, jitter=(0,0,), limitBord
         diffY = np.zeros_like(bboxes[:,1]) - bboxes[:,1]
         bboxes[diffX>0,2] -= diffX[diffX>0]
         bboxes[diffY>0,3] -= diffY[diffY>0]
-        bboxes[:,0] = np.max(np.zeros_like(bboxes[:,0]), bboxes[:,0])
-        bboxes[:,1] = np.max(np.zeros_like(bboxes[:,1]), bboxes[:,1])
-        bboxes[:,2] = np.min((patchSize[0]*np.ones_like(bboxes[:,2]) - bboxes[:,0]), bboxes[:,2])
-        bboxes[:,3] = np.min((patchSize[1]*np.ones_like(bboxes[:,3]) - bboxes[:,1]), bboxes[:,3])
+        bboxes[:,0] = np.maximum(np.zeros_like(bboxes[:,0]), bboxes[:,0])
+        bboxes[:,1] = np.maximum(np.zeros_like(bboxes[:,1]), bboxes[:,1])
+        bboxes[:,2] = np.minimum((patchSize[0]*np.ones_like(bboxes[:,2]) - bboxes[:,0]), bboxes[:,2])
+        bboxes[:,3] = np.minimum((patchSize[1]*np.ones_like(bboxes[:,3]) - bboxes[:,1]), bboxes[:,3])
 
     return patch, bboxes, labels, coordinates
 
@@ -210,6 +215,7 @@ class RandomClip(object):
     
 
     def __call__(self, img, bboxes=None, labels=None):
+
         if self.numClips>1:
             patch = []
             bboxes_out = []

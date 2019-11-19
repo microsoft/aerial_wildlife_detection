@@ -59,12 +59,12 @@ class DataEncoder:
         # do the logic to fill in the inputs and the output
         for b in range(batch_size):
 
-             
             # augment input image and fix object's position and size
             all_objs = boxes[b]
             obj_labl = labels[b]
-
-            for obj in range(all_objs.shape[0]):
+            if all_objs is None:
+                continue
+            for obj in range(len(obj_labl)):
 
                 box = all_objs[obj]
                 label = int(obj_labl[obj])
@@ -103,7 +103,6 @@ class DataEncoder:
                 yolo[b, grid_y, grid_x, max_index%3, 4  ] = 1.
                 yolo[b, grid_y, grid_x, max_index%3, 5+label] = 1
 
-                print(box)
 
 
         return imgs, [yolo_1, yolo_2, yolo_3]

@@ -7,7 +7,8 @@ dbUser=$(python util/configDef.py --section=Database --parameter=user)
 dbPassword=$(python util/configDef.py --section=Database --parameter=password)
 dbPort=$(python util/configDef.py --section=Database --parameter=port)
 
-sudo -u postgres dropdb $dbName
+sudo -u postgres dropdb $dbName  ## uncomment if db needs to be recreated
+sudo -u postgres psql -c "CREATE USER $dbUser WITH PASSWORD '$dbPassword';"   # comment if user already created
 
 sudo -u postgres psql -c "CREATE DATABASE $dbName WITH OWNER $dbUser CONNECTION LIMIT -1;"
 sudo -u postgres psql -c "GRANT CONNECT ON DATABASE $dbName TO $dbUser;"

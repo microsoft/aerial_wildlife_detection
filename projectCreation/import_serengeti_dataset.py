@@ -224,8 +224,8 @@ if __name__ == '__main__':
 
     
     # locate all label files
-    if args.label_folder is not None:
-#    if False:
+#    if args.label_folder is not None:
+    if False:
         print('\nLoading labels file...')
         with open(os.path.join(args.label_folder, 'annotations-species.yml'),'r') as f:
             all_imgs = yaml.load(f)

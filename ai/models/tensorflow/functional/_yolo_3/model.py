@@ -53,14 +53,19 @@ def anchors(i):
         return tf.exp(x) * anc 
     return Lambda(func)
 
-def positions(h,w):
-    def func(x):
+def positions():
+    def func(z):
+        x = z[0]
+        y = z[1]
         # compute grid factor and net factor
         grid_h      = tf.shape(x)[1]
         grid_w      = tf.shape(x)[2]
 
+        im_h      = tf.shape(y)[1]
+        im_w      = tf.shape(y)[2]
+
         grid_factor = tf.reshape(tf.cast([grid_w, grid_h], tf.float32), [1,1,1,1,2])
-        net_factor  = tf.reshape(tf.cast([w, h], tf.float32), [1,1,1,1,2])
+        net_factor  = tf.reshape(tf.cast([im_w, im_h], tf.float32), [1,1,1,1,2])
         
         cell_x = tf.cast(tf.reshape(tf.tile(tf.range(tf.maximum(grid_h,grid_w)), [tf.maximum(grid_h,grid_w)]), (1, tf.maximum(grid_h,grid_w), tf.maximum(grid_h,grid_w), 1, 1)),dtype=tf.float32)
 
@@ -72,11 +77,27 @@ def positions(h,w):
         return pred_box_xy 
     return Lambda(func)
 
+def reshape_last_layer(out_size):
+    def func(x):
+        # reshape last 2 dimensions 
+        in_b      = tf.shape(x)[0]
+        in_h      = tf.shape(x)[1]
+        in_w      = tf.shape(x)[2]
+        
+        final_l = tf.reshape(x, [in_b, in_h, in_w, 3, out_size])
+        return final_l
+
+    return Lambda(func)
+
+
+## NEED TO REMOVE IMAGE SHAPE FROM INPUTS AND USE ACTUAL VALUES
 def get_yolo_model(in_w=416,in_h=416, num_class=80, trainable=False, headtrainable=False):
 
     # for each box we have num_class outputs, 4 bbox coordinates, and 1 object confidence value
     out_size = num_class+5
-    input_image = Input(shape=( in_h,in_w, 3))
+    #input_image = Input(shape=( in_h,in_w, 3))
+    input_image = Input(shape=(None, None, 3))
+    #in_w, in_h, _ = input_image.input.shape
 
     # Layer  0 => 4
     x = _conv_block(input_image, [{'filter': 32, 'kernel': 3, 'stride': 1, 'bnorm': True, 'leaky': True, 'layer_idx': 0},
@@ -181,50 +202,85 @@ def get_yolo_model(in_w=416,in_h=416, num_class=80, trainable=False, headtrainab
         yolo_106 = _conv_block(x, [{'filter': 3*out_size, 'kernel': 1, 'stride': 1, 'bnorm': False, 'leaky': False, 'train': headtrainable,'layer_idx': 105}], skip=False, train=trainable)
 
 
-    final_large = Reshape((in_h//32,in_w//32,3,out_size))(yolo_82)
-    final_med = Reshape((in_h//16, in_w//16,3,out_size))(yolo_94)
-    final_small = Reshape((in_h//8,in_w//8,3,out_size))(yolo_106)
-    #output = [final_large, final_med, final_small]  
-    #model = Model(input_image,output)
-    #return model
+    # TEST CODE TIDY UP #
 
-    s_offs =crop(0,2)(final_small)
-    s_szs =crop(2,4)(final_small)
-    s_obj =crop(4,5)(final_small)
-    s_obj = Activation('sigmoid')(s_obj)
-    s_cls =crop(5,out_size)(final_small)
-    s_cls = Activation('softmax')(s_cls)
-    s_szs = anchors(2)(s_szs)
-    s_offs = Activation('sigmoid')(s_offs)
-    s_offs = positions(in_h,in_w)(s_offs)
-    s_out = concatenate([s_offs, s_szs, s_obj, s_cls])
+    final_layers = [yolo_82, yolo_94, yolo_106]
+    output = []
+    l_anchor = 0
 
-    m_offs =crop(0,2)(final_med)
-    m_szs =crop(2,4)(final_med)
-    m_obj =crop(4,5)(final_med)
-    m_obj = Activation('sigmoid')(m_obj)
-    m_cls =crop(5,out_size)(final_med)
-    m_cls = Activation('softmax')(m_cls)
-    m_szs = anchors(1)(m_szs)
-    m_offs = Activation('sigmoid')(m_offs)
-    m_offs = positions(in_h,in_w)(m_offs)
-    m_out = concatenate([m_offs, m_szs, m_obj, m_cls])
+    for fl in final_layers:
 
-    l_offs =crop(0,2)(final_large)
-    l_szs =crop(2,4)(final_large)
-    l_obj =crop(4,5)(final_large)
-    l_obj = Activation('sigmoid')(l_obj)
-    l_cls =crop(5,out_size)(final_large)
-    l_cls = Activation('softmax')(l_cls)
-    l_szs = anchors(0)(l_szs)
-    l_offs = Activation('sigmoid')(l_offs)
-    l_offs = positions(in_h,in_w)(l_offs)
-    l_out = concatenate([l_offs, l_szs, l_obj, l_cls])
+        final_shaped = reshape_last_layer(out_size)(fl)
+        # process centre points for grid offsets and convert to image coordinates
+        l_offs = crop(0,2)(final_shaped)
+        l_offs = Activation('sigmoid')(l_offs)
+        l_offs = positions()([l_offs, input_image])
 
-    output = [l_out, m_out, s_out]  
+        # process anchor boxes
+        l_szs = crop(2,4)(final_shaped)
+        l_szs = anchors(l_anchor)(l_szs)
+        l_anchor+=1
+
+        # object confidence
+        l_obj = crop(4,5)(final_shaped)
+        l_obj = Activation('sigmoid')(l_obj)
+
+        # class scores
+        l_cls = crop(5,out_size)(final_large)
+        l_cls = Activation('softmax')(l_cls)
+
+        # combine results
+        l_out = concatenate([l_offs, l_szs, l_obj, l_cls])
+        output.append(l_out)
 
     model = Model(input_image,output)
     return model
+    # END OF TEST #
+
+#    final_large = reshape_last_layer(out_size)(yolo_82)
+#    final_med = reshape_last_layer(out_size)(yolo_94)
+#    final_small = reshape_last_layer(out_size)(yolo_106)
+    #final_large = Reshape((in_h//32,in_w//32,3,out_size))(yolo_82)
+    #final_med = Reshape((in_h//16, in_w//16,3,out_size))(yolo_94)
+    #final_small = Reshape((in_h//8,in_w//8,3,out_size))(yolo_106)
+
+#    s_offs =crop(0,2)(final_small)
+#    s_szs =crop(2,4)(final_small)
+#    s_obj =crop(4,5)(final_small)
+#    s_obj = Activation('sigmoid')(s_obj)
+#    s_cls =crop(5,out_size)(final_small)
+#    s_cls = Activation('softmax')(s_cls)
+#    s_szs = anchors(2)(s_szs)
+#    s_offs = Activation('sigmoid')(s_offs)
+#    s_offs = positions(in_h,in_w)(s_offs)
+#    s_out = concatenate([s_offs, s_szs, s_obj, s_cls])
+#
+#    m_offs =crop(0,2)(final_med)
+#    m_szs =crop(2,4)(final_med)
+#    m_obj =crop(4,5)(final_med)
+#    m_obj = Activation('sigmoid')(m_obj)
+#    m_cls =crop(5,out_size)(final_med)
+#    m_cls = Activation('softmax')(m_cls)
+#    m_szs = anchors(1)(m_szs)
+#    m_offs = Activation('sigmoid')(m_offs)
+#    m_offs = positions(in_h,in_w)(m_offs)
+#    m_out = concatenate([m_offs, m_szs, m_obj, m_cls])
+
+#    l_offs =crop(0,2)(final_large)
+#    l_szs =crop(2,4)(final_large)
+#    l_obj =crop(4,5)(final_large)
+#    l_obj = Activation('sigmoid')(l_obj)
+#    l_cls =crop(5,out_size)(final_large)
+#    l_cls = Activation('softmax')(l_cls)
+#    l_szs = anchors(0)(l_szs)
+#    l_offs = Activation('sigmoid')(l_offs)
+#    l_offs = positions(in_h,in_w)(l_offs)
+#    l_out = concatenate([l_offs, l_szs, l_obj, l_cls])
+
+#    output = [l_out, m_out, s_out]  
+#
+#    model = Model(input_image,output)
+#    return model
 
 
 
@@ -282,7 +338,7 @@ class yolo_model():
         init_weights = (stateDict['init_weights'] if 'init_weights' in stateDict else None)
 
         # return model
-        model = yolo_model(labelclassMap, state, width, height, pretrained)
+        model = yolo_model(labelclassMap, state, width, height, pretrained if state is None else False)
         if state is not None:
             print('loading saved weights')
             model.yolo_nn.load_weights(state + '.h5')

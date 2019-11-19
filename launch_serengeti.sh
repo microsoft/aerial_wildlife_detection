@@ -4,6 +4,7 @@
 #
 # 2019 Benjamin Kellenberger
 
+
 export AIDE_MODULES=LabelUI,AIController,FileServer
 export AIDE_CONFIG_PATH=serengeti/serengeti-traps.ini
 
@@ -11,6 +12,8 @@ export AIDE_CONFIG_PATH=serengeti/serengeti-traps.ini
 host=$(python util/configDef.py --section=Server --parameter=host)
 port=$(python util/configDef.py --section=Server --parameter=port)
 
+
+nohup celery -A modules.AIController.backend.celery_interface worker -Q aide &
 
 # HTTP server
 gunicorn application:app --bind=$host:$port --workers=1

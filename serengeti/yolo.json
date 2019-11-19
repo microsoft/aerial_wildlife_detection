@@ -13,7 +13,7 @@
 	"train": {
         "width": 864,
         "height": 864,
-        "batch_size": 1,
+        "batch_size": 4,
 		"dataLoader": {
 			"kwargs": {
 				"shuffle": true,
@@ -30,9 +30,12 @@
 			"class": "ai.models.tensorflow.yolo.boundingBoxes.Compose",
 			"kwargs": {
 				"transforms": [{
-						"class": "ai.models.tensorflow.yolo.boundingBoxes.Resize",
+						"class": "ai.models.tensorflow.yolo.boundingBoxes.RandomClip",
 						"kwargs": {
-							"size": [864, 864]
+							"patchSize": [864, 864], 
+							"jitter": 0, 
+							"limitBorders": true, 
+							"objectProbability": 1 
 						}
 					},
 					{
