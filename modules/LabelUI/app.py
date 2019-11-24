@@ -6,6 +6,7 @@
 
 import os
 import cgi
+from uuid import UUID
 import bottle
 from bottle import request, response, static_file, redirect, abort, SimpleTemplate
 from .backend.middleware import DBMiddleware
@@ -152,9 +153,13 @@ class LabelUI():
         @self.app.post('/<project>/getImages')
         def get_images(project):
             if self.loginCheck(project=project):
+                hideGoldenQuestionInfo = True
+                if self.loginCheck(project=project, admin=True):
+                    hideGoldenQuestionInfo = False
+
                 username = cgi.escape(request.get_cookie('username'))
                 dataIDs = request.json['imageIDs']
-                json = self.middleware.getBatch_fixed(project, username, dataIDs)
+                json = self.middleware.getBatch_fixed(project, username, dataIDs, hideGoldenQuestionInfo)
                 return json
             else:
                 abort(401, 'not logged in')
@@ -163,6 +168,10 @@ class LabelUI():
         @self.app.get('/<project>/getLatestImages')
         def get_latest_images(project):
             if self.loginCheck(project=project):
+                hideGoldenQuestionInfo = True
+                if self.loginCheck(project=project, admin=True):
+                    hideGoldenQuestionInfo = False
+
                 username = cgi.escape(request.get_cookie('username'))
                 try:
                     limit = int(request.query['limit'])
@@ -176,7 +185,7 @@ class LabelUI():
                     subset = int(request.query['subset'])
                 except:
                     subset = 'default'  
-                json = self.middleware.getBatch_auto(project=project, username=username, order=order, subset=subset, limit=limit)
+                json = self.middleware.getBatch_auto(project=project, username=username, order=order, subset=subset, limit=limit, hideGoldenQuestionInfo=hideGoldenQuestionInfo)
 
                 return json
             else:
@@ -203,10 +212,14 @@ class LabelUI():
             if not self.loginCheck(project=project, admin=True):
                 # user no admin: can only query their own labels
                 users = [username]
+                hideGoldenQuestionInfo = True
             
             elif not self.loginCheck(project=project):
                 # not logged in, resp. not authorized for project
                 abort(401, 'unauthorized')
+
+            else:
+                hideGoldenQuestionInfo = False
                 
             try:
                 minTimestamp = request.json['minTimestamp']
@@ -224,9 +237,13 @@ class LabelUI():
                 limit = request.json['limit']
             except:
                 limit = None
+            try:
+                goldenQuestionsOnly = request.json['goldenQuestionsOnly']
+            except:
+                goldenQuestionsOnly = False
 
             # query and return
-            json = self.middleware.getBatch_timeRange(project, minTimestamp, maxTimestamp, users, skipEmpty, limit)
+            json = self.middleware.getBatch_timeRange(project, minTimestamp, maxTimestamp, users, skipEmpty, limit, goldenQuestionsOnly, hideGoldenQuestionInfo)
             return json
 
 
@@ -257,9 +274,13 @@ class LabelUI():
                 skipEmpty = request.json['skipEmpty']
             except:
                 skipEmpty = False
+            try:
+                goldenQuestionsOnly = request.json['goldenQuestionsOnly']
+            except:
+                goldenQuestionsOnly = False
 
             # query and return
-            json = self.middleware.get_timeRange(project, users, skipEmpty)
+            json = self.middleware.get_timeRange(project, users, skipEmpty, goldenQuestionsOnly)
             return json
 
 
@@ -285,3 +306,29 @@ class LabelUI():
                     }
             else:
                 abort(401, 'not logged in')
+
+        
+        @self.app.post('/<project>/setGoldenQuestions')
+        def set_golden_questions(project):
+            if self.demoMode:
+                return { 'status': 'not allowed in demo mode' }
+            
+            if self.loginCheck(project=project, admin=True):
+                # parse and check validity of submissions
+                submissions = request.json
+                try:
+                    submissions = submissions['goldenQuestions']
+                    if not isinstance(submissions, dict):
+                        abort(400, 'malformed submissions')
+                    submissions_ = []
+                    for key in submissions.keys():
+                        submissions_.append(tuple((UUID(key), bool(submissions[key]),)))
+                except:
+                    abort(400, 'malformed submissions')
+
+                status = self.middleware.setGoldenQuestions(project, tuple(submissions_))
+
+                return { 'status': status }
+
+            else:
+                abort(403, 'forbidden')

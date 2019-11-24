@@ -342,7 +342,8 @@ class UIControlHandler {
                     dataType: 'json',
                     data: JSON.stringify({
                         // users: [],  //TODO: implement for admins
-                        skipEmpty: $('#review-skip-empty').prop('checked')
+                        skipEmpty: $('#review-skip-empty').prop('checked'),
+                        goldenQuestionsOnly: $('#review-golden-questions-only').prop('checked')
                     }),
                     success: function(data) {
                         if(data.hasOwnProperty('error')) {
@@ -378,6 +379,7 @@ class UIControlHandler {
             $('#imorder-auto').change(onChange);
             $('#imorder-review').change(onChange);
             $('#review-skip-empty').change(onChange);
+            $('#review-golden-questions-only').change(onChange);
 
             $('#review-timerange').on({
                 'input': function() {

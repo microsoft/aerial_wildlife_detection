@@ -78,7 +78,7 @@ class SQLStringBuilder:
             usernameString = ''
 
         queryStr = sql.SQL('''
-            SELECT id, image, cType, viewcount, EXTRACT(epoch FROM last_checked) as last_checked, filename, {allCols} FROM (
+            SELECT id, image, cType, viewcount, EXTRACT(epoch FROM last_checked) as last_checked, filename, isGoldenQuestion, {allCols} FROM (
                 SELECT id AS image, filename FROM {id_img}
                 WHERE id IN %s
             ) AS img
@@ -162,23 +162,26 @@ class SQLStringBuilder:
                 - 'forceUnlabeled': images must not have been viewed by the current user
             - demoMode: set to True to disable sorting criterion and return images in random
                         order instead.
+            
+            Note: images market with "isGoldenQuestion" = True will be prioritized if their view-
+                  count by the current user is 0.
         '''
 
         # column names
         fields_anno, fields_pred, fields_union = self._assemble_colnames(annotationType, predictionType)
 
         # subset selection fragment
-        subsetFragment = ''
+        subsetFragment = 'WHERE isGoldenQuestion = FALSE'
         orderSpec = ''
         if subset == 'forceLabeled':
-            subsetFragment = 'WHERE viewcount > 0'
+            subsetFragment = 'WHERE viewcount > 0 AND isGoldenQuestion = FALSE'
         elif subset == 'forceUnlabeled':
-            subsetFragment = 'WHERE viewcount IS NULL OR viewcount = 0'
+            subsetFragment = 'WHERE (viewcount IS NULL OR viewcount = 0) AND isGoldenQuestion = FALSE'
 
         if order == 'unlabeled':
-            orderSpec = 'ORDER BY viewcount ASC NULLS FIRST, annoCount ASC NULLS FIRST, score DESC NULLS LAST'
+            orderSpec = 'ORDER BY isgoldenquestion DESC NULLS LAST, viewcount ASC NULLS FIRST, annoCount ASC NULLS FIRST, score DESC NULLS LAST'
         elif order == 'labeled':
-            orderSpec = 'ORDER BY viewcount DESC NULLS LAST, score DESC NULLS LAST'
+            orderSpec = 'ORDER BY viewcount DESC NULLS LAST, isgoldenquestion DESC NULLS LAST, score DESC NULLS LAST'
         orderSpec += ', timeCreated DESC'
 
         usernameString = 'WHERE username = %s'
@@ -188,8 +191,14 @@ class SQLStringBuilder:
 
 
         queryStr = sql.SQL('''
-            SELECT id, image, cType, viewcount, EXTRACT(epoch FROM last_checked) as last_checked, filename, {allCols} FROM (
-            SELECT id AS image, filename, viewcount, annoCount, last_checked, score, timeCreated FROM {id_img} AS img
+            SELECT id, image, cType, viewcount, EXTRACT(epoch FROM last_checked) as last_checked, filename, isGoldenQuestion, {allCols} FROM (
+            SELECT id AS image, filename, 0 AS viewcount, 0 AS annoCount, NULL AS last_checked, 1E9 AS score, NULL AS timeCreated, isGoldenQuestion FROM {id_img} AS img
+            WHERE isGoldenQuestion = TRUE AND id NOT IN (
+                SELECT image FROM {id_iu}
+                WHERE username = %s
+            )
+            UNION ALL
+            SELECT id AS image, filename, viewcount, annoCount, last_checked, score, timeCreated, isGoldenQuestion FROM {id_img} AS img
             LEFT OUTER JOIN (
                 SELECT * FROM {id_iu}
             ) AS iu ON img.id = iu.image
@@ -311,7 +320,7 @@ class SQLStringBuilder:
 
 
 
-    def getDateQueryString(self, project, annotationType, minAge, maxAge, userNames, skipEmptyImages):
+    def getDateQueryString(self, project, annotationType, minAge, maxAge, userNames, skipEmptyImages, goldenQuestionsOnly):
         '''
             Assembles a DB query string that returns images between a time range.
             Useful for reviewing existing annotations.
@@ -324,6 +333,8 @@ class SQLStringBuilder:
                          images are filtered according to any of the names within.
                          If None, no user restriction is placed.
             - skipEmptyImages: if True, images without an annotation will be ignored.
+            - goldenQuestionsOnly: if True, images without flag isGoldenQuestion =
+                                   True will be ignored.
         '''
 
         # column names
@@ -360,10 +371,17 @@ class SQLStringBuilder:
         else:
             skipEmptyString = sql.SQL('')
 
+        # golden questions
+        if goldenQuestionsOnly:
+            goldenQuestionsString = sql.SQL('WHERE isGoldenQuestion = TRUE')
+        else:
+            goldenQuestionsString = sql.SQL('')
+
 
         queryStr = sql.SQL('''
-            SELECT id, image, cType, username, viewcount, EXTRACT(epoch FROM last_checked) as last_checked, filename, {annoCols} FROM (
-                SELECT id AS image, filename FROM {id_image}
+            SELECT id, image, cType, username, viewcount, EXTRACT(epoch FROM last_checked) as last_checked, filename, isGoldenQuestion, {annoCols} FROM (
+                SELECT id AS image, filename, isGoldenQuestion FROM {id_image}
+                {goldenQuestionsString}
             ) AS img
             JOIN (SELECT image AS iu_image, viewcount, last_checked, username FROM {id_iu}
             {usernameString}
@@ -382,7 +400,8 @@ class SQLStringBuilder:
             id_anno=sql.Identifier(project, 'annotation'),
             usernameString=sql.SQL(usernameString),
             timestampString=sql.SQL(timestampString),
-            skipEmptyString=skipEmptyString
+            skipEmptyString=skipEmptyString,
+            goldenQuestionsString=goldenQuestionsString
         )
 
         return queryStr
@@ -463,7 +482,7 @@ class SQLStringBuilder:
         # return sql
 
 
-    def getTimeRangeQueryString(self, project, userNames, skipEmptyImages):
+    def getTimeRangeQueryString(self, project, userNames, skipEmptyImages, goldenQuestionsOnly):
         '''
             Assembles a DB query string that returns a minimum and maximum timestamp
             between which the image(s) have been annotated.
@@ -473,6 +492,8 @@ class SQLStringBuilder:
                          images are filtered according to any of the names within.
                          If None, no user restriction is placed.
             - skipEmptyImages: if True, images without an annotation will be ignored.
+            - goldenQuestionsOnly: if True, images without flag isGoldenQuestion =
+                                   True will be ignored.
         '''
 
         # params
@@ -492,17 +513,31 @@ class SQLStringBuilder:
         else:
             skipEmptyString = sql.SQL('')
 
+        if goldenQuestionsOnly:
+            goldenQuestionsString = sql.SQL('''
+            JOIN (
+                SELECT id FROM {id_img}
+                WHERE isGoldenQuestion = TRUE
+            ) AS imgQ ON query.id = imgQ.id
+            ''').format(
+                id_img=sql.Identifier(project, 'image')
+            )
+        else:
+            goldenQuestionsString = sql.SQL('')
+
         queryStr = sql.SQL('''
             SELECT EXTRACT(epoch FROM MIN(last_checked)) AS minTimestamp, EXTRACT(epoch FROM MAX(last_checked)) AS maxTimestamp
             FROM (
-                SELECT iu.image, last_checked FROM {id_iu} AS iu
+                SELECT iu.image AS id, last_checked FROM {id_iu} AS iu
                 {skipEmptyString}
                 {usernameString}
-            ) AS query;
+            ) AS query
+            {goldenQuestionsString};
         ''').format(
             id_iu=sql.Identifier(project, 'image_user'),
             usernameString=sql.SQL(usernameString),
-            skipEmptyString=skipEmptyString)
+            skipEmptyString=skipEmptyString,
+            goldenQuestionsString=goldenQuestionsString)
 
         return queryStr
 

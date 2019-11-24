@@ -13,6 +13,11 @@ class AbstractDataEntry {
        this.canvasID = entryID + '_canvas';
        this.fileName = properties['fileName'];
        this.disableInteractions = disableInteractions;
+       if(window.isAdmin && properties.hasOwnProperty('isGoldenQuestion')) {
+            this.isGoldenQuestion = properties['isGoldenQuestion'];
+       } else {
+            this.isGoldenQuestion = false;
+       }
 
        this._setup_viewport();
        this._setup_markup();
@@ -34,6 +39,43 @@ class AbstractDataEntry {
        if(event.shiftKey) return;
        window.activeEntryID = this.entryID;
        window.dataHandler.refreshActiveAnnotations();      //TODO: ugly hack...
+   }
+
+   _toggleGoldenQuestion() {
+        /*
+                Posts to the server to flip the bool about the entry
+                being a golden question (if user is admin).
+        */
+        if(!window.isAdmin) return;
+
+        var self = this;
+        self.isGoldenQuestion = !self.isGoldenQuestion;
+        var goldenQuestions = {};
+        goldenQuestions[self.entryID] = self.isGoldenQuestion;
+
+        $.ajax({
+            url: 'setGoldenQuestions',
+            method: 'POST',
+            contentType: "application/json; charset=utf-8",
+            dataType: 'json',
+            data: JSON.stringify({
+                goldenQuestions: goldenQuestions
+            }),
+            success: function(data) {
+                if(data.hasOwnProperty('status') && data['status'] === 0) {
+                    // change successful; set flag accordingly
+                    if(self.isGoldenQuestion) {
+                        self.flag.attr('src', 'static/img/controls/flag_active.svg');
+                    } else {
+                        self.flag.attr('src', 'static/img/controls/flag.svg');
+                    }
+                }
+            },
+            error: function(data) {
+                console.log('ERROR')
+                console.log(data);
+            }
+        })
    }
 
    _setup_viewport() {
@@ -231,16 +273,31 @@ class AbstractDataEntry {
    }
 
    _setup_markup() {
-       // var colSize = Math.round(12 / window.numImages_x);  // for bootstrap
-       this.markup = $('<div class="entry"></div>');
-       this.markup.append(this.canvas);
-       var self = this;
-       if(!this.disableInteractions)
-           this.markup.on('click', (self._click).bind(self));
+        // var colSize = Math.round(12 / window.numImages_x);  // for bootstrap
+        this.markup = $('<div class="entry"></div>');
+        this.markup.append(this.canvas);
+        var self = this;
+        if(!this.disableInteractions)
+            this.markup.on('click', (self._click).bind(self));
+
+        // flag for golden questions (if admin)
+        if(window.isAdmin) {
+            this.flag = $('<img class="golden-question-flag" title="toggle golden question" />');
+            if(self.isGoldenQuestion) {
+                this.flag.attr('src', 'static/img/controls/flag_active.svg');
+            } else {
+                this.flag.attr('src', 'static/img/controls/flag.svg');
+            }
+            this.flag.click(function() {
+                // toggle golden question on server
+                self._toggleGoldenQuestion();
+            });
+            this.markup.append(this.flag);
+        }
    }
 
    getImageURI() {
-       return window.dataServerURI + this.fileName;    // + '?' + Date.now();
+        return window.dataServerURI + this.fileName;    // + '?' + Date.now();
    }
 
    getProperties(minimal, onlyUserAnnotations) {

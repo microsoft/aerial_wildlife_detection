@@ -69,7 +69,8 @@ MODIFICATIONS_sql = [
     'ALTER TABLE {schema}.annotation DROP CONSTRAINT annotation_username_fkey;',
     'ALTER TABLE {schema}.annotation ADD CONSTRAINT annotation_username_fkey FOREIGN KEY (username) REFERENCES aide_admin.USER (name);',
     'ALTER TABLE {schema}.cnnstate ADD COLUMN IF NOT EXISTS model_library VARCHAR',
-    'ALTER TABLE {schema}.cnnstate ADD COLUMN IF NOT EXISTS alCriterion_library VARCHAR'
+    'ALTER TABLE {schema}.cnnstate ADD COLUMN IF NOT EXISTS alCriterion_library VARCHAR',
+    'ALTER TABLE {schema}.image ADD COLUMN IF NOT EXISTS isGoldenQuestion BOOLEAN NOT NULL DEFAULT FALSE'
 ]
 
 
@@ -297,9 +298,9 @@ if __name__ == '__main__':
     # add authentication
     dbConn.execute('''
             INSERT INTO aide_admin.authentication (username, project, isAdmin)
-            SELECT name, {schema}, isAdmin FROM {schema}.user
+            SELECT name, '{schema}', isAdmin FROM {schema}.user
             WHERE name IN (SELECT name FROM aide_admin.user)
-            ON CONFLICT (username) DO NOTHING;
+            ON CONFLICT (username, project) DO NOTHING;
         '''.format(schema=config.getProperty('Database', 'schema')),
         None,
         None)

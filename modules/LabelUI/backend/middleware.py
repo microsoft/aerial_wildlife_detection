@@ -89,7 +89,7 @@ class DBMiddleware():
         # }
 
 
-    def _assemble_annotations(self, project, cursor):
+    def _assemble_annotations(self, project, cursor, hideGoldenQuestionInfo):
         response = {}
         while True:
             b = cursor.fetchone()
@@ -113,6 +113,9 @@ class DBMiddleware():
                     response[imgID]['last_checked'] = last_checked
                 else:
                     response[imgID]['last_checked'] = max(response[imgID]['last_checked'], last_checked)
+
+            if not hideGoldenQuestionInfo:
+                response[imgID]['isGoldenQuestion'] = b['isgoldenquestion']
 
             # parse annotations and predictions
             entryID = str(b['id'])
@@ -296,7 +299,7 @@ class DBMiddleware():
         return classdef
 
 
-    def getBatch_fixed(self, project, username, data):
+    def getBatch_fixed(self, project, username, data, hideGoldenQuestionInfo=True):
         '''
             Returns entries from the database based on the list of data entry identifiers specified.
         '''
@@ -311,7 +314,7 @@ class DBMiddleware():
 
         with self.dbConnector.execute_cursor(queryStr, queryVals) as cursor:
             try:
-                response = self._assemble_annotations(project, cursor)
+                response = self._assemble_annotations(project, cursor, hideGoldenQuestionInfo)
                 # self.dbConnector.conn.commit()
             except Exception as e:
                 print(e)
@@ -322,7 +325,7 @@ class DBMiddleware():
         return { 'entries': response }
         
 
-    def getBatch_auto(self, project, username, order='unlabeled', subset='default', limit=None):
+    def getBatch_auto(self, project, username, order='unlabeled', subset='default', limit=None, hideGoldenQuestionInfo=True):
         '''
             TODO: description
         '''
@@ -337,17 +340,17 @@ class DBMiddleware():
             limit = min(int(limit), 128)
 
         # parse results
-        queryVals = (username,limit,username,)
+        queryVals = (username,username,limit,username,)
         if projImmutables['demoMode']:
             queryVals = (limit,)
 
         with self.dbConnector.execute_cursor(queryStr, queryVals) as cursor:
-            response = self._assemble_annotations(project, cursor)
+            response = self._assemble_annotations(project, cursor, hideGoldenQuestionInfo)
 
         return { 'entries': response }
 
 
-    def getBatch_timeRange(self, project, minTimestamp, maxTimestamp, userList, skipEmptyImages=False, limit=None):
+    def getBatch_timeRange(self, project, minTimestamp, maxTimestamp, userList, skipEmptyImages=False, limit=None, goldenQuestionsOnly=False, hideGoldenQuestionInfo=True):
         '''
             Returns images that have been annotated within the given time range and/or
             by the given user(s). All arguments are optional.
@@ -355,7 +358,7 @@ class DBMiddleware():
         '''
         # query string
         projImmutables = self.get_project_immutables(project)
-        queryStr = self.sqlBuilder.getDateQueryString(project, projImmutables['annotationType'], minTimestamp, maxTimestamp, userList, skipEmptyImages)
+        queryStr = self.sqlBuilder.getDateQueryString(project, projImmutables['annotationType'], minTimestamp, maxTimestamp, userList, skipEmptyImages, goldenQuestionsOnly)
 
         # check validity and provide arguments
         queryVals = []
@@ -381,7 +384,7 @@ class DBMiddleware():
         # query and parse results
         with self.dbConnector.execute_cursor(queryStr, tuple(queryVals)) as cursor:
             try:
-                response = self._assemble_annotations(project, cursor)
+                response = self._assemble_annotations(project, cursor, hideGoldenQuestionInfo)
                 # self.dbConnector.conn.commit()
             except Exception as e:
                 print(e)
@@ -392,7 +395,7 @@ class DBMiddleware():
         return { 'entries': response }
 
     
-    def get_timeRange(self, project, userList, skipEmptyImages=False):
+    def get_timeRange(self, project, userList, skipEmptyImages=False, goldenQuestionsOnly=False):
         '''
             Returns two timestamps denoting the temporal limits within which
             images have been viewed by the users provided in the userList.
@@ -402,9 +405,11 @@ class DBMiddleware():
                         checked.
             - skipEmptyImages: if True, only images that contain at least one
                                annotation will be considered.
+            - goldenQuestionsOnly: if True, only images flagged as golden questions
+                                   will be shown.
         '''
         # query string
-        queryStr = self.sqlBuilder.getTimeRangeQueryString(project, userList, skipEmptyImages)
+        queryStr = self.sqlBuilder.getTimeRangeQueryString(project, userList, skipEmptyImages, goldenQuestionsOnly)
 
         arguments = (None if userList is None else tuple(userList))
         result = self.dbConnector.execute(queryStr, (arguments,), numReturn=1)
@@ -424,10 +429,9 @@ class DBMiddleware():
         '''
             Sends user-provided annotations to the database.
         '''
-
         projImmutables = self.get_project_immutables(project)
         if projImmutables['demoMode']:
-            return 0
+            return 1
 
         # assemble values
         colnames = getattr(QueryStrings_annotation, projImmutables['annotationType']).value
@@ -590,5 +594,26 @@ class DBMiddleware():
         )
         self.dbConnector.insert(queryStr, viewcountValues)
 
+        return 0
+
+
+    def setGoldenQuestions(self, project, submissions):
+        '''
+            Receives an iterable of tuples (uuid, bool) and updates the
+            property "isGoldenQuestion" of the images accordingly.
+        '''
+        projImmutables = self.get_project_immutables(project)
+        if projImmutables['demoMode']:
+            return 1
+        
+        queryStr = sql.SQL('''
+            UPDATE {id_img} AS img SET isGoldenQuestion = c.isGoldenQuestion
+            FROM (VALUES %s)
+            AS c (id, isGoldenQuestion)
+            WHERE c.id = img.id;
+        ''').format(
+            id_img=sql.Identifier(project, 'image')
+        )
+        self.dbConnector.insert(queryStr, submissions)
 
         return 0

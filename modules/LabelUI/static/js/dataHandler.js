@@ -205,6 +205,7 @@ class DataHandler {
         // get properties
         var minTimestamp = parseFloat($('#review-timerange').val());  ///1000;
         var skipEmptyImgs = $('#review-skip-empty').prop('checked');
+        var goldenQuestionsOnly = $('#review-golden-questions-only').prop('checked');
         var userNames = [];
         if(window.uiControlHandler.hasOwnProperty('reviewUsersTable')) {
             // user is admin; check which names are selected
@@ -226,6 +227,7 @@ class DataHandler {
                 minTimestamp: minTimestamp,
                 users: userNames,
                 skipEmpty: skipEmptyImgs,
+                goldenQuestionsOnly: goldenQuestionsOnly,
                 limit: this.numImagesPerBatch
             }),
             success: function(data) {
