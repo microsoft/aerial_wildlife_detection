@@ -1361,15 +1361,13 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
 
             // paint with brush at current position
             if(this.mouseDown) {
-                //TODO: incorrect:
-                // var canvasScale = [
-                //     this.viewport.canvas.width() / this.viewport.canvas[0].width, /// (this.viewport.validArea[3]-this.viewport.validArea[1]),
-                //     this.viewport.canvas.height() / this.viewport.canvas[0].height /// (this.viewport.validArea[2]-this.viewport.validArea[0]),
-                // ];
-                var canvasScale = [1.0, 1.0];
+                var canvasScale = [
+                    this.viewport.canvas.width() / this.imageEntry.image.naturalWidth,
+                    this.viewport.canvas.height() / this.imageEntry.image.naturalHeight
+                ];
                 var brushSize = [
-                    window.uiControlHandler.segmentation_properties.brushSize / canvasScale[1], //this.viewport.validArea[3] * canvasScale,
-                    window.uiControlHandler.segmentation_properties.brushSize / canvasScale[0]  //this.viewport.validArea[2] * canvasScale
+                    window.uiControlHandler.segmentation_properties.brushSize / canvasScale[1],
+                    window.uiControlHandler.segmentation_properties.brushSize / canvasScale[0]
                 ];
                 if(window.uiControlHandler.getAction() === ACTIONS.REMOVE_ANNOTATIONS || event.altKey) {
                     this.segMap.clear(mousePos_abs,
