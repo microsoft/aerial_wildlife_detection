@@ -79,7 +79,7 @@ class SQLStringBuilder:
 
         queryStr = sql.SQL('''
             SELECT id, image, cType, viewcount, EXTRACT(epoch FROM last_checked) as last_checked, filename, isGoldenQuestion, {allCols} FROM (
-                SELECT id AS image, filename FROM {id_img}
+                SELECT id AS image, filename, isGoldenQuestion FROM {id_img}
                 WHERE id IN %s
             ) AS img
             LEFT OUTER JOIN (
