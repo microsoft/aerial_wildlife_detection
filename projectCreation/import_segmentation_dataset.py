@@ -10,7 +10,7 @@ import argparse
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description='Parse YOLO annotations and import into database.')
+    parser = argparse.ArgumentParser(description='Parse segmentation annotations and import into database.')
     parser.add_argument('--settings_filepath', type=str, default='config/settings.ini', const=1, nargs='?',
                     help='Manual specification of the directory of the settings.ini file; only considered if environment variable unset (default: "config/settings.ini").')
     parser.add_argument('--label_folder', type=str,
