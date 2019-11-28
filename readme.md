@@ -8,13 +8,15 @@ Progress so far:
 
 :heavy_check_mark: Updated migration scripts.
 
-:white_check_mark: Mostly updated documentation (still need to remove obsolete configuration parameters).
+:white_check_mark: Update documentation. _Mostly completed (still need to remove obsolete configuration parameters)_
 
-:clock8: Mostly adapted AI backend for multi-project support. **TODO:** need to fix inference chaining, clean up message processor and watchdog code. Still needs extensive testing.
+:clock8: Adapt AI backend for multi-project support. _Mostly completed_ **TODO:** need to fix inference chaining, clean up message processor and watchdog code. Still needs extensive testing.
 
-:clock8: Update data import scripts (or replace with GUI solution).
+:clock8: Update data import scripts (and add GUI solution). _Work in progress_
 
-:clock8: Initiated meta modules for project overview and project settings editors for admins.
+:clock8: Create meta modules for project overview and project settings editors for admins.  _Work in progress_
+
+:clock8: Enable user evaluation.  _Work in progress; golden question functionality implemented_
 
 :clock8: Update and polish the UI (backdrops, etc.).
 
