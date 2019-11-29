@@ -178,12 +178,13 @@ class ImageElement extends AbstractRenderElement {
 
         if(this.image != null) {
             // calculate image bounds
-            let limit = Math.max(this.image.naturalWidth, this.image.naturalHeight);
-            let width = this.image.naturalWidth / limit;
-            let height = this.image.naturalHeight / limit;
-            this.bounds = [(1-width)/2, (1-height)/2, width, height];
+            let imageSize = [this.image.naturalWidth, this.image.naturalHeight];
+            let canvasSize = [this.viewport.canvas.width(), this.viewport.canvas.height()];
+            let scaleFactor = Math.min(canvasSize[0]/imageSize[0], canvasSize[1]/imageSize[1]);
+            let dimensions = [scaleFactor*imageSize[0]/canvasSize[0], scaleFactor*imageSize[1]/canvasSize[1]];
 
             // define valid canvas area as per image offset
+            this.bounds = [(1-dimensions[0])/2, (1-dimensions[1])/2, dimensions[0], dimensions[1]];
             this.viewport.setValidArea(this.bounds);
         }
         this.timeCreated = new Date();
