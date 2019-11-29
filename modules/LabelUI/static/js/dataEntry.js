@@ -19,6 +19,7 @@ class AbstractDataEntry {
         this.mouseDrag = false;
 
         var self = this;
+        this.imageEntry = null;
         this._setup_viewport();
         this._setup_markup();
         this.loadingPromise = this._loadImage(this.getImageURI()).then(image => {
@@ -346,7 +347,7 @@ class AbstractDataEntry {
 
    getTimeCreated() {
        // returns the timestamp of the image having successfully loaded
-       return this.imageEntry.getTimeCreated();
+       return (this.imageEntry === null? null : this.imageEntry.getTimeCreated());
    }
 
    getTimeRequired() {

@@ -1,0 +1,58 @@
+.main-container {
+    display: flex;
+    flex-direction: row;
+}
+
+.navigation-panel {
+    order: 1;
+    width: 300px;
+    padding: 10px;
+}
+
+.navigation-entry-container {
+    border-radius: 5px;
+    margin: 20px;
+    border: 1px solid #333;
+    background: #606060;
+}
+
+.navigation-entry {
+    color: white;
+    padding-left: 20px;
+    padding-top: 10px;
+    padding-right: 20px;
+    padding-bottom: 10px;
+    cursor: pointer;
+}
+
+.navigation-entry:hover {
+    background: #444444;
+}
+
+.navigation-sub-entry {
+    margin-left: 40px;
+}
+
+.active {
+    background: #AAAAAA;
+    cursor: default;
+    font-weight: bold;
+}
+
+.content-panel {
+    order: 3;
+    flex-grow: 1;
+    overflow-y: auto;
+    height: calc(100vh - 150px);
+}
+
+.settings-container {
+    color: white;
+    padding: 20px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+    max-height: calc(100vh - 210px);
+}
+.settings-group {
+    margin-bottom: 30px;
+}
