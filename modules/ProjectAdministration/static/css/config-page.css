@@ -5,6 +5,8 @@
 
 .navigation-panel {
     order: 1;
+    flex-grow: 0;
+    flex-shrink: 0;
     width: 300px;
     padding: 10px;
 }
@@ -30,7 +32,7 @@
 }
 
 .navigation-sub-entry {
-    margin-left: 40px;
+    padding-left: 50px;
 }
 
 .active {
@@ -44,6 +46,8 @@
     flex-grow: 1;
     overflow-y: auto;
     height: calc(100vh - 150px);
+    color: white;
+    padding-top: 30px;
 }
 
 .settings-container {

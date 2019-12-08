@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <title>AIde: configure</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous" />
+        <link rel="stylesheet" href="static/css/interface.css" />
+        <link rel="stylesheet" href="config/static/css/config-page.css" />
+        <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+        <script src="https://unpkg.com/tooltip.js"></script>
+        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+        <script type="text/javascript">
+            $(document).ready(function() {
+                let contentPane = $('#contents');
+                $('.navigation-entry').each(function() {
+                    let id = $(this).attr('id');
+                    $(this).click(function() {
+                        $.ajax({
+                            url: 'config/panels/' + id,
+                            success: function(data) {
+                                contentPane.empty();
+                                contentPane.append(data);
+
+                                $('.navigation-entry').each(function() {
+                                    $(this).toggleClass('active', false);
+                                });
+                                $('#'+id).toggleClass('active', true);
+                            }
+                        });
+                    });
+                });
+            });
+        </script>
+    </head>
+
+    <body>
+        <!-- Page Content -->
+        <div id="page-container">
+            <div id="content-wrapper">
+                <!-- Overlay -->
+                <div id="overlay" class="overlay">
+                    <div id="overlay-card" class="overlay-card card container"></div>
+                    <div id="overlay-loader">
+                        <div style="text-align:center;margin-bottom:20px;font-size:20px;text-align:center;">Loading...</div>
+                        <!-- blatant copy of MS azure's splash screen loading dots -->
+                        <div class="azure-loadingdots">
+                            <div></div>
+                            <div></div>
+                            <div></div>
+                            <div></div>
+                            <div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navigation bar -->
+                <nav class="navbar navbar-expand-lg navbar-light bg-dark border-bottom">
+                    <ul class="nav navbar-nav">
+                        <li class="nav-item header-text">
+                            <h1><a href="/">Projects</a> / <a href="/{{ projectShortname }}">{{ projectTitle }}</a> / Configure</h1>
+                        </li>
+                    </ul>
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item dropdown float-right">
+                            <div class="dropdown nav navbar-nav" style="float:right;">
+                                <a class="dropdown-toggle btn" id="navbar-user-dropdown" data-toggle="dropdown" href="#" style="color:white;font-weight:bold;" >{{ username }}</a>
+                                <ul class="dropdown-menu" role="menu" aria-labelledby="navbar-user-dropdown">
+                                    <li class="dropdown-item"><a id="logout" href="logout" class="btn btn-sm btn-danger">Log Out</a></li>
+                                </ul>
+                            </div>
+                        </li>
+                    </ul>
+                </nav>
+                <div class="grad-border-h"></div>
+
+                <div class="main-container">
+
+                    <div class="navigation-panel">
+                        <div class="navigation-entry-container">
+                            <div class="navigation-entry" id="overview">Overview</div>
+                            <div class="navigation-entry" id="userPerformance">User performance</div>
+                            <div class="navigation-entry active" id="projectSettings">Project settings</div>
+                            <div class="navigation-entry navigation-sub-entry active" id="general">General</div>
+                            <div class="navigation-entry navigation-sub-entry" id="userInterface">Interface</div>
+                            <div class="navigation-entry navigation-sub-entry" id="accessControl">Access control</div>
+                            <div class="navigation-entry navigation-sub-entry" id="aiModel">AI model</div>
+                            <div class="navigation-entry" id="data-management">Data management</div>
+                            <div class="navigation-entry navigation-sub-entry" id="dataDownload">Data download</div>
+                            <div class="navigation-entry navigation-sub-entry" id="dataUpload">Data upload</div>
+                        </div>
+                    </div>
+
+                    <div class="grad-border-v" style="order:2;flex-shrink:0;"></div>
+
+                    <div class="content-panel">
+                        <div id="contents"></div>
+
+                        <!-- Submit and abort buttons -->
+                        <div>
+                            <button class="btn btn-danger">Cancel</button>
+                            <button id="proj-settings-save-button" class="btn btn-primary" style="float:right">Save</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="page-footer" id="footer">
+                <div class="ms-logo">
+                    <a href="about"><img height="100%" src="static/img/ms_logo.png" /></a>
+                </div>
+            </footer>
+        </div>
+    </body>
+</html>

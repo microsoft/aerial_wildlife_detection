@@ -176,16 +176,17 @@ class AIController:
                 abort(401, 'unauthorized')
 
 
-        @self.app.get('/<project>/getAImodelSettings')
-        def get_ai_model_info(project):
-            '''
-                Returns the model class and settings for the AI model
-                and the AL criterion.
-            '''
-            if not self.login_check(project=project, admin=True):
-                abort(401, 'unauthorized')
+        #TODO: REPLACED WITH GENERIC FN OF ProjectAdministration
+        # @self.app.get('/<project>/getAImodelSettings')
+        # def get_ai_model_info(project):
+        #     '''
+        #         Returns the model class and settings for the AI model
+        #         and the AL criterion.
+        #     '''
+        #     if not self.login_check(project=project, admin=True):
+        #         abort(401, 'unauthorized')
             
-            return { 'settings': self.middleware.getProjectModelSettings(project) }
+        #     return { 'settings': self.middleware.getProjectModelSettings(project) }
 
     
         @self.app.get('/getAvailableAImodels')

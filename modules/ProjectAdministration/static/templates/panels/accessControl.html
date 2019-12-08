@@ -1,0 +1,103 @@
+<div>
+    <h2>Access control</h2>
+    <div class="settings-group">
+        <input type="checkbox" id="public-checkbox" />
+        <label for="public-checkbox">Public project</label>
+        <p style="font-style:italic;">If the project is set to be public, anyone with an account can join it
+        by following the respective link. Otherwise joining a project requires knowing the appropriate link below.</p>
+
+        <span>Secret link:</span>
+        <input id="field-secret-token" type="text" readonly style="width:calc(100% - 180px)" />
+        <button id="renew-secret-token" class="btn btn-sm btn-light">Reload</button>
+        <br />
+
+
+        <input type="checkbox" id="demo-checkbox" />
+        <label for="demo-checkbox">Demo mode</label>
+        <p style="font-style:italic;">Demo mode opens the project to anyone (even without an account)
+        and disables saving annotations and the AI model, if configured.
+        Existing annotations will be retained as they are.</p>
+    </div>
+
+
+    <!-- User list -->
+    <!-- TODO: implement search function to add new users -->
+    <div>
+        <span>Selection:</span>
+        <select id="selection-action">
+            <option value="make-admin">make project administrators</option>
+            <option value="deregister">remove from project</option>
+        </select>
+        <button id="selection-action-proceed" class="btn btn-sm btn-light">Apply</button>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <td><input type="checkbox" id="select-all-users" /></td>
+                <td>Name</td>
+                <td>Administrator</td>
+            </tr>
+        </thead>
+        <tbody id="users-list"></tbody>
+    </table>
+</div>
+
+<script type="text/javascript">
+    $(document).ready(function() {
+        // general settings
+        $.ajax({
+            url: 'getConfig',
+            method: 'POST',
+            data: JSON.stringify({
+                'parameters': [
+                    'ispublic',
+                    'secret_token',
+                    'demomode'
+                ]
+            }),
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            success: function(data) {
+                settings = data['settings'];
+                $('#public-checkbox').prop('checked', settings['ispublic']);
+                $('#field-secret-token').val(window.location.href.replace('/configuration', '/enroll') + '?t=' + settings['secret_token']);
+                $('#demo-checkbox').prop('checked', settings['demomode']);
+            },
+            error: function(data) {
+                console.log('ERROR:');
+                console.log(data);
+            }
+        });
+
+        // users list
+        let uList = $('#users-list');
+        $('#select-all-users').click(function() {
+            let isChecked = $(this).prop('checked');
+            $.each(uList.children(), function() {
+                $('#'+$(this).attr('id')+'__select').prop('checked', isChecked);
+            });
+        });
+
+        $.ajax({
+            url: 'getUsers',
+            method: 'GET',
+            success: function(data) {
+                if(data.hasOwnProperty('users')) {
+                    for(var i=0; i<data['users'].length; i++) {
+                        let uName = data['users'][i]['username'];
+                        let isAdmin = (data['users'][i]['isadmin'] ? 'Y' : 'N');    //TODO: replace with images
+                        var markup = $('<tr id="'+uName+'"></tr>');
+                        markup.append($('<td><input type="checkbox" id="'+uName+'__select" /></td>'));
+                        markup.append($('<td>'+uName+'</td>'));
+                        markup.append($('<td>'+isAdmin+'</td>'));
+                        uList.append(markup);
+                    }
+                }
+            },
+            error: function(data) {
+                console.log('ERROR:')
+                console.log(data);
+            }
+        })
+    });
+</script>

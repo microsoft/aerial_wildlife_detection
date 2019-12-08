@@ -17,10 +17,9 @@ from .backend.middleware import ProjectConfigMiddleware
 class ProjectConfigurator:
 
     def __init__(self, config, app):
-
         self.config = config
         self.app = app
-        self.staticDir = 'modules/ProjectConfiguration/static'
+        self.staticDir = 'modules/ProjectAdministration/static'
         self.middleware = ProjectConfigMiddleware(config)
 
         self.login_check = None
@@ -36,6 +35,13 @@ class ProjectConfigurator:
         self.login_check = loginCheckFun
 
     
+    def __redirect_login_page(self):
+        response = bottle.response
+        response.status = 303
+        response.set_header('Location', '/login')
+        return response
+
+    
     def _initBottle(self):
 
         with open(os.path.abspath(os.path.join(self.staticDir, 'templates/projectConfiguration.html')), 'r') as f:
@@ -46,18 +52,57 @@ class ProjectConfigurator:
         def send_static(project, filename):
             return static_file(filename, root=self.staticDir)
 
+        
+        @self.app.route('/<project>/config/panels/<panel>')
+        def send_static_panel(project, panel):
+            if self.loginCheck(project=project, admin=True):
+                return static_file(panel + '.html', root=os.path.join(self.staticDir, 'templates/panels'))
+            else:
+                abort(401, 'forbidden')
+
+
+        with open(os.path.abspath(os.path.join(self.staticDir, 'templates/projectOverview.html')), 'r') as f:
+            self.projectOverview_template = SimpleTemplate(f.read())
+
+        @self.app.route('/<project>')
+        @self.app.route('/<project>/')
+        def send_project_overview(project):
+
+            if not self.loginCheck():
+                redirect('/')
+                
+            # # check if user is enrolled in project; redirect if not
+            # if not self.loginCheck(project=project):
+            #     return redirect('/' + project + '/enroll')
+
+            # get project data (and check if project exists)
+            projectData = self.middleware.getProjectInfo(project, ['name', 'description', 'interface_enabled', 'demomode'])
+            if projectData is None:
+                return self.__redirect_login_page()
+            
+            # check if user authenticated for project
+            if not self.loginCheck(project=project, extend_session=True):
+                return self.__redirect_login_page()
+
+            # render overview template
+            username = 'Demo mode' if projectData['demomode'] else cgi.escape(request.get_cookie('username'))
+
+            return self.projectOverview_template.render(username=username,
+                projectShortname=project,
+                projectTitle=projectData['name'], projectDescr=projectData['description'])
+
 
         @self.app.route('/<project>/configuration')
         def configuration_page(project):
             if self.loginCheck(project=project, admin=True):
 
                 # get project name for UI template
-                projectData = self.middleware.getProjectInfo(project)
+                projectData = self.middleware.getProjectInfo(project, 'name')
 
                 # response.set_header("Cache-Control", "public, max-age=604800")
                 return self.projConf_template.render(
                     projectShortname=project,
-                    projectTitle=projectData['projectTitle'],
+                    projectTitle=projectData['name'],
                     username=cgi.escape(request.get_cookie('username')))
             else:
                 response = bottle.response
@@ -67,11 +112,19 @@ class ProjectConfigurator:
 
 
         @self.app.get('/<project>/getConfig')
+        @self.app.post('/<project>/getConfig')
         def get_project_configuration(project):
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
             try:
-                projData = self.middleware.getProjectInfo(project)
+                # parse subset of configuration parameters (if provided)
+                try:
+                    data = request.json
+                    params = data['parameters']
+                except:
+                    params = None
+
+                projData = self.middleware.getProjectInfo(project, params)
                 return { 'settings': projData }
             except:
                 abort(400, 'bad request')
@@ -92,9 +145,18 @@ class ProjectConfigurator:
                 abort(400, 'bad request')
 
 
+        @self.app.get('/<project>/getUsers')
+        def get_project_users(project):
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+            
+            users = self.middleware.getProjectUsers(project)
+            return {'users':users}
+
+
 
         ''' Project creation '''
-        with open(os.path.abspath(os.path.join('modules/ProjectConfiguration/static/templates/newProject.html')), 'r') as f:
+        with open(os.path.abspath(os.path.join('modules/ProjectAdministration/static/templates/newProject.html')), 'r') as f:
             self.newProject_template = SimpleTemplate(f.read())
 
         @self.app.route('/newProject')

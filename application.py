@@ -69,6 +69,8 @@ for i in instance_args:
         reception.addLoginCheckFun(userHandler.checkAuthenticated)
         configurator = REGISTERED_MODULES['ProjectConfigurator'](config, app)
         configurator.addLoginCheckFun(userHandler.checkAuthenticated)
+        statistics = REGISTERED_MODULES['ProjectStatistics'](config, app)
+        statistics.addLoginCheckFun(userHandler.checkAuthenticated)
 
 
 if __name__ == '__main__':

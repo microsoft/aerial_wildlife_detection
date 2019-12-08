@@ -40,7 +40,7 @@ $(document).ready(function() {
                     }
 
                     var markup = $('<div class="project-entry">' +
-                        '<h2>' + data['projects'][key]['name'] + '</h2>' +
+                        '<h2><a href="' + key + '">' + data['projects'][key]['name'] + '</a></h2>' +
                         '<p>' + data['projects'][key]['description'] + '</p>' +
                         '<p>You are <b>' + role + '</b> in this project.</p>' +
                         '<div>' + labelButton +

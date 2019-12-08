@@ -56,11 +56,11 @@ class LabelUI():
     def _initBottle(self):
 
         ''' static routings '''
-        @self.app.route('/<project>')
-        @self.app.route('/<project>/')
-        def project_page(project):
-            #TODO: show advanced project controls
-            return redirect('/' + project + '/interface')
+        # @self.app.route('/<project>')
+        # @self.app.route('/<project>/')
+        # def project_page(project):
+        #     #TODO: show advanced project controls
+        #     return redirect('/' + project + '/interface')
 
 
         with open(os.path.abspath(os.path.join('modules/LabelUI/static/templates/interface.html')), 'r') as f:
@@ -73,9 +73,9 @@ class LabelUI():
             if not self.loginCheck():
                 return self.__redirect_login_page()
             
-            # check if user is enrolled in project; do so if not (redirects if project is not public)
+            # check if user is enrolled in project; redirect if not
             if not self.loginCheck(project=project):
-                return redirect('enroll')
+                return redirect('/' + project)      #TODO: verify
 
             # get project data (and check if project exists)
             projectData = self.middleware.getProjectInfo(project)

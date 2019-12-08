@@ -22,29 +22,54 @@ class ProjectConfigMiddleware:
         self.dbConnector = Database(config)
 
 
-    def getProjectInfo(self, project):
+    def getProjectInfo(self, project, parameters):
+
+        # parse parameters (if provided) and compare with mutable entries
+        allParams = set([
+            'name',
+            'description',
+            'ispublic',
+            'secret_token',
+            'demomode',
+            'interface_enabled',
+            'ui_settings',
+            'ai_model_enabled',
+            'ai_model_library',
+            'ai_model_settings',
+            'ai_alcriterion_library',
+            'ai_alcriterion_settings',
+            'numimages_autotrain',
+            'minnumannoperimage',
+            'maxnumimages_train'
+        ])
+        if parameters is not None and parameters != '*':
+            if isinstance(parameters, str):
+                parameters = [parameters.lower()]
+            else:
+                parameters = [p.lower() for p in parameters]
+            set(parameters).intersection_update(allParams)
+        else:
+            parameters = allParams
+        parameters = list(parameters)
+        sqlParameters = ','.join(parameters)
 
         queryStr = sql.SQL('''
-        SELECT * FROM aide_admin.project
+        SELECT {} FROM aide_admin.project
         WHERE shortname = %s;
-        ''')
+        ''').format(
+            sql.SQL(sqlParameters)
+        )
         result = self.dbConnector.execute(queryStr, (project,), 1)
         result = result[0]
 
-        # parse UI settings
-        uiSettings = ast.literal_eval(result['ui_settings'])
+        # assemble response
+        response = {}
+        for param in parameters:
+            value = result[param]
+            if param == 'ui_settings':
+                value = ast.literal_eval(value)
+            response[param] = value
 
-        response = {
-            'projectTitle': result['name'],
-            'projectDescr': result['description'],
-            'annotationType': result['annotationtype'],
-            'predictionType': result['predictiontype'],
-            'isPublic': result['ispublic'],
-            'secretToken': result['secret_token'],
-            'demoMode': result['demomode'],
-            'numImagesPerBatch': uiSettings['numImagesPerBatch'],
-            'minImageWidth': uiSettings['minImageWidth']
-        }
         return response
 
 
@@ -83,6 +108,19 @@ class ProjectConfigMiddleware:
         pass
 
 
+    def getProjectUsers(self, project):
+        '''
+            Returns a list of users that are enrolled in the project,
+            as well as their roles within the project.
+        '''
+
+        queryStr = sql.SQL('SELECT * FROM {};').format(
+            sql.Identifier(project, 'authentication')
+        )
+        result = self.dbConnector.execute(queryStr, None, 'all')
+        return result
+
+
     def createProject(self, username, properties):
         '''
             Receives the most basic, mostly non-changeable settings for a new project
@@ -111,7 +149,7 @@ class ProjectConfigMiddleware:
             raise Exception('Project shortname "{}" unavailable.'.format(shortname))
 
         # load base SQL
-        with open('modules/ProjectConfiguration/static/sql/create_schema.sql', 'r') as f:
+        with open('modules/ProjectAdministration/static/sql/create_schema.sql', 'r') as f:
             queryStr = sql.SQL(f.read())
 
         
