@@ -107,14 +107,15 @@
     <script type="text/javascript">
         $(document).ready(function() {
             // set backdrops
-            $.get('getProjectInfo', function(data) {
+            $.get('/getBackdrops', function(data) {
                 if(data.hasOwnProperty('info')) {
 
                     // backdrops
                     if(data['info'].hasOwnProperty('backdrops')) {
                         var currentBackdropIdx = Math.floor(Math.random() * data['info']['backdrops'].length);
                         var filename = data['info']['backdrops'][currentBackdropIdx]['file'];
-                        $('#backdrop').css('background-image', 'url(backdrops/' + filename + ')');
+                        console.log('/static/img/backdrops/' + filename)
+                        $('#backdrop').css('background-image', 'url(/static/img/backdrops/' + filename + ')');
                         try {
                             var copyright = data['info']['backdrops'][currentBackdropIdx]['copyright'];
                             if(copyright != '') {

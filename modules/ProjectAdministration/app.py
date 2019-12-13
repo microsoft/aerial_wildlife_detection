@@ -74,7 +74,7 @@ class ProjectConfigurator:
         def send_project_overview(project):
 
             if not self.loginCheck():
-                redirect('/')
+                return redirect('/')
 
             # get project data (and check if project exists)
             projectData = self.middleware.getProjectInfo(project, ['name', 'description', 'interface_enabled', 'demomode'])

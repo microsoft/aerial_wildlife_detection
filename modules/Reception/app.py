@@ -104,7 +104,7 @@ class Reception:
             '''
             try:
                 if not self.login_check():
-                    abort(401)
+                    return redirect('/')
                 
                 username = cgi.escape(request.get_cookie('username'))
 
