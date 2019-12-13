@@ -26,7 +26,7 @@ class DBMiddleware():
         self.project_immutables = {}       # project settings that cannot be changed (project shorthand -> {settings})
 
         self._fetchProjectSettings()
-        self.sqlBuilder = SQLStringBuilder(config)
+        self.sqlBuilder = SQLStringBuilder()
         self.annoParser = AnnotationParser(config)
 
 
@@ -120,7 +120,10 @@ class DBMiddleware():
             # parse annotations and predictions
             entryID = str(b['id'])
             if b['ctype'] is not None:
-                colnames = self.sqlBuilder.getColnames(b['ctype'])
+                colnames = self.sqlBuilder.getColnames(
+                    self.project_immutables[project]['annotationType'],
+                    self.project_immutables[project]['predictionType'],
+                    b['ctype'])
                 entry = {}
                 for c in colnames:
                     value = b[c]
