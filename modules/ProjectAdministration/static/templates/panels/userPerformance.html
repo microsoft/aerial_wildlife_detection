@@ -1,33 +1,169 @@
 <div>
     <h2>User performance</h2>
-    Coming soon
+    <div id="controls">
+        <h3>Options</h3>
+        <div>User to be evaluated:</div>
+        <table id="eval-users"></table><br />
+
+        <div>Target user:</div>
+        <table id="target-users"></table>
+
+        <div id="threshold-control">
+            <!-- TODO: hide if not points or bboxes -->
+            <span>Distance/IoU threshold:</span>
+            <input type="range" id="threshold-range" min="0.0" max="1.0" step="0.01" value="0.5" />
+        </div>
+
+        <input type="checkbox" id="check-golden-question-only" value="goldenQuestionsOnly" />
+        <label for="check-golden-question-only">Limit to golden questions only</label>
+        
+        <button id="calc-stats" class="btn btn-sm btn-primary">Update</button>
+    </div>
+
+    <div>
+        <h3>Performance</h3>
+        <div id="performance-container"></div>
+    </div>
 </div>
+<link rel="stylesheet" href="statistics/libs/chartjs/Chart.min.css" />
+<style>
+    .chartWrapper {
+        position: relative;
+    }
+
+    .chartWrapper > canvas {
+        position: absolute;
+        left: 0;
+        top: 0;
+        pointer-events:none;
+    }
+
+    .chartAreaWrapper {
+        width: 100%;
+        height: 300px;
+        max-height: 300px;
+        overflow-x: scroll;
+    }
+</style>
+<script src="statistics/libs/chartjs/Chart.min.js"></script>
 <script type="text/javascript">
 
+    function calculateUserStats() {
+        // get control values
+        var evalUser = $('#eval-users').find('input[type=radio]:checked').attr('id');
+        var targetUser = $('#target-users').find('input[type=radio]:checked').attr('id');
+        
+        //TODO
+        var threshold = $('#threshold-range').val();
+        var limitGoldenQuestions = $('#check-golden-question-only').prop('checked');
 
-    $(document).ready(function() {
-        window.showLoadingOverlay(false);
-
-        //TODO: test
+        // update chart
         $.ajax({
             url: window.project + '/getUserStatistics',
             method: 'POST',
             data: JSON.stringify({
-                'user_eval': 'test',
-                'user_target': 'bkellenb',
-                'threshold': 0.5,
-                'goldenQuestionsOnly': false,
+                'user_eval': evalUser,
+                'user_target': targetUser,
+                'threshold': threshold,
+                'goldenQuestionsOnly': limitGoldenQuestions,
                 'perImage': true
             }),
             contentType: 'application/json; charset=utf-8',
             dataType: 'json',
             success: function(data) {
-                console.log(data);
+                //TODO: global statistics
+                // assemble series
+                var precision = [];     //TODO: adapt for non-prec-rec tasks
+                var recall = [];
+                var labels = [];
+                var counter = 1;
+                for(var key in data['result']['per_image']) {
+                    let prec = data['result']['per_image']['precision'];
+                    let rec = data['result']['per_image']['recall'];
+                    if(prec===0 && rec===0) {
+                        continue;
+                    }
+                    precision.push(prec);
+                    recall.push(rec);
+                    labels.push(counter);
+                    counter++;
+                }
+
+
+                let resultsContainer = $('#performance-container');
+                var cw = $('<div class="chartWrapper"><div class="chartAreaWrapper"></div></div>');
+                let canvas = $('<canvas width=400 height=300></canvas>');
+                cw.find('.chartAreaWrapper').append(canvas);
+                var chart = new Chart(canvas[0].getContext('2d'), {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [
+                            {
+                                label: 'Precision',
+                                data: precision,
+                                backgroundColor: '#007bff'
+                            },
+                            {
+                                label: 'Recall',
+                                data: recall,
+                                backgroundColor: '#ffee00'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }
+                    });
+
+                resultsContainer.empty();
+                resultsContainer.append(cw);
             },
             error: function(data) {
                 console.log('ERROR:');
                 console.log(data);
             }
+        });
+    }
+
+    $(document).ready(function() {
+
+        // populate users tables
+        let evalUsersTable = $('#eval-users');
+        let targetUsersTable = $('#target-users');
+        var promise = $.ajax({
+            url: window.project + '/getUserNames',
+            method: 'POST',
+            success: function(data) {
+                data = data['users'];
+                for(var idx in data) {
+                    var tableEntry_eval = $('<tr></tr>');
+                    tableEntry_eval.append($('<td><input type="radio" id="'+data[idx]+'" name="evalUser"></td>'))
+                    tableEntry_eval.append($('<td>'+data[idx]+'</td>'));
+                    if(idx === 0) {
+                        tableEntry_eval.find('input[type=radio]')[0].prop('checked', 'checked');
+                    }
+                    evalUsersTable.append(tableEntry_eval);
+                    var tableEntry_target = tableEntry_eval.clone();
+                    tableEntry_target.find('input[type=radio]').each(function() {
+                        $(this).prop('name', 'targetUser');
+                    });
+                    if(idx === 1) {
+                        tableEntry_target.find('input[type=radio]')[0].prop('checked', 'checked');
+                    }
+                    targetUsersTable.append(tableEntry_target);
+                }
+            },
+            error: function(data) {
+                console.log('ERROR:');
+                console.log(data);
+            }
+        });
+
+        $('#calc-stats').click(calculateUserStats);
+
+        promise = promise.done(function() {
+            window.showLoadingOverlay(false);
         });
     });
 </script>

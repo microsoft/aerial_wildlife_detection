@@ -84,6 +84,7 @@ class ProjectStatisticsMiddleware:
 
     @staticmethod
     def _calc_geometric_stats(tp, fp, fn):
+        tp, fp, fn = float(tp), float(fp), float(fn)
         try:
             precision = tp / (tp + fp)
         except:

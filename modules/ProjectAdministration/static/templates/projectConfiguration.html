@@ -31,7 +31,8 @@
                         });
                         $('#'+panelID).toggleClass('active', true);
 
-                        // update URL
+                        // update URL and page title
+                        document.title = 'AIDE: ' + window.project + ' - ' + panelID;
                         window.history.pushState('AIDE', 'AIDE: {{ projectShortname }}', '?t='+panelID);
                     },
                     error: function() {
@@ -121,8 +122,8 @@
                         <div class="navigation-entry-container">
                             <div class="navigation-entry" id="overview">Overview</div>
                             <div class="navigation-entry" id="userPerformance">User performance</div>
-                            <div class="navigation-entry active" id="projectSettings">Project settings</div>
-                            <div class="navigation-entry navigation-sub-entry active" id="general">General</div>
+                            <div class="navigation-entry" id="projectSettings">Project settings</div>
+                            <div class="navigation-entry navigation-sub-entry" id="general">General</div>
                             <div class="navigation-entry navigation-sub-entry" id="userInterface">Interface</div>
                             <div class="navigation-entry navigation-sub-entry" id="accessControl">Access control</div>
                             <div class="navigation-entry navigation-sub-entry" id="aiModel">AI model</div>

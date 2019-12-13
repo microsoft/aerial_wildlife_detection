@@ -93,7 +93,6 @@ class ProjectConfigurator:
             return self.projConf_template.render(
                     projectShortname=project,
                     projectTitle=projectData['name'],
-                    isAdmin=(1 if isAdmin else 0),
                     username=username)
 
             # return self.projectOverview_template.render(username=username,
