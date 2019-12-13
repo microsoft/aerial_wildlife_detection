@@ -40,13 +40,19 @@
         </thead>
         <tbody id="users-list"></tbody>
     </table>
+
+    <!-- Submit and abort buttons -->
+    <div>
+        <button class="btn btn-danger">Cancel</button>
+        <button id="proj-settings-save-button" class="btn btn-primary" style="float:right">Save</button>
+    </div>
 </div>
 
 <script type="text/javascript">
     $(document).ready(function() {
         // general settings
-        $.ajax({
-            url: 'getConfig',
+        var promise = $.ajax({
+            url: window.project + '/getConfig',
             method: 'POST',
             data: JSON.stringify({
                 'parameters': [
@@ -78,26 +84,33 @@
             });
         });
 
-        $.ajax({
-            url: 'getUsers',
-            method: 'GET',
-            success: function(data) {
-                if(data.hasOwnProperty('users')) {
-                    for(var i=0; i<data['users'].length; i++) {
-                        let uName = data['users'][i]['username'];
-                        let isAdmin = (data['users'][i]['isadmin'] ? 'Y' : 'N');    //TODO: replace with images
-                        var markup = $('<tr id="'+uName+'"></tr>');
-                        markup.append($('<td><input type="checkbox" id="'+uName+'__select" /></td>'));
-                        markup.append($('<td>'+uName+'</td>'));
-                        markup.append($('<td>'+isAdmin+'</td>'));
-                        uList.append(markup);
+        promise = promise.done(function() {
+            return $.ajax({
+                url: window.project + '/getUsers',
+                method: 'GET',
+                success: function(data) {
+                    if(data.hasOwnProperty('users')) {
+                        for(var i=0; i<data['users'].length; i++) {
+                            let uName = data['users'][i]['username'];
+                            let isAdmin = (data['users'][i]['isadmin'] ? 'Y' : 'N');    //TODO: replace with images
+                            var markup = $('<tr id="'+uName+'"></tr>');
+                            markup.append($('<td><input type="checkbox" id="'+uName+'__select" /></td>'));
+                            markup.append($('<td>'+uName+'</td>'));
+                            markup.append($('<td>'+isAdmin+'</td>'));
+                            uList.append(markup);
+                        }
                     }
+                },
+                error: function(data) {
+                    console.log('ERROR:')
+                    console.log(data);
                 }
-            },
-            error: function(data) {
-                console.log('ERROR:')
-                console.log(data);
-            }
-        })
+            });
+        });
+
+        
+        promise.done(function() {
+            window.showLoadingOverlay(false);
+        });
     });
 </script>

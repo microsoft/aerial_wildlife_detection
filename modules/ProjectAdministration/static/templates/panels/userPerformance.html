@@ -1,0 +1,33 @@
+<div>
+    <h2>User performance</h2>
+    Coming soon
+</div>
+<script type="text/javascript">
+
+
+    $(document).ready(function() {
+        window.showLoadingOverlay(false);
+
+        //TODO: test
+        $.ajax({
+            url: window.project + '/getUserStatistics',
+            method: 'POST',
+            data: JSON.stringify({
+                'user_eval': 'test',
+                'user_target': 'bkellenb',
+                'threshold': 0.5,
+                'goldenQuestionsOnly': false,
+                'perImage': true
+            }),
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            success: function(data) {
+                console.log(data);
+            },
+            error: function(data) {
+                console.log('ERROR:');
+                console.log(data);
+            }
+        });
+    });
+</script>

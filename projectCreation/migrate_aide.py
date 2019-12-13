@@ -70,7 +70,49 @@ MODIFICATIONS_sql = [
     'ALTER TABLE {schema}.annotation ADD CONSTRAINT annotation_username_fkey FOREIGN KEY (username) REFERENCES aide_admin.USER (name);',
     'ALTER TABLE {schema}.cnnstate ADD COLUMN IF NOT EXISTS model_library VARCHAR',
     'ALTER TABLE {schema}.cnnstate ADD COLUMN IF NOT EXISTS alCriterion_library VARCHAR',
-    'ALTER TABLE {schema}.image ADD COLUMN IF NOT EXISTS isGoldenQuestion BOOLEAN NOT NULL DEFAULT FALSE'
+    'ALTER TABLE {schema}.image ADD COLUMN IF NOT EXISTS isGoldenQuestion BOOLEAN NOT NULL DEFAULT FALSE',
+    '''-- IoU function for statistical evaluations
+    CREATE OR REPLACE FUNCTION "intersection_over_union" (
+        "ax" real, "ay" real, "awidth" real, "aheight" real,
+        "bx" real, "by" real, "bwidth" real, "bheight" real)
+    RETURNS real AS $iou$
+        DECLARE
+            iou real;
+        BEGIN
+            SELECT (
+                CASE WHEN aright < bleft OR bright < aleft OR
+                    atop < bbottom OR btop < abottom THEN 0.0
+                ELSE GREATEST(inters / (unionplus - inters), 0.0)
+                END
+            ) INTO iou
+            FROM (
+                SELECT 
+                    ((iright - ileft) * (itop - ibottom)) AS inters,
+                    aarea + barea AS unionplus,
+                    aleft, aright, atop, abottom,
+                    bleft, bright, btop, bbottom
+                FROM (
+                    SELECT
+                        ((aright - aleft) * (atop - abottom)) AS aarea,
+                        ((bright - bleft) * (btop - bbottom)) AS barea,
+                        GREATEST(aleft, bleft) AS ileft,
+                        LEAST(atop, btop) AS itop,
+                        LEAST(aright, bright) AS iright,
+                        GREATEST(abottom, bbottom) AS ibottom,
+                        aleft, aright, atop, abottom,
+                        bleft, bright, btop, bbottom
+                    FROM (
+                        SELECT (ax - awidth/2) AS aleft, (ay + aheight/2) AS atop,
+                            (ax + awidth/2) AS aright, (ay - aheight/2) AS abottom,
+                            (bx - bwidth/2) AS bleft, (by + bheight/2) AS btop,
+                            (bx + bwidth/2) AS bright, (by - bheight/2) AS bbottom
+                    ) AS qq
+                ) AS qq2
+            ) AS qq3;
+            RETURN iou;
+        END;
+    $iou$ LANGUAGE plpgsql;
+    '''
 ]
 
 

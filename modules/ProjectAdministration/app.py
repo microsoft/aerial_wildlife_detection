@@ -61,8 +61,13 @@ class ProjectConfigurator:
                 abort(401, 'forbidden')
 
 
-        with open(os.path.abspath(os.path.join(self.staticDir, 'templates/projectOverview.html')), 'r') as f:
-            self.projectOverview_template = SimpleTemplate(f.read())
+        # with open(os.path.abspath(os.path.join(self.staticDir, 'templates/projectOverview.html')), 'r') as f:
+        #     self.projectOverview_template = SimpleTemplate(f.read())
+
+        # @self.app.route('/<project>')
+        # def redirect_project_overview(project):
+        #     return redirect(project + '/')
+
 
         @self.app.route('/<project>')
         @self.app.route('/<project>/')
@@ -87,28 +92,33 @@ class ProjectConfigurator:
             # render overview template
             username = 'Demo mode' if projectData['demomode'] else cgi.escape(request.get_cookie('username'))
 
-            return self.projectOverview_template.render(username=username,
-                projectShortname=project,
-                projectTitle=projectData['name'], projectDescr=projectData['description'])
-
-
-        @self.app.route('/<project>/configuration')
-        def configuration_page(project):
-            if self.loginCheck(project=project, admin=True):
-
-                # get project name for UI template
-                projectData = self.middleware.getProjectInfo(project, 'name')
-
-                # response.set_header("Cache-Control", "public, max-age=604800")
-                return self.projConf_template.render(
+            return self.projConf_template.render(
                     projectShortname=project,
                     projectTitle=projectData['name'],
-                    username=cgi.escape(request.get_cookie('username')))
-            else:
-                response = bottle.response
-                response.status = 303
-                response.set_header('Location', '/')
-            return response
+                    username=username)
+
+            # return self.projectOverview_template.render(username=username,
+            #     projectShortname=project,
+            #     projectTitle=projectData['name'], projectDescr=projectData['description'])
+
+
+        # @self.app.route('/<project>/configuration')
+        # def configuration_page(project):
+        #     if self.loginCheck(project=project, admin=True):
+
+        #         # get project name for UI template
+        #         projectData = self.middleware.getProjectInfo(project, 'name')
+
+        #         # response.set_header("Cache-Control", "public, max-age=604800")
+        #         return self.projConf_template.render(
+        #             projectShortname=project,
+        #             projectTitle=projectData['name'],
+        #             username=cgi.escape(request.get_cookie('username')))
+        #     else:
+        #         response = bottle.response
+        #         response.status = 303
+        #         response.set_header('Location', '/')
+        #     return response
 
 
         @self.app.get('/<project>/getConfig')

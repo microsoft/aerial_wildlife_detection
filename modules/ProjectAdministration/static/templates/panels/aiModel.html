@@ -16,6 +16,13 @@
         <select id="al-model-class"></select>
         <p id="al-model-class-descr"></p>
     </div>
+
+
+    <!-- Submit and abort buttons -->
+    <div>
+        <button class="btn btn-danger">Cancel</button>
+        <button id="proj-settings-save-button" class="btn btn-primary" style="float:right">Save</button>
+    </div>
 </div>
 <script type="text/javascript">
     $(document).ready(function() {
@@ -51,7 +58,7 @@
 
         promise = promise.done(function() {
             return $.ajax({
-                url: 'getConfig',
+                url: window.project + '/getConfig',
                 method: 'POST',
                 data: JSON.stringify({
                     'parameters': [
@@ -95,6 +102,11 @@
         $('#ai-model-enabled-checkbox').change(function() {
             aiModelSelect.prop('disabled', !$(this).prop('checked'));
             alModelSelect.prop('disabled', !$(this).prop('checked'));
+        });
+
+
+        promise.done(function() {
+            window.showLoadingOverlay(false);
         });
     });
 </script>

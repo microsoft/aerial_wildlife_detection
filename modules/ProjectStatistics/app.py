@@ -5,7 +5,7 @@
     2019 Benjamin Kellenberger
 '''
 
-from bottle import static_file, abort
+from bottle import request, static_file, abort
 from .backend.middleware import ProjectStatisticsMiddleware
 
 
@@ -31,8 +31,8 @@ class ProjectStatistics:
 
     def _initBottle(self):
 
-        @self.app.route('/<project>/statistics/static/<filename:re:.*>')
-        def send_static(project, filename):
+        @self.app.route('/statistics/<filename:re:.*>') #TODO: /statistics/static/ is ignored by Bottle...
+        def send_static(filename):
             return static_file(filename, root=self.staticDir)
 
 
@@ -43,3 +43,28 @@ class ProjectStatistics:
             
             stats = self.middleware.getProjectStatistics(project)
             return { 'statistics': stats }
+
+
+        @self.app.post('/<project>/getUserStatistics')
+        def get_user_statistics(project):
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+
+            params = request.json
+            username_eval = params['user_eval']
+            username_target = params['user_target']
+            if 'threshold' in params:
+                threshold = params['threshold']
+            else:
+                threshold = None
+            if 'goldenQuestionsOnly' in params:
+                goldenQuestionsOnly = params['goldenQuestionsOnly']
+            else:
+                goldenQuestionsOnly = False
+            if 'perImage' in params:
+                perImage = params['perImage']
+            else:
+                perImage = False
+            stats = self.middleware.getUserStatistics(project, username_eval, username_target, threshold, goldenQuestionsOnly, perImage)
+
+            return { 'result': stats }

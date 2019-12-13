@@ -1,0 +1,153 @@
+<div id="overview-container"></div>
+<link rel="stylesheet" href="statistics/libs/chartjs/Chart.min.css" />
+<style>
+    .chartWrapper {
+        position: relative;
+    }
+
+    .chartWrapper > canvas {
+        position: absolute;
+        left: 0;
+        top: 0;
+        pointer-events:none;
+    }
+
+    .chartAreaWrapper {
+        width: 100%;
+        max-height: 300px;
+        overflow-x: scroll;
+    }
+    /* canvas {
+        width: 100%;
+        max-height: 300px;
+    } */
+</style>
+<script src="statistics/libs/chartjs/Chart.min.js"></script>
+<script type="text/javascript">
+    $(document).ready(function() {
+        let mainContainer = $('#overview-container');
+
+        // TODO: only if admin
+        var promise = $.ajax({
+            url: window.project + '/getProjectStatistics',
+            method: 'GET',
+            success: function(response) {
+                response = response['statistics'];
+
+                var statsContainer = $('<div></div>');
+
+                // general progress
+                statsContainer.append($('<h2>Progress</h2>'));
+                let generalCanvas = $('<canvas id="chart-general-progress" width=400 height=200 style="width:100%;max-height:200px;"></canvas>');
+                statsContainer.append(generalCanvas);
+                var generalChart = new Chart(generalCanvas[0].getContext('2d'), {
+                    type: 'horizontalBar',
+                    data: {
+                        labels: ['viewed'],
+                        datasets: [{
+                            label: '# images viewed',
+                            data: [response['num_viewed']],
+                            backgroundColor: '#007bff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            xAxes: [{
+                                ticks: {
+                                    min: 0,
+                                    max: response['num_images']
+                                },
+                                scaleLabel: {
+                                    display: true,
+                                    labelString: '# images'
+                                }
+                            }]
+                        }
+                    }
+                });
+                let percViewed = (Math.round(response['num_viewed']/response['num_images'] * 100)).toFixed(2);
+                statsContainer.append('Users have viewed <b>'+response['num_viewed']+' out of '+response['num_images']+'</b> images ('+percViewed+'%).');
+
+                // per-user statistics
+                if(response.hasOwnProperty('user_stats')) {
+                    var usernames = [];
+                    var numImgs_viewed = [];
+                    var numGoldenQuestions = [];
+                    var numAnnotations_made = [];
+                    for(var user in response['user_stats']) {
+                        usernames.push(user);
+                        var numViewed = response['user_stats'][user]['num_viewed'];
+                        if(numViewed === null) numViewed = 0;
+                        var numAnno = response['user_stats'][user]['num_annotations'];
+                        if(numAnno === null) numAnno = 0;
+                        numImgs_viewed.push(numViewed);
+                        numAnnotations_made.push(numAnno);
+                        numGoldenQuestions.push(response['num_goldenQuestions']);
+                    }
+
+                    statsContainer.append($('<h2>Images annotated</h2>'));
+                    var cw_numImgs = $('<div class="chartWrapper"><div class="chartAreaWrapper"></div></div>');
+                    let perUser_numImgs = $('<canvas id="chart-user-imgs" width=400 height=300></canvas>');
+                    cw_numImgs.find('.chartAreaWrapper').append(perUser_numImgs);
+                    statsContainer.append(cw_numImgs);
+                    var userImgsChart = new Chart(perUser_numImgs[0].getContext('2d'), {
+                        type: 'bar',
+                        data: {
+                            labels: usernames,
+                            datasets: [{
+                                label: '# golden questions',
+                                data: numGoldenQuestions,   //TODO: disable if no golden questions
+                                type: 'line',
+                                borderColor: '#ffee54'
+                            },
+                            {
+                                label: '# images viewed',
+                                data: numImgs_viewed,
+                                backgroundColor: '#007bff'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }
+                    });
+
+                    statsContainer.append($('<h2>Annotations made</h2>'));
+                    var cw_numAnnos = $('<div class="chartWrapper"><div class="chartAreaWrapper"></div></div>');
+                    let perUser_numAnnos = $('<canvas id="chart-user-annos" width=400 height=300></canvas>');
+                    cw_numAnnos.find('.chartAreaWrapper').append(perUser_numAnnos);
+                    statsContainer.append(cw_numAnnos);
+                    var userAnnosChart = new Chart(perUser_numAnnos[0].getContext('2d'), {
+                        type: 'bar',
+                        data: {
+                            labels: usernames,
+                            datasets: [{
+                                label: '# annotations made',
+                                data: numAnnotations_made,
+                                backgroundColor: '#007bff'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }
+                    });
+                }
+
+
+                mainContainer.append(statsContainer);
+            },
+            error: function(data) {
+                console.log('ERROR:');
+                console.log(data);
+            }
+        });
+
+
+        promise.done(function() {
+            window.showLoadingOverlay(false);
+        });
+    });
+</script>
