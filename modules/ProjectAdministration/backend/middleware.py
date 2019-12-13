@@ -114,10 +114,8 @@ class ProjectConfigMiddleware:
             as well as their roles within the project.
         '''
 
-        queryStr = sql.SQL('SELECT * FROM {};').format(
-            sql.Identifier(project, 'authentication')
-        )
-        result = self.dbConnector.execute(queryStr, None, 'all')
+        queryStr = sql.SQL('SELECT * FROM aide_admin.authentication WHERE project = %s;')
+        result = self.dbConnector.execute(queryStr, (project,), 'all')
         return result
 
 
