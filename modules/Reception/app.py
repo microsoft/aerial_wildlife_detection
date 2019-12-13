@@ -8,7 +8,7 @@
 import os
 import cgi
 import json
-from bottle import request, response, static_file, redirect, abort, SimpleTemplate
+from bottle import request, response, static_file, redirect, abort, SimpleTemplate, HTTPResponse
 from .backend.middleware import ReceptionMiddleware
 
 
@@ -117,7 +117,9 @@ class Reception:
                 success = self.middleware.enroll_in_project(project, username, providedToken)
                 if not success:
                     abort(401)
-                return redirect('/')     #TODO: doesn't work
+                return redirect('/' + project + '/interface')
+            except HTTPResponse as res:
+                return res
             except Exception as e:
                 print(e)
                 abort(400)

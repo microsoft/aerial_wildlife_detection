@@ -27,7 +27,6 @@
     $(document).ready(function() {
         let mainContainer = $('#overview-container');
 
-        // TODO: only if admin
         var promise = $.ajax({
             url: window.project + '/getProjectStatistics',
             method: 'GET',
@@ -144,7 +143,6 @@
                 console.log(data);
             }
         });
-
 
         promise.done(function() {
             window.showLoadingOverlay(false);

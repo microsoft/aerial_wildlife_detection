@@ -75,19 +75,17 @@ class ProjectConfigurator:
 
             if not self.loginCheck():
                 redirect('/')
-                
-            # # check if user is enrolled in project; redirect if not
-            # if not self.loginCheck(project=project):
-            #     return redirect('/' + project + '/enroll')
 
             # get project data (and check if project exists)
             projectData = self.middleware.getProjectInfo(project, ['name', 'description', 'interface_enabled', 'demomode'])
             if projectData is None:
                 return self.__redirect_login_page()
-            
-            # check if user authenticated for project
+
             if not self.loginCheck(project=project, extend_session=True):
-                return self.__redirect_login_page()
+                return redirect('/')
+
+            if not self.loginCheck(project=project, admin=True, extend_session=True):
+                return redirect('/' + project + '/interface')
 
             # render overview template
             username = 'Demo mode' if projectData['demomode'] else cgi.escape(request.get_cookie('username'))
@@ -95,6 +93,7 @@ class ProjectConfigurator:
             return self.projConf_template.render(
                     projectShortname=project,
                     projectTitle=projectData['name'],
+                    isAdmin=(1 if isAdmin else 0),
                     username=username)
 
             # return self.projectOverview_template.render(username=username,
