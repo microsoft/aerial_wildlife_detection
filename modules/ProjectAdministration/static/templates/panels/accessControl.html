@@ -8,7 +8,7 @@
 
         <span>Secret link:</span>
         <input id="field-secret-token" type="text" readonly style="width:calc(100% - 180px)" />
-        <button id="renew-secret-token" class="btn btn-sm btn-light">Reload</button>
+        <button id="renew-secret-token" class="btn btn-sm btn-light">Renew</button>
         <br />
 
 
@@ -25,7 +25,8 @@
     <div>
         <span>Selection:</span>
         <select id="selection-action">
-            <option value="make-admin">make project administrators</option>
+            <option value="elevate-admin">elevate to project administrators</option>
+            <option value="revoke-admin">revoke administrator privileges</option>
             <option value="deregister">remove from project</option>
         </select>
         <button id="selection-action-proceed" class="btn btn-sm btn-light">Apply</button>
@@ -47,7 +48,34 @@
         <button id="proj-settings-save-button" class="btn btn-primary" style="float:right">Save</button>
     </div>
 </div>
+<style>
+    table {
+        width: 100%;
+        max-width: 400px;
+        max-height: 200px;
+        border: 1px solid #aaa;
+    }
 
+    thead {
+        background: #5f5f5f;
+        font-weight: bold;
+    }
+
+    tbody {
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+
+    thead, tbody {
+        display: block;
+        padding-left: 5px;
+        padding-right: 5px;
+    }
+
+    td {
+        padding-right: 5px;
+    }
+</style>
 <script type="text/javascript">
     $(document).ready(function() {
         // general settings
@@ -66,7 +94,7 @@
             success: function(data) {
                 settings = data['settings'];
                 $('#public-checkbox').prop('checked', settings['ispublic']);
-                $('#field-secret-token').val(window.location.href.replace('/configuration', '/enroll') + '?t=' + settings['secret_token']);
+                $('#field-secret-token').val(window.location.host + window.location.pathname + '/enroll'+'?t='+settings['secret_token']);
                 $('#demo-checkbox').prop('checked', settings['demomode']);
             },
             error: function(data) {
@@ -80,7 +108,10 @@
         $('#select-all-users').click(function() {
             let isChecked = $(this).prop('checked');
             $.each(uList.children(), function() {
-                $('#'+$(this).attr('id')+'__select').prop('checked', isChecked);
+                let chckbx = $('#'+$(this).attr('id')+'__select');
+                if(!chckbx.attr('disabled')) {
+                    chckbx.prop('checked', isChecked);
+                }
             });
         });
 
@@ -92,10 +123,17 @@
                     if(data.hasOwnProperty('users')) {
                         for(var i=0; i<data['users'].length; i++) {
                             let uName = data['users'][i]['username'];
+                            var uName_vis = uName;
                             let isAdmin = (data['users'][i]['isadmin'] ? 'Y' : 'N');    //TODO: replace with images
                             var markup = $('<tr id="'+uName+'"></tr>');
-                            markup.append($('<td><input type="checkbox" id="'+uName+'__select" /></td>'));
-                            markup.append($('<td>'+uName+'</td>'));
+                            if(uName === window.user) {
+                                var checkbox = $('<input type="checkbox" id="'+uName+'__select" disabled />');
+                                uName_vis += ' (You)';
+                            } else {
+                                var checkbox = $('<input type="checkbox" id="'+uName+'__select" />');
+                            }
+                            markup.append($('<td></td>').append(checkbox));
+                            markup.append($('<td>'+uName_vis+'</td>'));
                             markup.append($('<td>'+isAdmin+'</td>'));
                             uList.append(markup);
                         }
@@ -108,6 +146,31 @@
             });
         });
 
+        // misc.
+        $('#renew-secret-token').click(function() {
+            $.ajax({
+                url: window.project + '/renewSecretToken',
+                method: 'POST',
+                success: function(data) {
+                    if(data.hasOwnProperty('secret_token')) {
+                        $('#field-secret-token').val(window.location.host +
+                            window.location.pathname +
+                            '/enroll'+'?t='+data['secret_token']);
+                    } else {
+                        $('#renew-secret-token').prop('disabled', true);
+                        $('#field-secret-token').val('(sorry, an unknown error occurred)');
+                    }
+                },
+                error: function(data) {
+                    console.log('ERROR:')
+                    console.log(data);
+                }
+            });
+        });
+
+        $('#selection-action-proceed').click(function() {
+            //TODO
+        });
         
         promise.done(function() {
             window.showLoadingOverlay(false);

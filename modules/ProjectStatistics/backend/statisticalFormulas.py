@@ -29,154 +29,185 @@ class StatisticalFormulas(Enum):
         {sql_global_end}
     '''
 
-    points = '''WITH masterQuery AS (
-            SELECT q2img AS image, q1id, q1label, q2id, q2label, euclidean_distance FROM (
-                SELECT q1.image AS q1img, q1.id AS q1id, q1.label AS q1label,
-                q2.image AS q2img, q2.id AS q2id, q2.label AS q2label,
-                |/((q1.x - q2.x)^2 + (q1.y - q2.y)^2) AS euclidean_distance FROM (
-                    SELECT iu_a.image, id, label, x, y, width, height
-                    FROM {id_anno} AS anno_a
-                    RIGHT OUTER JOIN {id_iu} AS iu_a
-                    ON anno_a.image = iu_a.image AND anno_a.username = iu_a.username
-                    WHERE iu_a.username = %s
-                ) AS q1
-                JOIN
-                (
-                    SELECT iu_b.image, id, label, x, y, width, height
-                    FROM {id_anno} AS anno_b
-                    RIGHT OUTER JOIN {id_iu} AS iu_b
-                    ON anno_b.image = iu_b.image AND anno_b.username = iu_b.username
-                    WHERE iu_b.username = %s
-                ) AS q2
-                ON q1.image = q2.image
-                {sql_goldenQuestion}
-            ) AS q
-        )
-        {sql_global_start}
-        SELECT image, num_pred, num_target, ntp, LEAST(num_pred - ntp, nfp) AS nfp, num_target - ntp AS nfn FROM (
-            SELECT image, num_pred, num_target, LEAST(num_target, num_tp) AS ntp, num_fp AS nfp FROM (
-                SELECT i_nt AS image, COALESCE(num_pred, 0) AS num_pred, COALESCE(num_target, 0) AS num_target,
-                    COALESCE(num_tp, 0) AS num_tp, COALESCE(num_fp, 0) AS num_fp FROM (
-                    SELECT image, SUM(is_tp) AS num_tp, SUM(is_fp) AS num_fp
-                    FROM (
-                        SELECT *,
-                            (
-                                CASE WHEN q1label = q2label AND (euclidean_distance <= %s) THEN 1
-                                ELSE 0
-                                END
-                            ) AS is_tp,
-                            (
-                                CASE WHEN q1label <> q2label OR (euclidean_distance > %s) THEN 1
-                                ELSE 0
-                                END
-                            ) AS is_fp
-                        FROM masterQuery
-                        JOIN (
-                            SELECT q2id AS q2id_2, MIN(euclidean_distance) AS minDist
-                            FROM masterQuery
-                            GROUP BY q2id
-                        ) AS bestMatch
-                        ON masterQuery.q2id = bestMatch.q2id_2
-                    ) AS statsQuery
-                    GROUP BY image
-                ) AS statsQuery
-                LEFT OUTER JOIN (
-                    SELECT iu_a.image AS i_np, COUNT(*) AS num_pred
-                    FROM {id_anno} AS anno_a
-                    RIGHT OUTER JOIN {id_iu} AS iu_a
-                    ON anno_a.image = iu_a.image AND anno_a.username = iu_a.username
-                    WHERE iu_a.username = %s
-                    GROUP BY iu_a.image
-                ) AS q_np
-                ON statsQuery.image = q_np.i_np
-                FULL OUTER JOIN (
-                    SELECT iu_b.image AS i_nt, COUNT(*) AS num_target
-                    FROM {id_anno} AS anno_b
-                    RIGHT OUTER JOIN {id_iu} AS iu_b
-                    ON anno_b.image = iu_b.image AND anno_b.username = iu_b.username
-                    WHERE iu_b.username = %s
-                    GROUP BY iu_b.image
-                ) AS q_nt
-                ON statsQuery.image = q_nt.i_nt
-            ) AS aggregateQuery
-        ) AS finalQuery
-        {sql_global_end}
-    '''
-
     
-    boundingBoxes = '''WITH masterQuery AS (
-            SELECT q2img AS image, q1id, q1label, q2id, q2label, iou FROM (
-                SELECT q1.image AS q1img, q1.id AS q1id, q1.label AS q1label,
-                q2.image AS q2img, q2.id AS q2id, q2.label AS q2label,
-                intersection_over_union(q1.x, q1.y, q1.width, q1.height, q2.x, q2.y, q2.width, q2.height) AS iou FROM (
-                    SELECT iu_a.image, id, label, x, y, width, height
-                    FROM {id_anno} AS anno_a
-                    RIGHT OUTER JOIN {id_iu} AS iu_a
-                    ON anno_a.image = iu_a.image AND anno_a.username = iu_a.username
-                    WHERE iu_a.username = %s
-                ) AS q1
-                JOIN
-                (
-                    SELECT iu_b.image, id, label, x, y, width, height
-                    FROM {id_anno} AS anno_b
-                    RIGHT OUTER JOIN {id_iu} AS iu_b
-                    ON anno_b.image = iu_b.image AND anno_b.username = iu_b.username
-                    WHERE iu_b.username = %s
-                ) AS q2
-                ON q1.image = q2.image
-                {sql_goldenQuestion}
-            ) AS q
-        )
-        {sql_global_start}
-        SELECT image, num_pred, num_target, ntp, LEAST(num_pred - ntp, nfp) AS nfp, num_target - ntp AS nfn FROM (
-            SELECT image, num_pred, num_target, LEAST(num_target, num_tp) AS ntp, num_fp AS nfp FROM (
-                SELECT i_nt AS image, COALESCE(num_pred, 0) AS num_pred, COALESCE(num_target, 0) AS num_target,
-                    COALESCE(num_tp, 0) AS num_tp, COALESCE(num_fp, 0) AS num_fp FROM (
-                    SELECT image, SUM(is_tp) AS num_tp, SUM(is_fp) AS num_fp
+    points = '''WITH masterQuery AS (
+        SELECT q1.image, q2.username, q1.aid AS id1, q2.aid AS id2, q1.label AS label1, q2.label AS label2,
+            |/((q1.x - q2.x)^2 + (q1.y - q2.y)^2) AS euclidean_distance
+        FROM (
+            SELECT iu.image, iu.username, anno.id AS aid, label, x, y, width, height FROM {id_iu} AS iu
+            LEFT OUTER JOIN {id_anno} AS anno
+            ON iu.image = anno.image AND iu.username = anno.username
+            WHERE iu.username = %s
+        ) AS q1
+        JOIN (
+            SELECT iu.image, iu.username, anno.id AS aid, label, x, y, width, height FROM {id_iu} AS iu
+            LEFT OUTER JOIN {id_anno} AS anno
+            ON iu.image = anno.image AND iu.username = anno.username
+            WHERE iu.username IN %s
+        ) AS q2
+        ON q1.image = q2.image
+        {sql_goldenQuestion}
+    ),
+    imgStats AS (
+        SELECT image, username, COUNT(DISTINCT id2) AS num_pred, COUNT(DISTINCT id1) AS num_target
+        FROM masterQuery 
+        GROUP BY image, username
+    ),
+    tp AS (
+        SELECT username, image,
+        (CASE WHEN mindist > %s OR label1 != label2 THEN NULL ELSE bestMatch.id1 END) AS id1,
+        aux.id2, mindist AS dist
+        FROM (
+            SELECT username, id1, MIN(euclidean_distance) AS mindist
+            FROM masterQuery
+            GROUP BY username, id1
+        ) AS bestMatch
+        JOIN (
+            SELECT image, id1, id2, label1, label2, euclidean_distance
+            FROM masterQuery
+            WHERE euclidean_distance <= %s
+        ) AS aux
+        ON bestMatch.id1 = aux.id1
+        AND mindist = euclidean_distance
+    )
+    SELECT *
+    FROM (
+        SELECT image, username, num_pred, num_target, min_dist, avg_dist, max_dist,
+            tp, GREATEST(fp, num_pred - tp) AS fp, GREATEST(fn, num_target - tp) AS fn
+        FROM (
+            SELECT image, username, num_pred, num_target, min_dist, avg_dist, max_dist,
+                LEAST(tp, num_pred) AS tp, fp, fn
+            FROM imgStats
+            JOIN (
+                SELECT username AS username_, image AS image_,
+                    MIN(dist) AS min_dist, AVG(dist) AS avg_dist, MAX(dist) AS max_dist,
+                    SUM(tp) AS tp, SUM(fp) AS fp, SUM(fn) AS fn
+                FROM (
+                    SELECT username, image,
+                            dist,
+                            (CASE WHEN id1 IS NOT NULL AND id2 IS NOT NULL THEN 1 ELSE 0 END) AS tp,
+                            (CASE WHEN id2 IS NULL THEN 1 ELSE 0 END) AS fp,
+                            (CASE WHEN id1 IS NULL THEN 1 ELSE 0 END) AS fn
                     FROM (
-                        SELECT *,
-                            (
-                                CASE WHEN q1label = q2label AND (iou >= %s) THEN 1
-                                ELSE 0
-                                END
-                            ) AS is_tp,
-                            (
-                                CASE WHEN q1label <> q2label OR (iou < %s) THEN 1
-                                ELSE 0
-                                END
-                            ) AS is_fp
-                        FROM masterQuery
-                        JOIN (
-                            SELECT q2id AS q2id_2, MAX(iou) AS maxIoU
+                        SELECT * FROM tp
+                        UNION ALL (
+                            SELECT username, image, NULL AS id1, id2, NULL AS dist
                             FROM masterQuery
-                            GROUP BY q2id
-                        ) AS bestMatch
-                        ON masterQuery.q2id = bestMatch.q2id_2
-                    ) AS statsQuery
-                    GROUP BY image
-                ) AS statsQuery
-                LEFT OUTER JOIN (
-                    SELECT iu_a.image AS i_np, COUNT(*) AS num_pred
-                    FROM {id_anno} AS anno_a
-                    RIGHT OUTER JOIN {id_iu} AS iu_a
-                    ON anno_a.image = iu_a.image AND anno_a.username = iu_a.username
-                    WHERE iu_a.username = %s
-                    GROUP BY iu_a.image
-                ) AS q_np
-                ON statsQuery.image = q_np.i_np
-                FULL OUTER JOIN (
-                    SELECT iu_b.image AS i_nt, COUNT(*) AS num_target
-                    FROM {id_anno} AS anno_b
-                    RIGHT OUTER JOIN {id_iu} AS iu_b
-                    ON anno_b.image = iu_b.image AND anno_b.username = iu_b.username
-                    WHERE iu_b.username = %s
-                    GROUP BY iu_b.image
-                ) AS q_nt
-                ON statsQuery.image = q_nt.i_nt
-            ) AS aggregateQuery
-        ) AS finalQuery
-        {sql_global_end}
-    '''
+                            WHERE id1 NOT IN (
+                                SELECT id1 FROM tp
+                            )
+                            AND masterQuery.id2 IS NOT NULL
+                        )
+                        UNION ALL (
+                            SELECT username, image, id1, NULL AS id2, NULL AS dist
+                            FROM masterQuery
+                            WHERE id2 IS NULL
+                            AND id1 IS NOT NULL
+                        )
+                    ) AS q1
+                ) AS q2
+                GROUP BY image_, username_
+            ) AS statsQuery
+            ON imgstats.image = statsQuery.image_
+            AND imgstats.username = statsQuery.username_
+        ) AS q3
+    ) AS q4
+    UNION ALL (
+        SELECT image, username, num_pred, num_target, NULL AS min_dist, NULL AS avg_dist, NULL AS max_dist, 0 AS tp, num_pred AS fp, 0 AS fn
+        FROM imgStats
+        WHERE num_target = 0
+    )'''
+
+
+    boundingBoxes = '''WITH masterQuery AS (
+        SELECT q1.image, q2.username, q1.aid AS id1, q2.aid AS id2, q1.label AS label1, q2.label AS label2,
+            intersection_over_union(q1.x, q1.y, q1.width, q1.height,
+                                    q2.x, q2.y, q2.width, q2.height) AS iou
+        FROM (
+            SELECT iu.image, iu.username, anno.id AS aid, label, x, y, width, height FROM {id_iu} AS iu
+            LEFT OUTER JOIN {id_anno} AS anno
+            ON iu.image = anno.image AND iu.username = anno.username
+            WHERE iu.username = %s
+        ) AS q1
+        JOIN (
+            SELECT iu.image, iu.username, anno.id AS aid, label, x, y, width, height FROM {id_iu} AS iu
+            LEFT OUTER JOIN {id_anno} AS anno
+            ON iu.image = anno.image AND iu.username = anno.username
+            WHERE iu.username IN %s
+        ) AS q2
+        ON q1.image = q2.image
+        {sql_goldenQuestion}
+    ),
+    imgStats AS (
+        SELECT image, username, COUNT(DISTINCT id2) AS num_pred, COUNT(DISTINCT id1) AS num_target
+        FROM masterQuery 
+        GROUP BY image, username
+    ),
+    tp AS (
+        SELECT username, image,
+        (CASE WHEN maxiou < %s OR label1 != label2 THEN NULL ELSE bestMatch.id1 END) AS id1,
+        aux.id2, maxiou AS iou
+        FROM (
+            SELECT username, id1, MAX(iou) AS maxiou
+            FROM masterQuery
+            GROUP BY username, id1
+        ) AS bestMatch
+        JOIN (
+            SELECT image, id1, id2, label1, label2, iou
+            FROM masterQuery
+            WHERE iou > 0
+        ) AS aux
+        ON bestMatch.id1 = aux.id1
+        AND maxiou = iou
+    )
+    SELECT *
+    FROM (
+        SELECT image, username, num_pred, num_target, min_iou, avg_iou, max_iou,
+            tp, GREATEST(fp, num_pred - tp) AS fp, GREATEST(fn, num_target - tp) AS fn
+        FROM (
+            SELECT image, username, num_pred, num_target, min_iou, avg_iou, max_iou,
+                LEAST(tp, num_pred) AS tp, fp, fn
+            FROM imgStats
+            JOIN (
+                SELECT username AS username_, image AS image_,
+                    MIN(iou) AS min_iou, AVG(iou) AS avg_iou, MAX(iou) AS max_iou,
+                    SUM(tp) AS tp, SUM(fp) AS fp, SUM(fn) AS fn
+                FROM (
+                    SELECT username, image,
+                            iou,
+                            (CASE WHEN id1 IS NOT NULL AND id2 IS NOT NULL THEN 1 ELSE 0 END) AS tp,
+                            (CASE WHEN id2 IS NULL THEN 1 ELSE 0 END) AS fp,
+                            (CASE WHEN id1 IS NULL THEN 1 ELSE 0 END) AS fn
+                    FROM (
+                        SELECT * FROM tp
+                        UNION ALL (
+                            SELECT username, image, NULL AS id1, id2, NULL::real AS iou
+                            FROM masterQuery
+                            WHERE id1 NOT IN (
+                                SELECT id1 FROM tp
+                            )
+                            AND masterQuery.id2 IS NOT NULL
+                        )
+                        UNION ALL (
+                            SELECT username, image, id1, NULL AS id2, NULL::real AS iou
+                            FROM masterQuery
+                            WHERE id2 IS NULL
+                            AND id1 IS NOT NULL
+                        )
+                    ) AS q1
+                ) AS q2
+                GROUP BY image_, username_
+            ) AS statsQuery
+            ON imgstats.image = statsQuery.image_
+            AND imgstats.username = statsQuery.username_
+        ) AS q3
+    ) AS q4
+    UNION ALL (
+        SELECT image, username, num_pred, num_target, NULL AS min_iou, NULL AS avg_iou, NULL AS max_iou, 0 AS tp, num_pred AS fp, 0 AS fn
+        FROM imgStats
+        WHERE num_target = 0
+    )'''
+
 
     segmentationMasks = '''
         {sql_global_start}

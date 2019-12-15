@@ -61,6 +61,7 @@
             $(document).ready(function() {
                 window.showLoadingOverlay(true);
                 window.project = '{{ projectShortname }}';
+                window.user = '{{ username }}';
                 $('.navigation-entry').each(function() {
                     let id = $(this).attr('id');
                     $(this).click(function() {

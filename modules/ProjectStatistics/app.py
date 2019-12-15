@@ -51,7 +51,7 @@ class ProjectStatistics:
                 abort(401, 'forbidden')
 
             params = request.json
-            username_eval = params['user_eval']
+            usernames_eval = params['users_eval']
             username_target = params['user_target']
             if 'threshold' in params:
                 threshold = params['threshold']
@@ -61,10 +61,7 @@ class ProjectStatistics:
                 goldenQuestionsOnly = params['goldenQuestionsOnly']
             else:
                 goldenQuestionsOnly = False
-            if 'perImage' in params:
-                perImage = params['perImage']
-            else:
-                perImage = False
-            stats = self.middleware.getUserStatistics(project, username_eval, username_target, threshold, goldenQuestionsOnly, perImage)
+
+            stats = self.middleware.getUserStatistics(project, usernames_eval, username_target, threshold, goldenQuestionsOnly)
 
             return { 'result': stats }

@@ -100,9 +100,9 @@ class ProjectStatisticsMiddleware:
         return precision, recall, f1
 
 
-    def getUserStatistics(self, project, username_eval, username_groundTruth, threshold=0.5, goldenQuestionsOnly=True, perImage=False):
+    def getUserStatistics(self, project, usernames_eval, username_groundTruth, threshold=0.5, goldenQuestionsOnly=True):
         '''
-            Compares the accuracy of a user with a second one.
+            Compares the accuracy of a list of users with a second one.
             The following measures of accuracy are reported, depending on the
             annotation type:            TODO: enable prediction accuracy too
             - image labels: overall accuracy
@@ -122,8 +122,6 @@ class ProjectStatisticsMiddleware:
 
             If 'goldenQuestionsOnly' is True, only images with flag 'isGoldenQuestion' = True
             will be considered for evaluation.
-            If 'perImage' is True, statistical figures will be provided for each image.
-            Else only general values, averaged over the entire set of images, are returned.
         '''
 
         # get annotation type for project
@@ -134,7 +132,11 @@ class ProjectStatisticsMiddleware:
         annoType = annoType[0]['annotationtype']
 
         # compose args list and complete query
-        queryArgs = [username_eval, username_groundTruth]
+        queryArgs = [username_groundTruth, tuple(usernames_eval)]
+        if annoType == 'points' or annoType == 'boundingBoxes':
+            queryArgs.append(threshold)
+            if annoType == 'points':
+                queryArgs.append(threshold)
 
         if goldenQuestionsOnly:
             sql_goldenQuestion = sql.SQL('''JOIN (
@@ -147,143 +149,187 @@ class ProjectStatisticsMiddleware:
             )
         else:
             sql_goldenQuestion = sql.SQL('')
+
+
+        # result tokens
+        tokens = {
+            'num_pred': 0,
+            'num_target': 0,
+        }
+        if annoType == 'points':
+            tokens = { **tokens, **{
+                'tp': 0,
+                'fp': 0,
+                'fn': 0,
+                'avg_dist': 0.0
+            }}
+        elif annoType == 'boundingBoxes':
+            tokens = { **tokens, ** {
+                'tp': 0,
+                'fp': 0,
+                'fn': 0,
+                'avg_iou': 0.0
+            }}
         
+        tokens_normalize = [
+            'avg_dist',
+            'avg_iou'
+        ]
         
-        if annoType == 'points' or annoType == 'boundingBoxes':
-            queryArgs.extend([threshold, threshold])
-            queryArgs.extend([username_eval, username_groundTruth])
-
-            if not perImage:
-                sql_global_start = sql.SQL('''SELECT SUM(num_pred) AS num_pred, SUM(num_target) AS num_target,
-                    SUM(ntp) AS ntp, SUM(nfp) AS nfp, SUM(nfn) AS nfn
-                    FROM (''')
-                sql_global_end = sql.SQL(') AS globalQuery;')
-
-            else:
-                sql_global_start = sql.SQL('')
-                sql_global_end = sql.SQL(';')
-
-        elif annoType == 'segmentationMasks':
-            raise Exception('Per-user statistics on segmentation masks are not yet supported.')
-    
-        elif annoType == 'labels':
-            if not perImage:
-                sql_global_start = sql.SQL('SELECT SUM(label_correct::int) AS num_correct, COUNT(*) AS num_total FROM (')
-                sql_global_end = sql.SQL(') AS globalQuery;')
-
-            else:
-                sql_global_start = sql.SQL('')
-                sql_global_end = sql.SQL(';')
 
         queryStr = getattr(StatisticalFormulas, annoType).value
         queryStr = sql.SQL(queryStr).format(
             id_anno=sql.Identifier(project, 'annotation'),
             id_iu=sql.Identifier(project, 'image_user'),
-            sql_goldenQuestion=sql_goldenQuestion,
-            sql_global_start=sql_global_start,
-            sql_global_end=sql_global_end
+            sql_goldenQuestion=sql_goldenQuestion
+            # sql_global_start=sql_global_start,
+            # sql_global_end=sql_global_end
         )
 
+        #TODO: update points query (according to bboxes); re-write stats parsing below
+
         # get stats
-        response = {}
+        response = {
+            'per_user': {}
+        }
+        with self.dbConnector.execute_cursor(queryStr, tuple(queryArgs)) as cursor:
+            while True:
+                b = cursor.fetchone()
+                if b is None:
+                    break
 
-        if perImage:
-            response['per_image'] = {}
-            with self.dbConnector.execute_cursor(queryStr, tuple(queryArgs)) as cursor:
-                if annoType == 'points' or annoType == 'boundingBoxes':
-                    global_stats = {
-                        'num_pred': 0,
-                        'num_target': 0,
-                        'tp': 0,
-                        'fp': 0,
-                        'fn': 0
-                    }
-                else:
-                    global_stats = {
-                        'num_correct': 0,
-                        'num_total': 0,
-                        'oa': 0.0
-                    }
+                user = b['username']
+                if not user in response['per_user']:
+                    response['per_user'][user] = tokens.copy()
+                    response['per_user'][user]['count'] = 1
+                elif b['num_target'] > 0:
+                    response['per_user'][user]['count'] += 1
                 
-                # iterate over results
-                while True:
-                    b = cursor.fetchone()
-                    if b is None:
-                        break
+                for key in tokens.keys():
+                    if b[key] is not None:
+                        response['per_user'][user][key] += b[key]
+                
 
-                    if annoType == 'points' or annoType == 'boundingBoxes':
-                        prec, rec, f1 = self._calc_geometric_stats(b['ntp'], b['nfp'], b['nfn'])
-                        response['per_image'][str(b['image'])] = {
-                            'num_pred': b['num_pred'],
-                            'num_target': b['num_target'],
-                            'tp': b['ntp'],
-                            'fp': b['nfp'],
-                            'fn': b['nfn'],
-                            'precision': prec,
-                            'recall': rec,
-                            'f1': f1
-                        }
-                        global_stats['num_pred'] += b['num_pred']
-                        global_stats['num_target'] += b['num_target']
-                        global_stats['tp'] += b['ntp']
-                        global_stats['fp'] += b['nfp']
-                        global_stats['fn'] += b['nfn']
-
-                    else:
-                        try:
-                            oa = 100 * b['num_correct'] / b['num_total']
-                        except:
-                            oa = None
-                        response['per_image'][str(b['image'])] = {
-                            'num_correct': b['num_correct'],
-                            'num_total': b['num_total'],
-                            'oa': oa
-                        }
-                        global_stats['num_correct'] += b['num_correct']
-                        global_stats['num_total'] += b['num_total']
+        for user in response['per_user'].keys():
+            for t in tokens_normalize:
+                if t in response['per_user'][user]:
+                    response['per_user'][user][t] /= response['per_user'][user]['count']
+            del response['per_user'][user]['count']
 
             if annoType == 'points' or annoType == 'boundingBoxes':
-                prec, rec, f1 = self._calc_geometric_stats(global_stats['tp'], global_stats['fp'], global_stats['fn'])
-                global_stats['precision'] = prec
-                global_stats['recall'] = rec
-                global_stats['f1'] = f1
+                prec, rec, f1 = self._calc_geometric_stats(
+                    response['per_user'][user]['tp'],
+                    response['per_user'][user]['fp'],
+                    response['per_user'][user]['fn']
+                )
+                response['per_user'][user]['prec'] = prec
+                response['per_user'][user]['rec'] = rec
+                response['per_user'][user]['f1'] = f1
 
-            else:
-                try:
-                    oa = 100 * global_stats['num_correct'] / global_stats['num_total']
-                except:
-                    oa = None
-                global_stats['oa'] = oa
-                
-            response['global_stats'] = global_stats
-
-        else:
-            # get global stats directly
-            result = self.dbConnector.execute(queryStr, tuple(queryArgs), 1)
-            result = result[0]
-
-            if annoType == 'points' or annoType == 'boundingBoxes':
-                prec, rec, f1 = self._calc_geometric_stats(result['ntp'], result['nfp'], result['nfn'])
-                response = {
-                    'num_pred': result['num_pred'],
-                    'num_target': result['num_target'],
-                    'tp': result['ntp'],
-                    'fp': result['nfp'],
-                    'fn': result['nfn'],
-                    'precision': prec,
-                    'recall': rec,
-                    'f1': f1
-                }
-
-            else:
-                try:
-                    oa = 100 * result['num_correct'] / result['num_total']
-                except:
-                    oa = None
-                response = {
-                    'num_correct': result['num_correct'],
-                    'num_total': result['num_total'],
-                    'oa': oa
-                }
-            
         return response
+
+                
+
+
+
+        # #TODO: deprecated:
+        # if perImage:
+        #     response['per_image'] = {}
+        #     with self.dbConnector.execute_cursor(queryStr, tuple(queryArgs)) as cursor:
+        #         if annoType == 'points' or annoType == 'boundingBoxes':
+        #             global_stats = {
+        #                 'num_pred': 0,
+        #                 'num_target': 0,
+        #                 'tp': 0,
+        #                 'fp': 0,
+        #                 'fn': 0
+        #             }
+        #         else:
+        #             global_stats = {
+        #                 'num_correct': 0,
+        #                 'num_total': 0,
+        #                 'oa': 0.0
+        #             }
+                
+        #         # iterate over results
+        #         while True:
+        #             b = cursor.fetchone()
+        #             if b is None:
+        #                 break
+
+        #             if annoType == 'points' or annoType == 'boundingBoxes':
+        #                 prec, rec, f1 = self._calc_geometric_stats(b['ntp'], b['nfp'], b['nfn'])
+        #                 response['per_image'][str(b['image'])] = {
+        #                     'num_pred': b['num_pred'],
+        #                     'num_target': b['num_target'],
+        #                     'tp': b['ntp'],
+        #                     'fp': b['nfp'],
+        #                     'fn': b['nfn'],
+        #                     'precision': prec,
+        #                     'recall': rec,
+        #                     'f1': f1
+        #                 }
+        #                 global_stats['num_pred'] += b['num_pred']
+        #                 global_stats['num_target'] += b['num_target']
+        #                 global_stats['tp'] += b['ntp']
+        #                 global_stats['fp'] += b['nfp']
+        #                 global_stats['fn'] += b['nfn']
+
+        #             else:
+        #                 try:
+        #                     oa = 100 * b['num_correct'] / b['num_total']
+        #                 except:
+        #                     oa = None
+        #                 response['per_image'][str(b['image'])] = {
+        #                     'num_correct': b['num_correct'],
+        #                     'num_total': b['num_total'],
+        #                     'oa': oa
+        #                 }
+        #                 global_stats['num_correct'] += b['num_correct']
+        #                 global_stats['num_total'] += b['num_total']
+
+        #     if annoType == 'points' or annoType == 'boundingBoxes':
+        #         prec, rec, f1 = self._calc_geometric_stats(global_stats['tp'], global_stats['fp'], global_stats['fn'])
+        #         global_stats['precision'] = prec
+        #         global_stats['recall'] = rec
+        #         global_stats['f1'] = f1
+
+        #     else:
+        #         try:
+        #             oa = 100 * global_stats['num_correct'] / global_stats['num_total']
+        #         except:
+        #             oa = None
+        #         global_stats['oa'] = oa
+                
+        #     response['global_stats'] = global_stats
+
+        # else:
+        #     # get global stats directly
+        #     result = self.dbConnector.execute(queryStr, tuple(queryArgs), 1)
+        #     result = result[0]
+
+        #     if annoType == 'points' or annoType == 'boundingBoxes':
+        #         prec, rec, f1 = self._calc_geometric_stats(result['ntp'], result['nfp'], result['nfn'])
+        #         response = {
+        #             'num_pred': result['num_pred'],
+        #             'num_target': result['num_target'],
+        #             'tp': result['ntp'],
+        #             'fp': result['nfp'],
+        #             'fn': result['nfn'],
+        #             'precision': prec,
+        #             'recall': rec,
+        #             'f1': f1
+        #         }
+
+        #     else:
+        #         try:
+        #             oa = 100 * result['num_correct'] / result['num_total']
+        #         except:
+        #             oa = None
+        #         response = {
+        #             'num_correct': result['num_correct'],
+        #             'num_total': result['num_total'],
+        #             'oa': oa
+        #         }
+            
+        # return response

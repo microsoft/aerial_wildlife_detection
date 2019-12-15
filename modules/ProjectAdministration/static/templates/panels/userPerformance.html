@@ -1,32 +1,98 @@
 <div>
-    <h2>User performance</h2>
     <div id="controls">
-        <h3>Options</h3>
-        <div>User to be evaluated:</div>
-        <table id="eval-users"></table><br />
-
-        <div>Target user:</div>
-        <table id="target-users"></table>
-
-        <div id="threshold-control">
-            <!-- TODO: hide if not points or bboxes -->
-            <span>Distance/IoU threshold:</span>
-            <input type="range" id="threshold-range" min="0.0" max="1.0" step="0.01" value="0.5" />
+        <div id="options-header" style="cursor:pointer">
+            <!-- TODO: Triangle -->
+            <h2>Options</h2>
         </div>
+        <div id="options-container">
+            <div class="user-tables-container">
+                <div class="user-table" style="order:1;">
+                    <div>Users to be evaluated:</div>
+                    <table>
+                        <thead>
+                            <tr><td><input type="checkbox" id="eval-check-all" checked /></td><td>Name</td></tr>
+                        </thead>
+                        <tbody id="eval-users"></tbody i>
+                    </table>
+                </div>
 
-        <input type="checkbox" id="check-golden-question-only" value="goldenQuestionsOnly" />
-        <label for="check-golden-question-only">Limit to golden questions only</label>
+                <div class="user-table" style="order:2;">
+                    <div>Target user:</div>
+                    <table>
+                        <thead>
+                            <tr><td></td><td>Name</td></tr>
+                        </thead>
+                        <tbody id="target-users"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="threshold-control" style="margin-top:5px">
+                <!-- TODO: hide if not points or bboxes -->
+                <span>Distance/IoU threshold:</span>
+                <input type="range" id="threshold-range" min="0.0" max="1.0" step="0.01" value="0.5" />
+                <input type="number" id="threshold-number" min="0.0" max="1.0" step="0.01" value="0.5" />
+            </div>
+
+            <div style="margin-top:5px;margin-bottom:5px;">
+                <input type="checkbox" id="check-golden-question-only" value="goldenQuestionsOnly" />
+                <label for="check-golden-question-only">Limit to golden questions only</label>
+            </div>
+
+            <button id="calc-stats" class="btn btn-sm btn-primary">Update</button>
+        </div>
         
-        <button id="calc-stats" class="btn btn-sm btn-primary">Update</button>
+        
     </div>
 
-    <div>
-        <h3>Performance</h3>
+    <div style="margin-top:20px">
+        <h2>Performance</h2>
         <div id="performance-container"></div>
     </div>
 </div>
 <link rel="stylesheet" href="statistics/libs/chartjs/Chart.min.css" />
 <style>
+    #options-container {
+        margin-bottom: 5px;
+    }
+
+    .user-tables-container {
+        display: flex;
+        flex-direction: row;
+    }
+
+    .user-table {
+        margin: 10px;
+        width: 50%;
+    }
+
+    table {
+        width: 100%;
+        max-width: 400px;
+        max-height: 200px;
+        border: 1px solid #aaa;
+    }
+
+    thead {
+        background: #5f5f5f;
+        font-weight: bold;
+    }
+
+    tbody {
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+
+    thead, tbody {
+        display: block;
+        padding-left: 5px;
+        padding-right: 5px;
+    }
+
+    td {
+        padding-right: 5px;
+    }
+
     .chartWrapper {
         position: relative;
     }
@@ -50,7 +116,10 @@
 
     function calculateUserStats() {
         // get control values
-        var evalUser = $('#eval-users').find('input[type=radio]:checked').attr('id');
+        var evalUsers = [];
+        $('#eval-users').find('input[type=checkbox]:checked').each(function() {
+            evalUsers.push($(this).attr('id'));
+        })
         var targetUser = $('#target-users').find('input[type=radio]:checked').attr('id');
         
         //TODO
@@ -58,79 +127,205 @@
         var limitGoldenQuestions = $('#check-golden-question-only').prop('checked');
 
         // update chart
-        $.ajax({
+        let resultsContainer = $('#performance-container');
+        resultsContainer.empty();
+        return $.ajax({
             url: window.project + '/getUserStatistics',
             method: 'POST',
             data: JSON.stringify({
-                'user_eval': evalUser,
+                'users_eval': evalUsers,
                 'user_target': targetUser,
                 'threshold': threshold,
-                'goldenQuestionsOnly': limitGoldenQuestions,
-                'perImage': true
+                'goldenQuestionsOnly': limitGoldenQuestions
             }),
             contentType: 'application/json; charset=utf-8',
             dataType: 'json',
             success: function(data) {
-                //TODO: global statistics
-                // assemble series
-                var precision = [];     //TODO: adapt for non-prec-rec tasks
-                var recall = [];
-                var labels = [];
-                var counter = 1;
-                for(var key in data['result']['per_image']) {
-                    let prec = data['result']['per_image']['precision'];
-                    let rec = data['result']['per_image']['recall'];
-                    if(prec===0 && rec===0) {
-                        continue;
+                // assemble global, per-user statistics
+                var usernames = [];
+                var series = {
+                    'color': []
+                };        // dict of lists
+                for(var user in data['result']['per_user']) {
+                    usernames.push(user);
+                    for(var s in data['result']['per_user'][user]) {
+                        if(!series.hasOwnProperty(s)) {
+                            series[s] = [];
+                        }
+                        series[s].push(data['result']['per_user'][user][s]);
                     }
-                    precision.push(prec);
-                    recall.push(rec);
-                    labels.push(counter);
-                    counter++;
+
+                    // colors
+                    if(threshold !== null) {
+                        if(series.hasOwnProperty('avg_dist')) {
+                            series['color'].push(data['result']['per_user'][user]['avg_dist'] <= threshold ? '#007bff' : '#ff3300');
+                        } else if(series.hasOwnProperty('avg_iou')) {
+                            series['color'].push(data['result']['per_user'][user]['avg_iou'] >= threshold ? '#007bff' : '#ff3300');
+                        }
+                    } else {
+                        series['color'].push('#007bff');
+                    }
                 }
 
+                // create overview chart        //TODO: adapt for other anno types
+                if(series.hasOwnProperty('prec') && series.hasOwnProperty('rec')) {
+                    // points or bounding boxes: show precision-recall plots
+                    var chartData = [];
+                    var pointRadii = [];
+                    var maxRadius = 0;
+                    for(var i=0; i<series['prec'].length; i++) {
+                        chartData.push({
+                            x: series['rec'][i],
+                            y: series['prec'][i]
+                        });
+                        pointRadii.push(series['num_pred'][i]);
+                        maxRadius = Math.max(maxRadius, series['num_pred'][i]);
+                    }
+                    for(var i=0; i<pointRadii.length; i++) {
+                        pointRadii[i] *= 10.0 / maxRadius;
+                    }
 
-                let resultsContainer = $('#performance-container');
-                var cw = $('<div class="chartWrapper"><div class="chartAreaWrapper"></div></div>');
-                let canvas = $('<canvas width=400 height=300></canvas>');
-                cw.find('.chartAreaWrapper').append(canvas);
-                var chart = new Chart(canvas[0].getContext('2d'), {
-                        type: 'bar',
+                    var cw = $('<div class="chartWrapper"><div class="chartAreaWrapper"></div></div>');
+                    let canvas = $('<canvas width=400 height=300></canvas>');
+                    cw.find('.chartAreaWrapper').append(canvas);
+                    var chart = new Chart(canvas[0].getContext('2d'), {
+                        type: 'scatter',
                         data: {
-                            labels: labels,
-                            datasets: [
-                            {
-                                label: 'Precision',
-                                data: precision,
-                                backgroundColor: '#007bff'
-                            },
-                            {
-                                label: 'Recall',
-                                data: recall,
-                                backgroundColor: '#ffee00'
+                            labels: usernames,
+                            datasets: [{
+                                label: 'user performance',
+                                data: chartData,
+                                pointRadius: pointRadii,
+                                pointHoverRadius: pointRadii,
+                                backgroundColor: series['color']
                             }]
                         },
                         options: {
+                            legend: {
+                                display: false
+                            },
+                            tooltips: {
+                                callbacks: {
+                                    label: function(tooltipItem, data) {
+                                    var label = data.labels[tooltipItem.index];
+                                    return label + ': (Precision: ' + tooltipItem.yLabel + ', Recall: ' + tooltipItem.xLabel + ')';
+                                    }
+                                }
+                            },
+                            scales: {
+                                yAxes: [{
+                                    scaleLabel: {
+                                        display: true,
+                                        labelString: 'Precision'
+                                    },
+                                    ticks: {
+                                        min: 0.0,
+                                        max: 1.0
+                                    }
+                                }],
+                                xAxes: [{
+                                    scaleLabel: {
+                                        display: true,
+                                        labelString: 'Recall'
+                                    },
+                                    ticks: {
+                                        min: 0.0,
+                                        max: 1.0
+                                    }
+                                }],
+                            },
                             responsive: true,
                             maintainAspectRatio: false
                         }
                     });
+                    resultsContainer.append(cw);
+                }
 
-                resultsContainer.empty();
-                resultsContainer.append(cw);
+                if(series.hasOwnProperty('avg_dist') || series.hasOwnProperty('avg_iou')) {
+                    var geomData = [];
+                    var chartTitle = 'Geometric precision';
+                    var chartLabel = 'average ';
+                    if(series.hasOwnProperty('avg_dist')) {
+                        geomData = series['avg_dist'];
+                        chartLabel += 'point distance';
+                    } else if(series.hasOwnProperty('avg_iou')) {
+                        geomData = series['avg_iou'];
+                        chartLabel += 'Intersection-over-Union';
+                    }
+
+                    // geometric precision bar charts
+                    var cw_geom = $('<div class="chartWrapper"><div class="chartAreaWrapper"></div></div>');
+                    let canvas_geom = $('<canvas width=400 height=300></canvas>');
+                    cw_geom.find('.chartAreaWrapper').append(canvas_geom);
+                    new Chart(canvas_geom[0].getContext('2d'), {
+                        type: 'bar',
+                        data: {
+                            labels: usernames,
+                            datasets: [{
+                                label: chartLabel,
+                                data: geomData,
+                                backgroundColor: series['color']
+                            }]
+                        },
+                        options: {
+                            scales: {
+                                yAxes: [{
+                                    scaleLabel: {
+                                        display: true,
+                                        labelString: chartLabel
+                                    },
+                                    ticks: {
+                                        min: 0.0,
+                                        max: 1.0
+                                    }
+                                }]
+                            },
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }
+                    });
+                    resultsContainer.append(cw_geom);
+                }
             },
             error: function(data) {
                 console.log('ERROR:');
                 console.log(data);
             }
         });
+
     }
 
     $(document).ready(function() {
 
-        // populate users tables
+        $('#options-header').click(function() {
+            let container = $('#options-container');
+            if(container.is(':visible')) {
+                container.slideUp();
+            } else {
+                container.slideDown();
+            }
+        });
+
         let evalUsersTable = $('#eval-users');
         let targetUsersTable = $('#target-users');
+
+        $('#eval-check-all').change(function() {
+            evalUsersTable.find('input[type=checkbox]').each(function() {
+                $(this).prop('checked', $('#eval-check-all').prop('checked'));
+            });
+        });
+
+        let thresholdRange = $('#threshold-range');
+        let thresholdNumber = $('#threshold-number');
+
+        thresholdRange.on('input', function() {
+            thresholdNumber.val($(this).val());
+        });
+        thresholdNumber.on('input', function() {
+            thresholdRange.val($(this).val());
+        });
+
+        // populate users tables
         var promise = $.ajax({
             url: window.project + '/getUserNames',
             method: 'POST',
@@ -138,18 +333,14 @@
                 data = data['users'];
                 for(var idx in data) {
                     var tableEntry_eval = $('<tr></tr>');
-                    tableEntry_eval.append($('<td><input type="radio" id="'+data[idx]+'" name="evalUser"></td>'))
+                    tableEntry_eval.append($('<td><input type="checkbox" id="'+data[idx]+'" name="evalUser" checked></td>'))
                     tableEntry_eval.append($('<td>'+data[idx]+'</td>'));
-                    if(idx === 0) {
-                        tableEntry_eval.find('input[type=radio]')[0].prop('checked', 'checked');
-                    }
                     evalUsersTable.append(tableEntry_eval);
-                    var tableEntry_target = tableEntry_eval.clone();
-                    tableEntry_target.find('input[type=radio]').each(function() {
-                        $(this).prop('name', 'targetUser');
-                    });
-                    if(idx === 1) {
-                        tableEntry_target.find('input[type=radio]')[0].prop('checked', 'checked');
+                    var tableEntry_target = $('<tr></tr>');
+                    tableEntry_target.append($('<td><input type="radio" id="'+data[idx]+'" name="targetUser"></td>'))
+                    tableEntry_target.append($('<td>'+data[idx]+'</td>'));
+                    if(data[idx] === window.user) {
+                        tableEntry_target.find('input[type=radio]').prop('checked', 'checked');
                     }
                     targetUsersTable.append(tableEntry_target);
                 }
@@ -163,6 +354,10 @@
         $('#calc-stats').click(calculateUserStats);
 
         promise = promise.done(function() {
+            return calculateUserStats();
+        });
+
+        promise.done(function() {
             window.showLoadingOverlay(false);
         });
     });

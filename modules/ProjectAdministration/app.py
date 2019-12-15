@@ -152,6 +152,17 @@ class ProjectConfigurator:
             except:
                 abort(400, 'bad request')
 
+        
+        @self.app.post('/<project>/renewSecretToken')
+        def renew_secret_token(project):
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+            try:
+                newToken = self.middleware.renewSecretToken(project)
+                return {'secret_token': newToken}
+            except:
+                abort(400, 'bad request')
+
 
         @self.app.get('/<project>/getUsers')
         def get_project_users(project):
