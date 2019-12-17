@@ -194,7 +194,7 @@ if __name__ == '__main__':
     else:
         modelPath = None
     alCriterionPath = config.getProperty('AIController', 'al_criterion_lib_path', fallback=None)
-    if not len(alCriterionPath): alCriterionPath = None
+    if alCriterionPath is None or not len(alCriterionPath): alCriterionPath = None
 
     modelSettingsPath = config.getProperty('AIController', 'model_options_path', fallback=None)
     if modelSettingsPath is not None and len(modelSettingsPath):
