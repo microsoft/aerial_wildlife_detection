@@ -264,7 +264,7 @@ if __name__ == '__main__':
     )
     dbConn.execute('''INSERT INTO aide_admin.authentication (username, project, isAdmin)
             SELECT name, %s AS project, isAdmin FROM {schema}.user;
-        '''.format(config.getProperty('Database', 'schema')),
+        '''.format(schema=config.getProperty('Database', 'schema')),
         (config.getProperty('Database', 'schema'),), None)
 
 
