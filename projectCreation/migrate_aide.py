@@ -64,9 +64,13 @@ MODIFICATIONS_sql = [
         FOREIGN KEY (username) REFERENCES aide_admin.user (name),
         FOREIGN KEY (project) REFERENCES aide_admin.project (shortname)
     );''',
-    'ALTER TABLE {schema}.image_user DROP CONSTRAINT image_user_image_fkey;',
+    'ALTER TABLE {schema}.image_user DROP CONSTRAINT IF EXISTS image_user_image_fkey;',
+    'ALTER TABLE {schema}.image_user DROP CONSTRAINT IF EXISTS image_user_username_fkey;',
+    '''INSERT INTO aide_admin.user (name, email, hash, isSuperUser, canCreateProjects)
+        SELECT name, email, hash, false AS isSuperUser, false AS canCreateProjects FROM {schema}.user
+        ON CONFLICT(name) DO NOTHING;''',
     'ALTER TABLE {schema}.image_user ADD CONSTRAINT image_user_image_fkey FOREIGN KEY (username) REFERENCES aide_admin.USER (name);',
-    'ALTER TABLE {schema}.annotation DROP CONSTRAINT annotation_username_fkey;',
+    'ALTER TABLE {schema}.annotation DROP CONSTRAINT IF EXISTS annotation_username_fkey;',
     'ALTER TABLE {schema}.annotation ADD CONSTRAINT annotation_username_fkey FOREIGN KEY (username) REFERENCES aide_admin.USER (name);',
     'ALTER TABLE {schema}.cnnstate ADD COLUMN IF NOT EXISTS model_library VARCHAR',
     'ALTER TABLE {schema}.cnnstate ADD COLUMN IF NOT EXISTS alCriterion_library VARCHAR',
@@ -258,6 +262,10 @@ if __name__ == '__main__':
             alCriterionPath, alCriterionSettings
         )
     )
+    dbConn.execute('''INSERT INTO aide_admin.authentication (username, project, isAdmin)
+            SELECT name, %s AS project, isAdmin FROM {schema}.user;
+        '''.format(config.getProperty('Database', 'schema')),
+        (config.getProperty('Database', 'schema'),), None)
 
 
     # The multi-project AIde setup requires images to be in a subfolder named after

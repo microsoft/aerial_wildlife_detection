@@ -27,8 +27,7 @@
                 </div>
             </div>
 
-            <div id="threshold-control" style="margin-top:5px">
-                <!-- TODO: hide if not points or bboxes -->
+            <div id="threshold-control" style="display:none;margin-top:5px;">
                 <span>Distance/IoU threshold:</span>
                 <input type="range" id="threshold-range" min="0.0" max="1.0" step="0.01" value="0.5" />
                 <input type="number" id="threshold-number" min="0.0" max="1.0" step="0.01" value="0.5" />
@@ -325,34 +324,55 @@
             thresholdRange.val($(this).val());
         });
 
-        // populate users tables
+        // get project annotation and prediction types
         var promise = $.ajax({
-            url: window.project + '/getUserNames',
-            method: 'POST',
+            url: window.project + '/getProjectSettings',
+            method: 'GET',
             success: function(data) {
-                data = data['users'];
-                for(var idx in data) {
-                    var tableEntry_eval = $('<tr></tr>');
-                    tableEntry_eval.append($('<td><input type="checkbox" id="'+data[idx]+'" name="evalUser" checked></td>'))
-                    tableEntry_eval.append($('<td>'+data[idx]+'</td>'));
-                    evalUsersTable.append(tableEntry_eval);
-                    var tableEntry_target = $('<tr></tr>');
-                    tableEntry_target.append($('<td><input type="radio" id="'+data[idx]+'" name="targetUser"></td>'))
-                    tableEntry_target.append($('<td>'+data[idx]+'</td>'));
-                    if(data[idx] === window.user) {
-                        tableEntry_target.find('input[type=radio]').prop('checked', 'checked');
-                    }
-                    targetUsersTable.append(tableEntry_target);
+                window.annotationType = data['settings']['annotationType'];
+                window.predictionType = data['settings']['predictionType'];
+
+                // show advanced controls for points & bounding boxes
+                if(window.annotationType === 'points' || window.annotationType === 'boundingBoxes') {
+                    $('#threshold-control').show();
                 }
             },
             error: function(data) {
-                console.log('ERROR:');
+                console.log('ERROR:')
                 console.log(data);
             }
         });
 
-        $('#calc-stats').click(calculateUserStats);
 
+        // populate users tables
+        promise = promise.done(function() {
+            return $.ajax({
+                url: window.project + '/getUserNames',
+                method: 'POST',
+                success: function(data) {
+                    data = data['users'];
+                    for(var idx in data) {
+                        var tableEntry_eval = $('<tr></tr>');
+                        tableEntry_eval.append($('<td><input type="checkbox" id="'+data[idx]+'" name="evalUser" checked></td>'))
+                        tableEntry_eval.append($('<td>'+data[idx]+'</td>'));
+                        evalUsersTable.append(tableEntry_eval);
+                        var tableEntry_target = $('<tr></tr>');
+                        tableEntry_target.append($('<td><input type="radio" id="'+data[idx]+'" name="targetUser"></td>'))
+                        tableEntry_target.append($('<td>'+data[idx]+'</td>'));
+                        if(data[idx] === window.user) {
+                            tableEntry_target.find('input[type=radio]').prop('checked', 'checked');
+                        }
+                        targetUsersTable.append(tableEntry_target);
+                    }
+                },
+                error: function(data) {
+                    console.log('ERROR:');
+                    console.log(data);
+                }
+            });
+        });
+
+        $('#calc-stats').click(calculateUserStats);
         promise = promise.done(function() {
             return calculateUserStats();
         });
