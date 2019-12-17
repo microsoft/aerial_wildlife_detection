@@ -54,8 +54,10 @@ MODIFICATIONS_sql = [
         canCreateProjects BOOLEAN DEFAULT FALSE,
         session_token VARCHAR,
         last_login TIMESTAMPTZ,
+        secret_token VARCHAR DEFAULT md5(random()::text),
         PRIMARY KEY (name)
     );''',
+    'ALTER TABLE aide_admin.user ADD COLUMN IF NOT EXISTS secret_token VARCHAR DEFAULT md5(random()::text);',
     '''CREATE TABLE IF NOT EXISTS aide_admin.authentication (
         username VARCHAR NOT NULL,
         project VARCHAR NOT NULL,
@@ -66,8 +68,8 @@ MODIFICATIONS_sql = [
     );''',
     'ALTER TABLE {schema}.image_user DROP CONSTRAINT IF EXISTS image_user_image_fkey;',
     'ALTER TABLE {schema}.image_user DROP CONSTRAINT IF EXISTS image_user_username_fkey;',
-    '''INSERT INTO aide_admin.user (name, email, hash, isSuperUser, canCreateProjects)
-        SELECT name, email, hash, false AS isSuperUser, false AS canCreateProjects FROM {schema}.user
+    '''INSERT INTO aide_admin.user (name, email, hash, isSuperUser, canCreateProjects, secret_token)
+        SELECT name, email, hash, false AS isSuperUser, false AS canCreateProjects, md5(random()::text) AS secret_token FROM {schema}.user
         ON CONFLICT(name) DO NOTHING;''',
     'ALTER TABLE {schema}.image_user ADD CONSTRAINT image_user_image_fkey FOREIGN KEY (username) REFERENCES aide_admin.USER (name);',
     'ALTER TABLE {schema}.annotation DROP CONSTRAINT IF EXISTS annotation_username_fkey;',
@@ -335,8 +337,8 @@ if __name__ == '__main__':
     
     if confirmation:
         dbConn.execute('''
-                INSERT INTO aide_admin.user (name, email, hash, last_login, session_token)
-                SELECT name, email, hash, last_login, session_token
+                INSERT INTO aide_admin.user (name, email, hash, last_login, session_token, secret_token)
+                SELECT name, email, hash, last_login, session_token, md5(random()::text)
                 FROM {schema}.user
                 ON CONFLICT (name) DO NOTHING;
             '''.format(schema=config.getProperty('Database', 'schema')),

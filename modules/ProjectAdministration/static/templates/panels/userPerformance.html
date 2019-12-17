@@ -30,7 +30,7 @@
             <div id="threshold-control" style="display:none;margin-top:5px;">
                 <span>Distance/IoU threshold:</span>
                 <input type="range" id="threshold-range" min="0.0" max="1.0" step="0.01" value="0.5" />
-                <input type="number" id="threshold-number" min="0.0" max="1.0" step="0.01" value="0.5" />
+                <input type="number" id="threshold-number" min="0.0" max="1.0" step="0.01" value="0.5" style="width:60px" />
             </div>
 
             <div style="margin-top:5px;margin-bottom:5px;">
@@ -80,6 +80,7 @@
     tbody {
         overflow-x: hidden;
         overflow-y: auto;
+        max-height: 200px;
     }
 
     thead, tbody {
@@ -118,12 +119,21 @@
         var evalUsers = [];
         $('#eval-users').find('input[type=checkbox]:checked').each(function() {
             evalUsers.push($(this).attr('id'));
-        })
+        });
         var targetUser = $('#target-users').find('input[type=radio]:checked').attr('id');
-        
-        //TODO
-        var threshold = $('#threshold-range').val();
+        if(targetUser === undefined || evalUsers.length === 0) return;
+
         var limitGoldenQuestions = $('#check-golden-question-only').prop('checked');
+
+        var params = {
+            'users_eval': evalUsers,
+            'user_target': targetUser,
+            'goldenQuestionsOnly': limitGoldenQuestions
+        };
+        if(window.annotationType === 'points' || window.annotationType === 'boundingBoxes') {
+            var threshold = $('#threshold-range').val();
+            params['threshold'] = threshold;
+        }
 
         // update chart
         let resultsContainer = $('#performance-container');
@@ -131,12 +141,7 @@
         return $.ajax({
             url: window.project + '/getUserStatistics',
             method: 'POST',
-            data: JSON.stringify({
-                'users_eval': evalUsers,
-                'user_target': targetUser,
-                'threshold': threshold,
-                'goldenQuestionsOnly': limitGoldenQuestions
-            }),
+            data: JSON.stringify(params),
             contentType: 'application/json; charset=utf-8',
             dataType: 'json',
             success: function(data) {
@@ -155,7 +160,8 @@
                     }
 
                     // colors
-                    if(threshold !== null) {
+                    if((window.annotationType === 'points' || window.annotationType === 'boundingBoxes') &&
+                        threshold !== null) {
                         if(series.hasOwnProperty('avg_dist')) {
                             series['color'].push(data['result']['per_user'][user]['avg_dist'] <= threshold ? '#007bff' : '#ff3300');
                         } else if(series.hasOwnProperty('avg_iou')) {
@@ -345,7 +351,7 @@
 
 
         // populate users tables
-        promise = promise.done(function() {
+        promise = promise.then(function() {
             return $.ajax({
                 url: window.project + '/getUserNames',
                 method: 'POST',
@@ -373,11 +379,11 @@
         });
 
         $('#calc-stats').click(calculateUserStats);
-        promise = promise.done(function() {
+        promise = promise.then(function() {
             return calculateUserStats();
         });
 
-        promise.done(function() {
+        promise.then(function() {
             window.showLoadingOverlay(false);
         });
     });

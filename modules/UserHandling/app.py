@@ -54,14 +54,16 @@ class UserHandler():
                 password = self._parse_parameter(request.forms, 'password')
 
                 # check if session token already provided; renew login if correct
-                sessionToken = request.get_cookie('session_token', secret=self.config.getProperty('Project', 'secret_token'))
+                sessionToken = self.middleware.decryptSessionToken(username, request)
+                #request.get_cookie('session_token', secret=self.config.getProperty('Project', 'secret_token'))
                 if sessionToken is not None:
                     sessionToken = cgi.escape(sessionToken)
 
                 sessionToken, _, expires = self.middleware.login(username, password, sessionToken)
                 
                 response.set_cookie('username', username, path='/')   #, expires=expires, same_site='strict')
-                response.set_cookie('session_token', sessionToken, httponly=True, path='/', secret=self.config.getProperty('Project', 'secret_token'))    #, expires=expires, same_site='strict')
+                self.middleware.encryptSessionToken(username, response)
+                # response.set_cookie('session_token', sessionToken, httponly=True, path='/', secret=self.config.getProperty('Project', 'secret_token'))    #, expires=expires, same_site='strict')
 
                 return {
                     'expires': expires.strftime('%H:%M:%S')
@@ -86,12 +88,14 @@ class UserHandler():
                     username = self._parse_parameter(request.forms, 'username')
                 username = cgi.escape(username)
 
-                sessionToken = cgi.escape(request.get_cookie('session_token', secret=self.config.getProperty('Project', 'secret_token')))
+                sessionToken = self.middleware.decryptSessionToken(username, request)
+                # sessionToken = cgi.escape(request.get_cookie('session_token', secret=self.config.getProperty('Project', 'secret_token')))
 
                 _, _, expires = self.middleware.getLoginData(username, sessionToken)
                 
                 response.set_cookie('username', username, path='/')   #, expires=expires, same_site='strict')
-                response.set_cookie('session_token', sessionToken, httponly=True, path='/', secret=self.config.getProperty('Project', 'secret_token'))    #, expires=expires, same_site='strict')
+                self.middleware.encryptSessionToken(username, response)
+                # response.set_cookie('session_token', sessionToken, httponly=True, path='/', secret=self.config.getProperty('Project', 'secret_token'))    #, expires=expires, same_site='strict')
                 return {
                     'expires': expires.strftime('%H:%M:%S')
                 }
@@ -110,11 +114,13 @@ class UserHandler():
 
             try:
                 username = cgi.escape(request.get_cookie('username'))
-                sessionToken = cgi.escape(request.get_cookie('session_token', secret=self.config.getProperty('Project', 'secret_token')))
+                sessionToken = self.middleware.decryptSessionToken(username, request)
+                # sessionToken = cgi.escape(request.get_cookie('session_token', secret=self.config.getProperty('Project', 'secret_token')))
                 self.middleware.logout(username, sessionToken)
 
                 response.set_cookie('username', username, path='/')   #, expires=expires, same_site='strict')
-                response.set_cookie('session_token', sessionToken, httponly=True, path='/', secret=self.config.getProperty('Project', 'secret_token'))    #, expires=expires, same_site='strict')
+                self.middleware.encryptSessionToken(username, response)
+                # response.set_cookie('session_token', sessionToken, httponly=True, path='/', secret=self.config.getProperty('Project', 'secret_token'))    #, expires=expires, same_site='strict')
 
                 # send redirect
                 response.status = 303
@@ -181,7 +187,8 @@ class UserHandler():
                 )
 
                 response.set_cookie('username', username, path='/')   #, expires=expires, same_site='strict')
-                response.set_cookie('session_token', sessionToken, httponly=True, path='/', secret=self.config.getProperty('Project', 'secret_token'))    #, expires=expires, same_site='strict')
+                self.middleware.encryptSessionToken(username, response)
+                # response.set_cookie('session_token', sessionToken, httponly=True, path='/', secret=self.config.getProperty('Project', 'secret_token'))    #, expires=expires, same_site='strict')
                 return {
                     'expires': expires.strftime('%H:%M:%S')
                 }
@@ -270,7 +277,8 @@ class UserHandler():
 
         try:
             username = cgi.escape(request.get_cookie('username'))
-            sessionToken = cgi.escape(request.get_cookie('session_token', secret=self.config.getProperty('Project', 'secret_token')))
+            sessionToken = self.middleware.decryptSessionToken(username, request)
+            # sessionToken = cgi.escape(request.get_cookie('session_token', secret=self.config.getProperty('Project', 'secret_token')))
             return self.middleware.isAuthenticated(username, sessionToken, project, admin, superuser, canCreateProjects, extend_session)
         except:
             return False

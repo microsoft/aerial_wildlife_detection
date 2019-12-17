@@ -9,7 +9,8 @@
 }
 
 .project-entry {
-    padding: 40px;
+    margin-bottom: 40px;
+    padding: 30px;
     border-radius: 5px;
     background: #565656;
 }

@@ -54,7 +54,7 @@ class UserMiddleware():
 
 
     def _get_user_data(self, username):
-        result = self.dbConnector.execute('SELECT last_login, session_token FROM aide_admin.user WHERE name = %s;',
+        result = self.dbConnector.execute('SELECT last_login, session_token, secret_token FROM aide_admin.user WHERE name = %s;',
                                 (username,), numReturn=1)
         if not len(result):
             return None
@@ -239,17 +239,26 @@ class UserMiddleware():
             return True
 
         if admin:
-            queryStr = sql.SQL('SELECT COUNT(*) AS cnt FROM {} WHERE project = %s AND username = %s AND isAdmin = %s').format(
-                sql.Identifier('aide_admin', 'authentication')
-            )
+            queryStr = sql.SQL('SELECT COUNT(*) AS cnt FROM aide_admin.authentication WHERE project = %s AND username = %s AND isAdmin = %s')
             queryVals = (project,username,admin,)
         else:
-            queryStr = sql.SQL('SELECT COUNT(*) AS cnt FROM {} WHERE project = %s AND username = %s').format(
-                sql.Identifier('aide_admin', 'authentication')
-            )
+            queryStr = sql.SQL('SELECT COUNT(*) AS cnt FROM aide_admin.authentication WHERE project = %s AND username = %s')
             queryVals = (project,username,)
         result = self.dbConnector.execute(queryStr, queryVals, 1)
         return result[0]['cnt'] == 1
+
+
+    def decryptSessionToken(self, username, request):
+        try:
+            userdata = self._get_user_data(username)
+            return request.get_cookie('session_token', secret=userdata['secret_token'])
+        except:
+            return None
+
+
+    def encryptSessionToken(self, username, response):
+        userdata = self._get_user_data(username)
+        response.set_cookie('session_token', userdata['session_token'], httponly=True, path='/', secret=userdata['secret_token'])
 
 
     def _check_user_privileges(self, username, superuser=False, canCreateProjects=False):
