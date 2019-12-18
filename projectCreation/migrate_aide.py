@@ -68,9 +68,20 @@ MODIFICATIONS_sql = [
     );''',
     'ALTER TABLE {schema}.image_user DROP CONSTRAINT IF EXISTS image_user_image_fkey;',
     'ALTER TABLE {schema}.image_user DROP CONSTRAINT IF EXISTS image_user_username_fkey;',
-    '''INSERT INTO aide_admin.user (name, email, hash, isSuperUser, canCreateProjects, secret_token)
-        SELECT name, email, hash, false AS isSuperUser, false AS canCreateProjects, md5(random()::text) AS secret_token FROM {schema}.user
-        ON CONFLICT(name) DO NOTHING;''',
+    '''DO
+        $do$
+        BEGIN
+        IF EXISTS (
+            SELECT 1
+            FROM   information_schema.tables 
+            WHERE  table_schema = '{schema}'
+            AND    table_name = 'user'
+        ) THEN
+            INSERT INTO aide_admin.user (name, email, hash, isSuperUser, canCreateProjects, secret_token)
+            SELECT name, email, hash, false AS isSuperUser, false AS canCreateProjects, md5(random()::text) AS secret_token FROM {schema}.user
+            ON CONFLICT(name) DO NOTHING;
+        END IF;
+    END $do$;''',
     'ALTER TABLE {schema}.image_user ADD CONSTRAINT image_user_image_fkey FOREIGN KEY (username) REFERENCES aide_admin.USER (name);',
     'ALTER TABLE {schema}.annotation DROP CONSTRAINT IF EXISTS annotation_username_fkey;',
     'ALTER TABLE {schema}.annotation ADD CONSTRAINT annotation_username_fkey FOREIGN KEY (username) REFERENCES aide_admin.USER (name);',
@@ -264,8 +275,19 @@ if __name__ == '__main__':
             alCriterionPath, alCriterionSettings
         )
     )
-    dbConn.execute('''INSERT INTO aide_admin.authentication (username, project, isAdmin)
-            SELECT name, %s AS project, isAdmin FROM {schema}.user;
+    dbConn.execute('''DO
+        $do$
+        BEGIN
+            IF EXISTS (
+                SELECT 1
+                FROM   information_schema.tables 
+                WHERE  table_schema = '{schema}'
+                AND    table_name = 'user'
+            ) THEN
+                INSERT INTO aide_admin.authentication (username, project, isAdmin)
+                    SELECT name, %s AS project, isAdmin FROM {schema}.user;
+            END IF;
+        END $do$;
         '''.format(schema=config.getProperty('Database', 'schema')),
         (config.getProperty('Database', 'schema'),), None)
 
@@ -315,44 +337,24 @@ if __name__ == '__main__':
                     softlinkName
                 )
 
-    # ask before inserting existing user data
-    print('Migration will now transfer the existing user accounts for project "{projectName}" to the new schema.'.format(
-        projectName=config.getProperty('Project', 'projectName')
-    ))
-    print('WARNING: any account whose name is already in the new schema will be ignored.')
-    print('This means that users with accounts on multiple projects will have to log in')
-    print('with the password they used for the first project that has been migrated.')
-    print('\nWould you like to migrate the users automatically now?')
-    confirmation = None
-    while confirmation is None:
-        try:
-            confirmation = input('[Y/n]: ')
-            if 'Y' in confirmation:
-                confirmation = True
-            elif 'n' in confirmation.lower():
-                confirmation = False
-            else: raise Exception('Invalid value')
-        except:
-            confirmation = None
-    
-    if confirmation:
-        dbConn.execute('''
-                INSERT INTO aide_admin.user (name, email, hash, last_login, session_token, secret_token)
-                SELECT name, email, hash, last_login, session_token, md5(random()::text)
-                FROM {schema}.user
-                ON CONFLICT (name) DO NOTHING;
-            '''.format(schema=config.getProperty('Database', 'schema')),
-            None,
-            None
-        )
-
 
     # add authentication
     dbConn.execute('''
-            INSERT INTO aide_admin.authentication (username, project, isAdmin)
-            SELECT name, '{schema}', isAdmin FROM {schema}.user
-            WHERE name IN (SELECT name FROM aide_admin.user)
-            ON CONFLICT (username, project) DO NOTHING;
+            DO
+            $do$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1
+                    FROM   information_schema.tables 
+                    WHERE  table_schema = '{schema}'
+                    AND    table_name = 'user'
+                ) THEN
+                    INSERT INTO aide_admin.authentication (username, project, isAdmin)
+                    SELECT name, '{schema}', isAdmin FROM {schema}.user
+                    WHERE name IN (SELECT name FROM aide_admin.user)
+                    ON CONFLICT (username, project) DO NOTHING;
+                END IF;
+            END $do$;
         '''.format(schema=config.getProperty('Database', 'schema')),
         None,
         None)
