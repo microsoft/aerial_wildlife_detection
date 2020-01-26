@@ -21,3 +21,4 @@ Ostrich
 Bushbuck
 Cattle
 Sheep
+Other

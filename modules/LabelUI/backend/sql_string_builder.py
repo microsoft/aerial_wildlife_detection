@@ -136,7 +136,7 @@ class SQLStringBuilder:
                 SELECT * FROM {schema}.image_user
             ) AS iu ON img.id = iu.image
             LEFT OUTER JOIN (
-                SELECT image, SUM(confidence)/COUNT(confidence) AS score, timeCreated
+                SELECT image, SUM((0.5-confidence)*(confidence-0.5))/COUNT(confidence) AS score, timeCreated
                 FROM {schema}.prediction
                 GROUP BY image, timeCreated
             ) AS img_score ON img.id = img_score.image

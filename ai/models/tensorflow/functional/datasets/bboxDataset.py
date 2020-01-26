@@ -79,8 +79,8 @@ class BoundingBoxesDataset(Sequence):
                         )
                     label = anno['label']
                     unsure = (anno['unsure'] if 'unsure' in anno else False)
-                    if unsure and self.ignoreUnsure:
-                        label = -1      # will automatically be ignored
+                    if unsure:
+                        label = -1      # will be ignored as a class but still recognised as an object
                     elif label is None:
                         # this usually does not happen for bounding boxes, but we account for it nonetheless
                         continue
@@ -123,7 +123,11 @@ class BoundingBoxesDataset(Sequence):
             boundingBoxes, labels, imageID, imagePath = self.data[idx_b]
 
             # load image
-            img = Image.open(BytesIO(self.fileServer.getFile(imagePath))).convert('RGB')
+            try:
+                img = Image.open(BytesIO(self.fileServer.getFile(imagePath))).convert('RGB')
+            except:
+                print('File error: ' + imagePath)
+                continue
 
             # convert data
             sz = img.size

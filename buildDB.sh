@@ -19,5 +19,4 @@ sudo -u postgres psql -d $dbName -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEM
 
 python projectCreation/setupDB.py
 python projectCreation/createUsers.py
-python projectCreation/import_serengeti_dataset.py --label_folder=serengeti/
-#python projectCreation/import_serengeti_dataset.py 
+python projectCreation/import_serengeti_dataset2.py --label_folder=serengeti/

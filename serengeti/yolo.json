@@ -60,7 +60,7 @@
 	},
 	"inference": {
         "shuffle": false,
-        "batch_size": 1,
+        "batch_size": 4,
         "nms_thresh": 0.1,
         "cls_thresh": 0.1,
         "width": 2592,
@@ -80,7 +80,7 @@
 		"dataLoader": {
 			"kwargs": {
 				"shuffle": false,
-				"batch_size": 1
+				"batch_size": 4
 			}
 		}
 	}

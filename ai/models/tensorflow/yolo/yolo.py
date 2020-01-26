@@ -159,7 +159,7 @@ class yolo(GenericTFModel):
 
             # update worker state
             imgCount += len(imgID)
-            current_task.update_state(state='PROGRESS', meta={'done': imgCount, 'total': len(dataset), 'message': 'predicting'})
+            current_task.update_state(state='PROGRESS', meta={'done': imgCount, 'total': len(dataset)*dataset.batch_size, 'message': 'predicting'})
 
 
         return response

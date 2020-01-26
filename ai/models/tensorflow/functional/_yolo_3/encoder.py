@@ -68,8 +68,6 @@ class DataEncoder:
 
                 box = all_objs[obj]
                 label = int(obj_labl[obj])
-                if label<0:
-                    continue
                 # find the best anchor box for this object
                 max_anchor = None
                 max_index  = -1
@@ -101,7 +99,9 @@ class DataEncoder:
                 # assign ground truth x, y, w, h, confidence and class probs to y_batch
                 yolo[b, grid_y, grid_x, max_index%3, 0:4] = box
                 yolo[b, grid_y, grid_x, max_index%3, 4  ] = 1.
-                yolo[b, grid_y, grid_x, max_index%3, 5+label] = 1
+                if label>-1:
+                    # class value is ignored if we're unsure of the object 
+                    yolo[b, grid_y, grid_x, max_index%3, 5+label] = 1.
 
 
 

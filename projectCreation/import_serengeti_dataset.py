@@ -48,7 +48,7 @@
     2019 Benjamin Kellenberger
 '''
 
-import os,sys
+import os,sys,csv
 import argparse
 
 
@@ -188,8 +188,8 @@ if __name__ == '__main__':
     # locate all images and their base names
     print('\nAdding image paths...')
     imgs = {}
-    imgFiles = glob.glob(os.path.join(imgBaseDir, '**'), recursive=True)    # os.listdir(imgBaseDir)
-    #imgFiles = glob.glob(os.path.join(imgBaseDir, '**'), recursive=False)    # os.listdir(imgBaseDir)
+ #   imgFiles = glob.glob(os.path.join(imgBaseDir, '**'), recursive=True)    # os.listdir(imgBaseDir)
+    imgFiles = glob.glob(os.path.join(imgBaseDir, 'KUKA', '**'), recursive=True)    # os.listdir(imgBaseDir)
     for i in tqdm(imgFiles):
         if os.path.isdir(i):
             continue
@@ -203,6 +203,7 @@ if __name__ == '__main__':
         imgs[baseName] = i.replace(imgBaseDir, '')
 
 
+    print(len(imgFiles))
     # ignore images that are already in database
     print('Filter images already in database...')
     imgs_filenames = set(imgs.values())
@@ -214,27 +215,40 @@ if __name__ == '__main__':
     imgs_filenames = list(imgs_filenames.difference(imgs_existing))
     imgs_filenames = [(i,) for i in imgs_filenames]
     
+    print(len(imgs_filenames))
     # push image to database
+    batch = 1000
+    len_ = len(imgs_filenames)
     print('Adding to database...')
-    dbConn.insert('''
-        INSERT INTO {}.image (filename)
-        VALUES %s;
-    '''.format(dbSchema),
-    imgs_filenames)
+    for i in tqdm(range(0,len_,batch)):
+        dbConn.insert('''
+            INSERT INTO {}.image (filename)
+            VALUES %s;
+        '''.format(dbSchema),
+        imgs_filenames[i:i+batch])
 
+        # check batch insert
+        imgs_in_db = dbConn.execute('''
+            SELECT filename FROM {}.image;
+        '''.format(dbSchema), None, 'all')
+        print(len(imgs_in_db))
+
+    sys.exit('bye')
     
     # locate all label files
-#    if args.label_folder is not None:
-    if False:
-        print('\nLoading labels file...')
-        with open(os.path.join(args.label_folder, 'annotations-species.yml'),'r') as f:
-            all_imgs = yaml.load(f)
-        print('\nAdding labels...')
+    print('\nLoading labels file...')
+    with open(os.path.join(imgBaseDir, 'img_list.csv')) as csv_file:
+        csv_reader = csv.reader(csv_file, delimiter=',')
+        next(csv_reader, None)
+        print('\nAdding empty labels...')
+        for row in tqdm(csv_reader):
+            if not row[8]:
+                continue
+            if not row[10]=='Yes':
+                continue
 
-        for im in tqdm(all_imgs):
-            filename = im['filename']
+            filename = row[3] + '/' + row[4] + '/UG_GAME_CAMERAS_' + row[3] + '_' +  row[7]
             filename = filename.replace(" ", "_")
-            filename = 'yolo/' + filename
 
             insert_sql = '''
             INSERT INTO {}.image_user (username, image, viewcount, last_checked, last_time_required)
@@ -252,20 +266,20 @@ if __name__ == '__main__':
             lastTimeRequired = 0
 
             dbConn.execute(insert_sql, (filename, 1, lastChecked, lastTimeRequired))
-            if im['object']:
-                w = im['width']
-                h = im['height']
-
-                for obj in im['object']:
-
-                    label = obj['name']
-                    xc = 0.5*(obj['xmax']+obj['xmin'])/w
-                    xd = (obj['xmax']-obj['xmin'])/w
-                    yc = 0.5*(obj['ymax']+obj['ymin'])/h
-                    yd = (obj['ymax']-obj['ymin'])/h
-                    dbConn.execute(sql,
-                        (filename, currentDT, classdef[classList.index(label)], xc, yc, xd, yd))
-                    # viewcount table
+#            if im['object']:
+#                w = im['width']
+#                h = im['height']
+#
+#                for obj in im['object']:
+#
+#                    label = obj['name']
+#                    xc = 0.5*(obj['xmax']+obj['xmin'])/w
+#                    xd = (obj['xmax']-obj['xmin'])/w
+#                    yc = 0.5*(obj['ymax']+obj['ymin'])/h
+#                    yd = (obj['ymax']-obj['ymin'])/h
+#                    dbConn.execute(sql,
+#                        (filename, currentDT, classdef[classList.index(label)], xc, yc, xd, yd))
+#                    # viewcount table
 
 
 

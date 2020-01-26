@@ -13,7 +13,7 @@ host=$(python util/configDef.py --section=Server --parameter=host)
 port=$(python util/configDef.py --section=Server --parameter=port)
 
 
-nohup celery -A modules.AIController.backend.celery_interface worker -Q aide &
+nohup celery -A modules.AIController.backend.celery_interface worker -Q aide --concurrency=1 &
 
 # HTTP server
-gunicorn application:app --bind=$host:$port --workers=1
+nohup gunicorn application:app --bind=$host:$port --workers=1 & 
