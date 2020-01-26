@@ -129,9 +129,3 @@ if __name__ == '__main__':
 
     values = (config.getProperty('Project', 'adminName'), config.getProperty('Project', 'adminEmail'), adminPass, True,)
     dbConn.execute(sql, values, None)
-
-    # sql = '''
-    #     INSERT INTO {}.authentication (username, isAdmin)
-    #     VALUES (%s, TRUE);
-    # '''.format(config.getProperty('Database', 'schema'))
-    # dbConn.execute(sql, (config.getProperty('Project', 'adminName'),), None)

@@ -24,9 +24,21 @@
         </table>
     </div>
 
+    <div class="settings-group">
+        <h3>Display styles</h3>
+
+        <input class="jscolor" id="test" />
+    </div>
+
     <!-- Submit and abort buttons -->
     <div>
         <button class="btn btn-danger">Cancel</button>
         <button id="proj-settings-save-button" class="btn btn-primary" style="float:right">Save</button>
     </div>
 </div>
+<script src="config/static/js/jscolor.js"></script>
+<script type="text/javascript">
+    $(document).ready(function() {
+        window.showLoadingOverlay(false);
+    });
+</script>

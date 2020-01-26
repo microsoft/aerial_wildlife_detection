@@ -139,7 +139,7 @@
         let resultsContainer = $('#performance-container');
         resultsContainer.empty();
         return $.ajax({
-            url: window.project + '/getUserStatistics',
+            url: '{{ project }}/getUserStatistics',
             method: 'POST',
             data: JSON.stringify(params),
             contentType: 'application/json; charset=utf-8',
@@ -332,7 +332,7 @@
 
         // get project annotation and prediction types
         var promise = $.ajax({
-            url: window.project + '/getProjectSettings',
+            url: '{{ project }}/getProjectSettings',
             method: 'GET',
             success: function(data) {
                 window.annotationType = data['settings']['annotationType'];
@@ -353,7 +353,7 @@
         // populate users tables
         promise = promise.then(function() {
             return $.ajax({
-                url: window.project + '/getUserNames',
+                url: '{{ project }}/getUserNames',
                 method: 'POST',
                 success: function(data) {
                     data = data['users'];

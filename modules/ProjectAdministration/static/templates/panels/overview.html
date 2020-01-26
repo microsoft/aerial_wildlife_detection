@@ -29,7 +29,7 @@
         let mainContainer = $('#overview-container');
 
         var promise = $.ajax({
-            url: window.project + '/getProjectStatistics',
+            url: '{{ project }}/getProjectStatistics',
             method: 'GET',
             success: function(response) {
                 response = response['statistics'];

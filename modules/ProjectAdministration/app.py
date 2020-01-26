@@ -44,8 +44,25 @@ class ProjectConfigurator:
     
     def _initBottle(self):
 
+        # read templates first
         with open(os.path.abspath(os.path.join(self.staticDir, 'templates/projectConfiguration.html')), 'r') as f:
             self.projConf_template = SimpleTemplate(f.read())
+        
+        self.panelTemplates = {}
+        panelNames = [
+            'accessControl',
+            'aiModel',
+            'dataDownload',
+            'dataUpload',
+            'general',
+            'labelClasses',
+            'overview',
+            'userInterface',
+            'userPerformance'
+        ]
+        for pn in panelNames:
+            with open(os.path.join(self.staticDir, 'templates/panels', pn + '.html'), 'r') as f:
+                self.panelTemplates[pn] = SimpleTemplate(f.read())
 
 
         @self.app.route('/<project>/config/static/<filename:re:.*>')
@@ -56,7 +73,11 @@ class ProjectConfigurator:
         @self.app.route('/<project>/config/panels/<panel>')
         def send_static_panel(project, panel):
             if self.loginCheck(project=project, admin=True):
-                return static_file(panel + '.html', root=os.path.join(self.staticDir, 'templates/panels'))
+                try:
+                    return self.panelTemplates[panel].render(project=project)
+                except:
+                    abort(404, 'not found')
+                # return static_file(panel + '.html', root=os.path.join(self.staticDir, 'templates/panels'))
             else:
                 abort(401, 'forbidden')
 
@@ -147,6 +168,21 @@ class ProjectConfigurator:
                 isValid = self.middleware.updateProjectSettings(project, settings)
                 if isValid:
                     return {'success': isValid}
+                else:
+                    abort(400, 'bad request')
+            except:
+                abort(400, 'bad request')
+
+
+        @self.app.post('/<project>/saveClassDefinitions')
+        def save_class_definitions(project):
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+            try:
+                classdef = request.json
+                success = self.middleware.updateClassDefinitions(project, classdef)
+                if success:
+                    return {'success': success}
                 else:
                     abort(400, 'bad request')
             except:

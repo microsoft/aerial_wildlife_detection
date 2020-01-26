@@ -1,0 +1,208 @@
+<div>
+    <h2>Label classes</h2>
+    <div id="label-classes"></div>
+    <div id="label-class-controls">
+        <button id="add-element" class="btn btn-sm btn-primary">+</button>
+        <button id="remove-selected" class="btn btn-sm btn-warning">-</button>
+    </div>
+
+    <div id="selected-node-controls" style="display:none">
+        <h3>Selected node:</h3>
+        <label for="sel-node-title">Name:</label>
+        <input type="text" id="sel-node-title" />
+        <div id="sel-node-color-wrapper">
+            <label for="sel-node-color">Color:</label>
+            <input class="jscolor" id="sel-node-color" />
+            <button id="update-selected" class="btn btn-sm btn-primary">Apply</button>
+        </div>
+    </div>
+    <!-- Submit and abort buttons -->
+    <div>
+        <button class="btn btn-danger">Cancel</button>
+        <button id="lc-save-button" class="btn btn-primary" style="float:right">Save</button>
+    </div>
+</div>
+<link rel="stylesheet" href="{{ project }}/config/static/libs/jqtree/jqtree_custom.css" />
+<script src="{{ project }}/config/static/libs/jqtree/tree.jquery.js"></script>
+<script src="{{ project }}/config/static/js/jscolor.js"></script>
+<script type="text/javascript">
+    window.lcTree = undefined;
+
+    window.rgbToHex = function(rgb) {
+        var componentToHex = function(c) {
+            var hex = parseInt(c).toString(16);
+            return hex.length == 1 ? "0" + hex : hex;
+        }
+        if(!(rgb instanceof Array || rgb instanceof Uint8ClampedArray)) {
+            rgb = rgb.toLowerCase();
+            if(rgb.startsWith('#')) {
+                return rgb;
+            } else if(rgb.startsWith('rgb')) {
+                rgb = /rgba?\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(,\s*\d+[\.\d+]*)*\)/g.exec(rgb);
+            }
+        }
+        return "#" + componentToHex(rgb[1]) + componentToHex(rgb[2]) + componentToHex(rgb[3]);
+    }
+
+    function parseClassEntry(entry, entryID) {
+        // works recursively
+        let treeEntry = {
+            id: entryID,
+            name: entry['name'],     //'<div><span>' + entry['name'] + '</span><input type="text" /></div>'
+            color: entry['color']
+        };
+
+        if(entry.hasOwnProperty('entries')) {
+            let children = [];
+            for(var child in entry['entries']) {
+                children.push(parseClassEntry(entry['entries'][child], child));
+            }
+            treeEntry['children'] = children;
+        }
+
+        return treeEntry;
+    }
+
+    function loadLabelClasses() {
+        return $.ajax({
+            url: '{{ project }}/getClassDefinitions',
+            method: 'GET',
+            success: function(data) {
+                // prepare data for tree
+                let tree = [];
+
+                if(data.hasOwnProperty('classes')) {
+                    if(data['classes'].hasOwnProperty('entries')) {
+                        for(var child in data['classes']['entries']) {
+                            tree.push(parseClassEntry(data['classes']['entries'][child], child));
+                        }
+                    }
+                }
+                console.log(tree);
+
+                let lcTree = $('<div id="lc-tree"></div>');
+                lcTree.tree({
+                    data: tree,
+                    dragAndDrop: true,
+                    autoOpen: true
+                });
+                $('#label-classes').empty();
+                $('#label-classes').append(lcTree);
+
+                lcTree.on(
+                    'tree.select',
+                    function(event) {
+                        onNodeSelect(event.node);
+                    }
+                );
+
+                window.lcTree = lcTree;
+            },
+            error: function(data) {
+                console.log('ERROR:');
+                console.log(data);
+            }
+        })
+    }
+
+    function onNodeSelect(node) {
+        window.selectedNode = node;
+        if(node !== null && node !== undefined && node) {
+            $('#sel-node-title').val(node.name);
+            if(node.children.length) {
+                $('#sel-node-color-wrapper').hide();
+            } else {
+                if(node.color !== undefined && node.color !== null) {
+                    $('#sel-node-color')[0].jscolor.fromString(node.color);
+                }
+                $('#sel-node-color-wrapper').show();
+            }
+            $('#selected-node-controls').show();
+        } else {
+            $('#selected-node-controls').hide();
+        }
+    }
+
+    function updateSelected() {
+        if(!window.selectedNode) return;
+        window.lcTree.tree(
+            'updateNode',
+            window.selectedNode,
+            $('#sel-node-title').val()
+        );
+        window.selectedNode.color = window.rgbToHex($('#sel-node-color').css('background-color'));
+    }
+
+    function addElement() {
+        window.lcTree.tree(
+            'appendNode',
+            {
+                name: 'New entry'
+            },
+            window.selectedNode
+        );
+        onNodeSelect(window.lcTree.tree('getSelectedNode'));
+    }
+
+    function removeSelected() {
+        var selNode = window.lcTree.tree('getSelectedNode');
+        if(selNode) {
+            window.lcTree.tree(
+                'removeNode',
+                selNode
+            );
+        }
+        onNodeSelect(window.lcTree.tree('getSelectedNode'));
+    }
+
+    function save() {
+        //TODO
+        window.showLoadingOverlay(true);
+        var classdef = window.lcTree.tree('toJson');
+        var promise = $.ajax({
+            url: '{{ project }}/saveClassDefinitions',
+            method: 'POST',
+            data: JSON.stringify(classdef),
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            success: function(data) {
+                console.log(data);
+            },
+            error: function(data) {
+                console.log('ERROR:');
+                console.log(data);
+            }
+        });
+
+        // reload class definition (TODO: not executed if error; check promise)
+        promise.done(function() {
+            loadLabelClasses().done(function() {
+                window.showLoadingOverlay(false);
+            });
+        }).fail(function() {
+            //TODO
+            window.showLoadingOverlay(false);
+        });
+    }
+
+    $(document).ready(function() {
+        var promise = loadLabelClasses();
+
+        promise.done(function() {
+            $('#add-element').click(function() {
+                addElement();
+            });
+            $('#remove-selected').click(function() {
+                removeSelected();
+            });
+            $('#update-selected').click(function() {
+                updateSelected();
+            });
+            $('#lc-save-button').click(function() {
+                save();
+            });
+
+            window.showLoadingOverlay(false);
+        });
+    });
+</script sr>

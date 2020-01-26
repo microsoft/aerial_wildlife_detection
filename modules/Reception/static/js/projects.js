@@ -67,8 +67,24 @@ $(document).ready(function() {
         error: function() {
             $('#projects-placeholder').show();
         }
-    })
+    });
 
+
+    // show "create account" button if not restricted
+    $.ajax({
+        url: 'getCreateAccountUnrestricted',
+        method: 'GET',
+        success: function(data) {
+            if(data.hasOwnProperty('response') && data['response'] === true) {
+                $('#create-account-panel').show();
+            } else {
+                $('#create-account-panel').hide();
+            }
+        },
+        error: function() {
+            $('#create-account-panel').hide();
+        }
+    })
 
 
     // show "new project" button if user is authorized to do so

@@ -279,6 +279,17 @@ class ProjectConfigMiddleware:
 
 
 
+    def updateClassDefinitions(self, project, classdef):
+        '''
+            Updates the project's class definitions.
+
+            TODO: what if label classes change if there's already annotations/predictions?
+        '''
+        #TODO
+        return False
+
+
+
     def getProjectNameAvailable(self, projectName):
         '''
             Returns True if the provided project (long) name is available.

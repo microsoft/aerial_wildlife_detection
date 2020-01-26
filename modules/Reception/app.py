@@ -80,6 +80,19 @@ class Reception:
             return self.proj_template.render(username=username)
 
 
+        @self.app.get('/getCreateAccountUnrestricted')
+        def get_create_account_unrestricted():
+            '''
+                Responds True if there's no token required for creating
+                an account, else False.
+            '''
+            try:
+                token = self.config.getProperty('UserHandler', 'create_account_token', type=str, fallback=None)
+                return {'response': token is None or token == ''}
+            except:
+                return {'response': False}
+
+
         @self.app.get('/getProjects')
         def get_projects(): 
             try:

@@ -81,7 +81,7 @@
     $(document).ready(function() {
         // general settings
         var promise = $.ajax({
-            url: window.project + '/getConfig',
+            url: '{{ project }}/getConfig',
             method: 'POST',
             data: JSON.stringify({
                 'parameters': [
@@ -118,7 +118,7 @@
 
         promise = promise.done(function() {
             return $.ajax({
-                url: window.project + '/getUsers',
+                url: '{{ project }}/getUsers',
                 method: 'GET',
                 success: function(data) {
                     if(data.hasOwnProperty('users')) {
