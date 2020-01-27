@@ -2,6 +2,10 @@
     Yolo v3 implementation pre-trained on COCO.
 
     2019 Colin Torney
+    
+    Based on code from https://github.com/experiencor/keras-yolo3
+    MIT License Copyright (c) 2017 Ngoc Anh Huynh
+
 """
 
 
