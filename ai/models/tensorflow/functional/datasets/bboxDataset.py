@@ -1,7 +1,10 @@
 '''
-    PyTorch dataset wrapper, optimized for the AL platform.
+    Tensorflow dataset wrapper, optimized for the AL platform.
 
     2019 Benjamin Kellenberger
+
+    Modified from pytorch implementation by
+    2019 Colin Torney 
 '''
 
 from io import BytesIO
@@ -11,7 +14,7 @@ from tensorflow.keras.utils import Sequence
 
 class BoundingBoxesDataset(Sequence):
     '''
-        PyTorch-conform wrapper for a dataset containing bounding boxes.
+        TF-conform wrapper for a dataset containing bounding boxes.
         Inputs:
         - data:     A dict with the following entries:
                     - labelClasses: dict with { <labelclass UUID> : { 'index' (optional: labelClass index for this CNN) }}

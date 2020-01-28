@@ -47,7 +47,7 @@ class yolo(GenericTFModel):
 
         inputSize = tuple((self.options['train']['width'], self.options['train']['height']))
         # initialize model
-        model, labelclassMap = self.initializeModel(stateDict, data, inputSize[0], inputSize[1])
+        model, labelclassMap = self.initializeModel(stateDict, data)
 
 
         # setup transform, data loader, dataset, optimizer, criterion
@@ -87,8 +87,7 @@ class yolo(GenericTFModel):
             raise Exception('No trained model state found, but required for inference.')
 
         # initialize model
-        inputSize = tuple((self.options['inference']['width'], self.options['inference']['height']))
-        model, labelclassMap = self.initializeModel(stateDict, data, inputSize[0], inputSize[1])
+        model, labelclassMap = self.initializeModel(stateDict, data) 
 
         # initialize data loader, dataset, transforms
         transform = parse_transforms(self.options['inference']['transform'])
@@ -113,6 +112,7 @@ class yolo(GenericTFModel):
             output = model.yolo_nn.predict(img)
             bboxes_pred_batch, labels_pred_batch, confs_pred_batch = dataEncoder.decode(output, cls_thresh=cls_thresh, nms_thresh=nms_thresh, return_conf=True) 
 
+            inputSize = tuple(img.shape[1], img.shape[0]) # tuple((self.options['inference']['width'], self.options['inference']['height']))
 
             for i in range(len(imgID)):
                 bboxes_pred = bboxes_pred_batch[i]

@@ -47,7 +47,7 @@ class GenericTFModel(AIModel):
         return device
 
     
-    def initializeModel(self, stateDict, data, width, height):
+    def initializeModel(self, stateDict, data):
         '''
             Converts the provided stateDict from a bytes array to a torch-loadable
             object and initializes a model from it. Also returns a 'labelClassMap',
@@ -58,9 +58,9 @@ class GenericTFModel(AIModel):
 
         # initialize model
         if stateDict is not None:
-            stateDict = torch.load(io.BytesIO(stateDict), map_location=lambda storage, loc: storage)
+            stateDict = torch.load(io.BytesIO(stateDict), map_location=lambda storage, loc: storage) # use torch to convert bytes/dictionary but this is not a torch model
   #          stateDict = json.loads(stateDict.decode('utf-8'))
-            model = self.model_class.loadFromStateDict(stateDict, width, height)
+            model = self.model_class.loadFromStateDict(stateDict)
             
             # mapping labelclass (UUID) to index in model (number)
             labelclassMap = stateDict['labelclassMap']
@@ -72,7 +72,7 @@ class GenericTFModel(AIModel):
             self.options['model']['kwargs']['labelclassMap'] = labelclassMap
 
             # initialize a fresh model
-            model = self.model_class.loadFromStateDict(self.options['model']['kwargs'], width, height)
+            model = self.model_class.loadFromStateDict(self.options['model']['kwargs'])
 
         return model, labelclassMap
 
@@ -86,13 +86,8 @@ class GenericTFModel(AIModel):
         '''
 
         bio = io.BytesIO()
-        torch.save(model.getStateDict(), bio) # replace with something none torch
+        torch.save(model.getStateDict(), bio) # replace with something none torch in future
         
-  #      print(model.getStateDict())
-  #      inter = json.dumps(model.getStateDict())
-  #      print('dumped')
-  #      inter2 = inter.encode('utf-8')
-  #      print('encoded')
         return bio.getvalue()
     
     def average_model_states(self, stateDicts):

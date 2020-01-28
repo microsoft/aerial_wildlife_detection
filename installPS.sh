@@ -1,4 +1,4 @@
-export AIDE_CONFIG_PATH=serengeti/serengeti-traps.ini
+export AIDE_CONFIG_PATH=bison/bison.ini
 
 
 

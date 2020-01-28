@@ -2,7 +2,6 @@
 import math
 import numpy as np
 
-#from .utils import meshgrid, box_iou, box_nms, change_box_order
 
 def _interval_overlap(interval_a, interval_b):
     x1, x2 = interval_a
@@ -35,7 +34,7 @@ def bbox_iou(box1, box2):
 
 class DataEncoder:
     def __init__(self, numClasses=1):
-        self.anchors = [[116,90],  [156,198],  [373,326],  [30,61], [62,45],  [59,119], [10,13],  [16,30],  [33,23]]
+        self.anchors = [[116,90],  [156,198],  [373,326],  [30,61], [62,45],  [59,119], [10,13],  [16,30],  [33,23]] # Hardcoded anchor boxes for now
         self.downscale = 32
         self.numClasses = numClasses
 

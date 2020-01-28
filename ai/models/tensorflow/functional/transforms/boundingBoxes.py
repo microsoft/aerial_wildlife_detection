@@ -6,7 +6,6 @@
 
 import random
 import numpy as np      #TODO: replace np.random.choice with regular random.choice
-#import torch
 import torchvision.transforms.functional as F
 from PIL import Image
 
@@ -74,16 +73,6 @@ def _clipPatch(img_in, bboxes_in, labels_in, patchSize, jitter=(0,0,), limitBord
         - coordinates:          tuple (X, Y, W, H coordinates of clipped patch)
     """
 
-    # debuggiang
-#    sz_orig = img_in.size
-#    img = img_in.resize(patchSize)
-#    sz_new = img.size
-#
-#    if bboxes_in is not None and len(bboxes_in) > 0:
-#        bboxes_in = _bboxResize(bboxes_in, sz_orig, sz_new)
-#
-#    return img, bboxes_in, labels_in, None
-    # end debugging
 
     # setup
     if isinstance(patchSize, int) or isinstance(patchSize, float):
@@ -141,11 +130,6 @@ def _clipPatch(img_in, bboxes_in, labels_in, patchSize, jitter=(0,0,), limitBord
 
 
     # do the clipping
-#    if isinstance(img, torch.Tensor):
-#        coordinates_input = tuple((coordinates[0], coordinates[1], min((sz[0]-coordinates[0]), coordinates[2]), min((sz[1]-coordinates[1]), coordinates[3])))
-#        patch = torch.zeros((img.size(0), int(patchSize[1]), int(patchSize[0]),), dtype=img.dtype, device=img.device)
-#        patch[:,0:coordinates_input[3],0:coordinates_input[2]] = img[:,coordinates_input[1]:(coordinates_input[1]+coordinates_input[3]), coordinates_input[0]:(coordinates_input[0]+coordinates_input[2])]
-#    else:
     patch = img.crop((coordinates[0], coordinates[1], coordinates[0]+coordinates[2], coordinates[1]+coordinates[3],))
 
     

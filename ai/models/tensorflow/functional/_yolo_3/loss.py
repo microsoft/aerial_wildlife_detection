@@ -1,6 +1,16 @@
+"""
+    Yolo v3 loss
+
+    2019 Colin Torney
+    
+    Based on code from https://github.com/experiencor/keras-yolo3
+    MIT License Copyright (c) 2017 Ngoc Anh Huynh
+
+
+"""
+
+
 import tensorflow as tf
-
-
 
 class YoloLoss():
     def __init__(self, width, height, NO_OBJECT_SCALE=1.0, OBJECT_SCALE=1.0, COORD_SCALE=1.0, CLASS_SCALE=1.0):
