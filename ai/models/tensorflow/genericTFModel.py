@@ -1,7 +1,7 @@
 '''
     Abstract base class implementation of a model trainer that 
     uses a tensorflow model.
-
+    2019 Benjamin Kellenberger
     2019 Colin Torney
 '''
 
