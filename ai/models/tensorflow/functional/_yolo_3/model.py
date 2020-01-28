@@ -6,6 +6,8 @@
     Based on code from https://github.com/experiencor/keras-yolo3
     MIT License Copyright (c) 2017 Ngoc Anh Huynh
 
+    Modified to process output within tensorflow and be agnostic to image size
+
 """
 
 
@@ -94,14 +96,11 @@ def reshape_last_layer(out_size):
     return Lambda(func)
 
 
-## NEED TO REMOVE IMAGE SHAPE FROM INPUTS AND USE ACTUAL VALUES
-def get_yolo_model(in_w=416,in_h=416, num_class=80, trainable=False, headtrainable=False):
+def get_yolo_model(num_class=80, trainable=False, headtrainable=False):
 
     # for each box we have num_class outputs, 4 bbox coordinates, and 1 object confidence value
     out_size = num_class+5
-    #input_image = Input(shape=( in_h,in_w, 3))
     input_image = Input(shape=(None, None, 3))
-    #in_w, in_h, _ = input_image.input.shape
 
     # Layer  0 => 4
     x = _conv_block(input_image, [{'filter': 32, 'kernel': 3, 'stride': 1, 'bnorm': True, 'leaky': True, 'layer_idx': 0},
@@ -239,71 +238,18 @@ def get_yolo_model(in_w=416,in_h=416, num_class=80, trainable=False, headtrainab
 
     model = Model(input_image,output)
     return model
-    # END OF TEST #
-
-#    final_large = reshape_last_layer(out_size)(yolo_82)
-#    final_med = reshape_last_layer(out_size)(yolo_94)
-#    final_small = reshape_last_layer(out_size)(yolo_106)
-    #final_large = Reshape((in_h//32,in_w//32,3,out_size))(yolo_82)
-    #final_med = Reshape((in_h//16, in_w//16,3,out_size))(yolo_94)
-    #final_small = Reshape((in_h//8,in_w//8,3,out_size))(yolo_106)
-
-#    s_offs =crop(0,2)(final_small)
-#    s_szs =crop(2,4)(final_small)
-#    s_obj =crop(4,5)(final_small)
-#    s_obj = Activation('sigmoid')(s_obj)
-#    s_cls =crop(5,out_size)(final_small)
-#    s_cls = Activation('softmax')(s_cls)
-#    s_szs = anchors(2)(s_szs)
-#    s_offs = Activation('sigmoid')(s_offs)
-#    s_offs = positions(in_h,in_w)(s_offs)
-#    s_out = concatenate([s_offs, s_szs, s_obj, s_cls])
-#
-#    m_offs =crop(0,2)(final_med)
-#    m_szs =crop(2,4)(final_med)
-#    m_obj =crop(4,5)(final_med)
-#    m_obj = Activation('sigmoid')(m_obj)
-#    m_cls =crop(5,out_size)(final_med)
-#    m_cls = Activation('softmax')(m_cls)
-#    m_szs = anchors(1)(m_szs)
-#    m_offs = Activation('sigmoid')(m_offs)
-#    m_offs = positions(in_h,in_w)(m_offs)
-#    m_out = concatenate([m_offs, m_szs, m_obj, m_cls])
-
-#    l_offs =crop(0,2)(final_large)
-#    l_szs =crop(2,4)(final_large)
-#    l_obj =crop(4,5)(final_large)
-#    l_obj = Activation('sigmoid')(l_obj)
-#    l_cls =crop(5,out_size)(final_large)
-#    l_cls = Activation('softmax')(l_cls)
-#    l_szs = anchors(0)(l_szs)
-#    l_offs = Activation('sigmoid')(l_offs)
-#    l_offs = positions(in_h,in_w)(l_offs)
-#    l_out = concatenate([l_offs, l_szs, l_obj, l_cls])
-
-#    output = [l_out, m_out, s_out]  
-#
-#    model = Model(input_image,output)
-#    return model
-
-
-
-
-
 
 
 
 class yolo_model():
 
-    def __init__(self, labelclassMap, state, width, height, pretrained=True, alltrain=False):
+    def __init__(self, labelclassMap, state, pretrained=True, alltrain=False):
 
         self.labelclassMap = labelclassMap
         self.numClasses = len(labelclassMap.keys())
         self.pretrained = pretrained
         self.alltrain = alltrain
-        self.width = width
-        self.height = height
-        self.yolo_nn = get_yolo_model(self.width, self.height, self.numClasses, trainable=self.alltrain, headtrainable=True)
+        self.yolo_nn = get_yolo_model(self.numClasses, trainable=self.alltrain, headtrainable=True)
 
         timestampStr = datetime.now().strftime("%Y%m%d%H%M%S")
 
@@ -314,7 +260,7 @@ class yolo_model():
 
         if self.pretrained: 
             print('loading pretrained weights')
-            self.yolo_nn.load_weights('weights/yolo-v3-coco.h5', by_name=True) #<- FIX THIS <-!
+            self.yolo_nn.load_weights('weights/yolo-v3-coco.h5', by_name=True) #<- Fix this to get weights from somewhere more accessible<-!
 
 
 
@@ -333,7 +279,7 @@ class yolo_model():
 
 
     @staticmethod
-    def loadFromStateDict(stateDict, width, height):
+    def loadFromStateDict(stateDict):
         # parse args
         labelclassMap = stateDict['labelclassMap']
         pretrained = (stateDict['pretrained'] if 'pretrained' in stateDict else True)
@@ -342,7 +288,7 @@ class yolo_model():
         init_weights = (stateDict['init_weights'] if 'init_weights' in stateDict else None)
 
         # return model
-        model = yolo_model(labelclassMap, state, width, height, pretrained if state is None else False)
+        model = yolo_model(labelclassMap, state, pretrained if state is None else False)
         if state is not None:
             print('loading saved weights')
             model.yolo_nn.load_weights(state + '.h5')
@@ -352,87 +298,3 @@ class yolo_model():
         return model
 
 
-#    @staticmethod
-#    def averageStateDicts(stateDicts):
-#        model = RetinaNet.loadFromStateDict(stateDicts[0])
-#        pars = dict(model.named_parameters())
-#        for key in pars:
-#            pars[key] = pars[key].detach().cpu()
-#        for s in range(1,len(stateDicts)):
-#            nextModel = RetinaNet.loadFromStateDict(stateDicts[s])
-#            state = dict(nextModel.named_parameters())
-#            for key in state:
-#                pars[key] += state[key].detach().cpu()
-#        finalState = stateDicts[-1]
-#        for key in pars:
-#            finalState['model_state'][key] = pars[key] / (len(stateDicts))
-#
-#        return finalState
-#
-#
-#    @staticmethod
-#    def averageEpochs(statePaths):
-#        if isinstance(statePaths, str):
-#            statePaths = [statePaths]
-#        model = RetinaNet.loadFromStateDict(torch.load(statePaths[0], map_location=lambda storage, loc: storage))
-#        if len(statePaths) == 1:
-#            return model
-#        
-#        pars = dict(model.named_parameters())
-#        for key in pars:
-#            pars[key] = pars[key].detach().cpu()
-#        for s in statePaths[1:]:
-#            model = RetinaNet.loadFromStateDict(torch.load(s, map_location=lambda storage, loc: storage))
-#            state = dict(model.named_parameters())
-#            for key in state:
-#                pars[key] += state[key]
-#        
-#        finalState = torch.load(statePaths[-1], map_location=lambda storage, loc: storage)
-#        for key in pars:
-#            finalState['model_state'][key] = pars[key] / (len(statePaths))
-#        
-#        model = RetinaNet.loadFromStateDict(finalState)
-#        return model
-#
-#    
-#    def getParameters(self,freezeFE=False):
-#        headerParams = list(self.loc_head.parameters()) + list(self.cls_head.parameters())
-#        if freezeFE:
-#            return headerParams
-#        else:
-#            return list(self.fpn.parameters()) + headerParams
-#
-#    
-#    def forward(self, x, isFeatureVector=False):
-#        if isFeatureVector:
-#            fms = x
-#        else:
-#            fms = self.fpn(x)
-#        loc_preds = []
-#        cls_preds = []
-#        for fm in fms:
-#            loc_pred = self.loc_head(fm)
-#            cls_pred = self.cls_head(fm)
-#            loc_pred = loc_pred.permute(0,2,3,1).contiguous().view(x.size(0),-1,4)
-#            cls_pred = cls_pred.permute(0,2,3,1).contiguous().view(x.size(0),-1,self.numClasses)
-#            loc_preds.append(loc_pred)
-#            cls_preds.append(cls_pred)
-#        return torch.cat(loc_preds,1), torch.cat(cls_preds,1)
-#
-#
-#    def _make_head(self, out_planes, dropout=None):
-#        layers = []
-#        for _ in range(4):
-#            if dropout is not None:
-#                layers.append(nn.Dropout2d(p=dropout, inplace=False))
-#            layers.append(nn.Conv2d(self.out_planes, self.out_planes, kernel_size=3, stride=1, padding=1))
-#            layers.append(nn.ReLU(True))
-#        layers.append(nn.Conv2d(self.out_planes, out_planes, kernel_size=3, stride=1, padding=1))
-#        return nn.Sequential(*layers)
-#
-#
-#    def freeze_bn(self):
-#        '''Freeze BatchNorm layers.'''
-#        for layer in self.modules():
-#            if isinstance(layer, nn.BatchNorm2d):
-#                layer.eval()
