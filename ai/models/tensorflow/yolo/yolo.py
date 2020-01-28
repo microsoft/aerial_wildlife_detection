@@ -1,7 +1,7 @@
 '''
-    RetinaNet trainer for PyTorch.
+    YOLO using TensorFlow
 
-    2019 Benjamin Kellenberger
+    2020 Colin Torney
 '''
 
 import io
@@ -112,8 +112,8 @@ class yolo(GenericTFModel):
             output = model.yolo_nn.predict(img)
             bboxes_pred_batch, labels_pred_batch, confs_pred_batch = dataEncoder.decode(output, cls_thresh=cls_thresh, nms_thresh=nms_thresh, return_conf=True) 
 
-            inputSize = tuple((img.shape[1], img.shape[0])) # tuple((self.options['inference']['width'], self.options['inference']['height']))
-
+            inputSize = tuple((img.shape[2], img.shape[1])) 
+            
             for i in range(len(imgID)):
                 bboxes_pred = bboxes_pred_batch[i]
                 labels_pred = labels_pred_batch[i]
