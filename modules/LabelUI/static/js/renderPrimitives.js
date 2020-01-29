@@ -171,42 +171,26 @@ class ElementGroup extends AbstractRenderElement {
 
 class ImageElement extends AbstractRenderElement {
 
-    constructor(id, viewport, imageURI, zIndex, disableInteractions) {
-        super(id, null, zIndex, disableInteractions);
+    constructor(id, image, viewport, zIndex) {
+        super(id, null, zIndex, false);
+        this.image = image;
         this.viewport = viewport;
-        this.imageURI = imageURI;
-        // default parameter until image is loaded
-        this.bounds = [0, 0, 1, 1];
-        this._create_image();
-    }
 
-    _create_image() {
-        this.image = new Image();
-        this.image.loadingText = 'loading image...';
-        var self = this;
-        this.image.onload = function() {
+        if(this.image != null) {
             // calculate image bounds
-            
-            var width = 1.0;
-            var height =1.0;
-
-            self.bounds = [(1-width)/2, (1-height)/2, width, height];
+            let imageSize = [this.image.naturalWidth, this.image.naturalHeight];
+            let canvasSize = [this.viewport.canvas.width(), this.viewport.canvas.height()];
+            let scaleFactor = Math.min(canvasSize[0]/imageSize[0], canvasSize[1]/imageSize[1]);
+            let dimensions = [scaleFactor*imageSize[0]/canvasSize[0], scaleFactor*imageSize[1]/canvasSize[1]];
 
             // define valid canvas area as per image offset
-            self.viewport.setValidArea(self.bounds);
+            this.bounds = [(1-dimensions[0])/2, (1-dimensions[1])/2, dimensions[0], dimensions[1]];
+            this.viewport.setValidArea(this.bounds);
+        }
+        this.timeCreated = new Date();
 
-            // set time created
-            self.timeCreated = new Date();
-            this.loaded = true;
-
-            // re-render
-            self.viewport.render();
-        };
-        this.image.onerror = function(e) {
-            this.loaded = false;
-            self.image.loadingText = 'loading failed.';
-        };
-        this.image.src = this.imageURI;
+        // re-render
+        this.viewport.render();
     }
 
     getNaturalImageExtent() {
@@ -220,7 +204,7 @@ class ImageElement extends AbstractRenderElement {
     render(ctx, scaleFun) {
         super.render(ctx, scaleFun);
         var targetCoords = scaleFun([0,0,1,1], 'validArea');
-        if(this.image.loaded) {
+        if(this.image != null) {
             ctx.drawImage(this.image, targetCoords[0], targetCoords[1],
                 targetCoords[2],
                 targetCoords[3]);
@@ -1032,7 +1016,7 @@ class PaintbrushElement extends AbstractRenderElement {
         if(!this.visible || this.x == null || this.y == null) return;
         var coords = scaleFun([this.x, this.y], 'validArea');
         var size = window.uiControlHandler.segmentation_properties.brushSize;
-        size = scaleFun(scaleFun([0,0,size,size], 'canvas', true), 'canvas')[2];
+        size = scaleFun(scaleFun([0,0,size,size], 'canvas', true), 'validArea')[2];
 
         ctx.strokeStyle = window.styles.paintbrush.strokeColor;
         ctx.lineWidth = window.styles.paintbrush.lineWidth;
@@ -1334,11 +1318,11 @@ class SegmentationElement extends AbstractRenderElement {
 
     _create_canvas(annotationMap, predictionMap, width, height) {
         this.canvas = document.createElement('canvas');
-        this.ctx = this.canvas.getContext('2d');
-        this.ctx.imageSmoothingEnabled = false;
         if(width && height) {
             this.setSize([width, height]);
         }
+        this.ctx = this.canvas.getContext('2d');
+        this.ctx.imageSmoothingEnabled = false;
         
         // add image data to canvas if available
         if(annotationMap != undefined && annotationMap != null) {

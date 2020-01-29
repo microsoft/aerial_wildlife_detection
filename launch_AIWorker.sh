@@ -3,8 +3,6 @@
 # env to be loaded.
 #
 # 2019 Benjamin Kellenberger
-export AIDE_MODULES=LabelUI,AIController,FileServer
-export AIDE_CONFIG_PATH=serengeti/serengeti-traps.ini
 
 # Celery
 celery -A modules.AIController.backend.celery_interface worker -Q aide
