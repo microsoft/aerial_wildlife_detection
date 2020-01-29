@@ -9,4 +9,4 @@ Pillow>=2.2.1
 numpy
 
 # for the AI backend
-celery[librabbitmq,redis,auth,msgpack]>=4.3.0  #TODO
+#celery[librabbitmq,redis,auth,msgpack]>=4.3.0  #TODO
