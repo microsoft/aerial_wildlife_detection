@@ -147,6 +147,7 @@ class RetinaNet(GenericPyTorchModel):
                                     labels_pred_batch.squeeze(0).cpu(),
                                     inputSize,
                                     cls_thresh=0.1, nms_thresh=0.1,
+                                    numPred_max=self.options['inference']['num_predictions_max'],
                                     return_conf=True)       #TODO: ditto
 
                 for i in range(len(imgID)):

@@ -385,6 +385,7 @@ Notes:
 		"ignore_unsure": true
 	},
 	"inference": {
+		"num_predictions_max": 128,
 		"transform": {
 			"class": "ai.models.pytorch.boundingBoxes.Compose",
 			"kwargs": {
@@ -426,6 +427,9 @@ Notes:
 	}
 }
 ```
+
+**New since January 29, 2020:** RetinaNet now supports the argument "num_predictions_max" for inference to limit the number of predicted bounding boxes per image (only those bounding boxes with the highest confidence values are retained). This is highly recommended, especially for cases where a model is trained from scratch; an untrained RetinaNet might quickly predict >40.000 objects, which becomes impossible to handle. The default limit in the number of bounding boxes is 128, but this value can be customized here accordingly.
+
 
 
 ### About object detection transforms

@@ -100,6 +100,7 @@ DEFAULT_OPTIONS = {
 		"ignore_unsure": True
 	},
 	"inference": {
+		"num_predictions_max": 128,
 		"transform": {
 			"class": "ai.models.pytorch.boundingBoxes.Compose",
 			"kwargs": {

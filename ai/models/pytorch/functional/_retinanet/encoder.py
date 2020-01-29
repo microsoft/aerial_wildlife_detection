@@ -118,7 +118,7 @@ class DataEncoder:
         return loc_targets, cls_targets
 
 
-    def decode(self, loc_preds, cls_preds, input_size, cls_thresh=0.5, nms_thresh=0.5, return_conf=False):
+    def decode(self, loc_preds, cls_preds, input_size, cls_thresh=0.5, nms_thresh=0.5, numPred_max=None, return_conf=False):
         '''Decode outputs back to bouding box locations and class labels.
 
         Args:
@@ -155,6 +155,13 @@ class DataEncoder:
         logits = cls_preds.sigmoid()
         score, labels = logits.max(2)          # [#images,#anchors,]
         ids = score > cls_thresh
+        
+        # limit number of predictions per image
+        if numPred_max is not None and numPred_max < len(ids):
+          order = torch.argsort(score[ids])
+          order = torch.flip(order, (0,))
+          ids = ids[order[0:numPred_max]]
+
         ids = ids.nonzero().squeeze(1)             # [imgIdx,objIdx]
 
         keep = []
