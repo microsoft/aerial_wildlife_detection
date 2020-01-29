@@ -10,8 +10,10 @@
 
 
 # default options for the model, may be overridden in the custom configuration loaded at runtime
-# use pretrained to load an existing weights file on first use
-# use alltrain to train the whole network not just the top layers
+# - use pretrained=True to load weights file trained on COCO dataset. Weights file can be downloaded from
+#   here https://www.dropbox.com/s/bowtcxu117zt6nt/yolo-v3-coco.h5?dl=0 and should be in directory weights
+# - use alltrain to train the whole network not just the top layers
+# - specify init_weights if initial training outside of AIDE has been done
 DEFAULT_OPTIONS = {
 	"general": {
 		"device": "cuda",
