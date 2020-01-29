@@ -1,14 +1,17 @@
 '''
-    PyTorch implementation of the RetinaNet object detector:
-        Lin, Tsung-Yi, et al. "Focal loss for dense object detection." Proceedings of the IEEE international conference on computer vision. 2017.
+    TensorFlow implementation of the YOLO v3 object detector:
+        Redmon, Joseph, and Ali Farhadi. "Yolov3: An incremental improvement." arXiv preprint arXiv:1804.02767 (2018).
 
-    Basic implementation forked and adapted from: https://github.com/kuangliu/pytorch-retinanet
+    Implementation adapted from: https://github.com/experiencor/keras-yolo3
 
     2019 Benjamin Kellenberger
+    2020 Colin Torney
 '''
 
 
 # default options for the model, may be overridden in the custom configuration loaded at runtime
+# use pretrained to load an existing weights file on first use
+# use alltrain to train the whole network not just the top layers
 DEFAULT_OPTIONS = {
 	"general": {
 		"device": "cuda",
@@ -70,9 +73,7 @@ DEFAULT_OPTIONS = {
         "batch_size": 1,
         "nms_thresh": 0.1,
         "cls_thresh": 0.1,
-        "width": 2592,
-        "height": 1952,
-		"transform": {
+        	"transform": {
 			"class": "ai.models.tensorflow.yolo.boundingBoxes.Compose",
 			"kwargs": {
 				"transforms": [{
