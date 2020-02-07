@@ -91,23 +91,6 @@ class ProjectConfigMiddleware:
             return None
 
 
-    def getProjectStatistics(self, project):
-        '''
-            Returns statistics for the project, including:
-            - number of images
-            - number of views, percentages of labeled images, etc.
-            - user statistics
-            - TODO
-        '''
-
-        queryStr = sql.SQL('''
-        
-        ''').format(
-
-        )
-        pass
-
-
     def getProjectUsers(self, project):
         '''
             Returns a list of users that are enrolled in the project,

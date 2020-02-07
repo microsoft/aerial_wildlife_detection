@@ -27,14 +27,14 @@
 <script type="text/javascript">
     $(document).ready(function() {
         let mainContainer = $('#overview-container');
+        var statsContainer = $('<div></div>');
 
+        // general project statistics
         var promise = $.ajax({
             url: '{{ project }}/getProjectStatistics',
             method: 'GET',
             success: function(response) {
                 response = response['statistics'];
-
-                var statsContainer = $('<div></div>');
 
                 // general progress
                 statsContainer.append($('<h2>Progress</h2>'));
@@ -135,9 +135,6 @@
                         }
                     });
                 }
-
-
-                mainContainer.append(statsContainer);
             },
             error: function(data) {
                 console.log('ERROR:');
@@ -145,7 +142,80 @@
             }
         });
 
+        // per-labelclass statistics
+        promise = promise.done(function() {
+            return $.ajax({
+                url: '{{ project }}/getLabelclassStatistics',
+                method: 'GET',
+                success: function(response) {
+                    response = response['statistics'];
+                    statsContainer.append($('<h2>Per-Labelclass</h2>'));
+
+                    // assemble series
+                    var classnames = [];
+                    var numAnnotated = [];
+                    var numPredicted = [];
+                    
+                    for(var labelclass in response) {
+                        classnames.push(labelclass);
+                        numAnnotated.push(response[labelclass]['num_anno']);
+                        numPredicted.push(response[labelclass]['num_pred']);
+                    }
+
+                    // num. annotated
+                    statsContainer.append($('<h3>Annotations</h3>'));
+                    var cw_numAnnos = $('<div class="chartWrapper"><div class="chartAreaWrapper"></div></div>');
+                    let perLabelClass_numAnnos = $('<canvas id="chart-labelclass-annos" width=400 height=300></canvas>');
+                    cw_numAnnos.find('.chartAreaWrapper').append(perLabelClass_numAnnos);
+                    statsContainer.append(cw_numAnnos);
+                    var labelAnnosChart = new Chart(perLabelClass_numAnnos[0].getContext('2d'), {
+                        type: 'bar',
+                        data: {
+                            labels: classnames,
+                            datasets: [{
+                                label: '# annotations made',
+                                data: numAnnotated,
+                                backgroundColor: '#007bff'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }
+                    });
+
+                    // num. predicted
+                    statsContainer.append($('<h3>Predictions</h3>'));
+                    var cw_numPreds = $('<div class="chartWrapper"><div class="chartAreaWrapper"></div></div>');
+                    let perLabelClass_numPreds = $('<canvas id="chart-labelclass-annos" width=400 height=300></canvas>');
+                    cw_numPreds.find('.chartAreaWrapper').append(perLabelClass_numPreds);
+                    statsContainer.append(cw_numPreds);
+                    var labelPredsChart = new Chart(perLabelClass_numPreds[0].getContext('2d'), {
+                        type: 'bar',
+                        data: {
+                            labels: classnames,
+                            datasets: [{
+                                label: '# predictions made',
+                                data: numPredicted,
+                                backgroundColor: '#007bff'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }
+                    });
+                },
+                error: function(data) {
+                    console.log('ERROR:');
+                    console.log(data);
+                }
+            });
+        });
+
+
         promise.done(function() {
+            mainContainer.append(statsContainer);
             window.showLoadingOverlay(false);
         });
     });

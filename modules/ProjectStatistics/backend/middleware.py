@@ -1,7 +1,7 @@
 '''
     Middleware layer for project statistics calculations.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 from psycopg2 import sql
@@ -17,6 +17,11 @@ class ProjectStatisticsMiddleware:
     
 
     def getProjectStatistics(self, project):
+        '''
+            Returns statistics, such as number of images (seen),
+            number of annotations, etc., on a global and per-user,
+            but class-agnostic basis.
+        '''
         queryStr = sql.SQL('''
             SELECT NULL AS username, COUNT(*) AS num_img, NULL::bigint AS num_anno FROM {id_img}
             UNION ALL
@@ -79,6 +84,43 @@ class ProjectStatisticsMiddleware:
                     'num_annotations': result[i]['num_anno']
                 }
                 response['user_stats'][result[i]['username']] = uStats
+        return response
+
+
+    def getLabelclassStatistics(self, project):
+        '''
+            Returns annotation statistics on a per-label class
+            basis.
+        '''
+        queryStr = sql.SQL('''
+            SELECT lc.name, COALESCE(num_anno, 0) AS num_anno, COALESCE(num_pred, 0) AS num_pred
+            FROM {id_lc} AS lc
+            FULL OUTER JOIN (
+                SELECT label, COUNT(*) AS num_anno
+                FROM {id_anno} AS anno
+                GROUP BY label
+            ) AS annoCnt
+            ON lc.id = annoCnt.label
+            FULL OUTER JOIN (
+                SELECT label, COUNT(*) AS num_pred
+                FROM {id_pred} AS pred
+                GROUP BY label
+            ) AS predCnt
+            ON lc.id = predCnt.label
+        ''').format(
+            id_lc=sql.Identifier(project, 'labelclass'),
+            id_anno=sql.Identifier(project, 'annotation'),
+            id_pred=sql.Identifier(project, 'prediction')
+        )
+        result = self.dbConnector.execute(queryStr, None, 'all')
+
+        response = {}
+        for i in range(len(result)):
+            nextResult = result[i]
+            response[nextResult['name']] = {
+                'num_anno': nextResult['num_anno'],
+                'num_pred': nextResult['num_pred']
+            }
         return response
 
 

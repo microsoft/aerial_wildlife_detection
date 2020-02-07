@@ -45,6 +45,15 @@ class ProjectStatistics:
             return { 'statistics': stats }
 
 
+        @self.app.get('/<project>/getLabelclassStatistics')
+        def get_labelclass_statistics(project):
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+            
+            stats = self.middleware.getLabelclassStatistics(project)
+            return { 'statistics': stats }
+
+
         @self.app.post('/<project>/getUserStatistics')
         def get_user_statistics(project):
             if not self.loginCheck(project=project, admin=True):
