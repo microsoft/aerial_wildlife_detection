@@ -1,10 +1,6 @@
 '''
     Serves files, such as images, from a local directory.
 
-    Note: this is just a convenience module and should only be used for debugging purposes.
-          Use a proper file server (e.g. an Apache instance configured with static directories)
-          for deployment.
-
     2019-20 Benjamin Kellenberger
 '''
 

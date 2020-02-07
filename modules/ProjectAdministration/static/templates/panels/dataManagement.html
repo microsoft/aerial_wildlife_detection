@@ -29,14 +29,35 @@
         //TODO: parse filter parameters
         params = {limit: 100};
 
-        $.ajax({
+        return $.ajax({
             url: window.dataServerURI + '{{ project }}' + '/listImages',
             method: 'POST',
             data: JSON.stringify(params),
             contentType: 'application/json; charset=utf-8',
             dataType: 'json',
             success: function(data) {
+                // assemble table
+                data = data['response'];
                 table.empty();
+                for(var idx=0; idx<data.length; idx++) {
+                    var id = data[idx]['id'];
+                    var dateAdded = '';
+                    if(data[idx]['date_added'] != undefined && data[idx]['date_added'] != null) {
+                        var dateAdded = new Date(data[idx]['date_added']*1000 - 1).toLocaleString();
+                    }
+                    var lastViewed = '';
+                    if(data[idx]['last_viewed'] != undefined && data[idx]['last_viewed'] != null) {
+                        var lastViewed = new Date(data[idx]['last_viewed']*1000 - 1).toLocaleString();
+                    }
+                    var row = '<tr><td><input type="checkbox" id="check_'+id+'" /></td>' +
+                                '<td>'+data[idx]['filename']+'</td>' +
+                                '<td>'+dateAdded+'</td>' +
+                                '<td>'+lastViewed+'</td>' +
+                                '<td>'+data[idx]['num_anno']+'</td>' +
+                                '<td>'+data[idx]['num_pred']+'</td>'
+                                '</tr>';
+                    table.append($(row));
+                }
                 console.log(data);
             },
             error: function(data) {
@@ -59,7 +80,7 @@
 
         promise = promise.done(function() {
             // load initial image data
-            refreshTable();
+            return refreshTable();
         });
 
         promise.done(function() {

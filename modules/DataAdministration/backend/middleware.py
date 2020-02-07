@@ -80,7 +80,9 @@ class DataAdministrationMiddleware:
 
         if filterStr.startswith('AND'):
             filterStr = filterStr[3:]
-        filterStr = sql.SQL('WHERE ' + filterStr)
+        if len(filterStr.strip()):
+            filterStr = 'WHERE ' + filterStr
+        filterStr = sql.SQL(filterStr)
 
         limitStr = sql.SQL('')
         if isinstance(limit, int):
@@ -91,9 +93,9 @@ class DataAdministrationMiddleware:
             queryArgs = None
 
         queryStr = sql.SQL('''
-            SELECT img.id, filename, date_added,
+            SELECT img.id, filename, EXTRACT(epoch FROM date_added) AS date_added,
                 COALESCE(viewcount, 0) AS viewcount,
-                last_viewed,
+                EXTRACT(epoch FROM last_viewed) AS last_viewed,
                 COALESCE(num_anno, 0) AS num_anno,
                 COALESCE(num_pred, 0) AS num_pred
             FROM {id_img} AS img
@@ -127,6 +129,8 @@ class DataAdministrationMiddleware:
             limit=limitStr
         )
         result = self.dbConnector.execute(queryStr, tuple(queryArgs), 'all')
+        for idx in range(len(result)):
+            result[idx]['id'] = str(result[idx]['id'])
         return result
 
 

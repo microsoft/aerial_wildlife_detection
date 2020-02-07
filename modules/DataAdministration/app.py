@@ -49,7 +49,7 @@ class DataAdministrator:
             Returns a tuple of (min, max) values, or None
             if "paramName" is not in "params."
         '''
-        if not paramName in params:
+        if params is None or not paramName in params:
             return None
         entry = params[paramName].copy()
         if not 'min' in entry:
@@ -62,7 +62,7 @@ class DataAdministrator:
     def _initBottle(self):
 
         ''' Image management functionalities '''
-        @self.app.get('/<project>/listImages')
+        @self.app.post('/<project>/listImages')
         def list_images(project):
             '''
                 Returns a list of images and various properties
