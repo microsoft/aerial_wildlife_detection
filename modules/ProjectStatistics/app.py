@@ -2,7 +2,7 @@
     Bottle routings for labeling statistics of project,
     including per-user analyses and progress.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 from bottle import request, static_file, abort

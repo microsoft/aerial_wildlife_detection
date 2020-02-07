@@ -1,7 +1,7 @@
 '''
     Definition of the layer between the UI frontend and the database.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 import os
@@ -99,7 +99,7 @@ class DBMiddleware():
             imgID = str(b['image'])
             if not imgID in response:
                 response[imgID] = {
-                    'fileName': os.path.join(project, b['filename']),
+                    'fileName': b['filename'],
                     'predictions': {},
                     'annotations': {},
                     'last_checked': None

@@ -1,7 +1,7 @@
 /*
     Retrieves global project settings, such as the class definitions and the data query URI, from the server.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 */
 
 window.parseBoolean = function(value) {
@@ -42,6 +42,7 @@ window.loadConfiguration = function() {
 window.getProjectSettings = function() {
     return $.get('getProjectSettings', function(data) {
         window.projectName = data['settings']['projectName'];
+        window.projectShortname = data['settings']['projectShortname'];
         window.projectDescription = data['settings']['projectDescription'];
         window.indexURI = data['settings']['indexURI']
         window.dataServerURI = data['settings']['dataServerURI'];

@@ -1,6 +1,8 @@
 '''
     Register modules here. Module-specific parameters in the config .ini file
     can be added under a section with the same name as the module.
+
+    2019-2020 Benjamin Kellenberger
 '''
 
 from .LabelUI.app import LabelUI
@@ -10,6 +12,7 @@ from .UserHandling.app import UserHandler
 from .Reception.app import Reception
 from .ProjectAdministration.app import ProjectConfigurator
 from .ProjectStatistics.app import ProjectStatistics
+from .DataAdministration.app import DataAdministrator
 
 
 REGISTERED_MODULES = {
@@ -21,7 +24,8 @@ REGISTERED_MODULES = {
     'UserHandler': UserHandler,
     'Reception': Reception,
     'ProjectConfigurator': ProjectConfigurator,
-    'ProjectStatistics': ProjectStatistics
+    'ProjectStatistics': ProjectStatistics,
+    'DataAdministrator': DataAdministrator
 }
 
 

@@ -1,0 +1,70 @@
+<div>
+    <h2>Images</h2>
+    <div id="images-table-div">
+        <div id="images-table-filter">
+            <h3>Filter images</h3>
+            TODO
+            <button id="update-images-table" class="btn btn-sm btn-primary">Update</button>
+        </div>
+        <table id="images-table">
+            <thead>
+                <tr>
+                    <td><input type="checkbox" id="select-all" /></td>
+                    <td>File</td>
+                    <td>Date added</td>
+                    <td>Last viewed</td>
+                    <td># annotations</td>
+                    <td># predictions</td>
+                </tr>
+            </thead>
+            <tbody id="images-table-body"></tbody>
+        </table>
+    </div>
+</div>
+<script type="text/javascript">
+
+    function refreshTable() {
+        var table = $('#images-table-body');
+
+        //TODO: parse filter parameters
+        params = {limit: 100};
+
+        $.ajax({
+            url: window.dataServerURI + '{{ project }}' + '/listImages',
+            method: 'POST',
+            data: JSON.stringify(params),
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            success: function(data) {
+                table.empty();
+                console.log(data);
+            },
+            error: function(data) {
+                console.log('ERROR:');
+                console.log(data);
+            }
+        })
+        
+    }
+
+    $(document).ready(function() {
+
+        // get data server URI
+        var promise = $.get('{{ project }}/getProjectSettings', function(data) {
+            window.dataServerURI = data['settings']['dataServerURI'];
+            if(!window.dataServerURI.endsWith('/')) {
+                window.dataServerURI += '/';
+            }
+        });
+
+        promise = promise.done(function() {
+            // load initial image data
+            refreshTable();
+        });
+
+        promise.done(function() {
+            window.showLoadingOverlay(false);
+        });
+    });
+
+</script>

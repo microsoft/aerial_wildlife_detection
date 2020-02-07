@@ -3,7 +3,7 @@
     handling project setup, data import requests, etc.
     Also handles creation of new projects.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 import os
@@ -52,6 +52,7 @@ class ProjectConfigurator:
         panelNames = [
             'accessControl',
             'aiModel',
+            'dataManagement',
             'dataDownload',
             'dataUpload',
             'general',

@@ -2,13 +2,14 @@
     Run this file whenever you update AIde to bring your existing project setup up-to-date
     with respect to changes due to newer versions.
     
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 import os
 import argparse
 import json
 import secrets
+from urllib.parse import urlparse
 
 
 MODIFICATIONS_sql = [
@@ -129,7 +130,8 @@ MODIFICATIONS_sql = [
             RETURN iou;
         END;
     $iou$ LANGUAGE plpgsql;
-    '''
+    ''',
+    'ALTER TABLE {schema}.image ADD COLUMN date_added TIMESTAMPTZ NOT NULL DEFAULT NOW()'
 ]
 
 
@@ -358,5 +360,17 @@ if __name__ == '__main__':
         '''.format(schema=config.getProperty('Database', 'schema')),
         None,
         None)
+
+    
+    # check fileServer URI
+    fileServerURI = config.getProperty('FileServer', 'staticfiles_uri')
+    if len(fileServerURI):
+        print('WARNING: please update entry "dataServer_uri" under "[Server]" in the configuration.ini file.')
+        print('The latest version of AIDE only specifies the base file server address and port, but nothing else.')
+        print('Example:\n')
+        print('[Server]')
+        print('dataServer_uri = http://fileserver.domain.info:8080')
+        print('\nIf you do not use a dedicated file server, you can leave "dataServer_uri" blank.')
+
 
     print('Project "{}" is now up-to-date for the latest changes in AIde.'.format(config.getProperty('Project', 'projectName')))

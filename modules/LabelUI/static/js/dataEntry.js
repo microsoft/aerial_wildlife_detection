@@ -1,7 +1,7 @@
 /*
     Definition of a data entry, as shown on a grid on the screen.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
  */
 
 class AbstractDataEntry {
@@ -311,7 +311,7 @@ class AbstractDataEntry {
    }
 
    getImageURI() {
-       return window.dataServerURI + this.fileName;    // + '?' + Date.now();
+       return window.dataServerURI + window.projectShortname + '/files/' + this.fileName;
    }
 
    getProperties(minimal, onlyUserAnnotations) {

@@ -3,7 +3,7 @@
     Here, we do inference on full images, split into patches,
     instead of going through data already in the database.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 import os
@@ -45,8 +45,8 @@ class RetinaNet_ois(RetinaNet):
         else:
             self.options['contrib'] = check_args(self.options['contrib'], defaultContribOptions)
 
-        if not self.options['contrib']['baseFolder_unlabeled'].endswith('/'):
-            self.options['contrib']['baseFolder_unlabeled'] += '/'
+        if not self.options['contrib']['baseFolder_unlabeled'].endswith(os.sep):
+            self.options['contrib']['baseFolder_unlabeled'] += os.sep
 
         # parameters
         self.batchSize = self.options['inference']['dataLoader']['kwargs']['batch_size']

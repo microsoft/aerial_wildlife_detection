@@ -84,8 +84,9 @@ CREATE TABLE IF NOT EXISTS &schema.IMAGE (
     id uuid DEFAULT uuid_generate_v4(),
     filename VARCHAR UNIQUE NOT NULL,
     isGoldenQuestion BOOLEAN NOT NULL DEFAULT FALSE,
-    exif VARCHAR,
-    fVec bytea,
+    --exif VARCHAR,
+    --fVec bytea,
+    date_added TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (id)
 );
 

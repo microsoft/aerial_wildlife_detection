@@ -3,7 +3,7 @@
     Can launch multiple modules at once,
     but requires environment variables to be set to do so.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 
@@ -63,14 +63,19 @@ for i in instance_args:
         instance.addLoginCheckFun(userHandler.checkAuthenticated)
 
     
+    # launch project meta modules
     if moduleName == 'LabelUI':
-        # also launch project meta modules
         reception = REGISTERED_MODULES['Reception'](config, app)
         reception.addLoginCheckFun(userHandler.checkAuthenticated)
         configurator = REGISTERED_MODULES['ProjectConfigurator'](config, app)
         configurator.addLoginCheckFun(userHandler.checkAuthenticated)
         statistics = REGISTERED_MODULES['ProjectStatistics'](config, app)
         statistics.addLoginCheckFun(userHandler.checkAuthenticated)
+
+    if moduleName == 'FileServer':
+        dataAdmin = REGISTERED_MODULES['DataAdministrator'](config, app)
+        dataAdmin.addLoginCheckFun(userHandler.checkAuthenticated)
+
 
 
 if __name__ == '__main__':

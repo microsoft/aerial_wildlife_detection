@@ -6,7 +6,7 @@
     An instance of this FileServer class may be provided to the AIModel instead,
     and serves as a gateway to the project's actual file server.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 import os
@@ -83,9 +83,9 @@ class FileServer:
             else:
                 queryPath = os.path.join(self.baseURI, filename)
             
-            if '..' in queryPath or filename.startswith('/'):
+            if '..' in queryPath or filename.startswith(os.sep):
                 # parent and absolute paths are not allowed (to protect the system and other projects)
-                raise Exception('Parent accessors ("..") and absolute paths ("/path") are not allowed.')
+                raise Exception('Parent accessors ("..") and absolute paths ("{}path") are not allowed.'.format(os.sep))
 
             if self.isLocal:
                 # load file from disk
@@ -118,9 +118,9 @@ class FileServer:
         else:
             path = os.path.join(self.baseURI, filename)
 
-        if '..' in path or filename.startswith('/'):
+        if '..' in path or filename.startswith(os.sep):
             # parent and absolute paths are not allowed (to protect the system and other projects)
-            raise Exception('Parent accessors ("..") and absolute paths ("/path") are not allowed.')
+            raise Exception('Parent accessors ("..") and absolute paths ("{}path") are not allowed.'.format(os.sep))
 
         with open(path, 'wb') as f:
             f.write(bytea)

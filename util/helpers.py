@@ -1,9 +1,10 @@
 '''
     Miscellaneous helper functions.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
+import os
 import importlib
 from datetime import datetime
 import pytz
@@ -98,3 +99,37 @@ def parse_parameters(data, params, absent_ok=True, escape=True):
         outputKeys.append(nextKey)
     return outputVals, outputKeys
         
+
+def is_fileServer(config):
+    '''
+        Returns True if the current instance is a valid
+        file server. For this, the following two properties
+        must hold:
+        - the "staticfiles_dir" property under "[FileServer]"
+          in the configuration.ini file must be a valid directory
+          on this machine;
+        - environment variable "AIDE_MODULES" must be set to contain
+          the string "FileServer" (check is performed without case)
+    '''
+
+    try:
+        return ('fileserver' in os.environ['AIDE_MODULES'].lower() and \
+            os.path.isdir(config.getProperty('FileServer', 'staticfiles_dir'))
+        )
+    except:
+       return False
+
+
+valid_image_extensions = (
+    '.jpg',
+    '.jpeg',
+    '.png',
+    '.gif',
+    # '.tif',
+    # '.tiff',
+    '.bmp',
+    '.ico',
+    '.jfif',
+    '.pjpeg',
+    '.pjp'
+)

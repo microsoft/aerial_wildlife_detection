@@ -45,12 +45,12 @@
         - timeRequired: -1
     Also adds class definitions.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 import os
 import argparse
-
+from util.helpers import valid_image_extensions
 
 
 if __name__ == '__main__':
@@ -82,8 +82,8 @@ if __name__ == '__main__':
     if args.label_folder == '':
         args.label_folder = None
 
-    if args.label_folder is not None and not args.label_folder.endswith('/'):
-        args.label_folder += '/'
+    if args.label_folder is not None and not args.label_folder.endswith(os.sep):
+        args.label_folder += os.sep
 
     currentDT = datetime.datetime.now()
     currentDT = '{}-{}-{} {}:{}:{}'.format(currentDT.year, currentDT.month, currentDT.day, currentDT.hour, currentDT.minute, currentDT.second)
@@ -93,20 +93,6 @@ if __name__ == '__main__':
     if dbConn.connectionPool is None:
         raise Exception('Error connecting to database.')
     dbSchema = config.getProperty('Database', 'schema')
-    
-    valid_image_extensions = (
-        '.jpg',
-        '.jpeg',
-        '.png',
-        '.gif',
-        '.tif',
-        '.tiff',
-        '.bmp',
-        '.ico',
-        '.jfif',
-        '.pjpeg',
-        '.pjp'
-    )
 
 
     # check if running on file server
@@ -117,8 +103,8 @@ if __name__ == '__main__':
     if args.label_folder is not None and not os.path.isdir(args.label_folder):
         raise Exception('"{}" is not a valid directory on this machine.'.format(args.label_folder))
 
-    if not imgBaseDir.endswith('/'):
-        imgBaseDir += '/'
+    if not imgBaseDir.endswith(os.sep):
+        imgBaseDir += os.sep
 
 
     # parse class names and indices

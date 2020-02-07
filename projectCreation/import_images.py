@@ -12,11 +12,12 @@
        *.ini file).
     3. Call the script from the AIde code base on the FileServer instance.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 import os
 import argparse
+from util.helpers import valid_image_extensions
 
 
 if __name__ == '__main__':
@@ -48,28 +49,14 @@ if __name__ == '__main__':
         raise Exception('Error connecting to database.')
     dbSchema = config.getProperty('Database', 'schema')
 
-    valid_extensions = (
-        '.jpg',
-        '.jpeg',
-        '.png',
-        '.gif',
-        '.tif',
-        '.tiff',
-        '.bmp',
-        '.ico',
-        '.jfif',
-        '.pjpeg',
-        '.pjp'
-    )
-
 
     # check if running on file server
     imgBaseDir = config.getProperty('FileServer', 'staticfiles_dir')
     if not os.path.isdir(imgBaseDir):
         raise Exception('"{}" is not a valid directory on this machine. Are you running the script from the file server?'.format(imgBaseDir))
 
-    if not imgBaseDir.endswith('/'):
-        imgBaseDir += '/'
+    if not imgBaseDir.endswith(os.sep):
+        imgBaseDir += os.sep
 
     
     # locate all images and their base names
@@ -81,7 +68,7 @@ if __name__ == '__main__':
             continue
         
         _, ext = os.path.splitext(i)
-        if ext.lower() not in valid_extensions:
+        if ext.lower() not in valid_image_extensions:
             continue
 
         baseName = i.replace(imgBaseDir, '')
