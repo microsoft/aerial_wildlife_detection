@@ -13,6 +13,7 @@ from .Reception.app import Reception
 from .ProjectAdministration.app import ProjectConfigurator
 from .ProjectStatistics.app import ProjectStatistics
 from .DataAdministration.app import DataAdministrator
+from .StaticFiles.app import StaticFileServer
 
 
 REGISTERED_MODULES = {
@@ -25,7 +26,8 @@ REGISTERED_MODULES = {
     'Reception': Reception,
     'ProjectConfigurator': ProjectConfigurator,
     'ProjectStatistics': ProjectStatistics,
-    'DataAdministrator': DataAdministrator
+    'DataAdministrator': DataAdministrator,
+    'StaticFileServer': StaticFileServer
 }
 
 

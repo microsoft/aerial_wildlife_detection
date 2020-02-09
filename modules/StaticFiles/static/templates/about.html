@@ -4,7 +4,7 @@
     <title>AIde - about</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <link type="text/css" href="static/css/bootstrap.min.css" rel="stylesheet">
+    <link type="text/css" href="/static/general/css/bootstrap.min.css" rel="stylesheet">
     <style type="text/css">
         body {
             overflow: hidden;
@@ -114,8 +114,7 @@
                     if(data['info'].hasOwnProperty('backdrops')) {
                         var currentBackdropIdx = Math.floor(Math.random() * data['info']['backdrops'].length);
                         var filename = data['info']['backdrops'][currentBackdropIdx]['file'];
-                        console.log('/static/img/backdrops/' + filename)
-                        $('#backdrop').css('background-image', 'url(/static/img/backdrops/' + filename + ')');
+                        $('#backdrop').css('background-image', 'url(/static/general/img/backdrops/' + filename + ')');
                         try {
                             var copyright = data['info']['backdrops'][currentBackdropIdx]['copyright'];
                             if(copyright != '') {
@@ -170,11 +169,11 @@
                 <h2 style="margin-top:60px">Technologies</h2>
                 <div class="leading">
                     <div style="margin-bottom:20px;">
-                        <a class="tech-logo" href="https://bottlepy.org/" target="_blank"><img src="static/img/liblogos/bottle.png" /></a>
-                        <a class="tech-logo" href="https://www.postgresql.org/" target="_blank"><img src="static/img/liblogos/postgres.png" /></a>
-                        <a class="tech-logo" href="http://www.celeryproject.org/" target="_blank"><img src="static/img/liblogos/celery.png" /></a>
-                        <a class="tech-logo" href="https://www.rabbitmq.com/" target="_blank"><img src="static/img/liblogos/rabbitmq.png" /></a>
-                        <a class="tech-logo" href="https://pytorch.org/" target="_blank"><img src="static/img/liblogos/pytorch.png" /></a>
+                        <a class="tech-logo" href="https://bottlepy.org/" target="_blank"><img src="/static/general/img/liblogos/bottle.png" /></a>
+                        <a class="tech-logo" href="https://www.postgresql.org/" target="_blank"><img src="/static/general/img/liblogos/postgres.png" /></a>
+                        <a class="tech-logo" href="http://www.celeryproject.org/" target="_blank"><img src="/static/general/img/liblogos/celery.png" /></a>
+                        <a class="tech-logo" href="https://www.rabbitmq.com/" target="_blank"><img src="/static/general/img/liblogos/rabbitmq.png" /></a>
+                        <a class="tech-logo" href="https://pytorch.org/" target="_blank"><img src="/static/general/img/liblogos/pytorch.png" /></a>
                     </div>
                     <div>
                         This software further makes use of the <a href="https://github.com/kuangliu/pytorch-retinanet" target="_blank">RetinaNet implementation</a> by kuangliu.
@@ -184,7 +183,7 @@
         </div>
         <footer class="page-footer" id="footer">
             <div class="ms-logo">
-                <a href="about"><img height="100%" src="static/img/ms_logo.png" /></a>
+                <a href="about"><img height="100%" src="/static/general/img/ms_logo.png" /></a>
             </div>
         </footer>
     </div>

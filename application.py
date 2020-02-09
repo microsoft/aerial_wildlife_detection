@@ -76,6 +76,8 @@ for i in instance_args:
         dataAdmin = REGISTERED_MODULES['DataAdministrator'](config, app)
         dataAdmin.addLoginCheckFun(userHandler.checkAuthenticated)
 
+    staticFiles = REGISTERED_MODULES['StaticFileServer'](config, app)
+    staticFiles.addLoginCheckFun(userHandler.checkAuthenticated)
 
 
 if __name__ == '__main__':

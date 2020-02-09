@@ -2,7 +2,7 @@
     Manages functionalities around the UI/viewport/canvas,
     such as control buttons (select, add, zoom, etc.).
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 */
 
 
@@ -61,7 +61,7 @@ class UIControlHandler {
         var vpControls = $('#viewport-controls');
 
         // select
-        var selectButton = $('<button id="select-button" class="btn btn-sm btn-secondary active" title="Select (S)"><img src="static/img/controls/select.svg" style="height:18px" /></button>');
+        var selectButton = $('<button id="select-button" class="btn btn-sm btn-secondary active" title="Select (S)"><img src="/static/interface/img/controls/select.svg" style="height:18px" /></button>');
         this.staticButtons[ACTIONS.DO_NOTHING] = selectButton;
         vpControls.append(selectButton);
         selectButton.click(function() {
@@ -69,7 +69,7 @@ class UIControlHandler {
         });
 
         // pan
-        var panButton = $('<button id="pan-button" class="btn btn-sm btn-secondary" title="Pan (P)"><img src="static/img/controls/pan.svg" style="height:18px" /></button>');
+        var panButton = $('<button id="pan-button" class="btn btn-sm btn-secondary" title="Pan (P)"><img src="/static/interface/img/controls/pan.svg" style="height:18px" /></button>');
         this.staticButtons[ACTIONS.PAN] = panButton;
         vpControls.append(panButton);
         panButton.click(function() {
@@ -77,29 +77,29 @@ class UIControlHandler {
         });
 
         // loupe
-        vpControls.append($('<button id="loupe-button" class="btn btn-sm btn-secondary" title="Toggle Loupe (B)"><img src="static/img/controls/loupe.svg" style="height:18px" /></button>'));
+        vpControls.append($('<button id="loupe-button" class="btn btn-sm btn-secondary" title="Toggle Loupe (B)"><img src="/static/interface/img/controls/loupe.svg" style="height:18px" /></button>'));
         $('#loupe-button').click(function(e) {
             e.preventDefault();
             self.toggleLoupe();
         });
 
         // zoom buttons
-        vpControls.append($('<button id="zoom-in-button" class="btn btn-sm btn-secondary" title="Zoom In (I)"><img src="static/img/controls/zoom_in.svg" style="height:18px" /></button>'));
+        vpControls.append($('<button id="zoom-in-button" class="btn btn-sm btn-secondary" title="Zoom In (I)"><img src="/static/interface/img/controls/zoom_in.svg" style="height:18px" /></button>'));
         $('#zoom-in-button').click(function() {
             self.setAction(ACTIONS.ZOOM_IN);
         });
-        vpControls.append($('<button id="zoom-out-button" class="btn btn-sm btn-secondary" title="Zoom Out (O)"><img src="static/img/controls/zoom_out.svg" style="height:18px" /></button>'));
+        vpControls.append($('<button id="zoom-out-button" class="btn btn-sm btn-secondary" title="Zoom Out (O)"><img src="/static/interface/img/controls/zoom_out.svg" style="height:18px" /></button>'));
         $('#zoom-out-button').click(function() {
             self.setAction(ACTIONS.ZOOM_OUT);
         });
 
-        var zoomAreaButton = $('<button id="zoom-area-button" class="btn btn-sm btn-secondary" title="Zoom to Area (Z)"><img src="static/img/controls/zoom_area.svg" style="height:18px" /></button>');
+        var zoomAreaButton = $('<button id="zoom-area-button" class="btn btn-sm btn-secondary" title="Zoom to Area (Z)"><img src="/static/interface/img/controls/zoom_area.svg" style="height:18px" /></button>');
         this.staticButtons[ACTIONS.ZOOM_AREA] = zoomAreaButton;
         vpControls.append(zoomAreaButton);
         zoomAreaButton.click(function() {
             self.setAction(ACTIONS.ZOOM_AREA);
         });
-        vpControls.append($('<button id="zoom-reset-button" class="btn btn-sm btn-secondary" title="Original Extent (E)"><img src="static/img/controls/zoom_extent.svg" style="height:18px" /></button>'));
+        vpControls.append($('<button id="zoom-reset-button" class="btn btn-sm btn-secondary" title="Original Extent (E)"><img src="/static/interface/img/controls/zoom_extent.svg" style="height:18px" /></button>'));
         $('#zoom-reset-button').click(function() {
             self.resetZoom();
         });
@@ -175,8 +175,8 @@ class UIControlHandler {
         // semantic segmentation controls
         if(window.annotationType === 'segmentationMasks') {
             this.segmentation_controls = {
-                brush_rectangle: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="static/img/controls/rectangle.svg" style="height:18px" title="Square brush" /></button>'),
-                brush_circle: $('<button class="btn btn-sm btn-secondary inline-control"><img src="static/img/controls/circle.svg" style="height:18px" title="Circular brush" /></button>'),
+                brush_rectangle: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/rectangle.svg" style="height:18px" title="Square brush" /></button>'),
+                brush_circle: $('<button class="btn btn-sm btn-secondary inline-control"><img src="/static/interface/img/controls/circle.svg" style="height:18px" title="Circular brush" /></button>'),
                 brush_size: $('<input class="inline-control" type="number" min="1" max="255" value="20" title="Brush size" style="width:50px" />'),
                 opacity: $('<input class="inline-control" type="range" min="0" max="255" value="220" title="Segmentation opacity" style="width:100px" />')        //TODO: make available for other annotation types as well?
             };

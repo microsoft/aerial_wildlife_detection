@@ -45,13 +45,13 @@
         var className = 'Hartebeest';
         predStyle['strokeColor'] = window.addAlpha(color, predStyle.lineOpacity);
         predStyle['fillColor'] = window.addAlpha(color, predStyle.fillOpacity);
-        predVP.addRenderElement(new ImageElement('img', predVP, 'static/img/tutorial_example.jpg',0, true));
+        predVP.addRenderElement(new ImageElement('img', predVP, '/static/interface/img/tutorial_example.jpg',0, true));
 
         var annoVP = new ImageViewport($('#uitutorial-annotations'), true);
         var annoStyle = JSON.parse(JSON.stringify(window.styles.annotations));
         annoStyle['strokeColor'] = window.addAlpha(color, annoStyle.lineOpacity);
         annoStyle['fillColor'] = window.addAlpha(color, annoStyle.fillOpacity);
-        annoVP.addRenderElement(new ImageElement('img', annoVP, 'static/img/tutorial_example.jpg',0, true));
+        annoVP.addRenderElement(new ImageElement('img', annoVP, '/static/interface/img/tutorial_example.jpg',0, true));
 
 
         if(window.predictionType === 'labels') {

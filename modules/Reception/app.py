@@ -2,7 +2,7 @@
     The Reception module handles project overviews
     and the like.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 import os
@@ -39,28 +39,28 @@ class Reception:
     def _initBottle(self):
 
         ''' general AIde routings '''
-        @self.app.route('/favicon.ico')
-        def favicon():
-            return static_file('favicon.ico', root=os.path.join(self.staticDir, 'img'))
+        # @self.app.route('/favicon.ico')
+        # def favicon():
+        #     return static_file('favicon.ico', root=os.path.join(self.staticDir, 'img'))
 
 
-        @self.app.route('/static/<filename:re:.*>')
-        def send_static(filename):
-            return static_file(filename, root=self.staticDir)
+        # @self.app.route('/static/<filename:re:.*>')
+        # def send_static(filename):
+        #     return static_file(filename, root=self.staticDir)
 
 
-        @self.app.route('/about')
-        @self.app.route('/<project>/about')
-        def about(project=None):
-            return static_file('about.html', root=os.path.join(self.staticDir, 'templates'))
+        # @self.app.route('/about')
+        # @self.app.route('/<project>/about')
+        # def about(project=None):
+        #     return static_file('about.html', root=os.path.join(self.staticDir, 'templates'))
 
 
-        @self.app.get('/getBackdrops')
-        def get_backdrops():
-            try:
-                return {'info': json.load(open(os.path.join(self.staticDir, 'img/backdrops/backdrops.json'), 'r'))}
-            except:
-                abort(500)
+        # @self.app.get('/getBackdrops')
+        # def get_backdrops():
+        #     try:
+        #         return {'info': json.load(open(os.path.join(self.staticDir, 'img/backdrops/backdrops.json'), 'r'))}
+        #     except:
+        #         abort(500)
 
 
         with open(os.path.abspath(os.path.join(self.staticDir, 'templates/projects.html')), 'r') as f:

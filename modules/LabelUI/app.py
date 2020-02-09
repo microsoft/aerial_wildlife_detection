@@ -97,13 +97,13 @@ class LabelUI():
                 projectTitle=projectData['projectName'], projectDescr=projectData['projectDescription'])
 
 
-        # @self.app.route('/static/<filename:re:.*>')
-        # def send_static(filename):
+        # # @self.app.route('/static/<filename:re:.*>')
+        # # def send_static(filename):
+        # #     return static_file(filename, root=self.staticDir)
+        # @self.app.route('/<project>/static/<filename:re:.*>')
+        # @self.app.route('/<project>/interface/static/<filename:re:.*>')
+        # def send_static_proj(project, filename):
         #     return static_file(filename, root=self.staticDir)
-        @self.app.route('/<project>/static/<filename:re:.*>')
-        @self.app.route('/<project>/interface/static/<filename:re:.*>')
-        def send_static_proj(project, filename):
-            return static_file(filename, root=self.staticDir)
 
 
         @self.app.route('/backdrops/<filename:re:.*>')

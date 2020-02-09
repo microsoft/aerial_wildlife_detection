@@ -70,9 +70,9 @@ class AbstractDataEntry {
                 if(data.hasOwnProperty('status') && data['status'] === 0) {
                     // change successful; set flag accordingly
                     if(self.isGoldenQuestion) {
-                        self.flag.attr('src', 'static/img/controls/flag_active.svg');
+                        self.flag.attr('src', '/static/interface/img/controls/flag_active.svg');
                     } else {
-                        self.flag.attr('src', 'static/img/controls/flag.svg');
+                        self.flag.attr('src', '/static/interface/img/controls/flag.svg');
                     }
                 }
             },
@@ -298,9 +298,9 @@ class AbstractDataEntry {
         if(window.isAdmin) {
             this.flag = $('<img class="golden-question-flag" title="toggle golden question" />');
             if(self.isGoldenQuestion) {
-                this.flag.attr('src', 'static/img/controls/flag_active.svg');
+                this.flag.attr('src', '/static/interface/img/controls/flag_active.svg');
             } else {
-                this.flag.attr('src', 'static/img/controls/flag.svg');
+                this.flag.attr('src', '/static/interface/img/controls/flag.svg');
             }
             this.flag.click(function() {
                 // toggle golden question on server
