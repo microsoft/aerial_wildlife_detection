@@ -18,7 +18,8 @@ class StaticFileServer:
         'interface': 'modules/LabelUI/static',
         'reception': 'modules/Reception/static',
         'dataAdmin': 'modules/DataAdministration/static',
-        'projectAdmin': 'modules/ProjectAdministration/static'
+        'projectAdmin': 'modules/ProjectAdministration/static',
+        'statistics': 'modules/ProjectStatistics/static'
     }
 
     def __init__(self, config, app):
@@ -62,7 +63,7 @@ class StaticFileServer:
         def send_static(module, filename):
             return static_file(filename, self.MODULE_ROUTINGS[module])
 
-
+        #TODO: can be removed
         @self.app.route('/<project>/static/<module>/<filename:re:.*>')
         def send_static_proj(project, module, filename):
             return send_static(module, filename)
