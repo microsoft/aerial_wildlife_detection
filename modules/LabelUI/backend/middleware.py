@@ -1,7 +1,7 @@
 '''
     Definition of the layer between the UI frontend and the database.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 from uuid import UUID
@@ -120,6 +120,23 @@ class DBMiddleware():
                     response[imgID]['predictions'][entryID] = entry
 
         return response
+
+
+    def _increment_viewcount(self, username, viewcountValues):
+        '''
+            Inserts or updates entries for the given imageIDs.
+            To be done during image querying.
+        '''
+        # prepare insertion values
+        vals = []
+        for key in viewcountValues.keys():
+            vals.append((username, key, 1,))
+        sql = '''
+            INSERT INTO {}.image_user (username, image, viewcount)
+            VALUES %s 
+            ON CONFLICT (username, image) DO UPDATE SET viewcount = image_user.viewcount + 1;
+        '''.format(self.config.getProperty('Database', 'schema'))
+        self.dbConnector.insert(sql, vals)
 
 
     def getProjectSettings(self):
@@ -250,6 +267,10 @@ class DBMiddleware():
             finally:
                 pass
                 # cursor.close()
+
+        # increase viewcount here
+        self._increment_viewcount(username, response)
+
         return { 'entries': response }
         
 
@@ -273,6 +294,9 @@ class DBMiddleware():
 
         with self.dbConnector.execute_cursor(sql, queryVals) as cursor:
             response = self._assemble_annotations(cursor)
+
+        # increase viewcount here
+        self._increment_viewcount(username, response)
 
         return { 'entries': response }
 
@@ -318,6 +342,10 @@ class DBMiddleware():
             finally:
                 pass
                 # cursor.close()
+        
+        # # increase viewcount here
+        # self._increment_viewcount(username, response)
+
         return { 'entries': response }
 
     
@@ -485,13 +513,12 @@ class DBMiddleware():
             self.dbConnector.insert(sql, values_update)
 
 
-        # viewcount table
+        # viewcount table (add missing metadata; do not increase viewcount as we did this during querying already)
         sql = '''
             INSERT INTO {}.image_user (username, image, viewcount, last_checked, last_time_required, meta)
             VALUES %s 
-            ON CONFLICT (username, image) DO UPDATE SET viewcount = image_user.viewcount + 1, last_checked = EXCLUDED.last_checked, last_time_required = EXCLUDED.last_time_required, meta = EXCLUDED.meta;
+            ON CONFLICT (username, image) DO UPDATE SET last_checked = EXCLUDED.last_checked, last_time_required = EXCLUDED.last_time_required, meta = EXCLUDED.meta;
         '''.format(schema)
-
         self.dbConnector.insert(sql, viewcountValues)
 
 
