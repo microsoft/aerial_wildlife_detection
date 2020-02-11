@@ -2,7 +2,7 @@
     Factory that creates SQL strings for querying and submission,
     adjusted to the arguments specified.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 from psycopg2 import sql
@@ -106,7 +106,8 @@ class SQLStringBuilder:
             Inputs:
             - order: specifies sorting criterion for request:
                 - 'unlabeled': prioritize images that have not (yet) been viewed
-                    by the current user (i.e., zero/low viewcount)
+                    by the current user (i.e., last_requested timestamp is None or older than 15 minutes
+                    (TODO: make project-specific parameter?))
                 - 'labeled': put images first in order that have a high user viewcount
             - subset: hard constraint on the label status of the images:
                 - 'default': do not constrain query set
@@ -129,6 +130,11 @@ class SQLStringBuilder:
             subsetFragment = 'WHERE viewcount > 0 AND isGoldenQuestion = FALSE'
         elif subset == 'forceUnlabeled':
             subsetFragment = 'WHERE (viewcount IS NULL OR viewcount = 0) AND isGoldenQuestion = FALSE'
+
+        if len(subsetFragment):
+            subsetFragment += ' AND img.last_requested IS NULL OR (img.last_requested - NOW()) > interval \'900 second\''
+        else:
+            subsetFragment = 'WHERE img.last_requested IS NULL OR (img.last_requested - NOW()) > interval \'900 second\''
 
         if order == 'unlabeled':
             orderSpec = 'ORDER BY isgoldenquestion DESC NULLS LAST, viewcount ASC NULLS FIRST, annoCount ASC NULLS FIRST, score DESC NULLS LAST'

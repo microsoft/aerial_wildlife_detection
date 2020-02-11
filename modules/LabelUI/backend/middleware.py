@@ -37,18 +37,6 @@ class DBMiddleware():
             # no AI backend configured
             aiControllerURI = None
 
-        # # LabelUI drawing styles
-        # with open(self.config.getProperty('LabelUI', 'styles_file', type=str, fallback='modules/LabelUI/static/json/styles.json'), 'r') as f:
-        #     styles = json.load(f)
-
-        # # Image backdrops for index screen
-        # with open(self.config.getProperty('Project', 'backdrops_file', type=str, fallback='modules/LabelUI/static/json/backdrops.json'), 'r') as f:
-        #     backdrops = json.load(f)
-
-        # # Welcome message for UI tutorial
-        # with open(self.config.getProperty('Project', 'welcome_message_file', type=str, fallback='modules/LabelUI/static/templates/welcome_message.html'), 'r') as f:
-        #     welcomeMessage = f.readlines()
-
         # global, project-independent settings
         self.globalSettings = {
             'indexURI': self.config.getProperty('Server', 'index_uri', type=str, fallback='/'),
@@ -56,37 +44,6 @@ class DBMiddleware():
             'aiControllerURI': aiControllerURI,
             'dataType': self.config.getProperty('Project', 'dataType', fallback='images'),      #TODO
         }
-        
-        # self.projectSettings = {
-        #     # 'projectName': self.config.getProperty('Project', 'projectName'),
-        #     # 'projectDescription': self.config.getProperty('Project', 'projectDescription'),
-        #     # 'indexURI': self.config.getProperty('Server', 'index_uri', type=str, fallback='/'),
-        #     # 'dataServerURI': self.config.getProperty('Server', 'dataServer_uri'),
-        #     # 'aiControllerURI': aiControllerURI,
-        #     # 'dataType': self.config.getProperty('Project', 'dataType', fallback='images'),
-        #     # 'classes': self.getClassDefinitions(),
-        #     # 'enableEmptyClass': self.config.getProperty('Project', 'enableEmptyClass', fallback='no'),
-        #     # 'annotationType': self.config.getProperty('Project', 'annotationType'),
-        #     # 'predictionType': self.config.getProperty('Project', 'predictionType'),
-        #     'showPredictions': self.config.getProperty('LabelUI', 'showPredictions', fallback='yes'),
-        #     'showPredictions_minConf': self.config.getProperty('LabelUI', 'showPredictions_minConf', type=float, fallback=0.5),
-        #     'carryOverPredictions': self.config.getProperty('LabelUI', 'carryOverPredictions', fallback='no'),
-        #     'carryOverRule': self.config.getProperty('LabelUI', 'carryOverRule', fallback='maxConfidence'),
-        #     'carryOverPredictions_minConf': self.config.getProperty('LabelUI', 'carryOverPredictions_minConf', type=float, fallback=0.75),
-        #     'defaultBoxSize_w': self.config.getProperty('LabelUI', 'defaultBoxSize_w', type=int, fallback=10),
-        #     'defaultBoxSize_h': self.config.getProperty('LabelUI', 'defaultBoxSize_h', type=int, fallback=10),
-        #     'minBoxSize_w': self.config.getProperty('Project', 'box_minWidth', type=int, fallback=1),
-        #     'minBoxSize_h': self.config.getProperty('Project', 'box_minHeight', type=int, fallback=1),
-        #     'numImagesPerBatch': self.config.getProperty('LabelUI', 'numImagesPerBatch', type=int, fallback=1),
-        #     'minImageWidth': self.config.getProperty('LabelUI', 'minImageWidth', type=int, fallback=300),
-        #     'numImageColumns_max': self.config.getProperty('LabelUI', 'numImageColumns_max', type=int, fallback=1),
-        #     'defaultImage_w': self.config.getProperty('LabelUI', 'defaultImage_w', type=int, fallback=800),
-        #     'defaultImage_h': self.config.getProperty('LabelUI', 'defaultImage_h', type=int, fallback=600),
-        #     'styles': styles['styles'],
-        #     'backdrops': backdrops,
-        #     'welcomeMessage': welcomeMessage,
-        #     'demoMode': self.config.getProperty('Project', 'demoMode', type=bool, fallback=False)
-        # }
 
 
     def _assemble_annotations(self, project, cursor, hideGoldenQuestionInfo):
@@ -139,6 +96,26 @@ class DBMiddleware():
                     response[imgID]['predictions'][entryID] = entry
 
         return response
+
+
+    def _set_images_requested(self, project, imageIDs):
+        '''
+            Sets column "last_requested" of relation "image"
+            to the current date. This is done during image
+            querying to signal that an image has been requested,
+            but not (yet) viewed.
+        '''
+        # prepare insertion values
+        now = datetime.now(tz=pytz.utc)
+        vals = []
+        for key in imageIDs:
+            vals.append(key)
+        queryStr = sql.SQL('''
+            UPDATE {id_img}.image
+            SET last_requested = %s
+            WHERE id IN %s;
+        ''').format(id_img=sql.Identifier(project, 'image'))
+        self.dbConnector.execute(sql, (now, tuple(vals),), None)
 
 
     def get_project_immutables(self, project):
@@ -325,6 +302,10 @@ class DBMiddleware():
             finally:
                 pass
                 # cursor.close()
+
+        # mark images as requested
+        self._set_images_requested(project, response)
+
         return { 'entries': response }
         
 
@@ -349,6 +330,9 @@ class DBMiddleware():
 
         with self.dbConnector.execute_cursor(queryStr, queryVals) as cursor:
             response = self._assemble_annotations(project, cursor, hideGoldenQuestionInfo)
+
+        # mark images as requested
+        self._set_images_requested(project, response)
 
         return { 'entries': response }
 
@@ -395,6 +379,11 @@ class DBMiddleware():
             finally:
                 pass
                 # cursor.close()
+
+        # # mark images as requested
+        # self._set_images_requested(project, response)
+
+
         return { 'entries': response }
 
     
@@ -563,27 +552,6 @@ class DBMiddleware():
                 colnames=sql.SQL(', ').join([sql.SQL(c) for c in colnames])
             )
 
-            # #TODO: deprecated:
-            # updateCols = ''
-            # for col in colnames:
-            #     if col == 'label':
-            #         updateCols += '{col} = UUID(e.{col}),'.format(col=col)
-            #     elif col == 'timeRequired':
-            #         # we sum the required times together
-            #         updateCols += '{col} = COALESCE(a.{col},0) + COALESCE(e.{col},0),'.format(col=col)
-            #     else:
-            #         updateCols += '{col} = e.{col},'.format(col=col)
-
-            # sql = '''
-            #     UPDATE {schema}.annotation AS a
-            #     SET {updateCols}
-            #     FROM (VALUES %s) AS e({colnames})
-            #     WHERE e.id = a.id;
-            # '''.format(
-            #     schema=schema,
-            #     updateCols=updateCols.strip(','),
-            #     colnames=', '.join(colnames)
-            # )
             self.dbConnector.insert(queryStr, values_update)
 
 

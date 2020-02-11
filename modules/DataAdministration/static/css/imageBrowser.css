@@ -1,0 +1,85 @@
+.list-container, .thumbs-container {
+    height: 100%;
+    overflow-y: auto;
+}
+
+.list-table {
+    display: block;
+    height: 100%;
+}
+
+.list-header {
+    display: block;
+    background-color: #aaa;
+    font-weight: bold;
+}
+
+.list-body {
+    display: block;
+    height: calc(100% - 26px);
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.list-entry-selected {
+    background: #aaa;
+}
+
+.thumbnail {
+    width: 128px;
+    height: 128px;
+    display: inline-block;
+    position: relative;
+    overflow: hidden;
+    margin: 5px;
+    border-radius: 5px;
+    background: #606060;
+}
+
+.thumbnail-selected {
+    border: 1px solid white;
+}
+
+.thumbnail > img {
+    display: block;
+    position: absolute;
+    top: calc(50% - 12px);
+    left: 50%;
+    min-height: calc(100% - 12px);
+    max-height: calc(100% - 12px);
+    transform: translate(-50%, -50%);
+}
+
+.info-bar {
+    display: flex;
+    flex-direction: row;
+    position: absolute;
+    bottom: 2px;
+    left: 2px;
+    height: 20px;
+    width: 100%;
+    font-size: 8pt;
+}
+
+.info-bar > span {
+    text-overflow: ellipsis;
+    word-wrap: anywhere;
+    width: calc(100% - 20px);
+    overflow: hidden;
+    height: 16px;
+    white-space: nowrap;
+    margin-top: 2px;
+    margin-left: 2px;
+}
+
+.list-entry-thumb {
+    height: 50px;
+}
+
+.image-browser-view-buttons {
+    margin-bottom: 10px;
+}
+
+.image-browser-view-buttons img {
+    height: 15px;
+}

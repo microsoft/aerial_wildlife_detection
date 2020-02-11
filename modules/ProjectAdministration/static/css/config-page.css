@@ -48,8 +48,7 @@
     height: calc(100vh - 150px);
     color: white;
     padding-top: 30px;
-    padding-left: 50px;
-    padding-right: 80px;
+    padding-right: 30px;
 }
 
 .settings-container {

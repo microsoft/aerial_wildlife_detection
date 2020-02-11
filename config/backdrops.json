@@ -1,5 +1,5 @@
 {
-    "basePath": "modules/Reception/static/img/backdrops",
+    "basePath": "/static/general/img/backdrops",
     "images": [
         {
             "file": "bingdesktop.com_gallery_2784.jpg",

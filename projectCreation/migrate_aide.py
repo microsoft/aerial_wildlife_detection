@@ -15,6 +15,7 @@ from urllib.parse import urlparse
 MODIFICATIONS_sql = [
     'ALTER TABLE {schema}.annotation ADD COLUMN IF NOT EXISTS meta VARCHAR; ALTER TABLE {schema}.image_user ADD COLUMN IF NOT EXISTS meta VARCHAR;',
     'ALTER TABLE {schema}.labelclass ADD COLUMN IF NOT EXISTS keystroke SMALLINT UNIQUE;',
+    'ALTER TABLE {schema}.image ADD COLUMN IF NOT EXISTS last_requested TIMESTAMPTZ;',
 
     # support for multiple projects
     'CREATE SCHEMA IF NOT EXISTS aide_admin',

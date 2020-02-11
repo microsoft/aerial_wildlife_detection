@@ -476,17 +476,18 @@ class ClassificationEntry extends AbstractDataEntry {
        colored w.r.t. the user-selected class. A second click removes the user
        label again.
     */
-   constructor(entryID, properties) {
-       super(entryID, properties);
+    constructor(entryID, properties) {
+        super(entryID, properties);
 
-       if(this.labelInstance == null) {
-           // add a default, blank instance if nothing has been predicted or annotated yet
-           var label = (window.enableEmptyClass ? null : window.labelClassHandler.getActiveClassID());
-           this._addElement(new Annotation(window.getRandomID(), {'label':label}, 'labels', 'annotation'));
-       }
-
-       this._setup_markup();
-   }
+        this._setup_markup();
+        this.loadingPromise.then(response => {
+            if(this.labelInstance == null) {
+                // add a default, blank instance if nothing has been predicted or annotated yet
+                var label = (window.enableEmptyClass ? null : window.labelClassHandler.getActiveClassID());
+                this._addElement(new Annotation(window.getRandomID(), {'label':label}, 'labels', 'annotation'));
+            }
+        });
+    }
 
    getAnnotationType() {
        return 'label';

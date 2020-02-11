@@ -1,42 +1,16 @@
-<div>
+<div style="height:100%">
     <h2>Images</h2>
-    <div id="images-table-div">
-        <div id="images-table-filter">
-            <h3>Filter images</h3>
-            TODO
-            <button id="update-images-table" class="btn btn-sm btn-primary">Update</button>
-        </div>
-        <table id="images-table">
-            <thead>
-                <tr>
-                    <td><input type="checkbox" id="select-all" /></td>
-                    <td>File</td>
-                    <td>Date added</td>
-                    <td>Last viewed</td>
-                    <td># annotations</td>
-                    <td># predictions</td>
-                </tr>
-            </thead>
-            <tbody id="images-table-body"></tbody>
-        </table>
-    </div>
+    <div id="file-browser" style="height:calc(100% - 75px);"></div>
 </div>
-<style>
-    thead, tbody {
-        display: block;
-    }
-    tbody {
-        overflow-y: auto;
-        overflow-x: hidden;
-    }
-</style>
+<link rel="stylesheet" href="/static/dataAdmin/css/imageBrowser.css" />
+<script src="/static/dataAdmin/js/imageBrowser.js"></script>
 <script type="text/javascript">
 
     function refreshTable() {
         var table = $('#images-table-body');
 
         //TODO: parse filter parameters
-        params = {limit: 100};
+        params = {limit: 10};
 
         return $.ajax({
             url: window.dataServerURI + '{{ project }}' + '/listImages',
@@ -47,7 +21,8 @@
             success: function(data) {
                 // assemble table
                 data = data['response'];
-                table.empty();
+                
+                images = [];
                 for(var idx=0; idx<data.length; idx++) {
                     var id = data[idx]['id'];
                     var dateAdded = '';
@@ -58,23 +33,38 @@
                     if(data[idx]['last_viewed'] != undefined && data[idx]['last_viewed'] != null) {
                         var lastViewed = new Date(data[idx]['last_viewed']*1000 - 1).toLocaleString();
                     }
-                    var row = '<tr><td><input type="checkbox" id="check_'+id+'" /></td>' +
-                                '<td>'+data[idx]['filename']+'</td>' +
-                                '<td>'+dateAdded+'</td>' +
-                                '<td>'+lastViewed+'</td>' +
-                                '<td>'+data[idx]['num_anno']+'</td>' +
-                                '<td>'+data[idx]['num_pred']+'</td>'
-                                '</tr>';
-                    table.append($(row));
+                    images.push({
+                        'id': data[idx]['id'],
+                        'url': data[idx]['filename'],
+                        'date_added': dateAdded,
+                        'last_viewed': lastViewed,
+                        'num_anno': data[idx]['num_anno'],
+                        'num_pred': data[idx]['num_pred']
+                    });
                 }
-                console.log(data);
+
+                var fileBrowserDiv = $('#file-browser');
+
+                //TODO: /files/ ?
+                fb = new ImageBrowser(fileBrowserDiv, {
+                    'baseURL': window.dataServerURI + '{{ project }}/files/',
+                    'images': images,
+                    'showCheckboxes': true,
+                    'showImages': true,
+                    'colnames': [
+                        {'url': 'File'},
+                        {'date_added': 'Added'},
+                        {'last_viewed': 'Last viewed'},
+                        {'num_anno': '# Anno'},
+                        {'num_pred': '# Pred'}
+                    ]
+                });
             },
             error: function(data) {
                 console.log('ERROR:');
                 console.log(data);
             }
         })
-        
     }
 
     $(document).ready(function() {
