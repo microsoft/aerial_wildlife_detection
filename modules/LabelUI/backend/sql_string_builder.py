@@ -2,7 +2,7 @@
     Factory that creates SQL strings for querying and submission,
     adjusted to the arguments specified.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 from constants.dbFieldNames import FieldNames_annotation, FieldNames_prediction
@@ -80,6 +80,8 @@ class SQLStringBuilder:
             Inputs:
             - order: specifies sorting criterion for request:
                 - 'unlabeled': prioritize images that have not (yet) been viewed
+                    (i.e., last_requested timestamp is None or older than 15 minutes
+                    (TODO: make project-specific parameter?))
                     by the current user (i.e., zero/low viewcount)
                 - 'labeled': put images first in order that have a high user viewcount
             - subset: hard constraint on the label status of the images:
@@ -118,6 +120,11 @@ class SQLStringBuilder:
         elif subset == 'forceUnlabeled':
             subsetFragment = 'WHERE viewcount IS NULL OR viewcount = 0'
 
+        if len(subsetFragment):
+            subsetFragment += 'AND img.last_requested IS NULL OR (img.last_requested - NOW()) > interval \'900 second\''
+        else:
+            subsetFragment = 'WHERE img.last_requested IS NULL OR (img.last_requested - NOW()) > interval \'900 second\''
+
         if order == 'unlabeled':
             orderSpec = 'ORDER BY viewcount ASC NULLS FIRST, annoCount ASC NULLS FIRST, score DESC NULLS LAST'
         elif order == 'labeled':
@@ -147,6 +154,7 @@ class SQLStringBuilder:
 				GROUP BY image
 			) AS anno_score ON img.id = anno_score.image
             {subset}
+
             {order}
             LIMIT %s
             ) AS img_query

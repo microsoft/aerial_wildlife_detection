@@ -122,21 +122,24 @@ class DBMiddleware():
         return response
 
 
-    def _increment_viewcount(self, username, viewcountValues):
+    def _set_images_requested(self, imageIDs):
         '''
-            Inserts or updates entries for the given imageIDs.
-            To be done during image querying.
+            Sets column "last_requested" of relation "image"
+            to the current date. This is done during image
+            querying to signal that an image has been requested,
+            but not (yet) viewed.
         '''
         # prepare insertion values
+        now = datetime.now(tz=pytz.utc)
         vals = []
-        for key in viewcountValues.keys():
-            vals.append((username, key, 1,))
+        for key in imageIDs:
+            vals.append(key)
         sql = '''
-            INSERT INTO {}.image_user (username, image, viewcount)
-            VALUES %s 
-            ON CONFLICT (username, image) DO UPDATE SET viewcount = image_user.viewcount + 1;
+            UPDATE {}.image
+            SET last_requested = %s
+            WHERE id IN %s;
         '''.format(self.config.getProperty('Database', 'schema'))
-        self.dbConnector.insert(sql, vals)
+        self.dbConnector.execute(sql, (now, tuple(vals),), None)
 
 
     def getProjectSettings(self):
@@ -268,8 +271,8 @@ class DBMiddleware():
                 pass
                 # cursor.close()
 
-        # increase viewcount here
-        self._increment_viewcount(username, response)
+        # mark images as requested
+        self._set_images_requested(response)
 
         return { 'entries': response }
         
@@ -295,8 +298,8 @@ class DBMiddleware():
         with self.dbConnector.execute_cursor(sql, queryVals) as cursor:
             response = self._assemble_annotations(cursor)
 
-        # increase viewcount here
-        self._increment_viewcount(username, response)
+        # mark images as requested
+        self._set_images_requested(response)
 
         return { 'entries': response }
 
@@ -343,8 +346,8 @@ class DBMiddleware():
                 pass
                 # cursor.close()
         
-        # # increase viewcount here
-        # self._increment_viewcount(username, response)
+        # # mark images as requested
+        # self._set_images_requested(response)
 
         return { 'entries': response }
 
@@ -513,11 +516,11 @@ class DBMiddleware():
             self.dbConnector.insert(sql, values_update)
 
 
-        # viewcount table (add missing metadata; do not increase viewcount as we did this during querying already)
+        # viewcount table
         sql = '''
             INSERT INTO {}.image_user (username, image, viewcount, last_checked, last_time_required, meta)
             VALUES %s 
-            ON CONFLICT (username, image) DO UPDATE SET last_checked = EXCLUDED.last_checked, last_time_required = EXCLUDED.last_time_required, meta = EXCLUDED.meta;
+            ON CONFLICT (username, image) DO UPDATE SET viewcount = image_user.viewcount + 1, last_checked = EXCLUDED.last_checked, last_time_required = EXCLUDED.last_time_required, meta = EXCLUDED.meta;
         '''.format(schema)
         self.dbConnector.insert(sql, viewcountValues)
 
