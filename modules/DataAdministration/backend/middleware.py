@@ -28,15 +28,36 @@ class DataAdministrationMiddleware:
         imgs_disk = set()
         if not fileDir.endswith(os.sep):
             fileDir += os.sep
-        files_disk = glob.glob(os.path.join(fileDir, '**'), recursive=True)       #TODO: avoid circular links
+
+        def __scan_recursively(imgs, fileDir):
+            files = os.listdir(fileDir)
+            for f in files:
+                path = os.path.join(fileDir, f)
+                if os.path.isfile(path) and os.path.splitext(f)[1].lower() in valid_image_extensions:
+                    imgs.add(path)
+                elif os.path.islink(path):
+                    if os.readlink(path) in fileDir:
+                        # circular link; avoid
+                        continue
+                    else:
+                        imgs = __scan_recursively(imgs, path)
+                elif os.path.isdir(path):
+                    imgs = __scan_recursively(imgs, path)
+            return imgs
+
+        files_disk = __scan_recursively(set(), fileDir)
         for f in files_disk:
-            if os.path.isdir(f):
-                continue
-            _, ext = os.path.splitext(f)
-            if ext.lower() not in valid_image_extensions:
-                continue
-            fname = f.replace(fileDir, '')
-            imgs_disk.add(fname)
+            imgs_disk.add(f.replace(fileDir, ''))
+
+        # files_disk = glob.glob(os.path.join(fileDir, '**'), recursive=True)       #TODO: avoid circular links
+        # for f in files_disk:
+        #     if os.path.isdir(f):
+        #         continue
+        #     _, ext = os.path.splitext(f)
+        #     if ext.lower() not in valid_image_extensions:
+        #         continue
+        #     fname = f.replace(fileDir, '')
+        #     imgs_disk.add(fname)
         return imgs_disk
 
 
@@ -155,6 +176,8 @@ class DataAdministrationMiddleware:
             to the database.
             Returns a list of paths with files.
         '''
+        #TODO: implement in separate thread, or maybe even as Celery queue
+
         # scan disk for files
         projectFolder = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), project)
         imgs_disk = self._scan_dir_imgs(projectFolder)
@@ -172,7 +195,7 @@ class DataAdministrationMiddleware:
 
         # filter
         imgs_candidates = imgs_disk.difference(imgs_database)
-        return imgs_candidates
+        return list(imgs_candidates)
 
 
     def addExistingImages(self, project, imageList=None):

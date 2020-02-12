@@ -576,8 +576,8 @@ class ImageBrowser {
         this.listViewDiv = $('<div class="list-container"></div>');
         this.tileViewDiv = $('<div class="thumbs-container"></div>');
 
-        this.listView = new ListView(this, this.listViewDiv, data);
-        this.tileView = new ThumbnailView(this, this.tileViewDiv, data);
+        this.listView = new ListView(this, this.listViewDiv, this.data);
+        this.tileView = new ThumbnailView(this, this.tileViewDiv, this.data);
 
         
         if(this.data.hasOwnProperty('images')) {

@@ -125,18 +125,25 @@ class DataAdministrator:
                 Search project file directory on disk for
                 images that are not registered in database.
             '''
-            #TODO
-            raise Exception('Not yet implemented.')
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+
+            result = self.middleware.scanForImages(project)
+            return {'response': result}
 
 
-        @self.app.get('/<project>/addImages')
+        @self.app.post('/<project>/addImages')
         def add_images(project):
             '''
                 Add images that exist in project file directory
                 on disk, but are not yet registered in database.
             '''
-            #TODO
-            raise Exception('Not yet implemented.')
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+
+            imageNames = request.json
+            result = self.middleware.addExistingImages(project, imageNames['images'])
+            return {'response': result}
 
 
         @self.app.post('/<project>/removeImages')

@@ -1,9 +1,142 @@
 <div>
     <h2>Data upload</h2>
-    Coming soon
+    <div id="upload-mode">
+        <h3>Upload mode</h3>
+        <fieldset id="upload-mode-select">
+            <input type="radio" id="radio-browserupload" name="upload-mode-select" value="browserUpload" checked>
+            <label for="radio-browserupload">Upload images</label><br />
+            <input type="radio" id="radio-scandisk" name="upload-mode-select" value="scanDisk">
+            <label for="radio-scandisk">Scan file server disk for untracked images</label>
+        </fieldset>
+    </div>
+    <div id="actions-panel"></div>
+    <div id="image-browser"></div>
 </div>
+<link rel="stylesheet" href="/static/dataAdmin/css/imageBrowser.css" />
+<script src="/static/dataAdmin/js/imageBrowser.js"></script>
 <script type="text/javascript">
+
+    function scanUntracked() {
+        $.ajax({
+            url: '{{ project }}/scanForImages',
+            method: 'GET',
+            success: function(data) {
+                var imgs = [];
+                for(var i=0; i<data['response'].length; i++) {
+                    imgs.push({
+                        url: data['response'][i]
+                    });
+                }
+                
+                window.untrackedFiles = imgs;
+
+                // add them in chunks
+                window.imageBrowser.setImages(window.untrackedFiles.splice(0, 100));
+            },
+            error: function(data) {
+                console.error(data);    //TODO
+            }
+        });
+    }
+
+    function showMoreUntracked() {
+        var len = window.untrackedFiles.length;
+        if(len === 0) return;
+        window.imageBrowser.addImages(window.untrackedFiles.splice(0, Math.min(100, len)));
+    }
+
+    function _do_add_untracked(imgList) {
+        if(imgList.length === 0) return;
+        return $.ajax({
+            url: '{{ project }}/addExistingImages',
+            method: 'POST',
+            data: JSON.stringify({images:imgList}),
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            success: function(response) {
+                console.log(response);  //TODO
+            },
+            error: function(response) {
+                console.error(response);    //TODO
+            }
+        });
+    }
+
+    function addSelectedUntracked() {
+        var checked = window.imageBrowser.getChecked();
+        var imgList = [];
+        for(var key in checked) {
+            imgList.push(checked[key].data['url']);
+        }
+        return _do_add_untracked(imgList);
+    }
+
+    function addAllUntracked() {
+        var imgList = [];
+        for(var key in window.imageBrowser.entries) {
+            imgList.push(window.imageBrowser.entries[key].data['url']);
+        }
+        imgList = imgList.concat(window.untrackedFiles);
+        return _do_add_untracked(imgList);
+    }
+
+
     $(document).ready(function() {
-        window.showLoadingOverlay(false);
+
+        // get data server URI
+        var promise = $.get('{{ project }}/getProjectSettings', function(data) {
+            window.dataServerURI = data['settings']['dataServerURI'];
+            if(!window.dataServerURI.endsWith('/')) {
+                window.dataServerURI += '/';
+            }
+        });
+
+        promise = promise.done(function() {
+
+            // setup image browser
+            window.imageBrowser = new ImageBrowser($('#image-browser'), {
+                'baseURL': window.dataServerURI + '{{ project }}/files/',
+                'images': [],
+                'showCheckboxes': true,
+                'showImages': true,
+                'colnames': [
+                    {'url': 'File'}
+                ]
+            });
+
+            // setup action panel markups
+            window.actionPanel_scan = $('<div></div>');
+            var infoMessage = $('<div></div>');
+            infoMessage.append($('<div>You can manually upload your images to the file server and then import them to the database here.</div>'));
+            infoMessage.append($('<ul><li>Server address: <span></span></li><li>Image folder: <span></span></li></ul>'));   //TODO
+            window.actionPanel_scan.append(infoMessage);
+            var scanUntrackedButton = $('<button id="scan-button" class="btn btn-sm btn-primary">Scan untracked</button>');
+            scanUntrackedButton.on('click', function() {
+                scanUntracked();
+            });
+            window.actionPanel_scan.append(scanUntrackedButton);
+            var actionButtons = $('<div></div>');
+            var checkCount = $('<div>0 images checked</div>');      //TODO
+            //TODO: also show loading indicator
+
+
+            window.actionPanel_upload = $('<div>TODO</div>');
+            //TODO
+
+            $('#actions-panel').append(window.actionPanel_upload);
+            $('#upload-mode-select input:radio').on('change', function() {
+                if($(this).val() === 'browserUpload') {
+                    window.actionPanel_scan.detach();
+                    $('#actions-panel').append(window.actionPanel_upload);
+
+                } else if($(this).val() === 'scanDisk') {
+                    window.actionPanel_upload.detach();
+                    $('#actions-panel').append(window.actionPanel_scan);
+                }
+            });
+
+
+            window.showLoadingOverlay(false);
+        });
     });
 </script>
