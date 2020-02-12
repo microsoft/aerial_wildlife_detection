@@ -91,6 +91,8 @@ class DataAdministrator:
             numPredRange = self._parse_range(params, 'numPredRange',
                                             0,
                                             1e9)
+            orderBy = (params['orderBy'] if 'orderBy' in params else None)
+            order = (params['order'].lower() if 'order' in params else None)
             limit = (params['limit'] if 'limit' in params else None)
 
 
@@ -101,6 +103,8 @@ class DataAdministrator:
                                             viewcountRange,
                                             numAnnoRange,
                                             numPredRange,
+                                            orderBy,
+                                            order,
                                             limit)
             
             return {'response': result}

@@ -1,19 +1,92 @@
 <div style="height:100%">
     <h2>Images</h2>
+    <div>
+        <div class="filter-box">
+            <h3 id="filter-images-heading" style="cursor:pointer">Options</h3>
+            <div id="filter-images">
+                <label for="order-by">Order by:</label>
+                <select id="order-by">
+                    <option value="filename">file name</option>
+                    <option value="date_added">date added</option>
+                    <option value="last_viewed">last viewed</option>
+                    <option value="num_anno"># annotations</option>
+                    <option value="num_pred"># predictions</option>
+                    <option value="isgoldenquestion">golden question</option>
+                </select>
+
+                <select id="order">
+                    <option value="desc">descending</option>
+                    <option value="asc">ascending</option>
+                </select>
+
+                <button id="update-image-browser" class="btn btn-sm btn-primary">Update</button>
+            </div>
+        </div>
+    </div>
+    <div class="action-box">
+        <span id="num-checked"></span>
+        <label for="action-select" style="margin-left: 20px;">Action:</label>
+        <select id="action-select">
+            <option value="" disabled>Choose:</option>
+            <option value="golden_question_yes">set as golden questions</option>
+            <option value="golden_question_no">unset golden questions</option>
+            <!-- <option value="remove_annotations">remove annotations</option> -->
+            <option value="delete_images">delete</option>
+        </select>
+        <button id="do-action" class="btn btn-sm btn-primary">OK</button>
+    </div>
     <div id="file-browser" style="height:calc(100% - 75px);"></div>
 </div>
 <link rel="stylesheet" href="/static/dataAdmin/css/imageBrowser.css" />
+<style>
+    .filter-box {
+        border: 1px solid #aaa;
+        border-radius: 5px;
+        padding: 10px;
+        margin-bottom: 10px;
+    }
+</style>
 <script src="/static/dataAdmin/js/imageBrowser.js"></script>
 <script type="text/javascript">
 
-    function refreshTable() {
-        var table = $('#images-table-body');
+    function initializeImageBrowser() {
+        var fileBrowserDiv = $('#file-browser');
 
-        //TODO: parse filter parameters
-        params = {limit: 10};
+        //TODO: /files/ ?
+        window.imageBrowser = new ImageBrowser(fileBrowserDiv, {
+            'baseURL': window.dataServerURI + '{{ project }}/files/',
+            'images': [],
+            'showCheckboxes': true,
+            'showImages': true,
+            'colnames': [
+                {'url': 'File'},
+                {'date_added': 'Added'},
+                {'last_viewed': 'Last viewed'},
+                {'num_anno': '# Anno'},
+                {'num_pred': '# Pred'},
+                {'golden_question': 'Golden question'}
+            ]
+        });
+        window.imageBrowser.on('imageCheck', function(event) {
+            _imageBrowser_event(event);
+        });
+        window.imageBrowser.on('viewChange', function(event) {
+            _imageBrowser_event(event);
+        });
+        return updateImageBrowser();
+    }
+
+
+    function updateImageBrowser() {
+        // parse filter parameters
+        params = {
+            orderBy: $('#order-by').val(),
+            order: $('#order').val(),
+            limit: 100  //TODO: implement "show more" button
+        };
 
         return $.ajax({
-            url: window.dataServerURI + '{{ project }}' + '/listImages',
+            url: window.dataServerURI + '{{ project }}/listImages',
             method: 'POST',
             data: JSON.stringify(params),
             contentType: 'application/json; charset=utf-8',
@@ -39,32 +112,80 @@
                         'date_added': dateAdded,
                         'last_viewed': lastViewed,
                         'num_anno': data[idx]['num_anno'],
-                        'num_pred': data[idx]['num_pred']
+                        'num_pred': data[idx]['num_pred'],
+                        'golden_question': (data[idx]['isgoldenquestion'] ? 
+                                '<img src="/static/interface/img/controls/flag_active.svg" height="16px" />' :
+                                '<img src="/static/interface/img/controls/flag.svg" height="16px" />')
                     });
                 }
 
-                var fileBrowserDiv = $('#file-browser');
-
-                //TODO: /files/ ?
-                fb = new ImageBrowser(fileBrowserDiv, {
-                    'baseURL': window.dataServerURI + '{{ project }}/files/',
-                    'images': images,
-                    'showCheckboxes': true,
-                    'showImages': true,
-                    'colnames': [
-                        {'url': 'File'},
-                        {'date_added': 'Added'},
-                        {'last_viewed': 'Last viewed'},
-                        {'num_anno': '# Anno'},
-                        {'num_pred': '# Pred'}
-                    ]
-                });
+                window.imageBrowser.setImages(images);
             },
             error: function(data) {
                 console.log('ERROR:');
                 console.log(data);
             }
+        });
+    }
+
+    function executeAction() {
+        var checked = window.imageBrowser.getChecked();
+        if(checked.length === 0) return;
+        
+        var data = undefined;
+        var url = undefined;
+        var action = $('#action-select').val();
+        if(action === 'golden_question_yes') {
+            data = {};
+            for(var i=0; i<checked.length; i++) {
+                var id = checked[i].id;
+                data[id] = 1;
+            }
+            data = {'goldenQuestions': data};
+            url = '{{ project }}/setGoldenQuestions';
+
+        } else if(action === 'golden_question_no') {
+            data = {};
+            for(var i=0; i<checked.length; i++) {
+                var id = checked[i].id;
+                data[id] = 0;
+            }
+            data = {'goldenQuestions': data};
+            url = '{{ project }}/setGoldenQuestions';
+
+        } else if(action === 'remove_annotations') {
+            error('Not yet supported.');
+
+        } else if(action === 'delete_images') {
+            //TODO: show confirmation dialog
+        }
+
+        if(data === undefined || url === undefined) return;
+
+        // execute
+        $.ajax({
+            url: url,
+            method: 'POST',
+            data: JSON.stringify(data),
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            success: function(response) {
+                console.log(response);  //TODO: show pane
+            },
+            error: function(response) {
+                console.log('error:');   //TODO: show pane
+                console.log(response);
+            }
         })
+    }
+
+    function _imageBrowser_event(event) {
+        var checked = window.imageBrowser.getChecked();
+        var suffix = (checked.length===1? ' image checked' : ' images checked');
+        $('#num-checked').html(checked.length + suffix);
+        var disableActions = (checked.length === 0);
+        $('#action-select').prop('disabled', disableActions);
+        $('#do-action').prop('disabled', disableActions);
     }
 
     $(document).ready(function() {
@@ -78,11 +199,23 @@
         });
 
         promise = promise.done(function() {
+            $('#update-image-browser').click(function() {
+                updateImageBrowser();
+            });
+            $('#do-action').click(function() {
+                executeAction();
+            });
+
             // load initial image data
-            return refreshTable();
+            return initializeImageBrowser();
         });
 
         promise.done(function() {
+
+            $('#filter-images-heading').click(function() {
+                $('#filter-images').slideToggle();
+            });
+
             window.showLoadingOverlay(false);
         });
     });

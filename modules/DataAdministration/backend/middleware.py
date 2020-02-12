@@ -43,7 +43,8 @@ class DataAdministrationMiddleware:
 
     ''' Image administration functionalities '''
     def listImages(self, project, imageAddedRange=None, lastViewedRange=None,
-            viewcountRange=None, numAnnoRange=None, numPredRange=None, limit=None):
+            viewcountRange=None, numAnnoRange=None, numPredRange=None,
+            orderBy=None, order='desc', limit=None):
         '''
             Returns a list of images, with ID, filename,
             date image was added, viewcount, number of annotations,
@@ -77,12 +78,18 @@ class DataAdministrationMiddleware:
             filterStr += 'AND num_pred >= %s AND num_pred <= %s '
             queryArgs.append(numPredRange[0])
             queryArgs.append(numPredRange[1])
-
         if filterStr.startswith('AND'):
             filterStr = filterStr[3:]
         if len(filterStr.strip()):
             filterStr = 'WHERE ' + filterStr
         filterStr = sql.SQL(filterStr)
+
+        orderStr = sql.SQL('')
+        if orderBy is not None:
+            orderStr = sql.SQL('ORDER BY {} {}').format(
+                sql.SQL(orderBy),
+                sql.SQL(order)
+            )
 
         limitStr = sql.SQL('')
         if isinstance(limit, int):
@@ -97,7 +104,8 @@ class DataAdministrationMiddleware:
                 COALESCE(viewcount, 0) AS viewcount,
                 EXTRACT(epoch FROM last_viewed) AS last_viewed,
                 COALESCE(num_anno, 0) AS num_anno,
-                COALESCE(num_pred, 0) AS num_pred
+                COALESCE(num_pred, 0) AS num_pred,
+                img.isGoldenQuestion
             FROM {id_img} AS img
             FULL OUTER JOIN (
                 SELECT image, COUNT(*) AS viewcount, MAX(last_checked) AS last_viewed
@@ -117,8 +125,8 @@ class DataAdministrationMiddleware:
                 GROUP BY image
             ) AS pred
             ON img.id = pred.image
-            ORDER BY date_added DESC
             {filter}
+            {order}
             {limit}
         ''').format(
             id_img=sql.Identifier(project, 'image'),
@@ -126,6 +134,7 @@ class DataAdministrationMiddleware:
             id_anno=sql.Identifier(project, 'annotation'),
             id_pred=sql.Identifier(project, 'prediction'),
             filter=filterStr,
+            order=orderStr,
             limit=limitStr
         )
         result = self.dbConnector.execute(queryStr, tuple(queryArgs), 'all')
