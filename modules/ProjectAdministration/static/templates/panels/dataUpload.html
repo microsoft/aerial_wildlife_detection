@@ -120,7 +120,55 @@
 
 
     // upload functions
-    //TODO
+    function startUploadFilesFromDisk() {
+        //TODO
+        window.uploadedFiles = [];
+        var formData = new FormData();
+        var fileInput = $('#file-upload-select')[0];
+
+        // filter files according to MIME type
+        for(var i=0; i<fileInput.files.length; i++) {
+            var nextItem = fileInput.files[i];
+            if(window.validImageMIMEtypes.includes(nextItem.type)) {
+                window.uploadedFiles.push(nextItem);
+                formData.append('file-'+i, nextItem);
+            }
+        }
+
+        // upload
+        $.ajax({
+            url: '{{ project }}/uploadImages',
+            method: 'POST',
+            data: formData,
+            cache: false,
+            contentType: false,
+            processData: false,
+            xhr: function () {
+                var customXhr = $.ajaxSettings.xhr();
+                if(customXhr.upload) {
+                    customXhr.upload.addEventListener('progress', function (e) {
+                    if (e.lengthComputable) {
+                        //TODO
+                        console.log(e);
+                        // console.log(e.loaded + ', ' + e.total)
+                        // $('progress').attr({
+                        //     value: e.loaded,
+                        //     max: e.total,
+                        // });
+                    }
+                    }, false);
+                }
+                return customXhr;
+            },
+            success: function(data) {
+                console.log(data);
+            },
+            error: function(data) {
+                console.log(data);
+            }
+        })
+    }
+
 
 
     // general functions
@@ -157,6 +205,27 @@
             }
         });
 
+        // get valid image MIME types
+        promise = promise.done(function() {
+            return $.ajax({
+                url: '/getValidMIMEtypes',
+                method: 'GET',
+                success: function(data) {
+                    if(data.hasOwnProperty('MIME_types')) {
+                        window.validImageMIMEtypes = data['MIME_types'];
+                    } else {
+                        window.validImageMIMEtypes = [];
+                    }
+                },
+                error: function(data) {
+                    //TODO
+                    window.validImageMIMEtypes = [];
+                }
+            });
+        });
+
+
+        // setup
         promise = promise.done(function() {
 
             // setup image browser
@@ -206,8 +275,14 @@
             window.actionPanel_scan.append(actionButtons);
 
 
-            window.actionPanel_upload = $('<div>TODO</div>');
-            //TODO
+            window.actionPanel_upload = $('<div></div>');
+            var fileUploadSelect = $('<input id="file-upload-select" type="file" webkitdirectory directory multiple />');
+            window.actionPanel_upload.append(fileUploadSelect);
+            var startFileUpload = $('<button class="btn btn-sm btn-primary">Upload</button>');
+            startFileUpload.on('click', function() {
+                startUploadFilesFromDisk();
+            });
+            window.actionPanel_upload.append(startFileUpload);
 
             $('#actions-panel').append(window.actionPanel_upload);
             $('#upload-mode-select input:radio').on('change', function() {

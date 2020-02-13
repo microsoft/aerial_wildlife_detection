@@ -115,8 +115,15 @@ class DataAdministrator:
             '''
                 Upload image files through UI.
             '''
-            #TODO
-            raise Exception('Not yet implemented.')
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+            
+            try:
+                images = request.files
+                result = self.middleware.uploadImages(project, images)
+                return {'result': result}
+            except Exception as e:
+                return {'status': 1, 'message': str(e)}
 
 
         @self.app.get('/<project>/scanForImages')
@@ -156,9 +163,49 @@ class DataAdministrator:
                 and annotations (if flag is set).
                 Also remove images from disk (if flag is set).
             '''
-            #TODO
-            raise Exception('Not yet implemented.')
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+            
+            try:
+                data = request.json
+                imageIDs = data['images']
+                if 'forceRemove' in data:
+                    forceRemove = data['forceRemove']
+                else:
+                    forceRemove = False
+                if 'deleteFromDisk' in data:
+                    deleteFromDisk = data['deleteFromDisk']
+                else:
+                    deleteFromDisk = False
+                
+                images_deleted = self.middleware.removeImages(project,
+                                                            imageIDs,
+                                                            forceRemove,
+                                                            deleteFromDisk)
+                
+                return {'status': 0, 'images_deleted': images_deleted}
+
+            except Exception as e:
+                return {'status': 1, 'message': str(e)}
 
 
         ''' Annotation and prediction up- and download functionalities '''
         #TODO
+
+
+        @self.app.get('/getValidImageExtensions')
+        def get_valid_image_extensions():
+            '''
+                Returns the file extensions for images currently
+                supported by AIDE.
+            '''
+            return {'extensions': helpers.valid_image_extensions}
+
+        
+        @self.app.get('/getValidMIMEtypes')
+        def get_valid_mime_types():
+            '''
+                Returns the MIME types for images currently
+                supported by AIDE.
+            '''
+            return {'MIME_types': helpers.valid_image_mime_types}

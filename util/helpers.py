@@ -133,3 +133,13 @@ valid_image_extensions = (
     '.pjpeg',
     '.pjp'
 )
+
+
+valid_image_mime_types = (
+    'image/jpeg',
+    'image/bmp',
+    'image/x-windows-bmp',
+    'image/gif',
+    'image/x-icon',
+    'image/png'
+)

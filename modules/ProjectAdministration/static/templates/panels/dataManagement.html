@@ -2,7 +2,7 @@
     <h2>Images</h2>
     <div>
         <div class="filter-box">
-            <h3 id="filter-images-heading" style="cursor:pointer">Options</h3>
+            <h3 id="filter-images-heading" style="cursor:pointer">Filter options</h3>
             <div id="filter-images">
                 <label for="order-by">Order by:</label>
                 <select id="order-by">
@@ -24,26 +24,58 @@
         </div>
     </div>
     <div class="action-box">
-        <span id="num-checked"></span>
-        <label for="action-select" style="margin-left: 20px;">Action:</label>
-        <select id="action-select">
-            <option value="" disabled>Choose:</option>
-            <option value="golden_question_yes">set as golden questions</option>
-            <option value="golden_question_no">unset golden questions</option>
-            <!-- <option value="remove_annotations">remove annotations</option> -->
-            <option value="delete_images">delete</option>
-        </select>
-        <button id="do-action" class="btn btn-sm btn-primary">OK</button>
+        <h3 id="action-box-heading" style="cursor:pointer">Checked images</h3>
+        <div id="action-box-contents">
+            <div id="action-box-options">
+                <span id="num-checked">0 images checked</span>
+                <label for="action-select" style="margin-left: 20px;">Action:</label>
+                <select id="action-select">
+                    <option value="" disabled>Choose:</option>
+                    <option value="golden_question_yes">set as golden questions</option>
+                    <option value="golden_question_no">unset golden questions</option>
+                    <!-- <option value="remove_annotations">remove annotations</option> -->
+                    <option value="delete_images">delete</option>
+                </select>
+                <div id="delete-options" style="display:none">
+                    <input type="checkbox" id="force-delete" />
+                    <label for="force-delete" style="margin-bottom:0">Force delete</label>
+                    <span class="warning-span" style="margin-left:20px">Warning: this removes images and all associated annotations and predictions.</span>
+                    <input type="checkbox" id="delete-from-disk" />
+                    <label for="delete-from-disk" style="margin-bottom:0">Delete images from disk</label>
+                    <span class="warning-span">Warning: this action cannot be undone.</span>
+                </div>
+            </div>
+            <button id="do-action" class="btn btn-sm btn-primary" style="float:right" disabled>OK</button>
+            <br />
+        </div>
     </div>
     <div id="file-browser" style="height:calc(100% - 75px);"></div>
 </div>
 <link rel="stylesheet" href="/static/dataAdmin/css/imageBrowser.css" />
 <style>
-    .filter-box {
+    .filter-box, .action-box {
         border: 1px solid #aaa;
         border-radius: 5px;
         padding: 10px;
         margin-bottom: 10px;
+    }
+
+    .warning-span {
+        color:red;
+        text-overflow: ellipsis;
+        max-width: 100%;
+        white-space: nowrap;
+        display: block;
+        overflow: hidden;
+    }
+
+    #action-box-options {
+        display: inline-block;
+        width: calc(100% - 60px);
+    }
+
+    #delete-options {
+        margin-left: 20px;
     }
 </style>
 <script src="/static/dataAdmin/js/imageBrowser.js"></script>
@@ -158,6 +190,16 @@
 
         } else if(action === 'delete_images') {
             //TODO: show confirmation dialog
+            var imgs_del = [];
+            for(var i=0; i<checked.length; i++) {
+                imgs_del.push(checked[i].id);
+            }
+            data = {
+                'images': imgs_del,
+                'forceRemove': $('#force-delete').prop('checked'),
+                'deleteFromDisk': $('#delete-from-disk').prop('checked')
+            };
+            url = '{{ project }}/removeImages';
         }
 
         if(data === undefined || url === undefined) return;
@@ -170,7 +212,7 @@
             contentType: 'application/json; charset=utf-8',
             dataType: 'json',
             success: function(response) {
-                console.log(response);  //TODO: show pane
+                console.log(response);  //TODO: show pane, then reload image browser
             },
             error: function(response) {
                 console.log('error:');   //TODO: show pane
@@ -202,6 +244,16 @@
             $('#update-image-browser').click(function() {
                 updateImageBrowser();
             });
+            $('#action-select').on('change', function() {
+                if($(this).val() === 'delete_images') {
+                    // show extra options
+                    $('#delete-options').show();
+                    $('#do-action').addClass('btn-danger');
+                } else {
+                    $('#delete-options').hide();
+                    $('#do-action').removeClass('btn-danger');
+                }
+            });
             $('#do-action').click(function() {
                 executeAction();
             });
@@ -214,6 +266,9 @@
 
             $('#filter-images-heading').click(function() {
                 $('#filter-images').slideToggle();
+            });
+            $('#action-box-heading').click(function() {
+                $('#action-box-contents').slideToggle();
             });
 
             window.showLoadingOverlay(false);
