@@ -1,59 +1,61 @@
 <div style="height:100%">
     <h2>Images</h2>
-    <div>
-        <div class="filter-box">
-            <h3 id="filter-images-heading" style="cursor:pointer">Filter options</h3>
-            <div id="filter-images">
-                <label for="order-by">Order by:</label>
-                <select id="order-by">
-                    <option value="filename">file name</option>
-                    <option value="date_added">date added</option>
-                    <option value="last_viewed">last viewed</option>
-                    <option value="num_anno"># annotations</option>
-                    <option value="num_pred"># predictions</option>
-                    <option value="isgoldenquestion">golden question</option>
-                </select>
+    <div id="controls">
+        <div>
+            <div id="filter-box">
+                <h3 id="filter-images-heading" style="cursor:pointer">Filter options</h3>
+                <div id="filter-images">
+                    <label for="order-by">Order by:</label>
+                    <select id="order-by">
+                        <option value="filename">file name</option>
+                        <option value="date_added">date added</option>
+                        <option value="last_viewed">last viewed</option>
+                        <option value="num_anno"># annotations</option>
+                        <option value="num_pred"># predictions</option>
+                        <option value="isgoldenquestion">golden question</option>
+                    </select>
 
-                <select id="order">
-                    <option value="desc">descending</option>
-                    <option value="asc">ascending</option>
-                </select>
+                    <select id="order">
+                        <option value="desc">descending</option>
+                        <option value="asc">ascending</option>
+                    </select>
 
-                <button id="update-image-browser" class="btn btn-sm btn-primary">Update</button>
-            </div>
-        </div>
-    </div>
-    <div class="action-box">
-        <h3 id="action-box-heading" style="cursor:pointer">Checked images</h3>
-        <div id="action-box-contents">
-            <div id="action-box-options">
-                <span id="num-checked">0 images checked</span>
-                <label for="action-select" style="margin-left: 20px;">Action:</label>
-                <select id="action-select">
-                    <option value="" disabled>Choose:</option>
-                    <option value="golden_question_yes">set as golden questions</option>
-                    <option value="golden_question_no">unset golden questions</option>
-                    <!-- <option value="remove_annotations">remove annotations</option> -->
-                    <option value="delete_images">delete</option>
-                </select>
-                <div id="delete-options" style="display:none">
-                    <input type="checkbox" id="force-delete" />
-                    <label for="force-delete" style="margin-bottom:0">Force delete</label>
-                    <span class="warning-span" style="margin-left:20px">Warning: this removes images and all associated annotations and predictions.</span>
-                    <input type="checkbox" id="delete-from-disk" />
-                    <label for="delete-from-disk" style="margin-bottom:0">Delete images from disk</label>
-                    <span class="warning-span">Warning: this action cannot be undone.</span>
+                    <button id="update-image-browser" class="btn btn-sm btn-primary">Update</button>
                 </div>
             </div>
-            <button id="do-action" class="btn btn-sm btn-primary" style="float:right" disabled>OK</button>
-            <br />
+        </div>
+        <div id="action-box">
+            <h3 id="action-box-heading" style="cursor:pointer">Checked images</h3>
+            <div id="action-box-contents">
+                <div id="action-box-options">
+                    <span id="num-checked">0 images checked</span>
+                    <label for="action-select" style="margin-left: 20px;">Action:</label>
+                    <select id="action-select">
+                        <option value="" disabled>Choose:</option>
+                        <option value="golden_question_yes">set as golden questions</option>
+                        <option value="golden_question_no">unset golden questions</option>
+                        <!-- <option value="remove_annotations">remove annotations</option> -->
+                        <option value="delete_images">delete</option>
+                    </select>
+                    <div id="delete-options" style="display:none">
+                        <input type="checkbox" id="force-delete" />
+                        <label for="force-delete" style="margin-bottom:0">Force delete</label>
+                        <span class="warning-span" style="margin-left:20px">Warning: this removes images and all associated annotations and predictions.</span>
+                        <input type="checkbox" id="delete-from-disk" />
+                        <label for="delete-from-disk" style="margin-bottom:0">Delete images from disk</label>
+                        <span class="warning-span">Warning: this action cannot be undone.</span>
+                    </div>
+                </div>
+                <button id="do-action" class="btn btn-sm btn-primary" style="float:right" disabled>OK</button>
+                <br />
+            </div>
         </div>
     </div>
-    <div id="file-browser" style="height:calc(100% - 75px);"></div>
+    <div id="file-browser"></div>
 </div>
 <link rel="stylesheet" href="/static/dataAdmin/css/imageBrowser.css" />
 <style>
-    .filter-box, .action-box {
+    #filter-box, #action-box {
         border: 1px solid #aaa;
         border-radius: 5px;
         padding: 10px;
@@ -81,6 +83,11 @@
 <script src="/static/dataAdmin/js/imageBrowser.js"></script>
 <script type="text/javascript">
 
+    // general functions
+    function onClickMore(event) {
+        updateImageBrowser(false);
+    }
+
     function initializeImageBrowser() {
         var fileBrowserDiv = $('#file-browser');
 
@@ -99,23 +106,65 @@
                 {'golden_question': 'Golden question'}
             ]
         });
+        window.imageBrowser.setTrailingButton(false,
+                                                true,       //TODO: disabled until "show more" function is properly implemented
+                                                'more...',
+                                                onClickMore);
         window.imageBrowser.on('imageCheck', function(event) {
             _imageBrowser_event(event);
         });
         window.imageBrowser.on('viewChange', function(event) {
             _imageBrowser_event(event);
         });
-        return updateImageBrowser();
+        $(window).on('resize', function() {
+            setImageBrowserSize();
+        });
+        return updateImageBrowser(true);
     }
 
 
-    function updateImageBrowser() {
+    function updateImageBrowser(forceRefresh) {
         // parse filter parameters
+        var orderBy = $('#order-by').val();
+        var order = $('#order').val();
         params = {
-            orderBy: $('#order-by').val(),
-            order: $('#order').val(),
-            limit: 100  //TODO: implement "show more" button
+            orderBy: orderBy,
+            order: order,
+            limit: 100  //TODO
         };
+
+        // keep track of latest value for "show more" button
+        if(forceRefresh ||
+            window.latestStartingPoint === undefined ||
+            window.latestStartingPoint['field'] !== orderBy ||
+            window.latestStartingPoint['order'] !== order) {
+            // user modified ordering; restart from zero
+            window.latestStartingPoint = {
+                field: orderBy,
+                order: order
+            }
+            if(order === 'asc') {
+                window.latestStartingPoint['val'] = -Number.MAX_VALUE;  //TODO: adapt for non-numeric ordering...
+            } else {
+                window.latestStartingPoint['val'] = Number.MAX_VALUE;
+            }
+        } else {
+            // user did not modify ordering; continue
+            //TODO: implement server-side-wise
+            if(order === 'asc') {
+                params['range'] = {
+                    field: orderBy,
+                    min: window.latestStartingPoint['val'],
+                    max: Number.MAX_VALUE
+                }
+            } else {
+                params['range'] = {
+                    field: orderBy,
+                    min: -Number.MAX_VALUE,
+                    max: window.latestStartingPoint['val']
+                }
+            }
+        }
 
         return $.ajax({
             url: window.dataServerURI + '{{ project }}/listImages',
@@ -149,6 +198,12 @@
                                 '<img src="/static/interface/img/controls/flag_active.svg" height="16px" />' :
                                 '<img src="/static/interface/img/controls/flag.svg" height="16px" />')
                     });
+                    
+                    if(order === 'asc') {
+                        window.latestStartingPoint['val'] = Math.max(window.latestStartingPoint['val'], data[idx][orderBy]);
+                    } else {
+                        window.latestStartingPoint['val'] = Math.min(window.latestStartingPoint['val'], data[idx][orderBy]);
+                    }
                 }
 
                 window.imageBrowser.setImages(images);
@@ -230,6 +285,13 @@
         $('#do-action').prop('disabled', disableActions);
     }
 
+    function setImageBrowserSize() {
+        var height = $('#contents').height() - $('#controls').outerHeight() -
+                        $('.image-browser-view-buttons').outerHeight() - 60;    // -60 for header and margins
+        $('.list-container').css('height', height);
+        $('.thumbs-container').css('height', height);
+    }
+
     $(document).ready(function() {
 
         // get data server URI
@@ -242,7 +304,7 @@
 
         promise = promise.done(function() {
             $('#update-image-browser').click(function() {
-                updateImageBrowser();
+                updateImageBrowser(true);
             });
             $('#action-select').on('change', function() {
                 if($(this).val() === 'delete_images') {
@@ -265,12 +327,21 @@
         promise.done(function() {
 
             $('#filter-images-heading').click(function() {
-                $('#filter-images').slideToggle();
+                $('#filter-images').slideToggle({
+                        done: function() {
+                        setImageBrowserSize();
+                    }
+                })
             });
             $('#action-box-heading').click(function() {
-                $('#action-box-contents').slideToggle();
+                $('#action-box-contents').slideToggle({
+                        done: function() {
+                        setImageBrowserSize();
+                    }
+                })
             });
 
+            setImageBrowserSize();
             window.showLoadingOverlay(false);
         });
     });
