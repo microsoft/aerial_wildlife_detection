@@ -238,7 +238,8 @@ class DataAdministrationMiddleware:
         )
         result = self.dbConnector.execute(queryStr, (imgs_add,), 'all')
 
-        return result
+        status = (0 if len(result) else 1)  #TODO
+        return status, result
 
 
     def removeImages(self, project, imageList, forceRemove=False, deleteFromDisk=False):

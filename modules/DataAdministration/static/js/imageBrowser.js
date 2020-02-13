@@ -161,6 +161,9 @@ class AbstractImageView {
 
         this.order = {};
         this.order_inv = {};
+
+        this.trailingButton = undefined;
+        this.loadingOverlay = undefined;
     }
 
     addEntries(entries) {
@@ -210,6 +213,31 @@ class AbstractImageView {
             }
         }
         return checked;
+    }
+
+    setTrailingButton(visible, disabled, buttonText, callback) {
+        error('Not implemented for abstract base class.');
+    }
+
+    setLoadingOverlay(visible, text) {
+        if(this.loadingOverlay === undefined) {
+            this.loadingOverlay = $('<div class="loading-overlay"></div>');
+            var loDecoration = $('<div class="loading-overlay-decoration"></div>');
+            var loadingDots = $('<div class="azure-loadingdots">' +
+                                    '<div></div>' +
+                                    '<div></div>' +
+                                    '<div></div>' +
+                                    '<div></div>' +
+                                    '<div></div>' +
+                                    '</div>');
+            loDecoration.append(loadingDots);
+            this.loadingOverlayText = $('<div class="loading-overlay-text"></div>');
+            loDecoration.append(this.loadingOverlayText);
+            this.loadingOverlay.append(loDecoration);
+            this.div.append(this.loadingOverlay);
+        }
+        if(visible !== undefined) this.loadingOverlay.css('visibility', (visible? 'visible' : 'hidden'));
+        if(text !== undefined) this.loadingOverlayText.html(text === null? '' : text);
     }
 
     _on_entry_click(event, entry) {
@@ -267,35 +295,59 @@ class ThumbnailView extends AbstractImageView {
 
     addEntries(entries) {
         super.addEntries(entries);
+        if(this.trailingButton !== undefined && $.contains(document, this.trailingButton[0])) this.trailingButton.detach();
         var idx = Object.keys(this.order).length;
         for(var key in entries) {
             var markup = this.entries[key].getMarkup(this);
-            this.div.append(markup);
+            this.thumbsContainer.append(markup);
             this.order[this.entries[key].id] = idx;
             this.order_inv[idx] = this.entries[key].id;
             idx++;
         }
+        if(this.trailingButton !== undefined) this.thumbsContainer.append(this.trailingButton);
     }
 
     setEntries(entries) {
-        this.div.empty();
+        if(this.trailingButton !== undefined) this.trailingButton.detach();
+        this.thumbsContainer.empty();
         super.setEntries(entries);
         this._setup_markup();
+        if(this.trailingButton !== undefined) this.thumbsContainer.append(this.trailingButton);
     }
 
     setImages(images) {
-        this.div.empty();
+        if(this.trailingButton !== undefined) this.trailingButton.detach();
+        this.thumbsContainer.empty();
         super.setImages(images);
+        if(this.trailingButton !== undefined) this.thumbsContainer.append(this.trailingButton);
+    }
+
+    setTrailingButton(visible, disabled, buttonText, callback) {
+        if(this.trailingButton === undefined) {
+            // create button
+            this.trailingButton = $('<button class="btn btn-secondary thumbnail"></button>');
+            this.thumbsContainer.append(this.trailingButton);
+        }
+        if(visible !== undefined) this.trailingButton.css('visibility', (visible? 'visible' : 'hidden'));
+        if(disabled !== undefined) this.trailingButton.prop('disabled', (disabled? true : false));
+        if(buttonText !== undefined) this.trailingButton.html(buttonText === null? '' : buttonText);
+        if(callback !== undefined) this.trailingButton.on('click', function(event) {
+            callback(event);
+        });
     }
 
     _setup_markup() {
-        this.div.empty();
+        if(this.thumbsContainer === undefined) {
+            this.thumbsContainer = $('<div></div>');
+            this.div.append(this.thumbsContainer);
+        }
+        this.thumbsContainer.empty();
         this.order = {};
         this.order_inv = {};
         var idx = 0;
         for(var key in this.entries) {
             var markup = this.entries[key].getMarkup(this);
-            this.div.append(markup);
+            this.thumbsContainer.append(markup);
             this.order[this.entries[key].id] = idx;
             this.order_inv[idx] = this.entries[key].id;
             idx++;
@@ -378,6 +430,7 @@ class ListView extends AbstractImageView {
 
     addEntries(entries) {
         super.addEntries(entries);
+        if(this.trailingButton !== undefined && $.contains(document, this.trailingButton[0])) this.trailingButton.detach();
         var idx = Object.keys(this.order).length;
         for(var key in entries) {
             var markup = this.entries[key].getMarkup(this);
@@ -386,17 +439,36 @@ class ListView extends AbstractImageView {
             this.order_inv[idx] = this.entries[key].id;
             idx++;
         }
+        if(this.trailingButton !== undefined) this.tbody.append(this.trailingButton);
     }
 
     setEntries(entries) {
+        if(this.trailingButton !== undefined) this.trailingButton.detach();
         this.tbody.empty();
         super.setEntries(entries);
         this._setup_markup();
+        if(this.trailingButton !== undefined) this.tbody.append(this.trailingButton);
     }
 
     setImages(images) {
+        if(this.trailingButton !== undefined) this.trailingButton.detach();
         this.tbody.empty();
         super.setImages(images);
+        if(this.trailingButton !== undefined) this.tbody.append(this.trailingButton);
+    }
+
+    setTrailingButton(visible, disabled, buttonText, callback) {
+        if(this.trailingButton === undefined) {
+            // create button
+            this.trailingButton = $('<button class="btn btn-secondary list-trailing-button"></button>');
+            this.tbody.append(this.trailingButton);
+        }
+        if(visible !== undefined) this.trailingButton.css('visibility', (visible? 'visible' : 'hidden'));
+        if(disabled !== undefined) this.trailingButton.prop('disabled', (disabled? true : false));
+        if(buttonText !== undefined) this.trailingButton.html(buttonText === null? '' : buttonText);
+        if(callback !== undefined) this.trailingButton.on('click', function(event) {
+            callback(event);
+        });
     }
 
     _setup_markup() {
@@ -623,6 +695,9 @@ class ImageBrowser {
         this.data['images'] = images;
         this.listView.setImages(images);
         this.tileView.setImages(images);
+        if(images === undefined || images === null || images.length === 0) {
+            this.setTrailingButton(false);
+        }
     }
 
     getSelected() {
@@ -641,6 +716,26 @@ class ImageBrowser {
         }
     }
 
+    getNumEntries() {
+        return Object.keys(this.entries).length;
+    }
+
+    setTrailingButton(visible, disabled, buttonText, callback) {
+        /*
+            Adds a button at the end of the list (or thumbnails)
+            that can be customized.
+        */
+        this.listView.setTrailingButton(visible, disabled, buttonText, callback);
+        this.tileView.setTrailingButton(visible, disabled, buttonText, callback);
+    }
+
+    setLoadingOverlay(visible, text) {
+        /*
+            Semi-transparent overlay over the image browser views.
+        */
+        this.listView.setLoadingOverlay(visible, text);
+        this.tileView.setLoadingOverlay(visible, text);
+    }
 
     // event handling
     _on_entry_check(checked, entry) {

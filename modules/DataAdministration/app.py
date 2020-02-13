@@ -132,7 +132,7 @@ class DataAdministrator:
             return {'response': result}
 
 
-        @self.app.post('/<project>/addImages')
+        @self.app.post('/<project>/addExistingImages')
         def add_images(project):
             '''
                 Add images that exist in project file directory
@@ -141,9 +141,12 @@ class DataAdministrator:
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
 
-            imageNames = request.json
-            result = self.middleware.addExistingImages(project, imageNames['images'])
-            return {'response': result}
+            try:
+                imageNames = request.json
+                status, result = self.middleware.addExistingImages(project, imageNames['images'])
+                return {'status': status, 'response': result}
+            except Exception as e:
+                return {'status': 1, 'message': str(e)}
 
 
         @self.app.post('/<project>/removeImages')
