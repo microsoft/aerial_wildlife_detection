@@ -17,7 +17,7 @@ from uuid import UUID
 from PIL import Image
 from psycopg2 import sql
 from modules.Database.app import Database
-from util.helpers import valid_image_extensions
+from util.helpers import valid_image_extensions, listDirectory
 
 
 class DataAdministrationMiddleware:
@@ -28,42 +28,42 @@ class DataAdministrationMiddleware:
         self.countPattern = re.compile('\_[0-9]+$')
     
 
-    @staticmethod
-    def _scan_dir_imgs(fileDir):
-        imgs_disk = set()
-        if not fileDir.endswith(os.sep):
-            fileDir += os.sep
+    # @staticmethod
+    # def _scan_dir_imgs(fileDir):
+    #     imgs_disk = set()
+    #     if not fileDir.endswith(os.sep):
+    #         fileDir += os.sep
 
-        def __scan_recursively(imgs, fileDir):
-            files = os.listdir(fileDir)
-            for f in files:
-                path = os.path.join(fileDir, f)
-                if os.path.isfile(path) and os.path.splitext(f)[1].lower() in valid_image_extensions:
-                    imgs.add(path)
-                elif os.path.islink(path):
-                    if os.readlink(path) in fileDir:
-                        # circular link; avoid
-                        continue
-                    else:
-                        imgs = __scan_recursively(imgs, path)
-                elif os.path.isdir(path):
-                    imgs = __scan_recursively(imgs, path)
-            return imgs
+    #     def __scan_recursively(imgs, fileDir):
+    #         files = os.listdir(fileDir)
+    #         for f in files:
+    #             path = os.path.join(fileDir, f)
+    #             if os.path.isfile(path) and os.path.splitext(f)[1].lower() in valid_image_extensions:
+    #                 imgs.add(path)
+    #             elif os.path.islink(path):
+    #                 if os.readlink(path) in fileDir:
+    #                     # circular link; avoid
+    #                     continue
+    #                 else:
+    #                     imgs = __scan_recursively(imgs, path)
+    #             elif os.path.isdir(path):
+    #                 imgs = __scan_recursively(imgs, path)
+    #         return imgs
 
-        files_disk = __scan_recursively(set(), fileDir)
-        for f in files_disk:
-            imgs_disk.add(f.replace(fileDir, ''))
+    #     files_disk = __scan_recursively(set(), fileDir)
+    #     for f in files_disk:
+    #         imgs_disk.add(f.replace(fileDir, ''))
 
-        # files_disk = glob.glob(os.path.join(fileDir, '**'), recursive=True)       #TODO: avoid circular links
-        # for f in files_disk:
-        #     if os.path.isdir(f):
-        #         continue
-        #     _, ext = os.path.splitext(f)
-        #     if ext.lower() not in valid_image_extensions:
-        #         continue
-        #     fname = f.replace(fileDir, '')
-        #     imgs_disk.add(fname)
-        return imgs_disk
+    #     # files_disk = glob.glob(os.path.join(fileDir, '**'), recursive=True)       #TODO: avoid circular links
+    #     # for f in files_disk:
+    #     #     if os.path.isdir(f):
+    #     #         continue
+    #     #     _, ext = os.path.splitext(f)
+    #     #     if ext.lower() not in valid_image_extensions:
+    #     #         continue
+    #     #     fname = f.replace(fileDir, '')
+    #     #     imgs_disk.add(fname)
+    #     return imgs_disk
 
 
     # @staticmethod
@@ -272,7 +272,7 @@ class DataAdministrationMiddleware:
 
         # scan disk for files
         projectFolder = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), project)
-        imgs_disk = self._scan_dir_imgs(projectFolder)
+        imgs_disk = listDirectory(projectFolder, recursive=True)     #self._scan_dir_imgs(projectFolder)
         
         # get all existing file paths from database
         imgs_database = set()

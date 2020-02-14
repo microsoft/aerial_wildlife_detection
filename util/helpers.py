@@ -120,6 +120,42 @@ def is_fileServer(config):
        return False
 
 
+
+
+
+
+def listDirectory(baseDir, recursive=False):
+    '''
+        Similar to glob's recursive file listing, but
+        implemented so that circular softlinks are avoided.
+        Removes the baseDir part (with trailing separator)
+        from the files returned.
+    '''
+    files_disk = set()
+    if not baseDir.endswith(os.sep):
+        baseDir += os.sep
+    def _scan_recursively(imgs, baseDir, fileDir, recursive):
+        files = os.listdir(fileDir)
+        for f in files:
+            path = os.path.join(fileDir, f)
+            if os.path.isfile(path) and os.path.splitext(f)[1].lower() in valid_image_extensions:
+                imgs.add(path)
+            elif os.path.islink(path):
+                if os.readlink(path) in baseDir:
+                    # circular link; avoid
+                    continue
+                elif recursive:
+                    imgs = _scan_recursively(imgs, baseDir, path, True)
+            elif os.path.isdir(path) and recursive:
+                imgs = _scan_recursively(imgs, baseDir, path, True)
+        return imgs
+
+    files_scanned = _scan_recursively(set(), baseDir, baseDir, recursive)
+    for f in files_scanned:
+        files_disk.add(f.replace(baseDir, ''))
+    return files_disk
+
+
 valid_image_extensions = (
     '.jpg',
     '.jpeg',

@@ -17,7 +17,7 @@
 
 import os
 import argparse
-from util.helpers import valid_image_extensions
+from util.helpers import valid_image_extensions, listDirectory
 
 
 if __name__ == '__main__':
@@ -62,7 +62,8 @@ if __name__ == '__main__':
     # locate all images and their base names
     print('Locating image paths...')
     imgs = set()
-    imgFiles = glob.glob(os.path.join(imgBaseDir, '**'), recursive=True)
+    imgFiles = listDirectory(imgBaseDir, recursive=True)    #glob.glob(os.path.join(imgBaseDir, '**'), recursive=True)  #TODO: check if correct
+    imgFiles = list(imgFiles)
     for i in tqdm(imgFiles):
         if os.path.isdir(i):
             continue
