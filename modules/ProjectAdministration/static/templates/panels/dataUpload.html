@@ -121,52 +121,69 @@
 
     // upload functions
     function startUploadFilesFromDisk() {
-        //TODO
         window.uploadedFiles = [];
-        var formData = new FormData();
         var fileInput = $('#file-upload-select')[0];
 
-        // filter files according to MIME type
+        // filter files according to MIME type and upload
         for(var i=0; i<fileInput.files.length; i++) {
             var nextItem = fileInput.files[i];
             if(window.validImageMIMEtypes.includes(nextItem.type)) {
                 window.uploadedFiles.push(nextItem);
-                formData.append('file-'+i, nextItem);
+
+                // upload
+                var fileName = (nextItem.hasOwnProperty('webkitRelativePath')? nextItem['webkitRelativePath'] : nextItem['name']);
+                var key = fileName+'_'+i;
+                var formData = new FormData();
+                formData.append(key, nextItem);
+                window.imageBrowser.addImages({
+                    key: {
+                        'id': key,
+                        'url': fileName,
+                        'imageURL': '/static/dataAdmin/img/loading.png'     //TODO: make promise...
+                    }
+                });
+
+                $.ajax({
+                    url: '{{ project }}/uploadImages',
+                    method: 'POST',
+                    data: formData,
+                    cache: false,
+                    contentType: false,
+                    processData: false,
+                    xhr: function () {
+                        var customXhr = $.ajaxSettings.xhr();
+                        if(customXhr.upload) {
+                            customXhr.upload.addEventListener('progress', function(e) {
+                                if(e.lengthComputable) {
+                                    if(e.loaded < e.total) {
+                                        window.imageBrowser.setProgressBar(this, true, e.loaded, e.total);
+                                    } else {
+                                        window.imageBrowser.setProgressBar(this, false);
+                                    }
+                                } else {
+                                    window.imageBrowser.setProgressBar(this, false);
+                                }
+                            }.bind(key), false);
+                        }
+                        return customXhr;
+                    },
+                    success: function(data) {
+                        // retrieve image URL for uploaded image
+                        try {
+                            var url = window.dataServerURI + '{{ project }}/files/' +
+                                data['result']['imgPaths_valid'][0];
+                            window.imageBrowser.set('imageURL', this, url);
+                        } catch(error) {
+                            window.imageBrowser.set('imageURL', this, '/static/dataAdmin/img/error.png');
+                        }
+                        window.imageBrowser.setProgressBar(this, false);
+                    }.bind(key),
+                    error: function(data) {
+                        window.imageBrowser.set('imageURL', this, '/static/dataAdmin/img/error.png');
+                    }.bind(key)
+                });
             }
         }
-
-        // upload
-        $.ajax({
-            url: '{{ project }}/uploadImages',
-            method: 'POST',
-            data: formData,
-            cache: false,
-            contentType: false,
-            processData: false,
-            xhr: function () {
-                var customXhr = $.ajaxSettings.xhr();
-                if(customXhr.upload) {
-                    customXhr.upload.addEventListener('progress', function (e) {
-                    if (e.lengthComputable) {
-                        //TODO
-                        console.log(e);
-                        // console.log(e.loaded + ', ' + e.total)
-                        // $('progress').attr({
-                        //     value: e.loaded,
-                        //     max: e.total,
-                        // });
-                    }
-                    }, false);
-                }
-                return customXhr;
-            },
-            success: function(data) {
-                console.log(data);
-            },
-            error: function(data) {
-                console.log(data);
-            }
-        })
     }
 
 
@@ -230,7 +247,6 @@
 
             // setup image browser
             window.imageBrowser = new ImageBrowser($('#image-browser'), {
-                'baseURL': window.dataServerURI + '{{ project }}/files/',
                 'images': [],
                 'showCheckboxes': true,
                 'showImages': true,

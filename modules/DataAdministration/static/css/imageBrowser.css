@@ -110,3 +110,13 @@
     font-size: 18px;
     font-weight: bold;
 }
+
+.progress-bar-thumbnail {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+}
+
+.progress-bar-list {
+    min-width: 200px;
+}

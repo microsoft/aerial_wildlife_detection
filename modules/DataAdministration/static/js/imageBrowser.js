@@ -10,6 +10,42 @@ var randomUID = function() {
 }
 
 
+//TODO: outsource into util class
+class ProgressBar {
+    constructor(visible, value, max) {
+        this.value = value;
+        this.max = max;
+
+        this.markup = $('<div class="progressbar"></div>');
+        this.pbarInd = $('<div class="progressbar-filler progressbar-active"></div>');
+        this.markup.append(this.pbarInd);
+        if(visible !== undefined) {
+            this.markup.css('visibility', (visible? 'visible' : 'hidden'));
+        }
+    }
+
+    set(visible, value, max) {
+        if(visible !== undefined) {
+            this.markup.css('visibility', (visible? 'visible' : 'hidden'));
+        }
+        if(max !== undefined) {
+            this.max = max;
+        }
+        if(value !== undefined) {
+            this.value = value;
+        }
+        var newWidthPerc = (100*(this.value / this.max));
+        this.pbarInd.animate({
+            'width': newWidthPerc + '%'
+        }, 1000);
+    }
+
+    getMarkup() {
+        return this.markup;
+    }
+}
+
+
 class ImageEntry {
     constructor(data, parent, baseURL, showImage, showCheckbox) {
         this.data = data;
@@ -20,9 +56,18 @@ class ImageEntry {
         }
         this.parent = parent;
         this.baseURL = baseURL;
+        if(this.baseURL === undefined || this.baseURL === null) {
+            this.baseURL = '';
+        }
         this.showImage = showImage;
         this.showCheckbox = showCheckbox;
         this.selected = false;
+
+        if(this.data.hasOwnProperty('imageURL')) {
+            this.imageURL = this.data['imageURL'];
+        } else {
+            this.imageURL = this.data['url'];
+        }
 
         this.checkbox = undefined;
         this.image = undefined;
@@ -40,14 +85,22 @@ class ImageEntry {
         return this.checkbox;
     }
 
+    _create_progressBar() {
+        if(this.progressBar === undefined) {
+            this.progressBar = new ProgressBar(false, 0, 100);
+        }
+        return this.progressBar.getMarkup();
+    }
+
     _create_image() {
         if(this.image === undefined) {
             var self = this;
             this.image = $('<img>');
             this.image.on('error', function() {
-                this.src = '/static/dataAdmin/img/notFound.png';
+                if(this.src !== '/static/dataAdmin/img/error.png')
+                    this.src = '/static/dataAdmin/img/error.png';
             });
-            this.image.attr('src', this.baseURL+this.data['url']);
+            this.image.attr('src', this.baseURL+this.imageURL);
             this.image.on('click', function(event) {
                 self.parent._on_entry_click(event, self);
             });
@@ -85,6 +138,12 @@ class ImageEntry {
                 });
                 markup.append(td);
             }
+            
+            var pBar = this._create_progressBar();
+            pBar.addClass('progress-bar-list');
+            var td = $('<td></td>');
+            td.append(pBar);
+            markup.append(td);
             this.markups['list'] = markup;
 
         } else if(view instanceof ThumbnailView) {
@@ -104,6 +163,11 @@ class ImageEntry {
             });
             infoBar.append(span);
             markup.append(infoBar);
+
+            var pBar = this._create_progressBar();
+            pBar.addClass('progress-bar-thumbnail');
+            markup.append(pBar);
+
             this.markups['thumbs'] = markup;
         }
 
@@ -142,6 +206,15 @@ class ImageEntry {
                 this.markups['thumbs'].removeClass('thumbnail-selected');
             }
         }
+    }
+
+    setProgressBar(visible, value, max) {
+        this.progressBar.set(visible, value, max);
+    }
+
+    setImageURL(url) {
+        this.imageURL = url;
+        this.image.attr('src', this.imageURL);
     }
 }
 
@@ -219,6 +292,12 @@ class AbstractImageView {
         error('Not implemented for abstract base class.');
     }
 
+    setProgressBar(entryID, visible, value, min, max) {
+        if(this.entries.hasOwnProperty(entryID)) {
+            this.entries[entryID].setProgressBar(visible, value, min, max);
+        }
+    }
+
     setLoadingOverlay(visible, text) {
         if(this.loadingOverlay === undefined) {
             this.loadingOverlay = $('<div class="loading-overlay"></div>');
@@ -238,6 +317,23 @@ class AbstractImageView {
         }
         if(visible !== undefined) this.loadingOverlay.css('visibility', (visible? 'visible' : 'hidden'));
         if(text !== undefined) this.loadingOverlayText.html(text === null? '' : text);
+    }
+
+    get(varName, entry) {
+        if(this.entries.hasOwnProperty(entry) && this.entries[entry].hasOwnProperty(varName)) {
+            return this.entries[entry][varName];
+        } else {
+            return undefined;
+        }
+    }
+
+    set(varName, entry, value) {
+        if(this.entries.hasOwnProperty(entry) && this.entries[entry].hasOwnProperty(varName)) {
+            this.entries[entry][varName] = value;
+            if(varName === 'imageURL') {
+                this.entries[entry].setImageURL(value);
+            }
+        }
     }
 
     _on_entry_click(event, entry) {
@@ -498,6 +594,8 @@ class ListView extends AbstractImageView {
                 this.varOrder.push(nextKey);
                 tr.append($('<td>' + nextCol[nextKey] + '</td>'));
             }
+            // for progress bar
+            tr.append($('<td></td>'));
             var table = $('<table class="list-table"></table>');
             table.append(thead);
             this.tbody = $('<tbody class="list-body"></tbody>');
@@ -624,8 +722,6 @@ class ImageBrowser {
             imageCheck: []
         };
 
-        this.entries = {};
-
         // setup markup
         var self = this;
         var viewStyle = $('<div class="image-browser-view-buttons"></div>');
@@ -720,6 +816,15 @@ class ImageBrowser {
         return Object.keys(this.entries).length;
     }
 
+    get(varName, entry) {
+        return this.listView.get(varName, entry);
+    }
+
+    set(varName, entry, value) {
+        this.listView.set(varName, entry, value);
+        this.tileView.set(varName, entry, value);
+    }
+
     setTrailingButton(visible, disabled, buttonText, callback) {
         /*
             Adds a button at the end of the list (or thumbnails)
@@ -735,6 +840,11 @@ class ImageBrowser {
         */
         this.listView.setLoadingOverlay(visible, text);
         this.tileView.setLoadingOverlay(visible, text);
+    }
+
+    setProgressBar(entryID, visible, value, max) {
+        this.listView.setProgressBar(entryID, visible, value, max);
+        this.tileView.setProgressBar(entryID, visible, value, max);
     }
 
     // event handling

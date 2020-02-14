@@ -13,6 +13,7 @@ import os
 import io
 import re
 import glob
+from uuid import UUID
 from PIL import Image
 from psycopg2 import sql
 from modules.Database.app import Database
@@ -252,6 +253,7 @@ class DataAdministrationMiddleware:
 
         result = {
             'imgs_valid': imgs_valid,
+            'imgPaths_valid': imgPaths_valid,
             'imgs_warn': imgs_warn,
             'imgs_error': imgs_error
         }
@@ -344,7 +346,7 @@ class DataAdministrationMiddleware:
             Returns a list of images that were deleted.
         '''
 
-        imageList = tuple([(i,) for i in imageList])
+        imageList = tuple([(UUID(i),) for i in imageList])
 
         queryArgs = []
         deleteArgs = []
@@ -362,7 +364,7 @@ class DataAdministrationMiddleware:
                 DELETE FROM {id_iu} WHERE image IN %s;
                 DELETE FROM {id_anno} WHERE image IN %s;
                 DELETE FROM {id_pred} WHERE image IN %s;
-                DELETE FROM {id_img} WHERE image IN %s;
+                DELETE FROM {id_img} WHERE id IN %s;
             ''').format(
                 id_iu=sql.Identifier(project, 'image_user'),
                 id_anno=sql.Identifier(project, 'annotation'),
