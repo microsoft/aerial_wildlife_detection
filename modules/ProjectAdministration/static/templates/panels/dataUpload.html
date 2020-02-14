@@ -33,7 +33,7 @@
                 var imgs = [];
                 for(var i=0; i<data['response'].length; i++) {
                     imgs.push({
-                        url: data['response'][i]
+                        url: window.dataServerURI + '{{ project }}/files/' + data['response'][i]
                     });
                 }
                 
@@ -204,6 +204,14 @@
     }
 
 
+    function _imageBrowser_event(event) {
+        var checked = window.imageBrowser.getChecked();
+        if(getSelectedMode() === 'scanDisk') {
+            updateUntrackedCount();
+        }
+    }
+
+
     function setImageBrowserSize() {
         var height = $('#contents').height() - $('#controls').outerHeight() -
                         $('.image-browser-view-buttons').outerHeight() - 60;    // -60 for header and margins
@@ -259,7 +267,12 @@
                                                 false,
                                                 'more...',
                                                 onClickMore);
-
+            window.imageBrowser.on('imageCheck', function(event) {
+                _imageBrowser_event(event);
+            });
+            window.imageBrowser.on('viewChange', function(event) {
+                _imageBrowser_event(event);
+            });
             $(window).on('resize', function() {
                 setImageBrowserSize();
             });

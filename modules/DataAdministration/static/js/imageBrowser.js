@@ -813,7 +813,7 @@ class ImageBrowser {
     }
 
     getNumEntries() {
-        return Object.keys(this.entries).length;
+        return Object.keys(this.listView.entries).length;
     }
 
     get(varName, entry) {
