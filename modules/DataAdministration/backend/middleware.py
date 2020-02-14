@@ -318,7 +318,7 @@ class DataAdministrationMiddleware:
         ''').format(
             id_img=sql.Identifier(project, 'image')
         )
-        self.dbConnector.insert(queryStr, [(i,) for i in imgs_add])
+        self.dbConnector.insert(queryStr, [(i,) for i in imgs_add])     #TODO: incorrect
 
         # get IDs of newly added images
         queryStr = sql.SQL('''
