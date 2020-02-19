@@ -132,7 +132,9 @@ MODIFICATIONS_sql = [
         END;
     $iou$ LANGUAGE plpgsql;
     ''',
-    'ALTER TABLE {schema}.image ADD COLUMN date_added TIMESTAMPTZ NOT NULL DEFAULT NOW()'
+    'ALTER TABLE {schema}.image ADD COLUMN IF NOT EXISTS date_added TIMESTAMPTZ NOT NULL DEFAULT NOW()',
+    'ALTER TABLE aide_admin.authentication ADD COLUMN IF NOT EXISTS admitted_until TIMESTAMPTZ',
+    'ALTER TABLE aide_admin.authentication ADD COLUMN IF NOT EXISTS blocked_until TIMESTAMPTZ'
 ]
 
 
@@ -365,7 +367,7 @@ if __name__ == '__main__':
     
     # check fileServer URI
     fileServerURI = config.getProperty('FileServer', 'staticfiles_uri')
-    if len(fileServerURI):
+    if fileServerURI is not None and len(fileServerURI):
         print('WARNING: please update entry "dataServer_uri" under "[Server]" in the configuration.ini file.')
         print('The latest version of AIDE only specifies the base file server address and port, but nothing else.')
         print('Example:\n')

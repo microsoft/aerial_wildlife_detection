@@ -55,6 +55,8 @@ CREATE TABLE IF NOT EXISTS aide_admin.authentication (
     username VARCHAR NOT NULL,
     project VARCHAR NOT NULL,
     isAdmin BOOLEAN DEFAULT FALSE,
+    admitted_until TIMESTAMPTZ,
+    blocked_until TIMESTAMPTZ,
     PRIMARY KEY (username, project),
     FOREIGN KEY (username) REFERENCES aide_admin.user (name),
     FOREIGN KEY (project) REFERENCES aide_admin.project (shortname)

@@ -1,12 +1,12 @@
 '''
     Handles data flow about projects in general.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 from psycopg2 import sql
-
 from modules.Database.app import Database
+from util.helpers import current_time
 
 
 class ReceptionMiddleware:
@@ -16,7 +16,6 @@ class ReceptionMiddleware:
         self.dbConnector = Database(config)
 
 
-    
     def get_project_info(self, username=None, isSuperUser=False):
         '''
             Returns metadata about projects:
@@ -26,6 +25,7 @@ class ReceptionMiddleware:
             - links to stats and review page (if admin) TODO
             - etc.
         '''
+        now = current_time()
 
         if isSuperUser:
             authStr = sql.SQL('')
@@ -38,6 +38,7 @@ class ReceptionMiddleware:
             queryVals = None
         
         queryStr = sql.SQL('''SELECT shortname, name, description, username, isAdmin,
+            admitted_until, blocked_until,
             annotationType, predictionType, isPublic, demoMode, interface_enabled, ai_model_enabled
             FROM aide_admin.project AS proj
             FULL OUTER JOIN (SELECT * FROM aide_admin.authentication
@@ -46,12 +47,15 @@ class ReceptionMiddleware:
         ''').format(authStr=authStr)
 
         result = self.dbConnector.execute(queryStr, queryVals, 'all')
-        
         response = {}
-
         for r in result:
             projShort = r['shortname']
             if not projShort in response:
+                userAdmitted = True
+                if r['admitted_until'] is not None and r['admitted_until'] < now:
+                    userAdmitted = False
+                if r['blocked_until'] is not None and r['blocked_until'] >= now:
+                    userAdmitted = False
                 response[projShort] = {
                     'name': r['name'],
                     'description': r['description'],
@@ -60,7 +64,8 @@ class ReceptionMiddleware:
                     'isPublic': r['ispublic'],
                     'demoMode': r['demomode'],
                     'interfaceEnabled': r['interface_enabled'],
-                    'aiModelEnabled': r['ai_model_enabled']
+                    'aiModelEnabled': r['ai_model_enabled'],
+                    'userAdmitted': userAdmitted
                 }
             if isSuperUser:
                 response[projShort]['role'] = 'super user'

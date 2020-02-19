@@ -2,7 +2,7 @@
     Shows tooltips over interface controls at the start,
     unless already seen by the user.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 */
 
 window.showTutorial = function(autostart) {
@@ -11,7 +11,7 @@ window.showTutorial = function(autostart) {
     // list of identifiers andtext descriptions to be shown
     if(window.annotationType === 'labels') {
         var addAnnotationString = 'Then, click to assign the label. Click again or option-click to remove it.';
-        var changeAnnotationString = 'To change the class, select the correct class first and then click into the image.';
+        var changeAnnotationString = 'TshowTutorialo change the class, select the correct class first and then click into the image.';
         var unsureString = 'Not sure? Click (or press U) and click the difficult image (tip: you can also hover over the difficult image and press U directly).';
         var removeAnnotationString = 'Click (or press R), then click into the image to remove its label.';
     } else if(window.annotationType === 'points') {
@@ -87,7 +87,7 @@ window.showTutorial = function(autostart) {
     var advance = function() {
         if(index === -2) {
             var welcomeContents = $('<div style="overflow-y:auto"></div>');
-            welcomeContents.load('interface/static/templates/tutorial_welcome.html');
+            welcomeContents.load('/static/interface/templates/tutorial_welcome.html');
             window.showOverlay(welcomeContents, true);
             index += 1;
         } else {

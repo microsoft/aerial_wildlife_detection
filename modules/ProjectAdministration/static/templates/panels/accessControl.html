@@ -25,10 +25,13 @@
     <div>
         <span>Selection:</span>
         <select id="selection-action">
-            <option value="elevate-admin">elevate to project administrators</option>
-            <option value="revoke-admin">revoke administrator privileges</option>
-            <option value="deregister">remove from project</option>
+            <option value="elevate-admin" name="user-action">elevate to project administrators</option>
+            <option value="revoke-admin" name="user-action">revoke administrator privileges</option>
+            <option value="admitUntil" name="user-action">admit until</option>
+            <option value="blockUntil" name="user-action">block until</option>
+            <option value="deregister" name="user-action">remove from project</option>
         </select>
+        <input type="text" id="datetime-specifier" style="display:none" />
         <button id="selection-action-proceed" class="btn btn-sm btn-light">Apply</button>
     </div>
     <table>
@@ -37,6 +40,8 @@
                 <td><input type="checkbox" id="select-all-users" /></td>
                 <td>Name</td>
                 <td>Administrator</td>
+                <td>Admitted until</td>
+                <td>Blocked until</td>
             </tr>
         </thead>
         <tbody id="users-list"></tbody>
@@ -77,6 +82,8 @@
         padding-right: 5px;
     }
 </style>
+<link rel="stylesheet" href="/static/general/libs/datetimepicker/jquery.datetimepicker.css" />
+<script type="text/javascript" src="/static/general/libs/datetimepicker/jquery.datetimepicker.js"></script>
 <script type="text/javascript">
     $(document).ready(function() {
         // general settings
@@ -116,6 +123,10 @@
             });
         });
 
+        getSelectedUserAction = function() {
+            return $('#selection-action [name=user-action]:checked').val();
+        }
+
         promise = promise.done(function() {
             return $.ajax({
                 url: '{{ project }}/getUsers',
@@ -126,6 +137,10 @@
                             let uName = data['users'][i]['username'];
                             var uName_vis = uName;
                             let isAdmin = (data['users'][i]['isadmin'] ? 'Y' : 'N');    //TODO: replace with images
+                            var admittedUntil = data['users'][i]['admitted_until'];
+                            if(admittedUntil === null) admittedUntil = '';
+                            var blockedUntil = data['users'][i]['blocked_until'];
+                            if(blockedUntil === null) blockedUntil = '';
                             var markup = $('<tr id="'+uName+'"></tr>');
                             if(uName === window.user) {
                                 var checkbox = $('<input type="checkbox" id="'+uName+'__select" disabled />');
@@ -136,6 +151,8 @@
                             markup.append($('<td></td>').append(checkbox));
                             markup.append($('<td>'+uName_vis+'</td>'));
                             markup.append($('<td>'+isAdmin+'</td>'));
+                            markup.append($('<td>'+admittedUntil+'</td>'));
+                            markup.append($('<td>'+blockedUntil+'</td>'));
                             uList.append(markup);
                         }
                     }
@@ -167,6 +184,22 @@
                     console.log(data);
                 }
             });
+        });
+
+        var now = new Date();
+
+        $('#datetime-specifier').datetimepicker({
+            startDate: now,
+            minDateTime: now
+        });
+
+        $('#selection-action').change(function() {
+            var action = getSelectedUserAction();
+            if(action === 'admitUntil' || action === 'blockUntil') {
+                $('#datetime-specifier').show();
+            } else {
+                $('#datetime-specifier').hide();
+            }
         });
 
         $('#selection-action-proceed').click(function() {

@@ -2,7 +2,7 @@
     Provides functionality for checking login details,
     session validity, and the like.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 from threading import Thread
@@ -239,10 +239,17 @@ class UserMiddleware():
             return True
 
         if admin:
-            queryStr = sql.SQL('SELECT COUNT(*) AS cnt FROM aide_admin.authentication WHERE project = %s AND username = %s AND isAdmin = %s')
+            queryStr = sql.SQL('''SELECT COUNT(*) AS cnt FROM aide_admin.authentication
+                WHERE project = %s AND username = %s AND isAdmin = %s''')
             queryVals = (project,username,admin,)
         else:
-            queryStr = sql.SQL('SELECT COUNT(*) AS cnt FROM aide_admin.authentication WHERE project = %s AND username = %s')
+            queryStr = sql.SQL('''SELECT COUNT(*) AS cnt FROM aide_admin.authentication
+                WHERE project = %s AND username = %s
+                AND (
+                    (admitted_until IS NULL OR admitted_until >= now())
+                    AND
+                    (blocked_until IS NULL OR blocked_until < now())
+                )''')
             queryVals = (project,username,)
         result = self.dbConnector.execute(queryStr, queryVals, 1)
         return result[0]['cnt'] == 1
@@ -336,6 +343,8 @@ class UserMiddleware():
             response['canCreateProjects'] = result[0]['cancreateprojects']
             response['isSuperUser'] = result[0]['issuperuser']
             response['isAdmin'] = result[0]['isadmin']
+            response['admittedUntil'] = result[0]['admitted_until']
+            response['blockedUntil'] = result[0]['blocked_until']
 
         return response
 
@@ -369,7 +378,9 @@ class UserMiddleware():
             id_auth=sql.Identifier('aide_admin', 'authentication'))
         result = self.dbConnector.execute(queryStr, (project,username,), 1)[0]
         return {
-            'isAdmin': result['isadmin']
+            'isAdmin': result['isadmin'],
+            'admittedUntil': result['admitted_until'],
+            'blockedUntil': result['blocked_until']
         }
 
 

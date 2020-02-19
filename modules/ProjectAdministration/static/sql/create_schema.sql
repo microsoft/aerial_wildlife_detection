@@ -4,7 +4,7 @@
     Requires substitutions for identifiers and annotation/prediction
     type fields.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 */
 
 
@@ -17,8 +17,10 @@ CREATE SCHEMA {id_schema}
 CREATE TABLE IF NOT EXISTS {id_image} (      
     id uuid DEFAULT uuid_generate_v4(),
     filename VARCHAR UNIQUE NOT NULL,
-    exif VARCHAR,
-    fVec bytea,
+    isGoldenQuestion BOOLEAN NOT NULL DEFAULT FALSE,
+    --exif VARCHAR,
+    --fVec bytea,
+    date_added TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (id)
 );
 
@@ -71,6 +73,7 @@ CREATE TABLE IF NOT EXISTS {id_annotation} (
 CREATE TABLE IF NOT EXISTS {id_cnnstate} (
     id uuid DEFAULT uuid_generate_v4(),
     model_library VARCHAR,
+    alCriterion_library VARCHAR,
     timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     stateDict bytea NOT NULL,
     partial boolean NOT NULL,

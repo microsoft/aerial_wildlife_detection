@@ -23,6 +23,8 @@ $(document).ready(function() {
                         var isMember = false;
                     }
 
+                    var userAdmitted = data['projects'][key]['userAdmitted'];
+
                     // var isPublic = '';
                     // if(data['projects'][key]['public']) {
                     //     isPublic = '&#10003;';
@@ -31,11 +33,12 @@ $(document).ready(function() {
                     var adminButton = '';
                     if(role === 'admin' || role === 'super user') {
                         // show button to project configuration page
-                        adminButton = '<a href="' + key + '?t=configuration" class="btn btn-secondary">Configure</a>'
+                        adminButton = '<a href="' + key + '?t=configuration" class="btn btn-secondary">Configure</a>';
+                        userAdmitted = false;
                     }
 
                     var labelButton = '<a href="' + key + '/interface" class="btn btn-primary label-button">Start labeling</a>';
-                    if(!data['projects'][key]['interfaceEnabled']) {
+                    if(!userAdmitted || !data['projects'][key]['interfaceEnabled']) {
                         labelButton = '<div class="btn btn-secondary label-button" style="cursor:not-allowed;" disabled="disabled">(interface disabled)</div>';
                     }
 
