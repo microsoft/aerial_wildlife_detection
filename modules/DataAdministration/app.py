@@ -16,6 +16,10 @@ from util.cors import enable_cors
 from util import helpers
 
 
+
+#TODO: HUGE PROBLEM: CORS FORBIDS COOKIE FORWARDING WITH WILDCARD ORIGIN, SO USER IS UNAUTHORIZED...
+
+
 class DataAdministrator:
 
     def __init__(self, config, app):
@@ -129,13 +133,23 @@ class DataAdministrator:
                 return {'status': 1, 'message': str(e)}
 
 
-        @enable_cors
+        # #TODO
+        # @self.app.hook('after_request')
+        # def cors_enabler():
+        #     response.headers['Access-Control-Allow-Origin'] = 'http://kuduvm.westus2.cloudapp.azure.com:8088'
+        #     response.headers['Access-Control-Allow-Credentials'] = 'true'
+        #     response.headers['Access-Control-Allow-Methods'] = 'PUT, GET, POST, DELETE, OPTIONS'
+        #     response.headers['Access-Control-Allow-Headers'] = 'Origin, Accept, Content-Type, X-Requested-With, X-CSRF-Token'
+
+
         @self.app.get('/<project>/scanForImages')
+        @enable_cors
         def scan_for_images(project):
             '''
                 Search project file directory on disk for
                 images that are not registered in database.
             '''
+
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
 
