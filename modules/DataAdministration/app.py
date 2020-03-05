@@ -209,3 +209,21 @@ class DataAdministrator:
                 supported by AIDE.
             '''
             return {'MIME_types': helpers.valid_image_mime_types}
+
+        
+        # data download
+        @self.app.post('/<project>/requestDownloads')
+        def request_data_downloads(project):
+            '''
+                Parses request parameters and then assembles project-
+                related metadata (annotations, predictions, etc.) by
+                storing them as files on the server in a temporary
+                directory.
+                Returns the download links to those temporary files.
+            '''
+            #TODO: allow download for non-admins?
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+            
+            # parse parameters
+            #TODO

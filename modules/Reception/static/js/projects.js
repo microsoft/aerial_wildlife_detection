@@ -34,7 +34,7 @@ $(document).ready(function() {
                     if(role === 'admin' || role === 'super user') {
                         // show button to project configuration page
                         adminButton = '<a href="' + key + '?t=configuration" class="btn btn-secondary">Configure</a>';
-                        userAdmitted = false;
+                        userAdmitted = true;
                     }
 
                     var labelButton = '<a href="' + key + '/interface" class="btn btn-primary label-button">Start labeling</a>';

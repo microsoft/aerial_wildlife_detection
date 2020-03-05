@@ -9,7 +9,9 @@ import importlib
 from datetime import datetime
 import pytz
 import cgi
-
+import base64
+import numpy as np
+from PIL import Image
 
 
 def array_split(arr, size):
@@ -121,9 +123,6 @@ def is_fileServer(config):
 
 
 
-
-
-
 def listDirectory(baseDir, recursive=False):
     '''
         Similar to glob's recursive file listing, but
@@ -154,6 +153,33 @@ def listDirectory(baseDir, recursive=False):
     for f in files_scanned:
         files_disk.add(f.replace(baseDir, ''))
     return files_disk
+
+
+
+def imageToBase64(image):
+    '''
+        Receives a PIL image and converts it
+        into a base64 string.
+        Returns that string plus the width
+        and height of the image.
+    '''
+    dataArray = np.array(image).astype(np.uint8)
+    b64str = base64.b64encode(dataArray.ravel()).decode('utf-8')
+    return b64str, image.width, image.height
+
+
+
+def base64ToImage(base64str, width, height):
+    '''
+        Receives a base64-encoded string as stored in
+        AIDE's database (e.g. for segmentation masks) and
+        returns a PIL image with its contents.
+    '''
+    raster = np.frombuffer(base64.b64decode(base64str), dtype=np.uint8)
+    raster = np.reshape(raster, (height,width,))
+    image = Image.fromarray(raster)
+    return image
+
 
 
 valid_image_extensions = (

@@ -20,21 +20,23 @@ def _verify_unique(instances, moduleClass):
             already launched modules on this instance.
             Raises an Exception if another module from the same type has already been launched on this instance
         '''
-        for i in instances:
-            if moduleClass.__class__.__name__ == i.__class__.__name__:
+        for key in instances.keys():
+            instance = instances[key]
+            if moduleClass.__class__.__name__ == instance.__class__.__name__:
                 raise Exception('Module {} already launched on this server.'.format(moduleClass.__class__.__name__))
 
 # load configuration
 config = Config()
 demoMode = config.getProperty('Project', 'demoMode', type=bool, fallback=False)
 
+configureCelery = False     # set to True if an AIController or FileServer instance is launched
 
 # prepare bottle
 app = Bottle()
 
 # parse requested instances
 instance_args = os.environ['AIDE_MODULES'].split(',')
-instances = []
+instances = {}
 
 # create user handler
 userHandler = REGISTERED_MODULES['UserHandler'](config, app)
@@ -56,7 +58,7 @@ for i in instance_args:
 
     # create instance
     instance = moduleClass(config, app)
-    instances.append(instance)
+    instances[moduleName] = instance
 
     # add authentication functionality
     if hasattr(instance, 'addLoginCheckFun'):
@@ -72,12 +74,24 @@ for i in instance_args:
         statistics = REGISTERED_MODULES['ProjectStatistics'](config, app)
         statistics.addLoginCheckFun(userHandler.checkAuthenticated)
 
-    if moduleName == 'FileServer':
+    elif moduleName == 'FileServer':
         dataAdmin = REGISTERED_MODULES['DataAdministrator'](config, app)
         dataAdmin.addLoginCheckFun(userHandler.checkAuthenticated)
+        from modules.DataAdministration.backend import celery_interface as daa_int
+        daa_int.aide_internal_notify({'task': 'add_projects'})
+
+    elif moduleName == 'AIController':
+        from modules.AIController.backend import celery_interface as aic_int
+        aic_int.aide_internal_notify({'task': 'add_projects'})
+
 
     staticFiles = REGISTERED_MODULES['StaticFileServer'](config, app)
     staticFiles.addLoginCheckFun(userHandler.checkAuthenticated)
+
+
+# set up project queues for Celery dispatcher, if required
+#TODO
+    
 
 
 if __name__ == '__main__':

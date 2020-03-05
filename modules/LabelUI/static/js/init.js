@@ -402,7 +402,6 @@ $(document).ready(function() {
         }
         $(window).resize(windowResized);
 
-
         if(!window.demoMode) {
             $('#toolbox-divider').show();
             $('#review-controls-container').show();

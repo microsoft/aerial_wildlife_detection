@@ -1,5 +1,5 @@
 '''
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 import importlib
@@ -23,7 +23,7 @@ class AIWorker():
         self.config = config
         self.dbConnector = Database(config)
         self._init_fileserver()
-        self._init_project_queues()
+        # self._init_project_queues()
             
 
     def _init_fileserver(self):
@@ -41,9 +41,14 @@ class AIWorker():
             and adds respective queues to Celery to listen to them.
             TODO: implement custom project-to-AIWorker routing
         '''
-        queues = list(current_app.conf.task_queues)
-        print('Existing queues: {}'.format(', '.join([c.name for c in queues])))
-        current_queue_names = set([c.name for c in queues])
+        if current_app.conf.task_queues is not None:
+            queues = list(current_app.conf.task_queues)
+            current_queue_names = set([c.name for c in queues])
+            print('Existing queues: {}'.format(', '.join([c.name for c in queues])))
+        else:
+            queues = []
+            current_queue_names = set()
+        
         log_updates = []
         projects = self.dbConnector.execute('SELECT shortname FROM aide_admin.project WHERE ai_model_enabled = TRUE;', None, 'all')
         if len(projects):
@@ -52,11 +57,12 @@ class AIWorker():
                 if not pName in current_queue_names:
                     current_queue_names.add(pName)
                     queues.append(Queue(pName))
-                    current_app.control.add_consumer(pName)
+                    current_app.control.add_consumer(pName)     #TODO: stalls if Celery app is not set up. Might be ok to just skip this
                     log_updates.append(pName)
             
             current_app.conf.update(task_queues=tuple(queues))
-            print('Added queue(s) for project(s): {}'.format(', '.join(log_updates)))
+            if len(log_updates):
+                print('Added queue(s) for project(s): {}'.format(', '.join(log_updates)))
 
 
     def _init_model_instance(self, project, modelLibrary, modelSettings):

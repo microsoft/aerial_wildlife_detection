@@ -1,10 +1,9 @@
 '''
     SQL string builder for AIController.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
-from datetime import datetime
 from psycopg2 import sql
 
 
