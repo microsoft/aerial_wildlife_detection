@@ -12,6 +12,7 @@ import os
 import datetime
 from bottle import request, response, abort
 from .backend.middleware import DataAdministrationMiddleware
+from util.cors import enable_cors
 from util import helpers
 
 
@@ -62,6 +63,7 @@ class DataAdministrator:
     def _initBottle(self):
 
         ''' Image management functionalities '''
+        @enable_cors
         @self.app.post('/<project>/listImages')
         def list_images(project):
             '''
@@ -110,6 +112,7 @@ class DataAdministrator:
             return {'response': result}
 
 
+        @enable_cors
         @self.app.post('/<project>/uploadImages')
         def upload_images(project):
             '''
@@ -126,6 +129,7 @@ class DataAdministrator:
                 return {'status': 1, 'message': str(e)}
 
 
+        @enable_cors
         @self.app.get('/<project>/scanForImages')
         def scan_for_images(project):
             '''
@@ -139,6 +143,7 @@ class DataAdministrator:
             return {'response': result}
 
 
+        @enable_cors
         @self.app.post('/<project>/addExistingImages')
         def add_images(project):
             '''
@@ -156,6 +161,7 @@ class DataAdministrator:
                 return {'status': 1, 'message': str(e)}
 
 
+        @enable_cors
         @self.app.post('/<project>/removeImages')
         def remove_images(project):
             '''
@@ -193,8 +199,9 @@ class DataAdministrator:
         #TODO
 
 
-        @self.app.get('/getValidImageExtensions')
-        def get_valid_image_extensions():
+        @enable_cors
+        @self.app.get('/<project>/getValidImageExtensions')
+        def get_valid_image_extensions(project=None):
             '''
                 Returns the file extensions for images currently
                 supported by AIDE.
@@ -202,8 +209,9 @@ class DataAdministrator:
             return {'extensions': helpers.valid_image_extensions}
 
         
-        @self.app.get('/getValidMIMEtypes')
-        def get_valid_mime_types():
+        @enable_cors
+        @self.app.get('/<project>/getValidMIMEtypes')
+        def get_valid_mime_types(project=None):
             '''
                 Returns the MIME types for images currently
                 supported by AIDE.
@@ -212,6 +220,7 @@ class DataAdministrator:
 
         
         # data download
+        @enable_cors
         @self.app.post('/<project>/requestDownloads')
         def request_data_downloads(project):
             '''

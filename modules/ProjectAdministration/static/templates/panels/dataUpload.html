@@ -27,7 +27,7 @@
     function scanUntracked() {
         window.imageBrowser.setLoadingOverlay(true, 'loading...');
         $.ajax({
-            url: '{{ project }}/scanForImages',
+            url: window.dataServerURI + '{{ project }}/scanForImages',
             method: 'GET',
             success: function(data) {
                 var imgs = [];
@@ -237,7 +237,7 @@
         // get valid image MIME types
         promise = promise.done(function() {
             return $.ajax({
-                url: '/getValidMIMEtypes',
+                url: '{{ project }}/getValidMIMEtypes',
                 method: 'GET',
                 success: function(data) {
                     if(data.hasOwnProperty('MIME_types')) {
