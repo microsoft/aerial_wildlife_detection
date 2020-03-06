@@ -7,6 +7,7 @@ netifaces>=0.10.9
 python-dateutil
 Pillow>=2.2.1
 numpy
+requests
 
 # for the AI backend
 #celery[librabbitmq,redis,auth,msgpack]>=4.3.0  #TODO

@@ -167,7 +167,7 @@
         }
 
         return $.ajax({
-            url: window.dataServerURI + '{{ project }}/listImages',
+            url: '{{ project }}/listImages',        //window.dataServerURI + '{{ project }}/listImages',
             method: 'POST',
             data: JSON.stringify(params),
             contentType: 'application/json; charset=utf-8',

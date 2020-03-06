@@ -265,7 +265,8 @@ class UserMiddleware():
 
     def encryptSessionToken(self, username, response):
         userdata = self._get_user_data(username)
-        response.set_cookie('session_token', userdata['session_token'], httponly=True, path='/', secret=userdata['secret_token'])
+        response.set_cookie('session_token', userdata['session_token'],
+                            httponly=True, path='/', secret=userdata['secret_token'])
 
 
     def _check_user_privileges(self, username, superuser=False, canCreateProjects=False):

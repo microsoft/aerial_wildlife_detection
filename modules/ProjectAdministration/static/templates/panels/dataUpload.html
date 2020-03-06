@@ -29,8 +29,10 @@
         $.ajax({
             url: window.dataServerURI + '{{ project }}/scanForImages',
             method: 'GET',
+            xhrFields: {
+                withCredentials: true
+            },
             crossDomain: true,
-            xhrFields: { withCredentials: true },
             success: function(data) {
                 var imgs = [];
                 for(var i=0; i<data['response'].length; i++) {

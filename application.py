@@ -75,8 +75,8 @@ for i in instance_args:
         statistics.addLoginCheckFun(userHandler.checkAuthenticated)
 
     elif moduleName == 'FileServer':
-        dataAdmin = REGISTERED_MODULES['DataAdministrator'](config, app)
-        dataAdmin.addLoginCheckFun(userHandler.checkAuthenticated)
+        # dataAdmin = REGISTERED_MODULES['DataAdministrator'](config, app)
+        # dataAdmin.addLoginCheckFun(userHandler.checkAuthenticated)
         from modules.DataAdministration.backend import celery_interface as daa_int
         daa_int.aide_internal_notify({'task': 'add_projects'})
 
@@ -84,6 +84,10 @@ for i in instance_args:
         from modules.AIController.backend import celery_interface as aic_int
         aic_int.aide_internal_notify({'task': 'add_projects'})
 
+
+    #TODO
+    dataAdmin = REGISTERED_MODULES['DataAdministrator'](config, app)
+    dataAdmin.addLoginCheckFun(userHandler.checkAuthenticated)
 
     staticFiles = REGISTERED_MODULES['StaticFileServer'](config, app)
     staticFiles.addLoginCheckFun(userHandler.checkAuthenticated)

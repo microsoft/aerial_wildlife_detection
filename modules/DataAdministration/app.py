@@ -11,13 +11,10 @@
 import os
 import datetime
 from bottle import request, response, abort
+import requests
 from .backend.middleware import DataAdministrationMiddleware
 from util.cors import enable_cors
 from util import helpers
-
-
-
-#TODO: HUGE PROBLEM: CORS FORBIDS COOKIE FORWARDING WITH WILDCARD ORIGIN, SO USER IS UNAUTHORIZED...
 
 
 class DataAdministrator:
@@ -26,9 +23,7 @@ class DataAdministrator:
         self.config = config
         self.app = app
 
-        if not helpers.is_fileServer(config):
-            raise Exception('DataAdministrator module must be run on file server instance.')
-
+        self.is_fileServer = helpers.is_fileServer(config)  # set up either direct methods or relaying
         self.middleware = DataAdministrationMiddleware(config)
 
         self.login_check = None
@@ -64,12 +59,32 @@ class DataAdministrator:
         return (entry['min'], entry['max'])
 
 
+    def relay_request(self, project, fun):
+        '''
+            Used to forward requests to the FileServer instance,
+            if it happens to be a different machine.
+            Requests cannot go directly to the FileServer due to
+            CORS restrictions.
+        '''
+        if self.is_fileServer:
+            return None
+        else:
+            # forward request to FileServer
+            cookies = request.cookies.dict
+            for key in cookies:
+                cookies[key] = cookies[key][0]
+            return requests.post(os.path.join(self.config.getProperty('Server', 'dataServer_uri'), project, fun),
+                    cookies=cookies, json=request.json,
+                    headers={'User-Agent': 'Mozilla/5.0'})
+
+
+
     def _initBottle(self):
 
         ''' Image management functionalities '''
         @enable_cors
         @self.app.post('/<project>/listImages')
-        def list_images(project):
+        def listImages(project):
             '''
                 Returns a list of images and various properties
                 and statistics (id, filename, viewcount, etc.),
@@ -78,6 +93,9 @@ class DataAdministrator:
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
             
+            if not self.is_fileServer:
+                return self.relay_request(project, 'listImages')
+
             # parse parameters
             now = helpers.current_time()
             params = request.json
@@ -118,13 +136,16 @@ class DataAdministrator:
 
         @enable_cors
         @self.app.post('/<project>/uploadImages')
-        def upload_images(project):
+        def uploadImages(project):
             '''
                 Upload image files through UI.
             '''
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
             
+            if not self.is_fileServer:
+                return self.relay_request(project, 'uploadImages')
+
             try:
                 images = request.files
                 result = self.middleware.uploadImages(project, images)
@@ -133,25 +154,18 @@ class DataAdministrator:
                 return {'status': 1, 'message': str(e)}
 
 
-        # #TODO
-        # @self.app.hook('after_request')
-        # def cors_enabler():
-        #     response.headers['Access-Control-Allow-Origin'] = 'http://kuduvm.westus2.cloudapp.azure.com:8088'
-        #     response.headers['Access-Control-Allow-Credentials'] = 'true'
-        #     response.headers['Access-Control-Allow-Methods'] = 'PUT, GET, POST, DELETE, OPTIONS'
-        #     response.headers['Access-Control-Allow-Headers'] = 'Origin, Accept, Content-Type, X-Requested-With, X-CSRF-Token'
-
-
         @self.app.get('/<project>/scanForImages')
         @enable_cors
-        def scan_for_images(project):
+        def scanForImages(project):
             '''
                 Search project file directory on disk for
                 images that are not registered in database.
             '''
-
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
+
+            if not self.is_fileServer:
+                return self.relay_request(project, 'scanForImages')
 
             result = self.middleware.scanForImages(project)
             return {'response': result}
@@ -159,13 +173,16 @@ class DataAdministrator:
 
         @enable_cors
         @self.app.post('/<project>/addExistingImages')
-        def add_images(project):
+        def addExistingImages(project):
             '''
                 Add images that exist in project file directory
                 on disk, but are not yet registered in database.
             '''
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
+
+            if not self.is_fileServer:
+                return self.relay_request(project, 'addExistingImages')
 
             try:
                 imageNames = request.json
@@ -177,7 +194,7 @@ class DataAdministrator:
 
         @enable_cors
         @self.app.post('/<project>/removeImages')
-        def remove_images(project):
+        def removeImages(project):
             '''
                 Remove images from database, including predictions
                 and annotations (if flag is set).
@@ -185,6 +202,9 @@ class DataAdministrator:
             '''
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
+
+            if not self.is_fileServer:
+                return self.relay_request(project, 'removeImages')
             
             try:
                 data = request.json
@@ -210,12 +230,9 @@ class DataAdministrator:
 
 
         ''' Annotation and prediction up- and download functionalities '''
-        #TODO
-
-
         @enable_cors
         @self.app.get('/<project>/getValidImageExtensions')
-        def get_valid_image_extensions(project=None):
+        def getValidImageExtensions(project=None):
             '''
                 Returns the file extensions for images currently
                 supported by AIDE.
@@ -225,7 +242,7 @@ class DataAdministrator:
         
         @enable_cors
         @self.app.get('/<project>/getValidMIMEtypes')
-        def get_valid_mime_types(project=None):
+        def getValidMIMEtypes(project=None):
             '''
                 Returns the MIME types for images currently
                 supported by AIDE.
@@ -236,7 +253,7 @@ class DataAdministrator:
         # data download
         @enable_cors
         @self.app.post('/<project>/requestDownloads')
-        def request_data_downloads(project):
+        def requestDownloads(project):
             '''
                 Parses request parameters and then assembles project-
                 related metadata (annotations, predictions, etc.) by
@@ -247,6 +264,29 @@ class DataAdministrator:
             #TODO: allow download for non-admins?
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
+
+            if not self.is_fileServer:
+                return self.relay_request(project, 'requestDownloads')
             
             # parse parameters
             #TODO
+
+        # else:
+
+        #     #TODO
+        #     @enable_cors
+        #     @self.app.post('/<project>/listImages')
+        #     def list_images(project):
+
+        #         if not self.loginCheck(project=project, admin=True):
+        #             abort(401, 'forbidden')
+
+        #         cookies = request.cookies.dict
+        #         for key in cookies:
+        #             cookies[key] = cookies[key][0]
+        #         import requests
+        #         # session = requests.Session()
+                
+        #         return requests.post(os.path.join(self.config.getProperty('Server', 'dataServer_uri'), project, 'listImages'),
+        #                 cookies=cookies, json=request.json,
+        #                 headers={'User-Agent': 'Mozilla/5.0'})
