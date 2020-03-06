@@ -81,6 +81,29 @@ class DataAdministrator:
 
     def _initBottle(self):
 
+        ''' Status polling '''
+        @self.app.post('/<project>/pollStatus')
+        def pollStatus(project):
+            '''
+                Receives a task ID and polls the middleware
+                for an ongoing data administration task.
+                Returns a dict with (meta-) data, including
+                the Celery status type, result (if completed),
+                error message (if failed), etc.
+            '''
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+
+            try:
+                taskID = request.json['taskID']
+                status = self.middleware.pollStatus(project, taskID)
+
+                return {'response': status}
+
+            except Exception as e:
+                abort(400, str(e))
+
+
         ''' Image management functionalities '''
         @enable_cors
         @self.app.post('/<project>/listImages')
@@ -93,9 +116,6 @@ class DataAdministrator:
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
             
-            if not self.is_fileServer:
-                return self.relay_request(project, 'listImages')
-
             # parse parameters
             now = helpers.current_time()
             params = request.json
@@ -164,9 +184,6 @@ class DataAdministrator:
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
 
-            if not self.is_fileServer:
-                return self.relay_request(project, 'scanForImages')
-
             result = self.middleware.scanForImages(project)
             return {'response': result}
 
@@ -180,9 +197,6 @@ class DataAdministrator:
             '''
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
-
-            if not self.is_fileServer:
-                return self.relay_request(project, 'addExistingImages')
 
             try:
                 imageNames = request.json
@@ -203,9 +217,6 @@ class DataAdministrator:
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
 
-            if not self.is_fileServer:
-                return self.relay_request(project, 'removeImages')
-            
             try:
                 data = request.json
                 imageIDs = data['images']
@@ -264,29 +275,6 @@ class DataAdministrator:
             #TODO: allow download for non-admins?
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
-
-            if not self.is_fileServer:
-                return self.relay_request(project, 'requestDownloads')
             
             # parse parameters
             #TODO
-
-        # else:
-
-        #     #TODO
-        #     @enable_cors
-        #     @self.app.post('/<project>/listImages')
-        #     def list_images(project):
-
-        #         if not self.loginCheck(project=project, admin=True):
-        #             abort(401, 'forbidden')
-
-        #         cookies = request.cookies.dict
-        #         for key in cookies:
-        #             cookies[key] = cookies[key][0]
-        #         import requests
-        #         # session = requests.Session()
-                
-        #         return requests.post(os.path.join(self.config.getProperty('Server', 'dataServer_uri'), project, 'listImages'),
-        #                 cookies=cookies, json=request.json,
-        #                 headers={'User-Agent': 'Mozilla/5.0'})

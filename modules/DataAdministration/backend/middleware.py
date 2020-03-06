@@ -127,8 +127,8 @@ class DataAdministrationMiddleware:
             info = msg['result']
 
         status = {
-            'name': job['name'],
-            'submitted': job['submitted'],
+            'name': job.name,
+            # 'submitted': job['submitted'],
             'status': msg['status'],
             'meta': info
         }
@@ -136,6 +136,7 @@ class DataAdministrationMiddleware:
         # check if ongoing and remove if done (TODO: failure)
         result = AsyncResult(jobID)
         if result.ready():
+            status['result'] = result.get()
             result.forget()
 
         return status

@@ -81,6 +81,7 @@
     }
 </style>
 <script src="/static/dataAdmin/js/imageBrowser.js"></script>
+<script src="/static/dataAdmin/js/taskPolling.js"></script>
 <script type="text/javascript">
 
     // general functions
@@ -166,49 +167,51 @@
             }
         }
 
+        function _update_browser_populate(data) {
+            // assemble table            
+            images = [];
+            for(var idx=0; idx<data.length; idx++) {
+                var id = data[idx]['id'];
+                var dateAdded = '';
+                if(data[idx]['date_added'] != undefined && data[idx]['date_added'] != null) {
+                    var dateAdded = new Date(data[idx]['date_added']*1000 - 1).toLocaleString();
+                }
+                var lastViewed = '';
+                if(data[idx]['last_viewed'] != undefined && data[idx]['last_viewed'] != null) {
+                    var lastViewed = new Date(data[idx]['last_viewed']*1000 - 1).toLocaleString();
+                }
+                images.push({
+                    'id': data[idx]['id'],
+                    'url': data[idx]['filename'],
+                    'date_added': dateAdded,
+                    'last_viewed': lastViewed,
+                    'num_anno': data[idx]['num_anno'],
+                    'num_pred': data[idx]['num_pred'],
+                    'golden_question': (data[idx]['isgoldenquestion'] ? 
+                            '<img src="/static/interface/img/controls/flag_active.svg" height="16px" />' :
+                            '<img src="/static/interface/img/controls/flag.svg" height="16px" />')
+                });
+                
+                if(order === 'asc') {
+                    window.latestStartingPoint['val'] = Math.max(window.latestStartingPoint['val'], data[idx][orderBy]);
+                } else {
+                    window.latestStartingPoint['val'] = Math.min(window.latestStartingPoint['val'], data[idx][orderBy]);
+                }
+            }
+
+            window.imageBrowser.setImages(images);
+        }
+
         return $.ajax({
             url: '{{ project }}/listImages',        //window.dataServerURI + '{{ project }}/listImages',
             method: 'POST',
             data: JSON.stringify(params),
             contentType: 'application/json; charset=utf-8',
             dataType: 'json',
-            crossDomain: true,
-            xhrFields: { withCredentials: true },
             success: function(data) {
-                // assemble table
-                data = data['response'];
-                
-                images = [];
-                for(var idx=0; idx<data.length; idx++) {
-                    var id = data[idx]['id'];
-                    var dateAdded = '';
-                    if(data[idx]['date_added'] != undefined && data[idx]['date_added'] != null) {
-                        var dateAdded = new Date(data[idx]['date_added']*1000 - 1).toLocaleString();
-                    }
-                    var lastViewed = '';
-                    if(data[idx]['last_viewed'] != undefined && data[idx]['last_viewed'] != null) {
-                        var lastViewed = new Date(data[idx]['last_viewed']*1000 - 1).toLocaleString();
-                    }
-                    images.push({
-                        'id': data[idx]['id'],
-                        'url': data[idx]['filename'],
-                        'date_added': dateAdded,
-                        'last_viewed': lastViewed,
-                        'num_anno': data[idx]['num_anno'],
-                        'num_pred': data[idx]['num_pred'],
-                        'golden_question': (data[idx]['isgoldenquestion'] ? 
-                                '<img src="/static/interface/img/controls/flag_active.svg" height="16px" />' :
-                                '<img src="/static/interface/img/controls/flag.svg" height="16px" />')
-                    });
-                    
-                    if(order === 'asc') {
-                        window.latestStartingPoint['val'] = Math.max(window.latestStartingPoint['val'], data[idx][orderBy]);
-                    } else {
-                        window.latestStartingPoint['val'] = Math.min(window.latestStartingPoint['val'], data[idx][orderBy]);
-                    }
-                }
-
-                window.imageBrowser.setImages(images);
+                // set interval for result polling
+                var taskID = data['response'];
+                poll_status(taskID, _update_browser_populate, undefined, 1000);
             },
             error: function(data) {
                 console.log('ERROR:');

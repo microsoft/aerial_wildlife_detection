@@ -21,37 +21,40 @@
     }
 </style>
 <script src="/static/dataAdmin/js/imageBrowser.js"></script>
+<script src="/static/dataAdmin/js/taskPolling.js"></script>
 <script type="text/javascript">
 
     // untracked functions
+    function _update_browser_scanUntracked(data) {
+        var imgs = [];
+        for(var i=0; i<data.length; i++) {
+            imgs.push({
+                url: data[i],
+                imageURL: window.dataServerURI + '{{ project }}/files/' + data[i]
+            });
+        }
+        
+        window.untrackedFiles = imgs;
+
+        // add them in chunks
+        var chunk = window.untrackedFiles.splice(0, 100);
+        window.imageBrowser.setImages(chunk);
+        if(chunk.length < window.untrackedFiles.length) {
+            window.imageBrowser.setTrailingButton(true, false);
+        }
+        updateUntrackedCount();
+        window.imageBrowser.setLoadingOverlay(false);
+    }
+
     function scanUntracked() {
         window.imageBrowser.setLoadingOverlay(true, 'loading...');
         $.ajax({
-            url: window.dataServerURI + '{{ project }}/scanForImages',
+            url: '{{ project }}/scanForImages',
             method: 'GET',
-            xhrFields: {
-                withCredentials: true
-            },
-            crossDomain: true,
             success: function(data) {
-                var imgs = [];
-                for(var i=0; i<data['response'].length; i++) {
-                    imgs.push({
-                        url: data['response'][i],
-                        imageURL: window.dataServerURI + '{{ project }}/files/' + data['response'][i]
-                    });
-                }
-                
-                window.untrackedFiles = imgs;
-
-                // add them in chunks
-                var chunk = window.untrackedFiles.splice(0, 100);
-                window.imageBrowser.setImages(chunk);
-                if(chunk.length < window.untrackedFiles.length) {
-                    window.imageBrowser.setTrailingButton(true, false);
-                }
-                updateUntrackedCount();
-                window.imageBrowser.setLoadingOverlay(false);
+                // set interval for result polling
+                var taskID = data['response'];
+                poll_status(taskID, _update_browser_scanUntracked, undefined, 1000);
             },
             error: function(data) {
                 console.error(data);    //TODO
