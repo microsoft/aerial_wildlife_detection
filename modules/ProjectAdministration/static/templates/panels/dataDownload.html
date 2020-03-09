@@ -48,48 +48,25 @@
 </div>
 <link rel="stylesheet" href="/static/general/libs/datetimepicker/jquery.datetimepicker.css" />
 <script type="text/javascript" src="/static/general/libs/datetimepicker/jquery.datetimepicker.js"></script>
+<script src="/static/general/js/progressbar.js"></script>
 <script src="/static/dataAdmin/js/taskPolling.js"></script>
 <script type="text/javascript">
 
     function _setDownloadEntry(data, taskID) {
-        /**
-         * Automatically parses a server response and adds
-         * or modifies an entry to/in the download links table.
-         * Puts one of three elements into the download link cell,
-         * depending on the contents of "data":
-         * - a progress bar (if ongoing)
-         * - a download link (if finished successfully)
-         * - a red error message (in case of failure)
-         */
-
-        var entry = $('#'+taskID);
-        if(!entry.length) {
-            // create new
-            entry = $('<tr></tr>');
-            var timestampCell = $('<td>' + new Date().toLocaleString() + '</td>');
-            entry.append(timestampCell);
-            entry.append('<td class="file-message"></td>');
-        }
-
-        // put correct file item
-        var msgCell = $(entry.find('.file-message')[0]);
-        msgCell.empty();    //TODO
-        if(data.hasOwnProperty('result')) {
-            // finished; show download link
-            msgCell.append($('<a href="'+window.dataServerURI+'/'+data['result']+'">'+data['result']+'</a>'));
+        var msgCell = $($('#'+taskID).find('.file-message')[0]);
+        if(typeof data === 'string') {
+            // download link sent
+            msgCell.empty();
+            msgCell.append($('<a href="downloadData/'+data+'">'+data+'</a>'));
 
         } else if(data.hasOwnProperty('status') && data['status'] === 'FAILURE') {
             // error
             var message = '(an unknown error occurred)';
-            if(data.hasOwnProperty('meta') && data['meta'].hasOwnProperty('messsage')) {
+            if(data.hasOwnProperty('meta') && data['meta'].hasOwnProperty('message')) {
                 message = '(' + data['meta']['message'] + ')';
             }
+            msgCell.empty();
             msgCell.append($('<span style="color:red">failed ' + message + '</span>'));
-        
-        } else {
-            // job in progress
-            var pb = new ProgressBar(true, 100, 100);
-            msgCell.append(pb.getMarkup());
         }
     }
 
@@ -125,8 +102,18 @@
             contentType: 'application/json; charset=utf-8',
             dataType: 'json',
             success: function(data) {
-                // set interval for result polling
                 var taskID = data['response'];
+
+                // setup markup
+                var markup = $('<tr id="' + taskID + '"></tr>');
+                markup.append($('<td>' + new Date().toLocaleString() + '</td>'));
+                var msgCell = $('<td class="file-message"></td>');
+                var pb = new ProgressBar(true, 100, 100);
+                msgCell.append(pb.getMarkup());
+                markup.append(msgCell);
+                $('#download-body').append(markup);
+
+                // set interval for result polling
                 poll_status(taskID, function(data) {
                     _setDownloadEntry(data, taskID);
                 },
@@ -137,39 +124,50 @@
             error: function(data) {
                 console.error(data);
                 // append error row
-                if(data.hasOwnProperty('response') && typeof data['response'] === 'string') {
-                    var taskID = data['response'];
-                } else {
-                    var taskID = new Date().toLocaleString();
-                }
-                _setDownloadEntry(data, taskID);
+                var markup = $('<tr id="' + taskID + '"></tr>');
+                markup.append($('<td>' + new Date().toLocaleString() + '</td>'));
+                var msgCell = $('<td class="file-message"><span style="color:red">failed (an unknown error occurred)</span></td>');
+                var pb = new ProgressBar(true, 100, 100);
+                msgCell.append(pb.getMarkup());
+                markup.append(msgCell);
+                $('#download-body').append(markup);
             }
         })
     }
 
     $(document).ready(function() {
+        // get data server URI
+        var promise = $.get('{{ project }}/getProjectSettings', function(data) {
+            window.dataServerURI = data['settings']['dataServerURI'];
+            if(!window.dataServerURI.endsWith('/')) {
+                window.dataServerURI += '/';
+            }
+        });
+
         // load users list
         let uList = $('#users-list');
-        var promise = $.ajax({
-            url: '{{ project }}/getUsers',
-            method: 'GET',
-            success: function(data) {
-                if(data.hasOwnProperty('users')) {
-                    for(var i=0; i<data['users'].length; i++) {
-                        let uName = data['users'][i]['username'];
-                        var uName_vis = uName;
-                        var markup = $('<tr id="'+uName+'"></tr>');
-                        var checkbox = $('<input type="checkbox" id="'+uName+'__select" />');
-                        markup.append($('<td></td>').append(checkbox));
-                        markup.append($('<td>'+uName_vis+'</td>'));
-                        uList.append(markup);
+        promise = promise.done(function() {
+            return $.ajax({
+                url: '{{ project }}/getUsers',
+                method: 'GET',
+                success: function(data) {
+                    if(data.hasOwnProperty('users')) {
+                        for(var i=0; i<data['users'].length; i++) {
+                            let uName = data['users'][i]['username'];
+                            var uName_vis = uName;
+                            var markup = $('<tr id="'+uName+'"></tr>');
+                            var checkbox = $('<input type="checkbox" id="'+uName+'__select" />');
+                            markup.append($('<td></td>').append(checkbox));
+                            markup.append($('<td>'+uName_vis+'</td>'));
+                            uList.append(markup);
+                        }
                     }
+                },
+                error: function(data) {
+                    console.log('ERROR:')
+                    console.log(data);
                 }
-            },
-            error: function(data) {
-                console.log('ERROR:')
-                console.log(data);
-            }
+            });
         });
 
         var now = new Date();
