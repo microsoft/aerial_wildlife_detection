@@ -22,6 +22,7 @@ from kombu import Queue
 from PIL import Image
 from psycopg2 import sql
 from modules.Database.app import Database
+from modules.LabelUI.backend.annotation_sql_tokens import QueryStrings_annotation, QueryStrings_prediction
 from util.helpers import valid_image_extensions, listDirectory, base64ToImage
 
 
@@ -531,12 +532,12 @@ class DataWorker:
             1
         )[0][metaField]
 
-        if metaType == 'segmentationmasks':
+        if metaType.lower() == 'segmentationmasks':
             is_segmentation = True
             fileExtension = '.zip'
         else:
             is_segmentation = False
-            fileExtension = '.csv'      #TODO: support JSON?
+            fileExtension = '.txt'      #TODO: support JSON?
 
         # prepare output file
         filename = 'aide_query_{}'.format(now.strftime('%Y-%m-%d_%H-%M-%S')) + fileExtension
@@ -548,6 +549,7 @@ class DataWorker:
         userStr = sql.SQL('')
         iuStr = sql.SQL('')
         dateStr = sql.SQL('')
+        queryFields = []
         if dataType == 'annotation':
             iuStr = sql.SQL('''
                 JOIN {id_iu} AS iu
@@ -559,7 +561,13 @@ class DataWorker:
             if len(userList):
                 userStr = sql.SQL('WHERE username IN %s')
                 queryArgs.append(tuple(userList))
-        
+            
+            queryFields.extend(getattr(QueryStrings_annotation, metaType))
+            queryFields.extend(['user', 'viewcount', 'last_checked', 'last_time_required', 'meta']) #TODO: make customizable
+
+        else:
+            queryFields.extend(getattr(QueryStrings_prediction, metaType))
+
         if len(dateRange):
             if len(userStr.string):
                 dateStr = sql.SQL(' AND timecreated >= to_timestamp(%s) AND timecreated <= to_timestamp(%s)')
@@ -584,7 +592,7 @@ class DataWorker:
             mainFile = zipfile.ZipFile(destPath, 'w', zipfile.ZIP_DEFLATED)
         else:
             mainFile = open(destPath, 'w')
-        metaStr = 'image, id, label, x, y, width, height, '        #TODO
+        metaStr = '; '.join(queryFields) + '\n'
 
         with self.dbConnector.execute_cursor(queryStr, tuple(queryArgs)) as cursor:
             while True:
@@ -601,14 +609,15 @@ class DataWorker:
                     mainFile.writestr(segmask_filename, segmask.getvalue())
 
                 # store metadata
-                #TODO
-                metaLine = '{}, {}, {}'.format(
-
-                )
-                metaStr += metaLine
+                metaLine = ''
+                for field in queryFields:
+                    if field.lower() == 'segmentationmask':
+                        continue
+                    metaLine += '{}; '.format(b[field.lower()])
+                metaStr += metaLine + '\n'
         
         if is_segmentation:
-            mainFile.writestr('query.csv', metaStr)
+            mainFile.writestr('query.txt', metaStr)
         else:
             mainFile.write(metaStr)
 

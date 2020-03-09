@@ -3,8 +3,8 @@
     <div>
         <label for="data-type">Data type:</label>
         <select id="data-type">
-            <option value="annotations">User annotations</option>
-            <option value="predictions">Model predictions</option>
+            <option value="annotation">User annotations</option>
+            <option value="prediction">Model predictions</option>
         </select>
         <br />
 
@@ -30,6 +30,7 @@
             <tbody id="users-list"></tbody>
         </table>
     </div>
+    <button class="btn btn-sm btn-primary" id="request-download">Request Download</button>
     <br />
 
     <div id="result-box">
@@ -189,26 +190,24 @@
         });
 
         $('#enable-users-list').click(function() {
-            let checked = $(this).prop('checked');
-            $.each(uList.children(), function() {
-                let chckbx = $('#'+$(this).attr('id')+'__select');
-                if(checked) {
-                    chckbx.addClass('disabled');
-                } else {
-                    chckbx.removeClass('disabled');
-                }
-            });
+            if($(this).prop('checked')) {
+                $('#users-table').show();
+            } else {
+                $('#users-table').hide();
+            }
         });
 
         $('#select-all-users').click(function() {
             let isChecked = $(this).prop('checked');
             $.each(uList.children(), function() {
                 let chckbx = $('#'+$(this).attr('id')+'__select');
-                if(!chckbx.attr('disabled')) {
-                    chckbx.prop('checked', isChecked);
-                }
+                chckbx.prop('checked', isChecked);
             });
-        })
+        });
+
+        $('#request-download').click(function() {
+            requestDownload();
+        });
 
         window.showLoadingOverlay(false);
     });
