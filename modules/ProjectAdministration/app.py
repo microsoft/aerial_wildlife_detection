@@ -78,17 +78,8 @@ class ProjectConfigurator:
                     return self.panelTemplates[panel].render(project=project)
                 except:
                     abort(404, 'not found')
-                # return static_file(panel + '.html', root=os.path.join(self.staticDir, 'templates/panels'))
             else:
                 abort(401, 'forbidden')
-
-
-        # with open(os.path.abspath(os.path.join(self.staticDir, 'templates/projectOverview.html')), 'r') as f:
-        #     self.projectOverview_template = SimpleTemplate(f.read())
-
-        # @self.app.route('/<project>')
-        # def redirect_project_overview(project):
-        #     return redirect(project + '/')
 
 
         @self.app.route('/<project>')
@@ -116,29 +107,6 @@ class ProjectConfigurator:
                     projectShortname=project,
                     projectTitle=projectData['name'],
                     username=username)
-
-            # return self.projectOverview_template.render(username=username,
-            #     projectShortname=project,
-            #     projectTitle=projectData['name'], projectDescr=projectData['description'])
-
-
-        # @self.app.route('/<project>/configuration')
-        # def configuration_page(project):
-        #     if self.loginCheck(project=project, admin=True):
-
-        #         # get project name for UI template
-        #         projectData = self.middleware.getProjectInfo(project, 'name')
-
-        #         # response.set_header("Cache-Control", "public, max-age=604800")
-        #         return self.projConf_template.render(
-        #             projectShortname=project,
-        #             projectTitle=projectData['name'],
-        #             username=cgi.escape(request.get_cookie('username')))
-        #     else:
-        #         response = bottle.response
-        #         response.status = 303
-        #         response.set_header('Location', '/')
-        #     return response
 
 
         @self.app.get('/<project>/getConfig')
