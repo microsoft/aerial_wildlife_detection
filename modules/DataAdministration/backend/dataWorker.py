@@ -390,7 +390,7 @@ class DataWorker:
 
             Returns a list of images that were deleted.
         '''
-
+        
         imageList = tuple([(UUID(i),) for i in imageList])
 
         queryArgs = []

@@ -50,10 +50,10 @@ def addExistingImages(project, imageList=None):
 
 
 @current_app.task()
-def removeImages(self, project, imageList, forceRemove=False, deleteFromDisk=False):
+def removeImages(project, imageList, forceRemove=False, deleteFromDisk=False):
     return worker.removeImages(project, imageList, forceRemove, deleteFromDisk)
 
 
 @current_app.task()
-def prepareDataDownload(self, project, dataType='annotation', userList=None, dateRange=None):
+def prepareDataDownload(project, dataType='annotation', userList=None, dateRange=None):
     return worker.prepareDataDownload(project, dataType, userList, dateRange)
