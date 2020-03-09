@@ -625,4 +625,4 @@ class DataWorker:
 
         mainFile.close()
 
-        return os.path.join(project, filename)
+        return filename

@@ -316,4 +316,4 @@ class DataAdministrator:
             if not self.is_fileServer:
                 return self.relay_request(project, os.path.join('downloadData', project, filename))
             
-            return static_file(filename, root=os.path.join(tempfile.gettempdir(), 'aide/downloadRequests'), download=True)
+            return static_file(filename, root=os.path.join(tempfile.gettempdir(), 'aide/downloadRequests', project), download=True)
