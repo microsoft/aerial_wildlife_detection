@@ -9,6 +9,42 @@ var randomUID = function() {
     return new Date().toString() + Math.random().toString(36).substring(7);
 }
 
+
+class ProgressBar {
+    constructor(visible, value, max) {
+        this.value = value;
+        this.max = max;
+
+        this.markup = $('<div class="progressbar"></div>');
+        this.pbarInd = $('<div class="progressbar-filler progressbar-active"></div>');
+        this.markup.append(this.pbarInd);
+        if(visible !== undefined) {
+            this.markup.css('visibility', (visible? 'visible' : 'hidden'));
+        }
+    }
+
+    set(visible, value, max) {
+        if(visible !== undefined) {
+            this.markup.css('visibility', (visible? 'visible' : 'hidden'));
+        }
+        if(max !== undefined) {
+            this.max = max;
+        }
+        if(value !== undefined) {
+            this.value = value;
+        }
+        var newWidthPerc = (100*(this.value / this.max));
+        this.pbarInd.animate({
+            'width': newWidthPerc + '%'
+        }, 1000);
+    }
+
+    getMarkup() {
+        return this.markup;
+    }
+}
+
+
 class ImageEntry {
     constructor(data, parent, baseURL, showImage, showCheckbox) {
         this.data = data;
