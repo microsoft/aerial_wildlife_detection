@@ -519,9 +519,9 @@ class DataWorker:
 
         # check metadata type: need to deal with segmentation masks separately
         if dataType == 'annotation':
-            metaField = 'annotationType'
+            metaField = 'annotationtype'
         elif dataType == 'prediction':
-            metaField = 'predictionType'
+            metaField = 'predictiontype'
         else:
             raise Exception('Invalid dataType specified ({})'.format(dataType))
         metaType = self.dbConnector.execute('''
@@ -541,7 +541,9 @@ class DataWorker:
 
         # prepare output file
         filename = 'aide_query_{}'.format(now.strftime('%Y-%m-%d_%H-%M-%S')) + fileExtension
-        destPath = os.path.join(tempfile.gettempdir(), project, filename)
+        destPath = os.path.join(tempfile.gettempdir(), 'aide/downloadRequests', project)
+        os.makedirs(destPath, exist_ok=True)
+        destPath = os.path.join(destPath, filename)
 
         # generate query
         queryArgs = []
@@ -562,11 +564,11 @@ class DataWorker:
                 userStr = sql.SQL('WHERE username IN %s')
                 queryArgs.append(tuple(userList))
             
-            queryFields.extend(getattr(QueryStrings_annotation, metaType))
-            queryFields.extend(['user', 'viewcount', 'last_checked', 'last_time_required', 'meta']) #TODO: make customizable
+            queryFields.extend(getattr(QueryStrings_annotation, metaType).value)
+            queryFields.extend(['username', 'viewcount', 'last_checked', 'last_time_required', 'meta']) #TODO: make customizable
 
         else:
-            queryFields.extend(getattr(QueryStrings_prediction, metaType))
+            queryFields.extend(getattr(QueryStrings_prediction, metaType).value)
 
         if len(dateRange):
             if len(userStr.string):
@@ -623,4 +625,4 @@ class DataWorker:
 
         mainFile.close()
 
-        return destPath
+        return os.path.join(project, filename)

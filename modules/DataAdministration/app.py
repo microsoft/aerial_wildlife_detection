@@ -10,7 +10,8 @@
 
 import os
 import datetime
-from bottle import request, response, abort
+import tempfile
+from bottle import static_file, request, response, abort
 import requests
 from .backend.middleware import DataAdministrationMiddleware
 from util.cors import enable_cors
@@ -301,3 +302,18 @@ class DataAdministrator:
 
             except Exception as e:
                 abort(401, str(e))
+        
+
+        @enable_cors
+        @self.app.route('/<project>/downloadData/<filename:re:.*>')
+        def downloadData(project, filename):
+            #TODO: allow download for non-admins?
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+            if '..' in filename or filename.startswith('/') or filename.startswith('\\'):
+                abort(401, 'forbidden')
+
+            if not self.is_fileServer:
+                return self.relay_request(project, os.path.join('downloadData', project, filename))
+            
+            return static_file(filename, root=os.path.join(tempfile.gettempdir(), 'aide/downloadRequests'), download=True)
