@@ -288,7 +288,15 @@ class DataAdministrator:
                 params = request.json
                 dataType = params['dataType']
                 if 'dateRange' in params:
-                    dateRange = params['dateRange']
+                    dateRange = []
+                    if 'start' in params['dateRange']:
+                        dateRange.append(params['dateRange']['start'])
+                    else:
+                        dateRange.append(0)
+                    if 'end' in params['dateRange']:
+                        dateRange.append(params['dateRange']['end'])
+                    else:
+                        dateRange.append(helpers.current_time())
                 else:
                     dateRange = None
                 if 'users' in params:

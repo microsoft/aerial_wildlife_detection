@@ -554,9 +554,9 @@ class DataWorker:
         queryFields = []
         if dataType == 'annotation':
             iuStr = sql.SQL('''
-                JOIN {id_iu} AS iu
-                ON t.image = iu.image
-                AND t.username = iu.username
+                JOIN (SELECT image AS iu_image, username AS iu_username, viewcount, last_checked, last_time_required FROM {id_iu}) AS iu
+                ON t.image = iu.iu_image
+                AND t.username = iu.iu_username
             ''').format(
                 id_iu=sql.Identifier(project, 'image_user')
             )
@@ -565,7 +565,7 @@ class DataWorker:
                 queryArgs.append(tuple(userList))
             
             queryFields.extend(getattr(QueryStrings_annotation, metaType).value)
-            queryFields.extend(['username', 'viewcount', 'last_checked', 'last_time_required', 'meta']) #TODO: make customizable
+            queryFields.extend(['username', 'viewcount', 'last_checked', 'last_time_required']) #TODO: make customizable
 
         else:
             queryFields.extend(getattr(QueryStrings_prediction, metaType).value)

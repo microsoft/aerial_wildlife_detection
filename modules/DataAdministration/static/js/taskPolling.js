@@ -31,6 +31,13 @@ function poll_status(taskID, successHandle, errorHandle, timeout) {
                             return successHandle(data['response']['result']);
                         } catch {}
                     }
+                } else if(data.hasOwnProperty('status') && data['status'].toLowerCase() === 'failure') {
+                    clearInterval(tHandle);
+                    if(errorHandle !== undefined && errorHandle !== null) {
+                        try {
+                            return errorHandle(data);
+                        } catch {}
+                    }
                 }
             },
             error: function(data) {

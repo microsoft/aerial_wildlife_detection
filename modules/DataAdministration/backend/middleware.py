@@ -88,6 +88,7 @@ class DataAdministrationMiddleware:
             added accordingly. If the job can still not be
             found, an exception is thrown.
         '''
+        status = {}
 
         # to poll message broker for missing jobs
         def _poll_broker():
@@ -114,7 +115,6 @@ class DataAdministrationMiddleware:
                 raise Exception('Job with ID {} does not exist.'.format(jobID))
 
         # poll status
-        job = self.jobs[project][jobID]
         #TODO
         msg = self.celery_app.backend.get_task_meta(jobID)
         if msg['status'] == celery.states.FAILURE:
@@ -126,18 +126,14 @@ class DataAdministrationMiddleware:
         else:
             info = msg['result']
 
-        status = {
-            'name': job.name,
-            # 'submitted': job['submitted'],
-            'status': msg['status'],
-            'meta': info
-        }
+            # check if ongoing and remove if done
+            result = AsyncResult(jobID)
+            if result.ready():
+                status['result'] = result.get()
+                result.forget()
 
-        # check if ongoing and remove if done (TODO: failure)
-        result = AsyncResult(jobID)
-        if result.ready():
-            status['result'] = result.get()
-            result.forget()
+        status['status'] = msg['status']
+        status['meta'] = info
 
         return status
 

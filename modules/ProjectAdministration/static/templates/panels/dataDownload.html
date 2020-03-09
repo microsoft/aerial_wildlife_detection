@@ -20,7 +20,7 @@
         
         <input type="checkbox" id="enable-users-list" />
         <label for="enable-users-list">Limit to specific users:</label>
-        <table id="users-table">
+        <table id="users-table" style="display:none">
             <thead>
                 <tr>
                     <td><input type="checkbox" id="select-all-users" /></td>
@@ -76,8 +76,8 @@
             dataType: $('#data-type').val()
         };
         if($('#enable-date-range').prop('checked')) {
-            var startDate = $('#date-start').html();        //TODO
-            var endDate = $('#date-end').html();            //TODO
+            var startDate = Date.parse($('#date-start').val());
+            var endDate = Date.parse($('#date-end').val());
             params['dateRange'] = {
                 start: startDate,
                 end: endDate
