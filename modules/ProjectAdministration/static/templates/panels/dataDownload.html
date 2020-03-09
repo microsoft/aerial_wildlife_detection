@@ -57,7 +57,7 @@
         if(typeof data === 'string') {
             // download link sent
             msgCell.empty();
-            msgCell.append($('<a href="{{ project }}/downloadData/'+data+'">'+data+'</a>'));
+            msgCell.append($('<a href="{{ project }}/downloadData/'+data+'" target="_blank">'+data+'</a>'));
 
         } else if(data.hasOwnProperty('status') && data['status'] === 'FAILURE') {
             // error

@@ -60,7 +60,7 @@ class DataAdministrator:
         return (entry['min'], entry['max'])
 
 
-    def relay_request(self, project, fun):
+    def relay_request(self, project, fun, method='get'):
         '''
             Used to forward requests to the FileServer instance,
             if it happens to be a different machine.
@@ -78,9 +78,11 @@ class DataAdministrator:
             if len(request.files):
                 for key in request.files:
                     files[key] = (request.files[key].raw_filename, request.files[key].file, request.files[key].content_type)
-            return requests.post(os.path.join(self.config.getProperty('Server', 'dataServer_uri'), project, fun),
-                    cookies=cookies, json=request.json, files=files,
-                    headers={'User-Agent': 'Mozilla/5.0'})
+
+            reqFun = getattr(requests, method.lower())
+            return reqFun(os.path.join(self.config.getProperty('Server', 'dataServer_uri'), project, fun),
+                        cookies=cookies, json=request.json, files=files,
+                        headers={'User-Agent': 'Mozilla/5.0'})
 
 
 
@@ -169,7 +171,7 @@ class DataAdministrator:
                 abort(401, 'forbidden')
             
             if not self.is_fileServer:
-                return self.relay_request(project, 'uploadImages')
+                return self.relay_request(project, 'uploadImages', 'post')
 
             try:
                 images = request.files
@@ -314,6 +316,6 @@ class DataAdministrator:
                 abort(401, 'forbidden')
 
             if not self.is_fileServer:
-                return self.relay_request(project, os.path.join('downloadData', project, filename))
+                return self.relay_request(project, os.path.join('downloadData', filename), 'get')
             
             return static_file(filename, root=os.path.join(tempfile.gettempdir(), 'aide/downloadRequests', project), download=True)
