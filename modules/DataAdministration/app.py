@@ -73,8 +73,12 @@ class DataAdministrator:
             cookies = request.cookies.dict
             for key in cookies:
                 cookies[key] = cookies[key][0]
+            files = {}
+            if len(request.files):
+                for key in request.files:
+                    files[key] = (request.files[key].raw_filename, request.files[key].file, request.files[key].content_type)
             return requests.post(os.path.join(self.config.getProperty('Server', 'dataServer_uri'), project, fun),
-                    cookies=cookies, json=request.json,
+                    cookies=cookies, json=request.json, files=files,
                     headers={'User-Agent': 'Mozilla/5.0'})
 
 
