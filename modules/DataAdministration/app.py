@@ -267,8 +267,8 @@ class DataAdministrator:
         
         # data download
         @enable_cors
-        @self.app.post('/<project>/requestDownloads')
-        def requestDownloads(project):
+        @self.app.post('/<project>/requestDownload')
+        def requestDownload(project):
             '''
                 Parses request parameters and then assembles project-
                 related metadata (annotations, predictions, etc.) by
@@ -281,4 +281,23 @@ class DataAdministrator:
                 abort(401, 'forbidden')
             
             # parse parameters
-            #TODO
+            try:
+                params = request.json
+                dataType = params['dataType']
+                if 'dateRange' in params:
+                    dateRange = params['dateRange']
+                else:
+                    dateRange = None
+                if 'users' in params:
+                    userList = params['users']
+                else:
+                    userList = None
+                
+                taskID = self.middleware.prepareDataDownload(project,
+                                                            dataType,
+                                                            userList,
+                                                            dateRange)
+                return {'response': taskID}
+
+            except Exception as e:
+                abort(401, str(e))
