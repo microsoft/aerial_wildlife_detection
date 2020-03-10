@@ -114,8 +114,8 @@
                 }
 
                 // name and shortname availability
-                $('#project-name-field').change(checkValuesCorrect);
-                $('#project-shortname-field').change(function() {
+                $('#project-name-field').on('change focusout input', checkValuesCorrect);
+                $('#project-shortname-field').on('change focusout input', function() {
                     checkValuesCorrect();
                     if(window.projShortnameAvailable) {
                         $('#project-shorthand-title').html($('#project-shortname-field').val());
@@ -129,6 +129,7 @@
                     promise.then(function() {
                         if(window.projNameAvailable && window.projShortnameAvailable) {
                             // submit data and create new project
+                            var shortname = $('#project-shortname-field').val();
                             $.ajax({
                                 url: '/createProject',
                                 method: 'POST',
@@ -136,13 +137,17 @@
                                 dataType: 'json',
                                 data: JSON.stringify({
                                     name: $('#project-name-field').val(),
-                                    shortname: $('#project-shortname-field').val(),
+                                    shortname: shortname,
                                     description: $('#project-description-field').val(),
                                     annotationType: $('#project-annotation-type').val(),
                                     predictionType: $('#project-prediction-type').val()
                                 }),
                                 success: function(response) {
-                                    console.log(response);
+                                    if(response.hasOwnProperty('success') && response['success']) {
+                                        window.location.href = '/' + shortname;
+                                    } else {
+                                        console.error('An unknown error occurred.')
+                                    }
                                 },
                                 error: function(response) {
                                     console.log('ERROR')

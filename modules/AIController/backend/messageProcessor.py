@@ -17,13 +17,13 @@
     If another task prematurely finishes, the "forget" method will be called
     on it. (TODO)
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 from threading import Thread
 import time
 import uuid
-import cgi
+import html
 import celery
 from celery.result import AsyncResult
 import kombu.five
@@ -123,7 +123,7 @@ class MessageProcessor(Thread):
             if msg['status'] == celery.states.FAILURE:
                 # append failure message
                 if 'meta' in msg:       #TODO: and isinstance(msg['meta'], BaseException):
-                    info = { 'message': cgi.escape(str(msg['meta']))}
+                    info = { 'message': html.escape(str(msg['meta']))}
                 else:
                     info = { 'message': 'an unknown error occurred'}
             else:

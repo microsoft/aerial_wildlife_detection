@@ -10,7 +10,7 @@
 '''
 
 import uuid
-import cgi
+import html
 import celery
 from celery import current_app
 from celery.result import AsyncResult
@@ -120,7 +120,7 @@ class DataAdministrationMiddleware:
         if msg['status'] == celery.states.FAILURE:
             # append failure message
             if 'meta' in msg:
-                info = { 'message': cgi.escape(str(msg['meta']))}
+                info = { 'message': html.escape(str(msg['meta']))}
             else:
                 info = { 'message': 'an unknown error occurred'}
         else:

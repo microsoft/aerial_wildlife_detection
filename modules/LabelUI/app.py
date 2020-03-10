@@ -5,7 +5,7 @@
 '''
 
 import os
-import cgi
+import html
 from uuid import UUID
 import bottle
 from bottle import request, response, static_file, redirect, abort, SimpleTemplate
@@ -91,7 +91,7 @@ class LabelUI():
                 return self.__redirect_project_page(project)
 
             # render interface template
-            username = 'Demo mode' if self.demoMode else cgi.escape(request.get_cookie('username'))
+            username = 'Demo mode' if self.demoMode else html.escape(request.get_cookie('username'))
             return self.interface_template.render(username=username,
                 projectShortname=project,
                 projectTitle=projectData['projectName'], projectDescr=projectData['projectDescription'])
@@ -106,20 +106,20 @@ class LabelUI():
         #     return static_file(filename, root=self.staticDir)
 
 
-        @self.app.route('/backdrops/<filename:re:.*>')
-        def send_backdrop_image(filename):
-            try:
-                return static_file(filename, root=self.middleware.projectSettings['backdrops']['basePath'])
-            except:
-                abort(404, 'backdrop not found')
+        # @self.app.route('/backdrops/<filename:re:.*>')
+        # def send_backdrop_image(filename):
+        #     try:
+        #         return static_file(filename, root=self.middleware.projectSettings['backdrops']['basePath'])
+        #     except:
+        #         abort(404, 'backdrop not found')
 
 
-        @self.app.route('/<project>/backdrops/<filename:re:.*>')
-        def send_backdrop_image_proj(project, filename):
-            try:
-                return static_file(filename, root=self.middleware.projectSettings['backdrops']['basePath'])
-            except:
-                abort(404, 'backdrop not found')
+        # @self.app.route('/<project>/backdrops/<filename:re:.*>')
+        # def send_backdrop_image_proj(project, filename):
+        #     try:
+        #         return static_file(filename, root=self.middleware.projectSettings['backdrops']['basePath'])
+        #     except:
+        #         abort(404, 'backdrop not found')
 
 
         @self.app.get('/<project>/getProjectInfo')
@@ -157,7 +157,7 @@ class LabelUI():
                 if self.loginCheck(project=project, admin=True):
                     hideGoldenQuestionInfo = False
 
-                username = cgi.escape(request.get_cookie('username'))
+                username = html.escape(request.get_cookie('username'))
                 dataIDs = request.json['imageIDs']
                 json = self.middleware.getBatch_fixed(project, username, dataIDs, hideGoldenQuestionInfo)
                 return json
@@ -172,7 +172,7 @@ class LabelUI():
                 if self.loginCheck(project=project, admin=True):
                     hideGoldenQuestionInfo = False
 
-                username = cgi.escape(request.get_cookie('username'))
+                username = html.escape(request.get_cookie('username'))
                 try:
                     limit = int(request.query['limit'])
                 except:
@@ -197,7 +197,7 @@ class LabelUI():
             if self.demoMode:
                 return { 'status': 'not allowed in demo mode' }
 
-            username = cgi.escape(request.get_cookie('username'))
+            username = html.escape(request.get_cookie('username'))
 
             # check if user requests to see other user names; only permitted if admin
             # also, by default we limit labels to the current user,
@@ -252,7 +252,7 @@ class LabelUI():
             if self.demoMode:
                 return { 'status': 'not allowed in demo mode' }
 
-            username = cgi.escape(request.get_cookie('username'))
+            username = html.escape(request.get_cookie('username'))
 
             # check if user requests to see other user names; only permitted if admin
             try:
@@ -292,7 +292,7 @@ class LabelUI():
             if self.loginCheck(project=project):
                 # parse
                 try:
-                    username = cgi.escape(request.get_cookie('username'))
+                    username = html.escape(request.get_cookie('username'))
                     if username is None:
                         # this should never happen, since we are performing a login check
                         raise Exception('no username provided')

@@ -8,7 +8,7 @@ import os
 import importlib
 from datetime import datetime
 import pytz
-import cgi
+import html
 import base64
 import numpy as np
 from PIL import Image
@@ -95,7 +95,7 @@ def parse_parameters(data, params, absent_ok=True, escape=True):
 
         value = data[nextKey]
         if escape and isinstance(value, str):
-            value = cgi.escape(value)
+            value = html.escape(value)
         value = dataType(value)
         outputVals.append(value)
         outputKeys.append(nextKey)

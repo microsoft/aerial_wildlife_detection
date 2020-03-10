@@ -6,7 +6,7 @@
         <button id="remove-selected" class="btn btn-sm btn-warning">-</button>
     </div>
 
-    <div id="selected-node-controls" style="display:none">
+    <div id="selected-node-controls" style="display:none;margin-top:20px;">
         <h3>Selected node:</h3>
         <label for="sel-node-title">Name:</label>
         <input type="text" id="sel-node-title" />
@@ -16,15 +16,40 @@
             <button id="update-selected" class="btn btn-sm btn-primary">Apply</button>
         </div>
     </div>
+
+    <div style="margin-top:20px">
+        Notes:
+        <ul>
+            <li>Click "+" to add a new label class (or group) beneath the selected group.</li>
+            <li>Highlight a label class or group and click "-" to remove it.</li>
+            <li>Highlight an entry to set its name and color. Then, click "Apply" to update it.</li>
+            <li>Names must be unique throughout the label class tree.</li>
+            <li>Drag and drop an entry to reposition it within the tree.</li>
+            <li>An entry with one or more children is saved as a label class group.</li>
+            <li>Your changes will not be applied to the project until you click "Save."</li>
+        </ul>
+    </div>
+
     <!-- Submit and abort buttons -->
     <div>
-        <button class="btn btn-danger">Cancel</button>
         <button id="lc-save-button" class="btn btn-primary" style="float:right">Save</button>
     </div>
 </div>
 <link rel="stylesheet" href="{{ project }}/config/static/libs/jqtree/jqtree_custom.css" />
+<style>
+    #label-classes {
+        border: 1px solid #aaa;
+        border-radius: 5px;
+        padding: 10px;
+        margin-bottom: 10px;
+    }
+
+    .jscolor {
+        border-radius: 5px;
+    }
+</style>
 <script src="{{ project }}/config/static/libs/jqtree/tree.jquery.js"></script>
-<!-- <script src="{{ project }}/config/static/js/jscolor.js"></script> -->
+<script src="{{ project }}/config/static/js/jscolor.js"></script>
 <script type="text/javascript">
     window.lcTree = undefined;
 
@@ -78,8 +103,7 @@
                         }
                     }
                 }
-                console.log(tree);
-
+                
                 let lcTree = $('<div id="lc-tree"></div>');
                 lcTree.tree({
                     data: tree,
@@ -156,7 +180,6 @@
     }
 
     function save() {
-        //TODO
         window.showLoadingOverlay(true);
         var classdef = window.lcTree.tree('toJson');
         var promise = $.ajax({
@@ -166,12 +189,16 @@
             contentType: 'application/json; charset=utf-8',
             dataType: 'json',
             success: function(data) {
-                //TODO
-                console.log(data);
+                if(data.hasOwnProperty('success') && data['success']) {
+                    // re-load label classes
+                    loadLabelClasses();
+                } else {
+                    // something went wrong...
+                    console.error(data);
+                }
             },
             error: function(data) {
-                console.log('ERROR:');
-                console.log(data);
+                console.error(data);
             }
         });
 

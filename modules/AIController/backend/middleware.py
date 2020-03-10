@@ -1,11 +1,10 @@
 '''
     Middleware for AIController: handles requests and updates to and from the database.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 from datetime import datetime
-import cgi
 from modules.AIController.backend import celery_interface
 import celery
 from celery import current_app, group

@@ -7,7 +7,8 @@
 '''
 
 import os
-import cgi
+import html
+import json
 from urllib.parse import urljoin
 import bottle
 from bottle import request, response, static_file, redirect, abort, SimpleTemplate
@@ -101,7 +102,7 @@ class ProjectConfigurator:
                 return redirect('/' + project + '/interface')
 
             # render overview template
-            username = 'Demo mode' if projectData['demomode'] else cgi.escape(request.get_cookie('username'))
+            username = 'Demo mode' if projectData['demomode'] else html.escape(request.get_cookie('username'))
 
             return self.projConf_template.render(
                     projectShortname=project,
@@ -149,6 +150,9 @@ class ProjectConfigurator:
                 abort(401, 'forbidden')
             try:
                 classdef = request.json
+                if isinstance(classdef, str):
+                    # re-parse JSON (might happen in case of single quotes)
+                    classdef = json.loads(classdef)
                 success = self.middleware.updateClassDefinitions(project, classdef)
                 if success:
                     return {'success': success}
@@ -189,7 +193,7 @@ class ProjectConfigurator:
                 return redirect('/')
             # if not self.loginCheck(canCreateProjects=True):
             #     abort(401, 'forbidden')
-            username = cgi.escape(request.get_cookie('username'))
+            username = html.escape(request.get_cookie('username'))
             return self.newProject_template.render(
                 username=username
             )
@@ -202,7 +206,7 @@ class ProjectConfigurator:
 
             success = False
             try:
-                username = cgi.escape(request.get_cookie('username'))
+                username = html.escape(request.get_cookie('username'))
 
                 # check provided properties
                 projSettings = request.json
@@ -212,7 +216,7 @@ class ProjectConfigurator:
                 abort(400, str(e))
 
             if success:
-                return redirect('/{}'.format(projSettings['shortname']))
+                return {'success':True}
             else:
                 abort(500, 'An unknown error occurred.')
 
@@ -225,7 +229,7 @@ class ProjectConfigurator:
                 abort(401, 'forbidden')
             
             try:
-                projName = cgi.escape(request.query['name'])
+                projName = html.escape(request.query['name'])
                 if len(projName):
                     available = self.middleware.getProjectNameAvailable(projName)
                 else:
@@ -242,7 +246,7 @@ class ProjectConfigurator:
                 abort(401, 'forbidden')
             
             try:
-                projName = cgi.escape(request.query['shorthand'])
+                projName = html.escape(request.query['shorthand'])
                 if len(projName):
                     available = self.middleware.getProjectShortNameAvailable(projName)
                 else:

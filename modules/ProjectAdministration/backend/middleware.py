@@ -9,6 +9,7 @@ import re
 import ast
 import secrets
 import json
+import uuid
 from psycopg2 import sql
 from modules.Database.app import Database
 from .db_fields import Fields_annotation, Fields_prediction
@@ -16,10 +17,53 @@ from util.helpers import parse_parameters
 
 
 class ProjectConfigMiddleware:
+
+    # prohibited project names (as a whole)
+    PROHIBITED_NAMES = [
+        'project',
+        'getavailableaimodels',
+        'backdrops',
+        'verifyprojectname',
+        'verifyprojectshort',
+        'newproject',
+        'createproject',
+        'statistics',
+        'static',
+        'getcreateaccountunrestricted'
+        'getprojects',
+        'about',
+        'favicon.ico',
+        'logincheck',
+        'logout',
+        'login',
+        'dologin',
+        'createaccount',
+        'loginscreen',
+        'accountexists',
+        'getauthentication',
+        'getusernames',
+        'docreateaccount'
+    ]
+
+    # prohibited name prefixes
+    PROHIBITED_NAME_PREFIXES = [
+        '/',
+        '?',
+        '&'
+    ]
+
+    # patterns that are prohibited anywhere in the project names
+    PROHIBITED_STRICT = [
+        '&lt;',
+        '<'
+    ]
     
     def __init__(self, config):
         self.config = config
         self.dbConnector = Database(config)
+
+        # load default UI settings
+        self.defaultUIsettings = json.load(open('modules/ProjectAdministration/static/json/default_ui_settings.json', 'r'))
 
 
     def getProjectInfo(self, project, parameters):
@@ -160,38 +204,21 @@ class ProjectConfigMiddleware:
             None
         )
 
-        # add default UI settings
-        #TODO
-        # 'enableEmptyClass': config.getProperty('Project', 'enableEmptyClass', fallback='no'),
-        # 'showPredictions': config.getProperty('LabelUI', 'showPredictions', fallback='yes'),
-        # 'showPredictions_minConf': config.getProperty('LabelUI', 'showPredictions_minConf', type=float, fallback=0.5),
-        # 'carryOverPredictions': config.getProperty('LabelUI', 'carryOverPredictions', fallback='no'),
-        # 'carryOverRule': config.getProperty('LabelUI', 'carryOverRule', fallback='maxConfidence'),
-        # 'carryOverPredictions_minConf': config.getProperty('LabelUI', 'carryOverPredictions_minConf', type=float, fallback=0.75),
-        # 'defaultBoxSize_w': config.getProperty('LabelUI', 'defaultBoxSize_w', type=int, fallback=10),
-        # 'defaultBoxSize_h': config.getProperty('LabelUI', 'defaultBoxSize_h', type=int, fallback=10),
-        # 'minBoxSize_w': config.getProperty('Project', 'box_minWidth', type=int, fallback=1),
-        # 'minBoxSize_h': config.getProperty('Project', 'box_minHeight', type=int, fallback=1),
-        # 'numImagesPerBatch': config.getProperty('LabelUI', 'numImagesPerBatch', type=int, fallback=1),
-        # 'minImageWidth': config.getProperty('LabelUI', 'minImageWidth', type=int, fallback=300),
-        # 'numImageColumns_max': config.getProperty('LabelUI', 'numImageColumns_max', type=int, fallback=1),
-        # 'defaultImage_w': config.getProperty('LabelUI', 'defaultImage_w', type=int, fallback=800),
-        # 'defaultImage_h': config.getProperty('LabelUI', 'defaultImage_h', type=int, fallback=600),
-        # 'styles': styles,
-        # 'backdrops': backdrops,
-        # 'welcomeMessage': welcomeMessage
-
         # register project
         self.dbConnector.execute('''
             INSERT INTO aide_admin.project (shortname, name, description,
                 secret_token,
                 interface_enabled,
-                annotationType, predictionType)
+                annotationType, predictionType,
+                isPublic, demoMode,
+                ui_settings)
             VALUES (
                 %s, %s, %s,
                 %s,
                 %s,
-                %s, %s
+                %s, %s,
+                %s, %s,
+                %s
             );
             ''',
             (
@@ -202,6 +229,8 @@ class ProjectConfigMiddleware:
                 False,
                 properties['annotationType'],
                 properties['predictionType'],
+                False, False,
+                json.dumps(self.defaultUIsettings)
             ),
             None)
 
@@ -286,14 +315,150 @@ class ProjectConfigMiddleware:
 
 
 
-    def updateClassDefinitions(self, project, classdef):
+    def updateClassDefinitions(self, project, classdef, removeMissing=False):
         '''
             Updates the project's class definitions.
-
-            TODO: what if label classes change if there's already annotations/predictions?
+            if "removeMissing" is set to True, label classes that are present
+            in the database, but not in "classdef," will be removed. Label
+            class groups will only be removed if they do not reference any
+            label class present in "classdef." This functionality is disallowed
+            in the case of segmentation masks.
         '''
-        #TODO
-        return False
+
+        # check if project contains segmentation masks
+        metaType = self.dbConnector.execute('''
+                SELECT annotationType, predictionType FROM aide_admin.project
+                WHERE shortname = %s;
+            ''',
+            (project,),
+            1
+        )[0]
+        is_segmentation = any(['segmentationmasks' in m.lower() for m in metaType.values()])
+        if is_segmentation:
+            removeMissing = False
+
+        # get current classes from database
+        db_classes = {}
+        db_groups = {}
+        if removeMissing:
+            queryStr = sql.SQL('''
+                SELECT * FROM {id_lc} AS lc
+                FULL OUTER JOIN (
+                    SELECT id AS lcgid, name AS lcgname, parent, color
+                    FROM {id_lcg}
+                ) AS lcg
+                ON lc.labelclassgroup = lcg.lcgid
+            ''').format(
+                id_lc=sql.Identifier(project, 'labelclass'),
+                id_lcg=sql.Identifier(project, 'labelclassgroup')
+            )
+            result = self.dbConnector.execute(queryStr, None, 'all')
+            for r in result:
+                if r['id'] is not None:
+                    db_classes[r['id']] = r
+                if r['lcgid'] is not None:
+                    if not r['lcgid'] in db_groups:
+                        db_groups[r['lcgid']] = {**r, **{'num_children':0}}
+                    elif not 'lcgid' in db_groups[r['lcgid']]:
+                        db_groups[r['lcgid']] = {**db_groups[r['lcgid']], **r}
+                if r['labelclassgroup'] is not None:
+                    if not r['labelclassgroup'] in db_groups:
+                        db_groups[r['labelclassgroup']] = {'num_children':1}
+                    else:
+                        db_groups[r['labelclassgroup']]['num_children'] += 1
+
+        # parse provided class definitions list
+        unique_keystrokes = set()
+        classes_update = []
+        classgroups_update = []
+        def _parse_item(item, parent=None):
+            # get or create ID for item
+            try:
+                itemID = uuid.UUID(item['id'])
+            except:
+                itemID = uuid.uuid1()
+                while itemID in classes_update or itemID in classgroups_update:
+                    itemID = uuid.uuid1()
+
+            entry = {
+                'id': itemID,
+                'name': item['name'],
+                'color': (None if not 'color' in item else item['color']),
+                'keystroke': None,
+                'labelclassgroup': parent
+            }
+            if 'children' in item:
+                # label class group
+                classgroups_update.append(entry)
+                for child in item['children']:
+                    _parse_item(child, itemID)
+            else:
+                # label class
+                if 'keystroke' in item and not item['keystroke'] in unique_keystrokes:
+                    entry['keystroke'] = item['keystroke']
+                    unique_keystrokes.add(item['keystroke'])
+                classes_update.append(entry)
+
+        for item in classdef:
+            _parse_item(item, None)
+        
+        # apply changes
+        if removeMissing:
+            queryStr = sql.SQL('''
+                DELETE FROM {id_lc}
+                WHERE id NOT IN %s;
+                DELETE FROM {id_lcg}
+                WHERE id NOT IN %s;
+            ''').format(
+                id_lc=sql.Identifier(project, 'labelclass'),
+                id_lcg=sql.Identifier(project, 'labelclassgroup')
+            )
+            self.dbConnector.execute(queryStr, (
+                tuple([l['id'] for l in classes_update]),
+                tuple([l['id'] for l in classgroups_update]),),
+                None)
+        
+        # add/update in order (groups, set their parents, label classes)
+        groups_new = [(g['id'], g['name'], g['color'],) for g in classgroups_update]
+        queryStr = sql.SQL('''
+            INSERT INTO {id_lcg} (id, name, color)
+            VALUES %s
+            ON CONFLICT (id) DO UPDATE SET
+                name = EXCLUDED.name,
+                color = EXCLUDED.color;
+        ''').format(        #TODO: on conflict(name)
+            id_lcg=sql.Identifier(project, 'labelclassgroup')
+        )
+        self.dbConnector.insert(queryStr, groups_new)
+
+        # set parents
+        groups_parents = [(g['id'], g['labelclassgroup'],) for g in classgroups_update if ('labelclassgroup' in g and g['labelclassgroup'] is not None)]
+        queryStr = sql.SQL('''
+            UPDATE {id_lcg} AS lcg
+            SET parent = q.parent
+            FROM (VALUES %s) AS q(id, parent)
+            WHERE lcg.id = q.id;
+        ''').format(
+            id_lcg=sql.Identifier(project, 'labelclassgroup')
+        )
+        self.dbConnector.insert(queryStr, groups_parents)
+
+        # insert/update label classes
+        lcdata = [(l['id'], l['name'], l['color'], l['keystroke'], l['labelclassgroup'],) for l in classes_update]
+        queryStr = sql.SQL('''
+            INSERT INTO {id_lc} (id, name, color, keystroke, labelclassgroup)
+            VALUES %s
+            ON CONFLICT (id) DO UPDATE
+            SET name = EXCLUDED.name,
+            color = EXCLUDED.color,
+            keystroke = EXCLUDED.keystroke,
+            labelclassgroup = EXCLUDED.labelclassgroup;
+        ''').format(    #TODO: on conflict(name)
+            id_lc=sql.Identifier(project, 'labelclass')
+        )
+        self.dbConnector.insert(queryStr, lcdata)
+
+        return True
 
 
 
@@ -301,7 +466,21 @@ class ProjectConfigMiddleware:
         '''
             Returns True if the provided project (long) name is available.
         '''
+        if not isinstance(projectName, str):
+            return False
+        projectName = projectName.strip().lower()
+        if not len(projectName):
+            return False
 
+        # check if name matches prohibited AIDE keywords
+        if projectName in self.PROHIBITED_NAMES:
+            return False
+        if projectName in self.PROHIBITED_STRICT or any([p in projectName for p in self.PROHIBITED_STRICT]):
+            return False
+        if any([projectName.startswith(p) for p in self.PROHIBITED_NAME_PREFIXES]):
+            return False
+
+        # check if name is already taken
         result = self.dbConnector.execute('''SELECT 1 AS result
             FROM aide_admin.project
             WHERE name = %s;
@@ -322,8 +501,21 @@ class ProjectConfigMiddleware:
             name can be created (this includes Postgres schema name conventions).
             Returns False otherwise.
         '''
+        if not isinstance(projectName, str):
+            return False
+        projectName = projectName.strip().lower()
+        if not len(projectName):
+            return False
 
-        # check first if provided name is valid as per Postgres conventions
+        # check if name matches prohibited AIDE keywords
+        if projectName in self.PROHIBITED_NAMES:
+            return False
+        if projectName in self.PROHIBITED_STRICT or any([p in projectName for p in self.PROHIBITED_STRICT]):
+            return False
+        if any([projectName.startswith(p) for p in self.PROHIBITED_NAME_PREFIXES]):
+            return False
+
+        # check if provided name is valid as per Postgres conventions
         matches = re.findall('(^(pg_|[0-9]).*|.*(\$|\s)+.*)', projectName)
         if len(matches):
             return False
@@ -331,10 +523,10 @@ class ProjectConfigMiddleware:
         # check if project shorthand already exists in database
         result = self.dbConnector.execute('''SELECT 1 AS result
             FROM information_schema.schemata
-            WHERE schema_name = %s
+            WHERE schema_name ilike %s
             UNION ALL
             SELECT 1 FROM aide_admin.project
-            WHERE shortname = %s;
+            WHERE shortname ilike %s;
             ''',
             (projectName,projectName,),
             2)

@@ -6,7 +6,7 @@
 '''
 
 import os
-import cgi
+import html
 import json
 from bottle import request, response, static_file, redirect, abort, SimpleTemplate, HTTPResponse
 from .backend.middleware import ReceptionMiddleware
@@ -47,7 +47,7 @@ class Reception:
                 if self.demoMode:
                     username = 'Demo mode'
                 elif self.login_check():
-                    username = cgi.escape(request.get_cookie('username'))
+                    username = html.escape(request.get_cookie('username'))
                 else:
                     username = ''
             except:
@@ -72,7 +72,7 @@ class Reception:
         def get_projects(): 
             try:
                 if self.login_check():
-                    username = cgi.escape(request.get_cookie('username'))
+                    username = html.escape(request.get_cookie('username'))
                 else:
                     username = ''
             except:
@@ -94,11 +94,11 @@ class Reception:
                 if not self.login_check():
                     return redirect('/')
                 
-                username = cgi.escape(request.get_cookie('username'))
+                username = html.escape(request.get_cookie('username'))
 
                 # try to get secret token
                 try:
-                    providedToken = cgi.escape(request.query['t'])
+                    providedToken = html.escape(request.query['t'])
                 except:
                     providedToken = None
 

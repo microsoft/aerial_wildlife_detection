@@ -87,9 +87,9 @@ MODIFICATIONS_sql = [
     'ALTER TABLE {schema}.image_user ADD CONSTRAINT image_user_image_fkey FOREIGN KEY (username) REFERENCES aide_admin.USER (name);',
     'ALTER TABLE {schema}.annotation DROP CONSTRAINT IF EXISTS annotation_username_fkey;',
     'ALTER TABLE {schema}.annotation ADD CONSTRAINT annotation_username_fkey FOREIGN KEY (username) REFERENCES aide_admin.USER (name);',
-    'ALTER TABLE {schema}.cnnstate ADD COLUMN IF NOT EXISTS model_library VARCHAR',
-    'ALTER TABLE {schema}.cnnstate ADD COLUMN IF NOT EXISTS alCriterion_library VARCHAR',
-    'ALTER TABLE {schema}.image ADD COLUMN IF NOT EXISTS isGoldenQuestion BOOLEAN NOT NULL DEFAULT FALSE',
+    'ALTER TABLE {schema}.cnnstate ADD COLUMN IF NOT EXISTS model_library VARCHAR;',
+    'ALTER TABLE {schema}.cnnstate ADD COLUMN IF NOT EXISTS alCriterion_library VARCHAR;',
+    'ALTER TABLE {schema}.image ADD COLUMN IF NOT EXISTS isGoldenQuestion BOOLEAN NOT NULL DEFAULT FALSE;',
     '''-- IoU function for statistical evaluations
     CREATE OR REPLACE FUNCTION "intersection_over_union" (
         "ax" real, "ay" real, "awidth" real, "aheight" real,
@@ -132,9 +132,11 @@ MODIFICATIONS_sql = [
         END;
     $iou$ LANGUAGE plpgsql;
     ''',
-    'ALTER TABLE {schema}.image ADD COLUMN IF NOT EXISTS date_added TIMESTAMPTZ NOT NULL DEFAULT NOW()',
-    'ALTER TABLE aide_admin.authentication ADD COLUMN IF NOT EXISTS admitted_until TIMESTAMPTZ',
-    'ALTER TABLE aide_admin.authentication ADD COLUMN IF NOT EXISTS blocked_until TIMESTAMPTZ'
+    'ALTER TABLE {schema}.image ADD COLUMN IF NOT EXISTS date_added TIMESTAMPTZ NOT NULL DEFAULT NOW();',
+    'ALTER TABLE aide_admin.authentication ADD COLUMN IF NOT EXISTS admitted_until TIMESTAMPTZ;',
+    'ALTER TABLE aide_admin.authentication ADD COLUMN IF NOT EXISTS blocked_until TIMESTAMPTZ;',
+    '''ALTER TABLE {schema}.labelclassgroup DROP CONSTRAINT IF EXISTS labelclassgroup_name_unique;
+    ALTER TABLE {schema}.labelclassgroup ADD CONSTRAINT labelclassgroup_name_unique UNIQUE (name);'''
 ]
 
 

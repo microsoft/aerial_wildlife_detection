@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS {id_iu} (
 
 CREATE TABLE IF NOT EXISTS {id_labelclassGroup} (
     id uuid DEFAULT uuid_generate_v4(),
-    name VARCHAR NOT NULL,
+    name VARCHAR UNIQUE NOT NULL,
     color VARCHAR,
     parent uuid,
     PRIMARY KEY (id)

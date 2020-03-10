@@ -107,7 +107,7 @@ CREATE TABLE IF NOT EXISTS &schema.IMAGE_USER (
 
 CREATE TABLE IF NOT EXISTS &schema.LABELCLASSGROUP (
     id uuid DEFAULT uuid_generate_v4(),
-    name VARCHAR NOT NULL,
+    name VARCHAR UNIQUE NOT NULL,
     color VARCHAR,
     parent uuid,
     PRIMARY KEY (id)
