@@ -89,6 +89,7 @@ CREATE TABLE IF NOT EXISTS &schema.IMAGE (
     --exif VARCHAR,
     --fVec bytea,
     date_added TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_requested TIMESTAMPTZ,
     PRIMARY KEY (id)
 );
 

@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS {id_image} (
     --exif VARCHAR,
     --fVec bytea,
     date_added TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_requested TIMESTAMPTZ,
     PRIMARY KEY (id)
 );
 

@@ -2,7 +2,7 @@
     <div id="general-overview" style="text-align:center;margin-bottom:20px;">
         <h2 id="project-title"></h2>
         <p id="project-description"></p>
-        <a class="btn btn-lg btn-primary" href="{{ project }}/interface">Start labeling</a>
+        <div id="interface-link-container"></div>
     </div>
     <hr style="margin-bottom:20px" />
 </div>
@@ -46,6 +46,18 @@
                     $('#project-description').html(response['settings']['description']);
                 } catch {
                     $('#general-overview').hide();
+                }
+                try {
+                    if(response['settings']['interface_enabled']) {
+                        var btn = $('<a class="btn btn-lg btn-primary" id="start-labeling-button" href="{{ project }}/interface">Start labeling</a>');
+                        $('#interface-link-container').append(btn);
+                    } else {
+                        var btn_placeholder = $('<div class="btn btn-secondary label-button" style="cursor:not-allowed;" disabled="disabled">(interface disabled)</div>');
+                        $('#interface-link-container').append(btn_placeholder);
+                    }
+                } catch {
+                    var btn_placeholder = $('<div class="btn btn-secondary label-button" style="cursor:not-allowed;" disabled="disabled">(interface disabled)</div>');
+                    $('#interface-link-container').append(btn_placeholder);
                 }
             },
             error: function() {
