@@ -60,7 +60,7 @@ class DataAdministrator:
         return (entry['min'], entry['max'])
 
 
-    def relay_request(self, project, fun, method='get'):
+    def relay_request(self, project, fun, method='get', headers={}):
         '''
             Used to forward requests to the FileServer instance,
             if it happens to be a different machine.
@@ -82,7 +82,7 @@ class DataAdministrator:
             reqFun = getattr(requests, method.lower())
             return reqFun(os.path.join(self.config.getProperty('Server', 'dataServer_uri'), project, fun),
                         cookies=cookies, json=request.json, files=files,
-                        headers={'User-Agent': 'Mozilla/5.0'})
+                        headers=headers)
 
 
 
@@ -324,6 +324,10 @@ class DataAdministrator:
                 abort(401, 'forbidden')
 
             if not self.is_fileServer:
-                return self.relay_request(project, os.path.join('downloadData', filename), 'get')
+                headers = {}
+                # headers[str("content-type")] = 'text/csv'
+                headers['Content-Disposition'] = 'attachment'   #;filename="somefilename.csv"'
+                return self.relay_request(project, os.path.join('downloadData', filename), 'get',
+                        headers)
             
             return static_file(filename, root=os.path.join(tempfile.gettempdir(), 'aide/downloadRequests', project), download=True)

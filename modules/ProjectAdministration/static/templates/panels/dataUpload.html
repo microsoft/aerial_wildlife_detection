@@ -24,214 +24,214 @@
 <script src="/static/dataAdmin/js/taskPolling.js"></script>
 <script type="text/javascript">
 
-    // untracked functions
-    function _update_browser_scanUntracked(data) {
-        var imgs = [];
-        for(var i=0; i<data.length; i++) {
-            imgs.push({
-                url: data[i],
-                imageURL: window.dataServerURI + '{{ project }}/files/' + data[i]
+    $(document).ready(function() {
+
+        // untracked functions
+        function _update_browser_scanUntracked(data) {
+            var imgs = [];
+            for(var i=0; i<data.length; i++) {
+                imgs.push({
+                    url: data[i],
+                    imageURL: window.dataServerURI + '{{ project }}/files/' + data[i]
+                });
+            }
+            
+            window.untrackedFiles = imgs;
+
+            // add them in chunks
+            var chunk = window.untrackedFiles.splice(0, 100);
+            window.imageBrowser.setImages(chunk);
+            if(chunk.length < window.untrackedFiles.length) {
+                window.imageBrowser.setTrailingButton(true, false);
+            }
+            updateUntrackedCount();
+            window.imageBrowser.setLoadingOverlay(false);
+        }
+
+        function scanUntracked() {
+            window.imageBrowser.setLoadingOverlay(true, 'loading...');
+            $.ajax({
+                url: '{{ project }}/scanForImages',
+                method: 'GET',
+                success: function(data) {
+                    // set interval for result polling
+                    var taskID = data['response'];
+                    poll_status(taskID, _update_browser_scanUntracked, undefined, 1000);
+                },
+                error: function(data) {
+                    console.error(data);    //TODO
+                    window.imageBrowser.setLoadingOverlay(false);
+                }
             });
         }
-        
-        window.untrackedFiles = imgs;
 
-        // add them in chunks
-        var chunk = window.untrackedFiles.splice(0, 100);
-        window.imageBrowser.setImages(chunk);
-        if(chunk.length < window.untrackedFiles.length) {
+        function updateUntrackedCount() {
+            var numChecked = window.imageBrowser.getChecked().length;
+            var numShown = window.imageBrowser.getNumEntries();
+            var numTotal = numShown + window.untrackedFiles.length;
+
+            $('#untracked-count').html(numChecked + ' images checked; ' +
+                                    numShown + ' shown, ' +
+                                    numTotal + ' total');
+            $('#add-checked').prop('disabled', numChecked === 0);
+            $('#add-all').prop('disabled', numTotal === 0);
+        }
+
+        function showMoreUntracked() {
+            if(window.untrackedFiles === undefined) return;
+            var len = window.untrackedFiles.length;
+            if(len === 0) {
+                window.imageBrowser.setTrailingButton(false);
+                return;
+            }
+            window.imageBrowser.addImages(window.untrackedFiles.splice(0, Math.min(100, len)));
             window.imageBrowser.setTrailingButton(true, false);
+            updateUntrackedCount();
         }
-        updateUntrackedCount();
-        window.imageBrowser.setLoadingOverlay(false);
-    }
 
-    function scanUntracked() {
-        window.imageBrowser.setLoadingOverlay(true, 'loading...');
-        $.ajax({
-            url: '{{ project }}/scanForImages',
-            method: 'GET',
-            success: function(data) {
-                // set interval for result polling
-                var taskID = data['response'];
-                poll_status(taskID, _update_browser_scanUntracked, undefined, 1000);
-            },
-            error: function(data) {
-                console.error(data);    //TODO
-                window.imageBrowser.setLoadingOverlay(false);
-            }
-        });
-    }
-
-    function updateUntrackedCount() {
-        var numChecked = window.imageBrowser.getChecked().length;
-        var numShown = window.imageBrowser.getNumEntries();
-        var numTotal = numShown + window.untrackedFiles.length;
-
-        $('#untracked-count').html(numChecked + ' images checked; ' +
-                                numShown + ' shown, ' +
-                                numTotal + ' total');
-        $('#add-checked').prop('disabled', numChecked === 0);
-        $('#add-all').prop('disabled', numTotal === 0);
-    }
-
-    function showMoreUntracked() {
-        if(window.untrackedFiles === undefined) return;
-        var len = window.untrackedFiles.length;
-        if(len === 0) {
-            window.imageBrowser.setTrailingButton(false);
-            return;
-        }
-        window.imageBrowser.addImages(window.untrackedFiles.splice(0, Math.min(100, len)));
-        window.imageBrowser.setTrailingButton(true, false);
-        updateUntrackedCount();
-    }
-
-    function _do_add_untracked(imgList) {
-        if(imgList.length === 0) return;
-        return $.ajax({
-            url: '{{ project }}/addExistingImages',
-            method: 'POST',
-            data: JSON.stringify({images:imgList}),
-            contentType: 'application/json; charset=utf-8',
-            dataType: 'json',
-            success: function(response) {
-                console.log(response);  //TODO
-                if(response['status'] === 0) {
-                    // remove selected images from image browser
-                    //TODO
-                }
-                updateUntrackedCount();
-            },
-            error: function(response) {
-                console.error(response);    //TODO
-                updateUntrackedCount();
-            }
-        });
-    }
-
-    function addSelectedUntracked() {
-        var checked = window.imageBrowser.getChecked();
-        var imgList = [];
-        for(var key in checked) {
-            imgList.push(checked[key].data['url']);
-        }
-        return _do_add_untracked(imgList);
-    }
-
-    function addAllUntracked() {
-        if(window.untrackedFiles === undefined) return;
-        var imgList = [];
-        for(var key in window.imageBrowser.entries) {
-            imgList.push(window.imageBrowser.entries[key].data['url']);
-        }
-        imgList = imgList.concat(window.untrackedFiles);
-        return _do_add_untracked(imgList);
-    }
-
-
-    // upload functions
-    function startUploadFilesFromDisk() {
-        window.uploadedFiles = [];
-        var fileInput = $('#file-upload-select')[0];
-
-        // filter files according to MIME type and upload
-        for(var i=0; i<fileInput.files.length; i++) {
-            var nextItem = fileInput.files[i];
-            if(window.validImageMIMEtypes.includes(nextItem.type)) {
-                window.uploadedFiles.push(nextItem);
-
-                // upload
-                var fileName = (nextItem.hasOwnProperty('webkitRelativePath')? nextItem['webkitRelativePath'] : nextItem['name']);
-                var key = fileName+'_'+i;
-                var formData = new FormData();
-                formData.append(key, nextItem);
-                window.imageBrowser.addImages({
-                    key: {
-                        'id': key,
-                        'url': fileName,
-                        'imageURL': '/static/dataAdmin/img/loading.png'
+        function _do_add_untracked(imgList) {
+            if(imgList.length === 0) return;
+            return $.ajax({
+                url: '{{ project }}/addExistingImages',
+                method: 'POST',
+                data: JSON.stringify({images:imgList}),
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+                success: function(response) {
+                    console.log(response);  //TODO
+                    if(response['status'] === 0) {
+                        // remove selected images from image browser
+                        //TODO
                     }
-                });
+                    updateUntrackedCount();
+                },
+                error: function(response) {
+                    console.error(response);    //TODO
+                    updateUntrackedCount();
+                }
+            });
+        }
 
-                $.ajax({
-                    url: '{{ project }}/uploadImages',
-                    method: 'POST',
-                    data: formData,
-                    cache: false,
-                    contentType: false,
-                    processData: false,
-                    xhr: function () {
-                        var customXhr = $.ajaxSettings.xhr();
-                        if(customXhr.upload) {
-                            customXhr.upload.addEventListener('progress', function(e) {
-                                if(e.lengthComputable) {
-                                    if(e.loaded < e.total) {
-                                        window.imageBrowser.setProgressBar(this, true, e.loaded, e.total);
+        function addSelectedUntracked() {
+            var checked = window.imageBrowser.getChecked();
+            var imgList = [];
+            for(var key in checked) {
+                imgList.push(checked[key].data['url']);
+            }
+            return _do_add_untracked(imgList);
+        }
+
+        function addAllUntracked() {
+            if(window.untrackedFiles === undefined) return;
+            var imgList = [];
+            for(var key in window.imageBrowser.entries) {
+                imgList.push(window.imageBrowser.entries[key].data['url']);
+            }
+            imgList = imgList.concat(window.untrackedFiles);
+            return _do_add_untracked(imgList);
+        }
+
+
+        // upload functions
+        function startUploadFilesFromDisk() {
+            window.uploadedFiles = [];
+            var fileInput = $('#file-upload-select')[0];
+
+            // filter files according to MIME type and upload
+            for(var i=0; i<fileInput.files.length; i++) {
+                var nextItem = fileInput.files[i];
+                if(window.validImageMIMEtypes.includes(nextItem.type)) {
+                    window.uploadedFiles.push(nextItem);
+
+                    // upload
+                    var fileName = (nextItem.hasOwnProperty('webkitRelativePath')? nextItem['webkitRelativePath'] : nextItem['name']);
+                    var key = fileName+'_'+i;
+                    var formData = new FormData();
+                    formData.append(key, nextItem);
+                    window.imageBrowser.addImages({
+                        key: {
+                            'id': key,
+                            'url': fileName,
+                            'imageURL': '/static/dataAdmin/img/loading.png'
+                        }
+                    });
+
+                    $.ajax({
+                        url: '{{ project }}/uploadImages',
+                        method: 'POST',
+                        data: formData,
+                        cache: false,
+                        contentType: false,
+                        processData: false,
+                        xhr: function () {
+                            var customXhr = $.ajaxSettings.xhr();
+                            if(customXhr.upload) {
+                                customXhr.upload.addEventListener('progress', function(e) {
+                                    if(e.lengthComputable) {
+                                        if(e.loaded < e.total) {
+                                            window.imageBrowser.setProgressBar(this, true, e.loaded, e.total);
+                                        } else {
+                                            window.imageBrowser.setProgressBar(this, false);
+                                        }
                                     } else {
                                         window.imageBrowser.setProgressBar(this, false);
                                     }
-                                } else {
-                                    window.imageBrowser.setProgressBar(this, false);
-                                }
-                            }.bind(key), false);
-                        }
-                        return customXhr;
-                    },
-                    success: function(data) {
-                        // retrieve image URL for uploaded image
-                        try {
-                            var url = window.dataServerURI + '{{ project }}/files/' +
-                                data['result']['imgPaths_valid'][0];
-                            window.imageBrowser.set('imageURL', this, url);
-                        } catch(error) {
+                                }.bind(key), false);
+                            }
+                            return customXhr;
+                        },
+                        success: function(data) {
+                            // retrieve image URL for uploaded image
+                            try {
+                                var url = window.dataServerURI + '{{ project }}/files/' +
+                                    data['result']['imgPaths_valid'][0];
+                                window.imageBrowser.set('imageURL', this, url);
+                            } catch(error) {
+                                window.imageBrowser.set('imageURL', this, '/static/dataAdmin/img/error.png');
+                            }
+                            window.imageBrowser.setProgressBar(this, false);
+                        }.bind(key),
+                        error: function(data) {
                             window.imageBrowser.set('imageURL', this, '/static/dataAdmin/img/error.png');
-                        }
-                        window.imageBrowser.setProgressBar(this, false);
-                    }.bind(key),
-                    error: function(data) {
-                        window.imageBrowser.set('imageURL', this, '/static/dataAdmin/img/error.png');
-                    }.bind(key)
-                });
+                        }.bind(key)
+                    });
+                }
             }
         }
-    }
 
 
 
-    // general functions
-    function getSelectedMode() {
-        return $('#upload-mode-select [name=upload-mode-select]:checked').val();
-    }
-
-    function onClickMore(event) {
-        if(getSelectedMode() === 'browserUpload') {
-            //TODO
-
-        } else if(getSelectedMode() === 'scanDisk') {
-            showMoreUntracked();
-            //TODO: modify image browser trailing button to show number of images left
+        // general functions
+        function getSelectedMode() {
+            return $('#upload-mode-select [name=upload-mode-select]:checked').val();
         }
-    }
 
+        function onClickMore(event) {
+            if(getSelectedMode() === 'browserUpload') {
+                //TODO
 
-    function _imageBrowser_event(event) {
-        var checked = window.imageBrowser.getChecked();
-        if(getSelectedMode() === 'scanDisk') {
-            updateUntrackedCount();
+            } else if(getSelectedMode() === 'scanDisk') {
+                showMoreUntracked();
+                //TODO: modify image browser trailing button to show number of images left
+            }
         }
-    }
 
 
-    function setImageBrowserSize() {
-        var height = $('#contents').height() - $('#controls').outerHeight() -
-                        $('.image-browser-view-buttons').outerHeight() - 60;    // -60 for header and margins
-        $('.list-container').css('height', height);
-        $('.thumbs-container').css('height', height);
-    }
+        function _imageBrowser_event(event) {
+            var checked = window.imageBrowser.getChecked();
+            if(getSelectedMode() === 'scanDisk') {
+                updateUntrackedCount();
+            }
+        }
 
 
-    $(document).ready(function() {
+        function setImageBrowserSize() {
+            var height = $('#contents').height() - $('#controls').outerHeight() -
+                            $('.image-browser-view-buttons').outerHeight() - 60;    // -60 for header and margins
+            $('.list-container').css('height', height);
+            $('.thumbs-container').css('height', height);
+        }
+
 
         // get data server URI
         var promise = $.get('{{ project }}/getProjectSettings', function(data) {

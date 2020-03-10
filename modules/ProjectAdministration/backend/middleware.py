@@ -2,7 +2,7 @@
     Middleware layer between the project configuration front-end
     and the database.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 import re
@@ -159,6 +159,27 @@ class ProjectConfigMiddleware:
             None,
             None
         )
+
+        # add default UI settings
+        #TODO
+        # 'enableEmptyClass': config.getProperty('Project', 'enableEmptyClass', fallback='no'),
+        # 'showPredictions': config.getProperty('LabelUI', 'showPredictions', fallback='yes'),
+        # 'showPredictions_minConf': config.getProperty('LabelUI', 'showPredictions_minConf', type=float, fallback=0.5),
+        # 'carryOverPredictions': config.getProperty('LabelUI', 'carryOverPredictions', fallback='no'),
+        # 'carryOverRule': config.getProperty('LabelUI', 'carryOverRule', fallback='maxConfidence'),
+        # 'carryOverPredictions_minConf': config.getProperty('LabelUI', 'carryOverPredictions_minConf', type=float, fallback=0.75),
+        # 'defaultBoxSize_w': config.getProperty('LabelUI', 'defaultBoxSize_w', type=int, fallback=10),
+        # 'defaultBoxSize_h': config.getProperty('LabelUI', 'defaultBoxSize_h', type=int, fallback=10),
+        # 'minBoxSize_w': config.getProperty('Project', 'box_minWidth', type=int, fallback=1),
+        # 'minBoxSize_h': config.getProperty('Project', 'box_minHeight', type=int, fallback=1),
+        # 'numImagesPerBatch': config.getProperty('LabelUI', 'numImagesPerBatch', type=int, fallback=1),
+        # 'minImageWidth': config.getProperty('LabelUI', 'minImageWidth', type=int, fallback=300),
+        # 'numImageColumns_max': config.getProperty('LabelUI', 'numImageColumns_max', type=int, fallback=1),
+        # 'defaultImage_w': config.getProperty('LabelUI', 'defaultImage_w', type=int, fallback=800),
+        # 'defaultImage_h': config.getProperty('LabelUI', 'defaultImage_h', type=int, fallback=600),
+        # 'styles': styles,
+        # 'backdrops': backdrops,
+        # 'welcomeMessage': welcomeMessage
 
         # register project
         self.dbConnector.execute('''

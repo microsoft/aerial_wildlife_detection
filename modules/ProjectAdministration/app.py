@@ -185,8 +185,10 @@ class ProjectConfigurator:
 
         @self.app.route('/newProject')
         def new_project_page():
-            if not self.loginCheck(canCreateProjects=True):
-                abort(401, 'forbidden')
+            if not self.loginCheck():
+                return redirect('/')
+            # if not self.loginCheck(canCreateProjects=True):
+            #     abort(401, 'forbidden')
             username = cgi.escape(request.get_cookie('username'))
             return self.newProject_template.render(
                 username=username
@@ -198,20 +200,23 @@ class ProjectConfigurator:
             if not self.loginCheck(canCreateProjects=True):
                 abort(401, 'forbidden')
 
+            success = False
             try:
                 username = cgi.escape(request.get_cookie('username'))
 
                 # check provided properties
                 projSettings = request.json
-
-                response = self.middleware.createProject(username, projSettings)
-                if not response:
-                    raise Exception('An unknown error occurred during project creation.')
-
-                return redirect('/{}/configuration'.format(projSettings['shortname']))
+                success = self.middleware.createProject(username, projSettings)
 
             except Exception as e:
                 abort(400, str(e))
+
+            if success:
+                return redirect('/{}'.format(projSettings['shortname']))
+            else:
+                abort(500, 'An unknown error occurred.')
+
+            
 
 
         @self.app.get('/verifyProjectName')

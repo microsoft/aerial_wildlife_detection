@@ -58,6 +58,13 @@
             }
 
             $(document).ready(function() {
+                // fix trailing slash (if present)
+                if(window.location.href.endsWith('/')) {
+                    window.location.href = window.location.href.slice(0,-1);
+                } else if(window.location.href.indexOf('/?') !== -1) {
+                    window.location.href = window.location.href.slice(0,window.location.href.indexOf('/?'));
+                }
+
                 window.showLoadingOverlay(true);
                 window.project = '{{ projectShortname }}';
                 window.user = '{{ username }}';

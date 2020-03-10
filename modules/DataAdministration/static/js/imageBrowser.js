@@ -10,7 +10,7 @@ var randomUID = function() {
 }
 
 
-class ProgressBar {
+class IBProgressBar {
     constructor(visible, value, max) {
         this.value = value;
         this.max = max;
@@ -86,7 +86,7 @@ class ImageEntry {
 
     _create_progressBar() {
         if(this.progressBar === undefined) {
-            this.progressBar = new ProgressBar(false, 0, 100);
+            this.progressBar = new IBProgressBar(false, 0, 100);
         }
         return this.progressBar.getMarkup();
     }
@@ -580,21 +580,21 @@ class ListView extends AbstractImageView {
                 this.checkAll.on('click', function() {
                     self._check_all();
                 });
-                var cell = $('<td></td>');
+                var cell = $('<th></th>');
                 cell.append(this.checkAll);
                 tr.append(cell);
             }
             if(this.data['showImages']) {
-                tr.append($('<td></td>'));
+                tr.append($('<th></th>'));
             }
             for(var i=0; i<this.data['colnames'].length; i++) {
                 var nextCol = this.data['colnames'][i];
                 var nextKey = Object.keys(nextCol)[0];
                 this.varOrder.push(nextKey);
-                tr.append($('<td>' + nextCol[nextKey] + '</td>'));
+                tr.append($('<th>' + nextCol[nextKey] + '</th>'));
             }
             // for progress bar
-            tr.append($('<td></td>'));
+            tr.append($('<th></th>'));
             var table = $('<table class="list-table"></table>');
             table.append(thead);
             this.tbody = $('<tbody class="list-body"></tbody>');
