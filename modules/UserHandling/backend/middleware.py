@@ -103,8 +103,7 @@ class UserMiddleware():
             (now, sessionToken, username,),
             numReturn=None)
             
-            # fetch user metadata and store locally
-            userData = self._get_user_data(username)
+            # store locally
             self.usersLoggedIn[username] = {
                 'timestamp': now,
                 'sessionToken': sessionToken
@@ -112,9 +111,6 @@ class UserMiddleware():
 
         # update local cache as well
         if not username in self.usersLoggedIn:
-            # fetch user metadata and store locally
-            userData = self._get_user_data(username)
-            
             self.usersLoggedIn[username] = {
                 'timestamp': now,
                 'sessionToken': sessionToken
@@ -219,8 +215,15 @@ class UserMiddleware():
                 return True
 
             else:
-                # session time-out
-                return False
+                # local cache session time-out; check if database holds more recent timestamp
+                result = self._get_user_data(username)
+                if (now - result['last_login']).total_seconds() <= time_login:
+                    # user still logged in; update
+                    self._init_or_extend_session(username, sessionToken)
+
+                else:
+                    # session time-out
+                    return False
 
             # generic error
             return False
