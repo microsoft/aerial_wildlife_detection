@@ -247,9 +247,9 @@ class DataWorker:
                         )
                 
                 # write to disk
-                parent, _ = os.path.split(absFilePath)
-                if len(parent):
-                    os.makedirs(parent, exist_ok=True)
+                fileParent, _ = os.path.split(absFilePath)
+                if len(fileParent):
+                    os.makedirs(fileParent, exist_ok=True)
                 nextUpload.save(absFilePath)
 
                 imgs_valid.append(key)
