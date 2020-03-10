@@ -32,49 +32,7 @@ class DataWorker:
         self.config = config
         self.dbConnector = Database(config)
         self.countPattern = re.compile('\_[0-9]+$')
-        self._init_project_queues()     #TODO
-    
-
-    # @staticmethod
-    # def _scan_dir_imgs(fileDir):
-    #     imgs_disk = set()
-    #     if not fileDir.endswith(os.sep):
-    #         fileDir += os.sep
-
-    #     def __scan_recursively(imgs, fileDir):
-    #         files = os.listdir(fileDir)
-    #         for f in files:
-    #             path = os.path.join(fileDir, f)
-    #             if os.path.isfile(path) and os.path.splitext(f)[1].lower() in valid_image_extensions:
-    #                 imgs.add(path)
-    #             elif os.path.islink(path):
-    #                 if os.readlink(path) in fileDir:
-    #                     # circular link; avoid
-    #                     continue
-    #                 else:
-    #                     imgs = __scan_recursively(imgs, path)
-    #             elif os.path.isdir(path):
-    #                 imgs = __scan_recursively(imgs, path)
-    #         return imgs
-
-    #     files_disk = __scan_recursively(set(), fileDir)
-    #     for f in files_disk:
-    #         imgs_disk.add(f.replace(fileDir, ''))
-
-    #     # files_disk = glob.glob(os.path.join(fileDir, '**'), recursive=True)       #TODO: avoid circular links
-    #     # for f in files_disk:
-    #     #     if os.path.isdir(f):
-    #     #         continue
-    #     #     _, ext = os.path.splitext(f)
-    #     #     if ext.lower() not in valid_image_extensions:
-    #     #         continue
-    #     #     fname = f.replace(fileDir, '')
-    #     #     imgs_disk.add(fname)
-    #     return imgs_disk
-
-
-    # @staticmethod
-    # def _check_image_intact():
+        self._init_project_queues()
 
 
     def _init_project_queues(self):
@@ -115,6 +73,12 @@ class DataWorker:
         if 'task' in message:
             if message['task'] == 'add_projects':
                 self._init_project_queues()
+
+            elif message['task'] == 'create_project_folders':
+                # set up folders for a newly created project
+                if 'projectName' in message:
+                    destPath = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), project)
+                    os.makedirs(destPath, exist_ok=True)
 
 
 

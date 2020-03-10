@@ -12,6 +12,7 @@ import json
 import uuid
 from psycopg2 import sql
 from modules.Database.app import Database
+from modules.DataAdministration.backend import celery_interface as fileServer_interface
 from .db_fields import Fields_annotation, Fields_prediction
 from util.helpers import parse_parameters
 
@@ -55,7 +56,8 @@ class ProjectConfigMiddleware:
     # patterns that are prohibited anywhere in the project names
     PROHIBITED_STRICT = [
         '&lt;',
-        '<'
+        '<',
+        '..'
     ]
     
     def __init__(self, config):
@@ -241,6 +243,14 @@ class ProjectConfigMiddleware:
             ''',
             (username, shortname,),
             None)
+
+        # notify FileServer instance(s) to set up project folders
+        process = fileServer_interface.aide_internal_notify.si({
+            'task': 'create_project_folders',
+            'projectName': shortname
+        })
+        job = process.apply_async()
+        result = job.get()
         
         return True
 
