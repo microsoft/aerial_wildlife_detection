@@ -91,6 +91,7 @@ class ProjectStatisticsMiddleware:
         '''
             Returns annotation statistics on a per-label class
             basis.
+            TODO: does not work for segmentationMasks (no label fields)
         '''
         queryStr = sql.SQL('''
             SELECT lc.name, COALESCE(num_anno, 0) AS num_anno, COALESCE(num_pred, 0) AS num_pred

@@ -77,8 +77,11 @@ class DataWorker:
             elif message['task'] == 'create_project_folders':
                 # set up folders for a newly created project
                 if 'projectName' in message:
-                    destPath = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), project)
+                    destPath = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), message['projectName'])
                     os.makedirs(destPath, exist_ok=True)
+
+                    # also add project queue
+                    self._init_project_queues()
 
 
 
@@ -221,6 +224,7 @@ class DataWorker:
 
                 parent, filename = os.path.split(nextUpload.raw_filename)
                 destFolder = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), project, parent)
+                os.makedirs(destFolder, exist_ok=True)
                 absFilePath = os.path.join(destFolder, filename)
 
                 # check if an image with the same name does not already exist
@@ -243,7 +247,9 @@ class DataWorker:
                         )
                 
                 # write to disk
-                os.makedirs(destFolder, exist_ok=True)
+                parent, _ = os.path.split(absFilePath)
+                if len(parent):
+                    os.makedirs(parent, exist_ok=True)
                 nextUpload.save(absFilePath)
 
                 imgs_valid.append(key)
@@ -282,7 +288,10 @@ class DataWorker:
         
         # scan disk for files
         projectFolder = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), project)
-        imgs_disk = listDirectory(projectFolder, recursive=True)     #self._scan_dir_imgs(projectFolder)
+        if not os.path.isdir(projectFolder) or not os.path.islink(projectFolder):
+            # no folder exists for the project (should not happen due to broadcast at project creation)
+            return []
+        imgs_disk = listDirectory(projectFolder, recursive=True)
         
         # get all existing file paths from database
         imgs_database = set()
@@ -439,10 +448,11 @@ class DataWorker:
 
             if deleteFromDisk:
                 projectFolder = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), project)
-                for i in imgs_del:
-                    filePath = os.path.join(projectFolder, i['filename'])
-                    if os.path.isfile(filePath):
-                        os.remove(filePath)
+                if os.path.isdir(projectFolder) or os.path.islink(projectFolder):
+                    for i in imgs_del:
+                        filePath = os.path.join(projectFolder, i['filename'])
+                        if os.path.isfile(filePath):
+                            os.remove(filePath)
 
             # convert UUID
             for idx in range(len(imgs_del)):

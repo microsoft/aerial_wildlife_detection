@@ -158,8 +158,8 @@ class ProjectConfigurator:
                     return {'success': success}
                 else:
                     abort(400, 'bad request')
-            except:
-                abort(400, 'bad request')
+            except Exception as e:
+                abort(400, str(e))
 
         
         @self.app.post('/<project>/renewSecretToken')

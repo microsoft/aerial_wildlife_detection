@@ -249,8 +249,7 @@ class ProjectConfigMiddleware:
             'task': 'create_project_folders',
             'projectName': shortname
         })
-        job = process.apply_async()
-        result = job.get()
+        process.apply_async()
         
         return True
 
@@ -334,6 +333,17 @@ class ProjectConfigMiddleware:
             label class present in "classdef." This functionality is disallowed
             in the case of segmentation masks.
         '''
+
+        #TODO
+        try:
+            process = fileServer_interface.aide_internal_notify.si({
+                'task': 'create_project_folders',
+                'projectName': 'testProject'
+            })
+            process.apply_async(queue='aide_broadcast',
+                                ignore_result=True)
+        except Exception as ee:
+            print(ee)
 
         # check if project contains segmentation masks
         metaType = self.dbConnector.execute('''
