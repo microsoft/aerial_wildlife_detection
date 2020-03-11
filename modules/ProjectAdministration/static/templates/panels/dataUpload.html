@@ -12,7 +12,7 @@
         </div>
         <div id="actions-panel"></div>
     </div>
-    <div id="global-progress-bar" style="margin-bottom:20px"></div>
+    <div id="global-progress-bar"></div>
     <div id="image-browser"></div>
 </div>
 <link rel="stylesheet" href="/static/dataAdmin/css/imageBrowser.css" />
@@ -22,6 +22,36 @@
         border-radius: 5px;
         padding: 10px;
         margin-bottom: 20px;
+        overflow-x: auto;
+    }
+
+    #global-progress-bar {
+        margin-bottom: 20px;
+        display: flex;
+        flex-direction: row;
+    }
+
+    #global-progress-bar > * {
+        margin: auto 5px auto 0;
+    }
+
+    .list-table thead tr th:nth-child(2),
+    .list-table tbody tr td:nth-child(2) {
+        width: 100px;
+        text-align: center;
+        word-break: break-all;
+    }
+
+    .list-table thead tr th:nth-child(3),
+    .list-table tbody tr td:nth-child(3) {
+        width: 250px;
+        word-break: break-all;
+    }
+
+    .list-table thead tr th:last-child,
+    .list-table tbody tr td:last-child {
+        width: 100px;
+        padding: 10px;
     }
 </style>
 <script src="/static/dataAdmin/js/imageBrowser.js"></script>
@@ -149,9 +179,8 @@
 
 
         // upload functions
+        window.uploadedFiles = {};
         function startUploadFilesFromDisk() {
-            // disable radio buttons
-            window.uploadedFiles = [];
             var uploadRequests = [];
             var fileInput = $('#file-upload-select')[0];
 
@@ -161,19 +190,31 @@
             $('#global-progress-bar').empty();
             var pBar = new ProgressBar(true, 0, fileInput.files.length, false);
             $('#global-progress-bar').append(pBar.getMarkup());
-            var infoBar = $('<span>uploading... (0/0 images uploaded)</span>');
+            var infoBar = $('<span style="flex-shrink:0;font-size:small;">uploading... (0/0 images uploaded)</span>');
             $('#global-progress-bar').append(infoBar);
             window.stopAction = false;
             var stopButton = $('<button class="btn btn-sm btn-danger" id="cancel-button">Cancel</button>');
             stopButton.on('click', function() {
                 window.stopAction = true;
                 $(this).attr('disabled', true);
+                // abort uploads
                 for(var i=0; i<uploadRequests.length; i++) {
                     uploadRequests[i].abort();
                 }
+                // set message for unset elements
+                for(var entryKey in window.imageBrowser.getEntries()) {
+                    if(!window.uploadedFiles.hasOwnProperty(entryKey)) {
+                        window.imageBrowser.set('message', entryKey, 'aborted.');
+                        window.imageBrowser.set('imageURL', entryKey, '/static/dataAdmin/img/forbidden.png');
+                    }
+                }
+                // hide progress bar
+                $('#global-progress-bar').hide();
+                $('#global-progress-bar').empty();
                 setControlsDisabled(false);
             });
             $('#global-progress-bar').append(stopButton);
+            $('#global-progress-bar').show();
 
             // filter files according to MIME type and upload
             var numComplete = 0;
@@ -184,8 +225,6 @@
                 }
                 var nextItem = fileInput.files[i];
                 if(window.validImageMIMEtypes.includes(nextItem.type)) {
-                    window.uploadedFiles.push(nextItem);
-
                     // upload
                     var fileName = (nextItem.hasOwnProperty('webkitRelativePath')? nextItem['webkitRelativePath'] : nextItem['name']);
                     var key = fileName+'_'+i;
@@ -234,23 +273,26 @@
                                 if(typeof data === 'string') {
                                     data = JSON.parse(data);
                                 }
-                                console.log(data)
                                 if(data['result']['imgPaths_valid'].length === 0) {
                                     // something went wrong uploading the image
                                     window.imageBrowser.set('imageURL', this, '/static/dataAdmin/img/error.png');
-                                    if(this in data['result']['imgs_error']) {
-                                        var msg = data['result']['imgs_error'][this];
-                                        window.imageBrowser.set('message', this, msg);
-                                    }
-
                                 } else {
                                     var url = window.dataServerURI + '{{ project }}/files/' +
                                     data['result']['imgPaths_valid'][0];
                                     window.imageBrowser.set('imageURL', this, url);
-                                    window.imageBrowser.set('message', this, '');
+                                    window.imageBrowser.set('message', this, '<span style="color:green">upload successful</span>');
+                                }
+                                // show messages
+                                if(this in data['result']['imgs_error']) {
+                                    var msg = '<span style="color:red">' + data['result']['imgs_error'][this] + '</span>';
+                                    window.imageBrowser.set('message', this, msg);
+                                } else if(this in data['result']['imgs_warn']) {
+                                    var msg = '<span style="color:yellow">' + data['result']['imgs_warn'][this] + '</span>';
+                                    window.imageBrowser.set('message', this, msg);
                                 }
                             } catch(error) {
                                 window.imageBrowser.set('imageURL', this, '/static/dataAdmin/img/error.png');
+                                window.imageBrowser.set('message', this, '<span style="color:red">an unknown error occurred</span>');
                             }
                             window.imageBrowser.setProgressBar(this, false);
                             pBar.set(true, pBar.getValue()+1);
@@ -259,6 +301,7 @@
                             if(numComplete >= fileInput.files.length) {
                                 pBar.set(false);
                             }
+                            window.uploadedFiles[this] = 1;
                         }.bind(key),
                         error: function(data) {
                             window.imageBrowser.set('imageURL', this, '/static/dataAdmin/img/error.png');
@@ -268,6 +311,12 @@
                     uploadRequests.push(uploadRequest);
                 }
             }
+
+            // hide global progress bar once everything is done
+            $(document).ajaxStop(function() {
+                $('#global-progress-bar').hide();
+                $('#global-progress-bar').empty();
+            });
         }
 
         // general functions
@@ -361,8 +410,22 @@
             // setup action panel markups
             window.actionPanel_scan = $('<div></div>');
             var infoMessage = $('<div></div>');
+            var serverFolderCell = $('<td style="font-family:monospace">(loading...)</td>');
+            $.ajax({
+                url: '{{ project }}/getPlatformInfo',
+                method: 'GET',
+                success: function(data) {
+                    if(data.hasOwnProperty('settings')) {
+                        serverFolderCell.html(data['settings']['server_dir']); 
+                    }
+                }
+            });
             infoMessage.append($('<div>You can manually upload your images to the file server and then import them to the database here.</div>'));
-            infoMessage.append($('<ul><li>Server address: <span></span></li><li>Image folder: <span></span></li></ul>'));   //TODO
+            var serverInfoTable = $('<table><tr><td style="width:150px;min-width:150px;">Server address:</td><td style="font-family:monospace">' + window.dataServerURI + '</td></tr></table>');
+            var folderRow = $('<tr><td style="width:150px;min-width:150px;">Image folder:</td></tr>');
+            folderRow.append(serverFolderCell);
+            serverInfoTable.append(folderRow);
+            infoMessage.append(serverInfoTable);
             window.actionPanel_scan.append(infoMessage);
             var scanUntrackedButton = $('<button id="scan-button" class="btn btn-sm btn-primary" style="margin-bottom:10px">Scan untracked</button>');
             scanUntrackedButton.on('click', function() {

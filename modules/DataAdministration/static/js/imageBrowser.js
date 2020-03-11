@@ -26,6 +26,7 @@ class IBProgressBar {
     set(visible, value, max) {
         if(visible !== undefined) {
             this.markup.css('visibility', (visible? 'visible' : 'hidden'));
+            this.markup.parent().css('visibility', (visible? 'visible' : 'hidden'));
         }
         if(max !== undefined) {
             this.max = max;
@@ -131,7 +132,7 @@ class ImageEntry {
                 if(value === undefined || value === null) {
                     value = '';
                 }
-                var td = $('<td>' + value + '</td>');
+                var td = $('<td class="' + view.varOrder[j] + '">' + value + '</td>');
                 td.on('click', function(event) {
                     self.parent._on_entry_click(event, self);
                 });
@@ -140,7 +141,7 @@ class ImageEntry {
             
             var pBar = this._create_progressBar();
             pBar.addClass('progress-bar-list');
-            var td = $('<td></td>');
+            var td = $('<td style="display:none"></td>');
             td.append(pBar);
             markup.append(td);
             this.markups['list'] = markup;
@@ -214,6 +215,24 @@ class ImageEntry {
     setImageURL(url) {
         this.imageURL = url;
         this.image.attr('src', this.imageURL);
+    }
+
+    set(varName, value) {
+        if(this.hasOwnProperty(varName)) {
+            this[varName] = value;
+        }
+        if(this.data.hasOwnProperty(varName)) {
+            this.data[varName] = value;
+        }
+        if(varName === 'imageURL') {
+            this.setImageURL(value);
+        }
+
+        // also modify list markup
+        var markupItem = $(this.markups['list']).find('.'+varName);
+        if(markupItem.length) {
+            $(markupItem[0]).html(value);
+        }
     }
 }
 
@@ -327,10 +346,11 @@ class AbstractImageView {
     }
 
     set(varName, entry, value) {
-        if(this.entries.hasOwnProperty(entry) && this.entries[entry].hasOwnProperty(varName)) {
-            this.entries[entry][varName] = value;
+        if(this.entries.hasOwnProperty(entry)) {
             if(varName === 'imageURL') {
                 this.entries[entry].setImageURL(value);
+            } else {
+                this.entries[entry].set(varName, value);
             }
         }
     }
@@ -809,6 +829,10 @@ class ImageBrowser {
         } else {
             return this.tileView.getChecked();
         }
+    }
+
+    getEntries() {
+        return this.listView.entries;
     }
 
     getNumEntries() {

@@ -109,6 +109,25 @@ class ProjectConfigurator:
                     projectTitle=projectData['name'],
                     username=username)
 
+        
+        @self.app.get('/<project>/getPlatformInfo')
+        @self.app.post('/<project>/getPlatformInfo')
+        def get_platform_info(project):
+            if not self.loginCheck(project, admin=True):
+                abort(401, 'forbidden')
+            try:
+                # parse subset of configuration parameters (if provided)
+                try:
+                    data = request.json
+                    params = data['parameters']
+                except:
+                    params = None
+
+                projData = self.middleware.getPlatformInfo(project, params)
+                return { 'settings': projData }
+            except:
+                abort(400, 'bad request')
+            
 
         @self.app.get('/<project>/getConfig')
         @self.app.post('/<project>/getConfig')

@@ -79,6 +79,35 @@
     #delete-options {
         margin-left: 20px;
     }
+
+    .list-table thead tr th:nth-child(2),
+    .list-table tbody tr td:nth-child(2) {
+        width: 100px;
+        text-align: center;
+        word-break: break-all;
+    }
+
+    .list-table thead tr th:nth-child(3),
+    .list-table tbody tr td:nth-child(3) {
+        width: 200px;
+        word-break: break-all;
+    }
+
+    .list-table thead tr th:nth-child(4),
+    .list-table tbody tr td:nth-child(4),
+    .list-table thead tr th:nth-child(5),
+    .list-table tbody tr td:nth-child(5) {
+        width: 180px;
+        word-break: break-all;
+    }
+
+    .list-table thead tr th:nth-child(6),
+    .list-table tbody tr td:nth-child(6),
+    .list-table thead tr th:nth-child(7),
+    .list-table tbody tr td:nth-child(7) {
+        width: 100px;
+        word-break: break-all;
+    }
 </style>
 <script src="/static/dataAdmin/js/imageBrowser.js"></script>
 <script src="/static/dataAdmin/js/taskPolling.js"></script>
@@ -273,6 +302,7 @@
                 dataType: 'json',
                 success: function(response) {
                     console.log(response);  //TODO: show pane, then reload image browser
+                    updateImageBrowser(true);
                 },
                 error: function(response) {
                     console.log('error:');   //TODO: show pane

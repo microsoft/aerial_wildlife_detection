@@ -1,7 +1,7 @@
 '''
     Main Bottle and routings for the LabelUI web frontend.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 import os
@@ -120,7 +120,6 @@ class LabelUI():
         #         return static_file(filename, root=self.middleware.projectSettings['backdrops']['basePath'])
         #     except:
         #         abort(404, 'backdrop not found')
-
 
         @self.app.get('/<project>/getProjectInfo')
         def get_project_info(project):

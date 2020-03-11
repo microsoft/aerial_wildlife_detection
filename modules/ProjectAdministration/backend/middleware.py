@@ -5,6 +5,7 @@
     2019-20 Benjamin Kellenberger
 '''
 
+import os
 import re
 import ast
 import secrets
@@ -68,7 +69,37 @@ class ProjectConfigMiddleware:
         self.defaultUIsettings = json.load(open('modules/ProjectAdministration/static/json/default_ui_settings.json', 'r'))
 
 
-    def getProjectInfo(self, project, parameters):
+    def getPlatformInfo(self, project, parameters=None):
+        '''
+            AIDE setup-specific platform metadata.
+        '''
+        # parse parameters (if provided) and compare with mutable entries
+        allParams = set([
+            'server_uri',
+            'server_dir'
+        ])
+        if parameters is not None and parameters != '*':
+            if isinstance(parameters, str):
+                parameters = [parameters.lower()]
+            else:
+                parameters = [p.lower() for p in parameters]
+            set(parameters).intersection_update(allParams)
+        else:
+            parameters = allParams
+        parameters = list(parameters)
+        response = {}
+        for param in parameters:
+            if param.lower() == 'server_uri':
+                uri = os.path.join(self.config.getProperty('Server', 'dataServer_uri'), project, 'files')
+                response[param] = uri
+            elif param.lower() == 'server_dir':
+                sdir = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), project)
+                response[param] = sdir
+        
+        return response
+
+
+    def getProjectInfo(self, project, parameters=None):
 
         # parse parameters (if provided) and compare with mutable entries
         allParams = set([
