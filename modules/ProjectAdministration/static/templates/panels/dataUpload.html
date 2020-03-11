@@ -150,9 +150,9 @@
 
         // upload functions
         function startUploadFilesFromDisk() {
-            // disable radio buttons (TODO)
-
+            // disable radio buttons
             window.uploadedFiles = [];
+            var uploadRequests = [];
             var fileInput = $('#file-upload-select')[0];
 
             var existingFiles = $('#existing-files [name=existing-files]:checked').val();
@@ -168,7 +168,10 @@
             stopButton.on('click', function() {
                 window.stopAction = true;
                 $(this).attr('disabled', true);
-                setControlsDisabled(true);
+                for(var i=0; i<uploadRequests.length; i++) {
+                    uploadRequests[i].abort();
+                }
+                setControlsDisabled(false);
             });
             $('#global-progress-bar').append(stopButton);
 
@@ -177,7 +180,6 @@
             for(var i=0; i<fileInput.files.length; i++) {
                 if(window.stopAction) {
                     // user aborted
-                    setControlsDisabled(false);
                     break;
                 }
                 var nextItem = fileInput.files[i];
@@ -194,12 +196,13 @@
                         key: {
                             'id': key,
                             'url': fileName,
-                            'imageURL': '/static/dataAdmin/img/loading.png'
+                            'imageURL': '/static/dataAdmin/img/loading.png',
+                            'message': 'waiting...'
                         }
                     });
                     window.imageBrowser.setProgressBar(key, true, 0);
 
-                    $.ajax({
+                    var uploadRequest = $.ajax({
                         url: '{{ project }}/uploadImages',
                         method: 'POST',
                         data: formData,
@@ -211,6 +214,7 @@
                             if(customXhr.upload) {
                                 customXhr.upload.addEventListener('progress', function(e) {
                                     if(e.lengthComputable) {
+                                        window.imageBrowser.set('message', this, 'uploading...');
                                         if(e.loaded < e.total) {
                                             window.imageBrowser.setProgressBar(this, true, e.loaded, e.total);
                                         } else {
@@ -226,9 +230,23 @@
                         success: function(data) {
                             // retrieve image URL for uploaded image
                             try {
-                                var url = window.dataServerURI + '{{ project }}/files/' +
+                                if(typeof data === 'string') {
+                                    data = JSON.parse(data);
+                                }
+                                if(data['result']['imgPaths_valid'].length === 0) {
+                                    // something went wrong uploading the image
+                                    window.imageBrowser.set('imageURL', this, '/static/dataAdmin/img/error.png');
+                                    if(key in data['result']['imgs_error']) {
+                                        var msg = data['result']['imgs_error'][key];
+                                        window.imageBrowser.set('message', this, msg);
+                                    }
+
+                                } else {
+                                    var url = window.dataServerURI + '{{ project }}/files/' +
                                     data['result']['imgPaths_valid'][0];
-                                window.imageBrowser.set('imageURL', this, url);
+                                    window.imageBrowser.set('imageURL', this, url);
+                                    window.imageBrowser.set('message', this, '');
+                                }
                             } catch(error) {
                                 window.imageBrowser.set('imageURL', this, '/static/dataAdmin/img/error.png');
                             }
@@ -244,6 +262,8 @@
                             window.imageBrowser.set('imageURL', this, '/static/dataAdmin/img/error.png');
                         }.bind(key)
                     });
+
+                    uploadRequests.push(uploadRequest);
                 }
             }
         }
@@ -317,7 +337,8 @@
                 'showCheckboxes': true,
                 'showImages': true,
                 'colnames': [
-                    {'url': 'File'}
+                    {'url': 'File'},
+                    {'message': 'Message'}
                 ]
             });
 

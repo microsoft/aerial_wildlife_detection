@@ -265,6 +265,8 @@ class DataWorker:
                     elif existingFiles == 'skipExisting':
                         # ignore new file
                         imgs_warn[key] = 'Image "{}" already exists on disk and has been skipped.'.format(filename)
+                        imgs_valid.append(key)
+                        imgPaths_valid.append(os.path.join(parent, newFileName))
                         continue
 
                     elif existingFiles == 'replaceExisting':
@@ -304,7 +306,8 @@ class DataWorker:
                         except:
                             imgs_warn[key] = 'Image "{}" already existed on disk but could not be deleted.\n'.format(filename) + \
                                                 'All metadata (views, annotations, predictions) have been removed from the database.'
-
+                else:
+                    newFileName = filename
                 
                 # write to disk
                 fileParent, _ = os.path.split(absFilePath)
@@ -322,7 +325,8 @@ class DataWorker:
         if len(imgPaths_valid):
             queryStr = sql.SQL('''
                 INSERT INTO {id_img} (filename)
-                VALUES %s;
+                VALUES %s
+                ON CONFLICT (filename) DO NOTHING;
             ''').format(
                 id_img=sql.Identifier(project, 'image')
             )
