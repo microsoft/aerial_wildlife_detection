@@ -19,7 +19,7 @@
        it calls the very same function the AIController instance delegated and
        processes it (functions below).
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 from celery import current_task, states
@@ -73,10 +73,20 @@ def __load_model_state(project, config, dbConnector):
 
 
 
-def __load_metadata(project, config, dbConnector, imageIDs, loadAnnotations):
+def __load_metadata(project, dbConnector, imageIDs, loadAnnotations):
 
     # prepare
     meta = {}
+
+    # get project's annotation type
+    result = dbConnector.execute(sql.SQL('''
+            SELECT annotationType
+            FROM aide_admin.project
+            WHERE shortname = %s;
+        '''),
+        (project,),
+        1)
+    annoType = result['annotationtype']
 
     # label names
     labels = {}
@@ -100,7 +110,7 @@ def __load_metadata(project, config, dbConnector, imageIDs, loadAnnotations):
 
     # annotations
     if loadAnnotations and len(imageIDs):
-        fieldNames = list(getattr(FieldNames_annotation, config.getProperty('Project', 'annotationType')).value)
+        fieldNames = list(getattr(FieldNames_annotation, annoType).value)
         queryStr = sql.SQL('''
             SELECT id AS annotationID, image, {fieldNames} FROM {id_anno} AS anno
             WHERE image IN %s;
@@ -144,7 +154,7 @@ def _call_train(project, imageIDs, subset, trainingFun, dbConnector, fileServer,
     # load model state
     update_state(state='PREPARING', message='loading model state')
     try:
-        stateDict, _ = __load_model_state(project, config, dbConnector)
+        stateDict, _ = __load_model_state(project, dbConnector)
     except Exception as e:
         print(e)
         raise Exception('error during model state loading')
@@ -153,7 +163,7 @@ def _call_train(project, imageIDs, subset, trainingFun, dbConnector, fileServer,
     # load labels and other metadata
     update_state(state='PREPARING', message='loading metadata')
     try:
-        data = __load_metadata(project, config, dbConnector, imageIDs, True)
+        data = __load_metadata(project, dbConnector, imageIDs, True)
     except Exception as e:
         print(e)
         raise Exception('error during metadata loading')
@@ -268,7 +278,7 @@ def _call_inference(project, imageIDs, inferenceFun, rankFun, dbConnector, fileS
     # from celery.contrib import rdb
     # rdb.set_trace()
     try:
-        stateDict, stateDictID = __load_model_state(project, config, dbConnector)
+        stateDict, stateDictID = __load_model_state(project, dbConnector)
     except Exception as e:
         print(e)
         raise Exception('error during model state loading')
@@ -276,7 +286,7 @@ def _call_inference(project, imageIDs, inferenceFun, rankFun, dbConnector, fileS
     # load remaining data (image filenames, class definitions)
     update_state(state='PREPARING', message='loading metadata')
     try:
-        data = __load_metadata(project, config, dbConnector, imageIDs, False)
+        data = __load_metadata(project, dbConnector, imageIDs, False)
     except Exception as e:
         print(e)
         raise Exception('error during metadata loading')
