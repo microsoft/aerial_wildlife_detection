@@ -182,7 +182,7 @@ class DataAdministrator:
                 images = request.files
 
                 try:
-                    existingFiles = request.params.dict['existingFiles']
+                    existingFiles = request.params.get('existingFiles')
                 except:
                     existingFiles='keepExisting'
 
