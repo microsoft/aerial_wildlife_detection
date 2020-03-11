@@ -115,7 +115,7 @@ def __load_metadata(project, dbConnector, imageIDs, loadAnnotations):
             SELECT id AS annotationID, image, {fieldNames} FROM {id_anno} AS anno
             WHERE image IN %s;
         ''').format(
-            fieldNames=sql.SQL(', ').join(fieldNames),
+            fieldNames=sql.SQL(', ').join([sql.SQL(f) for f in fieldNames]),
             id_anno=sql.Identifier(project, 'annotation'))
         result = dbConnector.execute(queryStr, (tuple(imageIDs),), 'all')
         if len(result):
