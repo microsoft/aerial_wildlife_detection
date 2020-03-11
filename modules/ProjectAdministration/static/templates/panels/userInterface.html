@@ -39,6 +39,31 @@
 <!-- <script src="config/static/js/jscolor.js"></script> -->
 <script type="text/javascript">
     $(document).ready(function() {
-        window.showLoadingOverlay(false);
+
+        function reloadUIsettings() {
+            return $.ajax({
+                url: '{{ project }}/getConfig',
+                method: 'GET',
+                success: function(data) {
+                    // populate fields
+
+                },
+                error: function(data) {
+                    console.error(data);
+                }
+            });
+        }
+
+        // get project immutables
+        var promise = $.ajax({
+            url: '{{ project }}/getProjectImmutables'
+        })
+
+        // get current UI settings
+        var promise = reloadUIsettings();
+
+        promise = promise.done(function() {
+            window.showLoadingOverlay(false);
+        });
     });
 </script>

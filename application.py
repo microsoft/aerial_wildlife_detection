@@ -29,8 +29,6 @@ def _verify_unique(instances, moduleClass):
 config = Config()
 demoMode = config.getProperty('Project', 'demoMode', type=bool, fallback=False)
 
-configureCelery = False     # set to True if an AIController or FileServer instance is launched
-
 # prepare bottle
 app = Bottle()
 
@@ -75,8 +73,6 @@ for i in instance_args:
         statistics.addLoginCheckFun(userHandler.checkAuthenticated)
 
     elif moduleName == 'FileServer':
-        # dataAdmin = REGISTERED_MODULES['DataAdministrator'](config, app)
-        # dataAdmin.addLoginCheckFun(userHandler.checkAuthenticated)
         from modules.DataAdministration.backend import celery_interface as daa_int
         daa_int.aide_internal_notify({'task': 'add_projects'})
 
@@ -85,16 +81,12 @@ for i in instance_args:
         aic_int.aide_internal_notify({'task': 'add_projects'})
 
 
-    #TODO
+    # launch globally required modules
     dataAdmin = REGISTERED_MODULES['DataAdministrator'](config, app)
     dataAdmin.addLoginCheckFun(userHandler.checkAuthenticated)
 
     staticFiles = REGISTERED_MODULES['StaticFileServer'](config, app)
     staticFiles.addLoginCheckFun(userHandler.checkAuthenticated)
-
-
-# set up project queues for Celery dispatcher, if required
-#TODO
     
 
 

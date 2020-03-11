@@ -115,7 +115,7 @@ class DBMiddleware():
             SET last_requested = %s
             WHERE id IN %s;
         ''').format(id_img=sql.Identifier(project, 'image'))
-        self.dbConnector.execute(sql, (now, tuple(vals),), None)
+        self.dbConnector.execute(queryStr, (now, tuple(vals),), None)
 
 
     def get_project_immutables(self, project):
