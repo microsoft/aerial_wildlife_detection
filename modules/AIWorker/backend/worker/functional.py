@@ -108,7 +108,7 @@ def __load_metadata(project, dbConnector, imageIDs, loadAnnotations):
             '''),
             (project,),
             1)
-        annoType = result['annotationtype']
+        annoType = result[0]['annotationtype']
 
         fieldNames = list(getattr(FieldNames_annotation, annoType).value)
         queryStr = sql.SQL('''
@@ -315,7 +315,7 @@ def _call_inference(project, imageIDs, inferenceFun, rankFun, dbConnector, fileS
             '''),
             (project,),
             1)
-        predType = result['predictiontype']
+        predType = result[0]['predictiontype']
 
         update_state(state='FINALIZING', message='saving predictions')
         fieldNames = list(getattr(FieldNames_prediction, predType).value)
