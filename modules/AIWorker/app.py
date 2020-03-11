@@ -218,7 +218,7 @@ class AIWorker():
         modelInstance = self._get_model_instance(project)
 
         return functional._call_train(project, data, subset, getattr(modelInstance, 'train'),
-                self.dbConnector, self.fileServer, self.config)
+                self.dbConnector, self.fileServer)
     
 
 
@@ -228,15 +228,12 @@ class AIWorker():
         modelInstance = self._get_model_instance(project)
 
         return functional._call_average_model_states(project, getattr(modelInstance, 'average_model_states'),
-                self.dbConnector, self.fileServer, self.config)
+                self.dbConnector, self.fileServer)
 
 
 
     def call_inference(self, project, imageIDs):
-
-        # #TODO
-        # from celery.contrib import rdb
-        # rdb.set_trace()
+        
         # get project-specific model and AL criterion
         modelInstance = self._get_model_instance(project)
         alCriterionInstance = self._get_alCriterion_instance(project)
@@ -244,4 +241,4 @@ class AIWorker():
         return functional._call_inference(project, imageIDs,
                 getattr(modelInstance, 'inference'),
                 getattr(alCriterionInstance, 'rank'),
-                self.dbConnector, self.fileServer, self.config)
+                self.dbConnector, self.fileServer)

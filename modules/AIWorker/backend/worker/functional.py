@@ -48,7 +48,7 @@ def __get_message_fun(project):
     return __on_message
 
 
-def __load_model_state(project, config, dbConnector):
+def __load_model_state(project, dbConnector):
     # load model state from database
     queryStr = sql.SQL('''
         SELECT query.statedict, query.id FROM (
@@ -78,16 +78,6 @@ def __load_metadata(project, dbConnector, imageIDs, loadAnnotations):
     # prepare
     meta = {}
 
-    # get project's annotation type
-    result = dbConnector.execute(sql.SQL('''
-            SELECT annotationType
-            FROM aide_admin.project
-            WHERE shortname = %s;
-        '''),
-        (project,),
-        1)
-    annoType = result['annotationtype']
-
     # label names
     labels = {}
     queryStr = sql.SQL(
@@ -110,6 +100,16 @@ def __load_metadata(project, dbConnector, imageIDs, loadAnnotations):
 
     # annotations
     if loadAnnotations and len(imageIDs):
+        # get project's annotation type
+        result = dbConnector.execute(sql.SQL('''
+                SELECT annotationType
+                FROM aide_admin.project
+                WHERE shortname = %s;
+            '''),
+            (project,),
+            1)
+        annoType = result['annotationtype']
+
         fieldNames = list(getattr(FieldNames_annotation, annoType).value)
         queryStr = sql.SQL('''
             SELECT id AS annotationID, image, {fieldNames} FROM {id_anno} AS anno
@@ -128,7 +128,7 @@ def __load_metadata(project, dbConnector, imageIDs, loadAnnotations):
     return meta
 
 
-def _call_train(project, imageIDs, subset, trainingFun, dbConnector, fileServer, config):
+def _call_train(project, imageIDs, subset, trainingFun, dbConnector, fileServer):
     '''
         Initiates model training and maintains workers, status and failure
         events.
@@ -196,7 +196,7 @@ def _call_train(project, imageIDs, subset, trainingFun, dbConnector, fileServer,
 
 
 
-def _call_average_model_states(project, averageFun, dbConnector, fileServer, config):
+def _call_average_model_states(project, averageFun, dbConnector, fileServer):
     '''
         Receives a number of model states (coming from different AIWorker instances),
         averages them by calling the AI model's 'average_model_states' function and inserts
@@ -265,7 +265,7 @@ def _call_average_model_states(project, averageFun, dbConnector, fileServer, con
 
 
 
-def _call_inference(project, imageIDs, inferenceFun, rankFun, dbConnector, fileServer, config):
+def _call_inference(project, imageIDs, inferenceFun, rankFun, dbConnector, fileServer):
     '''
 
     '''
@@ -274,9 +274,6 @@ def _call_inference(project, imageIDs, inferenceFun, rankFun, dbConnector, fileS
 
     # load model state
     update_state(state='PREPARING', message='loading model state')
-    # #TODO
-    # from celery.contrib import rdb
-    # rdb.set_trace()
     try:
         stateDict, stateDictID = __load_model_state(project, dbConnector)
     except Exception as e:
@@ -310,8 +307,18 @@ def _call_inference(project, imageIDs, inferenceFun, rankFun, dbConnector, fileS
 
     # parse result
     try:
+        # get project's prediction type
+        result = dbConnector.execute(sql.SQL('''
+                SELECT predictionType
+                FROM aide_admin.project
+                WHERE shortname = %s;
+            '''),
+            (project,),
+            1)
+        predType = result['predictiontype']
+
         update_state(state='FINALIZING', message='saving predictions')
-        fieldNames = list(getattr(FieldNames_prediction, config.getProperty('Project', 'predictionType')).value)
+        fieldNames = list(getattr(FieldNames_prediction, predType).value)
         fieldNames.append('image')      # image ID
         fieldNames.append('cnnstate')   # model state ID
         values_pred = []
