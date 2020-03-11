@@ -222,6 +222,7 @@
                                         }
                                     } else {
                                         window.imageBrowser.setProgressBar(this, false);
+                                        window.imageBrowser.set('message', this, '');
                                     }
                                 }.bind(key), false);
                             }
@@ -233,11 +234,12 @@
                                 if(typeof data === 'string') {
                                     data = JSON.parse(data);
                                 }
+                                console.log(data)
                                 if(data['result']['imgPaths_valid'].length === 0) {
                                     // something went wrong uploading the image
                                     window.imageBrowser.set('imageURL', this, '/static/dataAdmin/img/error.png');
-                                    if(key in data['result']['imgs_error']) {
-                                        var msg = data['result']['imgs_error'][key];
+                                    if(this in data['result']['imgs_error']) {
+                                        var msg = data['result']['imgs_error'][this];
                                         window.imageBrowser.set('message', this, msg);
                                     }
 

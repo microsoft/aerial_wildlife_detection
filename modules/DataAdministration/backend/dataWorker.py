@@ -239,12 +239,11 @@ class DataWorker:
                 absFilePath = os.path.join(destFolder, filename)
 
                 # check if an image with the same name does not already exist
+                newFileName = filename
                 fileExists = os.path.exists(absFilePath)
-
                 if fileExists:
                     if existingFiles == 'keepExisting':
                         # rename new file
-                        newFileName = filename
                         while(os.path.exists(absFilePath)):
                             # rename file
                             fn, ext = os.path.splitext(newFileName)
@@ -264,7 +263,7 @@ class DataWorker:
                     
                     elif existingFiles == 'skipExisting':
                         # ignore new file
-                        imgs_warn[key] = 'Image "{}" already exists on disk and has been skipped.'.format(filename)
+                        imgs_warn[key] = 'Image "{}" already exists on disk and has been skipped.'.format(newFileName)
                         imgs_valid.append(key)
                         imgPaths_valid.append(os.path.join(parent, newFileName))
                         continue
@@ -301,13 +300,11 @@ class DataWorker:
                         # remove file
                         try:
                             os.remove(absFilePath)
-                            imgs_warn[key] = 'Image "{}" already existed on disk and has been deleted.\n'.format(filename) + \
+                            imgs_warn[key] = 'Image "{}" already existed on disk and has been deleted.\n'.format(newFileName) + \
                                                 'All metadata (views, annotations, predictions) have been removed from the database.'
                         except:
-                            imgs_warn[key] = 'Image "{}" already existed on disk but could not be deleted.\n'.format(filename) + \
+                            imgs_warn[key] = 'Image "{}" already existed on disk but could not be deleted.\n'.format(newFileName) + \
                                                 'All metadata (views, annotations, predictions) have been removed from the database.'
-                else:
-                    newFileName = filename
                 
                 # write to disk
                 fileParent, _ = os.path.split(absFilePath)
