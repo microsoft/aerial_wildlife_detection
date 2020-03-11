@@ -308,14 +308,14 @@ def _call_inference(project, imageIDs, inferenceFun, rankFun, dbConnector, fileS
     # parse result
     try:
         # get project's prediction type
-        result = dbConnector.execute(sql.SQL('''
+        projectMeta = dbConnector.execute(sql.SQL('''
                 SELECT predictionType
                 FROM aide_admin.project
                 WHERE shortname = %s;
             '''),
             (project,),
             1)
-        predType = result[0]['predictiontype']
+        predType = projectMeta[0]['predictiontype']
 
         update_state(state='FINALIZING', message='saving predictions')
         fieldNames = list(getattr(FieldNames_prediction, predType).value)
