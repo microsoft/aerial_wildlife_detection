@@ -27,6 +27,7 @@
     <div class="settings-group">
         <h3>Display styles</h3>
 
+        <!-- TODO: think about how to design this... maybe with preview? -->
         <input class="jscolor" id="test" />
     </div>
 
@@ -56,11 +57,25 @@
 
         // get project immutables
         var promise = $.ajax({
-            url: '{{ project }}/getProjectImmutables'
+            url: '{{ project }}/getProjectImmutables',
+            method: 'GET',
+            success: function(data) {
+                window.projectImmutables = data['immutables'];
+
+                // show or hide GUI fields according to annotation and prediction types
+                if(window.projectImmutables['annotationType'] === 'labels') {
+
+                }
+            },
+            error: function(data) {
+                console.error(data);
+            }
         })
 
         // get current UI settings
-        var promise = reloadUIsettings();
+        promise = promise.done(function() {
+            return reloadUIsettings();
+        });
 
         promise = promise.done(function() {
             window.showLoadingOverlay(false);

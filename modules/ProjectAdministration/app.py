@@ -127,6 +127,14 @@ class ProjectConfigurator:
                 return { 'settings': projData }
             except:
                 abort(400, 'bad request')
+
+        
+        @self.app.get('/<project>/getProjectImmutables')
+        @self.app.post('/<project>/getProjectImmutables')
+        def get_project_immutables(project):
+            if not self.loginCheck(project, admin=True):
+                abort(401, 'forbidden')
+            return {'immutables': self.middleware.getProjectImmutables(project)}
             
 
         @self.app.get('/<project>/getConfig')

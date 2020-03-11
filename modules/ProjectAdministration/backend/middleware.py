@@ -98,6 +98,18 @@ class ProjectConfigMiddleware:
         
         return response
 
+    
+    def getProjectImmutables(self, project):
+        queryStr = 'SELECT annotationType, predictionType, demoMode FROM aide_admin.project WHERE shortname = %s;'
+        result = self.dbConnector.execute(queryStr, (project,), 1)
+        if result and len(result):
+            return {
+                'annotationType': result[0]['annotationtype'],
+                'predictionType': result[0]['predictiontype']
+            }
+        else:
+            return None
+
 
     def getProjectInfo(self, project, parameters=None):
 
@@ -228,7 +240,7 @@ class ProjectConfigMiddleware:
                 id_labelclassGroup=sql.Identifier(shortname, 'labelclassgroup'),
                 id_labelclass=sql.Identifier(shortname, 'labelclass'),
                 id_annotation=sql.Identifier(shortname, 'annotation'),
-                id_cnnstate=sql.Identifier(shortname, 'cnnState'),
+                id_cnnstate=sql.Identifier(shortname, 'cnnstate'),
                 id_prediction=sql.Identifier(shortname, 'prediction'),
                 annotation_fields=sql.SQL(', ').join([sql.SQL(field) for field in annotationFields]),
                 prediction_fields=sql.SQL(', ').join([sql.SQL(field) for field in predictionFields])

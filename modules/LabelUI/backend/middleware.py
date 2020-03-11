@@ -111,7 +111,7 @@ class DBMiddleware():
         for key in imageIDs:
             vals.append(key)
         queryStr = sql.SQL('''
-            UPDATE {id_img}.image
+            UPDATE {id_img}
             SET last_requested = %s
             WHERE id IN %s;
         ''').format(id_img=sql.Identifier(project, 'image'))

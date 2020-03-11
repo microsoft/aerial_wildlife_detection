@@ -139,7 +139,7 @@ class AIMiddleware():
                 timestampStr = sql.SQL('''
                 WHERE iu.last_checked > COALESCE(to_timestamp(0),
                 (SELECT MAX(timecreated) FROM {id_cnnstate}))''').format(
-                    id_cnnstate=sql.Identifier(project, 'cnn_state')
+                    id_cnnstate=sql.Identifier(project, 'cnnstate')
                 )
             elif isinstance(minTimestamp, datetime):
                 timestampStr = sql.SQL('WHERE iu.last_checked > COALESCE(to_timestamp(0), %s)')

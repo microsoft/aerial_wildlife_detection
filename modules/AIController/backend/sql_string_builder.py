@@ -41,7 +41,7 @@ class SQLStringBuilder:
                 ) AS newestAnno;
             ''').format(
                 id_iu=sql.Identifier(project, 'image_user'),
-                id_cnnstate=sql.Identifier(project, 'cnn_state'),
+                id_cnnstate=sql.Identifier(project, 'cnnstate'),
                 limit=limitStr)
         else:
             queryStr = sql.SQL('''
