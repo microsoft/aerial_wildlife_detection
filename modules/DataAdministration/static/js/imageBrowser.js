@@ -724,8 +724,8 @@ class ImageBrowser {
         // setup markup
         var self = this;
         var viewStyle = $('<div class="image-browser-view-buttons"></div>');
-        this.listViewBtn = $('<button class="btn btn-sm btn-secondary"><img src="/static/dataAdmin/img/listView.svg" height="12" /></button>');
-        this.tileViewBtn = $('<button class="btn btn-sm btn-dark"><img src="/static/dataAdmin/img/tileView.svg" height="12" /></button>');
+        this.listViewBtn = $('<button class="btn btn-sm btn-secondary" id="list-view-button"><img src="/static/dataAdmin/img/listView.svg" height="12" /></button>');
+        this.tileViewBtn = $('<button class="btn btn-sm btn-dark" id="tile-view-button"><img src="/static/dataAdmin/img/tileView.svg" height="12" /></button>');
         this.listViewBtn.click(function() {
             self.setView('list');
         });

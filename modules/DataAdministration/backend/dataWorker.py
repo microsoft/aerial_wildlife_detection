@@ -187,13 +187,24 @@ class DataWorker:
         return result
 
 
-    def uploadImages(self, project, images):
+    def uploadImages(self, project, images, existingFiles='keepExisting'):
         '''
             Receives a dict of files (bottle.py file format),
             verifies their file extension and checks if they
             are loadable by PIL.
             If they are, they are saved to disk in the project's
             image folder, and registered in the database.
+            Parameter "existingFiles" can be set as follows:
+            - "keepExisting" (default): if an image already exists on
+              disk with the same path/file name, the new image will be
+              renamed with an underscore and trailing number.
+            - "skipExisting": do not save images that already exist on
+              disk under the same path/file name.
+            - "replaceExisting": overwrite images that exist with the
+              same path/file name. Note: in this case all existing anno-
+              tations, predictions, and other metadata about those images,
+              will be removed from the database.
+            - ""
             Returns image keys for images that were successfully
             saved, and keys and error messages for those that
             were not.
@@ -228,23 +239,72 @@ class DataWorker:
                 absFilePath = os.path.join(destFolder, filename)
 
                 # check if an image with the same name does not already exist
-                newFileName = filename
-                while(os.path.exists(absFilePath)):
-                    # rename file
-                    fn, ext = os.path.splitext(newFileName)
-                    match = self.countPattern.search(fn)
-                    if match is None:
-                        newFileName = fn + '_1' + ext
-                    else:
-                        # parse number
-                        number = int(fn[match.span()[0]+1:match.span()[1]])
-                        newFileName = fn[:match.span()[0]] + '_' + str(number+1) + ext
+                fileExists = os.path.exists(absFilePath)
 
-                    absFilePath = os.path.join(destFolder, newFileName)
-                    if not os.path.exists(absFilePath):
-                        imgs_warn[key] = 'An image with name "{}" already exists under given path on disk. Image has been renamed to "{}".'.format(
-                            filename, newFileName
+                if fileExists:
+                    if existingFiles == 'keepExisting':
+                        # rename new file
+                        newFileName = filename
+                        while(os.path.exists(absFilePath)):
+                            # rename file
+                            fn, ext = os.path.splitext(newFileName)
+                            match = self.countPattern.search(fn)
+                            if match is None:
+                                newFileName = fn + '_1' + ext
+                            else:
+                                # parse number
+                                number = int(fn[match.span()[0]+1:match.span()[1]])
+                                newFileName = fn[:match.span()[0]] + '_' + str(number+1) + ext
+
+                            absFilePath = os.path.join(destFolder, newFileName)
+                            if not os.path.exists(absFilePath):
+                                imgs_warn[key] = 'An image with name "{}" already exists under given path on disk. Image has been renamed to "{}".'.format(
+                                    filename, newFileName
+                                )
+                    
+                    elif existingFiles == 'skipExisting':
+                        # ignore new file
+                        imgs_warn[key] = 'Image "{}" already exists on disk and has been skipped.'.format(filename)
+                        continue
+
+                    elif existingFiles == 'replaceExisting':
+                        # overwrite new file; first remove metadata
+                        queryStr = sql.SQL('''
+                            DELETE FROM {id_iu}
+                            WHERE image = (
+                                SELECT id FROM {id_img}
+                                WHERE filename = %s
+                            );
+                            DELETE FROM {id_anno}
+                            WHERE image = (
+                                SELECT id FROM {id_img}
+                                WHERE filename = %s
+                            );
+                            DELETE FROM {id_pred}
+                            WHERE image = (
+                                SELECT id FROM {id_img}
+                                WHERE filename = %s
+                            );
+                            DELETE FROM {id_img}
+                            WHERE filename = %s;
+                        ''').format(
+                            id_iu=sql.Identifier(project, 'image_user'),
+                            id_anno=sql.Identifier(project, 'annotation'),
+                            id_pred=sql.Identifier(project, 'prediction'),
+                            id_img=sql.Identifier(project, 'image')
                         )
+                        self.dbConnector.execute(queryStr,
+                            tuple([nextUpload.raw_filename]*4), None)
+
+                        # remove file
+                        try:
+                            os.remove(absFilePath)
+                            imgs_warn[key] = 'Image "{}" already existed on disk and has been deleted.\n'.format(filename) + \
+                                                'All metadata (views, annotations, predictions) have been removed from the database.'
+                        except:
+                            imgs_warn[key] = 'Image "{}" already existed on disk but could not be deleted.\n'.format(filename) + \
+                                                'All metadata (views, annotations, predictions) have been removed from the database.'
+
                 
                 # write to disk
                 fileParent, _ = os.path.split(absFilePath)

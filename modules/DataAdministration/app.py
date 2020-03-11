@@ -78,10 +78,15 @@ class DataAdministrator:
             if len(request.files):
                 for key in request.files:
                     files[key] = (request.files[key].raw_filename, request.files[key].file, request.files[key].content_type)
+            params = {}
+            if len(request.params.dict):
+                for key in request.params.dict:
+                    params[key] = request.params.dict[key][0]
 
             reqFun = getattr(requests, method.lower())
             return reqFun(os.path.join(self.config.getProperty('Server', 'dataServer_uri'), project, fun),
                         cookies=cookies, json=request.json, files=files,
+                        params=params,
                         headers=headers)
 
 
@@ -175,7 +180,13 @@ class DataAdministrator:
 
             try:
                 images = request.files
-                result = self.middleware.uploadImages(project, images)
+
+                try:
+                    existingFiles = request.params.dict['existingFiles']
+                except:
+                    existingFiles='keepExisting'
+
+                result = self.middleware.uploadImages(project, images, existingFiles)
                 return {'result': result}
             except Exception as e:
                 return {'status': 1, 'message': str(e)}

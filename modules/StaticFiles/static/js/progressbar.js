@@ -37,6 +37,14 @@ class ProgressBar {
         }
     }
 
+    getValue() {
+        return this.value;
+    }
+
+    getMax() {
+        return this.max;
+    }
+
     getMarkup() {
         return this.markup;
     }

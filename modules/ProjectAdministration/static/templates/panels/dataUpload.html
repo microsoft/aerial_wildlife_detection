@@ -12,11 +12,15 @@
         </div>
         <div id="actions-panel"></div>
     </div>
+    <div id="global-progress-bar" style="margin-bottom:20px"></div>
     <div id="image-browser"></div>
 </div>
 <link rel="stylesheet" href="/static/dataAdmin/css/imageBrowser.css" />
 <style>
     #actions-panel {
+        border: 1px solid #aaa;
+        border-radius: 5px;
+        padding: 10px;
         margin-bottom: 20px;
     }
 </style>
@@ -25,6 +29,18 @@
 <script type="text/javascript">
 
     $(document).ready(function() {
+
+        if(typeof ProgressBar === 'undefined') {
+            $.getScript('/static/general/js/progressbar.js');
+        }
+
+        // UI functions
+        function setControlsDisabled(disabled) {
+            $('#upload-mode-select').attr('disabled', disabled);
+            $('#file-upload-select').attr('disabled', disabled);
+            $('#upload-button').attr('disabled', disabled);
+            $('#cancel-button').attr('disabled', disabled);
+        }
 
         // untracked functions
         function _update_browser_scanUntracked(data) {
@@ -134,11 +150,36 @@
 
         // upload functions
         function startUploadFilesFromDisk() {
+            // disable radio buttons (TODO)
+
             window.uploadedFiles = [];
             var fileInput = $('#file-upload-select')[0];
 
+            var existingFiles = $('#existing-files [name=existing-files]:checked').val();
+
+            // global progress bar, status message, and stop button
+            $('#global-progress-bar').empty();
+            var pBar = new ProgressBar(true, 0, fileInput.files.length, false);
+            $('#global-progress-bar').append(pBar.getMarkup());
+            var infoBar = $('<span>uploading... (0/0 images uploaded)</span>');
+            $('#global-progress-bar').append(infoBar);
+            window.stopAction = false;
+            var stopButton = $('<button class="btn btn-sm btn-danger" id="cancel-button">Cancel</button>');
+            stopButton.on('click', function() {
+                window.stopAction = true;
+                $(this).attr('disabled', true);
+                setControlsDisabled(true);
+            });
+            $('#global-progress-bar').append(stopButton);
+
             // filter files according to MIME type and upload
+            var numComplete = 0;
             for(var i=0; i<fileInput.files.length; i++) {
+                if(window.stopAction) {
+                    // user aborted
+                    setControlsDisabled(false);
+                    break;
+                }
                 var nextItem = fileInput.files[i];
                 if(window.validImageMIMEtypes.includes(nextItem.type)) {
                     window.uploadedFiles.push(nextItem);
@@ -147,6 +188,7 @@
                     var fileName = (nextItem.hasOwnProperty('webkitRelativePath')? nextItem['webkitRelativePath'] : nextItem['name']);
                     var key = fileName+'_'+i;
                     var formData = new FormData();
+                    formData.append('existingFiles', existingFiles);
                     formData.append(key, nextItem);
                     window.imageBrowser.addImages({
                         key: {
@@ -155,6 +197,7 @@
                             'imageURL': '/static/dataAdmin/img/loading.png'
                         }
                     });
+                    window.imageBrowser.setProgressBar(key, true, 0);
 
                     $.ajax({
                         url: '{{ project }}/uploadImages',
@@ -190,6 +233,12 @@
                                 window.imageBrowser.set('imageURL', this, '/static/dataAdmin/img/error.png');
                             }
                             window.imageBrowser.setProgressBar(this, false);
+                            pBar.set(true, pBar.getValue()+1);
+                            numComplete++;
+                            infoBar.html('uploading... ('+numComplete+'/'+fileInput.files.length+' images uploaded)');
+                            if(numComplete >= fileInput.files.length) {
+                                pBar.set(false);
+                            }
                         }.bind(key),
                         error: function(data) {
                             window.imageBrowser.set('imageURL', this, '/static/dataAdmin/img/error.png');
@@ -198,8 +247,6 @@
                 }
             }
         }
-
-
 
         // general functions
         function getSelectedMode() {
@@ -316,9 +363,18 @@
 
 
             window.actionPanel_upload = $('<div></div>');
-            var fileUploadSelect = $('<input id="file-upload-select" type="file" webkitdirectory directory multiple />');
+            var fileUploadSelect = $('<input id="file-upload-select" type="file" webkitdirectory directory multiple /><br />');
             window.actionPanel_upload.append(fileUploadSelect);
-            var startFileUpload = $('<button class="btn btn-sm btn-primary">Upload</button>');
+            var existingFiles = $('<div>Existing files with the same name:</div><fieldset id="existing-files">' +
+                    '<input type="radio" id="radio-keep-existing" name="existing-files" value="keepExisting" checked />' +
+                    '<label for="radio-keep-existing">keep existing and rename new files</label><br />' +
+                    '<input type="radio" id="radio-skip-existing" name="existing-files" value="skipExisting" />' +
+                    '<label for="radio-skip-existing">skip</label><br />' +
+                    '<input type="radio" id="radio-replace-existing" name="existing-files" value="replaceExisting" />' +
+                    '<label for="radio-replace-existing">overwrite</label><br />' +
+                '</fieldset>');
+            window.actionPanel_upload.append(existingFiles);
+            var startFileUpload = $('<button class="btn btn-sm btn-primary" id="upload-button">Upload</button>');
             startFileUpload.on('click', function() {
                 startUploadFilesFromDisk();
             });
