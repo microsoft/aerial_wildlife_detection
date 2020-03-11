@@ -1,7 +1,7 @@
 /*
     Sets up the frontend and loads all required parameters in correct order.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 */
 
 $(document).ready(function() {
@@ -579,7 +579,7 @@ $(document).ready(function() {
 
     // AI backend
     promise = promise.then(function() {
-        if(window.aiControllerURI != null && ! window.demoMode) {
+        if(window.aiModelAvailable && window.aiControllerURI != null && ! window.demoMode) {
             window.aiWorkerHandler = new AIWorkerHandler($('.ai-worker-entries'));
             $('#ai-worker-minipanel').show();
         }

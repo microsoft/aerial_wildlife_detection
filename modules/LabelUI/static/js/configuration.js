@@ -75,6 +75,7 @@ window.getProjectSettings = function() {
         window.defaultImage_h = parseInt(data['settings']['defaultImage_h']);
         window.styles = data['settings']['styles'];
         window.welcomeMessage = data['settings']['welcomeMessage'];
+        window.aiModelAvailable = data['settings']['ai_model_available'];
         // window.demoMode = parseBoolean(data['settings']['demoMode']);
 
 

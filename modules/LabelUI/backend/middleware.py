@@ -168,21 +168,27 @@ class DBMiddleware():
         '''
         queryStr = '''
             SELECT shortname, name, description, demoMode,
-            interface_enabled
+            interface_enabled, ai_model_enabled,
+            ai_model_library, ai_alcriterion_library
             FROM aide_admin.project
             WHERE shortname = %s
         '''
         result = self.dbConnector.execute(queryStr, (project,), 1)[0]
 
-        # # TODO: append backdrops
-        # result['backdrops'] = self.projectSettings['backdrops']['images']
+        # provide flag if AI model is available
+        aiModelAvailable = all([
+            result['ai_model_enabled'],
+            result['ai_model_library'] is not None and len(result['ai_model_library']),
+            result['ai_alcriterion_library'] is not None and len(result['ai_alcriterion_library'])
+        ])
 
         return {
             'projectShortname': result['shortname'],
             'projectName': result['name'],
             'projectDescription': result['description'],
             'demoMode': result['demomode'],
-            'interfaceEnabled': result['interface_enabled']
+            'interfaceEnabled': result['interface_enabled'],
+            'ai_model_available': aiModelAvailable
         }
 
 
