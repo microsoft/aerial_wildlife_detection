@@ -23,7 +23,7 @@ class AIWorker():
         self.config = config
         self.dbConnector = Database(config)
         self._init_fileserver()
-        # self._init_project_queues()
+        self._init_project_queues()
             
 
     def _init_fileserver(self):
@@ -39,7 +39,6 @@ class AIWorker():
         '''
             Queries the database for projects that support AIWorkers
             and adds respective queues to Celery to listen to them.
-            TODO: implement custom project-to-AIWorker routing
         '''
         if current_app.conf.task_queues is not None:
             queues = list(current_app.conf.task_queues)
