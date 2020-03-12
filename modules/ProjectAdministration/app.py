@@ -28,8 +28,8 @@ class ProjectConfigurator:
         self._initBottle()
     
 
-    def loginCheck(self, project=None, admin=False, superuser=False, canCreateProjects=False, extend_session=False):
-        return self.login_check(project, admin, superuser, canCreateProjects, extend_session)
+    def loginCheck(self, project=None, admin=False, superuser=False, canCreateProjects=False, extend_session=False, return_all=False):
+        return self.login_check(project, admin, superuser, canCreateProjects, extend_session, return_all)
 
 
     def addLoginCheckFun(self, loginCheckFun):
@@ -46,6 +46,9 @@ class ProjectConfigurator:
     def _initBottle(self):
 
         # read templates first
+        with open(os.path.abspath(os.path.join(self.staticDir, 'templates/projectLandingPage.html')), 'r') as f:
+            self.projLandPage_template = SimpleTemplate(f.read())
+
         with open(os.path.abspath(os.path.join(self.staticDir, 'templates/projectConfiguration.html')), 'r') as f:
             self.projConf_template = SimpleTemplate(f.read())
         
@@ -87,6 +90,32 @@ class ProjectConfigurator:
         @self.app.route('/<project>/')
         def send_project_overview(project):
 
+            #TODO: show for public project...
+            if not self.loginCheck():
+                return redirect('/')
+
+            # get project data (and check if project exists)
+            projectData = self.middleware.getProjectInfo(project, ['name', 'description', 'interface_enabled', 'demomode'])
+            if projectData is None:
+                return self.__redirect_login_page()
+
+            if not self.loginCheck(project=project, extend_session=True):
+                return redirect('/')
+
+            # render overview template
+            username = 'Demo mode' if projectData['demomode'] else html.escape(request.get_cookie('username'))
+            
+            return self.projLandPage_template.render(
+                projectShortname=project,
+                projectTitle=projectData['name'],
+                projectDescription=projectData['description'],
+                username=username)
+
+
+        @self.app.route('/<project>/configuration')
+        def send_project_config_page(project):
+            
+            #TODO
             if not self.loginCheck():
                 return redirect('/')
 
@@ -101,7 +130,7 @@ class ProjectConfigurator:
             if not self.loginCheck(project=project, admin=True, extend_session=True):
                 return redirect('/' + project + '/interface')
 
-            # render overview template
+            # render configuration template
             username = 'Demo mode' if projectData['demomode'] else html.escape(request.get_cookie('username'))
 
             return self.projConf_template.render(
@@ -207,6 +236,34 @@ class ProjectConfigurator:
             
             users = self.middleware.getProjectUsers(project)
             return {'users':users}
+
+
+        @self.app.get('/<project>/getPermissions')
+        def get_project_permissions(project):
+            permissions = {
+                'can_view': False,
+                'can_label': False,
+                'is_admin': False
+            }
+
+            # project-specific permissions
+            config = self.middleware.getProjectInfo(project)
+            if config['demomode']:
+                permissions['can_view'] = True
+                permissions['can_label'] = True
+            isPublic = config['ispublic']
+            if not isPublic and not self.loginCheck(project=project):
+                # pretend project does not exist (TODO: suboptimal solution; does not properly hide project from view)
+                abort(404, 'not found')
+
+            # user-specific permissions
+            userPrivileges = self.loginCheck(project=project, return_all=True)
+            permissions['can_view'] = isPublic or userPrivileges['project']['enrolled']
+            permissions['can_label'] = userPrivileges['project']['enrolled']
+            permissions['is_admin'] = userPrivileges['project']['isAdmin']
+            
+            return {'permissions': permissions}
+
 
 
 

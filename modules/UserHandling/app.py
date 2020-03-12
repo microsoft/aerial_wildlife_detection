@@ -271,7 +271,7 @@ class UserHandler():
                 }
 
 
-    def checkAuthenticated(self, project=None, admin=False, superuser=False, canCreateProjects=False, extend_session=False):
+    def checkAuthenticated(self, project=None, admin=False, superuser=False, canCreateProjects=False, extend_session=False, return_all=False):
         if self.demoMode:
             return True
 
@@ -279,7 +279,7 @@ class UserHandler():
             username = html.escape(request.get_cookie('username'))
             sessionToken = self.middleware.decryptSessionToken(username, request)
             # sessionToken = html.escape(request.get_cookie('session_token', secret=self.config.getProperty('Project', 'secret_token')))
-            return self.middleware.isAuthenticated(username, sessionToken, project, admin, superuser, canCreateProjects, extend_session)
+            return self.middleware.isAuthenticated(username, sessionToken, project, admin, superuser, canCreateProjects, extend_session, return_all)
         except:
             return False
 

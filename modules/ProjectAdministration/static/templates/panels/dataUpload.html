@@ -78,7 +78,7 @@
             for(var i=0; i<data.length; i++) {
                 imgs.push({
                     url: data[i],
-                    imageURL: window.dataServerURI + '{{ project }}/files/' + data[i]
+                    imageURL: window.dataServerURI + 'files/' + data[i]
                 });
             }
             
@@ -97,7 +97,7 @@
         function scanUntracked() {
             window.imageBrowser.setLoadingOverlay(true, 'loading...');
             $.ajax({
-                url: '{{ project }}/scanForImages',
+                url: 'scanForImages',
                 method: 'GET',
                 success: function(data) {
                     // set interval for result polling
@@ -138,7 +138,7 @@
         function _do_add_untracked(imgList) {
             if(imgList.length === 0) return;
             return $.ajax({
-                url: '{{ project }}/addExistingImages',
+                url: 'addExistingImages',
                 method: 'POST',
                 data: JSON.stringify({images:imgList}),
                 contentType: 'application/json; charset=utf-8',
@@ -242,7 +242,7 @@
                     window.imageBrowser.setProgressBar(key, true, 0);
 
                     var uploadRequest = $.ajax({
-                        url: '{{ project }}/uploadImages',
+                        url: 'uploadImages',
                         method: 'POST',
                         data: formData,
                         cache: false,
@@ -277,7 +277,7 @@
                                     // something went wrong uploading the image
                                     window.imageBrowser.set('imageURL', this, '/static/dataAdmin/img/error.png');
                                 } else {
-                                    var url = window.dataServerURI + '{{ project }}/files/' +
+                                    var url = window.dataServerURI + 'files/' +
                                     data['result']['imgPaths_valid'][0];
                                     window.imageBrowser.set('imageURL', this, url);
                                     window.imageBrowser.set('message', this, '<span style="color:green">upload successful</span>');
@@ -352,7 +352,7 @@
 
 
         // get data server URI
-        var promise = $.get('{{ project }}/getProjectSettings', function(data) {
+        var promise = $.get('getProjectSettings', function(data) {
             window.dataServerURI = data['settings']['dataServerURI'];
             if(!window.dataServerURI.endsWith('/')) {
                 window.dataServerURI += '/';
@@ -362,7 +362,7 @@
         // get valid image MIME types
         promise = promise.done(function() {
             return $.ajax({
-                url: '{{ project }}/getValidMIMEtypes',
+                url: 'getValidMIMEtypes',
                 method: 'GET',
                 success: function(data) {
                     if(data.hasOwnProperty('MIME_types')) {
@@ -412,7 +412,7 @@
             var infoMessage = $('<div></div>');
             var serverFolderCell = $('<td style="font-family:monospace">(loading...)</td>');
             $.ajax({
-                url: '{{ project }}/getPlatformInfo',
+                url: 'getPlatformInfo',
                 method: 'GET',
                 success: function(data) {
                     if(data.hasOwnProperty('settings')) {

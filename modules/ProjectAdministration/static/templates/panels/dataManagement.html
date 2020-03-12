@@ -124,7 +124,7 @@
 
             //TODO: /files/ ?
             window.imageBrowser = new ImageBrowser(fileBrowserDiv, {
-                'baseURL': window.dataServerURI + '{{ project }}/files/',
+                'baseURL': window.dataServerURI + window.project + '/files/',
                 'images': [],
                 'showCheckboxes': true,
                 'showImages': true,
@@ -232,7 +232,7 @@
             }
 
             return $.ajax({
-                url: '{{ project }}/listImages',        //window.dataServerURI + '{{ project }}/listImages',
+                url: 'listImages',
                 method: 'POST',
                 data: JSON.stringify(params),
                 contentType: 'application/json; charset=utf-8',
@@ -263,7 +263,7 @@
                     data[id] = 1;
                 }
                 data = {'goldenQuestions': data};
-                url = '{{ project }}/setGoldenQuestions';
+                url = 'setGoldenQuestions';
 
             } else if(action === 'golden_question_no') {
                 data = {};
@@ -272,7 +272,7 @@
                     data[id] = 0;
                 }
                 data = {'goldenQuestions': data};
-                url = '{{ project }}/setGoldenQuestions';
+                url = 'setGoldenQuestions';
 
             } else if(action === 'remove_annotations') {
                 error('Not yet supported.');
@@ -288,7 +288,7 @@
                     'forceRemove': $('#force-delete').prop('checked'),
                     'deleteFromDisk': $('#delete-from-disk').prop('checked')
                 };
-                url = '{{ project }}/removeImages';
+                url = 'removeImages';
             }
 
             if(data === undefined || url === undefined) return;
@@ -328,7 +328,7 @@
         }
 
         // get data server URI
-        var promise = $.get('{{ project }}/getProjectSettings', function(data) {
+        var promise = $.get('getProjectSettings', function(data) {
             window.dataServerURI = data['settings']['dataServerURI'];
             if(!window.dataServerURI.endsWith('/')) {
                 window.dataServerURI += '/';

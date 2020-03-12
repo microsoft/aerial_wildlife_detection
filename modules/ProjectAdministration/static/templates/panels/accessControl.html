@@ -88,7 +88,7 @@
     $(document).ready(function() {
         // general settings
         var promise = $.ajax({
-            url: '{{ project }}/getConfig',
+            url: 'getConfig',
             method: 'POST',
             data: JSON.stringify({
                 'parameters': [
@@ -129,7 +129,7 @@
 
         promise = promise.done(function() {
             return $.ajax({
-                url: '{{ project }}/getUsers',
+                url: 'getUsers',
                 method: 'GET',
                 success: function(data) {
                     if(data.hasOwnProperty('users')) {
@@ -167,7 +167,7 @@
         // misc.
         $('#renew-secret-token').click(function() {
             $.ajax({
-                url: window.project + '/renewSecretToken',
+                url: 'renewSecretToken',
                 method: 'POST',
                 success: function(data) {
                     if(data.hasOwnProperty('secret_token')) {

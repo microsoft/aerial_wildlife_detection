@@ -17,7 +17,7 @@ function poll_status(taskID, successHandle, errorHandle, timeout) {
     var tHandle = undefined;
     function __do_poll() {
         return $.ajax({
-            url: window.project + '/pollStatus',
+            url: 'pollStatus',
             method: 'POST',
             contentType: 'application/json; charset=utf-8',
             dataType: 'json',

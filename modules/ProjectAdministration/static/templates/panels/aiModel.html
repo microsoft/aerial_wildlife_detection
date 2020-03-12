@@ -58,7 +58,7 @@
 
         promise = promise.done(function() {
             return $.ajax({
-                url: '{{ project }}/getConfig',
+                url: 'getConfig',
                 method: 'POST',
                 data: JSON.stringify({
                     'parameters': [

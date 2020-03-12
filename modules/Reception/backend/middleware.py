@@ -110,3 +110,46 @@ class ReceptionMiddleware:
         except Exception as e:
             print(e)
             return False
+
+    
+    def getSampleImages(self, project, limit=128):
+        '''
+            Returns sample image URLs from the specified project for backdrop
+            visualization on the landing page.
+            Images are sorted descending according to the following criteria,
+            in a row:
+            1. last_requested
+            2. date_added
+            3. number of annotations
+            4. number of predictions
+            5. random
+        '''
+        queryStr = sql.SQL('''
+            SELECT filename FROM {id_img} AS img
+            LEFT OUTER JOIN (
+                SELECT img_anno AS img_id, cnt_anno, cnt_pred FROM (
+                    SELECT image AS img_anno, COUNT(image) AS cnt_anno
+                    FROM {id_anno}
+                    GROUP BY img_anno
+                ) AS anno
+                FULL OUTER JOIN (
+                    SELECT image AS img_pred, COUNT(image) AS cnt_pred
+                    FROM {id_pred}
+                    GROUP BY img_pred
+                ) AS pred
+                ON anno.img_anno = pred.img_pred
+            ) AS metaQuery
+            ON img.id = metaQuery.img_id
+            ORDER BY last_requested DESC NULLS LAST, date_added DESC NULLS LAST,
+                cnt_anno DESC NULLS LAST, cnt_pred DESC NULLS LAST, random()
+            LIMIT %s;
+        ''').format(
+            id_img=sql.Identifier(project, 'image'),
+            id_anno=sql.Identifier(project, 'annotation'),
+            id_pred=sql.Identifier(project, 'prediction')
+        )
+        result = self.dbConnector.execute(queryStr, (limit,), 'all')
+        response = []
+        for r in result:
+            response.append(r['filename'])
+        return response

@@ -43,7 +43,7 @@
 
         function reloadUIsettings() {
             return $.ajax({
-                url: '{{ project }}/getConfig',
+                url: 'getConfig',
                 method: 'GET',
                 success: function(data) {
                     // populate fields
@@ -57,7 +57,7 @@
 
         // get project immutables
         var promise = $.ajax({
-            url: '{{ project }}/getProjectImmutables',
+            url: 'getProjectImmutables',
             method: 'GET',
             success: function(data) {
                 window.projectImmutables = data['immutables'];

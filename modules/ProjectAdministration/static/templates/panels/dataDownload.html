@@ -99,7 +99,7 @@
             if(typeof data === 'string') {
                 // download link sent
                 msgCell.empty();
-                msgCell.append($('<a href="{{ project }}/downloadData/'+data+'" target="_blank">'+data+'</a>'));
+                msgCell.append($('<a href="downloadData/'+data+'" target="_blank">'+data+'</a>'));
 
             } else if(data.hasOwnProperty('status') && data['status'] === 'FAILURE') {
                 // error
@@ -138,7 +138,7 @@
 
             // make request
             $.ajax({
-                url: '{{ project }}/requestDownload',
+                url: 'requestDownload',
                 method: 'POST',
                 data: JSON.stringify(params),
                 contentType: 'application/json; charset=utf-8',
@@ -179,7 +179,7 @@
 
         
         // get data server URI
-        var promise = $.get('{{ project }}/getProjectSettings', function(data) {
+        var promise = $.get('getProjectSettings', function(data) {
             window.dataServerURI = data['settings']['dataServerURI'];
             if(!window.dataServerURI.endsWith('/')) {
                 window.dataServerURI += '/';
@@ -190,7 +190,7 @@
         let uList = $('#users-list');
         promise = promise.done(function() {
             return $.ajax({
-                url: '{{ project }}/getUsers',
+                url: 'getUsers',
                 method: 'GET',
                 success: function(data) {
                     if(data.hasOwnProperty('users')) {

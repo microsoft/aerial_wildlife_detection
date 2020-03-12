@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <title>AIDE: {{ projectTitle }}</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous" />
+        <link rel="stylesheet" href="/static/interface/css/interface.css" />
+        <link rel="stylesheet" href="/static/projectAdmin/css/config-page.css" />
+        <style>
+            .main-container {
+                color: white;
+            }
+
+            #overview-container {
+                margin: 0 auto;
+                padding-top: 80px;
+                width: 100%;
+                height: 400px;
+                background: -moz-linear-gradient(top,  rgba(0,0,0,1) 0%, rgba(0,0,0,1) 21%, rgba(0,0,0,0) 100%); /* FF3.6-15 */
+                background: -webkit-linear-gradient(top,  rgba(0,0,0,1) 0%,rgba(0,0,0,1) 21%,rgba(0,0,0,0) 100%); /* Chrome10-25,Safari5.1-6 */
+                background: linear-gradient(to bottom,  rgba(0,0,0,1) 0%,rgba(0,0,0,1) 21%,rgba(0,0,0,0) 100%); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
+                filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#000000', endColorstr='#00000000',GradientType=0 ); /* IE6-9 */
+            }
+
+            #project-buttons-container {
+                text-align: center;
+                margin-bottom: 20px;
+            }
+
+            #project-buttons-container a {
+                margin: 20px;
+            }
+
+            @keyframes scrollUp {
+                0% {
+                    opacity: 0;
+                    transform: translate(0, 10vh);
+                }
+                10% {
+                    opacity: 1;
+                }
+                90% {
+                    opacity: 1;
+                }
+                100% {
+                    opacity: 0;
+                    transform: translate(0, -200vh);
+                }
+            }
+
+            #picture-wall {
+                animation: scrollUp 40s cubic-bezier(.42,.42,.3,.83) infinite;
+                width: 100vw;
+                height: 400vh;
+                position: absolute;
+                left: 0;
+                top: 0;
+                right: 0;
+                z-index: -2;
+                line-height: 0;
+                -webkit-column-count: 5;
+                -webkit-column-gap:   0px;
+                -moz-column-count:    5;
+                -moz-column-gap:      0px;
+                column-count:         5;
+                column-gap:           0px; 
+                column-width: 100vw; 
+            }
+
+            #picture-wall-top {
+                width: 100%;
+                height: 100vh;
+                background-color: #333333;
+            }
+
+            #picture-wall-top-gradient {
+                width: 100%;
+                height: 200px;
+                position: absolute;
+                z-index: 0;
+                background: -moz-linear-gradient(top,  rgba(51,51,51,1) 0%, rgba(51,51,51,1) 18%, rgba(51,51,51,0) 100%); /* FF3.6-15 */
+                background: -webkit-linear-gradient(top,  rgba(51,51,51,1) 0%,rgba(51,51,51,1) 18%,rgba(51,51,51,0) 100%); /* Chrome10-25,Safari5.1-6 */
+                background: linear-gradient(to bottom,  rgba(51,51,51,1) 0%,rgba(51,51,51,1) 18%,rgba(51,51,51,0) 100%); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
+                filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#333333', endColorstr='#00333333',GradientType=0 ); /* IE6-9 */
+
+
+            }
+
+            #picture-wall img {
+                width: calc(100vw / 5);
+                /* width: 100% !important; */
+                height: auto !important;
+                float: left;
+            }
+
+            #picture-wall-shade {
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                right: 0;
+                z-index: -1;
+                background-color: #a4a4a457;
+            }
+        </style>
+        <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+        <script type="text/javascript">
+            $(document).ready(function() {
+                
+                // check authentication and put interface buttons accordingly
+                var promise = $.ajax({
+                    url: '{{ projectShortname }}/getPermissions',
+                    method: 'GET',
+                    success: function(data) {
+                        try {
+                            if(!data['permissions']['can_view']) {
+                                // private project; redirect to home page
+                                window.location.href = '/'
+                            }
+                            // project configuration button
+                            if(data['permissions']['is_admin']) {
+                                var btn = $('<a class="btn btn-lg btn-secondary" id="configure-project-button" href="{{ projectShortname }}/configuration">Configure</a>');
+                                $('#project-buttons-container').append(btn);
+                            }
+
+                            // labeling interface button
+                            if(data['permissions']['can_label']) {
+                                var btn = $('<a class="btn btn-lg btn-primary" id="start-labeling-button" href="{{ projectShortname }}/interface">Start labeling</a>');
+                                $('#project-buttons-container').append(btn);
+                            } else {
+                                var btn_placeholder = $('<div class="btn btn-secondary label-button" style="cursor:not-allowed;" disabled="disabled">(interface disabled)</div>');
+                                $('#project-buttons-container').append(btn_placeholder);
+                            }
+                        } catch {
+                            // something went wrong; redirect to home page
+                            window.location.href = '/'
+                        }
+                    },
+                    error: function(data) {
+                        console.error(data);
+                    }
+                });
+
+                // get server URI
+                promise = promise.done(function() {
+                    return $.ajax({
+                        url: '{{ projectShortname }}/getProjectSettings',
+                        success: function(data) {
+                            window.dataServerURI = data['settings']['dataServerURI'];
+                            if(!window.dataServerURI.endsWith('/')) {
+                                window.dataServerURI += '/';
+                            }
+                        }
+                    });
+                });
+
+                // load background picture wall
+                promise = promise.then(function() {
+                    let picWall = $('#picture-wall');
+                    var numImgs = 128;  //TODO
+                    for(var i=0; i<numImgs; i++) {
+                        picWall.append($('<img id="picwall_'+i+'" />'));
+                    }
+
+                    return $.ajax({
+                        url: '{{ projectShortname }}/getSampleImages',
+                        method: 'GET',
+                        data: {limit: numImgs},
+                        success: function(data) {
+                            // add images
+                            for(var i=0; i<data['images'].length; i++) {
+                                $('#picwall_'+i).attr('src',window.dataServerURI+'{{ projectShortname }}/files/'+data['images'][i]);
+                            }
+                            picWall.show();
+                        }
+                    });
+                });
+            });
+        </script>
+    </head>
+    <body>
+        <!-- Page Content -->
+        <div id="page-container">
+            <div id="content-wrapper">
+                <!-- Overlay -->
+                <div id="overlay" class="overlay">
+                    <div id="overlay-card" class="overlay-card card container"></div>
+                    <div id="overlay-loader">
+                        <div style="text-align:center;margin-bottom:20px;font-size:20px;text-align:center;">Loading...</div>
+                        <!-- blatant copy of MS azure's splash screen loading dots -->
+                        <div class="azure-loadingdots">
+                            <div></div>
+                            <div></div>
+                            <div></div>
+                            <div></div>
+                            <div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Underlay: picture wall -->
+                <div id="picture-wall" style="display:none">
+                    <div id="picture-wall-top"></div>
+                    <div id="picture-wall-top-gradient"></div>
+                </div>
+                <div id="picture-wall-shade"></div>
+
+                <!-- Navigation bar -->
+                <nav class="navbar navbar-expand-lg navbar-light bg-dark border-bottom">
+                    <ul class="nav navbar-nav">
+                        <li class="nav-item header-text">
+                            <h1><a href="/">Projects</a> / <a href="/{{ projectShortname }}">{{ projectTitle }}</a></h1>
+                        </li>
+                    </ul>
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item dropdown float-right">
+                            <div class="dropdown nav navbar-nav" style="float:right;">
+                                <a class="dropdown-toggle btn" id="navbar-user-dropdown" data-toggle="dropdown" href="#" style="color:white;font-weight:bold;" >{{ username }}</a>
+                                <ul class="dropdown-menu" role="menu" aria-labelledby="navbar-user-dropdown">
+                                    <li class="dropdown-item"><a id="logout" href="logout" class="btn btn-sm btn-danger">Log Out</a></li>
+                                </ul>
+                            </div>
+                        </li>
+                    </ul>
+                </nav>
+                <div class="grad-border-h"></div>
+                <div class="main-container">
+                    <div id="overview-container">
+                        <div id="general-overview" style="text-align:center;margin-bottom:20px;">
+                            <h2 id="project-title" style="font-size:40px;">{{ projectTitle }}</h2>
+                            <p id="project-description" style="font-size:20px;">{{ projectDescription }}</p>
+                            <div id="project-buttons-container" style="margin-top:50px;"></div>
+                        </div>
+                        <hr style="margin-bottom:20px" />
+                    </div>
+
+
+                </div>
+            </div>
+            <footer class="page-footer" id="footer">
+                <div class="ms-logo">
+                    <a href="about"><img height="100%" src="/static/general/img/ms_logo.png" /></a>
+                </div>
+            </footer>
+        </div>
+    </body>
+
+</html>
+
+<!-- 
+
+<div id="overview-container">
+    <div id="general-overview" style="text-align:center;margin-bottom:20px;">
+        <h2 id="project-title"></h2>
+        <p id="project-description"></p>
+        <div id="interface-link-container"></div>
+    </div>
+    <hr style="margin-bottom:20px" />
+</div>
+<link rel="stylesheet" href="/static/statistics/libs/chartjs/Chart.min.css" />
+<style>
+    .chartWrapper {
+        position: relative;
+    }
+
+    .chartWrapper > canvas {
+        position: absolute;
+        left: 0;
+        top: 0;
+        pointer-events:none;
+    }
+
+    .chartAreaWrapper {
+        width: 100%;
+        height: 300px;
+        max-height: 300px;
+        overflow-x: scroll;
+    }
+    /* canvas {
+        width: 100%;
+        max-height: 300px;
+    } */
+</style>
+<script src="/static/statistics/libs/chartjs/Chart.min.js"></script>
+<script type="text/javascript">
+    $(document).ready(function() {
+        let mainContainer = $('#overview-container');
+        var statsContainer = $('<div></div>');
+
+        // project metadata
+        $.ajax({
+            url: '{{ projectShortname }}/getConfig',
+            method: 'GET',
+            success: function(response) {
+                try {
+                    $('#project-title').html(response['settings']['name']);
+                    $('#project-description').html(response['settings']['description']);
+                } catch {
+                    $('#general-overview').hide();
+                }
+                try {
+                    if(response['settings']['interface_enabled']) {
+                        var btn = $('<a class="btn btn-lg btn-primary" id="start-labeling-button" href="{{ projectShortname }}/interface">Start labeling</a>');
+                        $('#interface-link-container').append(btn);
+                    } else {
+                        var btn_placeholder = $('<div class="btn btn-secondary label-button" style="cursor:not-allowed;" disabled="disabled">(interface disabled)</div>');
+                        $('#interface-link-container').append(btn_placeholder);
+                    }
+                } catch {
+                    var btn_placeholder = $('<div class="btn btn-secondary label-button" style="cursor:not-allowed;" disabled="disabled">(interface disabled)</div>');
+                    $('#interface-link-container').append(btn_placeholder);
+                }
+            },
+            error: function() {
+                $('#general-overview').hide();
+            }
+        });
+
+        // general project statistics
+        var promise = $.ajax({
+            url: '{{ projectShortname }}/getProjectStatistics',
+            method: 'GET',
+            success: function(response) {
+                response = response['statistics'];
+
+                // general progress
+                statsContainer.append($('<h2>Progress</h2>'));
+                let generalCanvas = $('<canvas id="chart-general-progress" width=400 height=200 style="width:100%;max-height:200px;"></canvas>');
+                statsContainer.append(generalCanvas);
+                var generalChart = new Chart(generalCanvas[0].getContext('2d'), {
+                    type: 'horizontalBar',
+                    data: {
+                        labels: ['viewed'],
+                        datasets: [{
+                            label: '# images viewed',
+                            data: [response['num_viewed']],
+                            backgroundColor: '#007bff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            xAxes: [{
+                                ticks: {
+                                    min: 0,
+                                    max: response['num_images']
+                                },
+                                scaleLabel: {
+                                    display: true,
+                                    labelString: '# images'
+                                }
+                            }]
+                        }
+                    }
+                });
+                let percViewed = (Math.round(response['num_viewed']/response['num_images'] * 100)).toFixed(2);
+                statsContainer.append('Users have viewed <b>'+response['num_viewed']+' out of '+response['num_images']+'</b> images ('+percViewed+'%).');
+
+                // per-user statistics
+                if(response.hasOwnProperty('user_stats')) {
+                    var usernames = [];
+                    var numImgs_viewed = [];
+                    var numGoldenQuestions = [];
+                    var numAnnotations_made = [];
+                    for(var user in response['user_stats']) {
+                        usernames.push(user);
+                        var numViewed = response['user_stats'][user]['num_viewed'];
+                        if(numViewed === null) numViewed = 0;
+                        var numAnno = response['user_stats'][user]['num_annotations'];
+                        if(numAnno === null) numAnno = 0;
+                        numImgs_viewed.push(numViewed);
+                        numAnnotations_made.push(numAnno);
+                        numGoldenQuestions.push(response['num_goldenQuestions']);
+                    }
+
+                    statsContainer.append($('<h2>Images annotated</h2>'));
+                    var cw_numImgs = $('<div class="chartWrapper"><div class="chartAreaWrapper"></div></div>');
+                    let perUser_numImgs = $('<canvas id="chart-user-imgs" width=400 height=300></canvas>');
+                    cw_numImgs.find('.chartAreaWrapper').append(perUser_numImgs);
+                    statsContainer.append(cw_numImgs);
+                    var userImgsChart = new Chart(perUser_numImgs[0].getContext('2d'), {
+                        type: 'bar',
+                        data: {
+                            labels: usernames,
+                            datasets: [{
+                                label: '# golden questions',
+                                data: numGoldenQuestions,   //TODO: disable if no golden questions
+                                type: 'line',
+                                borderColor: '#ffee54'
+                            },
+                            {
+                                label: '# images viewed',
+                                data: numImgs_viewed,
+                                backgroundColor: '#007bff'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }
+                    });
+
+                    statsContainer.append($('<h2>Annotations made</h2>'));
+                    var cw_numAnnos = $('<div class="chartWrapper"><div class="chartAreaWrapper"></div></div>');
+                    let perUser_numAnnos = $('<canvas id="chart-user-annos" width=400 height=300></canvas>');
+                    cw_numAnnos.find('.chartAreaWrapper').append(perUser_numAnnos);
+                    statsContainer.append(cw_numAnnos);
+                    var userAnnosChart = new Chart(perUser_numAnnos[0].getContext('2d'), {
+                        type: 'bar',
+                        data: {
+                            labels: usernames,
+                            datasets: [{
+                                label: '# annotations made',
+                                data: numAnnotations_made,
+                                backgroundColor: '#007bff'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }
+                    });
+                }
+            },
+            error: function(data) {
+                console.log('ERROR:');
+                console.log(data);
+            }
+        });
+
+        // per-labelclass statistics
+        promise = promise.done(function() {
+            return $.ajax({
+                url: '{{ projectShortname }}/getLabelclassStatistics',
+                method: 'GET',
+                success: function(response) {
+                    response = response['statistics'];
+                    statsContainer.append($('<h2>Per-Labelclass</h2>'));
+
+                    // assemble series
+                    var classnames = [];
+                    var numAnnotated = [];
+                    var numPredicted = [];
+                    
+                    for(var labelclass in response) {
+                        classnames.push(labelclass);
+                        numAnnotated.push(response[labelclass]['num_anno']);
+                        numPredicted.push(response[labelclass]['num_pred']);
+                    }
+
+                    // num. annotated
+                    statsContainer.append($('<h3>Annotations</h3>'));
+                    var cw_numAnnos = $('<div class="chartWrapper"><div class="chartAreaWrapper"></div></div>');
+                    let perLabelClass_numAnnos = $('<canvas id="chart-labelclass-annos" width=400 height=300></canvas>');
+                    cw_numAnnos.find('.chartAreaWrapper').append(perLabelClass_numAnnos);
+                    statsContainer.append(cw_numAnnos);
+                    var labelAnnosChart = new Chart(perLabelClass_numAnnos[0].getContext('2d'), {
+                        type: 'bar',
+                        data: {
+                            labels: classnames,
+                            datasets: [{
+                                label: '# annotations made',
+                                data: numAnnotated,
+                                backgroundColor: '#007bff'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }
+                    });
+
+                    // num. predicted
+                    statsContainer.append($('<h3>Predictions</h3>'));
+                    var cw_numPreds = $('<div class="chartWrapper"><div class="chartAreaWrapper"></div></div>');
+                    let perLabelClass_numPreds = $('<canvas id="chart-labelclass-annos" width=400 height=300></canvas>');
+                    cw_numPreds.find('.chartAreaWrapper').append(perLabelClass_numPreds);
+                    statsContainer.append(cw_numPreds);
+                    var labelPredsChart = new Chart(perLabelClass_numPreds[0].getContext('2d'), {
+                        type: 'bar',
+                        data: {
+                            labels: classnames,
+                            datasets: [{
+                                label: '# predictions made',
+                                data: numPredicted,
+                                backgroundColor: '#007bff'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }
+                    });
+                },
+                error: function(data) {
+                    console.log('ERROR:');
+                    console.log(data);
+                }
+            });
+        });
+
+        promise.done(function() {
+            mainContainer.append(statsContainer);
+            window.showLoadingOverlay(false);
+        });
+    });
+</script> -->

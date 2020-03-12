@@ -27,8 +27,8 @@ class Reception:
         self._initBottle()
 
     
-    def loginCheck(self, project=None, admin=False, superuser=False, canCreateProjects=False, extend_session=False):
-        return self.login_check(project, admin, superuser, canCreateProjects, extend_session)
+    def loginCheck(self, project=None, admin=False, superuser=False, canCreateProjects=False, extend_session=False, return_all=False):
+        return self.login_check(project, admin, superuser, canCreateProjects, extend_session, return_all)
 
     
     def addLoginCheckFun(self, loginCheckFun):
@@ -111,3 +111,29 @@ class Reception:
             except Exception as e:
                 print(e)
                 abort(400)
+
+
+        @self.app.get('/<project>/getSampleImages')
+        def get_sample_images(project):
+            '''
+                Returns a list of URLs for images in the project,
+                if the project is public or the user is enrolled
+                in it. Used for backdrops on the project landing
+                page.
+                Prioritizes golden question images.
+            '''
+
+            # check visibility of project
+            permissions = self.loginCheck(project=project, return_all=True)
+
+            if not (permissions['project']['isPublic'] or \
+                permissions['project']['enrolled'] or \
+                permissions['project']['demoMode']):
+                abort(401, 'unauthorized')
+            
+            try:
+                limit = int(request.params.get('limit'))
+            except:
+                limit = 128
+            imageURLs = self.middleware.getSampleImages(project, limit)
+            return {'images': imageURLs}

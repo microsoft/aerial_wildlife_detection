@@ -35,7 +35,7 @@
         <button id="lc-save-button" class="btn btn-primary" style="float:right">Save</button>
     </div>
 </div>
-<link rel="stylesheet" href="{{ project }}/config/static/libs/jqtree/jqtree_custom.css" />
+<link rel="stylesheet" href="config/static/libs/jqtree/jqtree_custom.css" />
 <style>
     #label-classes {
         border: 1px solid #aaa;
@@ -48,8 +48,8 @@
         border-radius: 5px;
     }
 </style>
-<script src="{{ project }}/config/static/libs/jqtree/tree.jquery.js"></script>
-<script src="{{ project }}/config/static/js/jscolor.js"></script>
+<script src="config/static/libs/jqtree/tree.jquery.js"></script>
+<script src="config/static/js/jscolor.js"></script>
 <script type="text/javascript">
     window.lcTree = undefined;
 
@@ -90,7 +90,7 @@
 
     function loadLabelClasses() {
         return $.ajax({
-            url: '{{ project }}/getClassDefinitions',
+            url: 'getClassDefinitions',
             method: 'GET',
             success: function(data) {
                 // prepare data for tree
@@ -183,7 +183,7 @@
         window.showLoadingOverlay(true);
         var classdef = window.lcTree.tree('toJson');
         var promise = $.ajax({
-            url: '{{ project }}/saveClassDefinitions',
+            url: 'saveClassDefinitions',
             method: 'POST',
             data: JSON.stringify(classdef),
             contentType: 'application/json; charset=utf-8',

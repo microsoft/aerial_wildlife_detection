@@ -38,7 +38,7 @@
 
         // project metadata
         $.ajax({
-            url: '{{ project }}/getConfig',
+            url: 'getConfig',
             method: 'GET',
             success: function(response) {
                 try {
@@ -49,7 +49,7 @@
                 }
                 try {
                     if(response['settings']['interface_enabled']) {
-                        var btn = $('<a class="btn btn-lg btn-primary" id="start-labeling-button" href="{{ project }}/interface">Start labeling</a>');
+                        var btn = $('<a class="btn btn-lg btn-primary" id="start-labeling-button" href="interface">Start labeling</a>');
                         $('#interface-link-container').append(btn);
                     } else {
                         var btn_placeholder = $('<div class="btn btn-secondary label-button" style="cursor:not-allowed;" disabled="disabled">(interface disabled)</div>');
@@ -67,7 +67,7 @@
 
         // general project statistics
         var promise = $.ajax({
-            url: '{{ project }}/getProjectStatistics',
+            url: 'getProjectStatistics',
             method: 'GET',
             success: function(response) {
                 response = response['statistics'];
@@ -181,7 +181,7 @@
         // per-labelclass statistics
         promise = promise.done(function() {
             return $.ajax({
-                url: '{{ project }}/getLabelclassStatistics',
+                url: 'getLabelclassStatistics',
                 method: 'GET',
                 success: function(response) {
                     response = response['statistics'];

@@ -232,30 +232,83 @@ class UserMiddleware():
         return False
 
 
-    def _check_authorized(self, project, username, admin):
+    def _check_authorized(self, project, username, admin, return_all=False):
         '''
             Verifies whether a user has access rights to a project.
+            If "return_all" is set to True, a dict with the following bools
+            is returned:
+            - enrolled: if the user is member of the project
+            - isAdmin: if the user is a project administrator
+            - isPublic: if the project is publicly visible (*)
+            - demoMode: if the project runs in demo mode (*)
 
-            TODO: cache or not?
+            (* note that these are here for convenience, but do not count
+            as authorization tokens)
+
+
+            If "return_all" is False, only a single bool is returned, with
+            criteria as follows:
+            - if "admin" is set to True, the user must be a project admini-
+              strator
+            - else, the user must be enrolled, admitted, and not blocked for
+              the current date and time
+
+            In this case, options like the demo mode and public flag are not
+            relevant for the decision.
         '''
-        if not project:
-            return True
+        now = current_time()
+        response = {
+            'enrolled': False,
+            'isAdmin': False,
+            'isPublic': False,
+            'demoMode': False
+        }
+        queryStr = sql.SQL('''
+            SELECT * FROM aide_admin.authentication AS auth
+            JOIN (SELECT shortname, demoMode, isPublic FROM aide_admin.project) AS proj
+            ON auth.project = proj.shortname
+            WHERE project = %s AND username = %s;
+        ''')
+        try:
+            result = self.dbConnector.execute(queryStr, (project, username,), 1)
+            if len(result):
+                response['isAdmin'] = result[0]['isadmin']
+                response['isPublic'] = result[0]['ispublic']
+                response['demoMode'] = result[0]['demomode']
+                admitted_until = True
+                blocked_until = False
+                if result[0]['admitted_until'] is not None:
+                    admitted_until = (result[0]['admitted_until'] >= now)
+                if result[0]['blocked_until'] is not None:
+                    blocked_until = (result[0]['blocked_until'] >= now)
+                response['enrolled'] = (admitted_until and not blocked_until)
+        except:
+            # no results to fetch: user is not authenticated
+            pass
 
-        if admin:
-            queryStr = sql.SQL('''SELECT COUNT(*) AS cnt FROM aide_admin.authentication
-                WHERE project = %s AND username = %s AND isAdmin = %s''')
-            queryVals = (project,username,admin,)
+        if return_all:
+            return response
         else:
-            queryStr = sql.SQL('''SELECT COUNT(*) AS cnt FROM aide_admin.authentication
-                WHERE project = %s AND username = %s
-                AND (
-                    (admitted_until IS NULL OR admitted_until >= now())
-                    AND
-                    (blocked_until IS NULL OR blocked_until < now())
-                )''')
-            queryVals = (project,username,)
-        result = self.dbConnector.execute(queryStr, queryVals, 1)
-        return result[0]['cnt'] == 1
+            if admin:
+                return response['isAdmin']
+            else:
+                return response['enrolled']
+            
+        # if admin:
+        #     queryStr = sql.SQL('''SELECT COUNT(*) AS cnt FROM aide_admin.authentication
+        #         WHERE project = %s AND username = %s AND isAdmin = %s''')
+        #     queryVals = (project,username,admin,)
+        # else:
+        #     queryStr = sql.SQL('''SELECT COUNT(*) AS cnt FROM aide_admin.authentication
+        #         WHERE project = %s AND username = %s
+        #         AND (
+        #             (admitted_until IS NULL OR admitted_until >= now())
+        #             AND
+        #             (blocked_until IS NULL OR blocked_until < now())
+        #         )''')
+        #     queryVals = (project,username,)
+        # result = self.dbConnector.execute(queryStr, queryVals, 1)
+        # return result[0]['cnt'] == 1
 
 
     def decryptSessionToken(self, username, request):
@@ -272,22 +325,33 @@ class UserMiddleware():
                             httponly=True, path='/', secret=userdata['secret_token'])
 
 
-    def _check_user_privileges(self, username, superuser=False, canCreateProjects=False):
+    def _check_user_privileges(self, username, superuser=False, canCreateProjects=False, return_all=False):
+        response = {
+            'superuser': False,
+            'can_create_projects': False
+        }
         result = self.dbConnector.execute('''SELECT isSuperUser, canCreateProjects
             FROM aide_admin.user WHERE name = %s;''',
             (username,),
             1)
-        if not len(result):
-            return False
-        if superuser and not result[0]['issuperuser']:
-            return False
-        if canCreateProjects and not (
-            result[0]['cancreateprojects'] or result[0]['issuperuser']):
-            return False
-        return True
+        
+        if len(result):
+            response['superuser'] = result[0]['issuperuser']
+            response['can_create_projects'] = result[0]['cancreateprojects']
+
+        if return_all:
+            return response
+        
+        else:
+            if superuser and not result[0]['issuperuser']:
+                return False
+            if canCreateProjects and not (
+                result[0]['cancreateprojects'] or result[0]['issuperuser']):
+                return False
+            return True
 
 
-    def isAuthenticated(self, username, sessionToken, project=None, admin=False, superuser=False, canCreateProjects=False, extend_session=False):
+    def isAuthenticated(self, username, sessionToken, project=None, admin=False, superuser=False, canCreateProjects=False, extend_session=False, return_all=False):
         '''
             Checks if the user is authenticated to access a service.
             Returns False if one or more of the following conditions holds:
@@ -300,20 +364,29 @@ class UserMiddleware():
 
             If 'extend_session' is True, the user's session will automatically be prolonged by the max login time
             specified in the configuration file.
+            If 'return_all' is True, all individual flags (instead of just a single bool) is returned.
         '''
-        if not self._check_logged_in(username, sessionToken):
-            return False
 
-        if not self._check_authorized(project, username, admin):
-            return False
+        if return_all:
+            returnVals = {}
+            returnVals['logged_in'] = self._check_logged_in(username, sessionToken)
+            if project is not None:
+                returnVals['project'] = self._check_authorized(project, username, admin, return_all=True)
+            returnVals['privileges'] = self._check_user_privileges(username, superuser, canCreateProjects, return_all=True)
+            if returnVals['logged_in'] and extend_session:
+                self._init_or_extend_session(username, sessionToken)
+            return returnVals
 
-        if not self._check_user_privileges(username, superuser, canCreateProjects):
-            return False
-        
-        if extend_session:
-            self._init_or_extend_session(username, sessionToken)
-        
-        return True
+        else:
+            if not self._check_logged_in(username, sessionToken):
+                return False
+            if project is not None and not self._check_authorized(project, username, admin):
+                return False
+            if not self._check_user_privileges(username, superuser, canCreateProjects):
+                return False
+            if extend_session:
+                self._init_or_extend_session(username, sessionToken)
+            return True
 
 
     def getAuthentication(self, username, project=None):
