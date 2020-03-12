@@ -54,7 +54,7 @@ class ProjectStatistics:
             return { 'statistics': stats }
 
 
-        @self.app.post('/<project>/getUserStatistics')
+        @self.app.post('/<project>/getPerformanceStatistics')
         def get_user_statistics(project):
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
@@ -62,6 +62,7 @@ class ProjectStatistics:
             params = request.json
             usernames_eval = params['users_eval']
             username_target = params['user_target']
+            entityType = params['entity_type']
             if 'threshold' in params:
                 threshold = params['threshold']
             else:
@@ -71,6 +72,6 @@ class ProjectStatistics:
             else:
                 goldenQuestionsOnly = False
 
-            stats = self.middleware.getUserStatistics(project, usernames_eval, username_target, threshold, goldenQuestionsOnly)
+            stats = self.middleware.getPerformanceStatistics(project, usernames_eval, username_target, entityType, threshold, goldenQuestionsOnly)
 
             return { 'result': stats }

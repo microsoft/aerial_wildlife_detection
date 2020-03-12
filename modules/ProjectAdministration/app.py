@@ -63,7 +63,8 @@ class ProjectConfigurator:
             'labelClasses',
             'overview',
             'userInterface',
-            'userPerformance'
+            'userPerformance',
+            'modelPerformance'
         ]
         for pn in panelNames:
             with open(os.path.join(self.staticDir, 'templates/panels', pn + '.html'), 'r') as f:
@@ -263,7 +264,6 @@ class ProjectConfigurator:
             permissions['is_admin'] = userPrivileges['project']['isAdmin']
             
             return {'permissions': permissions}
-
 
 
 

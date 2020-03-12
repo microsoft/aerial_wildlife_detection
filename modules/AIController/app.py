@@ -1,7 +1,7 @@
 '''
     Main Bottle and routings for the AIController instance.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 from bottle import post, request, response, abort
@@ -9,6 +9,8 @@ from modules.AIController.backend.middleware import AIMiddleware
 
 
 class AIController:
+
+    #TODO: relay routings if AIController is on a different machine
 
     def __init__(self, config, app):
         if config.getProperty('Project', 'demoMode', type=bool, fallback=False):
@@ -42,6 +44,18 @@ class AIController:
 
 
     def _initBottle(self):
+
+        @self.app.get('/<project>/listModelStates')
+        def list_model_states(project):
+            '''
+                Returns a list of saved AI model states'
+                metadata for a given project.
+            '''
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+            
+            return {'modelStates': self.middleware.listModelStates(project) }
+
         
         @self.app.post('/<project>/startTraining')
         def start_training(project):
@@ -198,12 +212,4 @@ class AIController:
             if not self.login_check(canCreateProjects=True):
                 abort(401, 'unauthorized')
             
-            # import available modules
-            from ai import PREDICTION_MODELS, ALCRITERION_MODELS
-            
-            return {
-                'models': {
-                    'prediction': PREDICTION_MODELS,
-                    'ranking': ALCRITERION_MODELS
-                }
-            }
+            return self.middleware.getAvailableAImodels()

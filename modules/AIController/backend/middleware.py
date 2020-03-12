@@ -494,6 +494,62 @@ class AIMiddleware():
         return status
 
 
+    def getAvailableAImodels(self):
+        # import available modules
+        from ai import PREDICTION_MODELS, ALCRITERION_MODELS
+        
+        return {
+            'models': {
+                'prediction': PREDICTION_MODELS,
+                'ranking': ALCRITERION_MODELS
+            }
+        }
+
+
+    def listModelStates(self, project):
+        modelLibraries = self.getAvailableAImodels()
+
+        queryStr = sql.SQL('''
+            SELECT id, EXTRACT(epoch FROM timeCreated) AS time_created, model_library, alCriterion_library, num_pred
+            FROM {id_cnnstate} AS cnnstate
+            LEFT OUTER JOIN (
+                SELECT cnnstate, COUNT(cnnstate) AS num_pred
+                FROM {id_pred}
+                GROUP BY cnnstate
+            ) AS pred
+            ON cnnstate.id = pred.cnnstate
+            ORDER BY time_created DESC;
+        ''').format(
+            id_cnnstate=sql.Identifier(project, 'cnnstate'),
+            id_pred=sql.Identifier(project, 'prediction')
+        )
+        result = self.dbConn.execute(queryStr, None, 'all')
+        response = []
+        for r in result:
+            try:
+                modelLibrary = modelLibraries['models']['prediction'][r['model_library']]
+            except:
+                modelLibrary = {
+                    'name': '(not found)'
+                }
+            modelLibrary['id'] = r['model_library']
+            try:
+                alCriterionLibrary = modelLibraries['models']['ranking'][r['alcriterion_library']]
+            except:
+                alCriterionLibrary = {
+                    'name': '(not found)'
+                }
+            alCriterionLibrary['id'] = r['alcriterion_library']
+            response.append({
+                'id': str(r['id']),
+                'time_created': r['time_created'],
+                'model_library': modelLibrary,
+                'al_criterion_library': alCriterionLibrary,
+                'num_pred': (r['num_pred'] if r['num_pred'] is not None else 0)
+            })
+        return response
+
+
     def getProjectModelSettings(self, project):
         '''
             Returns the AI and AL model properties for the given project,

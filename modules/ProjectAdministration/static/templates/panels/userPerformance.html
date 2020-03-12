@@ -10,7 +10,7 @@
                     <div>Users to be evaluated:</div>
                     <table>
                         <thead>
-                            <tr><td><input type="checkbox" id="eval-check-all" checked /></td><td>Name</td></tr>
+                            <tr><th><input type="checkbox" id="eval-check-all" checked /></th><th>Name</th></tr>
                         </thead>
                         <tbody id="eval-users"></tbody i>
                     </table>
@@ -20,7 +20,7 @@
                     <div>Target user:</div>
                     <table>
                         <thead>
-                            <tr><td></td><td>Name</td></tr>
+                            <tr><th></th><th>Name</th></tr>
                         </thead>
                         <tbody id="target-users"></tbody>
                     </table>
@@ -40,8 +40,6 @@
 
             <button id="calc-stats" class="btn btn-sm btn-primary">Update</button>
         </div>
-        
-        
     </div>
 
     <div style="margin-top:20px">
@@ -89,7 +87,7 @@
         padding-right: 5px;
     }
 
-    td {
+    td, th {
         padding-right: 5px;
     }
 
@@ -128,6 +126,7 @@
         var params = {
             'users_eval': evalUsers,
             'user_target': targetUser,
+            'entity_type': 'user',
             'goldenQuestionsOnly': limitGoldenQuestions
         };
         if(window.annotationType === 'points' || window.annotationType === 'boundingBoxes') {
@@ -139,7 +138,7 @@
         let resultsContainer = $('#performance-container');
         resultsContainer.empty();
         return $.ajax({
-            url: 'getUserStatistics',
+            url: 'getPerformanceStatistics',
             method: 'POST',
             data: JSON.stringify(params),
             contentType: 'application/json; charset=utf-8',
@@ -150,22 +149,22 @@
                 var series = {
                     'color': []
                 };        // dict of lists
-                for(var user in data['result']['per_user']) {
+                for(var user in data['result']['per_entity']) {
                     usernames.push(user);
-                    for(var s in data['result']['per_user'][user]) {
+                    for(var s in data['result']['per_entity'][user]) {
                         if(!series.hasOwnProperty(s)) {
                             series[s] = [];
                         }
-                        series[s].push(data['result']['per_user'][user][s]);
+                        series[s].push(data['result']['per_entity'][user][s]);
                     }
 
                     // colors
                     if((window.annotationType === 'points' || window.annotationType === 'boundingBoxes') &&
                         threshold !== null) {
                         if(series.hasOwnProperty('avg_dist')) {
-                            series['color'].push(data['result']['per_user'][user]['avg_dist'] <= threshold ? '#007bff' : '#ff3300');
+                            series['color'].push(data['result']['per_entity'][user]['avg_dist'] <= threshold ? '#007bff' : '#ff3300');
                         } else if(series.hasOwnProperty('avg_iou')) {
-                            series['color'].push(data['result']['per_user'][user]['avg_iou'] >= threshold ? '#007bff' : '#ff3300');
+                            series['color'].push(data['result']['per_entity'][user]['avg_iou'] >= threshold ? '#007bff' : '#ff3300');
                         }
                     } else {
                         series['color'].push('#007bff');
