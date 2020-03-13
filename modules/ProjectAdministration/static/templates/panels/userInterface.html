@@ -1,9 +1,14 @@
 <div>
     <h2>Interface</h2>
+
+    <h3>General</h3>
     <div class="settings-group">
         <input type="checkbox" id="interface-enabled-checkbox" />
         <label for="interface-enabled-checkbox">Enable annotation interface</label>
+    </div>
 
+    <h3>Image viewer</h3>
+    <div class="settings-group"></div>
         <table>
             <tr>
                 <td>Number of images on screen:</td>
@@ -24,16 +29,45 @@
         </table>
     </div>
 
+    <h3>AI model predictions</h3>
+    <div class="settings-group">
+        <input type="checkbox" id="show-predictions-checkbox" />
+        <label for="show-predictions-checkbox">Show model predictions</label>
+        <table>
+            <tr>
+                <td>Minimum confidence to show:</td>
+                <td><input id="field-minModelConfidence-show" type="number" min="0" max="1" /></td>
+            </tr>
+        </table>
+
+        <input type="checkbox" id="carryover-predictions-checkbox" />
+        <label for="carryover-predictions-checkbox">Automatically convert predictions to annotations</label>
+        <table>
+            <tr>
+                <td>Minimum confidence to convert:</td>
+                <td><input id="field-minModelConfidence-convert" type="number" min="0" max="1" /></td>
+            </tr>
+            <tr>
+                <td>Conversion rule (in case of multiple predictions):</td>
+                <td>
+                    <select id="field-conversionRule">
+                        <option value="maxConfidence">Max confidence</option>
+                        <option value="mode">Most frequently predicted label</option>
+                    </select>
+                </td>
+            </tr>
+        </table>
+    </div>
+
     <div class="settings-group">
         <h3>Display styles</h3>
 
         <!-- TODO: think about how to design this... maybe with preview? -->
-        <input class="jscolor" id="test" />
+        <!-- <input class="jscolor" id="test" /> -->
+        Coming soon
     </div>
 
-    <!-- Submit and abort buttons -->
     <div>
-        <button class="btn btn-danger">Cancel</button>
         <button id="proj-settings-save-button" class="btn btn-primary" style="float:right">Save</button>
     </div>
 </div>
@@ -41,19 +75,107 @@
 <script type="text/javascript">
     $(document).ready(function() {
 
+        // field-to-token mapping
+        const PROPERTIES_MAP = {
+            'interface_enabled': {id: 'interface-enabled-checkbox', type: 'checkbox'},
+            'ui_settings/numImagesPerBatch': {id: 'field-numImgsPerBatch', type: 'value'},
+            'ui_settings/defaultImage_w': {id: 'field-defaultImageWidth', type: 'value'},
+            'ui_settings/defaultImage_h': {id: 'field-defaultImageHeight', type: 'value'},
+            'ui_settings/minImageWidth': {id: 'field-minImageWidth', type: 'value'},
+            'ui_settings/showPredictions': {id: 'show-predictions-checkbox', type: 'checkbox'},
+            'ui_settings/showPredictions_minConf': {id: 'field-minModelConfidence-show', type: 'value'},
+            'ui_settings/carryOverPredictions': {id: 'carryover-predictions-checkbox', type: 'checkbox'},
+            'ui_settings/carryOverPredictions_minConf': {id: 'field-minModelConfidence-convert', type: 'value'},
+            'ui_settings/carryOverRule': {id: 'field-conversionRule', type: 'value'}
+        };
+
+        function _parse_config_value(data, key) {
+            try {
+                // retrieve value from data object
+                let tokens = key.split('/');
+                var value = data;
+                for(var i=0; i<tokens.length; i++) {
+                    value = value[tokens[i]];
+                }
+                
+                // apply in DOM
+                let prop = PROPERTIES_MAP[key];
+                let id = prop['id'];
+                let type = prop['type'];
+                if(type === 'checkbox') {
+                    $('#'+id).prop('checked', value);
+                } else if(type === 'value') {
+                    $('#'+id).val(value);
+                }
+            } catch {
+                return;
+            }
+        }
+
         function reloadUIsettings() {
             return $.ajax({
                 url: 'getConfig',
                 method: 'GET',
                 success: function(data) {
                     // populate fields
-
+                    data = data['settings'];
+                    for(var key in PROPERTIES_MAP) {
+                        _parse_config_value(data, key);
+                    }
                 },
                 error: function(data) {
                     console.error(data);
                 }
             });
         }
+
+        function saveUIsettings() {
+            // retrieve parameters first
+            var data = {};
+            for(var key in PROPERTIES_MAP) {
+                let prop = PROPERTIES_MAP[key];
+                let id = prop['id'];
+                let type = prop['type'];
+                var value = undefined;
+                if(type === 'checkbox') {
+                    value = $('#'+id).prop('checked');
+                } else if(type === 'value') {
+                    value = $('#'+id).val();
+                }
+                if(value !== undefined) {
+                    var tokens = key.split('/');
+                    if(tokens.length === 1) {
+                        data[key] = value;
+                    } else {
+                        var dataObj = {};
+                        for(var t=1; t<tokens.length; t++) {
+                            if(t===tokens.length-1) {
+                                dataObj[tokens[t]] = value;
+                            } else {
+                                dataObj[tokens[t]] = {};
+                            }
+                        }
+                        data[tokens[0]] = {...data[tokens[0]], ...dataObj};
+                    }
+                }
+            }
+
+            // post to server
+            return $.ajax({
+                url: 'saveProjectConfiguration',
+                method: 'POST',
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+                data: JSON.stringify(data),
+                success: function(data) {
+                    return reloadUIsettings();
+                },
+                error: function(data) {
+                    console.error(data);
+                }
+            });
+        }
+
 
         // get project immutables
         var promise = $.ajax({
@@ -64,7 +186,7 @@
 
                 // show or hide GUI fields according to annotation and prediction types
                 if(window.projectImmutables['annotationType'] === 'labels') {
-
+                    //TODO
                 }
             },
             error: function(data) {
@@ -75,6 +197,13 @@
         // get current UI settings
         promise = promise.done(function() {
             return reloadUIsettings();
+        });
+
+        $('#proj-settings-save-button').on('click', function() {
+            window.showLoadingOverlay(true);
+            saveUIsettings().then(function() {
+                window.showLoadingOverlay(false);
+            });
         });
 
         promise = promise.done(function() {

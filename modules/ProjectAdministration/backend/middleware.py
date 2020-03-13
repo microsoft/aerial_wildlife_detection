@@ -159,7 +159,7 @@ class ProjectConfigMiddleware:
         for param in parameters:
             value = result[param]
             if param == 'ui_settings':
-                value = ast.literal_eval(value)
+                value = json.loads(value)     #TODO: ast.literal_eval(value)
             response[param] = value
 
         return response
@@ -332,7 +332,7 @@ class ProjectConfigMiddleware:
                     FROM aide_admin.project
                     WHERE shortname = %s;            
                 ''', (project,), 1)
-            uiSettings = ast.literal_eval(uiSettings[0]['ui_settings'])
+            uiSettings = json.loads(uiSettings[0]['ui_settings'])     #TODO: ast.literal_eval(uiSettings[0]['ui_settings'])
             for kIdx in range(len(uiSettingsKeys_new)):
                 uiSettings[uiSettingsKeys_new[kIdx]] = uiSettings_new[kIdx]
             projectSettings['ui_settings'] = json.dumps(uiSettings)
@@ -346,10 +346,11 @@ class ProjectConfigMiddleware:
             ('isPublic', bool),
             ('secret_token', str),
             ('demoMode', bool),
-            ('ui_settings', str)
+            ('ui_settings', str),
+            ('interface_enabled', bool)
         ]
 
-        vals, params = parse_parameters(projectSettings, fieldNames, absent_ok=True, escape=True)      #TODO: escape
+        vals, params = parse_parameters(projectSettings, fieldNames, absent_ok=True, escape=False)
         vals.append(project)
 
         # commit to DB

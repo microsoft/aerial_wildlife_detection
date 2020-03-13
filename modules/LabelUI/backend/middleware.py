@@ -136,7 +136,7 @@ class DBMiddleware():
     def get_dynamic_project_settings(self, project):
         queryStr = 'SELECT ui_settings FROM aide_admin.project WHERE shortname = %s;'
         result = self.dbConnector.execute(queryStr, (project,), 1)
-        return ast.literal_eval(result[0]['ui_settings'])
+        return json.loads(result[0]['ui_settings'])       #TODO: ast.literal_eval(result[0]['ui_settings'])
 
 
     def getProjectSettings(self, project):

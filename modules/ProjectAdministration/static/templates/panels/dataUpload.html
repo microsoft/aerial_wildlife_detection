@@ -78,7 +78,7 @@
             for(var i=0; i<data.length; i++) {
                 imgs.push({
                     url: data[i],
-                    imageURL: window.dataServerURI + 'files/' + data[i]
+                    imageURL: window.dataServerURI + window.project + '/files/' + data[i]
                 });
             }
             
@@ -277,7 +277,7 @@
                                     // something went wrong uploading the image
                                     window.imageBrowser.set('imageURL', this, '/static/dataAdmin/img/error.png');
                                 } else {
-                                    var url = window.dataServerURI + 'files/' +
+                                    var url = window.dataServerURI + window.project + '/files/' +
                                     data['result']['imgPaths_valid'][0];
                                     window.imageBrowser.set('imageURL', this, url);
                                     window.imageBrowser.set('message', this, '<span style="color:green">upload successful</span>');
@@ -305,6 +305,7 @@
                         }.bind(key),
                         error: function(data) {
                             window.imageBrowser.set('imageURL', this, '/static/dataAdmin/img/error.png');
+                            pBar.set(true, pBar.getValue()+1);
                         }.bind(key)
                     });
 

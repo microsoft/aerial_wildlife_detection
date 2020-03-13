@@ -251,7 +251,7 @@ class ProjectConfigurator:
             config = self.middleware.getProjectInfo(project)
             if config['demomode']:
                 permissions['can_view'] = True
-                permissions['can_label'] = True
+                permissions['can_label'] = config['interface_enabled']
             isPublic = config['ispublic']
             if not isPublic and not self.loginCheck(project=project):
                 # pretend project does not exist (TODO: suboptimal solution; does not properly hide project from view)
@@ -260,7 +260,7 @@ class ProjectConfigurator:
             # user-specific permissions
             userPrivileges = self.loginCheck(project=project, return_all=True)
             permissions['can_view'] = isPublic or userPrivileges['project']['enrolled']
-            permissions['can_label'] = userPrivileges['project']['enrolled']
+            permissions['can_label'] = config['interface_enabled'] and (userPrivileges['project']['enrolled'])
             permissions['is_admin'] = userPrivileges['project']['isAdmin']
             
             return {'permissions': permissions}
