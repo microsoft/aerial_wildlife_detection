@@ -60,8 +60,8 @@ class ProjectStatistics:
                 abort(401, 'forbidden')
 
             params = request.json
-            usernames_eval = params['users_eval']
-            username_target = params['user_target']
+            entities_eval = params['entities_eval']
+            entity_target = params['entity_target']
             entityType = params['entity_type']
             if 'threshold' in params:
                 threshold = params['threshold']
@@ -72,6 +72,6 @@ class ProjectStatistics:
             else:
                 goldenQuestionsOnly = False
 
-            stats = self.middleware.getPerformanceStatistics(project, usernames_eval, username_target, entityType, threshold, goldenQuestionsOnly)
+            stats = self.middleware.getPerformanceStatistics(project, entities_eval, entity_target, entityType, threshold, goldenQuestionsOnly)
 
             return { 'result': stats }

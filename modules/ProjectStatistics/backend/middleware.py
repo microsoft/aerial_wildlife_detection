@@ -143,7 +143,7 @@ class ProjectStatisticsMiddleware:
         return precision, recall, f1
 
 
-    def getPerformanceStatistics(self, project, entities_eval, username_groundTruth, entityType='user', threshold=0.5, goldenQuestionsOnly=True):
+    def getPerformanceStatistics(self, project, entities_eval, entity_target, entityType='user', threshold=0.5, goldenQuestionsOnly=True):
         '''
             Compares the accuracy of a list of users or model states with a target
             user.
@@ -177,7 +177,7 @@ class ProjectStatisticsMiddleware:
         annoType = annoType[0]['annotationtype']
 
         # compose args list and complete query
-        queryArgs = [username_groundTruth, tuple(entities_eval)]
+        queryArgs = [entity_target, tuple(entities_eval)]
         if annoType == 'points' or annoType == 'boundingBoxes':
             queryArgs.append(threshold)
             if annoType == 'points':
@@ -233,8 +233,8 @@ class ProjectStatisticsMiddleware:
             queryStr = getattr(StatisticalFormulas_model, annoType).value
             queryStr = sql.SQL(queryStr).format(
                 id_anno=sql.Identifier(project, 'annotation'),
-                id_iu=sql.Identifier(project, 'image_user'),        #TODO: needed for model tests?
-                id_cnnstate=sql.Identifier(project, 'cnnstate'),    #TODO: needed? always?
+                id_iu=sql.Identifier(project, 'image_user'),
+                id_pred=sql.Identifier(project, 'prediction'),
                 sql_goldenQuestion=sql_goldenQuestion
             )
 
@@ -253,12 +253,12 @@ class ProjectStatisticsMiddleware:
                 if entityType == 'user':
                     entity = b['username']
                 else:
-                    entity = b['cnnstate']
+                    entity = str(b['cnnstate'])
                 if not entity in response['per_entity']:
                     response['per_entity'][entity] = tokens.copy()
-                    response['per_entity'][entity]['count'] = 1
+                    response['per_entity'][entity]['num_matches'] = 1
                 elif b['num_target'] > 0:
-                    response['per_entity'][entity]['count'] += 1
+                    response['per_entity'][entity]['num_matches'] += 1
                 
                 for key in tokens.keys():
                     if b[key] is not None:
@@ -267,8 +267,7 @@ class ProjectStatisticsMiddleware:
         for entity in response['per_entity'].keys():
             for t in tokens_normalize:
                 if t in response['per_entity'][entity]:
-                    response['per_entity'][entity][t] /= response['per_entity'][entity]['count']
-            del response['per_entity'][entity]['count']
+                    response['per_entity'][entity][t] /= response['per_entity'][entity]['num_matches']
 
             if annoType == 'points' or annoType == 'boundingBoxes':
                 prec, rec, f1 = self._calc_geometric_stats(

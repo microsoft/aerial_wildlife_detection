@@ -6,7 +6,7 @@
     <div id="options-container">
         <div class="tables-container">
             <div class="entity-table" style="width:70%;order:1;">
-                <div>AI model to be evaluated:</div>
+                <div>AI models to be evaluated:</div>
                 <table>
                     <thead>
                         <tr>
@@ -116,6 +116,208 @@
 </style>
 <script src="/static/statistics/libs/chartjs/Chart.min.js"></script>
 <script type="text/javascript">
+
+    function calculateModelStats() {
+        // get control values
+        var modelStates = [];
+        $('#cnn-states-tbody').find('input[type=checkbox]:checked').each(function() {
+            modelStates.push($(this).attr('id'));
+        });
+        var targetUser = $('#target-users').find('input[type=radio]:checked').attr('id');
+        if(targetUser === undefined || modelStates.length === 0) return;
+
+        var limitGoldenQuestions = $('#check-golden-question-only').prop('checked');
+
+        var params = {
+            'entities_eval': modelStates,
+            'entity_target': targetUser,
+            'entity_type': 'model',
+            'goldenQuestionsOnly': limitGoldenQuestions
+        };
+        if(window.annotationType === 'points' || window.annotationType === 'boundingBoxes') {
+            var threshold = $('#threshold-range').val();
+            params['threshold'] = threshold;
+        }
+
+        // clear num matches cells
+        $.each($('#cnn-states-tbody').children(), function() {
+            $(this).children().last().html('0');
+        });
+
+        // update chart
+        let resultsContainer = $('#performance-container');
+        resultsContainer.empty();
+        $.ajax({
+            url: 'getPerformanceStatistics',
+            method: 'POST',
+            data: JSON.stringify(params),
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            success: function(data) {
+                // assemble global, per-model state statistics
+                var modelNames = [];
+                var series = {
+                    'color': []
+                };        // dict of lists
+                for(var i=0; i<modelStates.length; i++) {
+                    var model = modelStates[i];
+                    if(!data['result']['per_entity'].hasOwnProperty(model)) {
+                        // no predictions made with model
+                        continue;
+                    }
+
+                    // get number of model in table for labels & match count update
+                    let modelMarkup = $('#'+model).parent().parent();
+                    let modelNumber = $(modelMarkup.children()[1]).html();
+                    let matchCell = $(modelMarkup.children().last());
+                    matchCell.html(data['result']['per_entity'][model]['num_matches']);
+                    modelNames.push(modelNumber);
+                    for(var s in data['result']['per_entity'][model]) {
+                        if(!series.hasOwnProperty(s)) {
+                            series[s] = [];
+                        }
+                        series[s].push(data['result']['per_entity'][model][s]);
+                    }
+
+                    // colors
+                    if((window.annotationType === 'points' || window.annotationType === 'boundingBoxes') &&
+                        threshold !== null) {
+                        if(series.hasOwnProperty('avg_dist')) {
+                            series['color'].push(data['result']['per_entity'][model]['avg_dist'] <= threshold ? '#007bff' : '#ff3300');
+                        } else if(series.hasOwnProperty('avg_iou')) {
+                            series['color'].push(data['result']['per_entity'][model]['avg_iou'] >= threshold ? '#007bff' : '#ff3300');
+                        }
+                    } else {
+                        series['color'].push('#007bff');
+                    }
+                }
+
+                // create overview chart        //TODO: adapt for other anno types
+                if(series.hasOwnProperty('prec') && series.hasOwnProperty('rec')) {
+                    // points or bounding boxes: show precision-recall plots
+                    var chartData = [];
+                    var pointRadii = [];
+                    var maxRadius = 0;
+                    for(var i=0; i<series['prec'].length; i++) {
+                        chartData.push({
+                            x: series['rec'][i],
+                            y: series['prec'][i]
+                        });
+                        pointRadii.push(series['num_pred'][i]);
+                        maxRadius = Math.max(maxRadius, series['num_pred'][i]);
+                    }
+                    for(var i=0; i<pointRadii.length; i++) {
+                        pointRadii[i] *= 10.0 / maxRadius;
+                    }
+
+                    var cw = $('<div class="chartWrapper"><div class="chartAreaWrapper"></div></div>');
+                    let canvas = $('<canvas width=400 height=300></canvas>');
+                    cw.find('.chartAreaWrapper').append(canvas);
+                    var chart = new Chart(canvas[0].getContext('2d'), {
+                        type: 'scatter',
+                        data: {
+                            labels: modelNames,
+                            datasets: [{
+                                label: 'model performance',
+                                data: chartData,
+                                pointRadius: pointRadii,
+                                pointHoverRadius: pointRadii,
+                                backgroundColor: series['color']
+                            }]
+                        },
+                        options: {
+                            legend: {
+                                display: false
+                            },
+                            tooltips: {
+                                callbacks: {
+                                    label: function(tooltipItem, data) {
+                                    var label = data.labels[tooltipItem.index];
+                                    return label + ': (Precision: ' + tooltipItem.yLabel + ', Recall: ' + tooltipItem.xLabel + ')';
+                                    }
+                                }
+                            },
+                            scales: {
+                                yAxes: [{
+                                    scaleLabel: {
+                                        display: true,
+                                        labelString: 'Precision'
+                                    },
+                                    ticks: {
+                                        min: 0.0,
+                                        max: 1.0
+                                    }
+                                }],
+                                xAxes: [{
+                                    scaleLabel: {
+                                        display: true,
+                                        labelString: 'Recall'
+                                    },
+                                    ticks: {
+                                        min: 0.0,
+                                        max: 1.0
+                                    }
+                                }],
+                            },
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }
+                    });
+                    resultsContainer.append(cw);
+                }
+
+                if(series.hasOwnProperty('avg_dist') || series.hasOwnProperty('avg_iou')) {
+                    var geomData = [];
+                    var chartTitle = 'Geometric precision';
+                    var chartLabel = 'average ';
+                    if(series.hasOwnProperty('avg_dist')) {
+                        geomData = series['avg_dist'];
+                        chartLabel += 'point distance';
+                    } else if(series.hasOwnProperty('avg_iou')) {
+                        geomData = series['avg_iou'];
+                        chartLabel += 'Intersection-over-Union';
+                    }
+
+                    // geometric precision bar charts
+                    var cw_geom = $('<div class="chartWrapper"><div class="chartAreaWrapper"></div></div>');
+                    let canvas_geom = $('<canvas width=400 height=300></canvas>');
+                    cw_geom.find('.chartAreaWrapper').append(canvas_geom);
+                    new Chart(canvas_geom[0].getContext('2d'), {
+                        type: 'bar',
+                        data: {
+                            labels: modelNames,
+                            datasets: [{
+                                label: chartLabel,
+                                data: geomData,
+                                backgroundColor: series['color']
+                            }]
+                        },
+                        options: {
+                            scales: {
+                                yAxes: [{
+                                    scaleLabel: {
+                                        display: true,
+                                        labelString: chartLabel
+                                    },
+                                    ticks: {
+                                        min: 0.0,
+                                        max: 1.0
+                                    }
+                                }]
+                            },
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }
+                    });
+                    resultsContainer.append(cw_geom);
+                }
+            },
+            error: function(data) {
+                console.error(data);
+            }
+        });
+    }
+
     $(document).ready(function() {
 
         // get project annotation and prediction types
@@ -206,6 +408,30 @@
                 $.each($('#cnn-states-tbody').find('input[type=checkbox]'), function() {
                     $(this).prop('checked', checked);
                 });
+            });
+
+            let thresholdRange = $('#threshold-range');
+            let thresholdNumber = $('#threshold-number');
+
+            thresholdRange.on('input', function() {
+                thresholdNumber.val($(this).val());
+            });
+            thresholdNumber.on('input', function() {
+                thresholdRange.val($(this).val());
+            });
+
+            $('#options-header').click(function() {
+                let container = $('#options-container');
+                if(container.is(':visible')) {
+                    container.slideUp();
+                } else {
+                    container.slideDown();
+                }
+            });
+
+            $('#calc-stats').click(calculateModelStats);
+            promise = promise.then(function() {
+                return calculateModelStats();
             });
 
             window.showLoadingOverlay(false);
