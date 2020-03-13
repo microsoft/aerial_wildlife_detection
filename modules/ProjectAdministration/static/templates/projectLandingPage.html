@@ -117,7 +117,7 @@
                         try {
                             if(!data['permissions']['can_view']) {
                                 // private project; redirect to home page
-                                window.location.href = '/'
+                                window.location.href = '/';
                             }
                             // project configuration button
                             if(data['permissions']['is_admin']) {
@@ -135,7 +135,7 @@
                             }
                         } catch {
                             // something went wrong; redirect to home page
-                            window.location.href = '/'
+                            window.location.href = '/';
                         }
                     },
                     error: function(data) {

@@ -79,6 +79,30 @@
                 var panel = parseURLparameter('t');
                 if(panel === null) panel = 'overview';  // default
                 setPanel(panel);
+
+                // add interface shortlink
+                $.ajax({
+                    url: 'getPermissions',
+                    method: 'GET',
+                    success: function(data) {
+                        try {
+                            if(!data['permissions']['can_view']) {
+                                // private project; redirect to home page
+                                window.location.href = '/';
+                            }
+                            if(data['permissions']['can_label']) {
+                                $('#start-labeling-button').show();
+                                $('#interface-disabled-placeholder').hide();
+                            } else {
+                                $('#start-labeling-button').hide();
+                                $('#interface-disabled-placeholder').show();
+                            }
+                        } catch {}
+                    },
+                    error: function(data) {
+                        console.error(data);
+                    }
+                });
             });
         </script>
     </head>
@@ -126,6 +150,10 @@
                 <div class="main-container">
 
                     <div class="navigation-panel">
+                        <div id="interface-shortlink-container">
+                            <a class="btn btn-lg btn-primary" id="start-labeling-button" href="interface" style="display:none">Start labeling</a>
+                            <div class="btn btn-lg btn-secondary label-button" id="interface-disabled-placeholder" style="cursor:not-allowed;" disabled="disabled">(interface disabled)</div>
+                        </div>
                         <div class="navigation-entry-container">
                             <div class="navigation-entry" id="overview">Overview</div>
                             <div class="navigation-entry" id="userPerformance">User performance</div>

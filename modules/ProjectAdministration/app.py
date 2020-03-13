@@ -206,11 +206,13 @@ class ProjectConfigurator:
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
             try:
-                classdef = request.json
+                params = request.json
+                classdef = params['classes']
+                removeMissing = (params['remove_missing'] if 'remove_missing' in params else False)
                 if isinstance(classdef, str):
                     # re-parse JSON (might happen in case of single quotes)
                     classdef = json.loads(classdef)
-                success = self.middleware.updateClassDefinitions(project, classdef)
+                success = self.middleware.updateClassDefinitions(project, classdef, removeMissing)
                 if success:
                     return {'success': success}
                 else:

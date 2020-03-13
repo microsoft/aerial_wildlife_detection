@@ -122,6 +122,17 @@
                     for(var key in PROPERTIES_MAP) {
                         _parse_config_value(data, key);
                     }
+                    
+                    // adjust global interface shortlink button on config page
+                    try {
+                        if($('#interface-enabled-checkbox').prop('checked')) {
+                            $('#start-labeling-button').show();
+                            $('#interface-disabled-placeholder').hide();
+                        } else {
+                            $('#start-labeling-button').hide();
+                            $('#interface-disabled-placeholder').show();
+                        }
+                    } catch {}
                 },
                 error: function(data) {
                     console.error(data);

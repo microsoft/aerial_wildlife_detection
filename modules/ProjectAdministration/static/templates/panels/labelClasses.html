@@ -30,6 +30,30 @@
         </ul>
     </div>
 
+    <!-- Class definition file upload -->
+    <div id="classdef-file-upload-panel">
+        <div>Upload class definition file:</div>
+        <input type="file" id="classdef-file-select" />
+        <div id="classdef-file-error-message" style="display:none;color:red;"></div>
+        <div>
+            The following files are supported:
+            <ul>
+                <li>Plain text files (one line per label class)</li>
+                <li>Delimiter-separated files (may contain header and hex color specifications)</li>
+                <li>JSON or XML files (may contain class hierarchy and hex color specifications)</li>
+            </ul>
+        </div>
+    </div>
+
+    <div>
+        <input type="checkbox" id="remove-missing-checkbox" />
+        <label for="remove-missing-checkbox">Remove label classes not present in this list</label>
+        <p style="color:red">
+            WARNING: doing so also removes any annotations and predictions made with labels
+            of classes that are to be removed. This step cannot be undone.
+        </p>
+    </div>
+
     <!-- Submit and abort buttons -->
     <div>
         <button id="lc-save-button" class="btn btn-primary" style="float:right">Save</button>
@@ -51,6 +75,10 @@
 <script src="config/static/libs/jqtree/tree.jquery.js"></script>
 <script src="config/static/js/jscolor.js"></script>
 <script type="text/javascript">
+    const DELIMITERS = [
+        ',,', ',', ';;', ';', '::', ':', '\t', ' '  //TODO: multiple white spaces?
+    ]
+
     window.lcTree = undefined;
 
     window.rgbToHex = function(rgb) {
@@ -129,6 +157,331 @@
         })
     }
 
+    function _parse_color(colorString) {
+        colorString = colorString.toLowerCase();
+        if(/^#[0-9A-F]{6}$/i.test(colorString)) {
+            return colorString
+        } else if(colorString.startsWith('rgb')) {
+            var componentToHex = function(c) {
+                var hex = c.toString(16);
+                return hex.length == 1 ? "0" + hex : hex;
+            }
+            rgb = /rgba?\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(,\s*\d+[\.\d+]*)*\)/g.exec(rgb);
+            return "#" + componentToHex(rgb[0]) + componentToHex(rgb[1]) + componentToHex(rgb[2]);
+        } else {
+            return undefined;
+        }
+    }
+
+    function _file_api_available() {
+        if (window.File && window.FileReader && window.FileList && window.Blob) {
+            reader = new FileReader();
+            return true; 
+        } else {
+            return false;
+        }
+    }
+
+    function _read_text_file(filePath, type, callback) {
+        var output = '';    // placeholder for text output
+        if(filePath.files && filePath.files[0]) {           
+            reader.onload = function (e) {
+                output = e.target.result;
+                callback(output, type);
+            };
+            reader.readAsText(filePath.files[0]);
+
+        } else if(ActiveXObject && filePath) {
+            // fallback to IE 6-8 support via ActiveX
+            try {
+                reader = new ActiveXObject("Scripting.FileSystemObject");
+                var file = reader.OpenTextFile(filePath, 1);
+                output = file.ReadAll();
+                file.Close();
+                callback(output, type);
+            } catch(e) {
+                if(e.number == -2146827859) {
+                    alert('Unable to access local files due to browser security settings. ' + 
+                     'To overcome this, go to Tools->Internet Options->Security->Custom Level. ' + 
+                     'Find the setting for "Initialize and script ActiveX controls not marked as safe" and change it to "Enable" or "Prompt"'); 
+                }
+            }       
+        } else {
+            return false;
+        }       
+        return true;
+    }
+
+    function _parse_labelclass_file(text, type) {
+        // try to parse data with different interpreters
+        var data = text;
+        if(type.includes('json')) {
+            try {
+                data = JSON.parse(text);
+            } catch {}
+
+        } else if(type.includes('xml')) {
+            try {
+                if(window.DOMParser) {  
+                    var parser = new DOMParser();
+                    data = parser.parseFromString(text, type) 
+                } else {
+                    data = new ActiveXObject("Microsoft.XMLDOM");
+                    data.async = false;
+                    data.loadXML(text);
+                }
+            } catch {}
+        }
+
+        var result = [];
+        if(typeof data === 'string') {
+            // parsers failed; try to read CSV or blank text
+            let lines_raw = data.match(/[^\r\n]+/g);
+
+            // sanitize
+            var lines = [];
+            for(var l=0; l<lines_raw.length; l++) {
+                var line = lines_raw[l].trim();
+                if(line.length > 0) {
+                    lines.push(line);
+                }
+            }
+
+            if(lines.length === 0) {
+                throw Error('Text file is empty.');
+
+            } else if(lines.length === 1) {
+                // only one line; check if this contains class names
+                var delimiter = undefined;
+                var bestTokenCount = 0;
+                for(var d=0; d<DELIMITERS.length; d++) {
+                    var tokens = lines[0].split(DELIMITERS[d]);
+                    if(tokens.length > bestTokenCount) {
+                        delimiter = DELIMITERS[d];
+                        bestTokenCount = tokens.length;
+                    }
+                }
+                if(delimiter !== undefined) {
+                    // treat each token as a class name
+                    var classNames = lines[0].split(delimiter);
+                    for(var c=0; c<classNames.length; c++) {
+                        if(classNames[c].length > 0) {
+                            result.push({
+                                // id: classNames[c],
+                                name: classNames[c]
+                            });
+                        }
+                    }
+                }
+
+            } else {
+                // find a potential delimiter (we look for a regularly occurring one)
+                var delimiter = undefined;
+                for(var d=0; d<DELIMITERS.length; d++) {
+                    let firstNumOcc = lines[0].split(DELIMITERS[d]).length;
+                    if(firstNumOcc <= 1) continue;
+                    let secondNumOcc = lines[1].split(DELIMITERS[d]).length;
+                    if(firstNumOcc === secondNumOcc) {
+                        delimiter = DELIMITERS[d];
+                        break;
+                    }
+                }
+                console.log('"' + delimiter + '"')
+
+                if(delimiter === undefined) {
+                    // no delimiter found; treat each line as a class name
+                    for(var l=0; l<lines.length; l++) {
+                        var nextClass = lines[l];
+                        result.push({
+                            // id: nextClass,
+                            name: nextClass
+                        });
+                    }
+
+                } else {
+                    // delimiter found; check if header exists by search for keywords
+                    // and create index map
+                    var headerExists = false;
+                    var indexMap = {
+                        className: undefined,
+                        color: undefined
+                    }
+                    var firstLineTokens = lines[0].split(delimiter);
+                    for(var t=0; t<firstLineTokens.length; t++) {
+                        var token = firstLineTokens[t].toLowerCase();
+                        if(token.includes('name') || token.includes('class') || token.includes('label')) {
+                            indexMap['className'] = t;
+                            headerExists = true;
+                        } else if(token.includes('color') || token.includes('colour')) {
+                            indexMap['color'] = t;
+                            headerExists = true;
+                        } else {
+                            // try to parse color manually
+                            if(_parse_color(token) !== undefined) {
+                                indexMap['color'] = t;
+                            }
+                        }
+                    }
+
+                    // parse lines
+                    if(headerExists) {
+                        for(var l=1; l<lines.length; l++) {
+                            var tokens = lines[l].split(delimiter);
+                            var nextClass = {
+                                // id: tokens[indexMap['className']],
+                                name: tokens[indexMap['className']]
+                            };
+                            if(indexMap['color'] !== undefined) {
+                                nextClass['color'] = tokens[indexMap['color']];
+                            }
+                            result.push(nextClass);
+                        }
+
+                    } else {
+                        // no header; find the first non-empty token and use it as the name
+                        for(var t=0; t<firstLineTokens.length; t++) {
+                            var token = firstLineTokens[t].toLowerCase();
+                            if(token.length > 0) {
+                                indexMap['className'] = t;
+                                break;
+                            }
+                        }
+
+                        // parse rest
+                        for(var l=0; l<lines.length; l++) {
+                            var tokens = lines[l].split(delimiter);
+                            result.push({
+                                // id: tokens[indexMap['className']],
+                                name: tokens[indexMap['className']]
+                            });
+                        }
+                    }
+                }
+            }
+
+        } else {
+            // parse object         TODO: support e.g. PASCAL VOC or ImageNet formats...
+            function _parse_entry(name, entry) {
+                // console.log(entry)
+                let treeEntry = {
+                    // id: key,
+                    name: name,
+                    children: []
+                };
+                var color = undefined;
+                if(typeof entry === 'string') {
+                    treeEntry['name'] = entry;
+
+                } else if(typeof entry === 'object') {
+                    let keys = Object.keys(entry);
+                    for(var key in keys) {
+                        if(key.toLowerCase() === 'name') {
+                            treeEntry['name'] = entry[key];
+
+                        } else if(key.toLowerCase() === 'color' || key.toLowerCase() === 'colour') {
+                            var color = _parse_color(entry[key]);
+                            if(color !== undefined) {
+                                treeEntry['color'] = color;
+                            }
+
+                        } else if(key.toLowerCase() === 'children') {
+                            var children = entry[key];
+                            if(Array.isArray(children)) {
+                                for(var c=0; c<children.length; c++) {
+                                    var nextChild = _parse_entry(c, children[c]);
+                                    treeEntry['children'].push(nextChild);
+                                }
+
+                            } else if(typeof children === 'object') {
+                                for(var key in children) {
+                                    var nextChild = _parse_entry(key, children[key]);
+                                    treeEntry['children'].push(nextChild);
+                                }
+                            }
+                        } else {
+                            var nextChild = _parse_entry(key, entry[key]);
+                            treeEntry['children'].push(nextChild);
+                        }
+                    }
+
+                } else if(Array.isArray(entry)) {
+                    for(var c=0; c<entry.length; c++) {
+                        var nextChild = _parse_entry(c, children[c]);
+                        treeEntry['children'].push(nextChild);
+                    }
+                }
+                if(treeEntry['children'].length === 0) {
+                    delete treeEntry['children'];
+                }
+                return treeEntry
+            }
+
+            
+            if(Array.isArray(data)) {
+                for(var i=0; i<data.length; i++) {
+                    var nextEntry = data[i];
+                    if(typeof nextEntry === 'string') {
+                        // label class name
+                        result.push({
+                            // id: nextEntry,
+                            name: nextEntry
+                        });
+                    }
+                }
+            } else {
+                var keys = Object.keys(data);
+                if(keys.length === 1) {
+                    // single entry; we assume this is the top of the hierarchy
+                    result.push(_parse_entry(keys[0], data[keys[0]]));
+
+                } else {
+                    // multiple keys; we assume these are the label classes
+                    for(var key in data) {
+                        var nextEntry = _parse_entry(key, data[key]);
+                        result.push(nextEntry);
+                    }
+                }
+            }
+        }
+
+        // replace tree accordingly
+        if(result.length > 0) {
+            window.lcTree.tree('loadData', result);
+        } else {
+            throw Error('No class definition found in file.');
+        }
+    }
+
+    function parseLocalTextFile() {
+        if(!_file_api_available()) {
+            $('#classdef-file-error-message').html('Your browser does not support the files API.');
+            $('#classdef-file-error-message').show();
+            return;
+        }
+        $('#classdef-file-error-message').hide();
+
+        // get file & check if correct type
+        try {
+            var fileHandle = $('#classdef-file-select')[0];
+            let type = fileHandle.files[0]['type'].toLowerCase();
+            if(!(type.startsWith('text') ||
+                type.includes('json') ||
+                type === 'application/xml' ||
+                type === 'application/xhtml+xml'
+                )) {
+                throw Error('Invalid file type.');
+            }
+            _read_text_file(fileHandle, type, _parse_labelclass_file);
+
+        } catch(error) {
+            // show error message
+            console.log(error);
+            $('#classdef-file-error-message').html(error);
+            $('#classdef-file-error-message').show();
+        }
+
+    }
+
     function onNodeSelect(node) {
         window.selectedNode = node;
         if(node !== null && node !== undefined && node) {
@@ -182,10 +535,14 @@
     function save() {
         window.showLoadingOverlay(true);
         var classdef = window.lcTree.tree('toJson');
+        var removeMissing = $('#remove-missing-checkbox').prop('checked');
         var promise = $.ajax({
             url: 'saveClassDefinitions',
             method: 'POST',
-            data: JSON.stringify(classdef),
+            data: JSON.stringify({
+                classes: classdef,
+                remove_missing: removeMissing
+            }),
             contentType: 'application/json; charset=utf-8',
             dataType: 'json',
             success: function(data) {
@@ -217,6 +574,10 @@
         var promise = loadLabelClasses();
 
         promise.done(function() {
+            if(!_file_api_available()) {
+                $('#classdef-file-upload-panel').hide();
+            }
+
             $('#add-element').click(function() {
                 addElement();
             });
@@ -225,6 +586,9 @@
             });
             $('#update-selected').click(function() {
                 updateSelected();
+            });
+            $('#classdef-file-select').change(function() {
+                parseLocalTextFile();
             });
             $('#lc-save-button').click(function() {
                 save();

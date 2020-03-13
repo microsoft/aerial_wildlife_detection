@@ -468,8 +468,8 @@ class ProjectConfigMiddleware:
                 id_lcg=sql.Identifier(project, 'labelclassgroup')
             )
             self.dbConnector.execute(queryStr, (
-                tuple([l['id'] for l in classes_update]),
-                tuple([l['id'] for l in classgroups_update]),),
+                tuple([(l['id'],) for l in classes_update]),
+                tuple([(l['id'],) for l in classgroups_update])),
                 None)
         
         # add/update in order (groups, set their parents, label classes)

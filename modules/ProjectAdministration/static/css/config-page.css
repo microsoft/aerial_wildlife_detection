@@ -3,6 +3,16 @@
     flex-direction: row;
 }
 
+#interface-shortlink-container {
+    margin-top: 20px;
+    margin-left: 20px;
+    margin-right: 20px;
+}
+
+#interface-shortlink-container * {
+    width: 100%;
+}
+
 .navigation-panel {
     order: 1;
     flex-grow: 0;
