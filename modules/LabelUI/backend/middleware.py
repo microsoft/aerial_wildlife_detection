@@ -27,7 +27,7 @@ class DBMiddleware():
 
         self._fetchProjectSettings()
         self.sqlBuilder = SQLStringBuilder()
-        self.annoParser = AnnotationParser(config)
+        self.annoParser = AnnotationParser()
 
 
     def _fetchProjectSettings(self):
