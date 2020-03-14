@@ -2,7 +2,7 @@
     Contains SQL fragments for retrieval and submission of data
     for each of the annotation types.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 #BIG TODO: MERGE WITH sql_string_builder.py
@@ -29,12 +29,6 @@ class QueryStrings_annotation(Enum):
 
 
 class AnnotationParser:
-
-    def __init__(self, config):
-        # for bounding boxes
-        self.minWidth = config.getProperty('Project', 'box_minWidth', type=int, fallback=1)
-        self.minHeight = config.getProperty('Project', 'box_minHeight', type=int, fallback=1)
-
 
     def parseAnnotation(self, annotation):
         '''

@@ -102,9 +102,9 @@ Note the following:
 #### Constructor parameters
 * **config:** Provides the model with configuration parameters as specified in the [configuration *.ini file](configure_settings.md). To access a parameter, use the following syntax (example):
 ```python
-    param = config.getProperty('Project', 'annotationType', type=str, fallback=None)
+    param = config.getProperty('AIController', 'result_backend', type=str, fallback=None)
 ```
-This example would return the `annotationType` entry under section `Project`, or `None` if not present. Arguments `type` (default: `type=str`) and `fallback` are optional. If parameter not present and `fallback` not specified, the function raises an exception.
+This example would return the `result_backend` entry under section `AIController`, or `None` if not present. Arguments `type` (default: `type=str`) and `fallback` are optional. If parameter not present and `fallback` not specified, the function raises an exception.
 
 * **dbConnector:** Provides access to the project database. Note: this is only needed under exceptional circumstances. **There is no need to manually store annotations or model states; this is taken care of by the _AIWorker_ directly.**
 If you do need to access the database, you can do so as follows (example):

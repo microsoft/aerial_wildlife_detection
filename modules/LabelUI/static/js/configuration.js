@@ -53,7 +53,6 @@ window.getProjectSettings = function() {
         if(window.aiControllerURI != null && !window.aiControllerURI.endsWith('/')) {
             window.aiControllerURI += '/';
         }
-        window.dataType = data['settings']['dataType'];
         window.minObjSize = data['settings']['minObjSize'];
         window.classes = data['settings']['classes'];
         window.enableEmptyClass = window.parseBoolean(data['settings']['enableEmptyClass']);

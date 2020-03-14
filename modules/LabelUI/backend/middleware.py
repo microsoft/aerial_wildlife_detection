@@ -41,8 +41,7 @@ class DBMiddleware():
         self.globalSettings = {
             'indexURI': self.config.getProperty('Server', 'index_uri', type=str, fallback='/'),
             'dataServerURI': self.config.getProperty('Server', 'dataServer_uri'),
-            'aiControllerURI': aiControllerURI,
-            'dataType': self.config.getProperty('Project', 'dataType', fallback='images'),      #TODO
+            'aiControllerURI': aiControllerURI
         }
 
 
