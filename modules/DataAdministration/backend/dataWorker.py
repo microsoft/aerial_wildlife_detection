@@ -44,7 +44,7 @@ class DataWorker:
         if current_app.conf.task_queues is not None:
             queues = list(current_app.conf.task_queues)
             current_queue_names = set([c.name for c in queues])
-            print('Existing queues: {}'.format(', '.join([c.name for c in queues])))
+            # print('Existing queues: {}'.format(', '.join([c.name for c in queues])))
         else:
             queues = []
             current_queue_names = set()
@@ -61,7 +61,8 @@ class DataWorker:
                     log_updates.append(pName)
             
             current_app.conf.update(task_queues=tuple(queues))
-            print('Added queue(s) for project(s): {}'.format(', '.join(log_updates)))
+            if len(log_updates):
+                print('Added queue(s) for project(s): {}'.format(', '.join(log_updates)))
 
 
 

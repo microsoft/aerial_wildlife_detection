@@ -1,8 +1,10 @@
-# Deploying AIde
+# Deploying AIDE
 
-**WARNING: This site is work in progress and is missing some important parts.**
+**WARNING: this site is obsolete since the latest version of AIDE. NGINX is NOT recommended anymore to host the file server, as it will prohibit image upload. A new version of this instruction page will arrive later.**
 
-The following instructions deploy AIde using the dedicated web server [NGINX](https://www.nginx.com/).
+
+
+<!-- The following instructions deploy AIde using the dedicated web server [NGINX](https://www.nginx.com/).
 This affects the following instances:
 * The _LabelUI_ module;
 * The _AIController_ module;
@@ -114,4 +116,4 @@ If an instance is supposed to run multiple modules at once (e.g. both the _Label
 
     # start service
     sudo systemctl restart nginx
-```
+``` -->

@@ -24,12 +24,6 @@ class SQLStringBuilder:
         else:
             limitStr = sql.SQL('LIMIT %s')
 
-        #     # cap by limit specified in settings
-        #     limit = self.config.getProperty('AIController', 'maxNumImages_train', type=int)
-        # if minNumAnnoPerImage is None or minNumAnnoPerImage == -1:
-        #     minNumAnnoPerImage = self.config.getProperty('AIController', 'minNumAnnoPerImage', type=int)
-
-
         if minNumAnnoPerImage <= 0:
             # no restriction on number of annotations per image
             queryStr = sql.SQL('''
