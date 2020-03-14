@@ -1,7 +1,7 @@
 '''
     Interface to the config.ini file.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 import os
@@ -18,18 +18,6 @@ class Config():
 
 
     def getProperty(self, module, propertyName, type=str, fallback=None):
-        # if isinstance(module, str):
-        #     m = module
-        # else:
-        #     if hasattr(module, '__name__') and module.__name__ in REGISTERED_MODULES:
-        #         m = module.__name__
-        #     elif hasattr(module, '__class__') and module.__class__.__name__ in REGISTERED_MODULES:
-        #         m = module.__class__.__name__
-        #     else:
-        #         m = module
-            
-        #     if not m in REGISTERED_MODULES:
-        #         raise Exception('Module {} has not been registered.'.format(m))
         m = module
 
         if type==bool:
@@ -54,14 +42,14 @@ if __name__ == '__main__':
                     help='Directory of the settings.ini file used for this machine (default: "config/settings.ini").')
     parser.add_argument('--section', type=str, help='Configuration file section')
     parser.add_argument('--parameter', type=str, help='Parameter within the section')
+    parser.add_argument('--fallback', type=str, help='Fallback value, if parameter does not exist (optional)')
     args = parser.parse_args()
 
     if 'settings_filepath' in args and args.settings_filepath is not None:
         os.environ['AIDE_CONFIG_PATH'] = str(args.settings_filepath)
 
     if args.section is None or args.parameter is None:
-        print('Usage: python configDef.py --section=<.ini file section> --parameter=<section parameter name>')
+        print('Usage: python configDef.py --section=<.ini file section> --parameter=<section parameter name> [--fallback=<default value>]')
 
     else:
-        #TODO: config filepath
-        print(Config().getProperty(args.section, args.parameter))
+        print(Config().getProperty(args.section, args.parameter, fallback=args.fallback))

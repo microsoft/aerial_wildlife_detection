@@ -1,5 +1,8 @@
 # Import existing data into AIde
 
+**WARNING: the scripts below apply for the old version of AIDE and may only work in the new version if the configuration .ini file contains all legacy, project-specific parameters. New data management scripts will be under development.**
+
+
 AIde ships with a couple of helper scripts that allow importing existing datasets into the platform. All of the scripts (and instructions below) need to be executed from the _FileServer_ instance. This means that you must have [installed](install.md) and [configured](configure_settings.md) AIde on that machine accordingly, and to have the [database instance running](setup_db.md).
 
 
@@ -12,7 +15,6 @@ In essence, this means that you have to first copy your images to the _FileServe
 All in all, you can import images into AIde as follows:
 1. Organize your images into a folder. Arbitrary subfolders and nested directories are allowed, too (directories will be prepended to the individual file names in the database).
 2. Make sure the images are of one of the following formats:
-    * TIFF
     * JPEG
     * PNG
     * GIF

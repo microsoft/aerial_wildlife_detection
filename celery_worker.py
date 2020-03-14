@@ -22,9 +22,14 @@ if not 'AIDE_MODULES' in os.environ:
     raise ValueError('Missing system environment variable "AIDE_MODULES".')
 config = Config()
 if config.getProperty('Project', 'demoMode', type=bool, fallback=False):
-    raise Exception('AIController and AIWorkers cannot be launched in demo mode.')
+    raise Exception('Message broker cannot be launched in demo mode.')
 
-app = Celery('AIController',
+
+aide_modules = os.environ['AIDE_MODULES'].split(',')
+aide_modules = set([a.strip().lower() for a in aide_modules])
+
+
+app = Celery('AIDE',
             broker=config.getProperty('AIController', 'broker_URL'),        #TODO
             backend=config.getProperty('AIController', 'result_backend'))   #TODO
 app.conf.update(
@@ -52,12 +57,9 @@ app.conf.update(
 )
 
 
-# initialize appropriate consumer functionalities (TODO)
+# initialize appropriate consumer functionalities
 num_modules = 0
-aide_modules = os.environ['AIDE_MODULES'].split(',')
-aide_modules = set([a.strip().lower() for a in aide_modules])
-
-if 'aicontroller' in aide_modules:
+if 'aicontroller' in aide_modules or 'aiworker' in aide_modules:
     from modules.AIController.backend import celery_interface as ai_int
     num_modules += 1
 

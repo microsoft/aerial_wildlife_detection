@@ -43,7 +43,7 @@ class AIWorker():
         if current_app.conf.task_queues is not None:
             queues = list(current_app.conf.task_queues)
             current_queue_names = set([c.name for c in queues])
-            print('Existing queues: {}'.format(', '.join([c.name for c in queues])))
+            # print('Existing queues: {}'.format(', '.join([c.name for c in queues])))
         else:
             queues = []
             current_queue_names = set()
