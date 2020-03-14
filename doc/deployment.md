@@ -4,13 +4,13 @@
 
 
 
-<!-- The following instructions deploy AIde using the dedicated web server [NGINX](https://www.nginx.com/).
+<!-- The following instructions deploy AIDE using the dedicated web server [NGINX](https://www.nginx.com/).
 This affects the following instances:
 * The _LabelUI_ module;
 * The _AIController_ module;
 * The file server.
 
-The commands below retrieve parameters from the *.ini configuration file on the respective instance and thus require to be run in the AIde root and with the `AIDE_CONFIG_PATH` environment variable [set properly](launch_aide.md).
+The commands below retrieve parameters from the *.ini configuration file on the respective instance and thus require to be run in the AIDE root and with the `AIDE_CONFIG_PATH` environment variable [set properly](launch_aide.md).
 
 
 
@@ -30,18 +30,18 @@ There is no need to use a web server for the _AIWorker_ instances, as these comm
 
 ## Configure the _LabelUI_ and/or _AIController_ modules
 
-The following steps are required for every instance running one of the primary AIde modules.
+The following steps are required for every instance running one of the primary AIDE modules.
 If an instance is supposed to run multiple modules at once (e.g. both the _LabelUI_ and _AIController_), provide both names comma-separated below.
 
 
 ```bash
     gunicornDir=$(which gunicorn)                                           # the same for Gunicorn.
-    aideDir=/path/to/aide/root                                              # absolute directory where the AIde code base is installed in
+    aideDir=/path/to/aide/root                                              # absolute directory where the AIDE code base is installed in
     configFilePath=/path/to/settings.ini                                    # absolute directory where the project's *.ini configuration file lies
     modules='LabelUI,AIController'                                          # modules to be run on this very server. You may add multiple as a comma-separated string (the order does not matter)
     host=$(python util/configDef.py --section=Server --parameter=host);     # host of the server you wish to run the modules
     port=$(python util/configDef.py --section=Server --parameter=port);     # port under which you wish to run the modules
-    user=$(whoami);                                                         # user name under which to run the AIde instance
+    user=$(whoami);                                                         # user name under which to run the AIDE instance
     numWorkers=5;                                                           # number of threads to run the Gunicorn server in
 
     
@@ -56,7 +56,7 @@ If an instance is supposed to run multiple modules at once (e.g. both the _Label
     # set up gunicorn service
     echo "
     [Unit]
-    Description=Gunicorn instance for AIde
+    Description=Gunicorn instance for AIDE
     After=network.target
 
     [Service]

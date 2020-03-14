@@ -68,7 +68,7 @@ class DataWorker:
 
     def aide_internal_notify(self, message):
         '''
-            Used for AIde administrative communication,
+            Used for AIDE administrative communication,
             e.g. for setting up queues.
         '''
         if 'task' in message:

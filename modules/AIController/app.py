@@ -207,7 +207,7 @@ class AIController:
         def get_available_ai_models():
             '''
                 Returns all available AI models (class, name) that are
-                installed in this instance of AIde.
+                installed in this instance of AIDE.
             '''
             if not self.login_check(canCreateProjects=True):
                 abort(401, 'unauthorized')

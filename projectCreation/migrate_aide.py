@@ -1,5 +1,5 @@
 '''
-    Run this file whenever you update AIde to bring your existing project setup up-to-date
+    Run this file whenever you update AIDE to bring your existing project setup up-to-date
     with respect to changes due to newer versions.
     
     2019-20 Benjamin Kellenberger
@@ -143,7 +143,7 @@ MODIFICATIONS_sql = [
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description='Update AIde database structure.')
+    parser = argparse.ArgumentParser(description='Update AIDE database structure.')
     parser.add_argument('--settings_filepath', type=str, default='config/settings.ini', const=1, nargs='?',
                     help='Manual specification of the directory of the settings.ini file; only considered if environment variable unset (default: "config/settings.ini").')
     args = parser.parse_args()
@@ -299,14 +299,14 @@ if __name__ == '__main__':
         (config.getProperty('Database', 'schema'),), None)
 
 
-    # The multi-project AIde setup requires images to be in a subfolder named after
+    # The multi-project AIDE setup requires images to be in a subfolder named after
     # the project shorthand. Here we tell the user about moving the files, or else
     # propose a temporary fix (softlink).
     softlinkName = config.getProperty('FileServer', 'staticfiles_dir')
     if not os.path.isdir(softlinkName):
         # not running on file server; show message
-        print('You do not appear to be running AIde on a "FileServer" instance.')
-        print('INFO: In the process of AIde supporting multiple projects, each')
+        print('You do not appear to be running AIDE on a "FileServer" instance.')
+        print('INFO: In the process of AIDE supporting multiple projects, each')
         print('project\'s files must be put in a sub-folder named after the project\'s')
         print('shorthand (i.e.: {}/{}/<images>).'.format(
             softlinkName,
@@ -320,7 +320,7 @@ if __name__ == '__main__':
             print('INFO: Detected link to project file directory ({})'.format(softlinkName))
             print('You might want to move the files to a dedicated folder at some point...')
         else:
-            print('INFO: In the process of AIde supporting multiple projects, each')
+            print('INFO: In the process of AIDE supporting multiple projects, each')
             print('project\'s files must be put in a sub-folder named after the project\'s')
             print('shorthand (i.e.: {}/<images>).'.format(softlinkName))
             print('Ideally, you would want to move the images to that folder, but as a')
@@ -378,4 +378,4 @@ if __name__ == '__main__':
         print('\nIf you do not use a dedicated file server, you can leave "dataServer_uri" blank.')
 
 
-    print('Project "{}" is now up-to-date for the latest changes in AIde.'.format(config.getProperty('Project', 'projectName')))
+    print('Project "{}" is now up-to-date for the latest changes in AIDE.'.format(config.getProperty('Project', 'projectName')))

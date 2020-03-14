@@ -1,7 +1,7 @@
 '''
     AI prediction models and rankers (Active Learning criteria)
     are registered here.
-    AIde will look for the following two dicts for models available
+    AIDE will look for the following two dicts for models available
     to projects.
 
     In order to register your own model, provide an entry in the

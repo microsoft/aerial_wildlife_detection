@@ -2,7 +2,7 @@
 
 ## Requirements
 
-The AIde label interface (without the AI backend) requires the following libraries:
+The AIDE label interface (without the AI backend) requires the following libraries:
 
 * bottle>=0.12
 * psycopg2>=2.8.2

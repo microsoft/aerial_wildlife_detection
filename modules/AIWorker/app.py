@@ -203,7 +203,7 @@ class AIWorker():
 
     def aide_internal_notify(self, message):
         '''
-            Used for AIde administrative communication between AIController
+            Used for AIDE administrative communication between AIController
             and AIWorker(s), e.g. for setting up queues.
         '''
         if 'task' in message:

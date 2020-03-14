@@ -10,7 +10,7 @@ class AIModel:
             Model constructor. This is called by both the AIWorker and AIController
             modules when starting up.
             Args:
-                project: str, name of the current AIde project
+                project: str, name of the current AIDE project
                 config: Configuration for the platform
                 dbConnector: Access to the project database
                 fileServer: Access to the instance storing the images
@@ -41,7 +41,7 @@ class AIModel:
 
     def average_model_states(self, stateDicts, updateStateFun):
         """
-            Averaging function. If AIde is configured to distribute training to multiple
+            Averaging function. If AIDE is configured to distribute training to multiple
             AIWorkers, and if multiple AIWorkers are attached, this function will be called
             by exactly one AIWorker after the "train" function has finished.
             Args:

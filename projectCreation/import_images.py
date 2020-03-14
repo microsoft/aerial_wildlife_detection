@@ -10,7 +10,7 @@
     2. Copy your image folder into the FileServer's root file directory (i.e.,
        corresponding to the path under "staticfiles_dir" in the configuration
        *.ini file).
-    3. Call the script from the AIde code base on the FileServer instance.
+    3. Call the script from the AIDE code base on the FileServer instance.
 
     2019-20 Benjamin Kellenberger
 '''

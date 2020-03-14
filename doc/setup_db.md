@@ -1,14 +1,14 @@
 # Set up the database
 
-AIde uses [PostgreSQL](https://www.postgresql.org/) to store labels, predictions, file paths and metadata. The following instructions apply for recent versions of Debian-based Linux distributions, such as Ubuntu.
-Note that AIde requires PostgreSQL >= 9.5 (it has been tested with version 10).
+AIDE uses [PostgreSQL](https://www.postgresql.org/) to store labels, predictions, file paths and metadata. The following instructions apply for recent versions of Debian-based Linux distributions, such as Ubuntu.
+Note that AIDE requires PostgreSQL >= 9.5 (it has been tested with version 10).
 
 
 
 
 ## Define database details
 
-The instructions below assume you have [installed the AIde project](install.md) and [configured the project configuration file](configure_settings.md) on the machine that is dedicated to running the database.
+The instructions below assume you have [installed the AIDE project](install.md) and [configured the project configuration file](configure_settings.md) on the machine that is dedicated to running the database.
 However, for the database operation, this is not required. If you wish to skip these steps you will have to manually provide the four parameters below (replace `$(python util/configDef.py ...)` with the respective values).
 
 ```bash
@@ -48,7 +48,7 @@ However, for the database operation, this is not required. If you wish to skip t
     sudo systemctl enable postgresql
 
 
-    # If AIde is run on MS Azure: TCP connections are dropped after 4 minutes of inactivity
+    # If AIDE is run on MS Azure: TCP connections are dropped after 4 minutes of inactivity
     # (see https://docs.microsoft.com/en-us/azure/load-balancer/load-balancer-outbound-connections#idletimeout)
     # This is fatal for our database connection system, which keeps connections open.
     # To avoid idling/dead connections, we thus use Ubuntu's keepalive timer:
@@ -66,7 +66,7 @@ However, for the database operation, this is not required. If you wish to skip t
 
 
 ## Create a new database and the main user account
-This needs to be done from the installation root of AIde, with the correct environment activated.
+This needs to be done from the installation root of AIDE, with the correct environment activated.
 
 ```bash
     sudo -u postgres psql -c "CREATE USER $dbUser WITH PASSWORD '$dbPassword';"
@@ -89,4 +89,4 @@ We do that using the newly created user account instead of the postgres user:
 
 ## Clean up
 
-If you have used the settings file [above](#define-database-details) to get the database details, you can now remove the AIde code base (and Python environment) from the database server, unless the machine hosts any other AIde module(s).
+If you have used the settings file [above](#define-database-details) to get the database details, you can now remove the AIDE code base (and Python environment) from the database server, unless the machine hosts any other AIDE module(s).
