@@ -124,8 +124,15 @@ class DataWorker:
             queryArgs.append(numPredRange[0])
             queryArgs.append(numPredRange[1])
         if startFrom is not None:
-            filterStr += ' AND img.id > %s '
-            queryArgs.append(startFrom)
+            if not isinstance(startFrom, UUID):
+                try:
+                    startFrom = UUID(startFrom)
+                except:
+                    startFrom = None
+            if startFrom is not None:
+                filterStr += ' AND img.id > %s '
+                queryArgs.append(startFrom)
+        filterStr = filterStr.strip()
         if filterStr.startswith('AND'):
             filterStr = filterStr[3:]
         if len(filterStr.strip()):
@@ -185,6 +192,7 @@ class DataWorker:
             order=orderStr,
             limit=limitStr
         )
+
         result = self.dbConnector.execute(queryStr, tuple(queryArgs), 'all')
         for idx in range(len(result)):
             result[idx]['id'] = str(result[idx]['id'])
