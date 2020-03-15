@@ -20,9 +20,6 @@ class Collator:
 
 
     def collate(self, batch):
-
-        imgs = torch.stack([x[0] for x in batch])
-
         imgs = []
         labels = []
         fVecs = []
