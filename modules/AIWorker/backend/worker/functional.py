@@ -344,7 +344,7 @@ def _call_inference(project, imageIDs, inferenceFun, rankFun, dbConnector, fileS
         fieldNames.append('cnnstate')   # model state ID
         values_pred = []
         values_img = []     # mostly for feature vectors
-        ids_img = []        # to delete previous predictions
+        # ids_img = []        # to delete previous predictions
         for imgID in result.keys():
             for prediction in result[imgID]['predictions']:
                 nextResultValues = []
@@ -352,7 +352,7 @@ def _call_inference(project, imageIDs, inferenceFun, rankFun, dbConnector, fileS
                 for fn in fieldNames:
                     if fn == 'image':
                         nextResultValues.append(imgID)
-                        ids_img.append(imgID)
+                        # ids_img.append(imgID)
                     elif fn == 'cnnstate':
                         nextResultValues.append(stateDictID)
                     else:
@@ -376,11 +376,12 @@ def _call_inference(project, imageIDs, inferenceFun, rankFun, dbConnector, fileS
     # commit to database
     try:
         if len(values_pred):
-            # remove previous predictions first
-            queryStr = sql.SQL('''
-                DELETE FROM {} WHERE image IN %s;
-            ''').format(sql.Identifier(project, 'prediction'))
-            dbConnector.insert(queryStr, (ids_img,))
+            # TODO: we do not delete old predictions anymore, to keep track of model performance over time
+            # # remove previous predictions first
+            # queryStr = sql.SQL('''
+            #     DELETE FROM {} WHERE image IN %s;
+            # ''').format(sql.Identifier(project, 'prediction'))
+            # dbConnector.insert(queryStr, (ids_img,))
             
             queryStr = sql.SQL('''
                 INSERT INTO {id_pred} ( {fieldNames} )

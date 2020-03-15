@@ -162,6 +162,11 @@ class SQLStringBuilder:
             LEFT OUTER JOIN (
                 SELECT image, SUM(confidence)/COUNT(confidence) AS score, timeCreated
                 FROM {id_pred}
+                WHERE cnnstate = (
+                    SELECT id FROM {id_cnnstate}
+                    ORDER BY timeCreated DESC
+                    LIMIT 1
+                )
                 GROUP BY image, timeCreated
             ) AS img_score ON img.id = img_score.image
             LEFT OUTER JOIN (
@@ -179,6 +184,11 @@ class SQLStringBuilder:
                 {usernameString}
                 UNION ALL
                 SELECT id, image AS imID, 'prediction' AS cType, {predCols} FROM {id_pred} AS pred
+                WHERE cnnstate = (
+                    SELECT id FROM {id_cnnstate}
+                    ORDER BY timeCreated DESC
+                    LIMIT 1
+                )
             ) AS contents ON img_query.image = contents.imID
             {order};
         ''').format(
@@ -186,6 +196,7 @@ class SQLStringBuilder:
             id_anno=sql.Identifier(project, 'annotation'),
             id_pred=sql.Identifier(project, 'prediction'),
             id_iu=sql.Identifier(project, 'image_user'),
+            id_cnnstate=sql.Identifier(project, 'cnnstate'),
             allCols=sql.SQL(', ').join(fields_union),
             annoCols=sql.SQL(', ').join(fields_anno),
             predCols=sql.SQL(', ').join(fields_pred),
