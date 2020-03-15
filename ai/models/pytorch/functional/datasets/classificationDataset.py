@@ -73,7 +73,11 @@ class LabelsDataset(Dataset):
         label, imageID, fVec, imagePath = self.data[idx]
 
         # load image
-        img = Image.open(BytesIO(self.fileServer.getFile(imagePath))).convert('RGB')
+        try:
+            img = Image.open(BytesIO(self.fileServer.getFile(imagePath))).convert('RGB')
+        except:
+            print('WARNING: Image {} is corrupt and could not be loaded.'.format(imagePath))
+            img = None
 
         if self.transform is not None and img is not None:
             img = self.transform(img)

@@ -63,11 +63,9 @@ class SQLStringBuilder:
     def getInferenceQueryString(self, project, forceUnlabeled=True, limit=None):
 
         if forceUnlabeled:
-            unlabeledString = sql.SQL('WHERE {id_iu}.viewcount IS NULL').format(
-                id_iu=sql.Identifier(project, 'image_user')
-            )
+            conditionString = sql.SQL('WHERE viewcount IS NULL AND (corrupt IS NULL OR corrupt = FALSE)')
         else:
-            unlabeledString = sql.SQL('')
+            conditionString = sql.SQL('WHERE corrupt IS NULL OR corrupt = FALSE')
         
         if limit is None or limit == -1:
             limitString = sql.SQL('')
@@ -82,14 +80,14 @@ class SQLStringBuilder:
                 SELECT image.id AS imageID, image_user.viewcount FROM {id_img}
                 LEFT OUTER JOIN {id_iu}
                 ON image.id = image_user.image
-                {unlabeledString}
+                {conditionString}
                 ORDER BY image_user.viewcount ASC NULLS FIRST
                 {limit}
             ) AS query;
         ''').format(
             id_img=sql.Identifier(project, 'image'),
             id_iu=sql.Identifier(project, 'image_user'),
-            unlabeledString=unlabeledString,
+            conditionString=conditionString,
             limit=limitString
         )
         return queryStr

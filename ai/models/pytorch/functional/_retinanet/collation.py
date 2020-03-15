@@ -6,25 +6,39 @@
     Returns:
         padded images, stacked cls_targets, stacked loc_targets.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
     Adapted from https://github.com/kuangliu/pytorch-retinanet/blob/master/datagen.py
 '''
 
 import torch
 from .encoder import DataEncoder
+from util import helpers
 
 
 class Collator():
-    def __init__(self, inputSize, encoder):
+    def __init__(self, project, dbConnector, inputSize, encoder):
+        self.project = project
+        self.dbConnector = dbConnector
         self.inputSize = inputSize
         self.encoder = encoder
 
     def collate_fn(self, batch):
-        imgs = [x[0] for x in batch]
-        boxes = [x[1] for x in batch]
-        labels = [x[2] for x in batch]
-        fVecs = [x[3] for x in batch]
-        imageIDs = [x[4] for x in batch]
+        imgs = []
+        boxes = []
+        labels = []
+        fVecs = []
+        imageIDs = []
+        for idx in range(len(batch)):
+            if batch[idx][0] is None:
+                # corrupt image
+                helpers.setImageCorrupt(self.dbConnector, self.project, batch[idx][4], True)
+            
+            else:
+                imgs.append(batch[idx][0])
+                boxes.append(batch[idx][1])
+                labels.append(batch[idx][2])
+                fVecs.append(batch[idx][3])
+                imageIDs.append(batch[idx][4])
 
         h, w = self.inputSize
         num_imgs = len(imgs)

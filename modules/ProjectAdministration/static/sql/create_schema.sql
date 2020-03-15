@@ -17,6 +17,7 @@ CREATE SCHEMA {id_schema}
 CREATE TABLE IF NOT EXISTS {id_image} (      
     id uuid DEFAULT uuid_generate_v4(),
     filename VARCHAR UNIQUE NOT NULL,
+    corrupt BOOLEAN,
     isGoldenQuestion BOOLEAN NOT NULL DEFAULT FALSE,
     --exif VARCHAR,
     --fVec bytea,

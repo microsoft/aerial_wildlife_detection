@@ -1,7 +1,7 @@
 '''
     PyTorch dataset wrapper, optimized for the AL platform.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 from io import BytesIO
@@ -124,16 +124,21 @@ class PointsDataset(Dataset):
         points, labels, label_img, imageID, fVec, imagePath = self.data[idx]
 
         # load image
-        img = Image.open(BytesIO(self.fileServer.getFile(imagePath))).convert('RGB')
+        try:
+            img = Image.open(BytesIO(self.fileServer.getFile(imagePath))).convert('RGB')
+        except:
+            print('WARNING: Image {} is corrupt and could not be loaded.'.format(imagePath))
+            img = None
 
-        points = torch.tensor(points).clone()
-        if len(points):
-            if points.dim() == 1:
-                points = points.unsqueeze(0)
-            points *= torch.tensor(img.size, dtype=points.dtype)
-        labels = torch.tensor(labels).long()
+        if img is not None:
+            points = torch.tensor(points).clone()
+            if len(points):
+                if points.dim() == 1:
+                    points = points.unsqueeze(0)
+                points *= torch.tensor(img.size, dtype=points.dtype)
+            labels = torch.tensor(labels).long()
 
-        if self.transform is not None and img is not None:
-            img, points, labels = self.transform(img, points, labels)
+            if self.transform is not None:
+                img, points, labels = self.transform(img, points, labels)
 
         return img, points, labels, label_img, fVec, imageID

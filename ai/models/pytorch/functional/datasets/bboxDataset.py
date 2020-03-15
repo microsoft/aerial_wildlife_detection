@@ -1,7 +1,7 @@
 '''
     PyTorch dataset wrapper, optimized for the AL platform.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 from io import BytesIO
@@ -122,22 +122,27 @@ class BoundingBoxesDataset(Dataset):
         boundingBoxes, labels, imageID, fVec, imagePath = self.data[idx]
 
         # load image
-        img = Image.open(BytesIO(self.fileServer.getFile(imagePath))).convert('RGB')
+        try:
+            img = Image.open(BytesIO(self.fileServer.getFile(imagePath))).convert('RGB')
+        except:
+            print('WARNING: Image {} is corrupt and could not be loaded.'.format(imagePath))
+            img = None
 
-        # convert data
-        sz = img.size
-        boundingBoxes = torch.tensor(boundingBoxes).clone()
-        if len(boundingBoxes):
-            if boundingBoxes.dim() == 1:
-                boundingBoxes = boundingBoxes.unsqueeze(0)
-            boundingBoxes[:,0] *= sz[0]
-            boundingBoxes[:,1] *= sz[1]
-            boundingBoxes[:,2] *= sz[0]
-            boundingBoxes[:,3] *= sz[1]
-                
         labels = torch.tensor(labels).long()
 
-        if self.transform is not None and img is not None:
-            img, boundingBoxes, labels = self.transform(img, boundingBoxes, labels)
+        if img is not None:
+            # convert data
+            sz = img.size
+            boundingBoxes = torch.tensor(boundingBoxes).clone()
+            if len(boundingBoxes):
+                if boundingBoxes.dim() == 1:
+                    boundingBoxes = boundingBoxes.unsqueeze(0)
+                boundingBoxes[:,0] *= sz[0]
+                boundingBoxes[:,1] *= sz[1]
+                boundingBoxes[:,2] *= sz[0]
+                boundingBoxes[:,3] *= sz[1]
+
+            if self.transform is not None:
+                img, boundingBoxes, labels = self.transform(img, boundingBoxes, labels)
 
         return img, boundingBoxes, labels, fVec, imageID

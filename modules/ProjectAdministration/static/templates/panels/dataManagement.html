@@ -164,37 +164,52 @@
             };
 
             // keep track of latest value for "show more" button
-            if(forceRefresh ||
-                window.latestStartingPoint === undefined ||
-                window.latestStartingPoint['field'] !== orderBy ||
-                window.latestStartingPoint['order'] !== order) {
-                // user modified ordering; restart from zero
-                window.latestStartingPoint = {
-                    field: orderBy,
-                    order: order
-                }
-                if(order === 'asc') {
-                    window.latestStartingPoint['val'] = -Number.MAX_VALUE;  //TODO: adapt for non-numeric ordering...
-                } else {
-                    window.latestStartingPoint['val'] = Number.MAX_VALUE;
-                }
-            } else {
-                // user did not modify ordering; continue
-                //TODO: implement server-side-wise
-                if(order === 'asc') {
-                    params['range'] = {
-                        field: orderBy,
-                        min: window.latestStartingPoint['val'],
-                        max: Number.MAX_VALUE
+            if(!forceRefresh) {
+                try {
+                    var numEntries = window.imageBrowser.getNumEntries();
+                    if(numEntries > 0) {
+                        var lastEntryID = window.imageBrowser.getEntry(numEntries-1)['id'];
+                        if(lastEntryID !== null && lastEntryID !== undefined) {
+                            params['start_from'] = lastEntryID;
+                        }
                     }
-                } else {
-                    params['range'] = {
-                        field: orderBy,
-                        min: -Number.MAX_VALUE,
-                        max: window.latestStartingPoint['val']
-                    }
-                }
+                } catch {}
             }
+            
+
+            //TODO: params['start_from'] = null;
+
+            // if(forceRefresh ||
+            //     window.latestStartingPoint === undefined ||
+            //     window.latestStartingPoint['field'] !== orderBy ||
+            //     window.latestStartingPoint['order'] !== order) {
+            //     // user modified ordering; restart from zero
+            //     window.latestStartingPoint = {
+            //         field: orderBy,
+            //         order: order
+            //     }
+            //     if(order === 'asc') {
+            //         window.latestStartingPoint['val'] = -Number.MAX_VALUE;  //TODO: adapt for non-numeric ordering...
+            //     } else {
+            //         window.latestStartingPoint['val'] = Number.MAX_VALUE;
+            //     }
+            // } else {
+            //     // user did not modify ordering; continue
+            //     //TODO: implement server-side-wise
+            //     if(order === 'asc') {
+            //         params['range'] = {
+            //             field: orderBy,
+            //             min: window.latestStartingPoint['val'],
+            //             max: Number.MAX_VALUE
+            //         }
+            //     } else {
+            //         params['range'] = {
+            //             field: orderBy,
+            //             min: -Number.MAX_VALUE,
+            //             max: window.latestStartingPoint['val']
+            //         }
+            //     }
+            // }
 
             function _update_browser_populate(data) {
                 // assemble table            

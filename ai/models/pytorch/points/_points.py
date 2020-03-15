@@ -22,7 +22,7 @@
             dings of the IEEE Conference on Computer Vision and Pattern Recognition Workshops.
             2019.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 import io
@@ -70,7 +70,7 @@ class PointModel(GenericPyTorchModel):
                                 )
         
         dataEncoder = encoder.DataEncoder(len(labelclassMap.keys()))
-        collator = collation.Collator(targetSize, dataEncoder)
+        collator = collation.Collator(self.project, self.dbConnector, targetSize, dataEncoder)
         dataLoader = DataLoader(
             dataset=dataset,
             collate_fn=collator.collate_fn,
@@ -136,7 +136,7 @@ class PointModel(GenericPyTorchModel):
                                 )
 
         dataEncoder = encoder.DataEncoder(len(labelclassMap.keys()))
-        collator = collation.Collator(targetSize, dataEncoder)
+        collator = collation.Collator(self.project, self.dbConnector, targetSize, dataEncoder)
         dataLoader = DataLoader(
             dataset=dataset,
             collate_fn=collator.collate_fn,

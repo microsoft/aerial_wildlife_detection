@@ -136,7 +136,8 @@ MODIFICATIONS_sql = [
     'ALTER TABLE aide_admin.authentication ADD COLUMN IF NOT EXISTS admitted_until TIMESTAMPTZ;',
     'ALTER TABLE aide_admin.authentication ADD COLUMN IF NOT EXISTS blocked_until TIMESTAMPTZ;',
     '''ALTER TABLE {schema}.labelclassgroup DROP CONSTRAINT IF EXISTS labelclassgroup_name_unique;
-    ALTER TABLE {schema}.labelclassgroup ADD CONSTRAINT labelclassgroup_name_unique UNIQUE (name);'''
+    ALTER TABLE {schema}.labelclassgroup ADD CONSTRAINT labelclassgroup_name_unique UNIQUE (name);''',
+    'ALTER TABLE {schema}.image ADD COLUMN IF NOT EXISTS corrupt BOOLEAN;',
 ]
 
 

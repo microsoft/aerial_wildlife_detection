@@ -1,15 +1,18 @@
 '''
     Collator for point models.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 import torch
 from .encoder import DataEncoder
+from util import helpers
 
 
 class Collator():
-    def __init__(self, target_size, encoder):
+    def __init__(self, project, dbConnector, target_size, encoder):
+        self.project = project
+        self.dbConnector = dbConnector
         self.target_size = target_size
         self.encoder = encoder
 
@@ -26,12 +29,25 @@ class Collator():
         '''
 
         # gather batch components
-        imgs = [x[0] for x in batch]
-        points = [x[1] for x in batch]
-        labels = [x[2] for x in batch]
-        image_labels = [x[3] for x in batch]
-        fVecs = [x[4] for x in batch]
-        imageIDs = [x[5] for x in batch]
+        imgs = []
+        points = []
+        labels = []
+        image_labels = []
+        fVecs = []
+        imageIDs = []
+
+        for i in range(len(batch)):
+            if batch[i][0] is None:
+                # corrupt image
+                helpers.setImageCorrupt(self.dbConnector, self.project, batch[i][3], True)
+
+            else:
+                imgs.append(batch[i][0])
+                points.append(batch[i][1])
+                labels.append(batch[i][2])
+                image_labels.append(batch[i][3])
+                fVecs.append(batch[i][4])
+                imageIDs.append(batch[i][5])
 
         # prepare outputs
         loc_targets = []

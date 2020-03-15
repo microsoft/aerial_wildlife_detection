@@ -12,6 +12,7 @@ import html
 import base64
 import numpy as np
 from PIL import Image
+from psycopg2 import sql
 
 
 def array_split(arr, size):
@@ -179,6 +180,49 @@ def base64ToImage(base64str, width, height):
     raster = np.reshape(raster, (height,width,))
     image = Image.fromarray(raster)
     return image
+
+
+
+def setImageCorrupt(dbConnector, project, imageID, corrupt):
+    '''
+        Sets the "corrupt" flag to the provided value for a
+        given project and image ID.
+    '''
+    queryStr = sql.SQL('''
+            UPDATE {id_img}
+            SET corrupt = %s
+            WHERE id = %s;
+        ''').format(
+            id_img=sql.Identifier(project, 'image')
+        )
+    dbConnector.execute(queryStr, (corrupt,imageID,), None)
+
+
+
+def getPILimage(input, imageID, project, dbConnector, convertRGB=False):
+    '''
+        Reads an input (file path or BytesIO object) and
+        returns a PIL image instance.
+        Also checks if the image is intact. If it is not,
+        the "corrupt" flag is set in the database as True,
+        and None is returned.
+    '''
+    img = None
+    try:
+        img = Image.open(input)
+        if convertRGB:
+            # conversion implicitly verifies the image (TODO)
+            img = img.convert('RGB')
+        else:
+            img.verify()
+            img = Image.open(input)
+
+    except:
+        # something failed; set "corrupt" flag to False for image
+        setImageCorrupt(dbConnector, project, imageID, True)
+    
+    finally:
+        return img
 
 
 

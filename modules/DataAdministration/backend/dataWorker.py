@@ -89,7 +89,7 @@ class DataWorker:
     ''' Image administration functionalities '''
     def listImages(self, project, imageAddedRange=None, lastViewedRange=None,
             viewcountRange=None, numAnnoRange=None, numPredRange=None,
-            orderBy=None, order='desc', limit=None):
+            orderBy=None, order='desc', startFrom=None, limit=None):
         '''
             Returns a list of images, with ID, filename,
             date image was added, viewcount, number of annotations,
@@ -123,15 +123,18 @@ class DataWorker:
             filterStr += 'AND num_pred >= %s AND num_pred <= %s '
             queryArgs.append(numPredRange[0])
             queryArgs.append(numPredRange[1])
+        if startFrom is not None:
+            filterStr += ' AND img.id > %s '
+            queryArgs.append(startFrom)
         if filterStr.startswith('AND'):
             filterStr = filterStr[3:]
         if len(filterStr.strip()):
             filterStr = 'WHERE ' + filterStr
         filterStr = sql.SQL(filterStr)
 
-        orderStr = sql.SQL('')
+        orderStr = sql.SQL('ORDER BY img.id ASC')
         if orderBy is not None:
-            orderStr = sql.SQL('ORDER BY {} {}').format(
+            orderStr = sql.SQL('ORDER BY {} {}, img.id ASC').format(
                 sql.SQL(orderBy),
                 sql.SQL(order)
             )

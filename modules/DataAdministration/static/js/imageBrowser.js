@@ -274,6 +274,14 @@ class AbstractImageView {
         this.addEntries(entries);
     }
 
+    getEntry(idx) {
+        if(this.order_inv.hasOwnProperty(idx)) {
+            return this.entries[this.order_inv[idx]];
+        } else {
+            return null;
+        }
+    }
+
     setEntries(entries) {
         this.entries = entries;
     }
@@ -837,6 +845,10 @@ class ImageBrowser {
 
     getNumEntries() {
         return Object.keys(this.listView.entries).length;
+    }
+
+    getEntry(idx) {
+        return this.listView.getEntry(idx);
     }
 
     get(varName, entry) {

@@ -12,7 +12,7 @@ from tqdm import tqdm
 from ..genericPyTorchModel import GenericPyTorchModel
 from .. import parse_transforms
 from ._default_options import DEFAULT_OPTIONS
-from ..functional.classification.collation import collate
+from ..functional.classification.collation import Collator
 
 from util.helpers import get_class_executable, check_args
 
@@ -43,8 +43,9 @@ class ClassificationModel(GenericPyTorchModel):
                                 **self.options['dataset']['kwargs']
                                 )
 
+        collator = Collator(self.project, self.dbConnector)
         dataLoader = DataLoader(dataset,
-                                collate_fn=collate,
+                                collate_fn=collator.collate,
                                 **self.options['train']['dataLoader']['kwargs']
                                 )
 
@@ -102,8 +103,9 @@ class ClassificationModel(GenericPyTorchModel):
                                 **self.options['dataset']['kwargs']
                                 )
 
+        collator = Collator(self.project, self.dbConnector)
         dataLoader = DataLoader(dataset,
-                                collate_fn=collate,
+                                collate_fn=collator.collate,
                                 **self.options['inference']['dataLoader']['kwargs']
                                 )
 

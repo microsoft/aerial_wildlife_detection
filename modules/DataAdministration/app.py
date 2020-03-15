@@ -11,6 +11,7 @@
 import os
 import datetime
 import tempfile
+import uuid
 from bottle import static_file, request, response, abort
 import requests
 from .backend.middleware import DataAdministrationMiddleware
@@ -149,6 +150,12 @@ class DataAdministrator:
                                             1e9)
             orderBy = (params['orderBy'] if 'orderBy' in params else None)
             order = (params['order'].lower() if 'order' in params else None)
+            if 'start_from' in params:
+                startFrom = params['start_from']
+                if isinstance(startFrom, str):
+                    startFrom = uuid.UUID(startFrom)
+            else:
+                startFrom = None
             limit = (params['limit'] if 'limit' in params else None)
 
 
@@ -161,6 +168,7 @@ class DataAdministrator:
                                             numPredRange,
                                             orderBy,
                                             order,
+                                            startFrom,
                                             limit)
             
             return {'response': result}

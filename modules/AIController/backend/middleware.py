@@ -161,12 +161,19 @@ class AIMiddleware():
                 queryStr = sql.SQL('''
                     SELECT newestAnno.image FROM (
                         SELECT image, last_checked FROM {id_iu} AS iu
+                        JOIN (
+                            SELECT id AS iid
+                            FROM {id_img}
+                            WHERE corrupt IS NULL OR corrupt = FALSE
+                        ) AS imgQ
+                        ON iu.image = imgQ.iid
                         {timestampStr}
                         ORDER BY iu.last_checked ASC
                         {limitStr}
                     ) AS newestAnno;
                 ''').format(
                     id_iu=sql.Identifier(project, 'image_user'),
+                    id_img=sql.Identifier(project, 'image'),
                     timestampStr=timestampStr,
                     limitStr=limitStr)
 
@@ -174,6 +181,12 @@ class AIMiddleware():
                 queryStr = sql.SQL('''
                 SELECT newestAnno.image FROM (
                     SELECT image, last_checked FROM {id_iu} AS iu
+                    JOIN (
+                        SELECT id AS iid
+                        FROM {id_img}
+                        WHERE corrupt IS NULL OR corrupt = FALSE
+                    ) AS imgQ
+                    ON iu.image = imgQ.iid
                     {timestampStr}
                     {conjunction} image IN (
                         SELECT image FROM (
@@ -188,6 +201,7 @@ class AIMiddleware():
                 ) AS newestAnno;
                 ''').format(
                     id_iu=sql.Identifier(project, 'image_user'),
+                    id_img=sql.Identifier(project, 'image'),
                     id_anno=sql.Identifier(project, 'annotation'),
                     timestampStr=timestampStr,
                     conjunction=(sql.SQL('WHERE') if minTimestamp is None else sql.SQL('AND')),

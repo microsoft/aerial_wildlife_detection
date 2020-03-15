@@ -57,7 +57,7 @@ class RetinaNet(GenericPyTorchModel):
                                     transform=transform,
                                     ignoreUnsure=self.options['train']['ignore_unsure'])
         dataEncoder = encoder.DataEncoder(minIoU_pos=0.5, maxIoU_neg=0.4)   #TODO: implement into options
-        collator = collation.Collator((inputSize[1], inputSize[0],), dataEncoder)
+        collator = collation.Collator(self.project, self.dbConnector, (inputSize[1], inputSize[0],), dataEncoder)
         dataLoader = DataLoader(
             dataset=dataset,
             collate_fn=collator.collate_fn,
@@ -117,7 +117,7 @@ class RetinaNet(GenericPyTorchModel):
                                     labelclassMap=labelclassMap,
                                     transform=transform)
         dataEncoder = encoder.DataEncoder(minIoU_pos=0.5, maxIoU_neg=0.4)   #TODO: ditto
-        collator = collation.Collator((inputSize[1], inputSize[0],), dataEncoder)
+        collator = collation.Collator(self.project, self.dbConnector, (inputSize[1], inputSize[0],), dataEncoder)
         dataLoader = DataLoader(
             dataset=dataset,
             collate_fn=collator.collate_fn,

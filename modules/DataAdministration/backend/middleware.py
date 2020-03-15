@@ -141,7 +141,7 @@ class DataAdministrationMiddleware:
 
     def listImages(self, project, imageAddedRange=None, lastViewedRange=None,
             viewcountRange=None, numAnnoRange=None, numPredRange=None,
-            orderBy=None, order='desc', limit=None):
+            orderBy=None, order='desc', startFrom=None, limit=None):
         '''
             #TODO: update description
             Returns a list of images, with ID, filename,
@@ -158,7 +158,7 @@ class DataAdministrationMiddleware:
         process = celery_interface.listImages.si(project, imageAddedRange,
                                                 lastViewedRange, viewcountRange,
                                                 numAnnoRange, numPredRange,
-                                                orderBy, order, limit)
+                                                orderBy, order, startFrom, limit)
         
         task_id = self._submit_job(project, process)
         return task_id
