@@ -1,7 +1,7 @@
 '''
     Generic AIWorker model implementation that supports PyTorch models for classification.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 import io
@@ -20,8 +20,8 @@ from util.helpers import get_class_executable, check_args
 
 class ClassificationModel(GenericPyTorchModel):
 
-    def __init__(self, config, dbConnector, fileServer, options):
-        super(ClassificationModel, self).__init__(config, dbConnector, fileServer, options, DEFAULT_OPTIONS)
+    def __init__(self, project, config, dbConnector, fileServer, options):
+        super(ClassificationModel, self).__init__(project, config, dbConnector, fileServer, options, DEFAULT_OPTIONS)
 
 
     def train(self, stateDict, data, updateStateFun):
