@@ -27,10 +27,10 @@ def aide_internal_notify(message):
 @current_app.task()
 def listImages(project, imageAddedRange=None, lastViewedRange=None,
         viewcountRange=None, numAnnoRange=None, numPredRange=None,
-        orderBy=None, order='desc', limit=None):
+        orderBy=None, order='desc', startFrom=None, limit=None):
     return worker.listImages(project, imageAddedRange, lastViewedRange,
         viewcountRange, numAnnoRange, numPredRange,
-        orderBy, order, limit)
+        orderBy, order, startFrom, limit)
 
 
 @current_app.task()
