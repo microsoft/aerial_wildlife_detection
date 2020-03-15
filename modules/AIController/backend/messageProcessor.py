@@ -138,11 +138,16 @@ class MessageProcessor(Thread):
             
             # check if ongoing
             result = AsyncResult(key)
-            if not result.ready():
-                task_ongoing = True
-            else:
-                # remove from queue if done
+            if result.ready():
+                # done; remove from queue
                 result.forget()
+                status[key]['status'] = 'SUCCESS'
+            elif result.failed():
+                # failed
+                result.forget()
+                status[key]['status'] = 'FAILURE'
+            else:
+                task_ongoing = True
         return status, task_ongoing
 
 
