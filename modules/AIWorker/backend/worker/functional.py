@@ -128,6 +128,21 @@ def __load_metadata(project, dbConnector, imageIDs, loadAnnotations):
     return meta
 
 
+def __get_ai_library_names(project, dbConnector):
+    model_library, alcriterion_library = None, None
+    try:
+        queryStr = sql.SQL('''
+            SELECT ai_model_library, ai_alcriterion_library
+            FROM "aide_admin".project
+            WHERE shortname = %s;
+        ''')
+        result = dbConnector.execute(queryStr, (project,), 1)
+        model_library = result[0]['ai_model_library']
+        alcriterion_library = result[0]['ai_alcriterion_library']
+    finally:
+        return model_library, alcriterion_library
+
+
 def _call_train(project, imageIDs, subset, trainingFun, dbConnector, fileServer):
     '''
         Initiates model training and maintains workers, status and failure
@@ -180,11 +195,12 @@ def _call_train(project, imageIDs, subset, trainingFun, dbConnector, fileServer)
     # commit state dict to database
     try:
         update_state(state='FINALIZING', message='saving model state')
+        model_library, alcriterion_library = __get_ai_library_names(project, dbConnector)
         queryStr = sql.SQL('''
-            INSERT INTO {} (stateDict, partial)
-            VALUES( %s, %s )
+            INSERT INTO {} (stateDict, partial, model_library, alcriterion_library)
+            VALUES( %s, %s, %s, %s )
         ''').format(sql.Identifier(project, 'cnnstate'))
-        dbConnector.execute(queryStr, (psycopg2.Binary(stateDict), subset,), numReturn=None)
+        dbConnector.execute(queryStr, (psycopg2.Binary(stateDict), subset, model_library, alcriterion_library), numReturn=None)
     except Exception as e:
         print(e)
         raise Exception('error during data committing')
@@ -210,7 +226,7 @@ def _call_average_model_states(project, averageFun, dbConnector, fileServer):
     update_state(state='PREPARING', message='loading model states')
     try:
         queryStr = sql.SQL('''
-            SELECT stateDict, model_library FROM {} WHERE partial IS TRUE;
+            SELECT stateDict, model_library, alcriterion_library FROM {} WHERE partial IS TRUE;
         ''').format(sql.Identifier(project, 'cnnstate'))
         modelStates = dbConnector.execute(queryStr, None, 'all')
     except Exception as e:
@@ -234,14 +250,19 @@ def _call_average_model_states(project, averageFun, dbConnector, fileServer):
     update_state(state='FINALIZING', message='saving model state')
     try:
         model_library = modelStates[0]['model_library']
+        alcriterion_library = modelStates[0]['alcriterion_library']
+
+        if model_library is None or alcriterion_library is None:
+            raise Exception('(try loading from project configuration instead)')
     except:
-        model_library = None
+        # load model library from database
+        model_library, alcriterion_library = __get_ai_library_names(project, dbConnector)
     try:
         queryStr = sql.SQL('''
-            INSERT INTO {} (stateDict, partial, model_library)
+            INSERT INTO {} (stateDict, partial, model_library, alcriterion_library)
             VALUES ( %s )
         ''').format(sql.Identifier(project, 'cnnstate'))
-        dbConnector.insert(queryStr, (modelStates_avg, False, model_library))
+        dbConnector.insert(queryStr, (modelStates_avg, False, model_library, alcriterion_library))
     except Exception as e:
         print(e)
         raise Exception('error during data committing')

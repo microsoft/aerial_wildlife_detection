@@ -171,8 +171,51 @@
                     }
                 }
 
-                // create overview chart        //TODO: adapt for other anno types
-                if(series.hasOwnProperty('prec') && series.hasOwnProperty('rec')) {
+                // create overview chart
+                if(series.hasOwnProperty('overall_accuracy')) {
+                    // image labels; show OA
+                    let chartLabel = 'Overall Accuracy';
+                    var cw_oa = $('<div class="chartWrapper"><div class="chartAreaWrapper"></div></div>');
+                    let canvas_oa = $('<canvas width=400 height=300></canvas>');
+                    cw_oa.find('.chartAreaWrapper').append(canvas_oa);
+                    new Chart(canvas_oa[0].getContext('2d'), {
+                        type: 'bar',
+                        data: {
+                            labels: modelNames,
+                            datasets: [{
+                                label: chartLabel,
+                                data: series['overall_accuracy'],
+                                backgroundColor: series['color']
+                            }]
+                        },
+                        options: {
+                            tooltips: {
+                                callbacks: {
+                                    label: function(tooltipItem, data) {
+                                    var label = data.labels[tooltipItem.index];
+                                    return label + ': (OA: ' + tooltipItem.yLabel + ')';
+                                    }
+                                }
+                            },
+                            scales: {
+                                yAxes: [{
+                                    scaleLabel: {
+                                        display: true,
+                                        labelString: chartLabel
+                                    },
+                                    ticks: {
+                                        min: 0.0,
+                                        max: 1.0
+                                    }
+                                }]
+                            },
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }
+                    });
+                    resultsContainer.append(cw_oa);
+
+                } else if(series.hasOwnProperty('prec') && series.hasOwnProperty('rec')) {
                     // points or bounding boxes: show precision-recall plots
                     var chartData = [];
                     var pointRadii = [];

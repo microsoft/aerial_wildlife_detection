@@ -470,14 +470,12 @@ class AIMiddleware():
 
 
 
-
     def check_status(self, project, checkProject, checkTasks, checkWorkers):
         '''
             Queries the Celery worker results depending on the parameters specified.
             Returns their status accordingly if they exist.
         '''
         status = {}
-
 
         # project status
         if checkProject:
@@ -508,10 +506,10 @@ class AIMiddleware():
         return status
 
 
+
     def getAvailableAImodels(self):
         # import available modules
         from ai import PREDICTION_MODELS, ALCRITERION_MODELS
-        
         return {
             'models': {
                 'prediction': PREDICTION_MODELS,
@@ -520,9 +518,9 @@ class AIMiddleware():
         }
 
 
+
     def listModelStates(self, project):
         modelLibraries = self.getAvailableAImodels()
-
         queryStr = sql.SQL('''
             SELECT id, EXTRACT(epoch FROM timeCreated) AS time_created, model_library, alCriterion_library, num_pred
             FROM {id_cnnstate} AS cnnstate
@@ -564,12 +562,12 @@ class AIMiddleware():
         return response
 
 
+
     def getProjectModelSettings(self, project):
         '''
             Returns the AI and AL model properties for the given project,
             as stored in the database.
         '''
-
         result = self.dbConn.execute('''SELECT ai_model_enabled,
                 ai_model_library, ai_model_settings,
                 ai_alcriterion_library, ai_alcriterion_settings,
@@ -581,6 +579,7 @@ class AIMiddleware():
             (project,),
             1)
         return result[0]
+
 
 
     def saveProjectModelSettings(self, project, settings):

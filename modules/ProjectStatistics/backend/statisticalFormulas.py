@@ -10,7 +10,7 @@ from enum import Enum
 
 class StatisticalFormulas_user(Enum):
     labels = '''
-        SELECT q1.image AS image, q1id, q2id, q1label, q2label, q1label=q2label AS label_correct
+        SELECT q1.image AS image, q2.username, q1id, q2id, q1label, q2label, q1label=q2label AS label_correct
         FROM (
             SELECT image, id AS q1id, label AS q1label
             FROM {id_anno}
@@ -18,9 +18,9 @@ class StatisticalFormulas_user(Enum):
         ) AS q1
         JOIN
         (
-            SELECT image, id AS q2id, label AS q2label
+            SELECT image, id AS q2id, label AS q2label, username
             FROM {id_anno}
-            WHERE username = %s
+            WHERE username IN %s
         ) AS q2
         ON q1.image = q2.image
         {sql_goldenQuestion}
@@ -225,7 +225,7 @@ class StatisticalFormulas_user(Enum):
 #TODO: rework formulas below
 class StatisticalFormulas_model(Enum):
     labels = '''
-        SELECT q1.image AS image, q1id, q2id, q1label, q2label, q1label=q2label AS label_correct
+        SELECT q1.image AS image, cnnstate, q1id, q2id, q1label, q2label, q1label=q2label AS label_correct
         FROM (
             SELECT image, id AS q1id, label AS q1label
             FROM {id_anno}
@@ -233,7 +233,7 @@ class StatisticalFormulas_model(Enum):
         ) AS q1
         JOIN
         (
-            SELECT image, id AS q2id, label AS q2label
+            SELECT image, id AS q2id, cnnstate, label AS q2label
             FROM {id_pred}
             WHERE cnnstate IN %s
         ) AS q2

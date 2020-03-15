@@ -197,29 +197,36 @@ class ProjectStatisticsMiddleware:
 
 
         # result tokens
-        tokens = {
-            'num_pred': 0,
-            'num_target': 0,
-        }
-        if annoType == 'points':
-            tokens = { **tokens, **{
+        tokens = {}
+        tokens_normalize = []
+        if annoType == 'labels':
+            tokens = {
+                'num_matches': 0,
+                'correct': 0,
+                'incorrect': 0,
+                'overall_accuracy': 0.0
+            }
+            tokens_normalize = ['overall_accuracy']
+        elif annoType == 'points':
+            tokens = {
+                'num_pred': 0,
+                'num_target': 0,
                 'tp': 0,
                 'fp': 0,
                 'fn': 0,
                 'avg_dist': 0.0
-            }}
+            }
+            tokens_normalize = ['avg_dist']
         elif annoType == 'boundingBoxes':
-            tokens = { **tokens, ** {
+            tokens = {
+                'num_pred': 0,
+                'num_target': 0,
                 'tp': 0,
                 'fp': 0,
                 'fn': 0,
                 'avg_iou': 0.0
-            }}
-        
-        tokens_normalize = [
-            'avg_dist',
-            'avg_iou'
-        ]
+            }
+            tokens_normalize = ['avg_iou']
         
         if entityType == 'user':
             queryStr = getattr(StatisticalFormulas_user, annoType).value
@@ -254,20 +261,36 @@ class ProjectStatisticsMiddleware:
                     entity = b['username']
                 else:
                     entity = str(b['cnnstate'])
+
                 if not entity in response['per_entity']:
                     response['per_entity'][entity] = tokens.copy()
+                if annoType in ('points', 'boundingBoxes'):
                     response['per_entity'][entity]['num_matches'] = 1
-                elif b['num_target'] > 0:
-                    response['per_entity'][entity]['num_matches'] += 1
+                    if b['num_target'] > 0:
+                        response['per_entity'][entity]['num_matches'] += 1
                 
                 for key in tokens.keys():
-                    if b[key] is not None:
+                    if key == 'correct' or key == 'incorrect':
+                        # classification
+                        correct = b['label_correct']
+                        # ignore None
+                        if correct is True:
+                            response['per_entity'][entity]['correct'] += 1
+                            response['per_entity'][entity]['num_matches'] += 1
+                        elif correct is False:
+                            response['per_entity'][entity]['incorrect'] += 1
+                            response['per_entity'][entity]['num_matches'] += 1
+                    elif key in b and b[key] is not None:
                         response['per_entity'][entity][key] += b[key]
 
         for entity in response['per_entity'].keys():
             for t in tokens_normalize:
                 if t in response['per_entity'][entity]:
-                    response['per_entity'][entity][t] /= response['per_entity'][entity]['num_matches']
+                    if t == 'overall_accuracy':
+                        response['per_entity'][entity][t] = float(response['per_entity'][entity]['correct']) / \
+                            float(response['per_entity'][entity]['correct'] + response['per_entity'][entity]['incorrect'])
+                    elif annoType in ('points', 'boundingBoxes'):
+                        response['per_entity'][entity][t] /= response['per_entity'][entity]['num_matches']
 
             if annoType == 'points' or annoType == 'boundingBoxes':
                 prec, rec, f1 = self._calc_geometric_stats(
