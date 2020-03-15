@@ -179,26 +179,26 @@ class AIMiddleware():
 
             else:
                 queryStr = sql.SQL('''
-                SELECT newestAnno.image FROM (
-                    SELECT image, last_checked FROM {id_iu} AS iu
-                    JOIN (
-                        SELECT id AS iid
-                        FROM {id_img}
-                        WHERE corrupt IS NULL OR corrupt = FALSE
-                    ) AS imgQ
-                    ON iu.image = imgQ.iid
-                    {timestampStr}
-                    {conjunction} image IN (
-                        SELECT image FROM (
-                            SELECT image, COUNT(*) AS cnt
-                            FROM {id_anno}
-                            GROUP BY image
-                            ) AS annoCount
-                        WHERE annoCount.cnt > %s
-                    )
-                    ORDER BY iu.last_checked ASC
-                    {limitStr}
-                ) AS newestAnno;
+                    SELECT newestAnno.image FROM (
+                        SELECT image, last_checked FROM {id_iu} AS iu
+                        JOIN (
+                            SELECT id AS iid
+                            FROM {id_img}
+                            WHERE corrupt IS NULL OR corrupt = FALSE
+                        ) AS imgQ
+                        ON iu.image = imgQ.iid
+                        {timestampStr}
+                        {conjunction} image IN (
+                            SELECT image FROM (
+                                SELECT image, COUNT(*) AS cnt
+                                FROM {id_anno}
+                                GROUP BY image
+                                ) AS annoCount
+                            WHERE annoCount.cnt >= %s
+                        )
+                        ORDER BY iu.last_checked ASC
+                        {limitStr}
+                    ) AS newestAnno;
                 ''').format(
                     id_iu=sql.Identifier(project, 'image_user'),
                     id_img=sql.Identifier(project, 'image'),
