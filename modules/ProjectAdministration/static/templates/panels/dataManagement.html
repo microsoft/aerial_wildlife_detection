@@ -137,10 +137,10 @@
                     {'golden_question': 'Golden question'}
                 ]
             });
-            window.imageBrowser.setTrailingButton(false,
-                                                    true,       //TODO: disabled until "show more" function is properly implemented
-                                                    'more...',
-                                                    onClickMore);
+            window.imageBrowser.setTrailingButton(true,
+                                                false,       //TODO: disabled until "show more" function is properly implemented
+                                                'more...',
+                                                onClickMore);
             window.imageBrowser.on('imageCheck', function(event) {
                 _imageBrowser_event(event);
             });
@@ -153,7 +153,7 @@
             return updateImageBrowser(true);
         }
 
-        function updateImageBrowser(forceRefresh) {
+        function updateImageBrowser(replaceImages) {
             // parse filter parameters
             var orderBy = $('#order-by').val();
             var order = $('#order').val();
@@ -164,7 +164,7 @@
             };
 
             // keep track of latest value for "show more" button
-            if(!forceRefresh) {
+            if(!replaceImages) {
                 try {
                     var numEntries = window.imageBrowser.getNumEntries();
                     if(numEntries > 0) {
@@ -235,15 +235,15 @@
                                 '<img src="/static/interface/img/controls/flag_active.svg" height="16px" />' :
                                 '<img src="/static/interface/img/controls/flag.svg" height="16px" />')
                     });
-                    
-                    if(order === 'asc') {
-                        window.latestStartingPoint['val'] = Math.max(window.latestStartingPoint['val'], data[idx][orderBy]);
-                    } else {
-                        window.latestStartingPoint['val'] = Math.min(window.latestStartingPoint['val'], data[idx][orderBy]);
-                    }
                 }
 
-                window.imageBrowser.setImages(images);
+                if(replaceImages) {
+                    // replace
+                    window.imageBrowser.setImages(images);
+                } else {
+                    // append
+                    window.imageBrowser.addImages(images);
+                }
             }
 
             return $.ajax({
