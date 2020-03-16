@@ -125,7 +125,8 @@ class SQLStringBuilder:
 
         # subset selection fragment
         subsetFragment = 'WHERE isGoldenQuestion = FALSE'
-        orderSpec = ''
+        orderSpec_a = ''
+        orderSpec_b = ''
         if subset == 'forceLabeled':
             subsetFragment = 'WHERE viewcount > 0 AND isGoldenQuestion = FALSE'
         elif subset == 'forceUnlabeled':
@@ -137,23 +138,31 @@ class SQLStringBuilder:
             subsetFragment = 'WHERE img.last_requested IS NULL OR (img.last_requested - NOW()) > interval \'900 second\''
 
         if order == 'unlabeled':
-            orderSpec = 'ORDER BY isgoldenquestion DESC NULLS LAST, viewcount ASC NULLS FIRST, annoCount ASC NULLS FIRST, score DESC NULLS LAST'
+            orderSpec_a = 'ORDER BY isgoldenquestion DESC NULLS LAST, viewcount ASC NULLS FIRST, annoCount ASC NULLS FIRST, score DESC NULLS LAST'
+            orderSpec_b = 'ORDER BY isgoldenquestion DESC NULLS LAST, viewcount ASC NULLS FIRST, annoCount ASC NULLS FIRST, score DESC NULLS LAST'
         elif order == 'labeled':
-            orderSpec = 'ORDER BY viewcount DESC NULLS LAST, isgoldenquestion DESC NULLS LAST, score DESC NULLS LAST'
-        orderSpec += ', timeCreated DESC'
+            orderSpec_a = 'ORDER BY viewcount DESC NULLS LAST, isgoldenquestion DESC NULLS LAST, score DESC NULLS LAST'
+            orderSpec_b = 'ORDER BY viewcount DESC NULLS LAST, isgoldenquestion DESC NULLS LAST, score DESC NULLS LAST'
+        orderSpec_a += ', timeCreated DESC'
+        orderSpec_b += ', timeCreated DESC'
 
         usernameString = 'WHERE username = %s'
         if demoMode:
             usernameString = ''
-            orderSpec = 'ORDER BY RANDOM()'
+            orderSpec_a = ''
+            orderSpec_b = 'ORDER BY RANDOM()'
+            gq_user = ''
+        else:
+            gq_user = '''AND id NOT IN (
+                SELECT image FROM {id_iu}
+                WHERE username = %s
+            )'''
 
         queryStr = sql.SQL('''
             SELECT id, image, cType, viewcount, EXTRACT(epoch FROM last_checked) as last_checked, filename, isGoldenQuestion, {allCols} FROM (
             SELECT id AS image, filename, 0 AS viewcount, 0 AS annoCount, NULL AS last_checked, 1E9 AS score, NULL AS timeCreated, isGoldenQuestion FROM {id_img} AS img
-            WHERE isGoldenQuestion = TRUE AND id NOT IN (
-                SELECT image FROM {id_iu}
-                WHERE username = %s
-            )
+            WHERE isGoldenQuestion = TRUE
+            {gq_user}
             UNION ALL
             SELECT id AS image, filename, viewcount, annoCount, last_checked, score, timeCreated, isGoldenQuestion FROM {id_img} AS img
             LEFT OUTER JOIN (
@@ -176,7 +185,7 @@ class SQLStringBuilder:
 				GROUP BY image
 			) AS anno_score ON img.id = anno_score.image
             {subset}
-            {order}
+            {order_a}
             LIMIT %s
             ) AS img_query
             LEFT OUTER JOIN (
@@ -190,18 +199,20 @@ class SQLStringBuilder:
                     LIMIT 1
                 )
             ) AS contents ON img_query.image = contents.imID
-            {order};
+            {order_b};
         ''').format(
             id_img=sql.Identifier(project, 'image'),
             id_anno=sql.Identifier(project, 'annotation'),
             id_pred=sql.Identifier(project, 'prediction'),
             id_iu=sql.Identifier(project, 'image_user'),
             id_cnnstate=sql.Identifier(project, 'cnnstate'),
+            gq_user=sql.SQL(gq_user),
             allCols=sql.SQL(', ').join(fields_union),
             annoCols=sql.SQL(', ').join(fields_anno),
             predCols=sql.SQL(', ').join(fields_pred),
             subset=sql.SQL(subsetFragment),
-            order=sql.SQL(orderSpec),
+            order_a=sql.SQL(orderSpec_a),
+            order_b=sql.SQL(orderSpec_b),
             usernameString=sql.SQL(usernameString)
         )
 

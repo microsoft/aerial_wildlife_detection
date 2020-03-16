@@ -21,8 +21,6 @@ if not 'AIDE_CONFIG_PATH' in os.environ:
 if not 'AIDE_MODULES' in os.environ:
     raise ValueError('Missing system environment variable "AIDE_MODULES".')
 config = Config()
-if config.getProperty('Project', 'demoMode', type=bool, fallback=False):
-    raise Exception('Message broker cannot be launched in demo mode.')
 
 
 aide_modules = os.environ['AIDE_MODULES'].split(',')

@@ -10,7 +10,7 @@ from modules.Database.app import Database
 import psycopg2
 from psycopg2 import sql
 from datetime import timedelta
-from util.helpers import current_time
+from util.helpers import current_time, checkDemoMode
 import secrets
 import hashlib
 import bcrypt
@@ -260,8 +260,7 @@ class UserMiddleware():
         response = {
             'enrolled': False,
             'isAdmin': False,
-            'isPublic': False,
-            'demoMode': False
+            'isPublic': False
         }
         queryStr = sql.SQL('''
             SELECT * FROM aide_admin.authentication AS auth
@@ -274,7 +273,6 @@ class UserMiddleware():
             if len(result):
                 response['isAdmin'] = result[0]['isadmin']
                 response['isPublic'] = result[0]['ispublic']
-                response['demoMode'] = result[0]['demomode']
                 admitted_until = True
                 blocked_until = False
                 if result[0]['admitted_until'] is not None:
@@ -309,6 +307,10 @@ class UserMiddleware():
         #     queryVals = (project,username,)
         # result = self.dbConnector.execute(queryStr, queryVals, 1)
         # return result[0]['cnt'] == 1
+
+
+    def checkDemoMode(self, project):
+        return checkDemoMode(project, self.dbConnector)
 
 
     def decryptSessionToken(self, username, request):
@@ -367,17 +369,25 @@ class UserMiddleware():
             If 'return_all' is True, all individual flags (instead of just a single bool) is returned.
         '''
 
+        demoMode = checkDemoMode(project, self.dbConnector)
+
         if return_all:
             returnVals = {}
             returnVals['logged_in'] = self._check_logged_in(username, sessionToken)
+            if not returnVals['logged_in']:
+                username = None
             if project is not None:
                 returnVals['project'] = self._check_authorized(project, username, admin, return_all=True)
+                returnVals['project']['demoMode'] = demoMode
             returnVals['privileges'] = self._check_user_privileges(username, superuser, canCreateProjects, return_all=True)
             if returnVals['logged_in'] and extend_session:
                 self._init_or_extend_session(username, sessionToken)
             return returnVals
 
         else:
+            # return True if project is in demo mode
+            if demoMode is not None and demoMode:
+                return True
             if not self._check_logged_in(username, sessionToken):
                 return False
             if project is not None and not self._check_authorized(project, username, admin):
@@ -449,16 +459,30 @@ class UserMiddleware():
 
     def getUserPermissions(self, project, username):
         '''
-            Returns the user-to-project relation (e.g., if user is admin)
+            Returns the user-to-project relation (e.g., if user is admin).
         '''
-        queryStr = sql.SQL('SELECT * FROM {id_auth} WHERE project = %s AND username = %s').format(
-            id_auth=sql.Identifier('aide_admin', 'authentication'))
-        result = self.dbConnector.execute(queryStr, (project,username,), 1)[0]
-        return {
-            'isAdmin': result['isadmin'],
-            'admittedUntil': result['admitted_until'],
-            'blockedUntil': result['blocked_until']
+        response = {
+            'demoMode': False,
+            'isAdmin': False,
+            'admittedUntil': None,
+            'blockedUntil': None
         }
+
+        try:
+            # demo mode
+            response['demoMode'] = checkDemoMode(project, self.dbConnector)
+
+            # rest
+            queryStr = sql.SQL('SELECT * FROM {id_auth} WHERE project = %s AND username = %s').format(
+                id_auth=sql.Identifier('aide_admin', 'authentication'))
+            result = self.dbConnector.execute(queryStr, (project,username,), 1)
+            if len(result):
+                response['isAdmin'] = result['isadmin']
+                response['admittedUntil'] = result['admitted_until']
+                response['blockedUntil'] = result['blocked_until']
+
+        finally:
+            return response
 
 
     def login(self, username, password, sessionToken):

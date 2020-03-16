@@ -91,10 +91,6 @@ class ProjectConfigurator:
         @self.app.route('/<project>/')
         def send_project_overview(project):
 
-            #TODO: show for public project...
-            if not self.loginCheck():
-                return redirect('/')
-
             # get project data (and check if project exists)
             projectData = self.middleware.getProjectInfo(project, ['name', 'description', 'interface_enabled', 'demomode'])
             if projectData is None:
@@ -104,7 +100,10 @@ class ProjectConfigurator:
                 return redirect('/')
 
             # render overview template
-            username = 'Demo mode' if projectData['demomode'] else html.escape(request.get_cookie('username'))
+            try:
+                username = html.escape(request.get_cookie('username'))
+            except:
+                username = ''
             
             return self.projLandPage_template.render(
                 projectShortname=project,
@@ -132,7 +131,10 @@ class ProjectConfigurator:
                 return redirect('/' + project + '/interface')
 
             # render configuration template
-            username = 'Demo mode' if projectData['demomode'] else html.escape(request.get_cookie('username'))
+            try:
+                username = html.escape(request.get_cookie('username'))
+            except:
+                username = ''
 
             return self.projConf_template.render(
                     projectShortname=project,
@@ -261,9 +263,10 @@ class ProjectConfigurator:
 
             # user-specific permissions
             userPrivileges = self.loginCheck(project=project, return_all=True)
-            permissions['can_view'] = isPublic or userPrivileges['project']['enrolled']
-            permissions['can_label'] = config['interface_enabled'] and (userPrivileges['project']['enrolled'])
-            permissions['is_admin'] = userPrivileges['project']['isAdmin']
+            if userPrivileges['logged_in']:
+                permissions['can_view'] = (config['demomode'] or isPublic or userPrivileges['project']['enrolled'])
+                permissions['can_label'] = config['interface_enabled'] and (config['demomode'] or userPrivileges['project']['enrolled'])
+                permissions['is_admin'] = userPrivileges['project']['isAdmin']
             
             return {'permissions': permissions}
 

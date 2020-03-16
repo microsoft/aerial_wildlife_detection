@@ -22,21 +22,17 @@ class LabelUI():
         self.app = app
         self.staticDir = 'modules/LabelUI/static'
         self.middleware = DBMiddleware(config)
-
-        self.demoMode = config.getProperty('Project', 'demoMode', type=bool, fallback=False)    #TODO: project-specific
-
         self.login_check = None
 
         self._initBottle()
 
     
     def loginCheck(self, project=None, admin=False, superuser=False, canCreateProjects=False, extend_session=False):
-        return True if self.demoMode or self.login_check is None else self.login_check(project, admin, superuser, canCreateProjects, extend_session)
+        return self.login_check(project, admin, superuser, canCreateProjects, extend_session)
 
 
     def addLoginCheckFun(self, loginCheckFun):
-        if not self.demoMode:
-            self.login_check = loginCheckFun
+        self.login_check = loginCheckFun
 
 
     def __redirect_login_page(self):
@@ -70,7 +66,7 @@ class LabelUI():
         def interface(project):
             
             # check if user logged in
-            if not self.loginCheck():
+            if not self.loginCheck(project=project):
                 return self.__redirect_login_page()
             
             # check if user is enrolled in project; redirect if not
@@ -91,7 +87,10 @@ class LabelUI():
                 return self.__redirect_project_page(project)
 
             # render interface template
-            username = 'Demo mode' if self.demoMode else html.escape(request.get_cookie('username'))
+            try:
+                username = html.escape(request.get_cookie('username'))
+            except:
+                username = ''
             return self.interface_template.render(username=username,
                 projectShortname=project,
                 projectTitle=projectData['projectName'], projectDescr=projectData['projectDescription'])
@@ -156,7 +155,10 @@ class LabelUI():
                 if self.loginCheck(project=project, admin=True):
                     hideGoldenQuestionInfo = False
 
-                username = html.escape(request.get_cookie('username'))
+                try:
+                    username = html.escape(request.get_cookie('username'))
+                except:
+                    username = ''
                 dataIDs = request.json['imageIDs']
                 json = self.middleware.getBatch_fixed(project, username, dataIDs, hideGoldenQuestionInfo)
                 return json
@@ -171,7 +173,10 @@ class LabelUI():
                 if self.loginCheck(project=project, admin=True):
                     hideGoldenQuestionInfo = False
 
-                username = html.escape(request.get_cookie('username'))
+                try:
+                    username = html.escape(request.get_cookie('username'))
+                except:
+                    username = ''
                 try:
                     limit = int(request.query['limit'])
                 except:
@@ -193,10 +198,8 @@ class LabelUI():
 
         @self.app.post('/<project>/getImages_timestamp')
         def get_images_timestamp(project):
-            if self.demoMode:
-                return { 'status': 'not allowed in demo mode' }
-
-            username = html.escape(request.get_cookie('username'))
+            if not self.loginCheck(project=project):
+                abort(401, 'unauthorized')
 
             # check if user requests to see other user names; only permitted if admin
             # also, by default we limit labels to the current user,
@@ -248,8 +251,8 @@ class LabelUI():
 
         @self.app.post('/<project>/getTimeRange')
         def get_time_range(project):
-            if self.demoMode:
-                return { 'status': 'not allowed in demo mode' }
+            if not self.loginCheck(project=project):
+                abort(401, 'unauthorized')
 
             username = html.escape(request.get_cookie('username'))
 
@@ -264,10 +267,6 @@ class LabelUI():
             if not self.loginCheck(project=project, admin=True):
                 # user no admin: can only query their own labels
                 users = [username]
-            
-            elif not self.loginCheck(project=project):
-                # not logged in, resp. not authorized for this project
-                abort(401, 'unauthorized')
 
             try:
                 skipEmpty = request.json['skipEmpty']
@@ -285,15 +284,12 @@ class LabelUI():
 
         @self.app.post('/<project>/submitAnnotations')
         def submit_annotations(project):
-            if self.demoMode:
-                return { 'status': 'not allowed in demo mode' }
-            
             if self.loginCheck(project=project):
                 # parse
                 try:
                     username = html.escape(request.get_cookie('username'))
                     if username is None:
-                        # this should never happen, since we are performing a login check
+                        # 100% failsafety for projects in demo mode
                         raise Exception('no username provided')
                     submission = request.json
                     status = self.middleware.submitAnnotations(project, username, submission)
@@ -309,9 +305,6 @@ class LabelUI():
         
         @self.app.post('/<project>/setGoldenQuestions')
         def set_golden_questions(project):
-            if self.demoMode:
-                return { 'status': 'not allowed in demo mode' }
-            
             if self.loginCheck(project=project, admin=True):
                 # parse and check validity of submissions
                 submissions = request.json

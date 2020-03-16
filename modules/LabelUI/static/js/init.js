@@ -6,6 +6,12 @@
 
 $(document).ready(function() {
 
+    // hide user menu if not logged in
+    if($('#navbar-user-dropdown').html() === '') {
+        $('#navbar-dropdown').hide();
+        $('#login-button').show();
+    }
+
     // enable/disable interface
     window.setUIblocked = function(blocked) {
         window.uiBlocked = blocked;

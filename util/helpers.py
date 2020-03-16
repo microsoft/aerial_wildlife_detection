@@ -47,6 +47,7 @@ def get_class_executable(path):
     return getattr(execFile, executableName)
 
 
+
 def check_args(options, defaultOptions):
     '''
         Compares a dictionary of objects ('options') with a set of 'defaultOptions'
@@ -66,6 +67,7 @@ def check_args(options, defaultOptions):
         return defaultOptions
     else:
         return __check(options, defaultOptions)
+
 
 
 def parse_parameters(data, params, absent_ok=True, escape=True):
@@ -101,7 +103,28 @@ def parse_parameters(data, params, absent_ok=True, escape=True):
         outputVals.append(value)
         outputKeys.append(nextKey)
     return outputVals, outputKeys
+
+
+
+def checkDemoMode(project, dbConnector):
+        '''
+            Returns a bool indicating whether the project is in demo mode.
+            Returns None if the project does not exist.
+        '''
+        try:
+            response = dbConnector.execute('''
+                SELECT demoMode FROM aide_admin.project
+                WHERE shortname = %s;''',
+                (project,),
+                1)
+            if len(response):
+                return response[0]['demomode']
+            else:
+                return None
+        except:
+            return None
         
+
 
 def is_fileServer(config):
     '''

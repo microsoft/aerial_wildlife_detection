@@ -13,9 +13,6 @@ class AIController:
     #TODO: relay routings if AIController is on a different machine
 
     def __init__(self, config, app):
-        if config.getProperty('Project', 'demoMode', type=bool, fallback=False):
-            raise Exception('AIController cannot be launched in demo mode.')
-
         self.config = config
         self.app = app
 

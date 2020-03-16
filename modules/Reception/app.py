@@ -19,9 +19,6 @@ class Reception:
         self.app = app
         self.staticDir = 'modules/Reception/static'
         self.middleware = ReceptionMiddleware(config)
-
-        self.demoMode = config.getProperty('Project', 'demoMode', type=bool, fallback=False)    #TODO: project-specific
-
         self.login_check = None
 
         self._initBottle()
@@ -32,8 +29,7 @@ class Reception:
 
     
     def addLoginCheckFun(self, loginCheckFun):
-        if not self.demoMode:
-            self.login_check = loginCheckFun
+        self.login_check = loginCheckFun
 
 
     def _initBottle(self):
@@ -44,12 +40,7 @@ class Reception:
         @self.app.route('/')
         def projects():
             try:
-                if self.demoMode:
-                    username = 'Demo mode'
-                elif self.login_check():
-                    username = html.escape(request.get_cookie('username'))
-                else:
-                    username = ''
+                username = html.escape(request.get_cookie('username'))
             except:
                 username = ''
             return self.proj_template.render(username=username)
@@ -71,7 +62,7 @@ class Reception:
         @self.app.get('/getProjects')
         def get_projects(): 
             try:
-                if self.login_check():
+                if self.loginCheck():
                     username = html.escape(request.get_cookie('username'))
                 else:
                     username = ''
@@ -91,7 +82,7 @@ class Reception:
                 provided matches.
             '''
             try:
-                if not self.login_check():
+                if not self.loginCheck():
                     return redirect('/')
                 
                 username = html.escape(request.get_cookie('username'))

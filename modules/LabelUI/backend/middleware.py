@@ -15,6 +15,7 @@ from psycopg2 import sql
 from modules.Database.app import Database
 from .sql_string_builder import SQLStringBuilder
 from .annotation_sql_tokens import QueryStrings_annotation, AnnotationParser
+from util import helpers
 
 
 class DBMiddleware():
@@ -125,7 +126,7 @@ class DBMiddleware():
                 self.project_immutables[project] = {
                     'annotationType': result[0]['annotationtype'],
                     'predictionType': result[0]['predictiontype'],
-                    'demoMode': result[0]['demomode']
+                    'demoMode': helpers.checkDemoMode(project, self.dbConnector)
                 }
             else:
                 return None
@@ -330,7 +331,7 @@ class DBMiddleware():
 
         # parse results
         queryVals = (username,username,limit,username,)
-        if projImmutables['demoMode']:
+        if projImmutables['demoMode']:      #TODO: demoMode can now change dynamically
             queryVals = (limit,)
 
         with self.dbConnector.execute_cursor(queryStr, queryVals) as cursor:

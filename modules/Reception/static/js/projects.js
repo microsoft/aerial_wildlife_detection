@@ -2,7 +2,7 @@ $(document).ready(function() {
 
     // hide name ta (log in button) if not logged in (out)
     if($('#navbar-user-dropdown').html() === '') {
-        $('#navbar-user-dropdown').hide();
+        $('#navbar-dropdown').hide();
     } else {
         $('#login-button').hide();
     }
@@ -22,19 +22,15 @@ $(document).ready(function() {
                         role = 'not a member';
                         var isMember = false;
                     }
-
                     var userAdmitted = data['projects'][key]['userAdmitted'];
-
-                    // var isPublic = '';
-                    // if(data['projects'][key]['public']) {
-                    //     isPublic = '&#10003;';
-                    // }
-
                     var adminButton = '';
                     if(role === 'admin' || role === 'super user') {
                         // show button to project configuration page
                         adminButton = '<a href="' + key + '/configuration" class="btn btn-secondary">Configure</a>';
                         userAdmitted = true;
+                        var authDescr = $('<p>You are <b>' + role + '</b> in this project.</p>');
+                    } else if(data['projects'][key]['demoMode']) {
+                        var authDescr = $('<p>You are allowed to view (but not label) the images in this project.</p>');
                     }
 
                     var labelButton = '<a href="' + key + '/interface" class="btn btn-primary label-button">Start labeling</a>';
@@ -42,11 +38,11 @@ $(document).ready(function() {
                         labelButton = '<div class="btn btn-secondary label-button" style="cursor:not-allowed;" disabled="disabled">(interface disabled)</div>';
                     }
 
-                    var markup = $('<div class="project-entry">' +
-                        '<h2><a href="' + key + '">' + data['projects'][key]['name'] + '</a></h2>' +
-                        '<p>' + data['projects'][key]['description'] + '</p>' +
-                        '<p>You are <b>' + role + '</b> in this project.</p>' +
-                        '<div>' + labelButton +
+                    var markup = $('<div class="project-entry"></div>');
+                    markup.append($('<h2><a href="' + key + '">' + data['projects'][key]['name'] + '</a></h2>'));
+                    markup.append($('<p>' + data['projects'][key]['description'] + '</p>'));
+                    markup.append(authDescr);
+                    markup.append('<div>' + labelButton +
                         adminButton +
                         '</div></div>');
                     projDiv.append(markup);

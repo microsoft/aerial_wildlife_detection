@@ -27,7 +27,6 @@ def _verify_unique(instances, moduleClass):
 
 # load configuration
 config = Config()
-demoMode = config.getProperty('Project', 'demoMode', type=bool, fallback=False)
 
 # prepare bottle
 app = Bottle()
@@ -43,10 +42,6 @@ for i in instance_args:
 
     moduleName = i.strip()
     if moduleName == 'UserHandler':
-        continue
-
-    if demoMode and moduleName == 'AIController':
-        print('WARNING: AIController module not allowed in demo mode. Skipping...')
         continue
     
     moduleClass = REGISTERED_MODULES[moduleName]
