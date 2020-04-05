@@ -7,8 +7,8 @@ More generally, AIde is a modular Web framework for labeling image datasets with
 AIde is primarily developed by [Benjamin Kellenberger](https://www.wur.nl/en/Persons/Benjamin-BA-Benjamin-Kellenberger-MSc.htm), supported by the [Microsoft AI for Earth](https://www.microsoft.com/en-us/ai/ai-for-earth) program.
 
 
-**NEWS:** AIDE will soon receive a major update, with loads of new functionalities! These will include, among others: support for multiple annotation projects, enhanced data management through the GUI, user access control and management, user and AI model performance assessment charts, and more.
-See the respective [branch](https://github.com/microsoft/aerial_wildlife_detection/tree/multiProject) to get a preview of the latest development stages.
+**NEWS: AIDE will soon receive a major update, with loads of new functionalities! These will include, among others: support for multiple annotation projects, enhanced data management through the GUI, user access control and management, user and AI model performance assessment charts, and more.**
+**See the respective [branch](https://github.com/microsoft/aerial_wildlife_detection/tree/multiProject) to get a preview of the latest development stages.**
 
 
 
