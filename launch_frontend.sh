@@ -2,7 +2,11 @@
 # Requires pwd to be the root of the project and the correct Python
 # env to be loaded.
 #
-# 2019 Benjamin Kellenberger
+# 2019-20 Benjamin Kellenberger
+
+
+# migrate AIDE (just in case)
+python projectCreation/migrate_aide.py
 
 
 # get host and port from configuration file

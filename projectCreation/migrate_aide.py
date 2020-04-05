@@ -2,7 +2,7 @@
     Run this file whenever you update AIde to bring your existing project setup up-to-date
     with respect to changes due to newer versions.
     
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 import os
@@ -11,7 +11,8 @@ import argparse
 
 MODIFICATIONS_sql = [
     'ALTER TABLE {schema}.annotation ADD COLUMN IF NOT EXISTS meta VARCHAR; ALTER TABLE {schema}.image_user ADD COLUMN IF NOT EXISTS meta VARCHAR;',
-    'ALTER TABLE {schema}.labelclass ADD COLUMN IF NOT EXISTS keystroke SMALLINT UNIQUE;'
+    'ALTER TABLE {schema}.labelclass ADD COLUMN IF NOT EXISTS keystroke SMALLINT UNIQUE;',
+    'ALTER TABLE {schema}.image ADD COLUMN IF NOT EXISTS last_requested TIMESTAMPTZ;'
 ]
 
 

@@ -1,7 +1,7 @@
 '''
     Definition of the layer between the UI frontend and the database.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 from uuid import UUID
@@ -120,6 +120,26 @@ class DBMiddleware():
                     response[imgID]['predictions'][entryID] = entry
 
         return response
+
+
+    def _set_images_requested(self, imageIDs):
+        '''
+            Sets column "last_requested" of relation "image"
+            to the current date. This is done during image
+            querying to signal that an image has been requested,
+            but not (yet) viewed.
+        '''
+        # prepare insertion values
+        now = datetime.now(tz=pytz.utc)
+        vals = []
+        for key in imageIDs:
+            vals.append(key)
+        sql = '''
+            UPDATE {}.image
+            SET last_requested = %s
+            WHERE id IN %s;
+        '''.format(self.config.getProperty('Database', 'schema'))
+        self.dbConnector.execute(sql, (now, tuple(vals),), None)
 
 
     def getProjectSettings(self):
@@ -250,6 +270,10 @@ class DBMiddleware():
             finally:
                 pass
                 # cursor.close()
+
+        # mark images as requested
+        self._set_images_requested(response)
+
         return { 'entries': response }
         
 
@@ -273,6 +297,9 @@ class DBMiddleware():
 
         with self.dbConnector.execute_cursor(sql, queryVals) as cursor:
             response = self._assemble_annotations(cursor)
+
+        # mark images as requested
+        self._set_images_requested(response)
 
         return { 'entries': response }
 
@@ -318,6 +345,10 @@ class DBMiddleware():
             finally:
                 pass
                 # cursor.close()
+        
+        # # mark images as requested
+        # self._set_images_requested(response)
+
         return { 'entries': response }
 
     
@@ -491,7 +522,6 @@ class DBMiddleware():
             VALUES %s 
             ON CONFLICT (username, image) DO UPDATE SET viewcount = image_user.viewcount + 1, last_checked = EXCLUDED.last_checked, last_time_required = EXCLUDED.last_time_required, meta = EXCLUDED.meta;
         '''.format(schema)
-
         self.dbConnector.insert(sql, viewcountValues)
 
 
