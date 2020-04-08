@@ -153,10 +153,12 @@ class SQLStringBuilder:
             orderSpec_b = 'ORDER BY RANDOM()'
             gq_user = ''
         else:
-            gq_user = '''AND id NOT IN (
+            gq_user = sql.SQL('''AND id NOT IN (
                 SELECT image FROM {id_iu}
                 WHERE username = %s
-            )'''
+            )''').format(
+                id_iu=sql.Identifier(project, 'image_user')
+            )
 
         queryStr = sql.SQL('''
             SELECT id, image, cType, viewcount, EXTRACT(epoch FROM last_checked) as last_checked, filename, isGoldenQuestion, {allCols} FROM (
@@ -206,7 +208,7 @@ class SQLStringBuilder:
             id_pred=sql.Identifier(project, 'prediction'),
             id_iu=sql.Identifier(project, 'image_user'),
             id_cnnstate=sql.Identifier(project, 'cnnstate'),
-            gq_user=sql.SQL(gq_user),
+            gq_user=gq_user,
             allCols=sql.SQL(', ').join(fields_union),
             annoCols=sql.SQL(', ').join(fields_anno),
             predCols=sql.SQL(', ').join(fields_pred),

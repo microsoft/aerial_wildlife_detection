@@ -102,6 +102,7 @@ class AIMiddleware():
         '''
 
         # re-enable training if no other training job is ongoing
+        print("Training completed")
         self.training[project] = self.messageProcessor.task_ongoing(project, 'train')    #TODO
 
 
