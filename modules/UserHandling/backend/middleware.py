@@ -477,9 +477,9 @@ class UserMiddleware():
                 id_auth=sql.Identifier('aide_admin', 'authentication'))
             result = self.dbConnector.execute(queryStr, (project,username,), 1)
             if len(result):
-                response['isAdmin'] = result['isadmin']
-                response['admittedUntil'] = result['admitted_until']
-                response['blockedUntil'] = result['blocked_until']
+                response['isAdmin'] = result[0]['isadmin']
+                response['admittedUntil'] = result[0]['admitted_until']
+                response['blockedUntil'] = result[0]['blocked_until']
 
         finally:
             return response
