@@ -28,9 +28,9 @@ $(document).ready(function() {
                         // show button to project configuration page
                         adminButton = '<a href="' + key + '/configuration" class="btn btn-secondary">Configure</a>';
                         userAdmitted = true;
-                        var authDescr = $('<p>You are <b>' + role + '</b> in this project.</p>');
+                        var authDescr = $('<p style="display:inline">You are <b>' + role + '</b> in this project.</p>');
                     } else if(data['projects'][key]['demoMode']) {
-                        var authDescr = $('<p>You are allowed to view (but not label) the images in this project.</p>');
+                        var authDescr = $('<p style="display:inline">You are allowed to view (but not label) the images in this project.</p>');
                     }
 
                     var labelButton = '<a href="' + key + '/interface" class="btn btn-primary label-button">Start labeling</a>';
@@ -42,9 +42,9 @@ $(document).ready(function() {
                     markup.append($('<h2><a href="' + key + '">' + data['projects'][key]['name'] + '</a></h2>'));
                     markup.append($('<p>' + data['projects'][key]['description'] + '</p>'));
                     markup.append(authDescr);
-                    markup.append('<div>' + labelButton +
+                    markup.append('<div style="height:20px">' + labelButton +
                         adminButton +
-                        '</div></div>');
+                        '</div>');
                     projDiv.append(markup);
                 }
 
