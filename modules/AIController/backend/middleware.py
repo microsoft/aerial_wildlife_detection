@@ -8,6 +8,7 @@ from datetime import datetime
 from modules.AIWorker.backend import celery_interface
 import celery
 from celery import current_app, group
+from kombu import Queue
 from psycopg2 import sql
 from util.helpers import current_time
 from .messageProcessor import MessageProcessor
@@ -32,10 +33,40 @@ class AIMiddleware():
         self.celery_app.set_current()
         self.celery_app.set_default()
 
-        self.watchdogs = {}    # one watchdog per project. Note: watchdog only created if users poll status (i.e., if there's activity)
+        self._init_project_queues()
 
+        self.watchdogs = {}    # one watchdog per project. Note: watchdog only created if users poll status (i.e., if there's activity)
         self.messageProcessor = MessageProcessor(self.celery_app)
         self.messageProcessor.start()
+
+    
+    def _init_project_queues(self):
+        '''
+            Queries the database for projects that support AIWorkers
+            and adds respective management queues to Celery to listen to them.
+        '''
+        if current_app.conf.task_queues is not None:
+            queues = list(current_app.conf.task_queues)
+            current_queue_names = set([c.name for c in queues])
+            # print('Existing queues: {}'.format(', '.join([c.name for c in queues])))
+        else:
+            queues = []
+            current_queue_names = set()
+        
+        log_updates = []
+        projects = self.dbConn.execute('SELECT shortname FROM aide_admin.project WHERE ai_model_enabled = TRUE;', None, 'all')
+        if len(projects):
+            for project in projects:
+                pName = project['shortname'] + '_aic'
+                if not pName in current_queue_names:
+                    current_queue_names.add(pName)
+                    queues.append(Queue(pName))
+                    current_app.control.add_consumer(pName)     #TODO: stalls if Celery app is not set up. Might be ok to just skip this
+                    log_updates.append(pName)
+            
+            current_app.conf.update(task_queues=tuple(queues))
+            if len(log_updates):
+                print('Added queue(s) for project(s): {}'.format(', '.join(log_updates)))
 
 
     def _init_watchdog(self, project, nudge=False):
@@ -264,6 +295,16 @@ class AIMiddleware():
         jobGroup = group(jobs)
         return jobGroup
 
+
+    def aide_internal_notify(self, message):
+        '''
+            Used for AIDE administrative communication between AIController
+            and AIWorker(s), e.g. for setting up queues.
+        '''
+        if 'task' in message:
+            if message['task'] == 'add_projects':
+                self._init_project_queues()
+
     
     def start_training(self, project, minTimestamp='lastState', minNumAnnoPerImage=0, maxNumImages=None, maxNumWorkers=-1):
         '''
@@ -302,7 +343,7 @@ class AIMiddleware():
             - A dict with a status message. May take one of the following:
                 - TODO: status ok, fail, no annotations, etc. Make threaded so that it immediately returns something.
         '''
-
+        print("starting training on AIController")
         process, numWorkers = self._get_training_job_signature(
                                         project=project,
                                         minTimestamp=minTimestamp,
@@ -316,14 +357,14 @@ class AIMiddleware():
         if numWorkers > 1:
             # also append average model states job
             job = process.apply_async(task_id=task_id,
-                        queue=project,
+                        queue=project+'_aiw',
                         ignore_result=False,
                         result_extended=True,
                         headers={'headers':{'project':project,'type':'train','submitted': str(current_time())}},
                         link=celery_interface.call_average_model_states.s(project))
         else:
             job = process.apply_async(task_id=task_id,
-                        queue=project,
+                        queue=project+'_aiw',
                         ignore_result=False,
                         result_extended=True,
                         headers={'headers':{'project':project,'type':'train','submitted': str(current_time())}})
@@ -340,7 +381,7 @@ class AIMiddleware():
         # send job
         task_id = self.messageProcessor.task_id(project)
         result = process.apply_async(task_id=task_id,
-                        queue=project,
+                        queue=project+'_aiw',
                         ignore_result=False,
                         result_extended=True,
                         headers={'headers':{'project':project,'type':'inference','submitted': str(current_time())}})
@@ -446,14 +487,14 @@ class AIMiddleware():
         if numWorkers_train > 1:
             # also append average model states job
             job = process.apply_async(task_id=task_id,
-                            queue=project,
+                            queue=project+'_aiw',
                             ignore_result=False,
                             result_extended=True,
                             headers={'headers':{'project':project,'type':'train','submitted': str(current_time())}},
                             link=celery_interface.call_average_model_states.s(project))
         else:
             job = process.apply_async(task_id=task_id,
-                            queue=project,
+                            queue=project+'_aiw',
                             ignore_result=False,
                             result_extended=True,
                             headers={'headers':{'project':project,'type':'train','submitted': str(current_time())}})

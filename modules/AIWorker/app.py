@@ -49,7 +49,7 @@ class AIWorker():
         projects = self.dbConnector.execute('SELECT shortname FROM aide_admin.project WHERE ai_model_enabled = TRUE;', None, 'all')
         if len(projects):
             for project in projects:
-                pName = project['shortname']
+                pName = project['shortname'] + '_aiw'
                 if not pName in current_queue_names:
                     current_queue_names.add(pName)
                     queues.append(Queue(pName))

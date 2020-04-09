@@ -6,6 +6,7 @@
 
 from bottle import post, request, response, abort
 from modules.AIController.backend.middleware import AIMiddleware
+from modules.AIController.backend import celery_interface
 
 
 class AIController:
@@ -147,12 +148,25 @@ class AIController:
                                     maxNumImages_inference=maxNumImages_inference,
                                     maxNumWorkers_inference=self.maxNumWorkers_inference)
                         else:
-                            status = self.middleware.start_training(
+                            #TODO
+                            job = celery_interface.start_training.si(
                                     project=project,
                                     minTimestamp='lastState',
                                     minNumAnnoPerImage=minNumAnnoPerImage,
                                     maxNumImages=maxNumImages_train,
                                     maxNumWorkers=self.maxNumWorkers_train)
+                            job.apply_async(queue=project+'_aic',
+                                    ignore_result=False,
+                                    result_extended=True,
+                                    headers={'headers':{}}) #TODO)
+                            status = 'ok'
+
+                            # status = self.middleware.start_training(
+                            #         project=project,
+                            #         minTimestamp='lastState',
+                            #         minNumAnnoPerImage=minNumAnnoPerImage,
+                            #         maxNumImages=maxNumImages_train,
+                            #         maxNumWorkers=self.maxNumWorkers_train)
                     else:
                         status = self.middleware.start_inference(
                                     project=project,
