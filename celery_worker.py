@@ -27,18 +27,6 @@ if not 'AIDE_MODULES' in os.environ:
 config = Config()
 
 
-aide_modules = os.environ['AIDE_MODULES'].split(',')
-aide_modules = set([a.strip().lower() for a in aide_modules])
-
-queues = [Broadcast('aide_broadcast')]
-if 'aicontroller' in aide_modules:
-    queues.append(Queue('AIController'))
-if 'aiworker' in aide_modules:
-    queues.append(Queue('AIWorker'))
-if 'fileserver' in aide_modules:
-    queues.append(Queue('FileServer'))
-
-
 app = Celery('AIDE',
             broker=config.getProperty('AIController', 'broker_URL'),        #TODO
             backend=config.getProperty('AIController', 'result_backend'))   #TODO
@@ -56,8 +44,8 @@ app.conf.update(
     task_default_rate_limit = 3,            #TODO
     worker_prefetch_multiplier = 1,         #TODO
     task_acks_late = True,
-    task_create_missing_queues = False,
-    task_queues = tuple(queues),
+    task_create_missing_queues = True,
+    task_queues = (Broadcast('aide_broadcast'), Queue('FileServer'), Queue('AIController'), Queue('AIWorker')),
     task_routes = {
         'aide_admin': {
             'queue': 'aide_broadcast',
@@ -69,6 +57,8 @@ app.conf.update(
 
 
 # initialize appropriate consumer functionalities
+aide_modules = os.environ['AIDE_MODULES'].split(',')
+aide_modules = set([a.strip().lower() for a in aide_modules])
 num_modules = 0
 if 'aicontroller' in aide_modules:
     from modules.AIController.backend import celery_interface as aic_int

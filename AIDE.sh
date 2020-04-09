@@ -22,7 +22,7 @@ function start {
         fi
     done
     if [ $numCeleryModules -gt 0 ]; then
-        celery -A celery_worker worker -Q $AIDE_MODULES &
+        celery -A celery_worker worker -Q aide_broadcast,$AIDE_MODULES &
     else
         echo "Machine does not need a Celery consumer to be launched; skipping..."
     fi
