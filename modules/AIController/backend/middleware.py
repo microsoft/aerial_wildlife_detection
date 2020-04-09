@@ -33,7 +33,7 @@ class AIMiddleware():
         self.celery_app.set_current()
         self.celery_app.set_default()
 
-        self._init_project_queues()
+        # self._init_project_queues()
 
         self.watchdogs = {}    # one watchdog per project. Note: watchdog only created if users poll status (i.e., if there's activity)
         self.messageProcessor = MessageProcessor(self.celery_app)

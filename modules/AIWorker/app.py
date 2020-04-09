@@ -20,7 +20,7 @@ class AIWorker():
         self.config = config
         self.dbConnector = Database(config)
         self._init_fileserver()
-        self._init_project_queues()
+        # self._init_project_queues()
             
 
     def _init_fileserver(self):

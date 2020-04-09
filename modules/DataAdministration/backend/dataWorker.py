@@ -32,7 +32,7 @@ class DataWorker:
         self.config = config
         self.dbConnector = Database(config)
         self.countPattern = re.compile('\_[0-9]+$')
-        self._init_project_queues()
+        # self._init_project_queues()
 
 
     def _init_project_queues(self):

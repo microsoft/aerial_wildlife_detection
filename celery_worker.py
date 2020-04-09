@@ -1,6 +1,7 @@
 '''
     Sets up the appropriate Celery consumer(s):
     - AIController
+    - AIWorker
     - DataManagement
 
     depending on the "AIDE_MODULES" environment
