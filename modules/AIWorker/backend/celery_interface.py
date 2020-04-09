@@ -14,7 +14,7 @@ from util.configDef import Config
 
 # init AIWorker
 modules = os.environ['AIDE_MODULES']
-passiveMode = not('aiworker' in modules.lower())
+passiveMode = (os.environ['PASSIVE_MODE']=='1' if 'PASSIVE_MODE' in os.environ else False) or not('aiworker' in modules.lower())
 worker = AIWorker(Config(), passiveMode)
 
 

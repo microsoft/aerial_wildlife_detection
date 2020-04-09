@@ -12,9 +12,12 @@
 
 import os
 from celery import Celery
+from kombu import Queue
 from kombu.common import Broadcast
 from util.configDef import Config
 
+# force enable passive mode
+os.environ['PASSIVE_MODE'] = '1'
 
 # parse system config
 if not 'AIDE_CONFIG_PATH' in os.environ:
@@ -26,6 +29,14 @@ config = Config()
 
 aide_modules = os.environ['AIDE_MODULES'].split(',')
 aide_modules = set([a.strip().lower() for a in aide_modules])
+
+queues = [Broadcast('aide_broadcast')]
+if 'aicontroller' in aide_modules:
+    queues.append(Queue('AIController'))
+if 'aiworker' in aide_modules:
+    queues.append(Queue('AIWorker'))
+if 'fileserver' in aide_modules:
+    queues.append(Queue('FileServer'))
 
 
 app = Celery('AIDE',
@@ -39,18 +50,19 @@ app.conf.update(
     task_serializer = 'json',
     result_serializer = 'json',
     task_track_started = True,
-    broker_heartbeat = 0,           # required to avoid peer connection resets
-    worker_max_tasks_per_child = 1,      # required to free memory (also CUDA) after each process
-    task_default_rate_limit = 3,         #TODO
-    worker_prefetch_multiplier = 1,          #TODO
+    broker_pool_limit=None,                 # required to avoid peer connection resets
+    broker_heartbeat = 0,                   # required to avoid peer connection resets
+    worker_max_tasks_per_child = 1,         # required to free memory (also CUDA) after each process
+    task_default_rate_limit = 3,            #TODO
+    worker_prefetch_multiplier = 1,         #TODO
     task_acks_late = True,
-    task_create_missing_queues = True,
-    task_queues = (Broadcast('aide_broadcast'),),
+    task_create_missing_queues = False,
+    task_queues = tuple(queues),
     task_routes = {
         'aide_admin': {
             'queue': 'aide_broadcast',
             'exchange': 'aide_broadcast'
-        }                                       #TODO: separate queue for data management and AIController
+        }
     }
     #task_default_queue = Broadcast('aide_admin')
 )
@@ -58,7 +70,6 @@ app.conf.update(
 
 # initialize appropriate consumer functionalities
 num_modules = 0
-#TODO
 if 'aicontroller' in aide_modules:
     from modules.AIController.backend import celery_interface as aic_int
     aic_int.aide_internal_notify({'task': 'add_projects'})
@@ -67,10 +78,6 @@ if 'aiworker' in aide_modules:
     from modules.AIWorker.backend import celery_interface as aiw_int
     aiw_int.aide_internal_notify({'task': 'add_projects'})
     num_modules += 1
-# if 'aicontroller' in aide_modules or 'aiworker' in aide_modules:
-#     from modules.AIWorker.backend import celery_interface as ai_int
-#     num_modules += 1
-
 if 'fileserver' in aide_modules:
     from modules.DataAdministration.backend import celery_interface as da_int
     da_int.aide_internal_notify({'task': 'add_projects'})

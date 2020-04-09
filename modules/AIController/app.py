@@ -16,7 +16,7 @@ class AIController:
     def __init__(self, config, app):
         self.config = config
         self.app = app
-
+        
         self.middleware = AIMiddleware(config)
 
         self.login_check = None
@@ -148,25 +148,25 @@ class AIController:
                                     maxNumImages_inference=maxNumImages_inference,
                                     maxNumWorkers_inference=self.maxNumWorkers_inference)
                         else:
-                            #TODO
-                            job = celery_interface.start_training.si(
-                                    project=project,
-                                    minTimestamp='lastState',
-                                    minNumAnnoPerImage=minNumAnnoPerImage,
-                                    maxNumImages=maxNumImages_train,
-                                    maxNumWorkers=self.maxNumWorkers_train)
-                            job.apply_async(queue=project+'_aic',
-                                    ignore_result=False,
-                                    result_extended=True,
-                                    headers={'headers':{}}) #TODO)
-                            status = 'ok'
-
-                            # status = self.middleware.start_training(
+                            # #TODO
+                            # job = celery_interface.start_training.si(
                             #         project=project,
                             #         minTimestamp='lastState',
                             #         minNumAnnoPerImage=minNumAnnoPerImage,
                             #         maxNumImages=maxNumImages_train,
                             #         maxNumWorkers=self.maxNumWorkers_train)
+                            # job.apply_async(queue='AIController',
+                            #         ignore_result=False,
+                            #         result_extended=True,
+                            #         headers={'headers':{}}) #TODO)
+                            # status = 'ok'
+
+                            status = self.middleware.start_training(
+                                    project=project,
+                                    minTimestamp='lastState',
+                                    minNumAnnoPerImage=minNumAnnoPerImage,
+                                    maxNumImages=maxNumImages_train,
+                                    maxNumWorkers=self.maxNumWorkers_train)
                     else:
                         status = self.middleware.start_inference(
                                     project=project,

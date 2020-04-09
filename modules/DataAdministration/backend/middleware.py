@@ -64,7 +64,7 @@ class DataAdministrationMiddleware:
         '''
         task_id = self._task_id(project)
         job = process.apply_async(task_id=task_id,
-                                    queue=project+'_dataMgmt', #TODO
+                                    queue='FileServer',   #queue=project+'_dataMgmt', #TODO
                                     ignore_result=False,
                                     result_extended=True,
                                     headers={'headers':{}}) #TODO

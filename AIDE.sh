@@ -22,7 +22,7 @@ function start {
         fi
     done
     if [ $numCeleryModules -gt 0 ]; then
-        celery -A celery_worker worker --hostname multibranch@%h &
+        celery -A celery_worker worker -Q $AIDE_MODULES &
     else
         echo "Machine does not need a Celery consumer to be launched; skipping..."
     fi

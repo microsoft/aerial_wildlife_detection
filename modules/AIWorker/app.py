@@ -40,6 +40,8 @@ class AIWorker():
             Queries the database for projects that support AIWorkers
             and adds respective queues to Celery to listen to them.
         '''
+        #TODO: deprecated?
+        return
         if self.passiveMode:
             return
         if current_app.conf.task_queues is not None:

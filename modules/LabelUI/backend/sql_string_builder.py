@@ -151,7 +151,7 @@ class SQLStringBuilder:
             usernameString = ''
             orderSpec_a = ''
             orderSpec_b = 'ORDER BY RANDOM()'
-            gq_user = ''
+            gq_user = sql.SQL('')
         else:
             gq_user = sql.SQL('''AND id NOT IN (
                 SELECT image FROM {id_iu}

@@ -242,7 +242,7 @@ class MessageProcessor(Thread):
                 taskList = active_tasks[key]
                 for t in taskList:
                     taskID = t['id']
-                    project = t['delivery_info']['routing_key']
+                    project = t['kwargs']['project']
 
                     if not project in self.messages:
                         self.messages[project] = {}

@@ -5,4 +5,4 @@
 # 2019-20 Benjamin Kellenberger
 
 # Celery
-celery -A celery_worker worker --hostname multibranch@%h
+celery -A celery_worker worker -Q $AIDE_MODULES --hostname multibranch@%h

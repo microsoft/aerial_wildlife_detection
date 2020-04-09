@@ -19,7 +19,7 @@ from util.configDef import Config
 
 # initialise dataWorker
 modules = os.environ['AIDE_MODULES']
-passiveMode = not('fileserver' in modules.lower())
+passiveMode = (os.environ['PASSIVE_MODE']=='1' if 'PASSIVE_MODE' in os.environ else False) or not('fileserver' in modules.lower())
 worker = DataWorker(Config())
 
 @current_app.task()
