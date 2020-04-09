@@ -28,19 +28,23 @@ from util.helpers import valid_image_extensions, listDirectory, base64ToImage
 
 class DataWorker:
 
-    def __init__(self, config):
+    def __init__(self, config, passiveMode=False):
         self.config = config
         self.dbConnector = Database(config)
         self.countPattern = re.compile('\_[0-9]+$')
-        # self._init_project_queues()
+        self.passiveMode = passiveMode
+
+        if not self.passiveMode:
+            self._init_project_queues()
 
 
     def _init_project_queues(self):
         '''
             Queries the database for projects
             and adds respective queues to Celery to listen to them.
-            TODO: implement custom routings
         '''
+        if self.passiveMode:
+            return
         if current_app.conf.task_queues is not None:
             queues = list(current_app.conf.task_queues)
             current_queue_names = set([c.name for c in queues])
@@ -71,6 +75,8 @@ class DataWorker:
             Used for AIDE administrative communication,
             e.g. for setting up queues.
         '''
+        if self.passiveMode:
+            return
         if 'task' in message:
             if message['task'] == 'add_projects':
                 self._init_project_queues()

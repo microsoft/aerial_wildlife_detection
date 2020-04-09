@@ -11,12 +11,15 @@
     2020 Benjamin Kellenberger
 '''
 
+import os
 from celery import current_app
 from .dataWorker import DataWorker
 from util.configDef import Config
 
 
 # initialise dataWorker
+modules = os.environ['AIDE_MODULES']
+passiveMode = not('fileserver' in modules.lower())
 worker = DataWorker(Config())
 
 @current_app.task()

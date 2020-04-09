@@ -21,10 +21,11 @@ from .sql_string_builder import SQLStringBuilder
 
 class AIMiddleware():
 
-    def __init__(self, config):
+    def __init__(self, config, passiveMode=False):
         self.config = config
         self.dbConn = Database(config)
         self.sqlBuilder = SQLStringBuilder(config)
+        self.passiveMode = passiveMode
 
         #TODO: replace with messageProcessor property:
         self.training = {}   # dict of bools for each project; will be set to True once start_training is called (and False as soon as everything about the training process has finished)
@@ -33,11 +34,11 @@ class AIMiddleware():
         self.celery_app.set_current()
         self.celery_app.set_default()
 
-        # self._init_project_queues()
-
-        self.watchdogs = {}    # one watchdog per project. Note: watchdog only created if users poll status (i.e., if there's activity)
-        self.messageProcessor = MessageProcessor(self.celery_app)
-        self.messageProcessor.start()
+        if not self.passiveMode:
+            self._init_project_queues()
+            self.watchdogs = {}    # one watchdog per project. Note: watchdog only created if users poll status (i.e., if there's activity)
+            self.messageProcessor = MessageProcessor(self.celery_app)
+            self.messageProcessor.start()
 
     
     def _init_project_queues(self):
@@ -45,6 +46,8 @@ class AIMiddleware():
             Queries the database for projects that support AIWorkers
             and adds respective management queues to Celery to listen to them.
         '''
+        if self.passiveMode:
+            return
         if current_app.conf.task_queues is not None:
             queues = list(current_app.conf.task_queues)
             current_queue_names = set([c.name for c in queues])
@@ -77,7 +80,8 @@ class AIMiddleware():
             The thread will be terminated and destroyed; a new thread will only be
             re-created once the training process has finished.
         '''
-
+        if self.passiveMode:
+            return
         if project in self.watchdogs and self.watchdogs[project] == False:
                 # project does not need a watchdog
                 return
@@ -301,6 +305,8 @@ class AIMiddleware():
             Used for AIDE administrative communication between AIController
             and AIWorker(s), e.g. for setting up queues.
         '''
+        if self.passiveMode:
+            return
         if 'task' in message:
             if message['task'] == 'add_projects':
                 self._init_project_queues()

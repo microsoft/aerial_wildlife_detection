@@ -5,13 +5,16 @@
     2020 Benjamin Kellenberger
 '''
 
+import os
 from celery import current_app
 from modules.AIController.backend.middleware import AIMiddleware
 from util.configDef import Config
 
 
 # init AIController middleware
-aim = AIMiddleware(Config())
+modules = os.environ['AIDE_MODULES']
+passiveMode = not('aicontroller' in modules.lower())
+aim = AIMiddleware(Config(), passiveMode)
 
 
 @current_app.task()
