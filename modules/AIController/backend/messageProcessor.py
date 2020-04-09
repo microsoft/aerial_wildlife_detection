@@ -212,7 +212,7 @@ class MessageProcessor(Thread):
                 return id
 
 
-    def task_ongoing(self, project, taskType):
+    def task_ongoing(self, project, taskTypes):
         '''
             Polls the workers for tasks and returns True if at least
             one of the tasks of given type (train, inference, etc.) is
@@ -223,10 +223,13 @@ class MessageProcessor(Thread):
         self.pollNow()
 
         # identify types
+        if isinstance(taskTypes, str):
+            taskTypes = (taskTypes,)
+
         if not project in self.messages:
             return False
         for key in self.messages[project].keys():
-            if self.messages[project][key]['type'] == taskType and \
+            if self.messages[project][key]['type'] in taskTypes and \
                 self.messages[project][key]['status'] not in (celery.states.SUCCESS, celery.states.FAILURE,):
                 print('training ongoing')
                 return True
@@ -242,6 +245,7 @@ class MessageProcessor(Thread):
                 taskList = active_tasks[key]
                 for t in taskList:
                     taskID = t['id']
+                    taskType = t['name']
                     project = t['kwargs']['project']
 
                     if not project in self.messages:
@@ -254,7 +258,7 @@ class MessageProcessor(Thread):
                         except:
                             timeSubmitted = str(current_time()) #TODO: dirty hack to make failsafe with UI
                         self.messages[project][taskID] = {
-                            'type': ('train' if 'train' in t['name'] else 'inference'),        #TODO
+                            'type': taskType,
                             'submitted': timeSubmitted,
                             'status': celery.states.PENDING,
                             'meta': {'message':'job at worker'}

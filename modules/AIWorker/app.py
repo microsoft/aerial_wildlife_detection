@@ -2,7 +2,6 @@
     2019-20 Benjamin Kellenberger
 '''
 
-import importlib
 import inspect
 import json
 from psycopg2 import sql

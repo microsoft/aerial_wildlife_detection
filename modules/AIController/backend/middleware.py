@@ -34,11 +34,11 @@ class AIMiddleware():
         self.celery_app.set_current()
         self.celery_app.set_default()
 
+        self.messageProcessor = MessageProcessor(self.celery_app)
         if not self.passiveMode:
             print("Active mode")
             self._init_project_queues()
             self.watchdogs = {}    # one watchdog per project. Note: watchdog only created if users poll status (i.e., if there's activity)
-            self.messageProcessor = MessageProcessor(self.celery_app)
             self.messageProcessor.start()
 
     
@@ -150,7 +150,7 @@ class AIMiddleware():
             Assembles (but does not submit) a training job based on the provided parameters.
         '''
         # check if training is still in progress
-        if self.messageProcessor.task_ongoing(project, 'train'):
+        if self.messageProcessor.task_ongoing(project, ('AIWorker.call_train', 'AIWorker.call_average_model_states')):
             raise Exception('Training process already running.')
 
         self.training[project] = True
@@ -300,6 +300,16 @@ class AIMiddleware():
 
         jobGroup = group(jobs)
         return jobGroup
+
+
+    def task_ongoing(self, project, taskTypes):
+        '''
+            Polls Celery via MessageProcessor for a given list of
+            task types (or a single task type string) and returns
+            True if at least one of the taskTypes provided is cur-
+            rently running.
+        '''
+        return self.messageProcessor.task_ongoing(project, taskTypes)
 
 
     def aide_internal_notify(self, message):

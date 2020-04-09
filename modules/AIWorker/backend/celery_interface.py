@@ -18,21 +18,21 @@ passiveMode = (os.environ['PASSIVE_MODE']=='1' if 'PASSIVE_MODE' in os.environ e
 worker = AIWorker(Config(), passiveMode)
 
 
-@current_app.task()
+@current_app.task(name='AIWorker.aide_internal_notify')
 def aide_internal_notify(message):
     return worker.aide_internal_notify(message)
 
 
-@current_app.task(rate_limit=1)
+@current_app.task(name='AIWorker.call_train', rate_limit=1)
 def call_train(project, data, subset):
     return worker.call_train(project, data, subset)
 
 
-@current_app.task(rate_limit=1)
+@current_app.task(name='AIWorker.call_average_model_states', rate_limit=1)
 def call_average_model_states(project, *args):
     return worker.call_average_model_states(project)
 
 
-@current_app.task()
+@current_app.task(name='AIWorker.call_inference')
 def call_inference(project, imageIDs):
     return worker.call_inference(project, imageIDs)
