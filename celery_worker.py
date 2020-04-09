@@ -61,9 +61,11 @@ num_modules = 0
 #TODO
 if 'aicontroller' in aide_modules:
     from modules.AIController.backend import celery_interface as aic_int
+    aic_int.aide_internal_notify({'task': 'add_projects'})
     num_modules += 1
 if 'aiworker' in aide_modules:
     from modules.AIWorker.backend import celery_interface as aiw_int
+    aiw_int.aide_internal_notify({'task': 'add_projects'})
     num_modules += 1
 # if 'aicontroller' in aide_modules or 'aiworker' in aide_modules:
 #     from modules.AIWorker.backend import celery_interface as ai_int
@@ -71,6 +73,7 @@ if 'aiworker' in aide_modules:
 
 if 'fileserver' in aide_modules:
     from modules.DataAdministration.backend import celery_interface as da_int
+    da_int.aide_internal_notify({'task': 'add_projects'})
     num_modules += 1
 
 

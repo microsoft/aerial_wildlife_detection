@@ -5,6 +5,7 @@
     2019-20 Benjamin Kellenberger
 '''
 
+import os
 from celery import current_app
 from kombu.common import Broadcast
 from modules.AIWorker.app import AIWorker
@@ -12,7 +13,9 @@ from util.configDef import Config
 
 
 # init AIWorker
-worker = AIWorker(Config(), None)
+modules = os.environ['AIDE_MODULES']
+passiveMode = not('aiworker' in modules.lower())
+worker = AIWorker(Config(), passiveMode)
 
 
 @current_app.task()

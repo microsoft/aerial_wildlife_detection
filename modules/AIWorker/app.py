@@ -16,11 +16,14 @@ from util.helpers import get_class_executable
 
 class AIWorker():
 
-    def __init__(self, config, app):
+    def __init__(self, config, passiveMode=False):
         self.config = config
         self.dbConnector = Database(config)
-        self._init_fileserver()
-        # self._init_project_queues()
+        self.passiveMode = passiveMode
+
+        if not self.passiveMode:
+            self._init_fileserver()
+            self._init_project_queues()
             
 
     def _init_fileserver(self):
@@ -37,6 +40,8 @@ class AIWorker():
             Queries the database for projects that support AIWorkers
             and adds respective queues to Celery to listen to them.
         '''
+        if self.passiveMode:
+            return
         if current_app.conf.task_queues is not None:
             queues = list(current_app.conf.task_queues)
             current_queue_names = set([c.name for c in queues])
@@ -203,6 +208,8 @@ class AIWorker():
             Used for AIDE administrative communication between AIController
             and AIWorker(s), e.g. for setting up queues.
         '''
+        if self.passiveMode:
+            return
         if 'task' in message:
             if message['task'] == 'add_projects':
                 self._init_project_queues()
