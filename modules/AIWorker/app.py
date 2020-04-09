@@ -20,9 +20,9 @@ class AIWorker():
         self.config = config
         self.dbConnector = Database(config)
         self.passiveMode = passiveMode
+        self._init_fileserver()
 
         if not self.passiveMode:
-            self._init_fileserver()
             self._init_project_queues()
             
 
