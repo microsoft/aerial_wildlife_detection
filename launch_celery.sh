@@ -6,4 +6,3 @@
 
 # Celery
 celery -A celery_worker worker --hostname multibranch@%h
-# celery -A modules.AIController.backend.celery_interface worker --hostname multibranch@%h

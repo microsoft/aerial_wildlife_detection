@@ -72,7 +72,7 @@ for i in instance_args:
         daa_int.aide_internal_notify({'task': 'add_projects'})
 
     elif moduleName == 'AIController':
-        from modules.AIController.backend import celery_interface as aic_int
+        from modules.AIWorker.backend import celery_interface as aic_int        #TODO
         aic_int.aide_internal_notify({'task': 'add_projects'})
 
 

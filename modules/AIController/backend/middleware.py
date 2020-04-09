@@ -5,7 +5,7 @@
 '''
 
 from datetime import datetime
-from modules.AIController.backend import celery_interface
+from modules.AIWorker.backend import celery_interface
 import celery
 from celery import current_app, group
 from psycopg2 import sql

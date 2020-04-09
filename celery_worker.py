@@ -58,7 +58,7 @@ app.conf.update(
 # initialize appropriate consumer functionalities
 num_modules = 0
 if 'aicontroller' in aide_modules or 'aiworker' in aide_modules:
-    from modules.AIController.backend import celery_interface as ai_int
+    from modules.AIWorker.backend import celery_interface as ai_int
     num_modules += 1
 
 if 'fileserver' in aide_modules:

@@ -174,7 +174,7 @@ class MessageProcessor(Thread):
 
         # set up queue for project (if not already there)
         #TODO: put in a more logical place... only needed if new project is being created!
-        from modules.AIController.backend import celery_interface
+        from modules.AIWorker.backend import celery_interface       #TODO: remodel back to AIController
         proc = celery_interface.aide_internal_notify.si(message={
             'task': 'add_projects'
         })
