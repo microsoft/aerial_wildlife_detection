@@ -5,7 +5,8 @@
 '''
 
 from datetime import datetime
-from modules.AIWorker.backend import celery_interface
+from modules.AIController.backend import celery_interface as aic_int
+from modules.AIWorker.backend import celery_interface as aiw_int
 import celery
 from celery import current_app, group
 from kombu import Queue
@@ -247,14 +248,6 @@ class AIMiddleware():
                     limitStr=limitStr)
 
             imageIDs = self.dbConn.execute(queryStr, tuple(queryVals), 'all')
-
-            # #TODO: OLD:
-            # sql = self.sqlBuilder.getLatestQueryString(minNumAnnoPerImage=minNumAnnoPerImage, limit=maxNumImages)
-            # if isinstance(minTimestamp, datetime):
-            #     imageIDs = self.dbConn.execute(queryStr, (minTimestamp,), 'all')
-            # else:
-            #     imageIDs = self.dbConn.execute(queryStr, None, 'all')
-
             imageIDs = [i['image'] for i in imageIDs]
 
             if maxNumWorkers > 1:
@@ -295,7 +288,7 @@ class AIMiddleware():
         images_subset = array_split(imageIDs, max(1, len(imageIDs) // maxNumWorkers))
         jobs = []
         for subset in images_subset:
-            job = celery_interface.call_inference.si(project=project, imageIDs=subset)
+            job = aiw_int.call_inference.si(project=project, imageIDs=subset)
             jobs.append(job)
 
         jobGroup = group(jobs)
@@ -323,8 +316,153 @@ class AIMiddleware():
             if message['task'] == 'add_projects':
                 self._init_project_queues()
 
+
+    def get_training_images(self, project, minTimestamp='lastState', includeGoldenQuestions=True,
+                            minNumAnnoPerImage=0, maxNumImages=None, maxNumWorkers=-1):
+        '''
+            Queries the database for the latest images to be used for model training.
+            Returns a list with image UUIDs accordingly, split into the number of
+            available workers.
+            #TODO: includeGoldenQuestions
+        '''
+        # sanity checks
+        if not (isinstance(minTimestamp, datetime) or minTimestamp == 'lastState' or
+                minTimestamp == -1 or minTimestamp is None):
+            raise ValueError('{} is not a recognized property for variable "minTimestamp"'.format(str(minTimestamp)))
+
+        # identify number of available workers
+        if maxNumWorkers != 1:
+            # only query the number of available workers if more than one is specified to save time
+            num_workers = min(maxNumWorkers, self._get_num_available_workers())
+        else:
+            num_workers = maxNumWorkers
+
+        # query image IDs
+        queryVals = []
+
+        if minTimestamp is None:
+            timestampStr = sql.SQL('')
+        elif minTimestamp == 'lastState':
+            timestampStr = sql.SQL('''
+            WHERE iu.last_checked > COALESCE(to_timestamp(0),
+            (SELECT MAX(timecreated) FROM {id_cnnstate}))''').format(
+                id_cnnstate=sql.Identifier(project, 'cnnstate')
+            )
+        elif isinstance(minTimestamp, datetime):
+            timestampStr = sql.SQL('WHERE iu.last_checked > COALESCE(to_timestamp(0), %s)')
+            queryVals.append(minTimestamp)
+        elif isinstance(minTimestamp, int) or isinstance(minTimestamp, float):
+            timestampStr = sql.SQL('WHERE iu.last_checked > COALESCE(to_timestamp(0), to_timestamp(%s))')
+            queryVals.append(minTimestamp)
+
+        if minNumAnnoPerImage > 0:
+            queryVals.append(minNumAnnoPerImage)
+
+        if maxNumImages is None:
+            limitStr = sql.SQL('')
+        else:
+            limitStr = sql.SQL('LIMIT %s')
+            queryVals.append(maxNumImages)
+
+        if minNumAnnoPerImage <= 0:
+            queryStr = sql.SQL('''
+                SELECT newestAnno.image FROM (
+                    SELECT image, last_checked FROM {id_iu} AS iu
+                    JOIN (
+                        SELECT id AS iid
+                        FROM {id_img}
+                        WHERE corrupt IS NULL OR corrupt = FALSE
+                    ) AS imgQ
+                    ON iu.image = imgQ.iid
+                    {timestampStr}
+                    ORDER BY iu.last_checked ASC
+                    {limitStr}
+                ) AS newestAnno;
+            ''').format(
+                id_iu=sql.Identifier(project, 'image_user'),
+                id_img=sql.Identifier(project, 'image'),
+                timestampStr=timestampStr,
+                limitStr=limitStr)
+
+        else:
+            queryStr = sql.SQL('''
+                SELECT newestAnno.image FROM (
+                    SELECT image, last_checked FROM {id_iu} AS iu
+                    JOIN (
+                        SELECT id AS iid
+                        FROM {id_img}
+                        WHERE corrupt IS NULL OR corrupt = FALSE
+                    ) AS imgQ
+                    ON iu.image = imgQ.iid
+                    {timestampStr}
+                    {conjunction} image IN (
+                        SELECT image FROM (
+                            SELECT image, COUNT(*) AS cnt
+                            FROM {id_anno}
+                            GROUP BY image
+                            ) AS annoCount
+                        WHERE annoCount.cnt >= %s
+                    )
+                    ORDER BY iu.last_checked ASC
+                    {limitStr}
+                ) AS newestAnno;
+            ''').format(
+                id_iu=sql.Identifier(project, 'image_user'),
+                id_img=sql.Identifier(project, 'image'),
+                id_anno=sql.Identifier(project, 'annotation'),
+                timestampStr=timestampStr,
+                conjunction=(sql.SQL('WHERE') if minTimestamp is None else sql.SQL('AND')),
+                limitStr=limitStr)
+
+        imageIDs = self.dbConn.execute(queryStr, tuple(queryVals), 'all')
+        imageIDs = [i['image'] for i in imageIDs]
+
+        if maxNumWorkers > 1:
+            # split for distribution across workers (TODO: also specify subset size for multiple jobs; randomly draw if needed)
+            imageIDs = array_split(imageIDs, max(1, len(imageIDs) // num_workers))
+        else:
+            imageIDs = [imageIDs]
+
+        return imageIDs
+
+
+    def get_inference_images(self, project, goldenQuestionsOnly=False, forceUnlabeled=False, maxNumImages=None, maxNumWorkers=-1):
+        '''
+            Queries the database for the latest images to be used for inference after model training.
+            Returns a list with image UUIDs accordingly, split into the number of available workers.
+            #TODO: goldenQuestionsOnly
+        '''
+        if maxNumImages is None or maxNumImages == -1:
+            queryResult = self.dbConn.execute('''
+                SELECT maxNumImages_inference
+                FROM aide_admin.project
+                WHERE shortname = %s;''', (project,), 1)
+            maxNumImages = queryResult['maxnumimages_inference']    
+        
+        queryVals = (maxNumImages,)
+
+        # load the IDs of the images that are being subjected to inference
+        sql = self.sqlBuilder.getInferenceQueryString(project, forceUnlabeled, maxNumImages)
+        imageIDs = self.dbConn.execute(sql, queryVals, 'all')
+        imageIDs = [i['image'] for i in imageIDs]
+
+        # split for distribution across workers
+        if maxNumWorkers != 1:
+            # only query the number of available workers if more than one is specified to save time
+            num_available = self._get_num_available_workers()
+            if maxNumWorkers == -1:
+                maxNumWorkers = num_available   #TODO: more than one process per worker?
+            else:
+                maxNumWorkers = min(maxNumWorkers, num_available)
+        
+        if maxNumWorkers > 1:
+            imageIDs = array_split(imageIDs, max(1, len(imageIDs) // maxNumWorkers))
+        else:
+            imageIDs = [imageIDs]
+        return imageIDs
+
     
-    def start_training(self, project, minTimestamp='lastState', minNumAnnoPerImage=0, maxNumImages=None, maxNumWorkers=-1):
+    def start_training(self, project, numEpochs=1, minTimestamp='lastState', includeGoldenQuestions=True, minNumAnnoPerImage=0, maxNumImages=None, maxNumWorkers=-1):
         '''
             Initiates a training round for the model, based on the set of data (images, annotations)
             as specified in the parameters. Distributes data to the set of registered AIWorker instan-
@@ -362,35 +500,54 @@ class AIMiddleware():
                 - TODO: status ok, fail, no annotations, etc. Make threaded so that it immediately returns something.
         '''
         print("starting training on AIController")
-        process, numWorkers = self._get_training_job_signature(
-                                        project=project,
-                                        minTimestamp=minTimestamp,
-                                        minNumAnnoPerImage=minNumAnnoPerImage,
-                                        maxNumImages=maxNumImages,
-                                        maxNumWorkers=maxNumWorkers)
-
+        #TODO: numEpochs
+        process = celery.chain(aic_int.get_training_images.s(project,
+                                                    minTimestamp,
+                                                    includeGoldenQuestions,
+                                                    minNumAnnoPerImage,
+                                                    maxNumImages).set(queue='AIController'),
+                                celery.group([
+                                    aiw_int.call_train.s(n, project, True).set(queue='AIWorker')
+                                    for n in range(maxNumWorkers)
+                                ]).set(queue='AIWorker'),
+                                aiw_int.call_average_model_states.si(project).set(queue='AIWorker')
+        )
 
         # submit job
         task_id = self.messageProcessor.task_id(project)
-        if numWorkers > 1:
-            # also append average model states job
-            job = process.apply_async(task_id=task_id,
-                        queue='AIWorker',   #project+'_aiw',
-                        ignore_result=False,
-                        result_extended=True,
-                        headers={'headers':{'project':project,'type':'train','submitted': str(current_time())}},
-                        link=celery_interface.call_average_model_states.s(project))
-        else:
-            job = process.apply_async(task_id=task_id,
-                        queue='AIWorker',   #project+'_aiw',
+        job = process.apply_async(task_id=task_id,
+                        queue='AIWorker',
                         ignore_result=False,
                         result_extended=True,
                         headers={'headers':{'project':project,'type':'train','submitted': str(current_time())}})
 
+        # process, numWorkers = self._get_training_job_signature(
+        #                                 project=project,
+        #                                 minTimestamp=minTimestamp,
+        #                                 minNumAnnoPerImage=minNumAnnoPerImage,
+        #                                 maxNumImages=maxNumImages,
+        #                                 maxNumWorkers=maxNumWorkers)
+
+        # # submit job
+        # task_id = self.messageProcessor.task_id(project)
+        # if numWorkers > 1:
+        #     # also append average model states job
+        #     job = process.apply_async(task_id=task_id,
+        #                 queue='AIWorker',   #project+'_aiw',
+        #                 ignore_result=False,
+        #                 result_extended=True,
+        #                 headers={'headers':{'project':project,'type':'train','submitted': str(current_time())}},
+        #                 link=celery_interface.call_average_model_states.s(project))
+        # else:
+        #     job = process.apply_async(task_id=task_id,
+        #                 queue='AIWorker',   #project+'_aiw',
+        #                 ignore_result=False,
+        #                 result_extended=True,
+        #                 headers={'headers':{'project':project,'type':'train','submitted': str(current_time())}})
 
         # start listener
         self.messageProcessor.register_job(project, job, 'train', self._training_completed)
-
+        print("Completed.")
         return 'ok'
 
 

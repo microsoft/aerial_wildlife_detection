@@ -217,7 +217,7 @@ class AIWorker():
 
 
 
-    def call_train(self, project, data, subset):
+    def call_train(self, data, project, subset):
 
         # get project-specific model
         modelInstance = self._get_model_instance(project)

@@ -24,8 +24,16 @@ def aide_internal_notify(message):
 
 
 @current_app.task(name='AIWorker.call_train', rate_limit=1)
-def call_train(project, data, subset):
-    return worker.call_train(project, data, subset)
+def call_train(data, index, project):
+    is_subset = (len(data) > 1)
+    if index <= len(data):
+        return worker.call_train(data[index], project, is_subset)
+    else:
+        # worker not needed
+        print("Subset {} requested, but only {} chunks provided. Skipping...".format(
+            index, len(data)
+        ))
+        return 0
 
 
 @current_app.task(name='AIWorker.call_average_model_states', rate_limit=1)

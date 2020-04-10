@@ -152,24 +152,14 @@ class AIController:
                             if self.middleware.task_ongoing(project, ('AIController.start_training',
                                                                     'AIWorker.call_train', 'AIWorker.call_average_model_states')):
                                 raise Exception('A training process is already ongoing for project "{}".'.format(project))
-                            job = celery_interface.start_training.si(
+                            
+                            status = self.middleware.start_training(
                                     project=project,
+                                    numEpochs=1,
                                     minTimestamp='lastState',
                                     minNumAnnoPerImage=minNumAnnoPerImage,
                                     maxNumImages=maxNumImages_train,
                                     maxNumWorkers=self.maxNumWorkers_train)
-                            job.apply_async(queue='AIController',
-                                    ignore_result=False,
-                                    result_extended=True,
-                                    headers={'headers':{}}) #TODO)
-                            status = 'ok'
-
-                            # status = self.middleware.start_training(
-                            #         project=project,
-                            #         minTimestamp='lastState',
-                            #         minNumAnnoPerImage=minNumAnnoPerImage,
-                            #         maxNumImages=maxNumImages_train,
-                            #         maxNumWorkers=self.maxNumWorkers_train)
                     else:
                         status = self.middleware.start_inference(
                                     project=project,

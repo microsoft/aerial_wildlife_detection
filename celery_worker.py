@@ -46,12 +46,6 @@ app.conf.update(
     task_acks_late = True,
     task_create_missing_queues = True,
     task_queues = (Broadcast('aide_broadcast'), Queue('FileServer'), Queue('AIController'), Queue('AIWorker')),
-    task_routes = {
-        'aide_admin': {
-            'queue': 'aide_broadcast',
-            'exchange': 'aide_broadcast'
-        }
-    }
     #task_default_queue = Broadcast('aide_admin')
 )
 
