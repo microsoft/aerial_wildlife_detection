@@ -162,7 +162,7 @@ def _call_train(project, imageIDs, subset, trainingFun, dbConnector, fileServer)
         - TODO: more?
     '''
 
-    print('Initiated training...')
+    print('[{}] Initiated training...'.format(project))
     update_state = __get_message_fun(project)
 
 
@@ -207,7 +207,7 @@ def _call_train(project, imageIDs, subset, trainingFun, dbConnector, fileServer)
 
     update_state(state=states.SUCCESS, message='trained on {} images'.format(len(imageIDs)))
 
-    print('Training completed successfully.')
+    print('[{}] Training completed successfully.'.format(project))
     return 0
 
 
@@ -219,7 +219,7 @@ def _call_average_model_states(project, averageFun, dbConnector, fileServer):
         the returning averaged model state into the database.
     '''
 
-    print('Initiated epoch averaging...')
+    print('[{}] Initiated model state averaging...'.format(project))
     update_state = __get_message_fun(project)
 
     # get all model states
@@ -235,13 +235,14 @@ def _call_average_model_states(project, averageFun, dbConnector, fileServer):
 
     if not len(modelStates):
         # no states to be averaged; return
+        print('[{}] No model states to be averaged.'.format(project))
         update_state(state=states.SUCCESS, message='no model states to be averaged')
         return 0
 
     # do the work
     update_state(state='PREPARING', message='averaging models')
     try:
-        modelStates_avg = averageFun(stateDicts=modelStates)
+        modelStates_avg = averageFun(stateDicts=modelStates, updateStateFun=update_state)
     except Exception as e:
         print(e)
         raise Exception('error during model state fusion')
@@ -281,7 +282,7 @@ def _call_average_model_states(project, averageFun, dbConnector, fileServer):
     # all done
     update_state(state=states.SUCCESS, message='averaged {} model states'.format(len(modelStates)))
 
-    print('Model averaging completed successfully.')
+    print('[{}] Model averaging completed successfully.'.format(project))
     return 0
 
 
@@ -290,7 +291,7 @@ def _call_inference(project, imageIDs, inferenceFun, rankFun, dbConnector, fileS
     '''
 
     '''
-    print('Initiated inference on {} images...'.format(len(imageIDs)))
+    print('[{}] Initiated inference on {} images...'.format(project, len(imageIDs)))
     update_state = __get_message_fun(project)
 
     # load model state
@@ -404,5 +405,5 @@ def _call_inference(project, imageIDs, inferenceFun, rankFun, dbConnector, fileS
     
     update_state(state=states.SUCCESS, message='predicted on {} images'.format(len(imageIDs)))
 
-    print('Inference completed successfully.')
+    print('[{}] Inference completed successfully.'.format(project))
     return 0

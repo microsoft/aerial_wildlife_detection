@@ -241,6 +241,8 @@ class MessageProcessor(Thread):
         stats = i.stats()
         if stats is not None and len(stats):
             active_tasks = i.active()
+            if active_tasks is None:
+                return
             for key in active_tasks.keys():
                 taskList = active_tasks[key]
                 for t in taskList:

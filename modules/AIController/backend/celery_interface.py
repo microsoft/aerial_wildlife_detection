@@ -27,13 +27,13 @@ aim = AIControllerWorker(Config(), current_app)
 
 
 @current_app.task(name='AIController.get_training_images')
-def get_training_images(project, minTimestamp='lastState', includeGoldenQuestions=True, minNumAnnoPerImage=0, maxNumImages=None):
-    return aim.get_training_images(project, minTimestamp, includeGoldenQuestions, minNumAnnoPerImage, maxNumImages)
+def get_training_images(project, minTimestamp='lastState', includeGoldenQuestions=True, minNumAnnoPerImage=0, maxNumImages=None, numWorkers=1):
+    return aim.get_training_images(project, minTimestamp, includeGoldenQuestions, minNumAnnoPerImage, maxNumImages, numWorkers)
 
 
 @current_app.task(name='AIController.get_inference_images')
-def get_inference_images(project, goldenQuestionsOnly=False, forceUnlabeled=False, maxNumImages=None):
-    return aim.get_inference_images(project, goldenQuestionsOnly, forceUnlabeled, maxNumImages)
+def get_inference_images(project, goldenQuestionsOnly=False, forceUnlabeled=False, maxNumImages=None, numWorkers=1):
+    return aim.get_inference_images(project, goldenQuestionsOnly, forceUnlabeled, maxNumImages, numWorkers)
 
 
 # @current_app.task(name='AIController.start_training')

@@ -499,24 +499,32 @@ class AIMiddleware():
             - A dict with a status message. May take one of the following:
                 - TODO: status ok, fail, no annotations, etc. Make threaded so that it immediately returns something.
         '''
-        print("starting training on AIController")
-        #TODO: numEpochs
-        process = celery.chain(aic_int.get_training_images.s(project,
+        # identify number of available workers  #TODO: this fixed the number of workers at the start, even for multiple epochs...
+        if maxNumWorkers < 0:
+            numWorkers = min(max(1, maxNumWorkers), self._get_num_available_workers())
+        elif maxNumWorkers > 1:
+            numWorkers = min(maxNumWorkers, self._get_num_available_workers())
+        else:
+            numWorkers = maxNumWorkers
+        numEpochs = max(1, numEpochs)
+        
+        def _get_training_signature():
+            return celery.chain(aic_int.get_training_images.s(project,
                                                     minTimestamp,
                                                     includeGoldenQuestions,
                                                     minNumAnnoPerImage,
-                                                    maxNumImages).set(queue='AIController'),
-                                celery.group([
-                                    aiw_int.call_train.s(n, project, True).set(queue='AIWorker')
-                                    for n in range(maxNumWorkers)
-                                ]).set(queue='AIWorker'),
-                                aiw_int.call_average_model_states.si(project).set(queue='AIWorker')
-        )
+                                                    maxNumImages,
+                                                    numWorkers).set(queue='AIController'),
+                                celery.chord(
+                                    [aiw_int.call_train.s(i, project).set(queue='AIWorker') for i in range(numWorkers)],
+                                    aiw_int.call_average_model_states.si(project).set(queue='AIWorker')
+                                )
+                    )
+        process = celery.chain(_get_training_signature() for e in range(numEpochs))     #TODO: provide epoch as parameter for logging
 
         # submit job
         task_id = self.messageProcessor.task_id(project)
         job = process.apply_async(task_id=task_id,
-                        queue='AIWorker',
                         ignore_result=False,
                         result_extended=True,
                         headers={'headers':{'project':project,'type':'train','submitted': str(current_time())}})
@@ -545,7 +553,7 @@ class AIMiddleware():
         #                 result_extended=True,
         #                 headers={'headers':{'project':project,'type':'train','submitted': str(current_time())}})
 
-        # start listener
+        # start listener    #TODO: need to completely re-think task progress listening
         self.messageProcessor.register_job(project, job, 'train', self._training_completed)
         print("Completed.")
         return 'ok'

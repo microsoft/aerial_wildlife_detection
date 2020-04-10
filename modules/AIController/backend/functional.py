@@ -37,7 +37,7 @@ class AIControllerWorker:
 
 
     def get_training_images(self, project, minTimestamp='lastState', includeGoldenQuestions=True,
-                            minNumAnnoPerImage=0, maxNumImages=None, maxNumWorkers=-1):
+                            minNumAnnoPerImage=0, maxNumImages=None, numChunks=1):
         '''
             Queries the database for the latest images to be used for model training.
             Returns a list with image UUIDs accordingly, split into the number of
@@ -48,13 +48,6 @@ class AIControllerWorker:
         if not (isinstance(minTimestamp, datetime) or minTimestamp == 'lastState' or
                 minTimestamp == -1 or minTimestamp is None):
             raise ValueError('{} is not a recognized property for variable "minTimestamp"'.format(str(minTimestamp)))
-
-        # identify number of available workers
-        if maxNumWorkers != 1:
-            # only query the number of available workers if more than one is specified to save time
-            num_workers = min(maxNumWorkers, self._get_num_available_workers())
-        else:
-            num_workers = maxNumWorkers
 
         # query image IDs
         queryVals = []
@@ -136,17 +129,18 @@ class AIControllerWorker:
         imageIDs = self.dbConn.execute(queryStr, tuple(queryVals), 'all')
         imageIDs = [i['image'] for i in imageIDs]
 
-        if maxNumWorkers > 1:
+        if numChunks > 1:
             # split for distribution across workers (TODO: also specify subset size for multiple jobs; randomly draw if needed)
-            imageIDs = array_split(imageIDs, max(1, len(imageIDs) // num_workers))
+            imageIDs = array_split(imageIDs, max(1, len(imageIDs) // numChunks))
         else:
             imageIDs = [imageIDs]
 
+        print("Assembled training images into {} chunks (length of first: {})".format(len(imageIDs), len(imageIDs[0])))
         return imageIDs
 
 
 
-    def get_inference_images(self, project, goldenQuestionsOnly=False, forceUnlabeled=False, maxNumImages=None, maxNumWorkers=-1):
+    def get_inference_images(self, project, goldenQuestionsOnly=False, forceUnlabeled=False, maxNumImages=None, numChunks=1):
             '''
                 Queries the database for the latest images to be used for inference after model training.
                 Returns a list with image UUIDs accordingly, split into the number of available workers.
@@ -166,17 +160,17 @@ class AIControllerWorker:
             imageIDs = self.dbConn.execute(sql, queryVals, 'all')
             imageIDs = [i['image'] for i in imageIDs]
 
-            # split for distribution across workers
-            if maxNumWorkers != 1:
-                # only query the number of available workers if more than one is specified to save time
-                num_available = self._get_num_available_workers()
-                if maxNumWorkers == -1:
-                    maxNumWorkers = num_available   #TODO: more than one process per worker?
-                else:
-                    maxNumWorkers = min(maxNumWorkers, num_available)
+            # # split for distribution across workers
+            # if maxNumWorkers != 1:
+            #     # only query the number of available workers if more than one is specified to save time
+            #     num_available = self._get_num_available_workers()
+            #     if maxNumWorkers == -1:
+            #         maxNumWorkers = num_available   #TODO: more than one process per worker?
+            #     else:
+            #         maxNumWorkers = min(maxNumWorkers, num_available)
             
-            if maxNumWorkers > 1:
-                imageIDs = array_split(imageIDs, max(1, len(imageIDs) // maxNumWorkers))
+            if numChunks > 1:
+                imageIDs = array_split(imageIDs, max(1, len(imageIDs) // numChunks))
             else:
                 imageIDs = [imageIDs]
             return imageIDs
