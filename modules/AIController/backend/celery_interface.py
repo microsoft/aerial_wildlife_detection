@@ -82,28 +82,3 @@ def start_train_and_inference(project, minTimestamp='lastState', minNumAnnoPerIm
     return aim.start_train_and_inference(project, minTimestamp, minNumAnnoPerImage, maxNumImages_train, 
                                     maxNumWorkers_train,
                                     forceUnlabeled_inference, maxNumImages_inference, maxNumWorkers_inference)
-
-
-
-#TODO: chaining and chord tests
-import celery
-if False:
-    job = celery.chain(add.s(2, 2).set(queue='AIController'), add.s(4).set(queue='AIController'), add.s(8).set(queue='AIController'))
-    result = job.apply_async(queue='AIController')
-
-    test = celery.chord(dummy_a.s(num_workers=1).set(queue='AIController') for s in range(3)).set(queue='AIController')
-    job = test(dummy_c.s().set(queue='AIController'))
-
-
-    job = celery.chain(dummy_a.s(num_workers=3).set(queue='AIController'),
-                        celery.group([
-                            dummy_b.s(0).set(queue='AIController'),
-                            dummy_b.s(1).set(queue='AIController'),
-                            dummy_b.s(2).set(queue='AIController')
-                        ]),
-                        dummy_c.s().set(queue='AIController')
-    )
-    result = job.apply_async(queue='AIController')
-
-    job = celery.chain(dummy_a.s(num_workers=2).set(queue='AIController'),
-                        celery.chord(dummy_b.s(i).set(queue='AIController') for i in range(3)).set(queue='AIController'))
