@@ -56,7 +56,7 @@ aide_modules = set([a.strip().lower() for a in aide_modules])
 num_modules = 0
 if 'aicontroller' in aide_modules:
     from modules.AIController.backend import celery_interface as aic_int
-    aic_int.aide_internal_notify({'task': 'add_projects'})
+    # aic_int.aide_internal_notify({'task': 'add_projects'})
     num_modules += 1
 if 'aiworker' in aide_modules:
     from modules.AIWorker.backend import celery_interface as aiw_int

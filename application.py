@@ -73,7 +73,7 @@ for i in instance_args:
 
     elif moduleName == 'AIController':
         from modules.AIController.backend import celery_interface as aic_int
-        aic_int.aide_internal_notify({'task': 'add_projects'})
+        # aic_int.aide_internal_notify({'task': 'add_projects'})
 
     elif moduleName == 'AIWorker':
         from modules.AIWorker.backend import celery_interface as aiw_int
