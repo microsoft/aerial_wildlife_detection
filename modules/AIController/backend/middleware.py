@@ -499,7 +499,7 @@ class AIMiddleware():
             - A dict with a status message. May take one of the following:
                 - TODO: status ok, fail, no annotations, etc. Make threaded so that it immediately returns something.
         '''
-        # identify number of available workers  #TODO: this fixed the number of workers at the start, even for multiple epochs...
+        # identify number of available workers  #TODO: this fixes the number of workers at the start, even for multiple epochs...
         if maxNumWorkers < 0:
             numWorkers = min(max(1, maxNumWorkers), self._get_num_available_workers())
         elif maxNumWorkers > 1:
@@ -522,48 +522,17 @@ class AIMiddleware():
                                 )
                     )
 
-        process = celery.chain(_get_training_signature(e) for e in range(numEpochs))     #TODO: provide epoch as parameter for logging
+        process = celery.chain(_get_training_signature(e) for e in range(numEpochs))
 
         # submit job
         task_id = self.messageProcessor.task_id(project)
         job = process.apply_async(task_id=task_id,
-                        ignore_result=False,
-                        result_extended=True,
+                        # ignore_result=False,
+                        # result_extended=True,
                         headers={'headers':{'project':project,'type':'train','submitted': str(current_time())}})
 
-        #TODO: possibility for logging: pass along a single task_id as function argument
-        # for every function in order and specify it during update_state command.
-        # Consolidate messages in MessageProcessor with sub-entries (specific IDs per subtask).
-        # i = self.celery_app.control.inspect()
-        # stats = i.stats()
-        # active_tasks = i.active()
-
-        # process, numWorkers = self._get_training_job_signature(
-        #                                 project=project,
-        #                                 minTimestamp=minTimestamp,
-        #                                 minNumAnnoPerImage=minNumAnnoPerImage,
-        #                                 maxNumImages=maxNumImages,
-        #                                 maxNumWorkers=maxNumWorkers)
-
-        # # submit job
-        # task_id = self.messageProcessor.task_id(project)
-        # if numWorkers > 1:
-        #     # also append average model states job
-        #     job = process.apply_async(task_id=task_id,
-        #                 queue='AIWorker',   #project+'_aiw',
-        #                 ignore_result=False,
-        #                 result_extended=True,
-        #                 headers={'headers':{'project':project,'type':'train','submitted': str(current_time())}},
-        #                 link=celery_interface.call_average_model_states.s(project))
-        # else:
-        #     job = process.apply_async(task_id=task_id,
-        #                 queue='AIWorker',   #project+'_aiw',
-        #                 ignore_result=False,
-        #                 result_extended=True,
-        #                 headers={'headers':{'project':project,'type':'train','submitted': str(current_time())}})
-
-        # start listener    #TODO: need to completely re-think task progress listening
-        self.messageProcessor.register_job(project, job, 'train', self._training_completed)
+        # start listener
+        self.messageProcessor.register_job(project, job, 'train')
         print("Completed.")
         return 'ok'
 
@@ -573,13 +542,13 @@ class AIMiddleware():
         # send job
         task_id = self.messageProcessor.task_id(project)
         result = process.apply_async(task_id=task_id,
-                        queue='AIWorker',   #project+'_aiw',
-                        ignore_result=False,
-                        result_extended=True,
+                        queue='AIWorker',
+                        # ignore_result=False,
+                        # result_extended=True,
                         headers={'headers':{'project':project,'type':'inference','submitted': str(current_time())}})
 
         # start listener
-        self.messageProcessor.register_job(project, result, 'inference', None)
+        self.messageProcessor.register_job(project, result, 'inference')
 
         return
 
@@ -614,9 +583,7 @@ class AIMiddleware():
                 SELECT maxNumImages_inference
                 FROM aide_admin.project
                 WHERE shortname = %s;''', (project,), 1)
-            maxNumImages = queryResult['maxnumimages_inference']    
-            # maxNumImages = self.config.getProperty('AIController', 'maxNumImages_inference', type=int)
-        
+            maxNumImages = queryResult['maxnumimages_inference']            
         queryVals = (maxNumImages,)
 
         # load the IDs of the images that are being subjected to inference
@@ -665,6 +632,7 @@ class AIMiddleware():
             This is the default behavior for the automated model update, since the newly trained model should directly
             be used to infer new, potentially useful labels.
         '''
+        #TODO: replace with customizable train-predict chains
 
         # get training job signature
         process, numWorkers_train = self._get_training_job_signature(
@@ -679,26 +647,25 @@ class AIMiddleware():
         if numWorkers_train > 1:
             # also append average model states job
             job = process.apply_async(task_id=task_id,
-                            queue='AIWorker',   #project+'_aiw',
-                            ignore_result=False,
-                            result_extended=True,
+                            queue='AIWorker',
+                            # ignore_result=False,
+                            # result_extended=True,
                             headers={'headers':{'project':project,'type':'train','submitted': str(current_time())}},
-                            link=celery_interface.call_average_model_states.s(project))
+                            link=celery_interface.call_average_model_states.s(1, project))      #TODO: epoch
         else:
             job = process.apply_async(task_id=task_id,
-                            queue='AIWorker',   #project+'_aiw',
-                            ignore_result=False,
-                            result_extended=True,
+                            queue='AIWorker',
+                            # ignore_result=False,
+                            # result_extended=True,
                             headers={'headers':{'project':project,'type':'train','submitted': str(current_time())}})
         
 
         # start listener thread
-        def chain_inference(*args):
-            self.training = self.messageProcessor.task_ongoing(project, 'train')
-            return self.start_inference(project, forceUnlabeled_inference, maxNumImages_inference, maxNumWorkers_inference)
+        # def chain_inference(*args):
+        #     self.training = self.messageProcessor.task_ongoing(project, 'train')
+        #     return self.start_inference(project, forceUnlabeled_inference, maxNumImages_inference, maxNumWorkers_inference)
 
-        #TODO: chaining doesn't work properly this way...
-        self.messageProcessor.register_job(project, job, 'train', chain_inference)
+        self.messageProcessor.register_job(project, job, 'train')
 
         return 'ok'
 

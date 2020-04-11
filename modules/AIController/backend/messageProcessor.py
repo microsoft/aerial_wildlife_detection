@@ -25,7 +25,7 @@ import time
 import uuid
 import html
 import celery
-from celery.result import AsyncResult
+from celery.result import AsyncResult, GroupResult
 import kombu.five
 from util.helpers import current_time
 
@@ -43,12 +43,17 @@ class MessageProcessor(Thread):
         # message store
         self.messages = {}      # dict of dicts (one dict for each project)
 
-        # callbacks
-        self.on_complete = {}
+
+    @staticmethod
+    def unpack_chain(nodes): 
+        while nodes.parent:
+            yield nodes.parent
+            nodes = nodes.parent
+        yield nodes
 
 
     def __add_worker_task(self, task):
-        project = task['delivery_info']['routing_key']
+        project = task['kwargs']['project']
         if not project in self.messages:
             self.messages[project] = {}
 
@@ -162,7 +167,7 @@ class MessageProcessor(Thread):
         return status
 
 
-    def register_job(self, project, job, taskType, on_complete=None):
+    def register_job(self, project, job, taskType):
 
         if not project in self.jobs:
             self.jobs[project] = []
@@ -172,34 +177,54 @@ class MessageProcessor(Thread):
         if not project in self.messages:
             self.messages[project] = {}
 
-        # set up queue for project (if not already there)
-        #TODO: put in a more logical place... only needed if new project is being created!
-        from modules.AIWorker.backend import celery_interface       #TODO: remodel back to AIController
-        proc = celery_interface.aide_internal_notify.si(message={
-            'task': 'add_projects'
-        })
-        proc.apply_async(queue='aide_broadcast')
-
-
-        # look out for children (if group result)
-        if hasattr(job, 'children') and job.children is not None:
-            for child in job.children:
-                self.messages[project][child.task_id] = {
-                'type': taskType,
-                'submitted': str(current_time()),
-                'status': celery.states.PENDING,
-                'meta': {'message':'sending job to worker'}
-            }
-        elif not job.id in self.messages[project]:
-            # no children; add job itself
-            self.messages[project][job.id] = {
+        #TODO: incomplete & probably buggy
+        # add job with its children
+        message = {
+            'id': job.id,
             'type': taskType,
             'submitted': str(current_time()),
-            'status': celery.states.PENDING,
-            'meta': {'message':'sending job to worker'}
+            'status': job.status,
+            'meta': {'message':'sending job to worker'},
+            'subjobs': {}
         }
+        subjobs = list(self.unpack_chain(job))
+        subjobs.reverse()
+        for subjob in subjobs:
+            entry = {
+                'id': subjob.id,
+                'status': subjob.status,
+                'meta': ('complete' if subjob.status == 'SUCCESS' else subjob.result)       #TODO
+            }
+            if isinstance(subjob, GroupResult):
+                subEntries = []
+                for res in subjob.results:
+                    subEntry = {
+                        'id': res.id,
+                        'status': res.status,
+                        'meta': ('complete' if res.status == 'SUCCESS' else res.result)       #TODO
+                    }
+                    subEntries.append(subEntry)
+                entry['subjobs'] = subEntries
+        message['subjobs'] = subjobs
+        self.messages[project][job.id] = message
 
-        self.on_complete[job.id] = on_complete
+        # # look out for children (if group result)
+        # if hasattr(job, 'children') and job.children is not None:
+        #     for child in job.children:
+        #         self.messages[project][child.task_id] = {
+        #         'type': taskType,
+        #         'submitted': str(current_time()),
+        #         'status': celery.states.PENDING,
+        #         'meta': {'message':'sending job to worker'}
+        #     }
+        # elif not job.id in self.messages[project]:
+        #     # no children; add job itself
+        #     self.messages[project][job.id] = {
+        #     'type': taskType,
+        #     'submitted': str(current_time()),
+        #     'status': celery.states.PENDING,
+        #     'meta': {'message':'sending job to worker'}
+        # }
 
     
     def task_id(self, project):
@@ -288,17 +313,3 @@ class MessageProcessor(Thread):
                         break
                     else:
                         time.sleep(10)
-            
-            else:
-                #TODO: re-think chaining inference
-                pass
-                # nextJob = self.jobs.pop()   #TODO
-                # nextJob.get(propagate=True)
-
-                # # job finished; handle success and failure cases
-                # if nextJob.id in self.on_complete:
-                #     callback = self.on_complete[nextJob.id]
-                #     if callback is not None:
-                #         callback(nextJob)
-
-                # nextJob.forget()

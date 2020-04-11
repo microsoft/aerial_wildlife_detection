@@ -231,7 +231,7 @@ class AIWorker():
 
         # get project-specific model
         modelInstance = self._get_model_instance(project)
-
+        
         return functional._call_average_model_states(project, epoch, getattr(modelInstance, 'average_model_states'),
                 self.dbConnector, self.fileServer)
 

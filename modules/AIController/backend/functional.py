@@ -36,7 +36,7 @@ class AIControllerWorker:
 
 
 
-    def get_training_images(self, project, minTimestamp='lastState', includeGoldenQuestions=True,
+    def get_training_images(self, project, epoch=None, minTimestamp='lastState', includeGoldenQuestions=True,
                             minNumAnnoPerImage=0, maxNumImages=None, numChunks=1):
         '''
             Queries the database for the latest images to be used for model training.
