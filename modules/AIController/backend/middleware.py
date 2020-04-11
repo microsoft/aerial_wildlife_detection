@@ -508,19 +508,21 @@ class AIMiddleware():
             numWorkers = maxNumWorkers
         numEpochs = max(1, numEpochs)
         
-        def _get_training_signature():
-            return celery.chain(aic_int.get_training_images.s(project,
-                                                    minTimestamp,
-                                                    includeGoldenQuestions,
-                                                    minNumAnnoPerImage,
-                                                    maxNumImages,
-                                                    numWorkers).set(queue='AIController'),
+        def _get_training_signature(epoch=1):
+            return celery.chain(aic_int.get_training_images.s(**{'project':project,
+                                                    'epoch':epoch,
+                                                    'minTimestamp':minTimestamp,
+                                                    'includeGoldenQuestions':includeGoldenQuestions,
+                                                    'minNumAnnoPerImage':minNumAnnoPerImage,
+                                                    'maxNumImages':maxNumImages,
+                                                    'numWorkers':numWorkers}).set(queue='AIController'),
                                 celery.chord(
-                                    [aiw_int.call_train.s(i, project).set(queue='AIWorker') for i in range(numWorkers)],
-                                    aiw_int.call_average_model_states.si(project).set(queue='AIWorker')
+                                    [aiw_int.call_train.s(**{'index':i, 'epoch':epoch, 'project':project}).set(queue='AIWorker') for i in range(numWorkers)],
+                                    aiw_int.call_average_model_states.si(**{'epoch':epoch, 'project':project}).set(queue='AIWorker')
                                 )
                     )
-        process = celery.chain(_get_training_signature() for e in range(numEpochs))     #TODO: provide epoch as parameter for logging
+
+        process = celery.chain(_get_training_signature(e) for e in range(numEpochs))     #TODO: provide epoch as parameter for logging
 
         # submit job
         task_id = self.messageProcessor.task_id(project)
@@ -528,6 +530,13 @@ class AIMiddleware():
                         ignore_result=False,
                         result_extended=True,
                         headers={'headers':{'project':project,'type':'train','submitted': str(current_time())}})
+
+        #TODO: possibility for logging: pass along a single task_id as function argument
+        # for every function in order and specify it during update_state command.
+        # Consolidate messages in MessageProcessor with sub-entries (specific IDs per subtask).
+        # i = self.celery_app.control.inspect()
+        # stats = i.stats()
+        # active_tasks = i.active()
 
         # process, numWorkers = self._get_training_job_signature(
         #                                 project=project,

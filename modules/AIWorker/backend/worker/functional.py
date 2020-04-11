@@ -30,10 +30,11 @@ from constants.dbFieldNames import FieldNames_annotation, FieldNames_prediction
 
 
 
-def __get_message_fun(project):
+def __get_message_fun(project, epoch=None):
     def __on_message(state, message, done=None, total=None):
         meta = {
-            'project': project
+            'project': project,
+            'epoch': epoch
         }
         if (isinstance(done, int) or isinstance(done, float)) and \
             (isinstance(total, int) or isinstance(total, float)):
@@ -143,7 +144,7 @@ def __get_ai_library_names(project, dbConnector):
         return model_library, alcriterion_library
 
 
-def _call_train(project, imageIDs, subset, trainingFun, dbConnector, fileServer):
+def _call_train(project, imageIDs, epoch, subset, trainingFun, dbConnector, fileServer):
     '''
         Initiates model training and maintains workers, status and failure
         events.
@@ -163,7 +164,7 @@ def _call_train(project, imageIDs, subset, trainingFun, dbConnector, fileServer)
     '''
 
     print('[{}] Initiated training...'.format(project))
-    update_state = __get_message_fun(project)
+    update_state = __get_message_fun(project, epoch)
 
 
     # load model state
@@ -212,7 +213,7 @@ def _call_train(project, imageIDs, subset, trainingFun, dbConnector, fileServer)
 
 
 
-def _call_average_model_states(project, averageFun, dbConnector, fileServer):
+def _call_average_model_states(project, epoch, averageFun, dbConnector, fileServer):
     '''
         Receives a number of model states (coming from different AIWorker instances),
         averages them by calling the AI model's 'average_model_states' function and inserts
@@ -220,7 +221,7 @@ def _call_average_model_states(project, averageFun, dbConnector, fileServer):
     '''
 
     print('[{}] Initiated model state averaging...'.format(project))
-    update_state = __get_message_fun(project)
+    update_state = __get_message_fun(project, epoch)
 
     # get all model states
     update_state(state='PREPARING', message='loading model states')
@@ -287,12 +288,12 @@ def _call_average_model_states(project, averageFun, dbConnector, fileServer):
 
 
 
-def _call_inference(project, imageIDs, inferenceFun, rankFun, dbConnector, fileServer):
+def _call_inference(project, imageIDs, epoch, inferenceFun, rankFun, dbConnector, fileServer):
     '''
 
     '''
     print('[{}] Initiated inference on {} images...'.format(project, len(imageIDs)))
-    update_state = __get_message_fun(project)
+    update_state = __get_message_fun(project, epoch)
 
     # load model state
     update_state(state='PREPARING', message='loading model state')

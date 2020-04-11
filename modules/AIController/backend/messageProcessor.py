@@ -84,7 +84,7 @@ class MessageProcessor(Thread):
                 for task in active_tasks[key]:
 
                     # append task if of correct project
-                    taskProject = task['delivery_info']['routing_key']
+                    taskProject = task['kwargs']['project']
                     if taskProject == project:
                         activeTasks.append(task['id'])
 
