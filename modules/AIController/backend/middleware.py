@@ -88,6 +88,7 @@ class AIMiddleware():
             return
         if project in self.watchdogs and self.watchdogs[project] == False:
                 # project does not need a watchdog
+                #TODO: implement force re-check after e.g. settings update
                 return
         
         else:
@@ -99,11 +100,12 @@ class AIMiddleware():
                 ''', (project,), 1)
 
             if projSettings is None or not len(projSettings) or \
-                not (projSettings[0]['ai_model_enabled']) or projSettings[0]['numimages_autotrain'] == -1:
+                not (projSettings[0]['ai_model_enabled']) or \
+                    projSettings[0]['numimages_autotrain'] is None or projSettings[0]['numimages_autotrain'] <= 0:
                 # no watchdog to be configured; set flag to avoid excessive DB queries
                 #TODO: enable on-the-fly project settings updates to this end
                 self.watchdogs[project] = False
-
+                return
 
         # init watchdog            
         self.watchdogs[project] = Watchdog(project, self.config, self.dbConn, self)

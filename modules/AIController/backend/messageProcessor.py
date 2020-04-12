@@ -22,6 +22,7 @@
 
 from threading import Thread
 import time
+from datetime import datetime
 import uuid
 import html
 import celery
@@ -60,7 +61,7 @@ class MessageProcessor(Thread):
         result = AsyncResult(task['id'])
         if not task['id'] in self.messages[project]:
             try:
-                timeSubmitted = datetime.fromtimestamp(time.time() - (kombu.five.monotonic() - t['time_start']))
+                timeSubmitted = datetime.fromtimestamp(time.time() - (kombu.five.monotonic() - task['time_start']))
             except:
                 timeSubmitted = str(current_time()) #TODO: dirty hack to make failsafe with UI
             self.messages[project][task['id']] = {
@@ -141,10 +142,34 @@ class MessageProcessor(Thread):
                 'status': msg['status'],
                 'meta': info
             }
+            if 'subjobs' in job:
+                subjobEntries = []
+                for subjob in job['subjobs']:
+                    if isinstance(subjob, GroupResult):
+                        entry = {
+                            'id': subjob.id
+                        }
+                        subEntries = []
+                        for res in subjob.results:
+                            subEntry = {
+                                'id': res.id,
+                                'status': res.status,
+                                'meta': ('complete' if res.status == 'SUCCESS' else res.result)       #TODO
+                            }
+                            subEntries.append(subEntry)
+                        entry['subjobs'] = subEntries
+                    else:
+                        entry = {
+                            'id': subjob.id,
+                            'status': subjob.status,
+                            'meta': ('complete' if subjob.status == 'SUCCESS' else subjob.result)       #TODO
+                        }
+                    subjobEntries.append(entry)
+                status[key]['subjobs'] = subjobEntries
             
             # check if ongoing
             result = AsyncResult(key)
-            if result.ready():
+            if result.ready():                  #TODO: chains somehow get stuck in 'PENDING'...
                 # done; remove from queue
                 result.forget()
                 status[key]['status'] = 'SUCCESS'
@@ -188,29 +213,30 @@ class MessageProcessor(Thread):
             'meta': {'message':'sending job to worker'},
             'subjobs': {}
         }
-        subjobs = list(self.unpack_chain(job))
-        subjobs.reverse()
-        for subjob in subjobs:
-            if isinstance(subjob, GroupResult):
-                entry = {
-                    'id': subjob.id
-                }
-                subEntries = []
-                for res in subjob.results:
-                    subEntry = {
-                        'id': res.id,
-                        'status': res.status,
-                        'meta': ('complete' if res.status == 'SUCCESS' else res.result)       #TODO
-                    }
-                    subEntries.append(subEntry)
-                entry['subjobs'] = subEntries
-            else:
-                entry = {
-                    'id': subjob.id,
-                    'status': subjob.status,
-                    'meta': ('complete' if subjob.status == 'SUCCESS' else subjob.result)       #TODO
-                }
-        message['subjobs'] = subjobs
+        if hasattr(job, 'parent'):
+            subjobs = list(self.unpack_chain(job))
+            subjobs.reverse()
+            # for subjob in subjobs:
+            #     if isinstance(subjob, GroupResult):
+            #         entry = {
+            #             'id': subjob.id
+            #         }
+            #         subEntries = []
+            #         for res in subjob.results:
+            #             subEntry = {
+            #                 'id': res.id,
+            #                 'status': res.status,
+            #                 'meta': ('complete' if res.status == 'SUCCESS' else res.result)       #TODO
+            #             }
+            #             subEntries.append(subEntry)
+            #         entry['subjobs'] = subEntries
+            #     else:
+            #         entry = {
+            #             'id': subjob.id,
+            #             'status': subjob.status,
+            #             'meta': ('complete' if subjob.status == 'SUCCESS' else subjob.result)       #TODO
+            #         }
+            message['subjobs'] = subjobs
         self.messages[project][job.id] = message
 
         # # look out for children (if group result)

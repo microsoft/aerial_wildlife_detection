@@ -10,7 +10,6 @@
 '''
 
 from threading import Thread, Event
-# import time
 import math
 from psycopg2 import sql
 
@@ -29,6 +28,13 @@ class Watchdog(Thread):
         self.properties = self.dbConnector.execute('SELECT * FROM aide_admin.project WHERE shortname = %s',
                         (project,), 1)
         self.properties = self.properties[0]
+        if self.properties['numimages_autotrain'] is None:
+            # auto-training disabled
+            self.properties['numimages_autotrain'] = -1
+        if self.properties['minnumannoperimage'] is None:
+            self.properties['minnumannoperimage'] = 0
+        
+        
 
         self.maxWaitingTime = 1800                      # seconds
         self.minWaitingTime = 20
@@ -37,8 +43,6 @@ class Watchdog(Thread):
         self.lastCount = 0                              # for difference tracking
 
         minNumAnno = self.properties['minnumannoperimage']
-        if minNumAnno is None:
-            minNumAnno = 0
         if minNumAnno > 0:
             minNumAnnoString = sql.SQL('''
                 WHERE image IN (
@@ -52,7 +56,7 @@ class Watchdog(Thread):
             )
             self.queryVals = (minNumAnno,)
         else:
-            minNumAnnoString = ''
+            minNumAnnoString = sql.SQL('')
             self.queryVals = None
         self.queryStr = sql.SQL('''
             SELECT COUNT(image) AS count FROM (
@@ -97,8 +101,8 @@ class Watchdog(Thread):
 
         while True:
 
-            # check if training process has already been started
-            if self.middleware.training or self._stop_event.is_set():
+            # check if training process has already been started or auto-training is disabled
+            if self.middleware.training or self._stop_event.is_set() or self.properties['numimages_autotrain'] == -1:
                 break
 
             # poll database
