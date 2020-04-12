@@ -237,7 +237,7 @@ class AIWorker():
 
 
 
-    def call_inference(self, project, imageIDs, epoch=None):
+    def call_inference(self, imageIDs, epoch, project):
         
         # get project-specific model and AL criterion
         modelInstance = self._get_model_instance(project)

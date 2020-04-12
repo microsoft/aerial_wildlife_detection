@@ -131,18 +131,25 @@ class AIMiddleware():
         return settings
 
 
-    def _training_completed(self, project, trainingJob):
-        '''
-            To be called after a training process has been completed.
-            If there is more than one worker, the 'average_model_states'
-            instruction of the AI model is called and again awaited for.
-            After successful training, the 'training' flag will be set
-            to False to allow another round of model training.
-        '''
+    # def _training_completed(self, project, trainingJob):
+    #     '''
+    #         To be called after a training process has been completed.
+    #         If there is more than one worker, the 'average_model_states'
+    #         instruction of the AI model is called and again awaited for.
+    #         After successful training, the 'training' flag will be set
+    #         to False to allow another round of model training.
+    #     '''
 
-        # re-enable training if no other training job is ongoing
-        print("Training completed")
-        self.training[project] = self.messageProcessor.task_ongoing(project, 'train')    #TODO
+    #     # re-enable training if no other training job is ongoing
+    #     print("Training completed")
+    #     self.training[project] = self.messageProcessor.task_ongoing(project, 'train')    #TODO
+
+    def _assemble_task(self, project, subtasks, maxNumWorkers=-1):
+        #TODO: single entry point that allows composing tasks:
+        # 1. Provide a list of tasks (with name) and, optionally, a dict of kwargs per task
+        # 2. Complete kwargs for each task (insert default values where needed)
+        # 3. Assemble Celery chain and execute
+        raise Exception('Not yet implemented.')
 
 
 
@@ -576,24 +583,56 @@ class AIMiddleware():
             - maxNumWorkers: Manually set the maximum number of AIWorker instances to perform inference at the same
                              time. If set to -1 (default), the data will be divided across all registered workers.
         '''
+
+        # identify number of available workers  #TODO: this fixes the number of workers at the start, even for multiple epochs...
+        if maxNumWorkers < 0:
+            numWorkers = min(max(1, maxNumWorkers), self._get_num_available_workers())
+        elif maxNumWorkers > 1:
+            numWorkers = min(maxNumWorkers, self._get_num_available_workers())
+        else:
+            numWorkers = maxNumWorkers
+        def _get_inference_signature():
+            return celery.chain(aic_int.get_inference_images.s(**{'project':project,
+                                                    'goldenQuestionsOnly':False,        #TODO
+                                                    'forceUnlabeled':forceUnlabeled,
+                                                    'maxNumImages':maxNumImages,
+                                                    'numWorkers':numWorkers}).set(queue='AIController'),
+                                celery.group(
+                                    [aiw_int.call_inference.s(**{'index':i, 'epoch':None, 'project':project}).set(queue='AIWorker') for i in range(numWorkers)],
+                                )
+                    )
         
-        # setup
-        if maxNumImages is None or maxNumImages == -1:
-            queryResult = self.dbConn.execute('''
-                SELECT maxNumImages_inference
-                FROM aide_admin.project
-                WHERE shortname = %s;''', (project,), 1)
-            maxNumImages = queryResult['maxnumimages_inference']            
-        queryVals = (maxNumImages,)
+        process = _get_inference_signature()
 
-        # load the IDs of the images that are being subjected to inference
-        sql = self.sqlBuilder.getInferenceQueryString(project, forceUnlabeled, maxNumImages)
-        imageIDs = self.dbConn.execute(sql, queryVals, 'all')
-        imageIDs = [i['image'] for i in imageIDs]
+        # submit job
+        task_id = self.messageProcessor.task_id(project)
+        job = process.apply_async(task_id=task_id,
+                        # ignore_result=False,
+                        # result_extended=True,
+                        headers={'headers':{'project':project,'type':'inference','submitted': str(current_time())}})
 
-        process = self._get_inference_job_signature(project, imageIDs, maxNumWorkers)
-        self._do_inference(project, process)
+        # start listener
+        self.messageProcessor.register_job(project, job, 'inference')
+        print("Completed.")
         return 'ok'
+
+        # # setup
+        # if maxNumImages is None or maxNumImages == -1:
+        #     queryResult = self.dbConn.execute('''
+        #         SELECT maxNumImages_inference
+        #         FROM aide_admin.project
+        #         WHERE shortname = %s;''', (project,), 1)
+        #     maxNumImages = queryResult['maxnumimages_inference']            
+        # queryVals = (maxNumImages,)
+
+        # # load the IDs of the images that are being subjected to inference
+        # sql = self.sqlBuilder.getInferenceQueryString(project, forceUnlabeled, maxNumImages)
+        # imageIDs = self.dbConn.execute(sql, queryVals, 'all')
+        # imageIDs = [i['image'] for i in imageIDs]
+
+        # process = self._get_inference_job_signature(project, imageIDs, maxNumWorkers)
+        # self._do_inference(project, process)
+        # return 'ok'
 
 
     

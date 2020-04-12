@@ -43,5 +43,13 @@ def call_average_model_states(epoch, project, *args):
 
 
 @current_app.task(name='AIWorker.call_inference')
-def call_inference(project, imageIDs, epoch=None):
-    return worker.call_inference(project, imageIDs, epoch)
+def call_inference(data, index, epoch, project):
+    if index < len(data):
+        return worker.call_inference(data[index], epoch, project)
+    else:
+        # worker not needed
+        print("[{}] Subset {} requested, but only {} chunk(s) provided. Skipping...".format(
+            project,
+            index, len(data)
+        ))
+        return 0

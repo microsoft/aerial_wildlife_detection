@@ -86,15 +86,16 @@ class MessageProcessor(Thread):
                 workerName = key.replace('celery@', '')
 
                 activeTasks = []
-                for task in active_tasks[key]:
+                if key in active_tasks:
+                    for task in active_tasks[key]:
 
-                    # append task if of correct project
-                    taskProject = task['kwargs']['project']
-                    if taskProject == project:
-                        activeTasks.append(task['id'])
+                        # append task if of correct project
+                        taskProject = task['kwargs']['project']
+                        if taskProject == project:
+                            activeTasks.append(task['id'])
 
-                    # also add active tasks to current set if not already there
-                    self.__add_worker_task(task)
+                        # also add active tasks to current set if not already there
+                        self.__add_worker_task(task)
 
                 workerStatus[workerName] = {
                     'active_tasks': activeTasks,
@@ -190,12 +191,10 @@ class MessageProcessor(Thread):
         subjobs = list(self.unpack_chain(job))
         subjobs.reverse()
         for subjob in subjobs:
-            entry = {
-                'id': subjob.id,
-                'status': subjob.status,
-                'meta': ('complete' if subjob.status == 'SUCCESS' else subjob.result)       #TODO
-            }
             if isinstance(subjob, GroupResult):
+                entry = {
+                    'id': subjob.id
+                }
                 subEntries = []
                 for res in subjob.results:
                     subEntry = {
@@ -205,6 +204,12 @@ class MessageProcessor(Thread):
                     }
                     subEntries.append(subEntry)
                 entry['subjobs'] = subEntries
+            else:
+                entry = {
+                    'id': subjob.id,
+                    'status': subjob.status,
+                    'meta': ('complete' if subjob.status == 'SUCCESS' else subjob.result)       #TODO
+                }
         message['subjobs'] = subjobs
         self.messages[project][job.id] = message
 

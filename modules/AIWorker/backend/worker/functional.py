@@ -229,12 +229,12 @@ def _call_average_model_states(project, epoch, averageFun, dbConnector, fileServ
         queryStr = sql.SQL('''
             SELECT stateDict, model_library, alcriterion_library FROM {} WHERE partial IS TRUE;
         ''').format(sql.Identifier(project, 'cnnstate'))
-        modelStates = dbConnector.execute(queryStr, None, 'all')
+        queryResult = dbConnector.execute(queryStr, None, 'all')
     except Exception as e:
         print(e)
         raise Exception('error during model state loading')
 
-    if not len(modelStates):
+    if not len(queryResult):
         # no states to be averaged; return
         print('[{}] No model states to be averaged.'.format(project))
         update_state(state=states.SUCCESS, message='no model states to be averaged')
@@ -243,6 +243,7 @@ def _call_average_model_states(project, epoch, averageFun, dbConnector, fileServ
     # do the work
     update_state(state='PREPARING', message='averaging models')
     try:
+        modelStates = [qr['statedict'] for qr in queryResult]
         modelStates_avg = averageFun(stateDicts=modelStates, updateStateFun=update_state)
     except Exception as e:
         print(e)
@@ -251,8 +252,8 @@ def _call_average_model_states(project, epoch, averageFun, dbConnector, fileServ
     # push to database
     update_state(state='FINALIZING', message='saving model state')
     try:
-        model_library = modelStates[0]['model_library']
-        alcriterion_library = modelStates[0]['alcriterion_library']
+        model_library = queryResult[0]['model_library']
+        alcriterion_library = queryResult[0]['alcriterion_library']
 
         if model_library is None or alcriterion_library is None:
             raise Exception('(try loading from project configuration instead)')
@@ -281,7 +282,7 @@ def _call_average_model_states(project, epoch, averageFun, dbConnector, fileServ
         raise Exception('error during cache purging')
 
     # all done
-    update_state(state=states.SUCCESS, message='averaged {} model states'.format(len(modelStates)))
+    update_state(state=states.SUCCESS, message='averaged {} model states'.format(len(queryResult)))
 
     print('[{}] Model averaging completed successfully.'.format(project))
     return 0

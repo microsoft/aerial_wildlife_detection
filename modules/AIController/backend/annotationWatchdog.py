@@ -37,6 +37,8 @@ class Watchdog(Thread):
         self.lastCount = 0                              # for difference tracking
 
         minNumAnno = self.properties['minnumannoperimage']
+        if minNumAnno is None:
+            minNumAnno = 0
         if minNumAnno > 0:
             minNumAnnoString = sql.SQL('''
                 WHERE image IN (
