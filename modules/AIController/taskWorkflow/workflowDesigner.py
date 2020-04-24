@@ -125,7 +125,7 @@ class WorkflowDesigner:
         }
 
     
-    def _get_training_signature(self, project, taskArgs):
+    def _get_training_signature(self, project, taskArgs, fill_blank=True):
         epoch = taskArgs['epoch']
         numWorkers = taskArgs['max_num_workers']
 
@@ -134,15 +134,17 @@ class WorkflowDesigner:
 
         if not 'data' in taskArgs:
             # no list of images provided; prepend getting training images
+            task_kwargs = {'project': project,
+                            'epoch': epoch,
+                            'minTimestamp': taskArgs['min_timestamp'],
+                            'includeGoldenQuestions': taskArgs['include_golden_questions'],
+                            'minNumAnnoPerImage': taskArgs['min_anno_per_image'],
+                            'maxNumImages': taskArgs['max_num_images'],
+                            'numWorkers': numWorkers}
+            if fill_blank:
+                task_kwargs['blank'] = None     # required for task chaining
             taskList.append(
-                aic_int.get_training_images.s(**{'blank': None,     # required for ignoring previous result in task chain
-                                                'project': project,
-                                                'epoch': epoch,
-                                                'minTimestamp': taskArgs['min_timestamp'],
-                                                'includeGoldenQuestions': taskArgs['include_golden_questions'],
-                                                'minNumAnnoPerImage': taskArgs['min_anno_per_image'],
-                                                'maxNumImages': taskArgs['max_num_images'],
-                                                'numWorkers': numWorkers}).set(queue='AIController')
+                aic_int.get_training_images.s(**task_kwargs).set(queue='AIController')
             )
             trainArgs = {
                 'epoch': epoch,
@@ -179,7 +181,7 @@ class WorkflowDesigner:
         return celery.chain(taskList)
 
 
-    def _get_inference_signature(self, project, taskArgs):
+    def _get_inference_signature(self, project, taskArgs, fill_blank=True):
         epoch = taskArgs['epoch']
         numWorkers = taskArgs['max_num_workers']
 
@@ -188,13 +190,15 @@ class WorkflowDesigner:
 
         if not 'data' in taskArgs:
             # no list of images provided; prepend getting inference images
+            task_kwargs = {'project': project,
+                            'epoch': epoch,
+                            'goldenQuestionsOnly': taskArgs['golden_questions_only'],
+                            'maxNumImages': taskArgs['max_num_images'],
+                            'numWorkers': numWorkers}
+            if fill_blank:
+                task_kwargs['blank'] = None     # required for task chaining
             taskList.append(
-                aic_int.get_inference_images.s(**{'blank': None,     # required for ignoring previous result in task chain
-                                                'project': project,
-                                                'epoch': epoch,
-                                                'goldenQuestionsOnly': taskArgs['golden_questions_only'],
-                                                'maxNumImages': taskArgs['max_num_images'],
-                                                'numWorkers': numWorkers}).set(queue='AIController')
+                aic_int.get_inference_images.s(**task_kwargs).set(queue='AIController')
             )
             inferenceArgs = {
                 'epoch': epoch,
@@ -225,7 +229,7 @@ class WorkflowDesigner:
         return celery.chain(taskList)
 
 
-    def _create_celery_task(self, taskDesc):
+    def _create_celery_task(self, taskDesc, fill_blank):
         '''
             Receives a task description (full dict with name and kwargs)
             and creates true Celery task routines from it.
@@ -243,9 +247,9 @@ class WorkflowDesigner:
         taskName = taskDesc['name'].lower()
         project = taskDesc['project']
         if taskName == 'train':
-            task = self._get_training_signature(project, taskDesc['kwargs'])
+            task = self._get_training_signature(project, taskDesc['kwargs'], fill_blank)
         elif taskName == 'inference':
-            task = self._get_inference_signature(project, taskDesc['kwargs'])
+            task = self._get_inference_signature(project, taskDesc['kwargs'], fill_blank)
         return task
 
 
@@ -329,7 +333,7 @@ class WorkflowDesigner:
                 epoch += 1
 
             # construct celery task out of description
-            task = self._create_celery_task(taskDesc)
+            task = self._create_celery_task(taskDesc, fill_blank=(True if index==0 else False))
             tasklist.append(task)
 
         chain = celery.chain(tasklist)
