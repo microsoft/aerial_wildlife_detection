@@ -46,6 +46,48 @@ app.conf.update(
     task_acks_late = True,
     task_create_missing_queues = True,
     task_queues = (Broadcast('aide_broadcast'), Queue('FileServer'), Queue('AIController'), Queue('AIWorker')),
+    task_routes = {
+        'AIController.get_training_images': {
+            'queue': 'AIController',
+            'routing_key': 'get_training_images'
+        },
+        'AIController.get_inference_images': {
+            'queue': 'AIController',
+            'routing_key': 'get_inference_images'
+        },
+        'AIWorker.call_train': {
+            'queue': 'AIWorker',
+            'routing_key': 'call_train'
+        },
+        'AIWorker.call_average_model_states': {
+            'queue': 'AIWorker',
+            'routing_key': 'call_average_model_states'
+        },
+        'AIWorker.call_inference': {
+            'queue': 'AIWorker',
+            'routing_key': 'call_inference'
+        },
+        'DataAdministration.list_images': {
+            'queue': 'FileServer',
+            'routing_key': 'list_images'
+        },
+        'DataAdministration.scan_for_images': {
+            'queue': 'FileServer',
+            'routing_key': 'scan_for_images'
+        },
+        'DataAdministration.add_existing_images': {
+            'queue': 'FileServer',
+            'routing_key': 'add_existing_images'
+        },
+        'DataAdministration.remove_images': {
+            'queue': 'FileServer',
+            'routing_key': 'remove_images'
+        },
+        'DataAdministration.prepare_data_download': {
+            'queue': 'FileServer',
+            'routing_key': 'prepare_data_download'
+        }
+    }
     #task_default_queue = Broadcast('aide_admin')
 )
 

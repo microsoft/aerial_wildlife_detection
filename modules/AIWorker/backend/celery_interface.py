@@ -38,7 +38,7 @@ def call_train(data, index, epoch, project):
 
 
 @current_app.task(name='AIWorker.call_average_model_states', rate_limit=1)
-def call_average_model_states(epoch, project, *args):
+def call_average_model_states(blank, epoch, project, *args):
     return worker.call_average_model_states(epoch, project)
 
 

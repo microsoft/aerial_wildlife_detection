@@ -27,7 +27,7 @@ def aide_internal_notify(message):
     return worker.aide_internal_notify(message)
 
 
-@current_app.task()
+@current_app.task(name='DataAdministration.list_images')
 def listImages(project, imageAddedRange=None, lastViewedRange=None,
         viewcountRange=None, numAnnoRange=None, numPredRange=None,
         orderBy=None, order='desc', startFrom=None, limit=None):
@@ -36,27 +36,27 @@ def listImages(project, imageAddedRange=None, lastViewedRange=None,
         orderBy, order, startFrom, limit)
 
 
-@current_app.task()
-def uploadImages(project, images):
-    #TODO: check if makes sense to do this in a Celery task
-    return worker.uploadImages(project, images)
+# @current_app.task(name='DataAdministration.upload_images')
+# def uploadImages(project, images):
+#     #TODO: check if makes sense to do this in a Celery task
+#     return worker.uploadImages(project, images)
 
 
-@current_app.task()
+@current_app.task(name='DataAdministration.scan_for_images')
 def scanForImages(project):
     return worker.scanForImages(project)
 
 
-@current_app.task()
+@current_app.task(name='DataAdministration.add_existing_images')
 def addExistingImages(project, imageList=None):
     return worker.addExistingImages(project, imageList)
 
 
-@current_app.task()
+@current_app.task(name='DataAdministration.remove_images')
 def removeImages(project, imageList, forceRemove=False, deleteFromDisk=False):
     return worker.removeImages(project, imageList, forceRemove, deleteFromDisk)
 
 
-@current_app.task()
+@current_app.task(name='DataAdministration.prepare_data_download')
 def prepareDataDownload(project, dataType='annotation', userList=None, dateRange=None):
     return worker.prepareDataDownload(project, dataType, userList, dateRange)

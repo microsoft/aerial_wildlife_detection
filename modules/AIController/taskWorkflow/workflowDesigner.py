@@ -135,7 +135,8 @@ class WorkflowDesigner:
         if not 'data' in taskArgs:
             # no list of images provided; prepend getting training images
             taskList.append(
-                aic_int.get_training_images.s(**{'project': project,
+                aic_int.get_training_images.s(**{'blank': None,     # required for ignoring previous result in task chain
+                                                'project': project,
                                                 'epoch': epoch,
                                                 'minTimestamp': taskArgs['min_timestamp'],
                                                 'includeGoldenQuestions': taskArgs['include_golden_questions'],
@@ -188,7 +189,8 @@ class WorkflowDesigner:
         if not 'data' in taskArgs:
             # no list of images provided; prepend getting inference images
             taskList.append(
-                aic_int.get_inference_images.s(**{'project': project,
+                aic_int.get_inference_images.s(**{'blank': None,     # required for ignoring previous result in task chain
+                                                'project': project,
                                                 'epoch': epoch,
                                                 'goldenQuestionsOnly': taskArgs['golden_questions_only'],
                                                 'maxNumImages': taskArgs['max_num_images'],

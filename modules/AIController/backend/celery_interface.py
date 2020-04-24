@@ -27,34 +27,10 @@ aim = AIControllerWorker(Config(), current_app)
 
 
 @current_app.task(name='AIController.get_training_images')
-def get_training_images(project, epoch, minTimestamp='lastState', includeGoldenQuestions=True, minNumAnnoPerImage=0, maxNumImages=None, numWorkers=1):
+def get_training_images(blank, project, epoch, minTimestamp='lastState', includeGoldenQuestions=True, minNumAnnoPerImage=0, maxNumImages=None, numWorkers=1):
     return aim.get_training_images(project, epoch, minTimestamp, includeGoldenQuestions, minNumAnnoPerImage, maxNumImages, numWorkers)
 
 
 @current_app.task(name='AIController.get_inference_images')
-def get_inference_images(project, goldenQuestionsOnly=False, forceUnlabeled=False, maxNumImages=None, numWorkers=1):
-    return aim.get_inference_images(project, goldenQuestionsOnly, forceUnlabeled, maxNumImages, numWorkers)
-
-
-# @current_app.task(name='AIController.start_training')
-# def start_training(project, minTimestamp='lastState', minNumAnnoPerImage=0, maxNumImages=None, maxNumWorkers=-1):
-#     return aim.start_training(project, minTimestamp, minNumAnnoPerImage, maxNumImages, maxNumWorkers)
-
-
-# @current_app.task(name='AIController.start_inference')
-# def start_inference(project, forceUnlabeled=True, maxNumImages=-1, maxNumWorkers=-1):
-#     return aim.start_inference(project, forceUnlabeled, maxNumImages, maxNumWorkers)
-
-
-# @current_app.task(name='AIController.inference_fixed')
-# def inference_fixed(project, imageIDs, maxNumWorkers=-1):
-#     return aim.inference_fixed(project, imageIDs, maxNumWorkers)
-
-
-# @current_app.task(name='AIController.start_train_and_inference')
-# def start_train_and_inference(project, minTimestamp='lastState', minNumAnnoPerImage=0, maxNumImages_train=None, 
-#                                     maxNumWorkers_train=1,
-#                                     forceUnlabeled_inference=True, maxNumImages_inference=None, maxNumWorkers_inference=1):
-#     return aim.start_train_and_inference(project, minTimestamp, minNumAnnoPerImage, maxNumImages_train, 
-#                                     maxNumWorkers_train,
-#                                     forceUnlabeled_inference, maxNumImages_inference, maxNumWorkers_inference)
+def get_inference_images(blank, project, epoch, goldenQuestionsOnly=False, forceUnlabeled=False, maxNumImages=None, numWorkers=1):
+    return aim.get_inference_images(project, epoch, goldenQuestionsOnly, forceUnlabeled, maxNumImages, numWorkers)
