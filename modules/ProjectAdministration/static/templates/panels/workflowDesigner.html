@@ -1,0 +1,75 @@
+<div>
+    <h2>Model Workflow Designer</h2>
+
+    <p style="font-weight:bold;color:red">Work in progress, not functional yet.</p>
+    
+    <div id="shortcuts">
+        <h3>Create simple workflow</h3>
+        <div>
+            <p>Repeat for <input id="num-epochs" type="number" min="1" max="500" value="1" /> epochs:</p>
+            <div>
+                <input id="do-train" type="checkbox" />
+                <label for="do-train">Train model</label>
+                <input id="do-inference" type="checkbox" />
+                <label for="do-inference">Perform inference</label>
+            </div>
+            <input id="append-inference" type="checkbox" />
+            <label for="append-inference">Perform inference with final model state</label>
+        </div>
+        <div>
+            Number of workers:
+            <select id="num-workers">
+                <option value="-1">(all available)</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <!-- TODO -->
+            </select>
+        </div>
+        <div>
+            <button id="create-workflow" class="btn btn-sm btn-primary">Create</button>
+            <button id="create-run-workflow" class="btn btn-sm btn-warning">Create and Run</button>
+        </div>
+    </div>
+
+    <h3>Workflow:</h3>
+    <div id="workflow-pane">
+
+    </div>
+    <div>
+        <button id="run-workflow" class="btn btn-sm btn-primary">Run</button>
+    </div>
+</div>
+<script src="config/static/js/workflow.js"></script>
+<script type="text/javascript">
+    $(document).ready(function() {
+        //TODO: show summary, running processes, etc.
+
+        //TODO: simple test
+        $('#create-run-workflow').on('click', function() {
+            var workflow = {
+                tasks: [
+                    'train',
+                    'inference'
+                ],
+                options: {
+                    max_num_workers: 2
+                }
+            };
+            $.ajax({
+                url: 'launchWorkflow',
+                method: 'POST',
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+                data: JSON.stringify({workflow:workflow}),
+                success: function(response) {
+                    console.log(response);
+                },
+                error: function(response) {
+                    console.error(response);
+                }
+            });
+        });
+
+        window.showLoadingOverlay(false);
+    });
+</script>

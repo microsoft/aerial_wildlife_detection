@@ -70,7 +70,7 @@ class AIControllerWorker:
         if minNumAnnoPerImage > 0:
             queryVals.append(minNumAnnoPerImage)
 
-        if maxNumImages is None:
+        if maxNumImages is None or maxNumImages < 0:
             limitStr = sql.SQL('')
         else:
             limitStr = sql.SQL('LIMIT %s')
@@ -146,7 +146,7 @@ class AIControllerWorker:
                 Returns a list with image UUIDs accordingly, split into the number of available workers.
                 #TODO: goldenQuestionsOnly
             '''
-            if maxNumImages is None or maxNumImages == -1:
+            if maxNumImages is None or maxNumImages < 0:
                 queryResult = self.dbConn.execute('''
                     SELECT maxNumImages_inference
                     FROM aide_admin.project

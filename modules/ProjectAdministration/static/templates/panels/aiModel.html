@@ -1,112 +1,13 @@
 <div>
     <h2>AI Model</h2>
-    <div class="settings-group">
-        <input type="checkbox" id="ai-model-enabled-checkbox" />
-        <label for="ai-model-enabled-checkbox">AI model enabled</label><br />
-    </div>
     
-    <div class="settings-group">
-        <label for="ai-model-class">Prediction model</label><br />
-        <select id="ai-model-class"></select>
-        <p id="ai-model-class-descr"></p>
-    </div>
+    <h3>Overview</h3>
+    <p>Coming soon...</p>
 
-    <div class="settings-group">
-        <label for="al-model-class">Ranking model</label><br />
-        <select id="al-model-class"></select>
-        <p id="al-model-class-descr"></p>
-    </div>
-
-
-    <!-- Submit and abort buttons -->
-    <div>
-        <button class="btn btn-danger">Cancel</button>
-        <button id="proj-settings-save-button" class="btn btn-primary" style="float:right">Save</button>
-    </div>
 </div>
 <script type="text/javascript">
     $(document).ready(function() {
-        // AI model metadata
-        var aiModelSelect = $('#ai-model-class');
-        var alModelSelect = $('#al-model-class');
-
-        //TODO: flag for case when AIController is not available...
-        var promise = $.ajax({
-            url: '/getAvailableAImodels',
-            method: 'GET',
-            success: function(data) {
-                // populate selection fields, if suitable for selected annotation and prediction types
-                window.availableModels = data['models'];
-                for(var key in data['models']['prediction']) {
-                    if(data['models']['prediction'][key]['annotationType'] === window.annotationType && 
-                            data['models']['prediction'][key]['predictionType'] === window.predictionType) {
-                        var entry = $('<option value="' + key + '">' + data['models']['prediction'][key]['name'] + '</option>');
-                        aiModelSelect.append(entry);
-                    }
-                }
-                for(var key in data['models']['ranking']) {
-                    var entry = $('<option value="' + key + '">' + data['models']['ranking'][key]['name'] + '</option>');
-                    alModelSelect.append(entry);
-                }
-            },
-            error: function(data) {
-                //TODO
-                console.log('ERROR:')
-                console.log(data)
-            }
-        });
-
-        promise = promise.done(function() {
-            return $.ajax({
-                url: 'getConfig',
-                method: 'POST',
-                data: JSON.stringify({
-                    'parameters': [
-                        'ai_model_enabled',
-                        'ai_model_library',
-                        'ai_model_settings',
-                        'ai_alcriterion_library',
-                        'ai_alcriterion_settings',
-                        'numimages_autotrain',
-                        'minnumannoperimage',
-                        'maxnumimages_train'
-                    ]
-                }),
-                contentType: 'application/json; charset=utf-8',
-                dataType: 'json',
-                success: function(data) {
-                    data = data['settings'];
-
-                    // checkbox
-                    $('#ai-model-enabled-checkbox').prop('checked', data['ai_model_enabled']);
-
-                    // set selected AI and AL models
-                    aiModelSelect.val(data['ai_model_library']);
-                    $('#ai-model-class-descr').html(window.availableModels['prediction'][data['ai_model_library']]['description']);
-                    alModelSelect.val(data['ai_alcriterion_library']);
-                    $('#al-model-class-descr').html(window.availableModels['ranking'][data['ai_alcriterion_library']]['description']);
-                }
-            })
-        });
-
-        // show model descriptions upon change
-        aiModelSelect.change(function() {
-            var selModel = $(this).val();
-            $('#ai-model-class-descr').html(window.availableModels['prediction'][selModel]['description']);
-        });
-        alModelSelect.change(function() {
-            var selModel = $(this).val();
-            $('#al-model-class-descr').html(window.availableModels['ranking'][selModel]['description']);
-        });
-
-        $('#ai-model-enabled-checkbox').change(function() {
-            aiModelSelect.prop('disabled', !$(this).prop('checked'));
-            alModelSelect.prop('disabled', !$(this).prop('checked'));
-        });
-
-
-        promise.done(function() {
-            window.showLoadingOverlay(false);
-        });
+        //TODO: show summary, running processes, etc.
+        window.showLoadingOverlay(false);
     });
 </script>

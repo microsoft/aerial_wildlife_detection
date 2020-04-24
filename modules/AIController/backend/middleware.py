@@ -14,6 +14,7 @@ from psycopg2 import sql
 from util.helpers import current_time
 from .messageProcessor import MessageProcessor
 from .annotationWatchdog import Watchdog
+from modules.AIController.taskWorkflow.workflowDesigner import WorkflowDesigner
 from modules.Database.app import Database
 from util.helpers import array_split
 
@@ -40,6 +41,7 @@ class AIMiddleware():
             print("Active mode")
             self._init_project_queues()
             self.watchdogs = {}    # one watchdog per project. Note: watchdog only created if users poll status (i.e., if there's activity)
+            self.workflowDesigner = WorkflowDesigner(self.dbConn, self.celery_app)
             self.messageProcessor.start()
 
     
@@ -131,28 +133,6 @@ class AIMiddleware():
             FROM aide_admin.project WHERE shortname = %s;''')
         settings = self.dbConn.execute(queryStr, (project,), 1)[0]
         return settings
-
-
-    # def _training_completed(self, project, trainingJob):
-    #     '''
-    #         To be called after a training process has been completed.
-    #         If there is more than one worker, the 'average_model_states'
-    #         instruction of the AI model is called and again awaited for.
-    #         After successful training, the 'training' flag will be set
-    #         to False to allow another round of model training.
-    #     '''
-
-    #     # re-enable training if no other training job is ongoing
-    #     print("Training completed")
-    #     self.training[project] = self.messageProcessor.task_ongoing(project, 'train')    #TODO
-
-    def _assemble_task(self, project, subtasks, maxNumWorkers=-1):
-        #TODO: single entry point that allows composing tasks:
-        # 1. Provide a list of tasks (with name) and, optionally, a dict of kwargs per task
-        # 2. Complete kwargs for each task (insert default values where needed)
-        # 3. Assemble Celery chain and execute
-        raise Exception('Not yet implemented.')
-
 
 
     def _get_training_job_signature(self, project, minTimestamp='lastState', minNumAnnoPerImage=0, maxNumImages=None, maxNumWorkers=-1):
@@ -692,7 +672,7 @@ class AIMiddleware():
                             # ignore_result=False,
                             # result_extended=True,
                             headers={'headers':{'project':project,'type':'train','submitted': str(current_time())}},
-                            link=celery_interface.call_average_model_states.s(1, project))      #TODO: epoch
+                            link=aiw_int.call_average_model_states.s(1, project))      #TODO: epoch
         else:
             job = process.apply_async(task_id=task_id,
                             queue='AIWorker',
@@ -709,6 +689,27 @@ class AIMiddleware():
         self.messageProcessor.register_job(project, job, 'train')
 
         return 'ok'
+
+
+    
+    def launch_task(self, project, workflow):
+        '''
+            Accepts a dict containing a workflow definition as per workflow designer,
+            parses it and launches the job if valid.
+            Returns the task ID (TODO: useless due to sub-IDs being generated).
+        '''
+        process = self.workflowDesigner.parseWorkflow(project, workflow)
+
+        task_id = self.messageProcessor.task_id(project)
+        job = process.apply_async(task_id=task_id,
+                            queue='AIWorker',
+                            ignore_result=False,
+                            # result_extended=True,
+                            headers={'headers':{'project':project,'submitted': str(current_time())}})
+        
+        self.messageProcessor.register_job(project, job, 'workflow')    #TODO: task type; task ID for polling...
+
+        return task_id
 
 
 

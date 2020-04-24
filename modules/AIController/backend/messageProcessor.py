@@ -209,10 +209,11 @@ class MessageProcessor(Thread):
             'id': job.id,
             'type': taskType,
             'submitted': str(current_time()),
-            'status': job.status,
             'meta': {'message':'sending job to worker'},
             'subjobs': {}
         }
+        if hasattr(job, 'status'):
+            message['status'] = job.status
         if hasattr(job, 'parent'):
             subjobs = list(self.unpack_chain(job))
             subjobs.reverse()

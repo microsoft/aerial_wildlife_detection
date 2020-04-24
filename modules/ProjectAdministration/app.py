@@ -53,22 +53,12 @@ class ProjectConfigurator:
             self.projConf_template = SimpleTemplate(f.read())
         
         self.panelTemplates = {}
-        panelNames = [
-            'accessControl',
-            'aiModel',
-            'dataManagement',
-            'dataDownload',
-            'dataUpload',
-            'general',
-            'labelClasses',
-            'overview',
-            'userInterface',
-            'userPerformance',
-            'modelPerformance'
-        ]
+        panelNames = os.listdir(os.path.join(self.staticDir, 'templates/panels'))
         for pn in panelNames:
-            with open(os.path.join(self.staticDir, 'templates/panels', pn + '.html'), 'r') as f:
-                self.panelTemplates[pn] = SimpleTemplate(f.read())
+            pnName, ext = os.path.splitext(pn)
+            if ext.lower().startswith('.htm'):
+                with open(os.path.join(self.staticDir, 'templates/panels', pn), 'r') as f:
+                    self.panelTemplates[pnName] = SimpleTemplate(f.read())
 
 
         @self.app.route('/<project>/config/static/<filename:re:.*>')

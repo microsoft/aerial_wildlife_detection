@@ -209,7 +209,7 @@ def _call_train(project, imageIDs, epoch, subset, trainingFun, dbConnector, file
     update_state(state=states.SUCCESS, message='trained on {} images'.format(len(imageIDs)))
 
     print('[{}] Training completed successfully.'.format(project))
-    return 0
+    return
 
 
 
@@ -238,7 +238,7 @@ def _call_average_model_states(project, epoch, averageFun, dbConnector, fileServ
         # no states to be averaged; return
         print('[{}] No model states to be averaged.'.format(project))
         update_state(state=states.SUCCESS, message='no model states to be averaged')
-        return 0
+        return
 
     # do the work
     update_state(state='PREPARING', message='averaging models')
@@ -285,7 +285,7 @@ def _call_average_model_states(project, epoch, averageFun, dbConnector, fileServ
     update_state(state=states.SUCCESS, message='averaged {} model states'.format(len(queryResult)))
 
     print('[{}] Model averaging completed successfully.'.format(project))
-    return 0
+    return
 
 
 
@@ -408,4 +408,4 @@ def _call_inference(project, imageIDs, epoch, inferenceFun, rankFun, dbConnector
     update_state(state=states.SUCCESS, message='predicted on {} images'.format(len(imageIDs)))
 
     print('[{}] Inference completed successfully.'.format(project))
-    return 0
+    return
