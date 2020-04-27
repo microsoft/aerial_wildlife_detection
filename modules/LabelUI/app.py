@@ -5,7 +5,7 @@
 '''
 
 import os
-import cgi
+import html
 from urllib.parse import urljoin
 import bottle
 from bottle import request, response, static_file, redirect, abort, SimpleTemplate
@@ -65,7 +65,7 @@ class LabelUI():
         @self.app.route('/interface')
         def interface():
             if self.loginCheck():
-                username = 'Demo mode' if self.demoMode else cgi.escape(request.get_cookie('username'))
+                username = 'Demo mode' if self.demoMode else html.escape(request.get_cookie('username'))
                 response = self.interface_template.render(username=username,
                     projectTitle=self.config.getProperty('Project', 'projectName'), projectDescr=self.config.getProperty('Project', 'projectDescription'))
                 # response.set_header("Cache-Control", "public, max-age=604800")
@@ -117,10 +117,23 @@ class LabelUI():
                 abort(401, 'not logged in')
 
 
+        @self.app.get('/getUserFinished')
+        def get_user_finished(project):
+            if not self.loginCheck():
+                abort(401, 'forbidden')
+            
+            try:
+                username = html.escape(request.get_cookie('username'))
+                done = self.middleware.getUserFinished(username)
+            except:
+                done = False
+            return {'finished': done}
+
+
         @self.app.post('/getImages')
         def get_images():
             if self.loginCheck():
-                username = cgi.escape(request.get_cookie('username'))
+                username = html.escape(request.get_cookie('username'))
                 dataIDs = request.json['imageIDs']
                 json = self.middleware.getBatch_fixed(username, dataIDs)
                 return json
@@ -131,7 +144,7 @@ class LabelUI():
         @self.app.get('/getLatestImages')
         def get_latest_images():
             if self.loginCheck():
-                username = cgi.escape(request.get_cookie('username'))
+                username = html.escape(request.get_cookie('username'))
                 try:
                     limit = int(request.query['limit'])
                 except:
@@ -156,7 +169,7 @@ class LabelUI():
             if self.demoMode:
                 return { 'status': 'not allowed in demo mode' }
 
-            username = cgi.escape(request.get_cookie('username'))
+            username = html.escape(request.get_cookie('username'))
 
             # check if user requests to see other user names; only permitted if admin
             # also, by default we limit labels to the current user,
@@ -205,7 +218,7 @@ class LabelUI():
             if self.demoMode:
                 return { 'status': 'not allowed in demo mode' }
 
-            username = cgi.escape(request.get_cookie('username'))
+            username = html.escape(request.get_cookie('username'))
 
             # check if user requests to see other user names; only permitted if admin
             try:
@@ -242,7 +255,7 @@ class LabelUI():
             if self.loginCheck():
                 # parse
                 try:
-                    username = cgi.escape(request.get_cookie('username'))
+                    username = html.escape(request.get_cookie('username'))
                     if username is None:
                         # this should never happen, since we are performing a login check
                         raise Exception('no username provided')

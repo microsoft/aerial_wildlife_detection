@@ -248,6 +248,36 @@ class DBMiddleware():
         return classdef
 
 
+    def getUserFinished(self, username):
+        '''
+            Returns True if the user has viewed all images in the project,
+            and False otherwise.
+        '''
+        sql = '''
+            WITH idQuery AS (
+                SELECT id, image
+                FROM {schema}.image AS img
+                LEFT OUTER JOIN (
+                    SELECT image
+                    FROM {schema}.image_user
+                    WHERE username = %s AND viewcount > 0
+                ) AS iu
+                ON img.id = iu.image
+            )
+            SELECT COUNT(*) AS cnt
+            FROM idQuery
+            WHERE image IS NOT NULL
+            UNION
+            SELECT COUNT(*) AS cnt
+            FROM idQuery
+            WHERE image IS NULL
+        '''.format(
+            schema=self.config.getProperty('Database', 'schema')
+        )
+        result = self.dbConnector.execute(sql, (username,), 2)
+        return result[0]['cnt'] >= result[1]['cnt']
+
+
     def getBatch_fixed(self, username, data):
         '''
             Returns entries from the database based on the list of data entry identifiers specified.

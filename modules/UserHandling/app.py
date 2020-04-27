@@ -4,7 +4,7 @@
     2019 Benjamin Kellenberger
 '''
 
-import cgi
+import html
 from bottle import request, response, static_file, abort, redirect
 from .backend.middleware import UserMiddleware
 from .backend.exceptions import *
@@ -39,13 +39,13 @@ class UserHandler():
 
             # check provided credentials
             try:
-                username = cgi.escape(self._parse_parameter(request.forms, 'username'))
+                username = html.escape(self._parse_parameter(request.forms, 'username'))
                 password = self._parse_parameter(request.forms, 'password')
 
                 # check if session token already provided; renew login if correct
                 sessionToken = request.get_cookie('session_token')
                 if sessionToken is not None:
-                    sessionToken = cgi.escape(sessionToken)
+                    sessionToken = html.escape(sessionToken)
 
                 sessionToken, _, isAdmin, expires = self.middleware.login(username, password, sessionToken)
                 
@@ -74,9 +74,9 @@ class UserHandler():
                 username = request.get_cookie('username')
                 if username is None:
                     username = self._parse_parameter(request.forms, 'username')
-                username = cgi.escape(username)
+                username = html.escape(username)
 
-                sessionToken = cgi.escape(request.get_cookie('session_token'))
+                sessionToken = html.escape(request.get_cookie('session_token'))
 
                 _, _, isAdmin, expires = self.middleware.getLoginData(username, sessionToken)
                 
@@ -98,8 +98,8 @@ class UserHandler():
                 return redirect('/interface')
 
             try:
-                username = cgi.escape(request.get_cookie('username'))
-                sessionToken = cgi.escape(request.get_cookie('session_token'))
+                username = html.escape(request.get_cookie('username'))
+                sessionToken = html.escape(request.get_cookie('session_token'))
                 self.middleware.logout(username, sessionToken)
 
                 response.set_cookie('username', '', expires=0)
@@ -136,9 +136,9 @@ class UserHandler():
 
             #TODO: make secret token match
             try:
-                username = cgi.escape(self._parse_parameter(request.forms, 'username'))
+                username = html.escape(self._parse_parameter(request.forms, 'username'))
                 password = self._parse_parameter(request.forms, 'password')
-                email = cgi.escape(self._parse_parameter(request.forms, 'email'))
+                email = html.escape(self._parse_parameter(request.forms, 'email'))
 
                 sessionToken, _, expires = self.middleware.createAccount(
                     username, password, email
@@ -160,10 +160,10 @@ class UserHandler():
                 return redirect('/interface')
 
             # check if token is required; if it is and wrong token provided, show login screen instead
-            targetToken = cgi.escape(self.config.getProperty('UserHandler', 'create_account_token'))
+            targetToken = html.escape(self.config.getProperty('UserHandler', 'create_account_token'))
             if targetToken is not None and not(targetToken == ''):
                 try:
-                    providedToken = cgi.escape(request.query['t'])
+                    providedToken = html.escape(request.query['t'])
                     if providedToken == targetToken:
                         response = static_file('templates/createAccountScreen.html', root=self.staticDir)
                     else:
@@ -187,10 +187,10 @@ class UserHandler():
             username = ''
             email = ''
             try:
-                username = cgi.escape(self._parse_parameter(request.forms, 'username'))
+                username = html.escape(self._parse_parameter(request.forms, 'username'))
             except: pass
             try:
-                email = cgi.escape(self._parse_parameter(request.forms, 'email'))
+                email = html.escape(self._parse_parameter(request.forms, 'email'))
             except: pass
             try:
                 return { 'response': self.middleware.accountExists(username, email) }
@@ -217,8 +217,8 @@ class UserHandler():
             return True
 
         try:
-            username = cgi.escape(request.get_cookie('username'))
-            sessionToken = cgi.escape(request.get_cookie('session_token'))
+            username = html.escape(request.get_cookie('username'))
+            sessionToken = html.escape(request.get_cookie('session_token'))
             return self.middleware.isAuthenticated(username, sessionToken, admin)
         except:
             return False

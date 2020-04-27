@@ -6,7 +6,7 @@
 '''
 
 import os
-import cgi
+import html
 from urllib.parse import urljoin
 import bottle
 from bottle import request, response, static_file, redirect, abort, SimpleTemplate
@@ -48,7 +48,7 @@ class ProjectConfigurator:
         @self.app.route('/configuration')
         def configuration_page():
             if self.loginCheck(True):
-                username = cgi.escape(request.get_cookie('username'))
+                username = html.escape(request.get_cookie('username'))
                 response = self.projConf_template.render(
                     username=username,
                     projectTitle=self.config.getProperty('Project', 'projectName'),

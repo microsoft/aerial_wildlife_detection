@@ -58,6 +58,19 @@ h3 {
     width: 100%;
     height: 40px;
 }
+#footer-message-panel {
+    display: none;
+    float: left;
+    margin-left: 20px;
+    color: white;
+    font-size: 12px;
+    margin-top: 10px;
+    width: 350px;
+    text-overflow: ellipsis;
+    word-wrap: anywhere;
+    white-space: nowrap;
+    overflow: hidden;
+}
 .ms-logo {
     position: absolute;
     bottom: 0;

@@ -5,7 +5,7 @@
 '''
 
 from datetime import datetime
-import cgi
+import html
 from modules.AIController.backend import celery_interface
 import celery
 from celery import current_app, group

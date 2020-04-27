@@ -1,7 +1,7 @@
 /*
     Maintains the data entries currently on display.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 */
 
 class DataHandler {
@@ -20,8 +20,25 @@ class DataHandler {
         this._navigator = {};
         for (var i in navigator) this._navigator[i] = navigator[i];
         // this._navigator = JSON.stringify(this._navigator);
+
+        // check if user has finished labeling
+        this._check_user_finished();
     }
 
+    _check_user_finished() {
+        $.ajax({
+            url: 'getUserFinished',
+            method: 'GET',
+            success: function(response) {
+                if(response.hasOwnProperty('finished') && response['finished']) {
+                    // show message
+                    $('#footer-message-panel').html('Congratulations, you have finished labeling this dataset!')
+                    $('#footer-message-panel').css('color', 'green');
+                    $('#footer-message-panel').show();
+                }
+            }
+        })
+    }
 
     renderAll() {
         for(var i=0; i<this.dataEntries.length; i++) {
