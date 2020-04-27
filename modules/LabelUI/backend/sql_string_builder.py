@@ -133,9 +133,9 @@ class SQLStringBuilder:
             subsetFragment = 'WHERE (viewcount IS NULL OR viewcount = 0) AND isGoldenQuestion = FALSE'
 
         if len(subsetFragment):
-            subsetFragment += ' AND img.last_requested IS NULL OR (img.last_requested - NOW()) > interval \'900 second\''
+            subsetFragment += ' AND img.last_requested IS NULL OR (NOW() - img.last_requested) > interval \'900 second\''
         else:
-            subsetFragment = 'WHERE img.last_requested IS NULL OR (img.last_requested - NOW()) > interval \'900 second\''
+            subsetFragment = 'WHERE img.last_requested IS NULL OR (NOW() - img.last_requested) > interval \'900 second\''
 
         if order == 'unlabeled':
             orderSpec_a = 'ORDER BY isgoldenquestion DESC NULLS LAST, viewcount ASC NULLS FIRST, annoCount ASC NULLS FIRST, score DESC NULLS LAST'
