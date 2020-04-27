@@ -137,11 +137,11 @@ class LabelUI():
                 except:
                     limit = None
                 try:
-                    order = int(request.query['order'])
+                    order = request.query['order']
                 except:
                     order = 'unlabeled'
                 try:
-                    subset = int(request.query['subset'])
+                    subset = request.query['subset']
                 except:
                     subset = 'default'  
                 json = self.middleware.getBatch_auto(username=username, order=order, subset=subset, limit=limit)

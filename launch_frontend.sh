@@ -15,4 +15,4 @@ port=$(python util/configDef.py --section=Server --parameter=port)
 
 
 # HTTP server
-gunicorn application:app --bind=$host:$port --workers=6
+gunicorn application:app --bind=$host:$port --workers=18

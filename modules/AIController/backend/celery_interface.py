@@ -9,6 +9,7 @@ from configparser import ConfigParser
 from celery import Celery
 from celery import signals
 from celery.bin import Option
+from kombu import Queue
 
 from modules.AIWorker.app import AIWorker
 
@@ -41,12 +42,13 @@ app.conf.update(
     task_acks_late = True,
     task_create_missing_queues = False,
     task_default_queue = 'aide',
-    task_routes = {
-        'aide': {
-            'queue': 'aide',
-            'exchange': 'aide'
-        }
-    }
+    task_queues = (Queue('aide', routing_key='aide.#'),),
+    # task_routes = {
+    #     'aide': {
+    #         'queue': 'aide',
+    #         'exchange': 'aide'
+    #     }
+    # }
 )
 
 
