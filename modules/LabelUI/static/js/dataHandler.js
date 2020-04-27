@@ -22,10 +22,18 @@ class DataHandler {
         // this._navigator = JSON.stringify(this._navigator);
 
         // check if user has finished labeling
+        if(window.annotationType === 'segmentationMasks') {
+            // re-check if finished after every batch in this case
+            this.recheckInterval = 1;
+        } else {
+            this.recheckInterval = Math.max(8, 64 / window.numImagesPerBatch);
+        }
+        this.numBatchesSeen = 0;
         this._check_user_finished();
     }
 
     _check_user_finished() {
+        var self = this;
         $.ajax({
             url: 'getUserFinished',
             method: 'GET',
@@ -35,6 +43,12 @@ class DataHandler {
                     $('#footer-message-panel').html('Congratulations, you have finished labeling this dataset!')
                     $('#footer-message-panel').css('color', 'green');
                     $('#footer-message-panel').show();
+
+                    // disable querying
+                    self.numBatchesSeen = -1;
+                } else {
+                    // reset counter for querying
+                    self.numBatchesSeen = 0;
                 }
             }
         })
@@ -205,6 +219,15 @@ class DataHandler {
 
                 // adjust width of entries
                 window.windowResized();
+
+                // re-check if finished (if threshold exceeded)
+                if(self.numBatchesSeen >= 0) { 
+                    self.numBatchesSeen += 1;
+                    if(self.numBatchesSeen >= self.recheckInterval) {
+                        // re-check
+                        self._check_user_finished();
+                    }
+                }
             },
             error: function(xhr, status, error) {
                 if(error == 'Unauthorized') {
