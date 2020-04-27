@@ -118,7 +118,7 @@ class LabelUI():
 
 
         @self.app.get('/getUserFinished')
-        def get_user_finished(project):
+        def get_user_finished():
             if not self.loginCheck():
                 abort(401, 'forbidden')
             
