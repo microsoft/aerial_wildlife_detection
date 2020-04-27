@@ -303,3 +303,37 @@ class ProjectStatisticsMiddleware:
                 response['per_entity'][entity]['f1'] = f1
 
         return response
+
+
+    def getUserFinished(self, project, username):
+        '''
+            Returns True if the user has viewed all images in the project,
+            and False otherwise.
+            We deliberately do not reveal more information to the general
+            user, in order to e.g. sustain the golden question limitation
+            system.
+        '''
+        queryStr = sql.SQL('''
+            WITH idQuery AS (
+                SELECT id, image
+                FROM {id_img} AS img
+                LEFT OUTER JOIN (
+                    SELECT image
+                    FROM {id_iu}
+                    WHERE username = %s AND viewcount > 0
+                ) AS iu
+                ON img.id = iu.image
+            )
+            SELECT COUNT(*) AS cnt
+            FROM idQuery
+            WHERE image IS NOT NULL
+            UNION
+            SELECT COUNT(*) AS cnt
+            FROM idQuery
+            WHERE image IS NULL
+        ''').format(
+            id_img=sql.Identifier(project, 'image'),
+            id_iu=sql.Identifier(project, 'image_user')
+        )
+        result = self.dbConnector.execute(queryStr, (username,), 2)
+        return result[0]['cnt'] >= result[1]['cnt']

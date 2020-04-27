@@ -5,6 +5,7 @@
     2019-20 Benjamin Kellenberger
 '''
 
+import html
 from bottle import request, static_file, abort
 from .backend.middleware import ProjectStatisticsMiddleware
 
@@ -75,3 +76,16 @@ class ProjectStatistics:
             stats = self.middleware.getPerformanceStatistics(project, entities_eval, entity_target, entityType, threshold, goldenQuestionsOnly)
 
             return { 'result': stats }
+
+
+        @self.app.get('/<project>/getUserFinished')
+        def get_user_finished(project):
+            if not self.loginCheck(project=project):
+                abort(401, 'forbidden')
+            
+            try:
+                username = html.escape(request.get_cookie('username'))
+                done = self.middleware.getUserFinished(project, username)
+            except:
+                done = False
+            return {'finished': done}
