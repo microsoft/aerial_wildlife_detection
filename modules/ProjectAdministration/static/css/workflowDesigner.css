@@ -1,0 +1,60 @@
+#canvas-wrapper {
+    position: absolute;		/* important for node moving to work */
+    width: calc(100vw - 330px);
+    height: calc(100vh - 537px);    /* TODO: not optimal */
+    overflow-x: scroll;
+    overflow-y: scroll;
+    background: #cccccc;
+}
+.canvas, .svg-canvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1920px;
+    height: 1080px;
+}
+.canvas > * {
+    position: absolute;
+}
+
+.node {
+    padding: 10px;
+    border-radius: 5px;
+    color: white;
+    background: rgb(107, 107, 107);
+    user-select: none;
+    cursor: pointer;
+}
+
+.node-train {
+    background: #e79822;
+}
+
+.node-inference {
+    background: #31993a;
+}
+
+.node-repeater {
+    width: 220px;
+    height: 50px;
+    vertical-align: middle;
+    line-height: 20px;
+}
+
+.node-start {
+    height: 60px;
+    width: 60px;
+    border-radius: 40px;
+    text-align: center;
+    vertical-align: middle;
+    line-height: 40px;
+}
+
+.active-workflow-node {
+    border: 2px solid blue;
+}
+
+.node-title {
+    font-weight: bold;
+    margin-left: 5px;
+}

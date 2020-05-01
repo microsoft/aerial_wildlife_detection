@@ -3,46 +3,149 @@
 
     <p style="font-weight:bold;color:red">Work in progress, not functional yet.</p>
     
-    <div id="shortcuts">
-        <h3>Create simple workflow</h3>
-        <div>
-            <p>Repeat for <input id="num-epochs" type="number" min="1" max="500" value="1" /> epochs:</p>
-            <div>
-                <input id="do-train" type="checkbox" />
-                <label for="do-train">Train model</label>
-                <input id="do-inference" type="checkbox" />
-                <label for="do-inference">Perform inference</label>
+    <div id="shortcuts" style="border:1px solid white;border-radius:10px;padding:10px;">
+        <h3 id="shortcuts-heading" style="cursor:pointer">Create simple workflow</h3>
+        <div id="shortcuts-panel" style="position:relative;">
+            <div id="shortcuts-properties">
+                <div>
+                    <p>Repeat for <input id="num-epochs" type="number" min="1" max="500" value="1" /> epochs:</p>
+                    <div>
+                        <input id="do-train" type="checkbox" />
+                        <label for="do-train">Train model</label>
+                        <input id="do-inference" type="checkbox" />
+                        <label for="do-inference">Perform inference</label>
+                    </div>
+                    <input id="append-inference" type="checkbox" />
+                    <label for="append-inference">Perform inference with final model state</label>
+                </div>
+                <div>
+                    Number of workers:
+                    <select id="num-workers">
+                        <option value="-1">(all available)</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <!-- TODO -->
+                    </select>
+                </div>
             </div>
-            <input id="append-inference" type="checkbox" />
-            <label for="append-inference">Perform inference with final model state</label>
-        </div>
-        <div>
-            Number of workers:
-            <select id="num-workers">
-                <option value="-1">(all available)</option>
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <!-- TODO -->
-            </select>
-        </div>
-        <div>
-            <button id="create-workflow" class="btn btn-sm btn-primary">Create</button>
-            <button id="create-run-workflow" class="btn btn-sm btn-warning">Create and Run</button>
+            <button id="create-workflow" class="btn btn-sm btn-primary" style="position:absolute;right:0;bottom:0;">Create</button>
         </div>
     </div>
 
-    <h3>Workflow:</h3>
-    <div id="workflow-pane">
-
+    <h3 style="margin-top:10px;">Workflow:</h3>
+    <div style="margin-bottom:5px;">
+        <button id="add-train-node" class="btn btn-sm btn-primary">+ Train</button>
+        <button id="add-inference-node" class="btn btn-sm btn-primary">+ Inference</button>
+        <button id="add-repeater-node" class="btn btn-sm btn-primary">+ Repeater</button>
+        <button id="clear-canvas" class="btn btn-sm btn-warning">Clear</button>
     </div>
+    <div id="canvas-wrapper"></div>
     <div>
         <button id="run-workflow" class="btn btn-sm btn-primary">Run</button>
     </div>
 </div>
-<script src="config/static/js/workflow.js"></script>
+<link rel="stylesheet" href="config/static/css/workflowDesigner.css" />
+<script src="config/static/js/workflowDesigner.js"></script>
 <script type="text/javascript">
     $(document).ready(function() {
+
+        let canvasWrapper = document.getElementById('canvas-wrapper');
+        window.workflowDesigner = new WorkflowDesigner(canvasWrapper);
+
+        //TODO: load default workflow from server
+        let defaultWorkflow = {
+            tasks: [
+                {
+                    id: 'node0',
+                    nodeType: 'train'
+                },
+                {
+                    id: 'node1',
+                    nodeType: 'inference'
+                }
+            ],
+            repeaters: {
+                'repeater0': {
+                    id: 'repeater0',
+                    nodeType: 'repeater',
+                    start_node: 'node1',
+                    end_node: 'node0',
+                    params: {
+                        num_repetitions: 12
+                    }
+                }
+            }
+        };
+        window.workflowDesigner.fromJSON(defaultWorkflow);
+
         //TODO: show summary, running processes, etc.
+
+        $('#create-workflow').on('click', function() {
+            // parse parameters and create JSON
+            var json = {};
+            var numWorkers = $('#num-workers').val();
+            var doTrain = $('#do-train').prop('checked');
+            var doInference = $('#do-inference').prop('checked');
+            var appendInference = $('#append-inference').prop('checked');
+            var workflow = [];
+            if(doTrain) {
+                workflow.push({
+                    id: 'train0',
+                    nodeType: 'train',
+                    params: {
+                        max_num_workers: numWorkers
+                    }
+                });
+            }
+            if(doInference) {
+                workflow.push({
+                    id: 'inference0',
+                    nodeType: 'inference',
+                    params: {
+                        max_num_workers: numWorkers
+                    }
+                });
+            }
+            var numEpochs = $('#num-epochs').val();
+            if(numEpochs > 1) {
+                json['repeaters'] = {
+                    'repeater0': {
+                        id: 'repeater0',
+                        nodeType: 'repeater',
+                        start_node: workflow[workflow.length-1].id,
+                        end_node: workflow[0].id,
+                        params: {num_repetitions: numEpochs}
+                    }
+                }
+            }
+            if(appendInference) {
+                workflow.push({
+                    id: 'inference1',
+                    nodeType: 'inference',
+                    params: {
+                        max_num_workers: numWorkers
+                    }
+                })
+            }
+            json['tasks'] = workflow;
+            window.workflowDesigner.fromJSON(json);
+        });
+
+        $('#add-train-node').on('click', function() {
+            window.workflowDesigner.addNode('train');
+        });
+
+        $('#add-inference-node').on('click', function() {
+            window.workflowDesigner.addNode('inference');
+        });
+
+        $('#add-repeater-node').on('click', function() {
+            window.workflowDesigner.addNode('repeater');
+        });
+
+        $('#clear-canvas').on('click', function() {
+            window.workflowDesigner.clear();
+        });
 
         //TODO: simple test
         $('#create-run-workflow').on('click', function() {
@@ -68,6 +171,10 @@
                     console.error(response);
                 }
             });
+        });
+
+        $('#shortcuts-heading').on('click', function() {
+            $('#shortcuts-panel').slideToggle();
         });
 
         window.showLoadingOverlay(false);
