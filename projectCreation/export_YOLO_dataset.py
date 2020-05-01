@@ -2,11 +2,12 @@
     Pull annotations and predictions from the database and export them into a
     folder according to the YOLO standard.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 import os
 import argparse
+from psycopg2 import sql
 
 def _replace(string, oldTokens, newToken):
     if isinstance(oldTokens, str):
@@ -19,6 +20,8 @@ def _replace(string, oldTokens, newToken):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Export annotations from database to YOLO format.')
+    parser.add_argument('--project', type=str,
+                    help='Project shortname for which to export annotations.')
     parser.add_argument('--settings_filepath', type=str, default='config/settings.ini', const=1, nargs='?',
                     help='Manual specification of the directory of the settings.ini file; only considered if environment variable unset (default: "config/settings.ini").')
     parser.add_argument('--target_folder', type=str, default='export', const=1, nargs='?',
@@ -50,23 +53,28 @@ if __name__ == '__main__':
 
     config = Config()
 
-    # check if correct type of annotations
-    exportAnnotations = args.export_annotations
-    if exportAnnotations and not config.getProperty('Project', 'annotationType') == 'boundingBoxes':
-        print('Warning: project annotations are not bounding boxes; skipping annotation export...')
-        exportAnnotations = False
-
     # setup DB connection
     dbConn = Database(config)
     if dbConn.connectionPool is None:
         raise Exception('Error connecting to database.')
     dbSchema = config.getProperty('Database', 'schema')
 
+    # check if correct type of annotations
+    annotationType = dbConn.execute('SELECT annotationtype FROM aide_admin.project WHERE shortname = %s;',
+                            (args.project,), 1)
+    if not len(annotationType):
+        raise Exception(f'Project with name "{args.project}" could not be found in database.')
+    annotationType = annotationType[0]['annotationtype']
+    exportAnnotations = args.export_annotations
+    if exportAnnotations and not (annotationType == 'boundingBoxes'):
+        print('Warning: project annotations are not bounding boxes; skipping annotation export...')
+        exportAnnotations = False
+
 
     # query label definition
     labeldef = {}   # label UUID : (name, index,)
     labeldef_inv = []   # list of label names in order (for export)
-    labelQuery = dbConn.execute('SELECT * FROM {schema}.labelclass;'.format(schema=dbSchema), None, 'all')
+    labelQuery = dbConn.execute(sql.SQL('SELECT * FROM {id_lc};').format(id_lc=sql.Identifier(args.project, 'labelclass')), None, 'all')
     for labelIdx, l in enumerate(labelQuery):
         labelID = l['id']
         labelName = l['name']
@@ -78,37 +86,49 @@ if __name__ == '__main__':
     output = {}     # image name : YOLO text file contents
 
     if exportAnnotations:
-        sql = '''
-            SELECT * FROM {schema}.annotation AS anno
-            JOIN (SELECT id AS imID, filename FROM {schema}.image) AS img
-            ON anno.image = img.imID
-        '''.format(schema=dbSchema)
 
         queryArgs = []
-
+        
         # included and excluded users
         if args.limit_users is not None:
             limitUsers = []
             for u in args.limit_users.split(','):
                 limitUsers.append(u.strip())
-            sql += 'WHERE anno.username IN %s'
+            sql_limitUsers = sql.SQL('WHERE anno.username IN %s')
             queryArgs = []
             queryArgs.append(tuple(limitUsers))
+        else:
+            sql_limitUsers = sql.SQL('')
 
         if args.exclude_users is not None:
             excludeUsers = []
             for u in args.exclude_users.split(','):
                 excludeUsers.append(u.strip())
             if args.limit_users is not None:
-                sql += 'AND anno.username NOT in %s'
+                sql_excludeUsers = sql.SQL('AND anno.username NOT in %s')
             else:
-                sql += 'WHERE anno.username IN %s'
+                sql_excludeUsers = sql.SQL('WHERE anno.username IN %s')
             queryArgs.append(tuple(excludeUsers))
+        else:
+            sql_excludeUsers = sql.SQL('')
 
         if len(queryArgs) == 0:
             queryArgs = None
 
-        cursor = dbConn.execute_cursor(sql, queryArgs)
+        queryStr = sql.SQL('''
+            SELECT * FROM {id_anno} AS anno
+            JOIN (SELECT id AS imID, filename FROM {id_img}) AS img
+            ON anno.image = img.imID
+            {sql_limitUsers}
+            {sql_excludeUsers}
+        ''').format(
+            id_anno=sql.Identifier(args.project, 'annotation'),
+            id_img=sql.Identifier(args.project, 'image'),
+            sql_limitUsers=sql_limitUsers,
+            sql_excludeUsers=sql_excludeUsers
+        )
+        
+        cursor = dbConn.execute_cursor(queryStr, queryArgs)
 
 
         # iterate

@@ -4,12 +4,17 @@
 
 import os
 import argparse
+from psycopg2 import sql
 from util.helpers import valid_image_extensions
 
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Parse YOLO annotations and import into database.')
+    parser.add_argument('--project', type=str,
+                    help='Project shortname for which to export annotations.')
+    parser.add_argument('--username', type=str, default=None, const=1, nargs='?',
+                    help='Username under which the annotations should be registered. If not provided, the first administrator name in alphabetic order will be used.')
     parser.add_argument('--settings_filepath', type=str, default='config/settings.ini', const=1, nargs='?',
                     help='Manual specification of the directory of the settings.ini file; only considered if environment variable unset (default: "config/settings.ini").')
     parser.add_argument('--label_folder', type=str,
@@ -47,7 +52,6 @@ if __name__ == '__main__':
     dbConn = Database(config)
     if dbConn.connectionPool is None:
         raise Exception('Error connecting to database.')
-    dbSchema = config.getProperty('Database', 'schema')
 
 
     # check if running on file server
@@ -70,38 +74,66 @@ if __name__ == '__main__':
             className = line.strip()            
 
             # push to database
-            dbConn.execute('''
-                INSERT INTO {}.LABELCLASS (name, idx)
+            dbConn.execute(sql.SQL('''
+                INSERT INTO {id_lc} (name, idx)
                 VALUES (
                     %s, %s
                 )
                 ON CONFLICT (name) DO NOTHING;
-            '''.format(dbSchema),
+            ''').format(id_lc=sql.Identifier(args.project, 'labelclass')),
             (className,idx,))
 
         # prepare insertion SQL string
         if args.annotation_type == 'annotation':
-            sql = '''
-            INSERT INTO {}.ANNOTATION (username, image, timeCreated, timeRequired, segmentationmask, width, height)
+
+            # get username
+            usernames = dbConn.execute('''
+                SELECT username FROM aide_admin.authentication
+                WHERE project = %s
+                AND isAdmin = TRUE
+                ORDER BY username ASC
+                ''',
+                (args.project,),
+                'all'
+            )
+            usernames = [u['username'] for u in usernames]
+            if args.username is not None:
+                username = usernames[0]
+                if args.username not in usernames:
+                    print(f'WARNING: username "{args.username}" not found, using "{username}" instead.')
+            
+            else:
+                username = usernames[0]
+            
+            print(f'Inserting annotations under username "{username}".')
+
+            queryStr = sql.SQL('''
+            INSERT INTO {id_anno} (username, image, timeCreated, timeRequired, segmentationmask, width, height)
             VALUES(
-                '{}',
-                (SELECT id FROM {}.IMAGE WHERE filename LIKE %s),
+                %s,
+                (SELECT id FROM {id_img} WHERE filename LIKE %s),
                 (TIMESTAMP %s),
                 -1,
                 %s,
                 %s,
                 %s
-            );'''.format(dbSchema, config.getProperty('Project', 'adminName'), dbSchema)
+            );''').format(
+                id_anno=sql.Identifier(args.project, 'annotation'),
+                id_img=sql.Identifier(args.project, 'image')
+            )
         elif args.annotation_type == 'prediction':
-            sql = '''
-            INSERT INTO {}.PREDICTION (image, timeCreated, segmentationmask, width, height)
+            queryStr = sql.SQL('''
+            INSERT INTO {id_pred} (image, timeCreated, segmentationmask, width, height)
             VALUES(
-                (SELECT id FROM {}.IMAGE WHERE filename = %s),
+                (SELECT id FROM {id_img} WHERE filename = %s),
                 (TIMESTAMP %s),
                 %s,
                 %s,
                 %s
-            );'''.format(dbSchema, dbSchema)
+            );''').format(
+                id_pred=sql.Identifier(args.project, 'prediction'),
+                id_img=sql.Identifier(args.project, 'image')
+            )
 
     # locate all images and their base names
     print('\nAdding image paths...')
@@ -123,9 +155,9 @@ if __name__ == '__main__':
     # ignore images that are already in database
     print('Filter images already in database...')
     imgs_filenames = set(imgs.values())
-    imgs_existing = dbConn.execute('''
-        SELECT filename FROM {}.image;
-    '''.format(dbSchema), None, 'all')
+    imgs_existing = dbConn.execute(sql.SQL('''
+        SELECT filename FROM {id_img};
+    ''').format(id_img=sql.Identifier(args.project, 'image')), None, 'all')
     imgs_existing = set([i['filename'] for i in imgs_existing])
 
     imgs_filenames = list(imgs_filenames.difference(imgs_existing))
@@ -133,10 +165,10 @@ if __name__ == '__main__':
 
     # push image to database
     print('Adding to database...')
-    dbConn.insert('''
-        INSERT INTO {}.image (filename)
+    dbConn.insert(sql.SQL('''
+        INSERT INTO {id_img} (filename)
         VALUES %s;
-    '''.format(dbSchema),
+    ''').format(id_img=sql.Identifier(args.project, 'image')),
     imgs_filenames)
 
 
@@ -165,5 +197,9 @@ if __name__ == '__main__':
             b64str = base64.b64encode(dataArray.ravel()).decode('utf-8')
 
             # add to database
-            dbConn.execute(sql,
-                (imgs[baseName], currentDT, b64str, sz[0], sz[1]))
+            if args.annotation_type == 'annotation':
+                queryArgs = (username, imgs[baseName], currentDT, b64str, sz[0], sz[1])
+            else:
+                queryArgs = (imgs[baseName], currentDT, b64str, sz[0], sz[1])
+            dbConn.execute(queryStr,
+                queryArgs)

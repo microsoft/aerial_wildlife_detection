@@ -6,13 +6,14 @@ The settings file is divided into the following categories:
 
 ## [Project]
 
-General project settings go here.
+In the latest version of AIDE, this section only contains the credentials for the so-called "super user" (who has full permission in every project).
 
 | Name | Values | Default value | Required | Comments |
 |---------------|-----------------|---------------|----------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| adminName | (string) |  | YES | Name of the AIDE administrator (super user) account. |
 | adminEmail | (e-mail string) |  | YES | E-mail address of the AIDE administrator account. |
 | adminPassword | (string) |  | YES | Plain text password of the AIDE administrator account. |
-| demoMode | 'yes', 'no' | 'no' |  | Whether to run AIDE in demo mode or not. In demo mode, the platform behaves as follows: - User accounts are disabled; visitors automatically redirected to the interface page - No annotations are being stored on the server. However, annotations made by users are cached in the browser until the page is reloaded. - Upon clicking "Next", images are shown in random order - The "Log out" button is disabled and hidden - The _AIController_ module is disabled |
+
 
 
 ## [Server]
@@ -38,6 +39,7 @@ This section contains parameters for all the individual instances' addresses.
 | create_account_token | (string) |  |  | A custom string of (preferably) random characters required to be known to users who would like to create a new account on the project page. This is to make the project semi-secret. If this value is set, the webpage to create a new account can be accessed as follows: `http://<hostname>/?d=createAccount&t=<create_account_token>`, substituting the expressions in angular brackets accordingly. If left out, a new account can be created by simply visiting:  `http://<hostname>/?d=createAccount`. |
 
 
+
 ## [AIController]
 
 | Name | Values | Default value | Required | Comments |
@@ -46,8 +48,7 @@ This section contains parameters for all the individual instances' addresses.
 | result_backend | (URL) | redis://localhost:6379/0 | YES | Backend URL under which status updates and results are fetched. **Important:** in general, and especially if AIDE is to be [deployed](deployment.md), the _AIController_ instance is restarted or wrapped in a multi-threaded server, it is required to use a persistent backend for the message store. Do not use `rpc` in this case. The recommended backend is [Redis](http://docs.celeryproject.org/en/latest/getting-started/brokers/redis.html). See details [here](#set-up-the-message-broker). |
 | maxNumWorkers_train | (numeric) | -1 |  | Maximum number of AIWorker instances to consider when training. -1 means that all available AIWorkers will be involved in training, and that the images will be distributed evenly across them. If > 1 or = -1, the training images will be distributed evenly over the number of AIWorkers specified, and the model's 'average_model_states' function will be called once all workers have finished training to generate a new, holistic model state. Note that this might not always be preferred (some models might not allow to be averaged). In this case, set this number to 1 to limit training (on all training images) to just one AIWorker. |
 | maxNumWorkers_inference | (numeric) | -1 |  | Maximum number of AIWorker instances to involve when doing inference on images. -1 means that all available AIWorkers will be involved, and that the images will be distributed evenly across them. |
-| maxNumImages_train | (numeric) |  | YES |  Maximum number of images to train on at a time. This value may be overridden by the number specified by an administrator in the UI while setting up a manual training process. |
-| maxNumImages_inference | (numeric) |  | YES | Maximum number of images to do inference on at a time. This value may be overridden by the number specified by an administrator in the UI while setting up a manual training process. |
+
 
 
 ## [FileServer]

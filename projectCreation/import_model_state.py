@@ -1,18 +1,21 @@
 '''
     Little helper that commits a PyTorch model state from a local path to the DB.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 import os
 import io
 import argparse
+from psycopg2 import sql
 import torch
 
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Load model state from disk and commit to DB.')
+    parser.add_argument('--project', type=str,
+                    help='Project shortname for which to export annotations.')
     parser.add_argument('--settings_filepath', type=str, default='config/settings.ini', const=1, nargs='?',
                     help='Manual specification of the directory of the settings.ini file; only considered if environment variable unset (default: "config/settings.ini").')
     parser.add_argument('--modelPath', type=str,
@@ -30,11 +33,24 @@ if __name__ == '__main__':
     config = Config()
     dbConn = Database(config)
 
+    # check if project exists and what kind of AI model it uses
+    print('Verifying project setup...')
+    projMeta = dbConn.execute(sql.SQL('''
+        SELECT ai_model_enabled, ai_model_library
+        FROM aide_admin.project
+        WHERE shortname = %s;
+    '''), (args.project,), 1)
+    if not len(projMeta):
+        raise Exception(f'ERROR: project "{args.project}" could not be found in database.')
+    projMeta = projMeta[0]
+    if not projMeta['ai_model_enabled']:
+        print(f'INFO: AI model is disabled for project "{args.project}".')
+
 
     # load model class function
     print('Load and verify state dict...')
     from util.helpers import get_class_executable, current_time
-    modelClass = getattr(get_class_executable(config.getProperty('AIController', 'model_lib_path')), 'model_class')
+    modelClass = getattr(get_class_executable(projMeta['ai_model_library']), 'model_class')
 
     # load state dict
     stateDict = torch.load(open(args.modelPath, 'rb'))
@@ -44,7 +60,8 @@ if __name__ == '__main__':
 
     # load class definitions from database
     classdef_db = {}
-    labelClasses = dbConn.execute('SELECT * FROM {schema}.labelclass;'.format(schema=config.getProperty('Database', 'schema')), None, 'all')
+    labelClasses = dbConn.execute(sql.SQL('SELECT * FROM {id_lc};').format(id_lc=sql.Identifier(args.project, 'labelclass')),
+        None, 'all')
     for lc in labelClasses:
         classdef_db[lc['id']] = lc
     classIDs_db = set(classdef_db.keys())
@@ -187,9 +204,9 @@ if __name__ == '__main__':
 
     # commit to DB
     print('Committing to DB...')
-    sql = '''
-        INSERT INTO {schema}.cnnstate (timeCreated, stateDict, partial)
+    queryStr = sql.SQL('''
+        INSERT INTO {id_cnns}.cnnstate (timeCreated, stateDict, partial)
         VALUES ( %s, %s, FALSE);
-    '''.format(schema=config.getProperty('Database', 'schema'))
+    ''').format(id_cnns=sql.Identifier(args.project, 'cnnstate'))
     now = current_time()
-    dbConn.execute(sql, (now, stateDict, ), None)
+    dbConn.execute(queryStr, (now, stateDict, ), None)

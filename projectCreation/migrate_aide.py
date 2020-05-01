@@ -245,6 +245,7 @@ if __name__ == '__main__':
         INSERT INTO aide_admin.project (shortname, name, description,
             secret_token,
             interface_enabled,
+            demoMode
             annotationType, predictionType, ui_settings,
             numImages_autoTrain,
             minNumAnnoPerImage,
@@ -256,6 +257,7 @@ if __name__ == '__main__':
             )
         VALUES (
             %s, %s, %s,
+            %s,
             %s,
             %s,
             %s, %s, %s,
@@ -271,6 +273,7 @@ if __name__ == '__main__':
             config.getProperty('Project', 'projectDescription'),
             secretToken,
             True,
+            config.getProperty('Project', 'demoMode'),
             config.getProperty('Project', 'annotationType'),
             config.getProperty('Project', 'predictionType'),
             json.dumps(uiSettings),

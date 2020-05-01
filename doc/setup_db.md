@@ -83,7 +83,7 @@ This needs to be done from the installation root of AIDE, with the correct envir
 We do that using the newly created user account instead of the postgres user:
 
 ```bash
-    python projectCreation/setupDB.py
+    python setup/setupDB.py
 ```
 
 

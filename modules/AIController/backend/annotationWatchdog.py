@@ -113,10 +113,10 @@ class Watchdog(Thread):
                 # threshold exceeded; initiate training process followed by inference and return
                 self.middleware.start_train_and_inference(minTimestamp='lastState',
                     maxNumImages_train=self.properties['maxnumimages_train'],
-                    maxNumWorkers_train=self.config.getProperty('AIController', 'maxNumWorkers_train', type=int, fallback=1),
+                    maxNumWorkers_train=self.config.getProperty('AIController', 'maxNumWorkers_train', type=int, fallback=1),           #TODO: replace by project-specific argument
                     forceUnlabeled_inference=True,
                     maxNumImages_inference=self.properties['maxnumimages_inference'],
-                    maxNumWorkers_inference=self.config.getProperty('AIController', 'maxNumWorkers_inference', type=int, fallback=-1))
+                    maxNumWorkers_inference=self.config.getProperty('AIController', 'maxNumWorkers_inference', type=int, fallback=-1))  #TODO: replace by project-specific argument
                 self.stop()
                 break
             
