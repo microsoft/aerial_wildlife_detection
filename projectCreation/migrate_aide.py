@@ -245,7 +245,7 @@ if __name__ == '__main__':
         INSERT INTO aide_admin.project (shortname, name, description,
             secret_token,
             interface_enabled,
-            demoMode
+            demoMode,
             annotationType, predictionType, ui_settings,
             numImages_autoTrain,
             minNumAnnoPerImage,
