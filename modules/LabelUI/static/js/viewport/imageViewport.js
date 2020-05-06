@@ -1,7 +1,7 @@
 /*
     Interface to the HTML canvas for regular image annotations.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 */
 
 class ImageViewport {
