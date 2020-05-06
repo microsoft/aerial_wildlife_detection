@@ -134,12 +134,13 @@ class DBMiddleware():
         vals = []
         for key in imageIDs:
             vals.append(key)
-        sql = '''
-            UPDATE {}.image
-            SET last_requested = %s
-            WHERE id IN %s;
-        '''.format(self.config.getProperty('Database', 'schema'))
-        self.dbConnector.execute(sql, (now, tuple(vals),), None)
+        if len(vals):
+            sql = '''
+                UPDATE {}.image
+                SET last_requested = %s
+                WHERE id IN %s;
+            '''.format(self.config.getProperty('Database', 'schema'))
+            self.dbConnector.execute(sql, (now, tuple(vals),), None)
 
 
     def getProjectSettings(self):
@@ -254,23 +255,10 @@ class DBMiddleware():
             and False otherwise.
         '''
         sql = '''
-            WITH idQuery AS (
-                SELECT id, image
-                FROM {schema}.image AS img
-                LEFT OUTER JOIN (
-                    SELECT image
-                    FROM {schema}.image_user
-                    WHERE username = %s AND viewcount > 0
-                ) AS iu
-                ON img.id = iu.image
-            )
-            SELECT COUNT(*) AS cnt
-            FROM idQuery
-            WHERE image IS NOT NULL
-            UNION
-            SELECT COUNT(*) AS cnt
-            FROM idQuery
-            WHERE image IS NULL
+            SELECT COUNT(*) AS cnt FROM {schema}.image_user
+            WHERE viewcount > 0 AND username = %s
+            UNION ALL
+            SELECT COUNT(*) AS cnt FROM {schema}.image;
         '''.format(
             schema=self.config.getProperty('Database', 'schema')
         )
@@ -282,6 +270,10 @@ class DBMiddleware():
         '''
             Returns entries from the database based on the list of data entry identifiers specified.
         '''
+
+        if not len(data):
+            return { 'entries': {} }
+
         # query
         sql = self.sqlBuilder.getFixedImagesQueryString(self.projectSettings['demoMode'])
 
@@ -438,6 +430,11 @@ class DBMiddleware():
             except:
                 lastChecked = datetime.now(tz=pytz.utc)
                 lastTimeRequired = 0
+            
+            try:
+                numInteractions = int(entry['numInteractions'])
+            except:
+                numInteractions = 0
 
             if 'annotations' in entry and len(entry['annotations']):
                 for annotation in entry['annotations']:
@@ -483,11 +480,9 @@ class DBMiddleware():
                         # new annotation
                         values_insert.append(tuple(annoValues))
                     
-            viewcountValues.append((username, imageKey, 1, lastChecked, lastTimeRequired, meta))
-
+            viewcountValues.append((username, imageKey, 1, lastChecked, lastTimeRequired, numInteractions, meta))
 
         schema = self.config.getProperty('Database', 'schema')
-
 
         # delete all annotations that are not in submitted batch
         imageKeys = list(UUID(k) for k in submissions['entries'])
@@ -545,14 +540,12 @@ class DBMiddleware():
             )
             self.dbConnector.insert(sql, values_update)
 
-
         # viewcount table
         sql = '''
-            INSERT INTO {}.image_user (username, image, viewcount, last_checked, last_time_required, meta)
+            INSERT INTO {}.image_user (username, image, viewcount, last_checked, last_time_required, num_interactions, meta)
             VALUES %s 
-            ON CONFLICT (username, image) DO UPDATE SET viewcount = image_user.viewcount + 1, last_checked = EXCLUDED.last_checked, last_time_required = EXCLUDED.last_time_required, meta = EXCLUDED.meta;
+            ON CONFLICT (username, image) DO UPDATE SET viewcount = image_user.viewcount + 1, last_checked = EXCLUDED.last_checked, last_time_required = EXCLUDED.last_time_required, num_interactions = EXCLUDED.num_interactions + image_user.num_interactions, meta = EXCLUDED.meta;
         '''.format(schema)
         self.dbConnector.insert(sql, viewcountValues)
-
 
         return 0

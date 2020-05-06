@@ -189,6 +189,12 @@ class DataHandler {
                 self.parentDiv.empty();
                 self.dataEntries = [];
 
+                if(Object.keys(data['entries']).length === 0) {
+                    // no more images to show
+                    self._check_user_finished();
+                    return;
+                }
+
                 for(var d in data['entries']) {
                     // create new data entry
                     switch(String(window.annotationType)) {

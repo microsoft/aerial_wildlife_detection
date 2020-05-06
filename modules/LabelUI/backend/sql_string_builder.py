@@ -114,11 +114,13 @@ class SQLStringBuilder:
 
         # subset selection fragment
         subsetFragment = ''
+        subsetFragment_b = ''
         orderSpec = ''
         if subset == 'forceLabeled':
             subsetFragment = 'WHERE viewcount > 0'
         elif subset == 'forceUnlabeled':
             subsetFragment = 'WHERE viewcount IS NULL OR viewcount = 0'
+        subsetFragment_b = subsetFragment
 
         if len(subsetFragment):
             subsetFragment += ' AND img.last_requested IS NULL OR (NOW() - img.last_requested) > interval \'900 second\''
@@ -129,6 +131,8 @@ class SQLStringBuilder:
             orderSpec = 'ORDER BY viewcount ASC NULLS FIRST, annoCount ASC NULLS FIRST, score DESC NULLS LAST'
         elif order == 'labeled':
             orderSpec = 'ORDER BY viewcount DESC NULLS LAST, score DESC NULLS LAST'
+        elif order == 'random':
+            orderSpec = 'ORDER BY RANDOM()'
         orderSpec += ', timeCreated DESC'
 
         usernameString = 'WHERE username = %s'
@@ -164,6 +168,7 @@ class SQLStringBuilder:
                 UNION ALL
                 SELECT id, image AS imID, 'prediction' AS cType, {predCols} FROM {schema}.prediction AS pred
             ) AS contents ON img_query.image = contents.imID
+            {subset_b}
             {order};
         '''.format(schema=schema,
                     allCols=string_all,
@@ -171,6 +176,7 @@ class SQLStringBuilder:
                     predCols=string_pred,
                     order=orderSpec,
                     subset=subsetFragment,
+                    subset_b=subsetFragment_b,
                     usernameString=usernameString)
 
         return sql

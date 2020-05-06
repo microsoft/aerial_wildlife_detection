@@ -1,7 +1,7 @@
 /* 
     Template for database setup, to be used by the "projectCreation/setupDB.py" script only.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 */
 
 
@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS &schema.IMAGE_USER (
     viewcount SMALLINT DEFAULT 1,
     last_checked TIMESTAMPTZ,
     last_time_required BIGINT,
+    num_interactions INTEGER NOT NULL DEFAULT 0,
     meta VARCHAR,
 
     PRIMARY KEY (username, image),
@@ -66,6 +67,7 @@ CREATE TABLE IF NOT EXISTS &schema.ANNOTATION (
     username VARCHAR NOT NULL,
     image uuid NOT NULL,
     meta VARCHAR,
+    autoConverted boolean,
     timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     timeRequired BIGINT,
     unsure boolean NOT NULL DEFAULT false,

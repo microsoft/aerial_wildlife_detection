@@ -118,6 +118,7 @@ class Annotation {
             'type' : (this.type.includes('annotation') ? 'annotation' : 'prediction'),
             'label' : this.label,
             'confidence' : this.confidence,
+            'autoConverted': (this.autoConverted === null || this.autoConverted === undefined ? false : this.autoConverted),
             'geometry' : this.geometry.getGeometry()
         };
     }
