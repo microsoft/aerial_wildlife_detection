@@ -178,6 +178,63 @@
             }
         });
 
+        // recent activity
+        promise = promise.done(function() {
+            return $.ajax({
+                url: 'getTimeActivity',
+                method: 'GET',
+                data: {
+                    type: 'image',
+                    num_days: 31,
+                    per_user: false
+                },
+                success: function(data) {
+                    if(data.hasOwnProperty('result')) {
+                        data = data['result'];
+
+                        statsContainer.append($('<h2>Activity</h2>'));
+                        let activityCanvas = $('<canvas id="chart-temporal-activity" width=400 height=200 style="width:100%;max-height:200px;"></canvas>');
+                        statsContainer.append(activityCanvas);
+                        var activityChart = new Chart(activityCanvas[0].getContext('2d'), {
+                            type: 'line',
+                            data: {
+                                labels: ['viewed'],
+                                datasets: [{
+                                    label: '# images viewed',
+                                    data: [data['counts']],
+                                    backgroundColor: '#007bff'
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    xAxes: [{
+                                        ticks: {
+                                            callback: function(value, index, values) {
+                                                return data['labels'][index];
+                                            }
+                                        },
+                                        scaleLabel: {
+                                            display: true,
+                                            labelString: '# images'
+                                        }
+                                    }]
+                                }
+                            }
+                        });
+
+
+                    } else {
+                        console.error(data);    //TODO
+                    }
+                },
+                error: function(data) {
+                    console.error(data);    //TODO
+                }
+            })
+        });
+
         // per-labelclass statistics
         promise = promise.done(function() {
             return $.ajax({

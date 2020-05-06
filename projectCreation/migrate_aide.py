@@ -138,6 +138,20 @@ MODIFICATIONS_sql = [
     '''ALTER TABLE {schema}.labelclassgroup DROP CONSTRAINT IF EXISTS labelclassgroup_name_unique;
     ALTER TABLE {schema}.labelclassgroup ADD CONSTRAINT labelclassgroup_name_unique UNIQUE (name);''',
     'ALTER TABLE {schema}.image ADD COLUMN IF NOT EXISTS corrupt BOOLEAN;',
+    '''
+    CREATE TABLE IF NOT EXISTS {schema}.workflow (
+        id uuid DEFAULT uuid_generate_v4(),
+        name VARCHAR UNIQUE,
+        workflow VARCHAR NOT NULL,
+        username VARCHAR NOT NULL,
+        timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        timeModified TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (id),
+        FOREIGN KEY (username) REFERENCES aide_admin.user(name)
+    )
+    ''',
+    'ALTER TABLE aide_admin.project ADD COLUMN IF NOT EXISTS default_workflow uuid',
+    'ALTER TABLE {schema}.image_user ADD COLUMN IF NOT EXISTS num_interactions INTEGER NOT NULL DEFAULT 0;'
 ]
 
 
@@ -151,6 +165,8 @@ if __name__ == '__main__':
 
     if not 'AIDE_CONFIG_PATH' in os.environ:
         os.environ['AIDE_CONFIG_PATH'] = str(args.settings_filepath)
+    if not 'AIDE_MODULES' in os.environ:
+        os.environ['AIDE_MODULES'] = ''     # for compatibility with Celery worker import
 
     from util.configDef import Config
     from modules import Database
@@ -239,13 +255,34 @@ if __name__ == '__main__':
         alCriterionSettings = None
 
 
+    #TODO: eventually replace legacy fields with default workflow
+    # # workflows: move values from legacy fields and create new workflow, if project already registered
+    # colnames = dbConn.execute('''
+    #     SELECT column_name
+    #     FROM information_schema.columns
+    #     WHERE table_schema = 'aide_admin'
+    #     AND table_name   = 'project';
+    # ''', None, 'all')
+    # colnames = set([c['column_name'] for c in colnames])
+    # if 'minnumannoperimage' in colnames:
+    #     # legacy fields present; read and replace with new default workflow
+    #     autoTrainSpec = dbConn.execute('''
+    #         SELECT minnumannoperimage, maxnumimages_train, maxnumimages_inference
+    #         FROM aide_admin.project
+    #         WHERE shortname = %s;
+    #     ''', (dbSchema,), 1)
+    #     if len(autoTrainSpec):
+    #         autoTrainSpec = autoTrainSpec[0]
+    #         #TODO
+
+
     # register project
     secretToken = secrets.token_urlsafe(32)
     dbConn.execute('''
         INSERT INTO aide_admin.project (shortname, name, description,
             secret_token,
             interface_enabled,
-            demoMode
+            demoMode,
             annotationType, predictionType, ui_settings,
             numImages_autoTrain,
             minNumAnnoPerImage,
@@ -268,7 +305,7 @@ if __name__ == '__main__':
         ON CONFLICT (shortname) DO NOTHING;
     ''',
         (
-            config.getProperty('Database', 'schema'),
+            dbSchema,
             config.getProperty('Project', 'projectName'),
             config.getProperty('Project', 'projectDescription'),
             secretToken,
@@ -299,8 +336,8 @@ if __name__ == '__main__':
                     SELECT name, %s AS project, isAdmin FROM {schema}.user;
             END IF;
         END $do$;
-        '''.format(schema=config.getProperty('Database', 'schema')),
-        (config.getProperty('Database', 'schema'),), None)
+        '''.format(schema=dbSchema),
+        (dbSchema,), None)
 
 
     # The multi-project AIDE setup requires images to be in a subfolder named after
@@ -314,12 +351,12 @@ if __name__ == '__main__':
         print('project\'s files must be put in a sub-folder named after the project\'s')
         print('shorthand (i.e.: {}/{}/<images>).'.format(
             softlinkName,
-            config.getProperty('Database', 'schema')))
+            dbSchema))
         print('Make sure to run this script on all "FileServer" instance(s) as well')
         print('to address this issue.')
     
     else:
-        softlinkName = os.path.join(softlinkName, config.getProperty('Database', 'schema'))
+        softlinkName = os.path.join(softlinkName, dbSchema)
         if os.path.islink(softlinkName):
             print('INFO: Detected link to project file directory ({})'.format(softlinkName))
             print('You might want to move the files to a dedicated folder at some point...')
@@ -366,7 +403,7 @@ if __name__ == '__main__':
                     ON CONFLICT (username, project) DO NOTHING;
                 END IF;
             END $do$;
-        '''.format(schema=config.getProperty('Database', 'schema')),
+        '''.format(schema=dbSchema),
         None,
         None)
 

@@ -89,3 +89,27 @@ class ProjectStatistics:
             except:
                 done = False
             return {'finished': done}
+
+
+        @self.app.get('/<project>/getTimeActivity')
+        def get_time_activity(project):
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+            
+            try:
+                try:
+                    type = request.query['type']
+                except:
+                    type = 'image'
+                try:
+                    numDaysMax = request.query['num_days']
+                except:
+                    numDaysMax = 31
+                try:
+                    perUser = request.query['per_user']
+                except:
+                    perUser = False
+                stats = self.middleware.getTimeActivity(project, type, numDaysMax, perUser)
+                return {'result': stats}
+            except Exception as e:
+                abort(401, str(e))

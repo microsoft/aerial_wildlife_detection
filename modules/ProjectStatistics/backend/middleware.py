@@ -314,26 +314,72 @@ class ProjectStatisticsMiddleware:
             system.
         '''
         queryStr = sql.SQL('''
-            WITH idQuery AS (
-                SELECT id, image
-                FROM {id_img} AS img
-                LEFT OUTER JOIN (
-                    SELECT image
-                    FROM {id_iu}
-                    WHERE username = %s AND viewcount > 0
-                ) AS iu
-                ON img.id = iu.image
-            )
-            SELECT COUNT(*) AS cnt
-            FROM idQuery
-            WHERE image IS NOT NULL
-            UNION
-            SELECT COUNT(*) AS cnt
-            FROM idQuery
-            WHERE image IS NULL
+            SELECT COUNT(*) AS cnt FROM {id_iu}
+            WHERE viewcount > 0 AND username = %s
+            UNION ALL
+            SELECT COUNT(*) AS cnt FROM {id_img};
         ''').format(
             id_img=sql.Identifier(project, 'image'),
             id_iu=sql.Identifier(project, 'image_user')
         )
         result = self.dbConnector.execute(queryStr, (username,), 2)
         return result[0]['cnt'] >= result[1]['cnt']
+
+
+    def getTimeActivity(self, project, type='images', numDaysMax=31, perUser=False):
+        '''
+            Returns a histogram of the number of images viewed (if type = 'images')
+            or annotations made (if type = 'annotations') over the last numDaysMax.
+            If perUser is True, statistics are returned on a user basis.
+        '''
+        if type == 'images':
+            id_table = sql.Identifier(project, 'image_user')
+            time_field = sql.SQL('last_checked')
+        else:
+            id_table = sql.Identifier(project, 'annotation')
+            time_field = sql.SQL('timeCreated')
+        
+        if perUser:
+            userSpec = sql.SQL(', username')
+        else:
+            userSpec = sql.SQL('')
+        queryStr = sql.SQL('''
+            SELECT to_char({time_field}, 'YYYY-Mon-dd') AS month_day, MIN({time_field}) AS date_of_day, COUNT(*) AS cnt {user_spec}
+            FROM {id_table}
+            WHERE {time_field} IS NOT NULL
+            GROUP BY month_day {user_spec}
+            ORDER BY date_of_day ASC
+            LIMIT %s
+        ''').format(
+            time_field=time_field,
+            id_table=id_table,
+            user_spec=userSpec
+        )
+        result = self.dbConnector.execute(queryStr, (numDaysMax,), 'all')
+
+        #TODO: homogenize series and add missing days
+
+        if perUser:
+            response = {
+                'counts': [],
+                'timestamps': [],
+                'labels': []
+            }
+        else:
+            response = {}
+        for row in result:
+            if perUser:
+                if row['username'] not in response:
+                    response[row['username']] = {
+                        'counts': [],
+                        'timestamps': [],
+                        'labels': []
+                    }
+                response[row['username']]['counts'].append(row['cnt'])
+                response[row['username']]['timestamps'].append(row['date_of_day'].timestamp())
+                response[row['username']]['labels'].append(row['month_day'])
+            else:
+                response['counts'].append(row['cnt'])
+                response['timestamps'].append(row['date_of_day'].timestamp())
+                response['labels'].append(row['month_day'])
+        return response

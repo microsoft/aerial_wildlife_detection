@@ -2,49 +2,109 @@
     <h2>Model Workflow Designer</h2>
 
     <p style="font-weight:bold;color:red">Work in progress, not functional yet.</p>
-    
-    <div id="shortcuts" style="border:1px solid white;border-radius:10px;padding:10px;">
-        <h3 id="shortcuts-heading" style="cursor:pointer">Create simple workflow</h3>
-        <div id="shortcuts-panel" style="position:relative;">
-            <div id="shortcuts-properties">
-                <div>
-                    <p>Repeat for <input id="num-epochs" type="number" min="1" max="500" value="1" /> epochs:</p>
+    <div style="display:flex;flex-direction:row;">
+        <!-- Quick workflow & saved workflows -->
+        <div>
+            <div id="quick-buttons" class="btn-group btn-group-toggle" role="group" aria-label="Workflow presets" data-toggle="buttons">
+                <button id="quick-workflow-button" class="btn btn-sm btn-secondary">Quick workflow</button>
+                <button id="saved-workflows-button" class="btn btn-sm btn-secondary">Saved workflows</button>
+            </div>
+            <div id="workflow-preset-panel">
+
+                <!-- Quick workflow settings -->
+                <div id="quick-workflow-panel" class="workflow-settings-panel">
                     <div>
-                        <input id="do-train" type="checkbox" />
-                        <label for="do-train">Train model</label>
-                        <input id="do-inference" type="checkbox" />
-                        <label for="do-inference">Perform inference</label>
+                        <div>
+                            <p>Run for <input id="num-epochs" type="number" min="1" max="500" value="1" /> epochs:</p>
+                            <div>
+                                <input id="do-train" type="checkbox" checked="checked" />
+                                <label for="do-train">Train</label><br />
+                                <input id="do-inference" type="checkbox" checked="checked" />
+                                <label for="do-inference">Inference</label>
+                            </div>
+                        </div>
+                        <div>
+                            Number of workers:
+                            <select id="num-workers">
+                                <option value="-1">(all available)</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <!-- TODO -->
+                            </select>
+                        </div>
                     </div>
-                    <input id="append-inference" type="checkbox" />
-                    <label for="append-inference">Perform inference with final model state</label>
+                    <button id="create-workflow" class="btn btn-sm btn-primary" style="position:absolute;right:0;bottom:0;">Create</button>
                 </div>
-                <div>
-                    Number of workers:
-                    <select id="num-workers">
-                        <option value="-1">(all available)</option>
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <!-- TODO -->
-                    </select>
+
+                <!-- Saved workflows list -->
+                <div id="saved-workflows-panel" class="workflow-settings-panel">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Author</th>
+                                <th>Created</th>
+                                <th>Modified</th>
+                                <th>Default</th>
+                            </tr>
+                        </thead>
+                        <tbody id="saved-workflows-tbody"></tbody>
+                    </table>
+                    <div>Selected workflow:</div>
+                    <div>
+                        <button id="edit-selected" class="btn btn-sm btn-primary">Edit</button>
+                        <button id="set-selected-default" class="btn btn-sm btn-primary">Set as default</button>
+                        <button id="delete-selected" class="btn btn-sm btn-danger">Delete</button>
+                    </div>
                 </div>
             </div>
-            <button id="create-workflow" class="btn btn-sm btn-primary" style="position:absolute;right:0;bottom:0;">Create</button>
         </div>
-    </div>
 
-    <h3 style="margin-top:10px;">Workflow:</h3>
-    <div style="margin-bottom:5px;">
-        <button id="add-train-node" class="btn btn-sm btn-primary">+ Train</button>
-        <button id="add-inference-node" class="btn btn-sm btn-primary">+ Inference</button>
-        <button id="add-repeater-node" class="btn btn-sm btn-primary">+ Repeater</button>
-        <button id="clear-canvas" class="btn btn-sm btn-warning">Clear</button>
-    </div>
-    <div id="canvas-wrapper"></div>
-    <div>
-        <button id="run-workflow" class="btn btn-sm btn-primary">Run</button>
+        <!-- Workflow pane and controls -->
+        <div style="position:relative;width:100%">
+            <div class="workflow-pane-buttons">
+                <button id="add-train-node" class="btn btn-sm btn-primary">+ Train</button>
+                <button id="add-inference-node" class="btn btn-sm btn-primary">+ Inference</button>
+                <button id="add-connector-node" class="btn btn-sm btn-primary">+ Connector</button>
+                <button id="add-repeater-node" class="btn btn-sm btn-primary">+ Repeater</button>
+                <button id="clear-selected" class="btn btn-sm btn-warning">Remove selected</button>
+                <button id="clear-all" class="btn btn-sm btn-warning">Clear all</button>
+            </div>
+            <div id="canvas-wrapper" style="height:calc(100% - 72px)"></div>
+            <div class="workflow-pane-buttons" style="position:absolute;bottom:0">
+                <label for="workflow-name">Name:</label>
+                <input type="text" id="workflow-name"></input>
+                <button id="save-workflow" class="btn btn-sm btn-primary">Save</button>
+                <button id="run-workflow" class="btn btn-sm btn-danger" style="float:right">Run</button>
+            </div>
+        </div>
     </div>
 </div>
 <link rel="stylesheet" href="config/static/css/workflowDesigner.css" />
+<style>
+    #workflow-preset-panel {
+        border: 1px solid white;
+        padding: 10px;
+        margin-right: 10px;
+        width: 250px;
+        height: calc(100vh - 300px);
+        overflow-y: auto;
+    }
+
+    .workflow-settings-panel {
+        position: relative;
+        height: 100%;
+    }
+
+    .workflow-pane-buttons {
+        width: 100%;
+        overflow-x: auto;
+    }
+
+    .workflow-pane-buttons * {
+        display: inline;
+    }
+</style>
 <script src="config/static/js/workflowDesigner.js"></script>
 <script type="text/javascript">
     $(document).ready(function() {
@@ -52,33 +112,130 @@
         let canvasWrapper = document.getElementById('canvas-wrapper');
         window.workflowDesigner = new WorkflowDesigner(canvasWrapper);
 
-        //TODO: load default workflow from server
-        let defaultWorkflow = {
-            tasks: [
-                {
-                    id: 'node0',
-                    nodeType: 'train'
-                },
-                {
-                    id: 'node1',
-                    nodeType: 'inference'
-                }
-            ],
-            repeaters: {
-                'repeater0': {
-                    id: 'repeater0',
-                    nodeType: 'repeater',
-                    start_node: 'node1',
-                    end_node: 'node0',
-                    params: {
-                        num_repetitions: 12
+        // load saved workflows
+        function loadSavedWorkflows() {
+            $('#saved-workflows-tbody').empty();
+            window.savedWorkflows = {};
+            return $.ajax({
+                url: 'getSavedWorkflows',
+                method: 'GET',
+                success: function(data) {
+                    if(data.hasOwnProperty('workflows')) {
+                        window.savedWorkflows = data['workflows'];
+                        for(var key in window.savedWorkflows) {
+                            var markup = $('<tr id="'+key+'" class="saved-workflow-row" style="cursor_pointer"></tr>');
+                            markup.append($('<td>'+window.savedWorkflows[key]['name']+'</td>'));
+                            markup.append($('<td>'+window.savedWorkflows[key]['author']+'</td>'));
+                            markup.append($('<td>'+'TODO'+'</td>'));
+                            markup.append($('<td>'+'TODO'+'</td>'));
+                            markup.append($('<td>'+window.savedWorkflows[key]['default_workflow']+'</td>'));
+                            markup.click(function() {
+                                var isActive = $(this).hasClass('active');
+                                $('#saved-workflows-tbody').children().each(function() {
+                                    $(this).removeClass('active');
+                                });
+                                if(!isActive) {
+                                    $(this).addClass('active');
+                                }
+                            });
+                            $('#saved-workflows-tbody').append(markup);
+                        }
                     }
+                },
+                error: function(data) {
+                    console.error(data);    //TODO
                 }
+            });
+        }
+        loadSavedWorkflows();
+
+        function saveWorkflow() {
+            $('#save-workflow').prop('disabled', true);
+            var wName = $('#workflow-name').val();
+            if(wName === '') return;
+
+            // get mode: if ID given and name identical, we overwrite, otherwise we create a new workflow
+            let idGiven = (window.editedWorkflowID !== undefined);
+            if(idGiven) {
+                var nameIdentical = (wName === window.savedWorkflows[window.editedWorkflowID]['name']);
+            } else {
+                var nameIdentical = false;
             }
-        };
-        window.workflowDesigner.fromJSON(defaultWorkflow);
+
+            var data = {};
+            if(!idGiven || !nameIdentical) {
+                // new workflow; check if name already exists
+                var nameExists = false;
+                loadSavedWorkflows().then(function() {
+                    for(var key in window.savedWorkflows) {
+                        if(window.savedWorkflows[key]['name'] === wName) {
+                            nameExists = true;
+                            break;
+                        }
+                    }
+                });
+                if(nameExists) {
+                    //TODO: show error message
+                    console.log('ERROR: workflow with name "' + wName + '" already exists in this project.');
+                    return;
+                }
+            } else {
+                // workflow in edit mode; update
+                data['workflow_id'] = window.editedWorkflowID;
+            }
+            data['workflow'] = window.workflowDesigner.toJSON();
+            data['workflow_name'] = wName;
+            return $.ajax({
+                url: 'saveWorkflow',
+                method: 'POST',
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+                data: JSON.stringify(data),
+                success: function(data) {
+                    var response = data['response'];
+                    if(response.hasOwnProperty('status') && ['status'] === 1) {
+                        // error occurred (TODO: show message)
+                        console.log('An error occurred while saving the workflow (message: "' + response['message'] + '").');
+                    }
+
+                    // update table
+                    loadSavedWorkflows();
+                },
+                error: function(data) {
+                    //TODO: show error message
+                    console.error(data);
+                }
+            })
+        }
+        $('#save-workflow').on('click', function() {
+            saveWorkflow();
+        });
+        $('#workflow-name').on('input', function() {
+            $('#save-workflow').prop('disabled', $(this).val()==='')
+        });
+
+        $('#edit-selected').on('click', function() {
+            //TODO: ask for confirmation if unsaved changes to current workflow
+
+            // find selected workflow
+            window.editedWorkflowID = undefined;
+            let tbody = $('#saved-workflows-tbody');
+            tbody.children().each(function() {
+                if($(this).hasClass('active')) {
+                    window.editedWorkflowID = $(this).attr('id');
+                    return false;
+                }
+            });
+
+            if(window.editedWorkflowID === undefined) return;
+
+            // draw workflow
+            window.workflowDesigner.fromJSON(window.savedWorkflows[window.editedWorkflowID]['workflow']);
+        });
+
 
         //TODO: show summary, running processes, etc.
+
 
         $('#create-workflow').on('click', function() {
             // parse parameters and create JSON
@@ -86,13 +243,12 @@
             var numWorkers = $('#num-workers').val();
             var doTrain = $('#do-train').prop('checked');
             var doInference = $('#do-inference').prop('checked');
-            var appendInference = $('#append-inference').prop('checked');
             var workflow = [];
             if(doTrain) {
                 workflow.push({
                     id: 'train0',
-                    nodeType: 'train',
-                    params: {
+                    type: 'train',
+                    kwargs: {
                         max_num_workers: numWorkers
                     }
                 });
@@ -100,8 +256,8 @@
             if(doInference) {
                 workflow.push({
                     id: 'inference0',
-                    nodeType: 'inference',
-                    params: {
+                    type: 'inference',
+                    kwargs: {
                         max_num_workers: numWorkers
                     }
                 });
@@ -111,23 +267,15 @@
                 json['repeaters'] = {
                     'repeater0': {
                         id: 'repeater0',
-                        nodeType: 'repeater',
+                        type: 'repeater',
                         start_node: workflow[workflow.length-1].id,
                         end_node: workflow[0].id,
-                        params: {num_repetitions: numEpochs}
+                        kwargs: {num_repetitions: numEpochs-1}
                     }
                 }
             }
-            if(appendInference) {
-                workflow.push({
-                    id: 'inference1',
-                    nodeType: 'inference',
-                    params: {
-                        max_num_workers: numWorkers
-                    }
-                })
-            }
             json['tasks'] = workflow;
+            window.editedWorkflowID = undefined;
             window.workflowDesigner.fromJSON(json);
         });
 
@@ -139,25 +287,25 @@
             window.workflowDesigner.addNode('inference');
         });
 
+        $('#add-connector-node').on('click', function() {
+            window.workflowDesigner.addNode('connector');
+        });
+
         $('#add-repeater-node').on('click', function() {
             window.workflowDesigner.addNode('repeater');
         });
 
-        $('#clear-canvas').on('click', function() {
+        $('#clear-selected').on('click', function() {
+            window.workflowDesigner.removeSelectedNodes();
+        });
+
+        $('#clear-all').on('click', function() {
             window.workflowDesigner.clear();
         });
 
         //TODO: simple test
-        $('#create-run-workflow').on('click', function() {
-            var workflow = {
-                tasks: [
-                    'train',
-                    'inference'
-                ],
-                options: {
-                    max_num_workers: 2
-                }
-            };
+        $('#run-workflow').on('click', function() {
+            var workflow = window.workflowDesigner.toJSON();
             $.ajax({
                 url: 'launchWorkflow',
                 method: 'POST',
@@ -165,17 +313,36 @@
                 dataType: 'json',
                 data: JSON.stringify({workflow:workflow}),
                 success: function(response) {
-                    console.log(response);
+                    console.log(response);      //TODO: show AI panel in footer and start polling
                 },
                 error: function(response) {
-                    console.error(response);
+                    console.error(response);    //TODO: show error message on screen
                 }
             });
         });
 
-        $('#shortcuts-heading').on('click', function() {
-            $('#shortcuts-panel').slideToggle();
+        function showQuickPanel(type) {
+            if(type === 'quick-workflow-panel') {
+                $('#quick-workflow-panel').show();
+                $('#saved-workflows-panel').hide();
+                $('#quick-workflow-button').addClass('active');
+                $('#saved-workflows-button').removeClass('active');
+            } else {
+                $('#quick-workflow-panel').hide();
+                $('#saved-workflows-panel').show();
+                $('#quick-workflow-button').removeClass('active');
+                $('#saved-workflows-button').addClass('active');
+            }
+        }
+        $('#quick-workflow-button').click(function(e) {
+            e.preventDefault();
+            showQuickPanel('quick-workflow-panel');
         });
+        $('#saved-workflows-button').click(function(e) {
+            e.preventDefault();
+            showQuickPanel('saved-workflows-panel');
+        });
+        showQuickPanel('quick-workflow-panel');
 
         window.showLoadingOverlay(false);
     });

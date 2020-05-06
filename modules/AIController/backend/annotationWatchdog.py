@@ -33,8 +33,6 @@ class Watchdog(Thread):
             self.properties['numimages_autotrain'] = -1
         if self.properties['minnumannoperimage'] is None:
             self.properties['minnumannoperimage'] = 0
-        
-        
 
         self.maxWaitingTime = 1800                      # seconds
         self.minWaitingTime = 20

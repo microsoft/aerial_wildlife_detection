@@ -17,23 +17,33 @@ $(document).ready(function() {
                 for(var key in data['projects']) {
                     var role = data['projects'][key]['role'];
                     if(role === 'super user' || role === 'admin' || role === 'member') {
-                        var isMember = true;
                     } else {
                         role = 'not a member';
-                        var isMember = false;
                     }
                     var userAdmitted = data['projects'][key]['userAdmitted'];
-                    var adminButton = '';
+                    var adminButtons = '';
                     if(role === 'admin' || role === 'super user') {
                         // show button to project configuration page
-                        adminButton = '<a href="' + key + '/configuration" class="btn btn-secondary">Configure</a>';
+                        adminButtons = '<span class="project-buttons"><a href="' + key + '/configuration?t=overview" class="btn btn-sm btn-success">Statistics</a>' +
+                                    '<a href="' + key + '/configuration?t=general" class="btn btn-sm btn-secondary">Configure</a>';
+                        if(data['projects'][key]['aiModelEnabled']) {
+                            adminButtons += '<a href="' + key + '/configuration?t=aiModel" class="btn btn-sm btn-info">AI model</a>';
+                        }
+                        adminButtons += '</span>';
                         userAdmitted = true;
                         var authDescr = $('<p style="display:inline">You are <b>' + role + '</b> in this project.</p>');
                     } else if(data['projects'][key]['demoMode']) {
                         var authDescr = $('<p style="display:inline">You are allowed to view (but not label) the images in this project.</p>');
                     }
 
-                    var labelButton = '<a href="' + key + '/interface" class="btn btn-primary label-button">Start labeling</a>';
+                    let demoMode = data['projects'][key]['demoMode'];
+                    if(demoMode) {
+                        labelButtonText = 'Explore';
+                    } else {
+                        labelButtonText = 'Start labeling';
+                    }
+
+                    var labelButton = '<a href="' + key + '/interface" class="btn btn-primary label-button">'+labelButtonText+'</a>';
                     if(!userAdmitted || !data['projects'][key]['interfaceEnabled']) {
                         labelButton = '<div class="btn btn-secondary label-button" style="cursor:not-allowed;" disabled="disabled">(interface disabled)</div>';
                     }
@@ -42,8 +52,11 @@ $(document).ready(function() {
                     markup.append($('<h2><a href="' + key + '">' + data['projects'][key]['name'] + '</a></h2>'));
                     markup.append($('<p>' + data['projects'][key]['description'] + '</p>'));
                     markup.append(authDescr);
+                    if(demoMode) {
+                        markup.append($('<p>Project is in demo mode.</p>'));
+                    }
                     markup.append('<div style="height:20px">' + labelButton +
-                        adminButton +
+                    adminButtons +
                         '</div>');
                     projDiv.append(markup);
                 }

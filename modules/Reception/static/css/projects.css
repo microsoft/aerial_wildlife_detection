@@ -1,10 +1,10 @@
 .main-container {
+    overflow: auto;
+    height: calc(100vh - 100px);
     padding: 40px;
 }
 
 #projects {
-    height: 100%;
-    overflow-y: auto;
     margin-top: 20px;
 }
 
@@ -13,6 +13,14 @@
     padding: 30px;
     border-radius: 5px;
     background: #565656;
+}
+
+.project-buttons {
+    margin-top: 10px;
+}
+
+.project-buttons > * {
+    margin-right: 10px;
 }
 
 .label-button {

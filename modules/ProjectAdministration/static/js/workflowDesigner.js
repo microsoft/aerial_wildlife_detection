@@ -6,7 +6,8 @@
 const NODE_NAMES = {
     'train': 'Train',
     'inference': 'Inference',
-    'repeater': 'Repeat'
+    'repeater': 'Repeat',
+    'connector': 'Connect'
 }
 
 class AbstractNode {
@@ -41,7 +42,7 @@ class AbstractNode {
 
         // remove duplicates
         delete this.params['id'];
-        delete this.params['nodeType'];
+        delete this.params['type'];
     }
 
     _setup_markup(position) {
@@ -224,8 +225,9 @@ class AbstractNode {
     toJSON() {
         return {
             id: this.id,
-            nodeType: this.nodeType,
-            params: this.params
+            type: this.nodeType,
+            kwargs: this.params,
+            extent: this.getExtent()
         }
     }
 }
@@ -241,7 +243,7 @@ class DummyNode extends AbstractNode {
     }
     constructor(parent, params, position) {
         super(parent, params, 'dummy');
-        super._check_params(params['params'], this.DEFAULT_PARAMS);
+        super._check_params(params['kwargs'], this.DEFAULT_PARAMS);
         this.position = position;
         this._setup_markup(position);
     }
@@ -287,6 +289,7 @@ class DummyNode extends AbstractNode {
         var pos = this.getExtent();
         this.markup.setAttribute('x', pos[0] + shiftVector[0]);
         this.markup.setAttribute('y', pos[1] + shiftVector[1]);
+        this.notifyPositionChange();
     }
 
     toJSON() {
@@ -295,29 +298,30 @@ class DummyNode extends AbstractNode {
 }
 
 
-class StartNode extends AbstractNode {
-
+class ConnectionNode extends AbstractNode {
+    DEFAULT_PARAMS = {
+        is_start_node: false
+    }
     constructor(parent, params, position) {
-        super(parent, params, 'start');
+        super(parent, params, 'connector');
         this._setup_markup(position);
+        this._check_params(params, this.DEFAULT_PARAMS);
     }
 
     _setup_markup(position) {
         super._setup_markup(position);
-        this.markup.append('<div>Start</div>');
+        if(this.params['is_start_node']) {
+            this.markup.append('<div>Start</div>');
+        }
     }
 
     setConnectingLine(line, incoming, repeater) {
-        if(incoming && !repeater) {
-            // regular incoming lines are not allowed
+        if(this.params['is_start_node'] && incoming && !repeater) {
+            // regular incoming lines are not allowed for starting node
             return;
         } else {
             super.setConnectingLine(line, incoming, repeater);
         }
-    }
-
-    toJSON() {
-        return null;
     }
 }
 
@@ -357,7 +361,7 @@ class TrainNode extends DefaultNode {
 
     constructor(parent, params, position) {
         super(parent, params, 'train');
-        super._check_params(params['params'], this.DEFAULT_PARAMS);
+        super._check_params(params['kwargs'], this.DEFAULT_PARAMS);
         this._setup_markup(position);
     }
 
@@ -456,7 +460,7 @@ class InferenceNode extends DefaultNode {
 
     constructor(parent, params, position) {
         super(parent, params, 'inference');
-        super._check_params(params['params'], this.DEFAULT_PARAMS);
+        super._check_params(params['kwargs'], this.DEFAULT_PARAMS);
         this._setup_markup(position);
     }
 
@@ -527,7 +531,7 @@ class RepeaterNode extends AbstractNode {
 
     constructor(parent, params, position) {
         super(parent, params, 'repeater');
-        super._check_params(params['params'], this.DEFAULT_PARAMS);
+        super._check_params(params['kwargs'], this.DEFAULT_PARAMS);
         this._setup_markup(position);
     }
 
@@ -584,7 +588,7 @@ class RepeaterNode extends AbstractNode {
         } catch {
             return null;
         }
-        params['params']['num_repetitions'] = parseInt(this.numRepCounter.val());
+        params['kwargs']['num_repetitions'] = parseInt(this.numRepCounter.val());
         return params;
     }
 }
@@ -833,7 +837,7 @@ class WorkflowDesigner {
         this._setup_canvas(domElement);
         this._setup_callbacks(domElement);
 
-        this.startingNode = new StartNode(this, {}, [20, 20]);
+        this.startingNode = new ConnectionNode(this, {is_start_node:true}, [20, 20]);
         this.mainCanvas.addElement(this.startingNode);
 
         if(Array.isArray(workflow) && workflow.length > 0) {
@@ -875,6 +879,9 @@ class WorkflowDesigner {
          * test node, the test node and target node would form a loop,
          * hence true is returned. Else returns false.
          */
+        if(testNode === null || testNode === undefined || targetNode === null || targetNode === undefined) {
+            return false;
+        }
         var latestNode = targetNode;
         var hasNeighbor = true;
         do {
@@ -899,15 +906,17 @@ class WorkflowDesigner {
         this.mousePos = this.___get_coords(e);
         this.mousedownPos = this.mousePos;
 
-        // precautiously set starting node (for potential line drawing)
-        this.mousedownElement = undefined;
-        this.tempConnectionLine.setConnectingNode(null, true);
-        for(var i=this.mainCanvas.elements.length-1; i>=0; i--) {
-            var elem = this.mainCanvas.elements[i];
-            if(!elem.active && elem.distanceToMarkup(this.mousePos) <= 10) {
-                // mousedown on inactive node; start drawing line
-                this.mousedownElement = elem;
-                break;
+        // if nothing is active: set starting node (for potential line drawing)
+        if(Object.keys(this.activeElements).length === 0) {
+            this.mousedownElement = undefined;
+            this.tempConnectionLine.setConnectingNode(null, true);
+            for(var i=this.mainCanvas.elements.length-1; i>=0; i--) {
+                var elem = this.mainCanvas.elements[i];
+                if(!elem.active && elem.distanceToMarkup(this.mousePos) <= 10) {
+                    // mousedown on inactive node; start drawing line
+                    this.mousedownElement = elem;
+                    break;
+                }
             }
         }
     }
@@ -947,7 +956,8 @@ class WorkflowDesigner {
         this.mousedownPos = [undefined, undefined];
 
         // check if temporary line being drawn
-        if(this.tempConnectionLine.getConnectingNode(true) !== null) {
+        if(this.tempConnectionLine.getConnectingNode(true) !== null &&
+            this.mousedownElement !== undefined && this.mousedownElement !== null) {
             // connect to new node if mouseup
             for(var i=this.mainCanvas.elements.length-1; i>=0; i--) {
                 var elem = this.mainCanvas.elements[i];
@@ -957,7 +967,7 @@ class WorkflowDesigner {
                         var formsLoop = this._forms_loop(this.mousedownElement, elem);
                         if(formsLoop) {
                             // add repeater instead (unless starting node)
-                            if(!(elem instanceof StartNode)) {
+                            if((elem.id !== this.mousedownElement.id) || !(elem instanceof ConnectionNode)) {
 
                                 // position: calculate from connecting positions
                                 let pos_a = this.mousedownElement.getExtent();
@@ -1098,8 +1108,8 @@ class WorkflowDesigner {
         if(typeof(params) === 'string') {
             var type = params;
             var nodeParams = {};
-        } else if(params.hasOwnProperty('nodeType')) {
-            var type = params['nodeType'];
+        } else if(params.hasOwnProperty('type')) {
+            var type = params['type'];
             var nodeParams = params;
         } else {
             throw Error('Unrecognizable node type.');
@@ -1109,15 +1119,28 @@ class WorkflowDesigner {
         if(!(nodeParams.hasOwnProperty('id'))) {
             nodeParams['id'] = this.newID();
         }
-        var latestNode = this._get_last_node();
-        var position = latestNode.getExtent(); 
-        position = [position[0]+position[2]+50, position[1]+position[3]+50]; // shift from previous element
+
+        // get position
+        if(nodeParams.hasOwnProperty('extent') && Array.isArray(nodeParams['extent'])) {
+            var position = nodeParams['extent'];
+            var positionSpecified = true;
+        } else {
+            var latestNode = this._get_last_node();
+            var position = latestNode.getExtent(); 
+            position = [position[0]+position[2]+50, position[1]+position[3]+50]; // shift from previous element
+            var positionSpecified = false;
+        }
         if(type === 'train') {
             var node = new TrainNode(this, nodeParams, position);
         } else if(type === 'inference') {
             var node = new InferenceNode(this, nodeParams, position);
         } else if(type === 'repeater') {
             var node = new RepeaterNode(this, nodeParams, position);
+        } else if(type === 'connector') {
+            if(typeof(nodeParams) === 'object') {
+                nodeParams['is_start_node'] = false;
+            }
+            var node = new ConnectionNode(this, nodeParams, position);
         }
         this.mainCanvas.addElement(node);
 
@@ -1145,14 +1168,16 @@ class WorkflowDesigner {
                     this.bottomCanvas.addElement(new ConnectionLine(this.newID(), this, startNode, node, true));
                     this.bottomCanvas.addElement(new ConnectionLine(this.newID(), this, node, endNode, true));
 
-                    // also update position of repeater node
-                    var pos_a = startNode.getExtent();
-                    var pos_b = endNode.getExtent();
-                    position = [  //TODO: not the best solution...
-                        Math.max(0, ((pos_a[0]+pos_a[2]/2) + (pos_b[0]+pos_b[2]/2)) / 2 + 150),
-                        Math.max(0, ((pos_a[1]+pos_a[3]/2) + (pos_b[1]+pos_b[3]/2)) / 2 - 80)
-                    ];
-                    node.setPosition(position);
+                    // also update position of repeater node (unless explicitly specified)
+                    if(!positionSpecified) {
+                        var pos_a = startNode.getExtent();
+                        var pos_b = endNode.getExtent();
+                        position = [  //TODO: not the best solution...
+                            Math.max(0, ((pos_a[0]+pos_a[2]/2) + (pos_b[0]+pos_b[2]/2)) / 2 + 150),
+                            Math.max(0, ((pos_a[1]+pos_a[3]/2) + (pos_b[1]+pos_b[3]/2)) / 2 - 80)
+                        ];
+                        node.setPosition(position);
+                    }
                 }
             }
         }
@@ -1171,6 +1196,7 @@ class WorkflowDesigner {
         }
         if(nodeIndex === -1) return;
         var node = this.mainCanvas.elements[nodeIndex];
+        if(node.id === this.startingNode.id) return;
         var isRepeater = (node instanceof RepeaterNode);
 
         var prevNode = node.getPreviousElement(isRepeater);
@@ -1203,6 +1229,15 @@ class WorkflowDesigner {
 
         // remove this node
         this.mainCanvas.removeElement(this.mainCanvas.elements[nodeIndex].id);
+    }
+
+    removeSelectedNodes() {
+        for(var key in this.activeElements) {
+            if(key === this.startingNode.id) continue;
+            this.removeNode(key);
+            this.mainCanvas.removeElement(key);
+            this.bottomCanvas.removeElement(key);
+        }
     }
 
     clear() {

@@ -29,9 +29,10 @@ CREATE TABLE IF NOT EXISTS {id_image} (
 CREATE TABLE IF NOT EXISTS {id_iu} (
     username VARCHAR NOT NULL,
     image uuid NOT NULL,
-    viewcount SMALLINT DEFAULT 1,
+    viewcount SMALLINT DEFAULT 2,
     last_checked TIMESTAMPTZ,
     last_time_required BIGINT,
+    num_interactions INTEGER NOT NULL DEFAULT 0,
     meta VARCHAR,
 
     PRIMARY KEY (username, image),
@@ -94,3 +95,14 @@ CREATE TABLE IF NOT EXISTS {id_prediction} (
     FOREIGN KEY (image) REFERENCES {id_image}(id),
     FOREIGN KEY (cnnstate) REFERENCES {id_cnnstate}(id)
 );
+
+CREATE TABLE IF NOT EXISTS {id_workflow} (
+    id uuid DEFAULT uuid_generate_v4(),
+    name VARCHAR UNIQUE,
+    workflow VARCHAR NOT NULL,
+    username VARCHAR NOT NULL,
+    timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    timeModified TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (id),
+    FOREIGN KEY (username) REFERENCES aide_admin.user(name)
+)

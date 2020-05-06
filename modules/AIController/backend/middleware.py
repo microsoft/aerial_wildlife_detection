@@ -5,6 +5,7 @@
 '''
 
 from datetime import datetime
+import uuid
 from modules.AIController.backend import celery_interface as aic_int
 from modules.AIWorker.backend import celery_interface as aiw_int
 import celery
@@ -645,40 +646,77 @@ class AIMiddleware():
     
 
 
-    def start_train_and_inference(self, project, minTimestamp='lastState', minNumAnnoPerImage=0, maxNumImages_train=None, 
+    #TODO: deprecated; replace with workflow
+    def start_train_and_inference(self, project, minTimestamp='lastState', minNumAnnoPerImage=0, maxNumImages_train=-1, 
                                     maxNumWorkers_train=1,
-                                    forceUnlabeled_inference=True, maxNumImages_inference=None, maxNumWorkers_inference=1):
+                                    forceUnlabeled_inference=True, maxNumImages_inference=-1, maxNumWorkers_inference=1):
         '''
             Submits a model training job, followed by inference.
             This is the default behavior for the automated model update, since the newly trained model should directly
             be used to infer new, potentially useful labels.
         '''
-        #TODO: replace with customizable train-predict chains
 
-        # get training job signature
-        process, numWorkers_train = self._get_training_job_signature(
-                                        project=project,
-                                        minTimestamp=minTimestamp,
-                                        minNumAnnoPerImage=minNumAnnoPerImage,
-                                        maxNumImages=maxNumImages_train,
-                                        maxNumWorkers=maxNumWorkers_train)
+        #TODO: sanity checks
+        workflow = {
+            'project': project,
+            'tasks': [
+                {
+                    'id': '0',
+                    'type': 'train',
+                    'kwargs': {
+                        'min_timestamp': minTimestamp,
+                        'min_anno_per_image': minNumAnnoPerImage,
+                        'max_num_images': maxNumImages_train,
+                        'max_num_workers': maxNumWorkers_train
+                    }
+                },
+                {
+                    'id': '1',
+                    'type': 'inference',
+                    'kwargs': {
+                        'force_unlabeled': forceUnlabeled_inference,
+                        'max_num_images': maxNumImages_inference,
+                        'max_num_workers': maxNumWorkers_inference
+                    }
+                }
+            ],
+            'options': {}
+        }
+        process = self.workflowDesigner.parseWorkflow(project, workflow)
+
+        # # get training job signature
+        # process, numWorkers_train = self._get_training_job_signature(
+        #                                 project=project,
+        #                                 minTimestamp=minTimestamp,
+        #                                 minNumAnnoPerImage=minNumAnnoPerImage,
+        #                                 maxNumImages=maxNumImages_train,
+        #                                 maxNumWorkers=maxNumWorkers_train)
 
         # submit job
         task_id = self.messageProcessor.task_id(project)
-        if numWorkers_train > 1:
-            # also append average model states job
-            job = process.apply_async(task_id=task_id,
+        job = process.apply_async(task_id=task_id,
                             queue='AIWorker',
-                            # ignore_result=False,
+                            ignore_result=False,
                             # result_extended=True,
-                            headers={'headers':{'project':project,'type':'train','submitted': str(current_time())}},
-                            link=aiw_int.call_average_model_states.s(1, project))      #TODO: epoch
-        else:
-            job = process.apply_async(task_id=task_id,
-                            queue='AIWorker',
-                            # ignore_result=False,
-                            # result_extended=True,
-                            headers={'headers':{'project':project,'type':'train','submitted': str(current_time())}})
+                            headers={'headers':{'project':project,'submitted': str(current_time())}})
+        
+        self.messageProcessor.register_job(project, job, 'workflow')    #TODO: task type; task ID for polling...
+
+        # task_id = self.messageProcessor.task_id(project)
+        # if numWorkers_train > 1:
+        #     # also append average model states job
+        #     job = process.apply_async(task_id=task_id,
+        #                     queue='AIWorker',
+        #                     # ignore_result=False,
+        #                     # result_extended=True,
+        #                     headers={'headers':{'project':project,'type':'train','submitted': str(current_time())}},
+        #                     link=aiw_int.call_average_model_states.s(1, project))      #TODO: epoch
+        # else:
+        #     job = process.apply_async(task_id=task_id,
+        #                     queue='AIWorker',
+        #                     # ignore_result=False,
+        #                     # result_extended=True,
+        #                     headers={'headers':{'project':project,'type':'train','submitted': str(current_time())}})
         
 
         # start listener thread
@@ -686,7 +724,7 @@ class AIMiddleware():
         #     self.training = self.messageProcessor.task_ongoing(project, 'train')
         #     return self.start_inference(project, forceUnlabeled_inference, maxNumImages_inference, maxNumWorkers_inference)
 
-        self.messageProcessor.register_job(project, job, 'train')
+        # self.messageProcessor.register_job(project, job, 'train')
 
         return 'ok'
 
@@ -698,7 +736,7 @@ class AIMiddleware():
             parses it and launches the job if valid.
             Returns the task ID (TODO: useless due to sub-IDs being generated).
         '''
-        process = self.workflowDesigner.parseWorkflow(project, workflow)
+        process = self.workflowDesigner.parseWorkflow(project, workflow, False)
 
         task_id = self.messageProcessor.task_id(project)
         job = process.apply_async(task_id=task_id,
@@ -830,3 +868,109 @@ class AIMiddleware():
             TODO
         '''
         pass
+
+
+    
+    def getSavedWorkflows(self, project):
+        queryStr = sql.SQL('''
+            SELECT *
+            FROM {id_workflow} AS wf
+            LEFT OUTER JOIN (
+                SELECT default_workflow
+                FROM aide_admin.project
+                WHERE shortname = %s
+            ) AS defwf
+            ON wf.id = defwf.default_workflow;
+        ''').format(id_workflow=sql.Identifier(project, 'workflow'))
+        result = self.dbConn.execute(queryStr, (project,), 'all')
+        response = {}
+        for r in result:
+            response[str(r['id'])] = {
+                'name': r['name'],
+                'workflow': r['workflow'],
+                'author': r['username'],
+                'time_created': r['timecreated'].timestamp(),
+                'time_modified': r['timemodified'].timestamp(),
+                'default_workflow': (True if r['default_workflow'] is not None else False)
+            }
+        return response
+
+
+    
+    def saveWorkflow(self, project, username, workflow, workflowID, workflowName, setDefault=False):
+        '''
+            Receives a workflow definition (Python dict) to be saved
+            in the database for a given project under a provided user
+            name. The workflow definition is first parsed by the
+            WorkflowDesigner and checked for validity. If it passes,
+            it is stored in the database. If "setDefault" is True, the
+            current workflow is set as the standard workflow, to be
+            used for automated model training.
+            Workflows can also be updated if an ID is specified.
+        '''
+        try:
+            # check validity of workflow
+            valid = self.workflowDesigner.parseWorkflow(project, workflow, verifyOnly=True)
+            if not valid:
+                raise Exception('Workflow is not valid.')   #TODO: detailed error message
+            
+            updateExisting = False
+            if workflowID is not None:
+                # ID provided; query first if id exists
+                workflowID = uuid.UUID(workflowID)
+                idExists = self.dbConn.execute(
+                    sql.SQL('''
+                        SELECT COUNT(*)
+                        FROM {id_workflow}
+                        WHERE id = %s;
+                    ''').format(id_workflow=sql.Identifier(project, 'workflow')),
+                    (workflowID,),
+                    1
+                )
+                if len(idExists) and idExists[0] == 1:
+                    updateExisting = True
+
+            # commit to database
+            if updateExisting:
+                result = self.dbConn.execute(
+                    sql.SQL('''
+                        UPDATE {id_workflow}
+                        SET name = %s, workflow = %s
+                        WHERE id = %s
+                        RETURNING id;
+                    ''').format(id_workflow=sql.Identifier(project, 'workflow')),
+                    (workflowName, workflow, workflowID),
+                    1
+                )
+            else:
+                result = self.dbConn.execute(
+                    sql.SQL('''
+                        INSERT INTO {id_workflow} (name, workflow, username)
+                        VALUES (%s, %s, %s)
+                        RETURNING id;
+                    ''').format(id_workflow=sql.Identifier(project, 'workflow')),
+                    (workflowName, workflow, username),
+                    1
+                )
+            wid = result[0]['id']
+
+            # set as default if requested
+            if setDefault:
+                self.dbConn.execute(
+                    '''
+                        UPDATE aide_admin.project
+                        SET default_workflow = %s
+                        WHERE shortname = %s;
+                    ''',
+                    (wid, project,),
+                    None
+                )
+            return {
+                'status': 0,
+                'id': str(wid)
+            }
+        except Exception as e:
+            return {
+                'status': 1,
+                'message': str(e)
+            }

@@ -125,12 +125,15 @@ class SQLStringBuilder:
 
         # subset selection fragment
         subsetFragment = 'WHERE isGoldenQuestion = FALSE'
+        subsetFragment_b = ''
         orderSpec_a = ''
         orderSpec_b = ''
         if subset == 'forceLabeled':
             subsetFragment = 'WHERE viewcount > 0 AND isGoldenQuestion = FALSE'
+            subsetFragment_b = 'WHERE viewcount > 0'
         elif subset == 'forceUnlabeled':
             subsetFragment = 'WHERE (viewcount IS NULL OR viewcount = 0) AND isGoldenQuestion = FALSE'
+            subsetFragment_b = 'WHERE (viewcount IS NULL OR viewcount = 0)'
 
         if len(subsetFragment):
             subsetFragment += ' AND img.last_requested IS NULL OR (NOW() - img.last_requested) > interval \'900 second\''
@@ -143,6 +146,9 @@ class SQLStringBuilder:
         elif order == 'labeled':
             orderSpec_a = 'ORDER BY viewcount DESC NULLS LAST, isgoldenquestion DESC NULLS LAST, score DESC NULLS LAST'
             orderSpec_b = 'ORDER BY viewcount DESC NULLS LAST, isgoldenquestion DESC NULLS LAST, score DESC NULLS LAST'
+        elif order == 'random':
+            orderSpec_a = 'ORDER BY RANDOM()'
+            orderSpec_b = 'ORDER BY RANDOM()'
         orderSpec_a += ', timeCreated DESC'
         orderSpec_b += ', timeCreated DESC'
 
@@ -201,6 +207,7 @@ class SQLStringBuilder:
                     LIMIT 1
                 )
             ) AS contents ON img_query.image = contents.imID
+            {subset_b}
             {order_b};
         ''').format(
             id_img=sql.Identifier(project, 'image'),
@@ -213,6 +220,7 @@ class SQLStringBuilder:
             annoCols=sql.SQL(', ').join(fields_anno),
             predCols=sql.SQL(', ').join(fields_pred),
             subset=sql.SQL(subsetFragment),
+            subset_b=sql.SQL(subsetFragment_b),
             order_a=sql.SQL(orderSpec_a),
             order_b=sql.SQL(orderSpec_b),
             usernameString=sql.SQL(usernameString)

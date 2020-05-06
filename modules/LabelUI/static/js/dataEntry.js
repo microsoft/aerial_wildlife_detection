@@ -12,6 +12,7 @@ class AbstractDataEntry {
         this.entryID = entryID;
         this.canvasID = entryID + '_canvas';
         this.fileName = properties['fileName'];
+        this.numInteractions = 0;
         this.disableInteractions = disableInteractions;
 
         // for interaction handlers
@@ -320,7 +321,8 @@ class AbstractDataEntry {
        var props = {
            'id': this.entryID,
            'timeCreated': timeCreated,
-           'timeRequired': this.getTimeRequired()
+           'timeRequired': this.getTimeRequired(),
+           'numInteractions': this.numInteractions
        };
        props['annotations'] = [];
        for(var key in this.annotations) {
@@ -372,6 +374,7 @@ class AbstractDataEntry {
            this.annotations[key].setProperty('label', label);
        }
        this.render();
+       this.numInteractions++;
 
        window.dataHandler.updatePresentClasses();
    }
@@ -409,7 +412,7 @@ class AbstractDataEntry {
            }
        }
        this.render();
-
+       this.numInteractions++;
        window.dataHandler.updatePresentClasses();
    }
 
@@ -419,7 +422,7 @@ class AbstractDataEntry {
            this._removeElement(this.annotations[key]);
        }
        this.render();
-
+       this.numInteractions++;
        window.dataHandler.updatePresentClasses();
    }
 
@@ -432,6 +435,7 @@ class AbstractDataEntry {
            }
        }
        this.render();
+       this.numInteractions++;
        return active;
    }
 
@@ -556,7 +560,7 @@ class ClassificationEntry extends AbstractDataEntry {
                        self.toggleUserLabel(event.altKey);
                    }
                }
-
+               this.numInteractions++;
                window.dataHandler.updatePresentClasses();
            });
 
@@ -632,6 +636,7 @@ class ClassificationEntry extends AbstractDataEntry {
        } else {
            this.labelInstance.geometry.setProperty('textColor', '#FFFFFF');
        }
+       this.numInteractions++;
 
        this.render();
 
@@ -706,6 +711,7 @@ class PointAnnotationEntry extends AbstractDataEntry {
                this.annotations[key].setProperty('label', label);
            }
        }
+       this.numInteractions++;
        this.render();
        window.dataHandler.updatePresentClasses();
    }
@@ -919,16 +925,18 @@ class PointAnnotationEntry extends AbstractDataEntry {
        if(window.uiBlocked) return;
 
        // check functionality
-       if(window.uiControlHandler.getAction() == ACTIONS.ADD_ANNOTATION) {
+       if(window.uiControlHandler.getAction() === ACTIONS.ADD_ANNOTATION) {
            // new annotation completed
            //TODO: may fire before other rectangle's events, making them unwantedly active while finishing new rect
            // window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
+           this.numInteractions++;
 
-       } else if(window.uiControlHandler.getAction() == ACTIONS.REMOVE_ANNOTATIONS) {
+       } else if(window.uiControlHandler.getAction() === ACTIONS.REMOVE_ANNOTATIONS) {
            this._deleteActiveAnnotations(event);
            // window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
+           this.numInteractions++;
 
-       } else if(window.uiControlHandler.getAction() == ACTIONS.DO_NOTHING) {
+       } else if(window.uiControlHandler.getAction() === ACTIONS.DO_NOTHING) {
            // update annotations to current label (if active and no mouse dragging [moving] was performed)
            if(!this.mouseDrag) {
                var coords = this.viewport.getRelativeCoordinates(event, 'validArea');
@@ -943,9 +951,9 @@ class PointAnnotationEntry extends AbstractDataEntry {
 
                // activate or deactivate
                this._toggleActive(event);
+               this.numInteractions++;
            }
        }
-
        this.render();
 
        window.dataHandler.updatePresentClasses();
@@ -985,6 +993,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
                this.annotations[key].setProperty('label', label);
            }
        }
+       this.numInteractions++;
        this.render();
        window.dataHandler.updatePresentClasses();
    }
@@ -1246,16 +1255,18 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
        if(window.uiBlocked) return;
 
        // check functionality
-       if(window.uiControlHandler.getAction() == ACTIONS.ADD_ANNOTATION) {
+       if(window.uiControlHandler.getAction() === ACTIONS.ADD_ANNOTATION) {
            // new annotation completed
            //TODO: may fire before other rectangle's events, making them unwantedly active while finishing new rect
            // window.uiControlHandler.getAction() = ACTIONS.DO_NOTHING;
+           this.numInteractions++;
 
-       } else if(window.uiControlHandler.getAction() == ACTIONS.REMOVE_ANNOTATIONS) {
+       } else if(window.uiControlHandler.getAction() === ACTIONS.REMOVE_ANNOTATIONS) {
            this._deleteActiveAnnotations(event);
            // window.uiControlHandler.getAction() = ACTIONS.DO_NOTHING;
+           this.numInteractions++;
 
-       } else if(window.uiControlHandler.getAction() == ACTIONS.DO_NOTHING) {
+       } else if(window.uiControlHandler.getAction() === ACTIONS.DO_NOTHING) {
            // update annotations to current label (if active and no dragging [resizing] was going on)
            if(!this.mouseDrag) {
                var coords = this.viewport.getRelativeCoordinates(event, 'validArea');
@@ -1269,6 +1280,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
 
                // activate or deactivate
                this._toggleActive(event);
+               this.numInteractions++;
            }
        }
 
@@ -1456,6 +1468,7 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
 
    _canvas_mouseup(event) {
        this.mouseDown = false;
+       this.numInteractions++;
    }
 
    _canvas_mouseleave(event) {

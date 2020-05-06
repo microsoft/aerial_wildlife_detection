@@ -4,6 +4,7 @@
     2019-20 Benjamin Kellenberger
 '''
 
+import html
 from bottle import post, request, response, abort
 from modules.AIController.backend.middleware import AIMiddleware
 from modules.AIController.backend import celery_interface
@@ -16,21 +17,9 @@ class AIController:
     def __init__(self, config, app):
         self.config = config
         self.app = app
-        
         self.middleware = AIMiddleware(config)
-
         self.login_check = None
-
-        self._init_params()
         self._initBottle()
-
-
-    def _init_params(self):
-        self.minNumAnnoPerImage = self.config.getProperty(self, 'minNumAnnoPerImage', type=int, fallback=0)
-        self.maxNumImages_train = self.config.getProperty(self, 'maxNumImages_train', type=int)
-        self.maxNumWorkers_train = self.config.getProperty(self, 'maxNumWorkers_train', type=int, fallback=-1)
-        self.maxNumWorkers_inference = self.config.getProperty(self, 'maxNumWorkers_inference', type=int, fallback=-1)
-        self.maxNumImages_inference = self.config.getProperty(self, 'maxNumImages_inference', type=int)
 
 
     def loginCheck(self, project=None, admin=False, superuser=False, canCreateProjects=False, extend_session=False):
@@ -55,6 +44,7 @@ class AIController:
             return {'modelStates': self.middleware.listModelStates(project) }
 
         
+        #TODO: deprecated; replace with workflow:
         @self.app.post('/<project>/startTraining')
         def start_training(project):
             '''
@@ -68,17 +58,17 @@ class AIController:
                     if 'minNumAnnoPerImage' in params:
                         minNumAnnoPerImage = int(params['minNumAnnoPerImage'])
                     else:
-                        minNumAnnoPerImage = self.minNumAnnoPerImage
+                        minNumAnnoPerImage = 0      #TODO
                     if 'maxNum_train' in params:
                         maxNumImages_train = int(params['maxNum_train'])
                     else:
-                        maxNumImages_train = self.maxNumImages_train
+                        maxNumImages_train = -1     #TODO
 
                     status = self.middleware.start_training(project=project,
                                         minTimestamp='lastState', 
                                         minNumAnnoPerImage=minNumAnnoPerImage,
                                         maxNumImages=maxNumImages_train,
-                                        maxNumWorkers=self.maxNumWorkers_train)
+                                        maxNumWorkers=1)
                 except Exception as e:
                     status = str(e)
                 return { 'status' : status }
@@ -87,6 +77,7 @@ class AIController:
                 abort(401, 'unauthorized')
 
         
+        #TODO: deprecated; replace with workflow:
         @self.app.post('/<project>/startInference')
         def start_inference(project):
             '''
@@ -98,12 +89,12 @@ class AIController:
                     if 'maxNum_inference' in params:
                         maxNumImages_inference = int(params['maxNum_inference'])
                     else:
-                        maxNumImages_inference = self.maxNumImages_inference    #TODO: project-specific
+                        maxNumImages_inference = -1                                 #TODO
                     status = self.middleware.start_inference(
                                             project=project,
                                             forceUnlabeled=False,      #TODO 
                                             maxNumImages=maxNumImages_inference,
-                                            maxNumWorkers=self.maxNumWorkers_inference)
+                                            maxNumWorkers=-1)           #TODO
                 except Exception as e:
                     status = str(e)
                 return { 'status' : status }
@@ -112,6 +103,7 @@ class AIController:
                 abort(401, 'unauthorized')
 
 
+        #TODO: deprecated; replace with workflow:
         @self.app.post('/<project>/start')
         def start_model(project):
             '''
@@ -128,15 +120,15 @@ class AIController:
                 if 'minNumAnnoPerImage' in params:
                     minNumAnnoPerImage = int(params['minNumAnnoPerImage'])
                 else:
-                    minNumAnnoPerImage = self.minNumAnnoPerImage    #TODO
+                    minNumAnnoPerImage = 0    #TODO
                 if 'maxNum_train' in params:
                     maxNumImages_train = int(params['maxNum_train'])
                 else:
-                    maxNumImages_train = self.maxNumImages_train    #TODO
+                    maxNumImages_train = -1    #TODO
                 if 'maxNum_inference' in params:
                     maxNumImages_inference = int(params['maxNum_inference'])
                 else:
-                    maxNumImages_inference = self.maxNumImages_inference    #TODO
+                    maxNumImages_inference = -1    #TODO
 
                 if doTrain:
                     if doInference:
@@ -144,10 +136,10 @@ class AIController:
                                 project=project,
                                 minTimestamp='lastState',
                                 minNumAnnoPerImage=minNumAnnoPerImage,
-                                maxNumWorkers_train=self.maxNumWorkers_train,
+                                maxNumWorkers_train=1,          #TODO
                                 forceUnlabeled_inference=False,
                                 maxNumImages_inference=maxNumImages_inference,
-                                maxNumWorkers_inference=self.maxNumWorkers_inference)
+                                maxNumWorkers_inference=-1)     #TODO
                     else:
                         #TODO: expand to other tasks and requests
                         if self.middleware.task_ongoing(project, ('AIController.start_training',
@@ -160,17 +152,18 @@ class AIController:
                                 minTimestamp='lastState',
                                 minNumAnnoPerImage=minNumAnnoPerImage,
                                 maxNumImages=maxNumImages_train,
-                                maxNumWorkers=self.maxNumWorkers_train)
+                                maxNumWorkers=1)                #TODO
                 else:
                     status = self.middleware.start_inference(
                                 project=project,
                                 forceUnlabeled=False, 
                                 maxNumImages=maxNumImages_inference, 
-                                maxNumWorkers=self.maxNumWorkers_inference)
+                                maxNumWorkers=-1)               #TODO
 
                 return { 'status' : status }
             except:
                 abort(400, 'bad request')
+
 
 
         @self.app.post('/<project>/launchWorkflow')
@@ -227,6 +220,54 @@ class AIController:
         #         abort(401, 'unauthorized')
             
         #     return { 'settings': self.middleware.getProjectModelSettings(project) }
+
+        @self.app.get('/<project>/getSavedWorkflows')
+        def get_saved_workflows(project):
+            '''
+                Returns all the model workflows saved for this project,
+                also made by other users.
+            '''
+            if not self.loginCheck(project, admin=True):
+                abort(401, 'unauthorized')
+            
+            try:
+                workflows = self.middleware.getSavedWorkflows(project)
+                return { 'workflows': workflows }
+            except Exception as e:
+                return { 'status': str(e) }
+
+        
+        @self.app.post('/<project>/saveWorkflow')
+        def save_workflow(project):
+            '''
+                Receives a workflow definition through JSON, verifies it
+                by parsing, and stores it in the database if valid. If
+                the flag "set_default" is given and set to True, the pro-
+                vided workflow will be set as the default, to be executed
+                automatically.
+            '''
+            if not self.loginCheck(project, admin=True):
+                abort(401, 'unauthorized')
+            
+            try:
+                username = html.escape(request.get_cookie('username'))
+                workflow = request.json['workflow']
+                workflowName = request.json['workflow_name']
+                try:
+                    # for updating existing workflows
+                    workflowID = request.json['workflow_id']
+                except:
+                    workflowID = None
+                try:
+                    setDefault = request.json['set_default']
+                except:
+                    setDefault = False
+                
+                status = self.middleware.saveWorkflow(project, username, workflow, workflowID, workflowName, setDefault)
+                return { 'response': status }
+
+            except Exception as e:
+                return { 'response': {'status':1, 'message':str(e)} }
 
     
         @self.app.get('/getAvailableAImodels')

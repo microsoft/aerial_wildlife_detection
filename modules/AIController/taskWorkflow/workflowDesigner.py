@@ -9,10 +9,13 @@
         {
             "project": "project_shortname",
             "tasks": [
-                "train",
-                "inference",
                 {
-                    "name": "train",
+                    "id": "node0",
+                    "type": "train"
+                },
+                {
+                    "id": "node1",
+                    "type": "train",
                     "kwargs": {
                         "includeGoldenQuestions": False,
                         "minNumAnnotations": 1
@@ -20,9 +23,19 @@
                 },
                 "inference"
             ],
+            "repeaters": {
+                "repeater0": {
+                    "id": "repeater0",
+                    "type": "repeater",
+                    "start_node": "node1",
+                    "end_node": "node0",
+                    "kwargs": {
+                        "num_repetitions": 2
+                    }
+                }
+            },
             "options": {
-                "max_num_workers": 3,
-                "include_golden_TODO": True,
+                "max_num_workers": 3
             }
         }
     
@@ -37,6 +50,12 @@
           under "kwargs." Those have priority over global options, but as
           above, global options or else defaults will be used to auto-complete
           missing options, if necessary.
+        - Special repeater entries specify a sequence of nodes via "start_node"
+          and "end_node" that is to be looped for "num_repetitions" times. For
+          repeater entries to work, the start and end nodes of the loop must be
+          specified as a dict and contain an id.
+        - Repeater nodes may also have the same id for "start_node" and "end_node,"
+          which results in a single task being executed "num_repetitions" times.
 
     2020 Benjamin Kellenberger
 '''
@@ -69,10 +88,6 @@ class WorkflowDesigner:
                     for subqueue in queue:
                         if 'name' in subqueue and subqueue['name'] == 'AIWorker':
                             numWorkers += 1
-            # stats = i.stats()
-            # if stats is not None:
-            #     #TODO: filter according to queues
-            #     return len(i.stats())
         return numWorkers
 
 
@@ -119,7 +134,7 @@ class WorkflowDesigner:
                 taskArgs[key] = projDefaults[taskName][key]
 
         return {
-            'name': taskName,
+            'type': taskName,
             'project': project,
             'kwargs': taskArgs
         }
@@ -229,10 +244,13 @@ class WorkflowDesigner:
         return celery.chain(taskList)
 
 
-    def _create_celery_task(self, taskDesc, fill_blank):
+    def _create_celery_task(self, project, taskDesc, fill_blank, verifyOnly=False):
         '''
             Receives a task description (full dict with name and kwargs)
             and creates true Celery task routines from it.
+            If "verifyOnly" is set to True, it just returns a bool indi-
+            cating whether the task description is valid (True) or not
+            (False).
             Accounts for special cases, such as:
                 - train: if more than one worker is specified, the task is
                          a chain of distributed training and model state
@@ -244,24 +262,33 @@ class WorkflowDesigner:
             
             Returns a Celery job that can be appended to a global chain.
         '''
-        taskName = taskDesc['name'].lower()
-        project = taskDesc['project']
-        if taskName == 'train':
-            task = self._get_training_signature(project, taskDesc['kwargs'], fill_blank)
-        elif taskName == 'inference':
-            task = self._get_inference_signature(project, taskDesc['kwargs'], fill_blank)
-        return task
+        try:
+            taskName = taskDesc['type'].lower()
+            if taskName == 'train':
+                task = self._get_training_signature(project, taskDesc['kwargs'], fill_blank)
+            elif taskName == 'inference':
+                task = self._get_inference_signature(project, taskDesc['kwargs'], fill_blank)
+            else:
+                task = None
+        except:
+            task = None
+        if verifyOnly:
+            return (task is not None)
+        else:
+            return task
 
 
-    def parseWorkflow(self, project, workflow):
+    def parseWorkflow(self, project, workflow, verifyOnly=False):
         '''
             Parses a workflow as described in the header of this file. Auto-
             completes missing arguments and provides appropriate function ex-
             pansion wherever needed (e.g., "train" may become "get images" > 
             "train across multiple workers" > "average model states").
 
-            Returns a Celery chain that can be submitted to the task queue via
-            the AIController's middleware.
+            If "verifyOnly" is set to True, the function returns a bool indi-
+            cating whether the workflow is valid (True) or not (False).
+            Else, it returns a Celery chain that can be submitted to the task
+            queue via the AIController's middleware.
         '''
 
         #TODO: sanity checks
@@ -274,6 +301,41 @@ class WorkflowDesigner:
         # get default project settings for some of the parameters
         projDefaults = self._get_project_defaults(project)
 
+        # expand task specifications with repeaters
+        workflow_expanded = workflow['tasks']
+        if 'repeaters' in workflow:
+            # get node order first
+            nodeOrder = []
+            nodeIndex = {}
+            for idx, node in enumerate(workflow_expanded):
+                if isinstance(node, dict) and 'id' in node:
+                    nodeOrder.append(node['id'])
+                    nodeIndex[node['id']] = idx
+
+            # get start node for repeaters
+            startNodeIDs = {}
+            for key in workflow['repeaters']:
+                startNode = workflow['repeaters'][key]['start_node']
+                startNodeIDs[startNode] = key
+            
+            # process repeaters front to back (start with first)
+            for nodeID in nodeOrder:
+                if nodeID in startNodeIDs:
+                    # find indices of start and end node
+                    startNodeIndex = nodeIndex[nodeID]
+                    repeaterID = startNodeIDs[nodeID]
+                    endNodeIndex = nodeIndex[workflow['repeaters'][repeaterID]['end_node']]
+
+                    # extract and expand sub-workflow
+                    subWorkflow = workflow['tasks'][endNodeIndex:startNodeIndex+1]
+                    targetSubWorkflow = []
+                    numRepetitions = workflow['repeaters'][repeaterID]['kwargs']['num_repetitions']
+                    for _ in range(numRepetitions):
+                        targetSubWorkflow.extend(subWorkflow.copy())
+
+                    # insert after
+                    workflow_expanded = workflow_expanded[:startNodeIndex+1] + targetSubWorkflow + workflow_expanded[startNodeIndex+1:]
+
         # initialize list for Celery chain tasks
         tasklist = []
         
@@ -281,20 +343,25 @@ class WorkflowDesigner:
         epoch = 1
 
         # parse entries in workflow
-        for index, taskSpec in enumerate(workflow['tasks']):
+        for index, taskSpec in enumerate(workflow_expanded):
             if isinstance(taskSpec, str):
-                # project name provided; auto-expand into dict first
+                # task name provided
+                if taskSpec == 'repeater' or taskSpec == 'connector':
+                    continue
+                #auto-expand into dict first
                 taskDesc = self._expand_from_name(index, project, taskSpec, workflow, projDefaults)
-                taskName = taskDesc['name']
+                taskName = taskDesc['type']
 
             elif isinstance(taskSpec, dict):
                 # task dictionary provided; verify and auto-complete if necessary
                 taskDesc = taskSpec.copy()
-                if not 'name' in taskDesc:
-                    raise Exception(f'Task at index {index} is unnamed.')
-                taskName = taskDesc['name']
+                if not 'type' in taskDesc:
+                    raise Exception(f'Task at index {index} is of unknown type.')
+                taskName = taskDesc['type']
+                if taskName == 'repeater' or taskName == 'connector':
+                    continue
                 if not taskName in DEFAULT_WORKFLOW_ARGS:
-                    raise Exception(f'Unknown task name provided ("{taskName}") for task at index {index}.')
+                    raise Exception(f'Unknown task type provided ("{taskName}") for task at index {index}.')
                 
             defaultArgs = DEFAULT_WORKFLOW_ARGS[taskName].copy()
             if not 'kwargs' in taskDesc:
@@ -323,18 +390,31 @@ class WorkflowDesigner:
                             taskDesc['kwargs'][key] = defaultArgs[key]
 
             if 'max_num_workers' in taskDesc['kwargs']:
+                if isinstance(taskDesc['kwargs']['max_num_workers'], str):
+                    if len(taskDesc['kwargs']['max_num_workers']):
+                        taskDesc['kwargs']['max_num_workers'] = int(taskDesc['kwargs']['max_num_workers'])
+                    else:
+                        taskDesc['kwargs']['max_num_workers'] = defaultArgs['max_num_workers']
+                
                 taskDesc['kwargs']['max_num_workers'] = min(
                     taskDesc['kwargs']['max_num_workers'],
                     numWorkersMax
                 )
+            else:
+                taskDesc['kwargs']['max_num_workers'] = defaultArgs['max_num_workers']
 
             taskDesc['kwargs']['epoch'] = epoch
             if taskName.lower() == 'train':
                 epoch += 1
 
             # construct celery task out of description
-            task = self._create_celery_task(taskDesc, fill_blank=(True if index==0 else False))
+            task = self._create_celery_task(project, taskDesc, fill_blank=(True if index==0 else False), verifyOnly=verifyOnly)
             tasklist.append(task)
 
-        chain = celery.chain(tasklist)
-        return chain
+        if verifyOnly:
+            #TODO: detailed warnings and errors
+            return all(tasklist)
+        
+        else:
+            chain = celery.chain(tasklist)
+            return chain

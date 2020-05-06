@@ -110,12 +110,13 @@ class DBMiddleware():
         vals = []
         for key in imageIDs:
             vals.append(key)
-        queryStr = sql.SQL('''
-            UPDATE {id_img}
-            SET last_requested = %s
-            WHERE id IN %s;
-        ''').format(id_img=sql.Identifier(project, 'image'))
-        self.dbConnector.execute(queryStr, (now, tuple(vals),), None)
+        if len(vals):
+            queryStr = sql.SQL('''
+                UPDATE {id_img}
+                SET last_requested = %s
+                WHERE id IN %s;
+            ''').format(id_img=sql.Identifier(project, 'image'))
+            self.dbConnector.execute(queryStr, (now, tuple(vals),), None)
 
 
     def get_project_immutables(self, project):
@@ -289,6 +290,10 @@ class DBMiddleware():
         '''
             Returns entries from the database based on the list of data entry identifiers specified.
         '''
+
+        if not len(data):
+            return { 'entries': {} }
+
         # query
         projImmutables = self.get_project_immutables(project)
         queryStr = self.sqlBuilder.getFixedImagesQueryString(project, projImmutables['annotationType'], projImmutables['predictionType'], projImmutables['demoMode'])
@@ -453,6 +458,11 @@ class DBMiddleware():
                 lastChecked = datetime.now(tz=pytz.utc)
                 lastTimeRequired = 0
 
+            try:
+                numInteractions = int(entry['numInteractions'])
+            except:
+                numInteractions = 0
+
             if 'annotations' in entry and len(entry['annotations']):
                 for annotation in entry['annotations']:
                     # assemble annotation values
@@ -497,7 +507,7 @@ class DBMiddleware():
                         # new annotation
                         values_insert.append(tuple(annoValues))
                     
-            viewcountValues.append((username, imageKey, 1, lastChecked, lastTimeRequired, meta))
+            viewcountValues.append((username, imageKey, 1, lastChecked, lastTimeRequired, numInteractions, meta))
 
 
         # delete all annotations that are not in submitted batch
@@ -563,9 +573,13 @@ class DBMiddleware():
 
         # viewcount table
         queryStr = sql.SQL('''
-            INSERT INTO {id_iu} (username, image, viewcount, last_checked, last_time_required, meta)
+            INSERT INTO {id_iu} (username, image, viewcount, last_checked, last_time_required, num_interactions, meta)
             VALUES %s 
-            ON CONFLICT (username, image) DO UPDATE SET viewcount = image_user.viewcount + 1, last_checked = EXCLUDED.last_checked, last_time_required = EXCLUDED.last_time_required, meta = EXCLUDED.meta;
+            ON CONFLICT (username, image) DO UPDATE SET viewcount = image_user.viewcount + 1,
+                last_checked = EXCLUDED.last_checked,
+                last_time_required = EXCLUDED.last_time_required,
+                num_interactions = EXCLUDED.num_interactions + image_user.num_interactions,
+                meta = EXCLUDED.meta;
         ''').format(
             id_iu=sql.Identifier(project, 'image_user')
         )

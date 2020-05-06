@@ -1,17 +1,17 @@
 #canvas-wrapper {
     position: absolute;		/* important for node moving to work */
-    width: calc(100vw - 330px);
-    height: calc(100vh - 537px);    /* TODO: not optimal */
+    width: 100%;
+    height: 100%;
     overflow-x: scroll;
     overflow-y: scroll;
-    background: #cccccc;
+    background: #aaa;
 }
 .canvas, .svg-canvas {
     position: absolute;
     left: 0;
     top: 0;
-    width: 1920px;
-    height: 1080px;
+    width: 2560px;
+    height: 1440px;
 }
 .canvas > * {
     position: absolute;

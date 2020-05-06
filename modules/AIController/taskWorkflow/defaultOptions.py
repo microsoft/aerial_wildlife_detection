@@ -13,7 +13,7 @@ DEFAULT_WORKFLOW_ARGS = {
     'train': {
         'min_timestamp': 'lastState',
         'min_anno_per_image': 0,
-        'include_golden_questions': True,   #TODO
+        'include_golden_questions': False,   #TODO
         'max_num_images': -1,
         'max_num_workers': -1
     },
