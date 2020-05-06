@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS {id_image} (
 CREATE TABLE IF NOT EXISTS {id_iu} (
     username VARCHAR NOT NULL,
     image uuid NOT NULL,
-    viewcount SMALLINT DEFAULT 2,
+    viewcount SMALLINT DEFAULT 1,
     last_checked TIMESTAMPTZ,
     last_time_required BIGINT,
     num_interactions INTEGER NOT NULL DEFAULT 0,
