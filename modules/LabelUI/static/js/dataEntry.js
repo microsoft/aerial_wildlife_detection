@@ -300,20 +300,23 @@ class AbstractDataEntry {
    }
 
    getTimeRequired() {
-       // returns the difference between the last annotation's last changed
-       // timestamp and the time created
-       if(this.getTimeCreated() == null) return null;
+       // returns the difference between now() and the annotation's creation
+       // date
+       return new Date() - this.startTime;
+    //    // returns the difference between the last annotation's last changed
+    //    // timestamp and the time created
+    //    if(this.getTimeCreated() == null) return null;
 
-       var lastModified = -1;
-       for(var key in this.annotations) {
-           var nextTimeChanged = this.annotations[key].getTimeChanged();
-           if(nextTimeChanged == null) continue;
-           if(nextTimeChanged > lastModified) {
-               lastModified = nextTimeChanged;
-           }
-       }
+    //    var lastModified = -1;
+    //    for(var key in this.annotations) {
+    //        var nextTimeChanged = this.annotations[key].getTimeChanged();
+    //        if(nextTimeChanged == null) continue;
+    //        if(nextTimeChanged > lastModified) {
+    //            lastModified = nextTimeChanged;
+    //        }
+    //    }
 
-       return Math.max(0, lastModified - this.getTimeCreated());
+    //    return Math.max(0, lastModified - this.getTimeCreated());
    }
 
    setLabel(label) {
