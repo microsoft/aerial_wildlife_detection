@@ -83,10 +83,12 @@ class DataHandler {
         /*
             Remove all assigned labels (if 'enableEmptyClass' is true).
         */
-        if(window.uiBlocked || !window.enableEmptyClass) return;
+        if(window.uiBlocked || !window.enableEmptyClass) return 0;
+        var numRemoved = 0;
         for(var i=0; i<this.dataEntries.length; i++) {
-            this.dataEntries[i].removeAllAnnotations();
+            numRemoved += this.dataEntries[i].removeAllAnnotations();
         }
+        return numRemoved;
     }
 
     refreshActiveAnnotations() {
@@ -103,14 +105,16 @@ class DataHandler {
     }
 
     removeActiveAnnotations() {
-        if(window.uiBlocked) return;
-        if(window.annotationType == 'labels') {
-            this.clearLabelInAll();
+        if(window.uiBlocked) return 0;
+        var numRemoved = 0;
+        if(window.annotationType === 'labels') {
+            return this.clearLabelInAll();
         } else {
             for(var i=0; i<this.dataEntries.length; i++) {
-                this.dataEntries[i].removeActiveAnnotations();
+                numRemoved += this.dataEntries[i].removeActiveAnnotations();
             }
         }
+        return numRemoved;
     }
 
     toggleActiveAnnotationsUnsure() {

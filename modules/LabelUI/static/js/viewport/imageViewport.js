@@ -157,10 +157,10 @@ class ImageViewport {
             canvasMousePos[1] - 0.2,
             0.4);
         this.loupe.setParentExtent([
-            canvasMousePos[0] - 0.05,
-            canvasMousePos[1] - 0.05,
-            canvasMousePos[0] + 0.05,
-            canvasMousePos[1] + 0.05
+            canvasMousePos[0] - window.loupeMagnification,
+            canvasMousePos[1] - window.loupeMagnification,
+            canvasMousePos[0] + window.loupeMagnification,
+            canvasMousePos[1] + window.loupeMagnification
         ]);
 
         // ditto for zoom rectangle
