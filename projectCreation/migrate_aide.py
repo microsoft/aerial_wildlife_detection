@@ -184,6 +184,29 @@ if __name__ == '__main__':
     for mod in MODIFICATIONS_sql:
         dbConn.execute(mod.format(schema=dbSchema), None, None)
 
+    # also bring other projects up-to-date (if registered within AIDE)
+    try:
+        projects = dbConn.execute('SELECT shortname FROM aide_admin.project;', None, 'all')
+        if len(projects):
+
+            # get all schemata and check if project still exists
+            schemata = dbConn.execute('SELECT schema_name FROM information_schema.schemata', None, 'all')
+            schemata = set([s['schema_name'].lower() for s in schemata])
+            for p in projects:
+                pName = p['shortname'].lower()
+
+                # check if project still exists
+                if not pName in schemata:
+                    print(f'WARNING: project "{pName}" is registered but does not exist in database.')
+                    #TODO: option to auto-remove?
+                    continue
+
+                # make modifications one at a time
+                for mod in MODIFICATIONS_sql:
+                    dbConn.execute(mod.format(schema=pName), None, None)
+    except:
+        # no other project registeret yet; skip...
+        pass
 
     # for migration to multiple project support
 
