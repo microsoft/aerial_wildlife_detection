@@ -39,6 +39,8 @@ class UIControlHandler {
         if(this.burstMode === undefined) this.burstMode = false;
         else this.burstMode = window.parseBoolean(this.burstMode);
 
+        window.loupeMagnification = 0.11;
+
         // tools for semantic segmentation - ignored by others
         this.segmentation_properties = {
             brushType: 'rectangle',
@@ -76,13 +78,6 @@ class UIControlHandler {
             self.setAction(ACTIONS.PAN);
         });
 
-        // loupe
-        vpControls.append($('<button id="loupe-button" class="btn btn-sm btn-secondary" title="Toggle Loupe (B)"><img src="/static/interface/img/controls/loupe.svg" style="height:18px" /></button>'));
-        $('#loupe-button').click(function(e) {
-            e.preventDefault();
-            self.toggleLoupe();
-        });
-
         // zoom buttons
         vpControls.append($('<button id="zoom-in-button" class="btn btn-sm btn-secondary" title="Zoom In (I)"><img src="/static/interface/img/controls/zoom_in.svg" style="height:18px" /></button>'));
         $('#zoom-in-button').click(function() {
@@ -102,6 +97,20 @@ class UIControlHandler {
         vpControls.append($('<button id="zoom-reset-button" class="btn btn-sm btn-secondary" title="Original Extent (E)"><img src="/static/interface/img/controls/zoom_extent.svg" style="height:18px" /></button>'));
         $('#zoom-reset-button').click(function() {
             self.resetZoom();
+        });
+
+        // loupe
+        var loupeMarkup = $('<div style="background:#545b61;border-radius:5px;"></div>');
+        vpControls.append(loupeMarkup);
+        loupeMarkup.append($('<button id="loupe-button" class="btn btn-sm btn-secondary" title="Toggle Loupe (B)"><img src="/static/interface/img/controls/loupe.svg" style="height:18px" /></button>'));
+        $('#loupe-button').click(function(e) {
+            e.preventDefault();
+            self.toggleLoupe();
+        });
+        loupeMarkup.append($('<div style="width:24px;height:60px;"><input type="range" id="loupe-zoom-range" title="Loupe magnification factor" min="1" max="15" step="any" value="11" style="width:40px;transform-origin:30px 20px;transform:rotate(-90deg)" /></div>'));
+        $('#loupe-zoom-range').on('input', function(e) {
+            let factor = (15 - $(this).val()) / 100;
+            self.setLoupeMagnification(factor);
         });
 
         /*
@@ -125,7 +134,12 @@ class UIControlHandler {
 
         // remove button
         var removeAnnoCallback = function() {
-            self.setAction(ACTIONS.REMOVE_ANNOTATIONS);
+            // remove active annotations
+            var numRemoved = self.dataHandler.removeActiveAnnotations();
+            if(numRemoved === 0) {
+                // no active annotation, set action instead
+                self.setAction(ACTIONS.REMOVE_ANNOTATIONS);
+            }
         }
         var removeAnnoBtn = $('<button id="remove-annotation" class="btn btn-sm btn-primary" title="Remove Annotation (R)">-</button>');
         removeAnnoBtn.click(removeAnnoCallback);
@@ -300,7 +314,7 @@ class UIControlHandler {
                     self.setAction(ACTIONS.PAN);
 
                 } else if(ccode === 'R') {
-                    self.setAction(ACTIONS.REMOVE_ANNOTATIONS);
+                    removeAnnoCallback();
 
                 } else if(ccode === 'S') {
                     self.setAction(ACTIONS.DO_NOTHING);
@@ -497,6 +511,12 @@ class UIControlHandler {
 
     loupeVisible() {
         return this.showLoupe;
+    }
+
+    setLoupeMagnification(factor) {
+        if(typeof(factor) === 'number') {
+            window.loupeMagnification = Math.max(0.01, Math.min(0.15, factor));
+        }
     }
 
     toggleLoupe() {

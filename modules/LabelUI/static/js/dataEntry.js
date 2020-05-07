@@ -405,15 +405,18 @@ class AbstractDataEntry {
    }
 
    removeActiveAnnotations() {
-       for(var key in this.annotations) {
-           if(this.annotations[key].isActive()) {
-               this.annotations[key].setActive(false, this.viewport);
-               this._removeElement(this.annotations[key]);
-           }
-       }
-       this.render();
-       this.numInteractions++;
-       window.dataHandler.updatePresentClasses();
+        var numRemoved = 0;
+        for(var key in this.annotations) {
+            if(this.annotations[key].isActive()) {
+                this.annotations[key].setActive(false, this.viewport);
+                this._removeElement(this.annotations[key]);
+                numRemoved++;
+            }
+        }
+        this.render();
+        this.numInteractions++;
+        window.dataHandler.updatePresentClasses();
+        return numRemoved;
    }
 
    removeAllAnnotations() {
