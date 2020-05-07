@@ -152,6 +152,8 @@ MODIFICATIONS_sql = [
     ''',
     'ALTER TABLE aide_admin.project ADD COLUMN IF NOT EXISTS default_workflow uuid',
     'ALTER TABLE {schema}.image_user ADD COLUMN IF NOT EXISTS num_interactions INTEGER NOT NULL DEFAULT 0;'
+    'ALTER TABLE {schema}.image_user ADD COLUMN IF NOT EXISTS first_checked TIMESTAMPTZ;',
+    'ALTER TABLE {schema}.image_user ADD COLUMN IF NOT EXISTS total_time_required BIGINT;'
 ]
 
 

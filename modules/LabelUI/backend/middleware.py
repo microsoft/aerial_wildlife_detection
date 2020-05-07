@@ -507,7 +507,7 @@ class DBMiddleware():
                         # new annotation
                         values_insert.append(tuple(annoValues))
                     
-            viewcountValues.append((username, imageKey, 1, lastChecked, lastTimeRequired, numInteractions, meta))
+            viewcountValues.append((username, imageKey, 1, lastChecked, lastChecked, lastTimeRequired, lastTimeRequired, numInteractions, meta))
 
 
         # delete all annotations that are not in submitted batch
@@ -573,11 +573,12 @@ class DBMiddleware():
 
         # viewcount table
         queryStr = sql.SQL('''
-            INSERT INTO {id_iu} (username, image, viewcount, last_checked, last_time_required, num_interactions, meta)
+            INSERT INTO {id_iu} (username, image, viewcount, first_checked, last_checked, last_time_required, total_time_required, num_interactions, meta)
             VALUES %s 
             ON CONFLICT (username, image) DO UPDATE SET viewcount = image_user.viewcount + 1,
                 last_checked = EXCLUDED.last_checked,
                 last_time_required = EXCLUDED.last_time_required,
+                total_time_required = EXCLUDED.total_time_required + image_user.total_time_required,
                 num_interactions = EXCLUDED.num_interactions + image_user.num_interactions,
                 meta = EXCLUDED.meta;
         ''').format(
