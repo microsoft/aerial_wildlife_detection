@@ -619,6 +619,9 @@ class ConnectionLine {
         this.markup.setAttribute('points', '0,0 0,0 0,0');
         this.markup.setAttribute('stroke', 'black');
         this.markup.setAttribute('stroke-width', 2);
+        if(this.is_repeater) {
+            this.markup.setAttribute('stroke-dasharray', 2);
+        }
         this.markup.setAttribute('marker-mid', 'url(#arrow)');
 
         this._update_line();
