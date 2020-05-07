@@ -14,7 +14,9 @@ MODIFICATIONS_sql = [
     'ALTER TABLE {schema}.labelclass ADD COLUMN IF NOT EXISTS keystroke SMALLINT UNIQUE;',
     'ALTER TABLE {schema}.image ADD COLUMN IF NOT EXISTS last_requested TIMESTAMPTZ;',
     'ALTER TABLE {schema}.image_user ADD COLUMN IF NOT EXISTS num_interactions INTEGER NOT NULL DEFAULT 0;',
-    'ALTER TABLE {schema}.annotation ADD COLUMN IF NOT EXISTS autoConverted boolean;'
+    'ALTER TABLE {schema}.annotation ADD COLUMN IF NOT EXISTS autoConverted boolean;',
+    'ALTER TABLE {schema}.image_user ADD COLUMN IF NOT EXISTS first_checked TIMESTAMPTZ;',
+    'ALTER TABLE {schema}.image_user ADD COLUMN IF NOT EXISTS total_time_required BIGINT;'
 ]
 
 

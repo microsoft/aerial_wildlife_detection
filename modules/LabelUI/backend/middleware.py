@@ -480,7 +480,7 @@ class DBMiddleware():
                         # new annotation
                         values_insert.append(tuple(annoValues))
                     
-            viewcountValues.append((username, imageKey, 1, lastChecked, lastTimeRequired, numInteractions, meta))
+            viewcountValues.append((username, imageKey, 1, lastChecked, lastChecked, lastTimeRequired, lastTimeRequired, numInteractions, meta))
 
         schema = self.config.getProperty('Database', 'schema')
 
@@ -542,9 +542,9 @@ class DBMiddleware():
 
         # viewcount table
         sql = '''
-            INSERT INTO {}.image_user (username, image, viewcount, last_checked, last_time_required, num_interactions, meta)
+            INSERT INTO {}.image_user (username, image, viewcount, first_checked, last_checked, last_time_required, total_time_required, num_interactions, meta)
             VALUES %s 
-            ON CONFLICT (username, image) DO UPDATE SET viewcount = image_user.viewcount + 1, last_checked = EXCLUDED.last_checked, last_time_required = EXCLUDED.last_time_required, num_interactions = EXCLUDED.num_interactions + image_user.num_interactions, meta = EXCLUDED.meta;
+            ON CONFLICT (username, image) DO UPDATE SET viewcount = image_user.viewcount + 1, last_checked = EXCLUDED.last_checked, last_time_required = EXCLUDED.last_time_required, total_time_required = EXCLUDED.total_time_required + image_user.total_time_required, num_interactions = EXCLUDED.num_interactions + image_user.num_interactions, meta = EXCLUDED.meta;
         '''.format(schema)
         self.dbConnector.insert(sql, viewcountValues)
 
