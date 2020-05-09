@@ -1,9 +1,8 @@
 '''
     Built-in PyTorch (wrapper) classes other than trainers and models
     are registered here for convenience.
-    TODO: replace all with dedicated files.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 
@@ -19,6 +18,9 @@ from .functional.datasets.pointsDataset import PointsDataset
 # boundingBoxes
 from .functional.datasets.bboxDataset import BoundingBoxesDataset
 
+# segmentationMasks
+from .functional.datasets.segmentationDataset import SegmentationDataset
+
 
 
 ''' Transforms '''
@@ -31,6 +33,9 @@ from .functional.transforms import points as PointsTransforms
 
 # boundingBoxes
 from .functional.transforms import boundingBoxes as BoundingBoxesTransforms
+
+# segmentationMasks
+from .functional.transforms import segmentationMasks as SegmentationMasksTransforms
 
 
 
@@ -53,9 +58,10 @@ def parse_transforms(options):
             return getattr(PointsTransforms, tokens[-1])
         elif tokens[-2] == 'boundingBoxes':
             return getattr(BoundingBoxesTransforms, tokens[-1])
+        elif tokens[-2] == 'segmentationMasks':
+            return getattr(SegmentationMasksTransforms, tokens[-1])
         else:
             return get_class_executable(className)
-
 
     if isinstance(options, dict) and 'class' in options:
         tr_class = _get_transform_executable(options['class'])

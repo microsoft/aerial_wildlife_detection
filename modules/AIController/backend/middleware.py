@@ -17,7 +17,7 @@ from .messageProcessor import MessageProcessor
 from .annotationWatchdog import Watchdog
 from modules.AIController.taskWorkflow.workflowDesigner import WorkflowDesigner
 from modules.Database.app import Database
-from util.helpers import array_split
+from util.helpers import array_split, parse_parameters
 
 from .sql_string_builder import SQLStringBuilder
 
@@ -798,6 +798,107 @@ class AIMiddleware():
             }
         }
 
+
+
+    def updateAImodelSettings(self, project, settings):
+        '''
+            Updates the project's AI model settings.
+            Verifies whether the specified AI and ranking model libraries
+            exist on this setup of AIDE. Raises an exception otherwise.
+        '''
+        # AI libraries installed in AIDE
+        availableModels = self.getAvailableAImodels()['models']
+
+        # project immutables
+        projImmutables = self.dbConn.execute(
+            '''
+                SELECT annotationtype, predictiontype
+                FROM aide_admin.project
+                WHERE shortname = %s;
+            ''',
+            (project,),
+            1
+        )
+        projImmutables = projImmutables[0]
+        annoType = projImmutables['annotationtype']
+        predType = projImmutables['predictiontype']
+
+        # cross-check submitted tokens
+        fieldNames = [
+            ('ai_model_enabled', bool),
+            ('ai_model_library', str),
+            ('ai_model_settings', str),
+            ('ai_alcriterion_library', str),
+            ('ai_alcriterion_settings', str),
+            ('numimages_autotrain', int),           #TODO: replace this and next four entries with default workflow
+            ('minnumannoperimage', int),
+            ('maxnumimages_train', int),
+            ('maxnumimages_inference', int)
+        ]
+        settings_new, settingsKeys_new = parse_parameters(settings, fieldNames, absent_ok=True, escape=True)
+
+        # verify settings
+        forceDisableAImodel = False
+        for idx, key in enumerate(settingsKeys_new):
+            if key == 'ai_model_library':
+                modelLib = settings_new[idx]
+                if modelLib is None or len(modelLib.strip()) == 0:
+                    # no model library specified; disable AI model
+                    forceDisableAImodel = True
+                else:
+                    if not modelLib in availableModels['prediction']:
+                        raise Exception(f'Model library "{modelLib}" is not installed in this instance of AIDE.')
+                    selectedModel = availableModels['prediction'][modelLib]
+                    validAnnoTypes = ([selectedModel['annotationType']] if isinstance(selectedModel['annotationType'], str) else selectedModel['annotationType'])
+                    validPredTypes = ([selectedModel['predictionType']] if isinstance(selectedModel['predictionType'], str) else selectedModel['predictionType'])
+                    if not annoType in validAnnoTypes:
+                        raise Exception(f'Model "{modelLib}" does not support annotations of type "{annoType}".')
+                    if not predType in validPredTypes:
+                        raise Exception(f'Model "{modelLib}" does not support predictions of type "{predType}".')
+            
+            elif key == 'ai_model_settings':
+                # verify model parameters
+                #TODO: outsource; make dedicated function
+                pass
+                
+            elif key == 'ai_alcriterion_library':
+                modelLib = settings_new[idx]
+                if modelLib is None or len(modelLib.strip()) == 0:
+                    # no AL criterion library specified; disable AI model
+                    forceDisableAImodel = True
+                else:
+                    if not modelLib in availableModels['ranking']:
+                        raise Exception(f'Ranking library "{modelLib}" is not installed in this instance of AIDE.')
+            
+            elif key == 'ai_alcriterion_settings':
+                # verify model parameters
+                #TODO: outsource as well?
+                pass
+
+        if forceDisableAImodel:
+            # switch flag
+            flagFound = False
+            for idx, key in enumerate(settingsKeys_new):
+                if key == 'ai_model_enabled':
+                    settings_new[idx] = False
+                    flagFound = True
+                    break
+            if not flagFound:
+                settings_new.append(False)
+                settingsKeys_new.append('ai_model_enabled')
+
+        # all checks passed; update database
+        settings_new.append(project)
+        queryStr = sql.SQL('''UPDATE aide_admin.project
+            SET
+            {}
+            WHERE shortname = %s;
+            '''
+        ).format(
+            sql.SQL(',').join([sql.SQL('{} = %s'.format(item)) for item in settingsKeys_new])
+        )
+        self.dbConn.execute(queryStr, tuple(settings_new), None)
+        return True
 
 
     def listModelStates(self, project):

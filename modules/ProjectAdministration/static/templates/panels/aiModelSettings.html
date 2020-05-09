@@ -1,7 +1,7 @@
 <div>
     <h2>AI Model Settings</h2>
 
-    <p style="font-weight:bold;color:red">Work in progress, not functional yet.</p>
+    <p style="font-weight:bold;color:red">Work in progress, not stable yet.</p>
 
     <div class="settings-group">
         <input type="checkbox" id="ai-model-enabled-checkbox" />
@@ -10,56 +10,29 @@
     
     <div class="settings-group">
         <label for="ai-model-class">Prediction model</label><br />
-        <select id="ai-model-class"></select>
+        <select id="ai-model-class">
+            <option value="unset">Choose:</option>
+        </select>
         <p id="ai-model-class-descr"></p>
     </div>
 
     <div class="settings-group">
         <label for="al-model-class">Ranking model</label><br />
-        <select id="al-model-class"></select>
+        <select id="al-model-class">
+            <option value="unset">Choose:</option>
+        </select>
         <p id="al-model-class-descr"></p>
     </div>
 
 
-    <!-- Submit and abort buttons -->
     <div>
-        <button class="btn btn-danger">Cancel</button>
-        <button id="proj-settings-save-button" class="btn btn-primary" style="float:right">Save</button>
+        <button id="save-button" class="btn btn-primary" style="float:right">Save</button>
     </div>
 </div>
 <script type="text/javascript">
     $(document).ready(function() {
-        // AI model metadata
-        var aiModelSelect = $('#ai-model-class');
-        var alModelSelect = $('#al-model-class');
 
-        //TODO: flag for case when AIController is not available...
-        var promise = $.ajax({
-            url: '/getAvailableAImodels',
-            method: 'GET',
-            success: function(data) {
-                // populate selection fields, if suitable for selected annotation and prediction types
-                window.availableModels = data['models'];
-                for(var key in data['models']['prediction']) {
-                    if(data['models']['prediction'][key]['annotationType'] === window.annotationType && 
-                            data['models']['prediction'][key]['predictionType'] === window.predictionType) {
-                        var entry = $('<option value="' + key + '">' + data['models']['prediction'][key]['name'] + '</option>');
-                        aiModelSelect.append(entry);
-                    }
-                }
-                for(var key in data['models']['ranking']) {
-                    var entry = $('<option value="' + key + '">' + data['models']['ranking'][key]['name'] + '</option>');
-                    alModelSelect.append(entry);
-                }
-            },
-            error: function(data) {
-                //TODO
-                console.log('ERROR:')
-                console.log(data)
-            }
-        });
-
-        promise = promise.done(function() {
+        function loadSettings() {
             return $.ajax({
                 url: 'getConfig',
                 method: 'POST',
@@ -84,22 +57,91 @@
                     $('#ai-model-enabled-checkbox').prop('checked', data['ai_model_enabled']);
 
                     // set selected AI and AL models
-                    aiModelSelect.val(data['ai_model_library']);
-                    $('#ai-model-class-descr').html(window.availableModels['prediction'][data['ai_model_library']]['description']);
-                    alModelSelect.val(data['ai_alcriterion_library']);
-                    $('#al-model-class-descr').html(window.availableModels['ranking'][data['ai_alcriterion_library']]['description']);
+                    let aiLib = data['ai_model_library'];
+                    let rankerLib = data['ai_alcriterion_library'];
+                    if(aiLib === null || aiLib === undefined || !(window.availableModels['prediction'].hasOwnProperty(aiLib))) {
+                        aiModelSelect.val('unset');
+                        $('#ai-model-class-descr').html('');
+                    } else {
+                        aiModelSelect.val(data['ai_model_library']);
+                        $('#ai-model-class-descr').html(window.availableModels['prediction'][data['ai_model_library']]['description']);
+                    }
+                    if(rankerLib === null || rankerLib === undefined || !(window.availableModels['ranking'].hasOwnProperty(rankerLib))) {
+                        alModelSelect.val('unset');
+                        $('#al-model-class-descr').html('');
+                    } else {
+                        alModelSelect.val(data['ai_alcriterion_library']);
+                        $('#al-model-class-descr').html(window.availableModels['ranking'][data['ai_alcriterion_library']]['description']);
+                    }
                 }
-            })
+            });
+        }
+
+
+        // AI model metadata
+        var aiModelSelect = $('#ai-model-class');
+        var alModelSelect = $('#al-model-class');
+
+        //TODO: flag for case when AIController is not available...
+        var promise = $.ajax({
+                url: 'getProjectImmutables',
+                method: 'GET',
+                success: function(data) {
+                    data = data['immutables'];
+                    window.annotationType = data['annotationType'];
+                    window.predictionType = data['predictionType'];
+                },
+                error: function(data) {
+                    console.error(data);
+                }
+        });
+        promise = promise.done(function() {
+            return $.ajax({
+                url: '/getAvailableAImodels',
+                method: 'GET',
+                success: function(data) {
+                    // populate selection fields, if suitable for selected annotation and prediction types
+                    window.availableModels = data['models'];
+                    for(var key in data['models']['prediction']) {
+                        if(data['models']['prediction'][key]['annotationType'] === window.annotationType && 
+                                data['models']['prediction'][key]['predictionType'] === window.predictionType) {
+                            var entry = $('<option value="' + key + '">' + data['models']['prediction'][key]['name'] + '</option>');
+                            aiModelSelect.append(entry);
+                        }
+                    }
+                    for(var key in data['models']['ranking']) {
+                        var entry = $('<option value="' + key + '">' + data['models']['ranking'][key]['name'] + '</option>');
+                        alModelSelect.append(entry);
+                    }
+                },
+                error: function(data) {
+                    //TODO
+                    console.log('ERROR:')
+                    console.log(data)
+                }
+            });
+        });
+
+        promise = promise.done(function() {
+            return loadSettings();
         });
 
         // show model descriptions upon change
         aiModelSelect.change(function() {
             var selModel = $(this).val();
-            $('#ai-model-class-descr').html(window.availableModels['prediction'][selModel]['description']);
+            if(selModel === 'unset') {
+                $('#ai-model-class-descr').html('');
+            } else {
+                $('#ai-model-class-descr').html(window.availableModels['prediction'][selModel]['description']);
+            }
         });
         alModelSelect.change(function() {
             var selModel = $(this).val();
-            $('#al-model-class-descr').html(window.availableModels['ranking'][selModel]['description']);
+            if(selModel === 'unset') {
+                $('#al-model-class-descr').html('');
+            } else {
+                $('#al-model-class-descr').html(window.availableModels['ranking'][selModel]['description']);
+            }
         });
 
         $('#ai-model-enabled-checkbox').change(function() {
@@ -107,6 +149,41 @@
             alModelSelect.prop('disabled', !$(this).prop('checked'));
         });
 
+        $('#save-button').click(function() {
+            window.showLoadingOverlay(true);
+
+            // assemble config parameters and submit
+            let modelLib = (aiModelSelect.val() === 'unset'? null : aiModelSelect.val());
+            let rankerLib = (alModelSelect.val() === 'unset'? null : alModelSelect.val());
+            var settings = {
+                'ai_model_enabled': $('#ai-model-enabled-checkbox').prop('checked'),
+                'ai_model_library': modelLib,
+                'ai_alcriterion_library': rankerLib,
+                'ai_alcriterion_library': alModelSelect.val()
+            };
+            var p = $.ajax({
+                url: 'saveAImodelSettings',
+                method: 'POST',
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+                data: JSON.stringify({'settings': settings}),
+                success: function(data) {
+                    console.log(data['status']);
+                    if(data.hasOwnProperty('message')) {
+                        console.log(data['message']);
+                    }
+                },
+                error: function(data) {
+                    console.error(data);
+                }
+            });
+            p = p.done(function() {
+                return loadSettings();
+            });
+            p.done(function() {
+                window.showLoadingOverlay(false);
+            });
+        });
 
         promise.done(function() {
             window.showLoadingOverlay(false);

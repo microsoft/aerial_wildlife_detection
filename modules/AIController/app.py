@@ -276,7 +276,20 @@ class AIController:
                 Returns all available AI models (class, name) that are
                 installed in this instance of AIDE.
             '''
-            if not self.login_check(canCreateProjects=True):
+            if not self.loginCheck(canCreateProjects=True):
                 abort(401, 'unauthorized')
             
             return self.middleware.getAvailableAImodels()
+
+        
+        @self.app.post('/<project>/saveAImodelSettings')
+        def save_model_settings(project):
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'unauthorized')
+            
+            try:
+                settings = request.json['settings']
+                status = self.middleware.updateAImodelSettings(project, settings)
+                return {'status': (0 if status else 2)}
+            except Exception as e:
+                return {'status': 1, 'message': str(e)}

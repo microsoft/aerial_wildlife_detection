@@ -342,8 +342,8 @@ class ProjectConfigMiddleware:
         # parse remaining parameters
         fieldNames = [
             ('description', str),
-            ('annotationType', str),
-            ('predictionType', str),
+            # ('annotationType', str),
+            # ('predictionType', str),
             ('isPublic', bool),
             ('secret_token', str),
             ('demoMode', bool),
@@ -368,7 +368,7 @@ class ProjectConfigMiddleware:
 
         return True
 
-
+    
 
     def updateClassDefinitions(self, project, classdef, removeMissing=False):
         '''

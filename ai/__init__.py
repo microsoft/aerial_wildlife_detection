@@ -72,6 +72,12 @@ PREDICTION_MODELS = {
                                             'description': 'Implementation of the <a href="http://openaccess.thecvf.com/content_ICCV_2017/papers/Lin_Focal_Loss_for_ICCV_2017_paper.pdf">RetinaNet</a> object detector.',
                                             'annotationType': 'boundingBoxes',
                                             'predictionType': 'boundingBoxes'
+                                        },
+    'ai.models.pytorch.segmentationMasks.UNet': {
+                                            'name': 'U-Net',
+                                            'description': 'Implementation of the <a href="https://arxiv.org/pdf/1505.04597.pdf">U-Net</a> model for semantic image segmentation.',
+                                            'annotationType': 'segmentationMasks',
+                                            'predictionType': 'segmentationMasks'
                                         }
 
     # define your own here
