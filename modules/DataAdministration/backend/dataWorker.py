@@ -366,10 +366,10 @@ class DataWorker:
             to the database.
             Returns a list of paths with files.
         '''
-        
+
         # scan disk for files
         projectFolder = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), project)
-        if not os.path.isdir(projectFolder) or not os.path.islink(projectFolder):
+        if (not os.path.isdir(projectFolder)) and (not os.path.islink(projectFolder)):
             # no folder exists for the project (should not happen due to broadcast at project creation)
             return []
         imgs_disk = listDirectory(projectFolder, recursive=True)
@@ -411,6 +411,9 @@ class DataWorker:
         else:
             imgs_add = list(set(imgs_candidates).intersection(set(imageList)))
 
+        if not len(imgs_add):
+            return 0, None
+
         # add to database
         queryStr = sql.SQL('''
             INSERT INTO {id_img} (filename)
@@ -429,7 +432,7 @@ class DataWorker:
         )
         result = self.dbConnector.execute(queryStr, (imgs_add,), 'all')
 
-        status = (0 if len(result) else 1)  #TODO
+        status = (0 if result is not None and len(result) else 1)  #TODO
         return status, result
 
 
