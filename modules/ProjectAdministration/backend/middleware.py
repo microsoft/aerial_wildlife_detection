@@ -242,6 +242,7 @@ class ProjectConfigMiddleware:
                 id_annotation=sql.Identifier(shortname, 'annotation'),
                 id_cnnstate=sql.Identifier(shortname, 'cnnstate'),
                 id_prediction=sql.Identifier(shortname, 'prediction'),
+                id_workflow=sql.Identifier(shortname, 'workflow'),
                 annotation_fields=sql.SQL(', ').join([sql.SQL(field) for field in annotationFields]),
                 prediction_fields=sql.SQL(', ').join([sql.SQL(field) for field in predictionFields])
             ),
