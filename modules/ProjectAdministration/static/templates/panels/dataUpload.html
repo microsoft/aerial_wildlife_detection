@@ -170,8 +170,9 @@
         function addAllUntracked() {
             if(window.untrackedFiles === undefined) return;
             var imgList = [];
-            for(var key in window.imageBrowser.entries) {
-                imgList.push(window.imageBrowser.entries[key].data['url']);
+            let entries = window.imageBrowser.getEntries();
+            for(var key in entries) {
+                imgList.push(entries[key].data['url']);
             }
             imgList = imgList.concat(window.untrackedFiles);
             return _do_add_untracked(imgList);

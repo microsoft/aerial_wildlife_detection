@@ -1358,15 +1358,29 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
    }
 
    _init_data(properties) {
-       var annoKeys = Object.keys(this.annotations);
-       if(annoKeys.length) {
-           this.annotation = this.annotations[annoKeys[0]]; 
-       } else {
-           this.annotation = new Annotation(window.getRandomID(), properties, 'segmentationMasks', 'annotation');
-           this._addElement(this.annotation);
-       }
-       this.segMap = this.annotation.geometry;
-       this.size = this.segMap.getSize();
+        // create new blended segmentation map from annotation and prediction
+        let annoKeys = Object.keys(properties['annotations']);
+        let predKeys = Object.keys(properties['predictions']);
+        var entryProps = {};
+        if(annoKeys.length > 0) {
+            entryProps = properties['annotations'][annoKeys[0]];
+            if(predKeys.length > 0) {
+                entryProps['segmentationmask_predicted'] = properties['predictions'][predKeys[0]]['segmentationmask'];
+            }
+        } else if(predKeys.length > 0) {
+            entryProps = properties['predictions'][predKeys[0]];
+            entryProps['segmentationmask_predicted'] = entryProps['segmentationmask'];
+            delete entryProps['segmentationmask'];
+        }
+        this.annotation = new Annotation(window.getRandomID(), entryProps, 'segmentationMasks', 'annotation');
+        this._addElement(this.annotation);
+        this.segMap = this.annotation.geometry;
+        this.size = this.segMap.getSize();
+   }
+
+   _parseLabels(properties) {
+        this.predictions = {};
+        this.annotations = {};
    }
 
    _setup_markup() {

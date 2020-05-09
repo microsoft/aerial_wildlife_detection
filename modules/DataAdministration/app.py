@@ -226,8 +226,8 @@ class DataAdministrator:
 
             try:
                 imageNames = request.json
-                status, result = self.middleware.addExistingImages(project, imageNames['images'])
-                return {'status': status, 'response': result}
+                result = self.middleware.addExistingImages(project, imageNames['images'])
+                return {'response': result}
             except Exception as e:
                 return {'status': 1, 'message': str(e)}
 

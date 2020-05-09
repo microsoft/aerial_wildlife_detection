@@ -23,7 +23,7 @@ class QueryStrings_annotation(Enum):
     labels = ['id', 'image', 'meta', 'label', 'username', 'autoConverted', 'timeCreated', 'timeRequired', 'unsure']
     points = ['id', 'image', 'meta', 'x', 'y', 'label', 'username', 'autoConverted', 'timeCreated', 'timeRequired', 'unsure']
     boundingBoxes = ['id', 'image', 'meta', 'x', 'y', 'width', 'height', 'label', 'username', 'autoConverted', 'timeCreated', 'timeRequired', 'unsure']
-    segmentationMasks = ['id', 'image', 'meta', 'segmentationMask', 'width', 'height', 'username', 'autoConverted', 'timeCreated', 'timeRequired']
+    segmentationMasks = ['id', 'image', 'meta', 'segmentationMask', 'width', 'height', 'username', 'timeCreated', 'timeRequired']
 
 
 
