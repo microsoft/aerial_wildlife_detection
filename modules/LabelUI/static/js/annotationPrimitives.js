@@ -48,7 +48,7 @@ class Annotation {
             this.geometry = new SegmentationElement(
                 this.annotationID + '_geom',
                 properties['segmentationmask'],
-                null,       //TODO: need to get access to predicted segmentation mask...
+                properties['segmentationmask_predicted'],
                 properties['width'],
                 properties['height']
             );

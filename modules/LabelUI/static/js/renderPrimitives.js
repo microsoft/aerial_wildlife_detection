@@ -1325,10 +1325,10 @@ class SegmentationElement extends AbstractRenderElement {
         this.ctx.imageSmoothingEnabled = false;
         
         // add image data to canvas if available
-        if(annotationMap != undefined && annotationMap != null) {
-            if(predictionMap != undefined && predictionMap != null) {
+        if(annotationMap !== undefined && annotationMap !== null) {
+            if(predictionMap !== undefined && predictionMap !== null) {
                 // both annotations and predictions available; blend
-                this._blend_maps(annotationMap, predictionMap);
+                this._blend_maps(window.base64ToBuffer(annotationMap), window.base64ToBuffer(predictionMap));
             } else {
                 // only annotations available
                 try {
@@ -1337,10 +1337,10 @@ class SegmentationElement extends AbstractRenderElement {
                     console.log('WARNING: failed to read annotation segmentation map.');
                 }
             }
-        } else if(predictionMap != undefined && predictionMap != null) {
+        } else if(predictionMap !== undefined && predictionMap !== null) {
             // only predictions available
             try {
-                this._parse_map(window.base64ToBuffer(annotationMap));
+                this._parse_map(window.base64ToBuffer(predictionMap));
             } catch {
                 console.log('WARNING: failed to read prediction segmentation map.');
             }
