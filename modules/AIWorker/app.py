@@ -247,4 +247,4 @@ class AIWorker():
                 getattr(modelInstance, 'inference'),
                 getattr(alCriterionInstance, 'rank'),
                 self.dbConnector, self.fileServer,
-                self.config.getProperty('AIWorker', 'inference_batch_size_limit', type=int, fallback=32))    #TODO
+                self.config.getProperty('AIWorker', 'inference_batch_size_limit', type=int, fallback=-1))

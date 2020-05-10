@@ -6,6 +6,9 @@
 
 from datetime import datetime
 import uuid
+import re
+from constants.annotationTypes import ANNOTATION_TYPES
+from ai import PREDICTION_MODELS, ALCRITERION_MODELS
 from modules.AIController.backend import celery_interface as aic_int
 from modules.AIWorker.backend import celery_interface as aiw_int
 import celery
@@ -29,6 +32,8 @@ class AIMiddleware():
         self.dbConn = Database(config)
         self.sqlBuilder = SQLStringBuilder(config)
         self.passiveMode = passiveMode
+        self.scriptPattern = re.compile(r'<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script\.?>')
+        self._init_available_ai_models()
 
         #TODO: replace with messageProcessor property:
         self.training = {}   # dict of bools for each project; will be set to True once start_training is called (and False as soon as everything about the training process has finished)
@@ -44,6 +49,79 @@ class AIMiddleware():
             self.watchdogs = {}    # one watchdog per project. Note: watchdog only created if users poll status (i.e., if there's activity)
             self.workflowDesigner = WorkflowDesigner(self.dbConn, self.celery_app)
             self.messageProcessor.start()
+
+
+    def _init_available_ai_models(self):
+        #TODO: 1. using regex to remove scripts is not failsave; 2. ugly code...
+        models = {
+            'prediction': PREDICTION_MODELS,
+            'ranking': ALCRITERION_MODELS
+        }
+
+        # remove script tags and validate annotation and prediction types specified
+        for modelKey in models['prediction']:
+            model = models['prediction'][modelKey]
+            if 'name' in model and isinstance(model['name'], str):
+                model['name'] = re.sub(self.scriptPattern, '(script removed)', model['name'])
+            else:
+                model['name'] = modelKey
+            if 'description' in model and isinstance(model['description'], str):
+                model['description'] = re.sub(self.scriptPattern, '(script removed)', model['description'])
+            else:
+                model['description'] = '(no description available)'
+            if not 'annotationType' in model or not 'predictionType' in model:
+                # no annotation and/or no prediction type specified; remove model
+                print(f'WARNING: model "{modelKey}" has no annotationType and/or no predictionType specified and is therefore ignored.')
+                del models['prediction'][modelKey]
+                continue
+            if isinstance(model['annotationType'], str):
+                model['annotationType'] = [model['annotationType']]
+            for idx, type in enumerate(model['annotationType']):
+                if type not in ANNOTATION_TYPES:
+                    print(f'WARNING: annotation type "{type}" not understood and ignored.')
+                    del model['annotationType'][idx]
+            if isinstance(model['predictionType'], str):
+                model['predictionType'] = [model['predictionType']]
+            for idx, type in enumerate(model['predictionType']):
+                if type not in ANNOTATION_TYPES:
+                    print(f'WARNING: prediction type "{type}" not understood and ignored.')
+                    del model['predictionType'][idx]
+            if model['annotationType'] is None or not len(model['annotationType']):
+                print(f'WARNING: no valid annotation type specified for model "{modelKey}"; ignoring...')
+                del models['prediction'][modelKey]
+                continue
+            if model['predictionType'] is None or not len(model['predictionType']):
+                print(f'WARNING: no valid prediction type specified for model "{modelKey}"; ignoring...')
+                del models['prediction'][modelKey]
+                continue
+            models['prediction'][modelKey] = model
+        for rankerKey in models['ranking']:
+            ranker = models['ranking'][rankerKey]
+            if 'name' in ranker and isinstance(ranker['name'], str):
+                ranker['name'] = re.sub(self.scriptPattern, '(script removed)', ranker['name'])
+            else:
+                ranker['name'] = rankerKey
+            if 'description' in ranker and isinstance(ranker['description'], str):
+                ranker['description'] = re.sub(self.scriptPattern, '(script removed)', ranker['description'])
+            else:
+                ranker['description'] = '(no description available)'
+            if not 'predictionType' in ranker:
+                # no prediction type specified; remove ranker
+                print(f'WARNING: ranker "{rankerKey}" has no predictionType specified and is therefore ignored.')
+                del models['ranking'][rankerKey]
+                continue
+            if isinstance(ranker['predictionType'], str):
+                ranker['predictionType'] = [ranker['predictionType']]
+            for idx, type in enumerate(ranker['predictionType']):
+                if type not in ANNOTATION_TYPES:
+                    print(f'WARNING: prediction type "{type}" not understood and ignored.')
+                    del ranker['predictionType'][idx]
+            if ranker['predictionType'] is None or not len(ranker['predictionType']):
+                print(f'WARNING: no valid prediction type specified for ranker "{rankerKey}"; ignoring...')
+                del models['ranking'][rankerKey]
+                continue
+            models['ranking'][rankerKey] = ranker
+        self.aiModels = models
 
     
     def _init_project_queues(self):
@@ -792,15 +870,9 @@ class AIMiddleware():
 
 
     def getAvailableAImodels(self):
-        # import available modules
-        from ai import PREDICTION_MODELS, ALCRITERION_MODELS
         return {
-            'models': {
-                'prediction': PREDICTION_MODELS,
-                'ranking': ALCRITERION_MODELS
-            }
+            'models': self.aiModels
         }
-
 
 
     def updateAImodelSettings(self, project, settings):

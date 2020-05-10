@@ -22,6 +22,23 @@ class AIModel:
         self.fileServer = fileServer
         self.options = options
 
+        # query how to treat unlabeled areas
+        unlabeled = dbConnector.execute('''
+            SELECT annotationtype, segmentation_ignore_unlabeled
+            FROM aide_admin.project
+            WHERE shortname = %s;
+            ''', (project,), 1)
+        try:
+            annotationType = unlabeled[0]['annotationtype']
+            if annotationType == 'segmentationMasks':
+                self.ignore_unlabeled = unlabeled[0]['segmentation_ignore_unlabeled']
+            else:
+                self.ignore_unlabeled = True
+        except Exception as e:
+            self.ignore_unlabeled = True
+            print(f'WARNING: project "{project}" has invalid specifications on how to treat unlabeled pixels')
+            print(f'(error: "{str(e)}"). Ignoring unlabeled pixels by default.')
+
 
     def train(self, stateDict, data, updateStateFun):
         """

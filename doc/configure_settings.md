@@ -51,6 +51,14 @@ This section contains parameters for all the individual instances' addresses.
 
 
 
+## [AIWorker]
+
+| Name | Values | Default value | Required | Comments |
+|----------------------------|--------------|---------------|----------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| inference_batch_size_limit | (numeric) | -1 | YES | Number of images to perform inference on at a time. If this value is smaller than the designated number of images for inference in a job, the total number of images will be split into chunks of this size and processed in order, on each AIWorker. This is especially important for data-intensive annotation types, such as segmentation masks, where all the annotations are loaded into system memory prior to calling the inference job. By limiting the number of images to be processed at once, pressure on system RAM can be relieved. Set to a reasonable value if you encounter out of memory issues on AIWorkers. For annotation types that generate less data (labels, points, bounding boxes), this parameter can generally be ignored (resp. set to the default of -1, i.e. "unlimited"). |
+
+
+
 ## [FileServer]
 
 | Name | Values | Default value | Required | Comments |

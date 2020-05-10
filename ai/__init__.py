@@ -12,7 +12,7 @@
 
         'python.path.filename.MyGreatModel' : {
                             'name': 'My great model',
-                            'description': 'This is my great deep detection model, based on <a href="https://www.cv-foundation.org/openaccess/content_cvpr_2016/papers/Redmon_You_Only_Look_CVPR_2016_paper.pdf">YOLO</a>',
+                            'description': 'This is my great deep detection model, based on <a href="https://www.cv-foundation.org/openaccess/content_cvpr_2016/papers/Redmon_You_Only_Look_CVPR_2016_paper.pdf" target="_blank">YOLO</a>',
                             'annotationType': [
                                 'points',
                                 'boundingBoxes'
@@ -47,7 +47,7 @@
         }
 
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 
@@ -57,25 +57,25 @@ PREDICTION_MODELS = {
     # built-ins
     'ai.models.pytorch.labels.ResNet': {
                                             'name': 'ResNet',
-                                            'description': 'Deep classification model based on <a href="http://openaccess.thecvf.com/content_cvpr_2016/papers/He_Deep_Residual_Learning_CVPR_2016_paper.pdf">ResNet</a>.',
+                                            'description': 'Deep classification model based on <a href="http://openaccess.thecvf.com/content_cvpr_2016/papers/He_Deep_Residual_Learning_CVPR_2016_paper.pdf" target="_blank">ResNet</a>.',
                                             'annotationType': 'labels',
                                             'predictionType': 'labels'
                                         },
     'ai.models.pytorch.points.WSODPointModel': {
                                             'name': 'Weakly-supervised point detector',
-                                            'description': '<a href="http://openaccess.thecvf.com/content_cvpr_2016/papers/He_Deep_Residual_Learning_CVPR_2016_paper.pdf">ResNet</a>-based point predictor also working on image-wide labels (presence/absence of classes) by weak supervision. Predicts a grid and extracts points from the grid cell centers. Weak supervision requires a fair mix of images with and without objects of the respective classes. See <a href="http://openaccess.thecvf.com/content_CVPRW_2019/papers/EarthVision/Kellenberger_When_a_Few_Clicks_Make_All_the_Difference_Improving_Weakly-Supervised_CVPRW_2019_paper.pdf">Kellenberger et al., 2019</a> for details.',
+                                            'description': '<a href="http://openaccess.thecvf.com/content_cvpr_2016/papers/He_Deep_Residual_Learning_CVPR_2016_paper.pdf" target="_blank">ResNet</a>-based point predictor also working on image-wide labels (presence/absence of classes) by weak supervision. Predicts a grid and extracts points from the grid cell centers. Weak supervision requires a fair mix of images with and without objects of the respective classes. See <a href="http://openaccess.thecvf.com/content_CVPRW_2019/papers/EarthVision/Kellenberger_When_a_Few_Clicks_Make_All_the_Difference_Improving_Weakly-Supervised_CVPRW_2019_paper.pdf">Kellenberger et al., 2019</a> for details.',
                                             'annotationType': ['labels', 'points'],
                                             'predictionType': 'points'
                                         },
     'ai.models.pytorch.boundingBoxes.RetinaNet': {
                                             'name': 'RetinaNet',
-                                            'description': 'Implementation of the <a href="http://openaccess.thecvf.com/content_ICCV_2017/papers/Lin_Focal_Loss_for_ICCV_2017_paper.pdf">RetinaNet</a> object detector.',
+                                            'description': 'Implementation of the <a href="http://openaccess.thecvf.com/content_ICCV_2017/papers/Lin_Focal_Loss_for_ICCV_2017_paper.pdf" target="_blank">RetinaNet</a> object detector.',
                                             'annotationType': 'boundingBoxes',
                                             'predictionType': 'boundingBoxes'
                                         },
     'ai.models.pytorch.segmentationMasks.UNet': {
                                             'name': 'U-Net',
-                                            'description': 'Implementation of the <a href="https://arxiv.org/pdf/1505.04597.pdf">U-Net</a> model for semantic image segmentation.',
+                                            'description': '<div>Implementation of the <a href="https://arxiv.org/pdf/1505.04597.pdf" target="_blank">U-Net</a> model for semantic image segmentation.</div><img src="https://lmb.informatik.uni-freiburg.de/people/ronneber/u-net/u-net-architecture.png" height="400px" />',
                                             'annotationType': 'segmentationMasks',
                                             'predictionType': 'segmentationMasks'
                                         }
@@ -92,9 +92,11 @@ ALCRITERION_MODELS = {
     'ai.al.builtins.maxconfidence.MaxConfidence': {
                                             'name': 'Max Confidence',
                                             'description': 'Prioritizes predictions based on the confidence value of the highest-scoring class.',
+                                            'predictionType': ['labels', 'points', 'boundingBoxes', 'segmentationMasks']
                                         },
     'ai.al.builtins.breakingties.BreakingTies': {
                                             'name': 'Breaking Ties',
-                                            'description': 'Implementation of the <a href="http://www.jmlr.org/papers/volume6/luo05a/luo05a.pdf">Breaking Ties</a> heuristic (difference of confidence values of highest and second-highest scoring classes).',
+                                            'description': 'Implementation of the <a href="http://www.jmlr.org/papers/volume6/luo05a/luo05a.pdf" target="_blank">Breaking Ties</a> heuristic (difference of confidence values of highest and second-highest scoring classes).',
+                                            'predictionType': ['labels', 'points', 'boundingBoxes', 'segmentationMasks']
                                         }
 }

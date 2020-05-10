@@ -30,7 +30,7 @@
             <option value="1">unlabeled (ignore)</option>
             <option value="0">background</option>
         </select>
-        <div id="seg-unlabeled-info-text"></div>
+        <p id="seg-unlabeled-info-text" style="font-style:italic;font-size:10pt;margin-left:20px;"></p>
     </div>
 
     <div>
@@ -39,6 +39,53 @@
 </div>
 <script type="text/javascript">
     $(document).ready(function() {
+
+        // AI model metadata
+        var aiModelSelect = $('#ai-model-class');
+        var alModelSelect = $('#al-model-class');
+
+        //TODO: flag for case when AIController is not available...
+        var promise = $.ajax({
+                url: 'getProjectImmutables',
+                method: 'GET',
+                success: function(data) {
+                    data = data['immutables'];
+                    window.annotationType = data['annotationType'];
+                    window.predictionType = data['predictionType'];
+                },
+                error: function(data) {
+                    console.error(data);
+                }
+        });
+        promise = promise.then(function() {
+            return $.ajax({
+                url: '/getAvailableAImodels',
+                method: 'GET',
+                success: function(data) {
+                    // populate selection fields, if suitable for selected annotation and prediction types
+                    window.availableModels = data['models'];
+                    for(var key in data['models']['prediction']) {
+                        var annoTypes = data['models']['prediction'][key]['annotationType'];
+                        var predTypes = data['models']['prediction'][key]['predictionType'];
+                        if(!Array.isArray(annoTypes)) annoTypes = [annoTypes];
+                        if(!Array.isArray(predTypes)) predTypes = [predTypes];
+                        if(annoTypes.includes(window.annotationType) && predTypes.includes(window.predictionType)) {
+                            var entry = $('<option value="' + key + '">' + data['models']['prediction'][key]['name'] + '</option>');
+                            aiModelSelect.append(entry);
+                        }
+                    }
+                    for(var key in data['models']['ranking']) {
+                        var entry = $('<option value="' + key + '">' + data['models']['ranking'][key]['name'] + '</option>');
+                        alModelSelect.append(entry);
+                    }
+                },
+                error: function(data) {
+                    //TODO
+                    console.log('ERROR:')
+                    console.log(data)
+                }
+            });
+        });
 
         function loadSettings() {
             return $.ajax({
@@ -87,58 +134,14 @@
                     if(window.annotationType === 'segmentationMasks') {
                         let selectedOption = (data['segmentation_ignore_unlabeled'] ? '1' : '0');
                         $('#seg-unlabeled-select').val(selectedOption);
+                        $('#seg-unlabeled-select').trigger('change');
                         $('#seg-unlabeled-box').show();
                     }
                 }
             });
         }
 
-
-        // AI model metadata
-        var aiModelSelect = $('#ai-model-class');
-        var alModelSelect = $('#al-model-class');
-
-        //TODO: flag for case when AIController is not available...
-        var promise = $.ajax({
-                url: 'getProjectImmutables',
-                method: 'GET',
-                success: function(data) {
-                    data = data['immutables'];
-                    window.annotationType = data['annotationType'];
-                    window.predictionType = data['predictionType'];
-                },
-                error: function(data) {
-                    console.error(data);
-                }
-        });
-        promise = promise.done(function() {
-            return $.ajax({
-                url: '/getAvailableAImodels',
-                method: 'GET',
-                success: function(data) {
-                    // populate selection fields, if suitable for selected annotation and prediction types
-                    window.availableModels = data['models'];
-                    for(var key in data['models']['prediction']) {
-                        if(data['models']['prediction'][key]['annotationType'] === window.annotationType && 
-                                data['models']['prediction'][key]['predictionType'] === window.predictionType) {
-                            var entry = $('<option value="' + key + '">' + data['models']['prediction'][key]['name'] + '</option>');
-                            aiModelSelect.append(entry);
-                        }
-                    }
-                    for(var key in data['models']['ranking']) {
-                        var entry = $('<option value="' + key + '">' + data['models']['ranking'][key]['name'] + '</option>');
-                        alModelSelect.append(entry);
-                    }
-                },
-                error: function(data) {
-                    //TODO
-                    console.log('ERROR:')
-                    console.log(data)
-                }
-            });
-        });
-
-        promise = promise.done(function() {
+        promise = promise.then(function() {
             return loadSettings();
         });
 
@@ -168,9 +171,9 @@
         $('#seg-unlabeled-select').change(function() {
             let infoDiv = $('#seg-unlabeled-info-text');
             if($(this).val() === '1') {
-                infoDiv.html('Any pixels that are not painted by annotators will be ignored during model training.');
+                infoDiv.html('Any pixels that are not painted by annotators will be ignored during model training. Note that this will result in models always predicting a label for every pixel.');
             } else {
-                infoDiv.html('Any pixels that are not painted by annotators will be treated as "background." To this end, a new "background" class with index (value) zero will be added to the project (if not existing).');
+                infoDiv.html('Any pixels that are not painted by annotators will be treated as "background." To this end, a new hidden "background" class with index (value) zero will be added to the project (if not existing).');
             }
         });
 
@@ -205,15 +208,15 @@
                     console.error(data);
                 }
             });
-            p = p.done(function() {
+            p = p.then(function() {
                 return loadSettings();
             });
-            p.done(function() {
+            p.then(function() {
                 window.showLoadingOverlay(false);
             });
         });
 
-        promise.done(function() {
+        promise.then(function() {
             window.showLoadingOverlay(false);
         });
     });

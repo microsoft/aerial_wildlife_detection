@@ -23,20 +23,7 @@ class SegmentationModel(GenericPyTorchModel):
 
     def __init__(self, project, config, dbConnector, fileServer, options):
         super(SegmentationModel, self).__init__(project, config, dbConnector, fileServer, options, DEFAULT_OPTIONS)
-
-        # query how to treat unlabeled areas
-        unlabeled = dbConnector.execute('''
-            SELECT segmentation_ignore_unlabeled
-            FROM aide_admin.project
-            WHERE shortname = %s;
-            ''', (project,), 1)
-        try:
-            self.ignore_unlabeled = unlabeled[0]['segmentation_ignore_unlabeled']
-        except Exception as e:
-            self.ignore_unlabeled = True
-            print(f'WARNING: project "{project}" has invalid specifications on how to treat unlabeled pixels')
-            print(f'(error: "{str(e)}"). Ignoring unlabeled pixels by default.')
-
+        
 
     def train(self, stateDict, data, updateStateFun):
         '''

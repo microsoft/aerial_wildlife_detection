@@ -9,8 +9,6 @@ In detail, the following portions are customizable:
 Note that some models are already built-in and can be configured, so that you might not need to write a custom model at all. Check out the associated [manual page](builtin_models.md) for details.
 
 
-Once a custom model is implemented, it can be plugged into a platform instance by providing its Python package path as an argument to the [configuration *.ini file](configure_settings.md).
-
 The following sections will provide details on how to implement custom models for each portion.
 
 
@@ -91,7 +89,7 @@ Below is a sample code shell for a custom prediction model:
 ```
 
 Note the following:
-* The layout given in the sample code above must not be changed (i.e., it must
+* The layout given in the sample code above must not be changed (_i.e._, it must
   exactly contain the functions and their arguments specified).
 * You may add more custom functions, packages, files, etc. the model can rely on,
   though.
@@ -127,11 +125,11 @@ Example:
 ```
 This code requests an image with given path from the _FileServer_ instance and opens it as a [PIL Image](https://pillow.readthedocs.io/en/stable/). You may also use other libraries and formats than PIL, such as [TensorFlow records](https://www.tensorflow.org/tutorials/load_data/images). Note that results are returned as bytes and need to be read and converted.
 **Notes:**
-    * You can only access files from within your own project (i.e., `<file server root>/<projectName>/<your path here>`).
+    * You can only access files from within your own project (_i.e._, `<file server root>/<projectName>/<your path here>`).
     * Parent accessors (`..`) and absolute paths (`/path/etc/`) are forbidden and will return `None`.
     * If an image cannot be found, or any other error occurs, `None` is returned.
 
-* **options:** These are parameters specific to the model. Use this for e.g. setting the model's learning rate, batch size, etc. Options can be provided through a JSON file; this requires setting the 'model_options_path' to the file path of the file in the [configuration *.ini file](configure_settings.md).
+* **options:** These are parameters specific to the model. Use this for _e.g._ setting the model's learning rate, batch size, etc. Options can be provided through a JSON file; this requires setting the 'model_options_path' to the file path of the file in the [configuration *.ini file](configure_settings.md).
 
 
 #### Training parameters
@@ -146,7 +144,7 @@ Loading such an object could then look as follows:
     stateDict = pickle.load(io.BytesIO(stateDict))
 ```
 
-* **data:** This contains the metadata for all the images the model needs to be trained on. Data come as a Python dict according to the following specifications:
+* **data:** This contains the metadata for all the images the model needs to be trained on. Data come as a Python dict according to the following specifications (bounding box example shown):
     ```python
         data = {
             'images': {
@@ -205,13 +203,32 @@ Loading such an object could then look as follows:
     * For coordinates (points, bounding boxes, etc.):
         * All values are relative w.r.t. the image bounds. For example, `x = 0.5` denotes that the x coordinate of this very annotation is exactly in the middle of the image; `width = 0.23` means that the width of the annotation is 23% of the image's width, etc.
         * For bounding boxes, x and y denote the rectangle _center_.
+    * For segmentation masks:
+        * Instead of coordinates, each entry under `annotations` contains three values:
+            * `segmentationmask`: a base64-encoded string containing the segmentation mask;
+            * `width`: the width of the segmentation mask;
+            * `height`: the height of the segmentation mask.
+          To create a PIL Image from the encoded segmentation mask, you can use the following code snippet:
+          ```python
+            from util.helpers import base64ToImage
+            image = base64ToImage(segmentationMask, width, height)
+          ```
+        * All class indices (ordinals) specified by the user start at 1 (one). Unless you have a dedicated "background" class (see next point), you may want to shift your annotation segmentation mask values down by one, also depending on the model.
+        * In the latest versions of AIDE it is possible to specify whether unlabeled pixels in a segmentation map should be treated as "background" or completely ignored. This is a shortcut for projects that only require segmenting objects, instead of the full image.
+        Make sure to adhere to this property in your custom model. You can find out the setting through the parameter `ignore_unlabeled` of the `AIModel` base class:
+        ```python
+            self.ignore_unlabeled
+        ```
+        If `ignore_unlabeled` is `True`, the loss function of your custom model should only consider pixels in the annotation segmentation mask whose value is greater than zero.
+        If `ignore_unlabeled` is `False` instead, all annotation segmentation mask pixels with ground truth value zero should be treated as "background." To this end, a dedicated background class with index 0 (zero) is automatically added to the project.
+
 
 
 #### Inference parameters
 * **stateDict:** See above (section "Training parameters").
 * **data:** Similarly to the training data, also the inference data come in Python dict format. As a matter of fact they look exactly the same as in the training case, except that all 'annotations' sections are completely missing.
 * **(return value)** In the inference case, the model needs to return a Python dict containing model predictions.
-These may look as follows:
+These may look as follows (bounding box example shown):
 ```python
     return {
         '83d7b609-e3d1-45fb-8701-79f50d25087c': {
@@ -242,10 +259,13 @@ These may look as follows:
   * Every image returned must have a 'predictions' section, holding a list of predictions
   * Only the following data types are allowed for variables holding primitives: `int`, `float`, `str`. Do not provide Numpy arrays (or values), Torch tensors, etc. Always be sure to call the appropriate methods to extract raw values, such as `.toList()`, `.item()`, etc. Failing to do so will result in the _AIWorker_ trying to commit to the database, but not doing so silently (it will just put an error message to the command line console).
   * Each item in the predictions list may contain the following variables:
-    * `label`: a stringified UUID of the predicted label class
-    * `confidence`: a float denoting the model confidence value of the prediction
-    * `logits` (optional): a list of floats of class logits, used by the `Breaking Ties` Active Learning criterion
-    * Any variable required through the 'predictionType' setting in the [configuration *.ini file](configure_settings.md). For example, if 'predictionType' is set to 'boundingBoxes', you also have to provide `x`, `y`, `width` and `height` values.
+    * `label`: a stringified UUID of the predicted label class (image labels, points, bounding boxes) or a (WxH) list or NumPy ndarray of long values denoting the label class index for each pixel (for segmentation masks)
+    * `confidence`: a float denoting the model confidence value of the prediction (image labels, points, bounding boxes) or a (WxH) list or NumPy ndarray of float values denoting the confidence for each pixel (usually the max across all label classes).
+    * `logits`: a list of floats of class logits (image labels, points, bounding boxes) or a (CxWxH) list or NumPy ndarray of float values denoting the confidence for each pixel and label class indices in C. This is _e.g._ used by the `Breaking Ties` Active Learning criterion.
+    * Any variable required through the 'predictionType' setting per prediction type. For example, if the prediction type for a project is set to 'boundingBoxes', you also have to provide `x`, `y`, `width` and `height` values.
+  * For segmentation masks:
+    * Make sure to always predict a segmentation mask that has the same spatial dimensions as the input image.
+    * Return either a list of lists or a NumPy ndarray for `label`, `confidence` and `logits`, _not_ a base64-encoded string.
 
 
 
@@ -294,10 +314,60 @@ The following snippet shows a code shell for bare rankers:
 
 Notes:
 * The ranker constructor is exactly of the same format as the model constructor above.
-* The 'options' argument in the constructor provides parameters as a Python dict specific to the ranker. Like for the model, the ranker parameters can be provided through a JSON file (requires setting the 'al_criterion_options_path' property of the [configuration *.ini file](configure_settings.md)).
+* The 'options' argument in the constructor provides parameters as a Python dict specific to the ranker. Like for the model, the ranker parameters can be provided through the GUI for each project (TODO: under construction).
 * `data` are formatted exactly the same as provided by the model through the `inference` function above.
 * All the ranker has to do in the `rank` function is to append a `float` variable 'priority' to each entry in the data's 'predictions'.
 * 'priority' values must be floating points, with  higher priority being assigned to higher values. It is recommended, but not required, to limit the priority values to the `[0, 1]` range.
+* Make sure to implement ranking heuristics for all the prediction types your criterion supports. For example, if you want to create a ranker that supports segmentation masks, it needs to be able to process the list of lists or NumPy ndarray returned by the inference routine (see above). Otherwise, you can also decide to offer a criterion that _e.g._ only works on bounding boxes by registering it appropriately (see below).
+
+
+
+## Registering your model or ranker with AIDE
+
+In order to make your prediction model or ranker visible in AIDE, you need to:
+1. Make sure it is in a sensible location within the AIDE code folder (e.g. `ai/models/contrib/my_model` or `ai/al/contrib/my_ranker`);
+2. Register it under `ai/__init__.py` by appending metadata to the `PREDICTION_MODELS` for prediction models, or else `ALCRITERION_MODELS` for rankers.
+
+To register the model, append information as follows (example):
+```python
+
+    PREDICTION_MODELS = {
+        # built-ins
+        # ...
+
+        # append your model here
+        'ai.models.contrib.my_model.MyCustomModel': {
+                                                        'name': 'My Custom Model',
+                                                        'description': 'This is what people will see when they select my model in the GUI from the drop-down menu.',
+                                                        'annotationType': ['points', 'boundingBoxes'],
+                                                        'predictionType': 'points'
+                                                    }
+    }
+```
+
+The above example registers a model that accepts either points or bounding boxes as annotations and yields points as predictions.
+
+Notes:
+  * The key under which you have to register your model is the Python path where your main model class can be found.
+  * It is permitted to add basic HTML markup to the `description` entry, such as hyperlinks (`<a href="" target="_blank">...</a>`). Scripts are not allowed and will be filtered during parsing.
+  * The supported annotation types under `annotationType` can either be a single string or a list (if multiple).
+  * The prediction type under `predictionType` must be a string.
+
+
+Similarly, custom rankers can be registered as follows (example):
+```python
+    ALCRITERION_MODELS = {
+        # built-ins
+        # ...
+
+        # append your ranker here
+        'ai.al.contrib.my_ranker.MyCustomRanker': {
+                                                        'name': 'My custom ranker',
+                                                        'description': 'Description text to be shown in the GUI.',
+                                                        'predictionType': ['labels', 'points', 'boundingBoxes', 'segmentationMasks']
+                                                  }
+    }
+```
 
 
 
@@ -322,7 +392,7 @@ For example, the following snippet sets the job status to "in progress" and make
                             done=idx,
                             total=len(data))
 ```
-Note that `done` and `total` need to be present if the progress bar is to be filled only partially. Values need to be integers, but the maximum is not limited to 100 (e.g., you can set it to the total number of images).
+Note that `done` and `total` need to be present if the progress bar is to be filled only partially. Values need to be integers, but the maximum is not limited to 100 (_e.g._, you can set it to the total number of images).
 
 `state` may take one of the following values:
 * `PROGRESS`: This shows a partially filled progress bar; requires the `done` and `total` values to be set in the `meta` argument.
