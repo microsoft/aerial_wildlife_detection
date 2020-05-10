@@ -159,7 +159,7 @@ class JointTransform(object):
         else:
             img = self.transform(img)
             if segMask is not None:
-                segMask = self.transform(segMask[i])
+                segMask = self.transform(segMask)
         return img, segMask
 
 

@@ -161,7 +161,7 @@ class AIController:
                                 maxNumWorkers=-1)               #TODO
 
                 return { 'status' : status }
-            except:
+            except Exception as e:
                 abort(400, 'bad request')
 
 

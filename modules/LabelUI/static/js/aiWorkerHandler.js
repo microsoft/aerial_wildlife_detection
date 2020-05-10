@@ -2,7 +2,7 @@
     Functionality for monitoring and interacting connected AIWorkers
     from the client side.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 */
 
 
@@ -103,7 +103,7 @@ class AIWorkerJob {
         } else if(this.status === 'SUCCESS' || this.status === 'FAILURE') {
             // completed
             message = (this.status === 'SUCCESS' ? 'completed' : 'failed');
-            if(state.hasOwnProperty('meta') && state['meta'].hasOwnProperty('message')) {
+            if(state.hasOwnProperty('meta') && state['meta'] !== null && state['meta'].hasOwnProperty('message')) {
                 message += ' (' + state['meta']['message'] + ')';
             }
 

@@ -2,17 +2,18 @@
     Generic AIWorker model implementation that supports PyTorch models for classification.
 
     2019-20 Benjamin Kellenberger
-    #TODO: *almost* carbon copy from classification model; maybe replace with generic PyTorch impl.?
 '''
 
 import io
 import torch
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from ..genericPyTorchModel import GenericPyTorchModel
 from .. import parse_transforms
 from ._default_options import DEFAULT_OPTIONS
+from ..functional.segmentationMasks.collation import Collator
 
 from util.helpers import get_class_executable, check_args
 
@@ -22,6 +23,19 @@ class SegmentationModel(GenericPyTorchModel):
 
     def __init__(self, project, config, dbConnector, fileServer, options):
         super(SegmentationModel, self).__init__(project, config, dbConnector, fileServer, options, DEFAULT_OPTIONS)
+
+        # query how to treat unlabeled areas
+        unlabeled = dbConnector.execute('''
+            SELECT segmentation_ignore_unlabeled
+            FROM aide_admin.project
+            WHERE shortname = %s;
+            ''', (project,), 1)
+        try:
+            self.ignore_unlabeled = unlabeled[0]['segmentation_ignore_unlabeled']
+        except Exception as e:
+            self.ignore_unlabeled = True
+            print(f'WARNING: project "{project}" has invalid specifications on how to treat unlabeled pixels')
+            print(f'(error: "{str(e)}"). Ignoring unlabeled pixels by default.')
 
 
     def train(self, stateDict, data, updateStateFun):
@@ -37,13 +51,15 @@ class SegmentationModel(GenericPyTorchModel):
 
         # setup transform, data loader, dataset, optimizer, criterion
         transform = parse_transforms(self.options['train']['transform'])
-
+        dataset_kwargs = self.options['dataset']['kwargs']
+        dataset_kwargs['ignore_unlabeled'] = self.ignore_unlabeled
         dataset = self.dataset_class(data, self.fileServer, labelclassMap,
                                 transform,
-                                **self.options['dataset']['kwargs']
+                                **dataset_kwargs
                                 )
-
+        collator = Collator(self.project, self.dbConnector)
         dataLoader = DataLoader(dataset,
+                                collate_fn=collator.collate,
                                 **self.options['train']['dataLoader']['kwargs']
                                 )
 
@@ -51,7 +67,11 @@ class SegmentationModel(GenericPyTorchModel):
         optimizer = optimizer_class(params=model.parameters(), **self.options['train']['optim']['kwargs'])
 
         criterion_class = get_class_executable(self.options['train']['criterion']['class'])
-        criterion = criterion_class(**self.options['train']['criterion']['kwargs'])
+        criterion_kwargs = self.options['train']['criterion']['kwargs']
+        if criterion_class.__name__ == 'CrossEntropyLoss':
+            if self.ignore_unlabeled:
+                criterion_kwargs['ignore_index'] = 0
+        criterion = criterion_class(**criterion_kwargs)
 
         # train model
         device = self.get_device()
@@ -61,7 +81,7 @@ class SegmentationModel(GenericPyTorchModel):
 
         model.to(device)
         imgCount = 0
-        for (img, labels, fVec, _) in tqdm(dataLoader):
+        for (img, labels, _, _) in tqdm(dataLoader):
             img, labels = img.to(device), labels.to(device)
 
             optimizer.zero_grad()
@@ -95,13 +115,15 @@ class SegmentationModel(GenericPyTorchModel):
 
         # setup transform, data loader, dataset, optimizer, criterion
         transform = parse_transforms(self.options['inference']['transform'])
-
+        dataset_kwargs = self.options['dataset']['kwargs']
+        dataset_kwargs['ignore_unlabeled'] = self.ignore_unlabeled
         dataset = self.dataset_class(data, self.fileServer, labelclassMap,
-                                transform, False,
-                                **self.options['dataset']['kwargs']
+                                transform,
+                                **dataset_kwargs
                                 )
-
+        collator = Collator(self.project, self.dbConnector)
         dataLoader = DataLoader(dataset,
+                                collate_fn=collator.collate,
                                 **self.options['inference']['dataLoader']['kwargs']
                                 )
 
@@ -110,23 +132,26 @@ class SegmentationModel(GenericPyTorchModel):
         response = {}
         model.to(device)
         imgCount = 0
-        for (img, _, fVec, imgID) in tqdm(dataLoader):
+        for (img, _, imageSizes, imgID) in tqdm(dataLoader):
 
             dataItem = img.to(device)
             with torch.no_grad():
                 pred_batch = model(dataItem)
+                pred_batch = F.softmax(pred_batch, dim=1)
+
+            # scale up to original size
+            pred_batch = F.interpolate(pred_batch, size=imageSizes[0])
             
             # append to dict
             for i in range(len(imgID)):
                 logits = pred_batch[i,...]
-                label = torch.argmax(logits).item()
-                
+                confidence, label = torch.max(logits, 0)
                 response[imgID[i]] = {
                     'predictions': [
                         {
-                            'label': dataset.labelclassMap_inv[label],
-                            'logits': logits.cpu().numpy().tolist(),        #TODO: for AL criterion?
-                            'confidence': torch.max(logits).item()
+                            'label': label.cpu().numpy(),
+                            'logits': logits.cpu().numpy().tolist(),
+                            'confidence': confidence.cpu().numpy()
                         }
                     ]
                 }

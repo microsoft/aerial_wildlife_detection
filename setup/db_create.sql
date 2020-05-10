@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS aide_admin.project (
     annotationType labelType NOT NULL,
     predictionType labelType,
     ui_settings VARCHAR,
+    segmentation_ignore_unlabeled BOOLEAN NOT NULL DEFAULT TRUE,
     numImages_autoTrain BIGINT,
     minNumAnnoPerImage INTEGER,
     maxNumImages_train BIGINT,

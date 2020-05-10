@@ -12,13 +12,13 @@ import torch.nn.functional as F
 
 
 class UNet(nn.Module):
-    def __init__(self, labelclassmap, in_channels=3, depth=5, numFeaturesExponent=6, padding=False, batch_norm=False, upsamplingMode='upconv'):
+    def __init__(self, labelclassMap, in_channels=3, depth=5, numFeaturesExponent=6, batch_norm=False, upsamplingMode='upconv'):
         super(UNet, self).__init__()
-        self.labelclassmap = labelclassmap
+        self.labelclassMap = labelclassMap
         self.in_channels = in_channels
         self.depth = depth
         self.numFeaturesExponent = numFeaturesExponent
-        self.padding = padding
+        self.padding = True     # hard-coded to True to assert equal input and output dimensions
         assert upsamplingMode in ('upconv', 'upsample')
         self.upsamplingMode = upsamplingMode
 
@@ -27,18 +27,18 @@ class UNet(nn.Module):
         self.down_path = nn.ModuleList()
         for i in range(depth):
             self.down_path.append(
-                UNetConvBlock(prev_channels, 2 ** (wf + i), padding, batch_norm)
+                UNetConvBlock(prev_channels, 2 ** (wf + i), self.padding, batch_norm)
             )
             prev_channels = 2 ** (wf + i)
 
         self.up_path = nn.ModuleList()
         for i in reversed(range(depth - 1)):
             self.up_path.append(
-                UNetUpBlock(prev_channels, 2 ** (wf + i), upsamplingMode, padding, batch_norm)
+                UNetUpBlock(prev_channels, 2 ** (wf + i), upsamplingMode, self.padding, batch_norm)
             )
             prev_channels = 2 ** (wf + i)
 
-        self.last = nn.Conv2d(prev_channels, len(self.labelclassmap.keys()), kernel_size=1)
+        self.last = nn.Conv2d(prev_channels, len(self.labelclassMap.keys()), kernel_size=1)
 
 
     def getStateDict(self):
@@ -48,7 +48,6 @@ class UNet(nn.Module):
             'in_channels': self.in_channels,
             'depth': self.depth,
             'numFeaturesExponent': self.numFeaturesExponent,
-            'padding': self.padding,
             'upsamplingMode': self.upsamplingMode
         }
         return stateDict
@@ -61,13 +60,12 @@ class UNet(nn.Module):
         in_channels = (stateDict['in_channels'] if 'in_channels' in stateDict else 3)
         depth = (stateDict['depth'] if 'depth' in stateDict else 5)
         numFeaturesExponent = (stateDict['numFeaturesExponent'] if 'numFeaturesExponent' in stateDict else 6)
-        padding = (stateDict['padding'] if 'padding' in stateDict else False)
         batch_norm = (stateDict['batch_norm'] if 'batch_norm' in stateDict else False)
         upsamplingMode = (stateDict['upsamplingMode'] if 'upsamplingMode' in stateDict else 'upconv')
         state = (stateDict['model_state'] if 'model_state' in stateDict else None)
 
         # return model
-        model = UNet(labelclassMap, in_channels, depth, numFeaturesExponent, padding, batch_norm, upsamplingMode)
+        model = UNet(labelclassMap, in_channels, depth, numFeaturesExponent, batch_norm, upsamplingMode)
         if state is not None:
             model.load_state_dict(state)
         return model

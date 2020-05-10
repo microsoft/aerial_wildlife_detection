@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS {id_labelclass} (
     color VARCHAR,
     labelclassgroup uuid,
     keystroke SMALLINT UNIQUE,
+    hidden BOOLEAN NOT NULL DEFAULT FALSE,
     PRIMARY KEY (id),
     FOREIGN KEY (labelclassgroup) REFERENCES {id_labelclassGroup}(id)
 );

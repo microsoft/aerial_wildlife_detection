@@ -70,6 +70,21 @@ def check_args(options, defaultOptions):
 
 
 
+def parse_boolean(boolean):
+    '''
+        Performs parsing of various specifications of a boolean:
+        True, 'True', 'true', 't', 'yes', '1', etc.
+    '''
+    if isinstance(boolean, bool):
+        return boolean
+    elif isinstance(boolean, str):
+        boolean = boolean.lower()
+        if boolean.startswith('t') or boolean == '1' or boolean.startswith('y'):
+            return True
+        else:
+            return False
+
+
 def parse_parameters(data, params, absent_ok=True, escape=True):
     '''
         Accepts a dict (data) and list (params) and assembles

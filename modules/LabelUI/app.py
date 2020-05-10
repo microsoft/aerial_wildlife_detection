@@ -10,6 +10,7 @@ from uuid import UUID
 import bottle
 from bottle import request, response, static_file, redirect, abort, SimpleTemplate
 from .backend.middleware import DBMiddleware
+from util.helpers import parse_boolean
 
 
 #TODO
@@ -140,8 +141,12 @@ class LabelUI():
         @self.app.get('/<project>/getClassDefinitions')
         def get_class_definitions(project):
             if self.loginCheck(project=project):
+                try:
+                    showHidden = parse_boolean(request.params['show_hidden'])
+                except:
+                    showHidden = False
                 classDefs = {
-                    'classes': self.middleware.getClassDefinitions(project)
+                    'classes': self.middleware.getClassDefinitions(project, showHidden)
                 }
                 return classDefs
             else:

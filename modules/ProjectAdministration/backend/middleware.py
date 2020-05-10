@@ -122,6 +122,7 @@ class ProjectConfigMiddleware:
             'demomode',
             'interface_enabled',
             'ui_settings',
+            'segmentation_ignore_unlabeled',
             'ai_model_enabled',
             'ai_model_library',
             'ai_model_settings',

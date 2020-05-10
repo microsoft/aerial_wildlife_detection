@@ -348,7 +348,7 @@ class AIMiddleware():
         if minNumAnnoPerImage > 0:
             queryVals.append(minNumAnnoPerImage)
 
-        if maxNumImages is None:
+        if maxNumImages is None or not isinstance(maxNumImages, int) or maxNumImages <= 0:
             limitStr = sql.SQL('')
         else:
             limitStr = sql.SQL('LIMIT %s')
@@ -427,7 +427,7 @@ class AIMiddleware():
                 SELECT maxNumImages_inference
                 FROM aide_admin.project
                 WHERE shortname = %s;''', (project,), 1)
-            maxNumImages = queryResult['maxnumimages_inference']    
+            maxNumImages = queryResult[0]['maxnumimages_inference']    
         
         queryVals = (maxNumImages,)
 
@@ -499,7 +499,8 @@ class AIMiddleware():
         numEpochs = max(1, numEpochs)
         
         def _get_training_signature(epoch=1):
-            return celery.chain(aic_int.get_training_images.s(**{'project':project,
+            return celery.chain(aic_int.get_training_images.s(**{'blank':None,
+                                                    'project':project,
                                                     'epoch':epoch,
                                                     'minTimestamp':minTimestamp,
                                                     'includeGoldenQuestions':includeGoldenQuestions,
@@ -508,7 +509,7 @@ class AIMiddleware():
                                                     'numWorkers':numWorkers}).set(queue='AIController'),
                                 celery.chord(
                                     [aiw_int.call_train.s(**{'index':i, 'epoch':epoch, 'project':project}).set(queue='AIWorker') for i in range(numWorkers)],
-                                    aiw_int.call_average_model_states.si(**{'epoch':epoch, 'project':project}).set(queue='AIWorker')
+                                    aiw_int.call_average_model_states.si(**{'blank':None, 'epoch':epoch, 'project':project}).set(queue='AIWorker')
                                 )
                     )
 
@@ -575,7 +576,9 @@ class AIMiddleware():
         else:
             numWorkers = maxNumWorkers
         def _get_inference_signature():
-            return celery.chain(aic_int.get_inference_images.s(**{'project':project,
+            return celery.chain(aic_int.get_inference_images.s(**{'blank':None,
+                                                    'project':project,
+                                                    'epoch':1,
                                                     'goldenQuestionsOnly':False,        #TODO
                                                     'forceUnlabeled':forceUnlabeled,
                                                     'maxNumImages':maxNumImages,
@@ -605,7 +608,7 @@ class AIMiddleware():
         #         SELECT maxNumImages_inference
         #         FROM aide_admin.project
         #         WHERE shortname = %s;''', (project,), 1)
-        #     maxNumImages = queryResult['maxnumimages_inference']            
+        #     maxNumImages = queryResult[0]['maxnumimages_inference']            
         # queryVals = (maxNumImages,)
 
         # # load the IDs of the images that are being subjected to inference
@@ -833,11 +836,13 @@ class AIMiddleware():
             ('numimages_autotrain', int),           #TODO: replace this and next four entries with default workflow
             ('minnumannoperimage', int),
             ('maxnumimages_train', int),
-            ('maxnumimages_inference', int)
+            ('maxnumimages_inference', int),
+            ('segmentation_ignore_unlabeled', bool)
         ]
         settings_new, settingsKeys_new = parse_parameters(settings, fieldNames, absent_ok=True, escape=True)
 
         # verify settings
+        addBackgroundClass = False
         forceDisableAImodel = False
         for idx, key in enumerate(settingsKeys_new):
             if key == 'ai_model_library':
@@ -875,6 +880,12 @@ class AIMiddleware():
                 #TODO: outsource as well?
                 pass
 
+            elif key == 'segmentation_ignore_unlabeled':
+                # only check if annotation type is segmentation mask
+                if annoType == 'segmentationMasks' and settings_new[idx] is False:
+                    # unlabeled areas are to be treated as "background": add class if not exists
+                    addBackgroundClass = True
+
         if forceDisableAImodel:
             # switch flag
             flagFound = False
@@ -898,6 +909,31 @@ class AIMiddleware():
             sql.SQL(',').join([sql.SQL('{} = %s'.format(item)) for item in settingsKeys_new])
         )
         self.dbConn.execute(queryStr, tuple(settings_new), None)
+
+        if addBackgroundClass:
+            labelClasses = self.dbConn.execute(sql.SQL('''
+                    SELECT * FROM {id_lc}
+                ''').format(id_lc=sql.Identifier(project, 'labelclass')),
+                None, 'all')
+            hasBackground = False
+            for lc in labelClasses:
+                if lc['idx'] == 0:
+                    hasBackground = True
+                    break
+            if not hasBackground:
+                # find unique name
+                lcNames = set([lc['name'] for lc in labelClasses])
+                bgName = 'background'
+                counter = 0
+                while bgName in lcNames:
+                    bgName = f'background ({counter})'
+                    counter += 1
+                self.dbConn.execute(sql.SQL('''
+                    INSERT INTO {id_lc} (name, idx, hidden)
+                    VALUES (%s, 0, true)
+                ''').format(id_lc=sql.Identifier(project, 'labelclass')),
+                (bgName,), None)
+
         return True
 
 

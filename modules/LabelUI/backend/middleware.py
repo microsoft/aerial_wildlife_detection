@@ -193,7 +193,7 @@ class DBMiddleware():
         }
 
 
-    def getClassDefinitions(self, project):
+    def getClassDefinitions(self, project, showHidden=False):
         '''
             Returns a dictionary with entries for all classes in the project.
         '''
@@ -204,13 +204,19 @@ class DBMiddleware():
         }
 
         # query data
+        if showHidden:
+            hiddenSpec = ''
+        else:
+            hiddenSpec = 'WHERE hidden IS false'
         queryStr = sql.SQL('''
-            SELECT 'group' AS type, id, NULL as idx, name, color, parent, NULL AS keystroke FROM {}
+            SELECT 'group' AS type, id, NULL as idx, name, color, parent, NULL AS keystroke, NULL AS hidden FROM {}
             UNION ALL
-            SELECT 'class' AS type, id, idx, name, color, labelclassgroup, keystroke FROM {};
+            SELECT 'class' AS type, id, idx, name, color, labelclassgroup, keystroke, hidden FROM {}
+            {};
             ''').format(
                 sql.Identifier(project, 'labelclassgroup'),
-                sql.Identifier(project, 'labelclass')
+                sql.Identifier(project, 'labelclass'),
+                sql.SQL(hiddenSpec)
             )
 
         # queryStr = '''
@@ -230,6 +236,7 @@ class DBMiddleware():
                 'name': cl['name'],
                 'color': cl['color'],
                 'parent': str(cl['parent']) if cl['parent'] is not None else None,
+                'hidden': cl['hidden']
             }
             if cl['type'] == 'group':
                 entry['entries'] = {}

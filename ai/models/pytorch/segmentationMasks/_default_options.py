@@ -17,7 +17,6 @@ DEFAULT_OPTIONS = {
             "in_channels": 3,
             "depth": 5,
             "numFeaturesExponent": 6,
-            "padding": False,
             "batch_norm": False,
             "upsamplingMode": "upconv"
         }
@@ -36,7 +35,7 @@ DEFAULT_OPTIONS = {
         "optim": {
             "class": "torch.optim.SGD",
             "kwargs": {
-                "lr": 1e-4,
+                "lr": 1e-3,
                 "weight_decay": 0.0
             }
         },

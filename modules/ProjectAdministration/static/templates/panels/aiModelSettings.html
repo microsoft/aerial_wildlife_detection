@@ -24,6 +24,14 @@
         <p id="al-model-class-descr"></p>
     </div>
 
+    <div id="seg-unlabeled-box" class="settings-group" style="display:none">
+        <label for="seg-unlabeled-select">Treat unlabeled areas in image as:</label>
+        <select id="seg-unlabeled-select">
+            <option value="1">unlabeled (ignore)</option>
+            <option value="0">background</option>
+        </select>
+        <div id="seg-unlabeled-info-text"></div>
+    </div>
 
     <div>
         <button id="save-button" class="btn btn-primary" style="float:right">Save</button>
@@ -45,7 +53,8 @@
                         'ai_alcriterion_settings',
                         'numimages_autotrain',
                         'minnumannoperimage',
-                        'maxnumimages_train'
+                        'maxnumimages_train',
+                        'segmentation_ignore_unlabeled'
                     ]
                 }),
                 contentType: 'application/json; charset=utf-8',
@@ -72,6 +81,13 @@
                     } else {
                         alModelSelect.val(data['ai_alcriterion_library']);
                         $('#al-model-class-descr').html(window.availableModels['ranking'][data['ai_alcriterion_library']]['description']);
+                    }
+
+                    // for segmentation masks only: how to treat unlabeled areas
+                    if(window.annotationType === 'segmentationMasks') {
+                        let selectedOption = (data['segmentation_ignore_unlabeled'] ? '1' : '0');
+                        $('#seg-unlabeled-select').val(selectedOption);
+                        $('#seg-unlabeled-box').show();
                     }
                 }
             });
@@ -149,6 +165,15 @@
             alModelSelect.prop('disabled', !$(this).prop('checked'));
         });
 
+        $('#seg-unlabeled-select').change(function() {
+            let infoDiv = $('#seg-unlabeled-info-text');
+            if($(this).val() === '1') {
+                infoDiv.html('Any pixels that are not painted by annotators will be ignored during model training.');
+            } else {
+                infoDiv.html('Any pixels that are not painted by annotators will be treated as "background." To this end, a new "background" class with index (value) zero will be added to the project (if not existing).');
+            }
+        });
+
         $('#save-button').click(function() {
             window.showLoadingOverlay(true);
 
@@ -161,6 +186,9 @@
                 'ai_alcriterion_library': rankerLib,
                 'ai_alcriterion_library': alModelSelect.val()
             };
+            if(window.annotationType === 'segmentationMasks') {
+                settings['segmentation_ignore_unlabeled'] = ($('#seg-unlabeled-select').val() === '1');
+            }
             var p = $.ajax({
                 url: 'saveAImodelSettings',
                 method: 'POST',

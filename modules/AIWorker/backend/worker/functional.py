@@ -22,10 +22,12 @@
     2019-20 Benjamin Kellenberger
 '''
 
+import base64
+import numpy as np
 from celery import current_task, states
 import psycopg2
 from psycopg2 import sql
-from util.helpers import current_time
+from util.helpers import current_time, array_split
 from constants.dbFieldNames import FieldNames_annotation, FieldNames_prediction
 
 
@@ -163,39 +165,39 @@ def _call_train(project, imageIDs, epoch, subset, trainingFun, dbConnector, file
         - TODO: more?
     '''
 
-    print('[{}] Initiated training...'.format(project))
+    print(f'[{project}] Epoch {epoch}: Initiated training...')
     update_state = __get_message_fun(project, epoch)
 
 
     # load model state
-    update_state(state='PREPARING', message='loading model state')
+    update_state(state='PREPARING', message=f'[Epoch {epoch}] loading model state')
     try:
         stateDict, _ = __load_model_state(project, dbConnector)
     except Exception as e:
         print(e)
-        raise Exception('error during model state loading')
+        raise Exception(f'[Epoch {epoch}] error during model state loading (reason: {str(e)})')
 
 
     # load labels and other metadata
-    update_state(state='PREPARING', message='loading metadata')
+    update_state(state='PREPARING', message=f'[Epoch {epoch}] loading metadata')
     try:
         data = __load_metadata(project, dbConnector, imageIDs, True)
     except Exception as e:
         print(e)
-        raise Exception('error during metadata loading')
+        raise Exception(f'[Epoch {epoch}] error during metadata loading (reason: {str(e)})')
 
     # call training function
     try:
-        update_state(state='PREPARING', message='initiating training')
+        update_state(state='PREPARING', message=f'[Epoch {epoch}] initiating training')
         stateDict = trainingFun(stateDict=stateDict, data=data, updateStateFun=update_state)
     except Exception as e:
         print(e)
-        raise Exception('error during training')
+        raise Exception(f'[Epoch {epoch}] error during training (reason: {str(e)})')
 
 
     # commit state dict to database
     try:
-        update_state(state='FINALIZING', message='saving model state')
+        update_state(state='FINALIZING', message=f'[Epoch {epoch}] saving model state')
         model_library, alcriterion_library = __get_ai_library_names(project, dbConnector)
         queryStr = sql.SQL('''
             INSERT INTO {} (stateDict, partial, model_library, alcriterion_library)
@@ -204,11 +206,11 @@ def _call_train(project, imageIDs, epoch, subset, trainingFun, dbConnector, file
         dbConnector.execute(queryStr, (psycopg2.Binary(stateDict), subset, model_library, alcriterion_library), numReturn=None)
     except Exception as e:
         print(e)
-        raise Exception('error during data committing')
+        raise Exception(f'[Epoch {epoch}] error during data committing (reason: {str(e)})')
 
     update_state(state=states.SUCCESS, message='trained on {} images'.format(len(imageIDs)))
 
-    print('[{}] Training completed successfully.'.format(project))
+    print(f'[{project}] Epoch {epoch}: Training completed successfully.')
     return
 
 
@@ -220,11 +222,11 @@ def _call_average_model_states(project, epoch, averageFun, dbConnector, fileServ
         the returning averaged model state into the database.
     '''
 
-    print('[{}] Initiated model state averaging...'.format(project))
+    print(f'[{project}] Epoch {epoch}: Initiated model state averaging...')
     update_state = __get_message_fun(project, epoch)
 
     # get all model states
-    update_state(state='PREPARING', message='loading model states')
+    update_state(state='PREPARING', message=f'[Epoch {epoch}] loading model states')
     try:
         queryStr = sql.SQL('''
             SELECT stateDict, model_library, alcriterion_library FROM {} WHERE partial IS TRUE;
@@ -232,31 +234,28 @@ def _call_average_model_states(project, epoch, averageFun, dbConnector, fileServ
         queryResult = dbConnector.execute(queryStr, None, 'all')
     except Exception as e:
         print(e)
-        raise Exception('error during model state loading')
+        raise Exception(f'[Epoch {epoch}] error during model state loading (reason: {str(e)})')
 
     if not len(queryResult):
         # no states to be averaged; return
-        print('[{}] No model states to be averaged.'.format(project))
-        update_state(state=states.SUCCESS, message='no model states to be averaged')
+        print(f'[{project}] Epoch {epoch}: No model states to be averaged.')
+        update_state(state=states.SUCCESS, message=f'[Epoch {epoch}] no model states to be averaged')
         return
 
     # do the work
-    update_state(state='PREPARING', message='averaging models')
+    update_state(state='PREPARING', message=f'[Epoch {epoch}] averaging models')
     try:
         modelStates = [qr['statedict'] for qr in queryResult]
         modelStates_avg = averageFun(stateDicts=modelStates, updateStateFun=update_state)
     except Exception as e:
         print(e)
-        raise Exception('error during model state fusion')
+        raise Exception(f'[Epoch {epoch}] error during model state fusion (reason: {str(e)})')
 
     # push to database
-    update_state(state='FINALIZING', message='saving model state')
+    update_state(state='FINALIZING', message=f'[Epoch {epoch}] saving model state')
     try:
         model_library = queryResult[0]['model_library']
         alcriterion_library = queryResult[0]['alcriterion_library']
-
-        if model_library is None or alcriterion_library is None:
-            raise Exception('(try loading from project configuration instead)')
     except:
         # load model library from database
         model_library, alcriterion_library = __get_ai_library_names(project, dbConnector)
@@ -268,10 +267,10 @@ def _call_average_model_states(project, epoch, averageFun, dbConnector, fileServ
         dbConnector.insert(queryStr, (modelStates_avg, False, model_library, alcriterion_library))
     except Exception as e:
         print(e)
-        raise Exception('error during data committing')
+        raise Exception(f'[Epoch {epoch}] error during data committing (reason: {str(e)})')
 
     # delete partial model states
-    update_state(state='FINALIZING', message='purging cache')
+    update_state(state='FINALIZING', message=f'[Epoch {epoch}] purging cache')
     try:
         queryStr = sql.SQL('''
             DELETE FROM {} WHERE partial IS TRUE;
@@ -279,133 +278,164 @@ def _call_average_model_states(project, epoch, averageFun, dbConnector, fileServ
         dbConnector.execute(queryStr, None, None)
     except Exception as e:
         print(e)
-        raise Exception('error during cache purging')
+        raise Exception(f'[Epoch {epoch}] error during cache purging (reason: {str(e)})')
 
     # all done
-    update_state(state=states.SUCCESS, message='averaged {} model states'.format(len(queryResult)))
+    update_state(state=states.SUCCESS, message=f'[Epoch {epoch}] averaged {len(queryResult)} model states')
 
-    print('[{}] Model averaging completed successfully.'.format(project))
+    print(f'[{project}] Epoch {epoch}: Model averaging completed successfully.')
     return
 
 
 
-def _call_inference(project, imageIDs, epoch, inferenceFun, rankFun, dbConnector, fileServer):
+def _call_inference(project, imageIDs, epoch, inferenceFun, rankFun, dbConnector, fileServer, batchSizeLimit):
     '''
 
     '''
-    print('[{}] Initiated inference on {} images...'.format(project, len(imageIDs)))
+    print(f'[{project}] Epoch {epoch}: Initiated inference on {len(imageIDs)} images...')
     update_state = __get_message_fun(project, epoch)
 
+    # get project's prediction type
+    projectMeta = dbConnector.execute(sql.SQL('''
+            SELECT predictionType
+            FROM aide_admin.project
+            WHERE shortname = %s;
+        '''),
+        (project,),
+        1)
+    predType = projectMeta[0]['predictiontype']
+
     # load model state
-    update_state(state='PREPARING', message='loading model state')
+    update_state(state='PREPARING', message=f'[Epoch {epoch}] loading model state')
     try:
         stateDict, stateDictID = __load_model_state(project, dbConnector)
     except Exception as e:
         print(e)
-        raise Exception('error during model state loading')
+        raise Exception(f'[Epoch {epoch}] error during model state loading (reason: {str(e)})')
 
-    # load remaining data (image filenames, class definitions)
-    update_state(state='PREPARING', message='loading metadata')
-    try:
-        data = __load_metadata(project, dbConnector, imageIDs, False)
-    except Exception as e:
-        print(e)
-        raise Exception('error during metadata loading')
+    # if batch size limit specified: split imageIDs into chunks and process in smaller batches
+    if isinstance(batchSizeLimit, int) and batchSizeLimit > 0:
+        imageID_chunks = array_split(imageIDs, batchSizeLimit)
+    else:
+        imageID_chunks = [imageIDs]
 
-    # call inference function
-    update_state(state='PREPARING', message='starting inference')
-    try:
-        result = inferenceFun(stateDict=stateDict, data=data, updateStateFun=update_state)
-    except Exception as e:
-        print(e)
-        raise Exception('error during inference')
+    # process in batches
+    for idx, imageID_batch in enumerate(imageID_chunks):
+        chunkStr = f'{idx+1}/{len(imageID_chunks)}'
+        print(f'Chunk {chunkStr}')
 
-    # call ranking function (AL criterion)
-    if rankFun is not None:
-        update_state(state='PREPARING', message='calculating priorities')
+        # load remaining data (image filenames, class definitions)
+        update_state(state='PREPARING', message=f'[Epoch {epoch}] loading metadata (chunk {chunkStr})')
         try:
-            result = rankFun(data=result, updateStateFun=update_state, **{'stateDict':stateDict})
+            data = __load_metadata(project, dbConnector, imageID_batch, False)
         except Exception as e:
             print(e)
-            raise Exception('error during ranking')
+            raise Exception(f'[Epoch {epoch}] error during metadata loading (chunk {chunkStr})')
 
-    # parse result
-    try:
-        # get project's prediction type
-        projectMeta = dbConnector.execute(sql.SQL('''
-                SELECT predictionType
-                FROM aide_admin.project
-                WHERE shortname = %s;
-            '''),
-            (project,),
-            1)
-        predType = projectMeta[0]['predictiontype']
+        # call inference function
+        update_state(state='PREPARING', message=f'[Epoch {epoch}] starting inference (chunk {chunkStr})')
+        try:
+            result = inferenceFun(stateDict=stateDict, data=data, updateStateFun=update_state)
+        except Exception as e:
+            print(e)
+            raise Exception(f'[Epoch {epoch}] error during inference (chunk {chunkStr}; reason: {str(e)})')
 
-        update_state(state='FINALIZING', message='saving predictions')
-        fieldNames = list(getattr(FieldNames_prediction, predType).value)
-        fieldNames.append('image')      # image ID
-        fieldNames.append('cnnstate')   # model state ID
-        values_pred = []
-        values_img = []     # mostly for feature vectors
-        # ids_img = []        # to delete previous predictions
-        for imgID in result.keys():
-            for prediction in result[imgID]['predictions']:
-                nextResultValues = []
-                # we expect a dict of values, so we can use the fieldNames directly
-                for fn in fieldNames:
-                    if fn == 'image':
-                        nextResultValues.append(imgID)
-                        # ids_img.append(imgID)
-                    elif fn == 'cnnstate':
-                        nextResultValues.append(stateDictID)
-                    else:
-                        if fn in prediction:
-                            #TODO: might need to do typecasts (e.g. UUID?)
-                            nextResultValues.append(prediction[fn])
+        # call ranking function (AL criterion)
+        if rankFun is not None:
+            update_state(state='PREPARING', message=f'[Epoch {epoch}] calculating priorities (chunk {chunkStr})')
+            try:
+                result = rankFun(data=result, updateStateFun=update_state, **{'stateDict':stateDict})
+            except Exception as e:
+                print(e)
+                raise Exception(f'[Epoch {epoch}] error during ranking (chunk {chunkStr}, reason: {str(e)})')
 
+        # parse result
+        try:
+            update_state(state='FINALIZING', message=f'[Epoch {epoch}] saving predictions (chunk {chunkStr})')
+            fieldNames = list(getattr(FieldNames_prediction, predType).value)
+            fieldNames.append('image')      # image ID
+            fieldNames.append('cnnstate')   # model state ID
+            values_pred = []
+            values_img = []     # mostly for feature vectors
+            # ids_img = []        # to delete previous predictions
+            for imgID in result.keys():
+                for prediction in result[imgID]['predictions']:
+
+                    # if segmentation mask: encode
+                    if predType == 'segmentationMasks':
+                        segMask = np.array(result[imgID]['predictions'][0]['label']).astype(np.uint8)
+                        height, width = segMask.shape
+                        segMask = base64.b64encode(segMask.ravel()).decode('utf-8')
+                        segMaskDimensions = {
+                            'width': width,
+                            'height': height
+                        }
+
+                    nextResultValues = []
+                    # we expect a dict of values, so we can use the fieldNames directly
+                    for fn in fieldNames:
+                        if fn == 'image':
+                            nextResultValues.append(imgID)
+                            # ids_img.append(imgID)
+                        elif fn == 'cnnstate':
+                            nextResultValues.append(stateDictID)
+                        elif fn == 'segmentationmask':
+                            nextResultValues.append(segMask)
+                        elif fn == 'width' or fn == 'height':
+                            if predType == 'segmentationMasks':
+                                nextResultValues.append(segMaskDimensions[fn])
+                            elif fn in prediction:
+                                nextResultValues.append(prediction[fn])
+                            else:
+                                nextResultValues.append(None)
                         else:
-                            # field name is not in return value; might need to raise a warning, Exception, or set to None
-                            nextResultValues.append(None)
-                        
-                values_pred.append(tuple(nextResultValues))
+                            if fn in prediction:
+                                #TODO: might need to do typecasts (e.g. UUID?)
+                                nextResultValues.append(prediction[fn])
 
-            if 'fVec' in result[imgID] and len(result[imgID]['fVec']):
-                values_img.append((imgID, psycopg2.Binary(result[imgID]['fVec']),))
-    except Exception as e:
-        print(e)
-        raise Exception('error during result parsing')
+                            else:
+                                # field name is not in return value; might need to raise a warning, Exception, or set to None
+                                nextResultValues.append(None)
+                            
+                    values_pred.append(tuple(nextResultValues))
+
+                if 'fVec' in result[imgID] and len(result[imgID]['fVec']):
+                    values_img.append((imgID, psycopg2.Binary(result[imgID]['fVec']),))
+        except Exception as e:
+            print(e)
+            raise Exception(f'[Epoch {epoch}] error during result parsing (chunk {chunkStr}, reason: {str(e)})')
 
 
-    # commit to database
-    try:
-        if len(values_pred):
-            # TODO: we do not delete old predictions anymore, to keep track of model performance over time
-            # # remove previous predictions first
-            # queryStr = sql.SQL('''
-            #     DELETE FROM {} WHERE image IN %s;
-            # ''').format(sql.Identifier(project, 'prediction'))
-            # dbConnector.insert(queryStr, (ids_img,))
-            
-            queryStr = sql.SQL('''
-                INSERT INTO {id_pred} ( {fieldNames} )
-                VALUES %s;
-            ''').format(
-                id_pred=sql.Identifier(project, 'prediction'),
-                fieldNames=sql.SQL(',').join([sql.SQL(f) for f in fieldNames]))
-            dbConnector.insert(queryStr, values_pred)
+        # commit to database
+        try:
+            if len(values_pred):
+                # TODO: we do not delete old predictions anymore, to keep track of model performance over time
+                # # remove previous predictions first
+                # queryStr = sql.SQL('''
+                #     DELETE FROM {} WHERE image IN %s;
+                # ''').format(sql.Identifier(project, 'prediction'))
+                # dbConnector.insert(queryStr, (ids_img,))
+                
+                queryStr = sql.SQL('''
+                    INSERT INTO {id_pred} ( {fieldNames} )
+                    VALUES %s;
+                ''').format(
+                    id_pred=sql.Identifier(project, 'prediction'),
+                    fieldNames=sql.SQL(',').join([sql.SQL(f) for f in fieldNames]))
+                dbConnector.insert(queryStr, values_pred)
 
-        if len(values_img):
-            queryStr = sql.SQL('''
-                INSERT INTO {} ( id, fVec )
-                VALUES %s
-                ON CONFLICT (id) DO UPDATE SET fVec = EXCLUDED.fVec;
-            ''').format(sql.Identifier(project, 'image'))
-            dbConnector.insert(queryStr, values_img)
-    except Exception as e:
-        print(e)
-        raise Exception('error during data committing')
+            if len(values_img):
+                queryStr = sql.SQL('''
+                    INSERT INTO {} ( id, fVec )
+                    VALUES %s
+                    ON CONFLICT (id) DO UPDATE SET fVec = EXCLUDED.fVec;
+                ''').format(sql.Identifier(project, 'image'))
+                dbConnector.insert(queryStr, values_img)
+        except Exception as e:
+            print(e)
+            raise Exception(f'[Epoch {epoch}] error during data committing (chunk {chunkStr}, reason: {str(e)})')
     
     update_state(state=states.SUCCESS, message='predicted on {} images'.format(len(imageIDs)))
 
-    print('[{}] Inference completed successfully.'.format(project))
+    print(f'[{project}] Epoch {epoch}: Inference completed successfully.')
     return

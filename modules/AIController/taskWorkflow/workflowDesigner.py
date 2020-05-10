@@ -149,12 +149,26 @@ class WorkflowDesigner:
 
         if not 'data' in taskArgs:
             # no list of images provided; prepend getting training images
+            minNumAnnoPerImage = taskArgs['min_anno_per_image']
+            if isinstance(minNumAnnoPerImage, str):
+                if len(minNumAnnoPerImage):
+                    minNumAnnoPerImage = int(minNumAnnoPerImage)
+                else:
+                    minNumAnnoPerImage = None
+
+            maxNumImages = taskArgs['max_num_images']
+            if isinstance(maxNumImages, str):
+                if len(maxNumImages):
+                    maxNumImages = int(maxNumImages)
+                else:
+                    maxNumImages = None
+
             task_kwargs = {'project': project,
                             'epoch': epoch,
                             'minTimestamp': taskArgs['min_timestamp'],
                             'includeGoldenQuestions': taskArgs['include_golden_questions'],
-                            'minNumAnnoPerImage': taskArgs['min_anno_per_image'],
-                            'maxNumImages': taskArgs['max_num_images'],
+                            'minNumAnnoPerImage': minNumAnnoPerImage,
+                            'maxNumImages': maxNumImages,
                             'numWorkers': numWorkers}
             if fill_blank:
                 task_kwargs['blank'] = None     # required for task chaining
@@ -199,6 +213,12 @@ class WorkflowDesigner:
     def _get_inference_signature(self, project, taskArgs, fill_blank=True):
         epoch = taskArgs['epoch']
         numWorkers = taskArgs['max_num_workers']
+        maxNumImages = taskArgs['max_num_images']
+        if isinstance(maxNumImages, str):
+            if len(maxNumImages):
+                maxNumImages = int(maxNumImages)
+            else:
+                maxNumImages = None
 
         # initialize list for Celery chain tasks
         taskList = []
@@ -208,7 +228,7 @@ class WorkflowDesigner:
             task_kwargs = {'project': project,
                             'epoch': epoch,
                             'goldenQuestionsOnly': taskArgs['golden_questions_only'],
-                            'maxNumImages': taskArgs['max_num_images'],
+                            'maxNumImages': maxNumImages,
                             'numWorkers': numWorkers}
             if fill_blank:
                 task_kwargs['blank'] = None     # required for task chaining

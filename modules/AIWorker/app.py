@@ -246,4 +246,5 @@ class AIWorker():
         return functional._call_inference(project, imageIDs, epoch,
                 getattr(modelInstance, 'inference'),
                 getattr(alCriterionInstance, 'rank'),
-                self.dbConnector, self.fileServer)
+                self.dbConnector, self.fileServer,
+                self.config.getProperty('AIWorker', 'inference_batch_size_limit', type=int, fallback=32))    #TODO

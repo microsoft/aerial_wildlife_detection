@@ -4,8 +4,9 @@
     2020 Benjamin Kellenberger
 '''
 
-import numpy as np
 from io import BytesIO
+import numpy as np
+import base64
 from PIL import Image
 from torch.utils.data import Dataset
 
@@ -30,13 +31,14 @@ class SegmentationDataset(Dataset):
         - segmentationMask: the loaded and transformed (if specified) segmentation mask.
         - imageID: str, filename of the image loaded
     '''
-    def __init__(self, data, fileServer, labelclassMap, transform=None):
+    def __init__(self, data, fileServer, labelclassMap, transform=None, **kwargs):
         super(SegmentationDataset, self).__init__()
         self.data = data
         self.fileServer = fileServer
         self.labelclassMap = labelclassMap
         self.transform = transform
         self.imageOrder = list(self.data['images'].keys())
+        self.ignore_unlabeled = (kwargs['ignore_unlabeled'] if 'ignore_unlabeled' in kwargs else True)
 
 
     def __len__(self):
@@ -47,31 +49,37 @@ class SegmentationDataset(Dataset):
         imageID = self.imageOrder[idx]
         dataDesc = self.data['images'][imageID]
 
-        #TODO
-        from celery.contrib import rdb
-        rdb.set_trace()
-
         # load image
         imagePath = dataDesc['filename']
         try:
             img = Image.open(BytesIO(self.fileServer.getFile(imagePath))).convert('RGB')
+            imageSize = img.size
         except:
-            print(f'WARNING: Image "{imagePath}"" is corrupt and could not be loaded.')
+            print(f'WARNING: Image "{imagePath}" is corrupt and could not be loaded.')
             img = None
+            imageSize = None
         
         # load and decode segmentation mask
-        annotationID = dataDesc['annotations']  #TODO: empty images are provided too, fix first
-        try:
-            width = dataDesc['width']       #TODO
-            height = dataDesc['height']
-            raster = np.frombuffer(base64.b64decode(dataDesc['segmentationmask']), dtype=np.uint8)
-            raster = np.reshape(raster, (height,width,))
-            segmentationMask = Image.fromarray(raster)
-        except:
-            print(f'WARNING: Segmentation mask for image "{imagePath}" could not be loaded or decoded.')
+        if 'annotations' in dataDesc and len(dataDesc['annotations']):
+            annotation = dataDesc['annotations'][0]
+            try:
+                width = int(annotation['width'])
+                height = int(annotation['height'])
+                raster = np.frombuffer(base64.b64decode(annotation['segmentationmask']), dtype=np.uint8)
+                raster = np.reshape(raster, (height,width,))
+                segmentationMask = Image.fromarray(raster)
+            except:
+                print(f'WARNING: Segmentation mask for image "{imagePath}" could not be loaded or decoded.')
+                segmentationMask = None
+        else:
             segmentationMask = None
         
-        if self.transform is not None and img is not None and segmentationMask is not None:
+        if self.transform is not None and img is not None:
             img, segmentationMask = self.transform(img, segmentationMask)
         
-        return img, segmentationMask, imageID
+        if segmentationMask is not None:
+            if self.ignore_unlabeled:
+                # no dedicated background class; shift all indices down
+                segmentationMask = (segmentationMask - 1).clamp(0)
+
+        return img, segmentationMask, imageSize, imageID
