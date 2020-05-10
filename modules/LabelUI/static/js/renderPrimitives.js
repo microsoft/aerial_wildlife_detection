@@ -1475,7 +1475,7 @@ class SegmentationElement extends AbstractRenderElement {
         for(var i=0; i<data.length; i+=4) {
             // find label class at position
             var lc = window.labelClassHandler.getByColor(data.slice(i,i+3));
-            indexedData.push(lc === null || lc === undefined ? -1 : lc.index);
+            indexedData.push(lc === null || lc === undefined ? 0 : lc.index);
         }
         return new Uint8Array(indexedData);
     }
