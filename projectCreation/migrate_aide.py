@@ -156,7 +156,8 @@ MODIFICATIONS_sql = [
     'ALTER TABLE {schema}.image_user ADD COLUMN IF NOT EXISTS total_time_required BIGINT;',
     '''ALTER TABLE aide_admin.project ADD COLUMN IF NOT EXISTS segmentation_ignore_unlabeled BOOLEAN NOT NULL DEFAULT TRUE;
         ALTER TABLE {schema}.labelclass ADD COLUMN IF NOT EXISTS hidden BOOLEAN NOT NULL DEFAULT FALSE;
-    '''
+    ''',
+    'ALTER TABLE {schema}.annotation ADD COLUMN IF NOT EXISTS autoConverted BOOLEAN;'
 ]
 
 

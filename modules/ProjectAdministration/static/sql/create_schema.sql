@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS {id_annotation} (
     username VARCHAR NOT NULL,
     image uuid NOT NULL,
     meta VARCHAR,
+    autoConverted boolean,
     timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     timeRequired BIGINT,
     unsure boolean NOT NULL DEFAULT false,
