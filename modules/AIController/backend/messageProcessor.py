@@ -63,10 +63,10 @@ class MessageProcessor(Thread):
             try:
                 timeSubmitted = datetime.fromtimestamp(time.time() - (kombu.five.monotonic() - task['time_start']))
             except:
-                timeSubmitted = str(current_time()) #TODO: dirty hack to make failsafe with UI
+                timeSubmitted = current_time() #TODO: dirty hack to make failsafe with UI
             self.messages[project][task['id']] = {
                 'type': ('train' if 'train' in task['name'] else 'inference'),        #TODO
-                'submitted': timeSubmitted,
+                'submitted': str(timeSubmitted),
                 'status': celery.states.PENDING,
                 'meta': {'message':'job at worker'}
             }
@@ -315,10 +315,10 @@ class MessageProcessor(Thread):
                         try:
                             timeSubmitted = datetime.fromtimestamp(time.time() - (kombu.five.monotonic() - t['time_start']))
                         except:
-                            timeSubmitted = str(current_time()) #TODO: dirty hack to make failsafe with UI
+                            timeSubmitted = current_time() #TODO: dirty hack to make failsafe with UI
                         self.messages[project][taskID] = {
                             'type': taskType,
-                            'submitted': timeSubmitted,
+                            'submitted': str(timeSubmitted),
                             'status': celery.states.PENDING,
                             'meta': {'message':'job at worker'}
                         }
