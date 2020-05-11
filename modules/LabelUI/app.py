@@ -174,6 +174,7 @@ class LabelUI():
             # check if user requests to see other user names; only permitted if admin
             # also, by default we limit labels to the current user,
             # even for admins, to provide a consistent experience.
+            username = html.escape(request.get_cookie('username'))
             try:
                 users = request.json['users']
                 if not len(users):
