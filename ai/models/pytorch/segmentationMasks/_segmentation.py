@@ -70,10 +70,10 @@ class SegmentationModel(GenericPyTorchModel):
         imgCount = 0
         for (img, labels, _, _) in tqdm(dataLoader):
             img, labels = img.to(device), labels.to(device)
-
+            
             optimizer.zero_grad()
             pred = model(img)
-            loss_value = criterion(pred, labels)
+            loss_value = criterion(pred, labels.long())
             loss_value.backward()
             optimizer.step()
             

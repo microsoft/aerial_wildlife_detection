@@ -1417,7 +1417,7 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
 
 
    __paint(event) {
-       if([ACTIONS.ADD_ANNOTATION, ACTIONS.REMOVE_ANNOTATIONS].includes(window.uiControlHandler.getAction())) {
+       if(this.imageEntry !== null && [ACTIONS.ADD_ANNOTATION, ACTIONS.REMOVE_ANNOTATIONS].includes(window.uiControlHandler.getAction())) {
 
            // update mouse position
            this.mousePos = this.viewport.getRelativeCoordinates(event, 'validArea');
