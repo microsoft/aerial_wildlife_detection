@@ -32,7 +32,6 @@ from tqdm import tqdm
 
 from ..genericPyTorchModel import GenericPyTorchModel
 from .. import parse_transforms
-from ._default_options import DEFAULT_OPTIONS
 from ..functional._wsodPoints import encoder, collation
 
 from util.helpers import get_class_executable, check_args
@@ -40,8 +39,8 @@ from util.helpers import get_class_executable, check_args
 
 class PointModel(GenericPyTorchModel):
 
-    def __init__(self, config, dbConnector, fileServer, options):
-        super(PointModel, self).__init__(config, dbConnector, fileServer, options, DEFAULT_OPTIONS)
+    def __init__(self, config, dbConnector, fileServer, options, defaultOptions):
+        super(PointModel, self).__init__(config, dbConnector, fileServer, options, defaultOptions)
     
 
     def train(self, stateDict, data, updateStateFun):

@@ -4,14 +4,12 @@
     2019-20 Benjamin Kellenberger
 '''
 
-import io
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from ..genericPyTorchModel import GenericPyTorchModel
 from .. import parse_transforms
-from ._default_options import DEFAULT_OPTIONS
 from ..functional.classification.collation import Collator
 
 from util.helpers import get_class_executable, check_args
@@ -20,8 +18,9 @@ from util.helpers import get_class_executable, check_args
 
 class ClassificationModel(GenericPyTorchModel):
 
-    def __init__(self, project, config, dbConnector, fileServer, options):
-        super(ClassificationModel, self).__init__(project, config, dbConnector, fileServer, options, DEFAULT_OPTIONS)
+    def __init__(self, project, config, dbConnector, fileServer, options, defaultOptions):
+        super(ClassificationModel, self).__init__(project, config, dbConnector, fileServer,
+            options, defaultOptions)
 
 
     def train(self, stateDict, data, updateStateFun):

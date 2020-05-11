@@ -1,11 +1,11 @@
 '''
     Abstract model class, providing code shells for the AIWorker.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 class AIModel:
-    def __init__(self, project, config, dbConnector, fileServer, options):
+    def __init__(self, project, config, dbConnector, fileServer, options=None):
         """
             Model constructor. This is called by both the AIWorker and AIController
             modules when starting up.
@@ -38,6 +38,15 @@ class AIModel:
             self.ignore_unlabeled = True
             print(f'WARNING: project "{project}" has invalid specifications on how to treat unlabeled pixels')
             print(f'(error: "{str(e)}"). Ignoring unlabeled pixels by default.')
+
+
+    @staticmethod
+    def getDefaultOptions():
+        raise NotImplementedError('not implemented for base class.')
+    
+    
+    def getOptions(self):
+        return self.options
 
 
     def train(self, stateDict, data, updateStateFun):

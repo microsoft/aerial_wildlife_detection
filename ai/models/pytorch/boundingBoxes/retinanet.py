@@ -1,7 +1,7 @@
 '''
     RetinaNet trainer for PyTorch.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 import io
@@ -24,7 +24,8 @@ class RetinaNet(GenericPyTorchModel):
     model_class = Model
 
     def __init__(self, project, config, dbConnector, fileServer, options):
-        super(RetinaNet, self).__init__(project, config, dbConnector, fileServer, options, DEFAULT_OPTIONS)
+        super(RetinaNet, self).__init__(project, config, dbConnector, fileServer,
+            options, RetinaNet.getDefaultOptions())
 
         # set defaults if not explicitly overridden
         if self.model_class is None:
@@ -33,6 +34,17 @@ class RetinaNet(GenericPyTorchModel):
             self.criterion_class = loss.FocalLoss
         if self.dataset_class is None:
             self.dataset_class = BoundingBoxesDataset
+
+
+    @staticmethod
+    def getDefaultOptions():
+        try:
+            # try to load defaults from JSON file first
+            options = json.load(open('config/ai/model/pytorch/boundingBoxes/retinanet.json', 'r'))
+        except:
+            # error; fall back to built-in defaults
+            options = DEFAULT_OPTIONS
+        return options
 
 
     def train(self, stateDict, data, updateStateFun):

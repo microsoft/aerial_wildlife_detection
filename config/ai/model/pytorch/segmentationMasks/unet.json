@@ -1,0 +1,117 @@
+{
+    "general": {
+        "image_size": [224, 224],
+        "device": "cuda",
+        "seed": 0
+    },
+    "model": {
+        "kwargs": {
+            "in_channels": 3,
+            "depth": 5,
+            "numFeaturesExponent": 6,
+            "batch_norm": false,
+            "upsamplingMode": "upconv"
+        }
+    },
+    "dataset": {
+        "class": "ai.models.pytorch.SegmentationDataset",
+        "kwargs": {}
+    },
+    "train": {
+        "dataLoader": {
+            "kwargs": {
+                "shuffle": true,
+                "batch_size": 1
+            }
+        },
+        "optim": {
+            "class": "torch.optim.SGD",
+            "kwargs": {
+                "lr": 1e-3,
+                "weight_decay": 0.0
+            }
+        },
+        "transform": {
+            "class": "ai.models.pytorch.segmentationMasks.Compose",
+            "kwargs": {
+                "transforms": [{
+                        "class": "ai.models.pytorch.segmentationMasks.Resize",
+                        "kwargs": {
+                            "size": [224, 224]
+                        }
+                    },
+                    {
+                        "class": "ai.models.pytorch.segmentationMasks.RandomHorizontalFlip",
+                        "kwargs": {
+                            "p": 0.5
+                        }
+                    },
+                    {
+                        "class": "ai.models.pytorch.segmentationMasks.JointTransform",
+                        "kwargs": {
+                            "transform": {
+                                "class": "torchvision.transforms.ToTensor"
+                            }
+                        }
+                    },
+                    {
+                        "class": "ai.models.pytorch.segmentationMasks.DefaultTransform",
+                        "kwargs": {
+                            "transform": {
+                                "class": "torchvision.transforms.Normalize",
+                                "kwargs": {
+                                    "mean": [0.485, 0.456, 0.406],
+                                    "std": [0.229, 0.224, 0.225]
+                                }
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        "criterion": {
+            "class": "torch.nn.CrossEntropyLoss",
+            "kwargs": {}
+        }
+    },
+    "inference": {
+        "transform": {
+            "class": "ai.models.pytorch.segmentationMasks.Compose",
+            "kwargs": {
+                "transforms": [{
+                        "class": "ai.models.pytorch.segmentationMasks.Resize",
+                        "kwargs": {
+                            "size": [224, 224]
+                        }
+                    },
+                    {
+                        "class": "ai.models.pytorch.segmentationMasks.JointTransform",
+                        "kwargs": {
+                            "transform": {
+                                "class": "torchvision.transforms.ToTensor"
+                            }
+                        }
+                    },
+                    {
+                        "class": "ai.models.pytorch.segmentationMasks.DefaultTransform",
+                        "kwargs": {
+                            "transform": {
+                                "class": "torchvision.transforms.Normalize",
+                                "kwargs": {
+                                    "mean": [0.485, 0.456, 0.406],
+                                    "std": [0.229, 0.224, 0.225]
+                                }
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        "dataLoader": {
+            "kwargs": {
+                "shuffle": false,
+                "batch_size": 1
+            }
+        }
+    }
+}

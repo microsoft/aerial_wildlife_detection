@@ -4,4 +4,4 @@
     2020 Benjamin Kellenberger
 '''
 
-from .unet import UNet
+from .unet.model import UNet

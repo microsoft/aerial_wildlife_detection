@@ -12,7 +12,6 @@ from tqdm import tqdm
 
 from ..genericPyTorchModel import GenericPyTorchModel
 from .. import parse_transforms
-from ._default_options import DEFAULT_OPTIONS
 from ..functional.segmentationMasks.collation import Collator
 
 from util.helpers import get_class_executable, check_args
@@ -21,8 +20,9 @@ from util.helpers import get_class_executable, check_args
 
 class SegmentationModel(GenericPyTorchModel):
 
-    def __init__(self, project, config, dbConnector, fileServer, options):
-        super(SegmentationModel, self).__init__(project, config, dbConnector, fileServer, options, DEFAULT_OPTIONS)
+    def __init__(self, project, config, dbConnector, fileServer, options, defaultOptions):
+        super(SegmentationModel, self).__init__(project, config, dbConnector, fileServer,
+            options, defaultOptions)
         
 
     def train(self, stateDict, data, updateStateFun):
