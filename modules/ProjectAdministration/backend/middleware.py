@@ -66,7 +66,12 @@ class ProjectConfigMiddleware:
         self.dbConnector = Database(config)
 
         # load default UI settings
-        self.defaultUIsettings = json.load(open('modules/ProjectAdministration/static/json/default_ui_settings.json', 'r'))
+        try:
+            # check if custom default styles are provided
+            self.defaultUIsettings = json.load(open('config/default_ui_settings.json', 'r'))
+        except:
+            # resort to built-in styles
+            self.defaultUIsettings = json.load(open('modules/ProjectAdministration/static/json/default_ui_settings.json', 'r'))
 
 
     def getPlatformInfo(self, project, parameters=None):
