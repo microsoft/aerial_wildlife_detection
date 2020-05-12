@@ -197,17 +197,20 @@ if __name__ == '__main__':
             schemata = dbConn.execute('SELECT schema_name FROM information_schema.schemata', None, 'all')
             schemata = set([s['schema_name'].lower() for s in schemata])
             for p in projects:
-                pName = p['shortname'].lower()
+                try:
+                    pName = p['shortname'].lower()
 
-                # check if project still exists
-                if not pName in schemata:
-                    print(f'WARNING: project "{pName}" is registered but does not exist in database.')
-                    #TODO: option to auto-remove?
-                    continue
+                    # check if project still exists
+                    if not pName in schemata:
+                        print(f'WARNING: project "{pName}" is registered but does not exist in database.')
+                        #TODO: option to auto-remove?
+                        continue
 
-                # make modifications one at a time
-                for mod in MODIFICATIONS_sql:
-                    dbConn.execute(mod.format(schema=pName), None, None)
+                    # make modifications one at a time
+                    for mod in MODIFICATIONS_sql:
+                        dbConn.execute(mod.format(schema=pName), None, None)
+                except:
+                    pass
     except:
         # no other project registeret yet; skip...
         pass

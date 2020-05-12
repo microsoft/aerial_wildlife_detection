@@ -86,6 +86,36 @@ AIDE is fully modular and supports custom AI models, as long as they provide a P
 
 ## Installation
 
+### Migration from AIDE v1
+If you already have an installation of the [first version](https://github.com/microsoft/aerial_wildlife_detection) of AIDE installed, you can move to the latest version as follows:
+1. Create a backup of your `settings.ini` file somewhere
+2. Move your images to a sub-folder named after the database schema inside your original images directory on the file server.
+3. Clone the appropriate GitHub branch into a new folder:
+`git clone -b multiProject https://github.com/microsoft/aerial_wildlife_detection.git`
+4. Install missing dependencies in your environment
+```bash
+    conda activate aide
+    pip install -r requirements.txt
+```
+5. Set environment variables:
+```bash
+    export PYTHONPATH=.
+    export AIDE_CONFIG_PATH=/path/to/your/settings.ini
+    export AIDE_MODULES=LabelUI,AIController,FileServer,AIWorker    # to have the current machine do everything
+```
+6. Run the following migration script:
+```bash
+    python projectCreation/migrate_aide.py
+```
+If you did not do step 2, you might be asked if you want AIDE to create a symbolic link to your images. Be aware that although this works as a quick fix, it is not recommended for deployment, as other projects in AIDE v2 may be able to see each other's images this way, due to the recursive nature of the link.
+7. Launch AIDE v2:
+```bash
+    ./AIDE.sh
+```
+Unlike v1, this script always launches a Celery worker together with the Gunicorn server.
+
+
+### New installation
 See [here](doc/install.md) for instructions on configuring an instance of AIDE.
 
 
