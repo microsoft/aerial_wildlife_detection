@@ -290,6 +290,7 @@ class LabelClassHandler {
         this._setupLabelClasses();
 
         this.setActiveClass(this.labelClasses[Object.keys(this.labelClasses)[0]]);
+        
     }
 
     _setupLabelClasses() {
@@ -375,6 +376,8 @@ class LabelClassHandler {
             $('#labelLegend_'+this.activeClass.classID).toggleClass('legend-inactive');
             $('#labelLegend_alt_'+this.activeClass.classID).toggleClass('legend-inactive');
         }
+
+        window.activeClassColor = this.getActiveColor();
     }
 
 

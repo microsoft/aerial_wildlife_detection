@@ -1325,10 +1325,16 @@ class SegmentationElement extends AbstractRenderElement {
         this.ctx.imageSmoothingEnabled = false;
         
         // add image data to canvas if available
-        if(annotationMap != undefined && annotationMap != null) {
-            if(predictionMap != undefined && predictionMap != null) {
-                // both annotations and predictions available; blend
-                this._blend_maps(window.base64ToBuffer(annotationMap), window.base64ToBuffer(predictionMap));
+        if(annotationMap !== undefined && annotationMap !== null) {
+            if(predictionMap !== undefined && predictionMap !== null) {
+                // both annotations and predictions available; blend if background not ignored
+                if(window.segmentation_ignoreUnlabeled) {
+                    // unlabeled pixels are ignored: blend predictions in
+                    this._blend_maps(window.base64ToBuffer(annotationMap), window.base64ToBuffer(predictionMap));
+                } else {
+                    // unlabeled pixels are treated as background: do not blend prediction in
+                    this._parse_map(window.base64ToBuffer(annotationMap));
+                }
             } else {
                 // only annotations available
                 try {
@@ -1337,7 +1343,7 @@ class SegmentationElement extends AbstractRenderElement {
                     console.error(error);
                 }
             }
-        } else if(predictionMap != undefined && predictionMap != null) {
+        } else if(predictionMap !== undefined && predictionMap !== null) {
             // only predictions available
             try {
                 this._parse_map(window.base64ToBuffer(predictionMap));
@@ -1373,7 +1379,7 @@ class SegmentationElement extends AbstractRenderElement {
             indices. Fills the canvas with RGB values of the respective
             class, or zeros if no class match could be found.
         */
-        
+
         // get current canvas pixel values for a quick template
         var pixels = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
         var data = pixels.data;
@@ -1463,8 +1469,34 @@ class SegmentationElement extends AbstractRenderElement {
             Parses the RGBA canvas map and returns an array with
             pixel values that correspond to the class index at the given position,
             indicated by the canvas color.
-            Pixels receive value -1 if no class match could be found.
+            Pixels receive value 0 if no class match could be found.
         */
+
+        // assemble all possible R, G, and B values according to label classes.
+        // This is required because of the HTML canvas' color imprecision.
+        // TODO: ugly! Replace with something smarter and more efficient...
+        var reds = {};
+        var greens = {};
+        var blues = {};
+        for(var lc in window.labelClassHandler.labelClasses) {
+            var color = window.getColorValues(window.labelClassHandler.labelClasses[lc].color);
+            reds[color[0]] = 1;
+            greens[color[1]] = 1;
+            blues[color[2]] = 1;
+        }
+        reds = Object.keys(reds);
+        greens = Object.keys(greens);
+        blues = Object.keys(blues);
+        for(var i=0; i<reds.length; i++) {
+            reds[i] = parseInt(reds[i]);
+        }
+        for(var i=0; i<greens.length; i++) {
+            greens[i] = parseInt(greens[i]);
+        }
+        for(var i=0; i<blues.length; i++) {
+            blues[i] = parseInt(blues[i]);
+        }
+        var validColors = [reds, greens, blues];
 
         // get pixel values
         var pixels = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
@@ -1473,8 +1505,18 @@ class SegmentationElement extends AbstractRenderElement {
         // convert to labelclass idx
         var indexedData = [];
         for(var i=0; i<data.length; i+=4) {
+            var colorValues = data.slice(i,i+3);
+
+            // correct color values if needed
+            for(var c=0; c<colorValues.length; c++) {
+                var closest = validColors[c].reduce(function(prev, curr) {
+                    return (Math.abs(curr - colorValues[c]) < Math.abs(prev - colorValues[c]) ? curr : prev);
+                });
+                colorValues[c] = closest;
+            }
+            
             // find label class at position
-            var lc = window.labelClassHandler.getByColor(data.slice(i,i+3));
+            var lc = window.labelClassHandler.getByColor(colorValues);
             indexedData.push(lc === null || lc === undefined ? 0 : lc.index);
         }
         return new Uint8Array(indexedData);

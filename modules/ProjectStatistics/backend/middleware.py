@@ -116,12 +116,13 @@ class ProjectStatisticsMiddleware:
         result = self.dbConnector.execute(queryStr, None, 'all')
 
         response = {}
-        for i in range(len(result)):
-            nextResult = result[i]
-            response[nextResult['name']] = {
-                'num_anno': nextResult['num_anno'],
-                'num_pred': nextResult['num_pred']
-            }
+        if result is not None and len(result):
+            for i in range(len(result)):
+                nextResult = result[i]
+                response[nextResult['name']] = {
+                    'num_anno': nextResult['num_anno'],
+                    'num_pred': nextResult['num_pred']
+                }
         return response
 
 
