@@ -1333,6 +1333,12 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
             entryProps['segmentationmask_predicted'] = entryProps['segmentationmask'];
             delete entryProps['segmentationmask'];
         }
+        if(properties.hasOwnProperty('width')) {
+            entryProps['width'] = properties['width'];
+        }
+        if(properties.hasOwnProperty('height')) {
+            entryProps['height'] = properties['height'];
+        }
         this.annotation = new Annotation(window.getRandomID(), entryProps, 'segmentationMasks', 'annotation');
         this._addElement(this.annotation);
         this.segMap = this.annotation.geometry;
@@ -1393,14 +1399,15 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
 
             // paint with brush at current position
             if(this.mouseDown) {
-                var canvasScale = [
-                    this.viewport.canvas.width() / this.imageEntry.image.naturalWidth,
-                    this.viewport.canvas.height() / this.imageEntry.image.naturalHeight
+                var scaleFactor = [
+                    this.viewport.validArea[2] - this.viewport.validArea[0],
+                    this.viewport.validArea[3] - this.viewport.validArea[1]
                 ];
                 var brushSize = [
-                    window.uiControlHandler.segmentation_properties.brushSize / canvasScale[1],
-                    window.uiControlHandler.segmentation_properties.brushSize / canvasScale[0]
+                    window.uiControlHandler.segmentation_properties.brushSize * scaleFactor[0],
+                    window.uiControlHandler.segmentation_properties.brushSize * scaleFactor[1]
                 ];
+                
                 if(window.uiControlHandler.getAction() === ACTIONS.REMOVE_ANNOTATIONS || event.altKey) {
                     this.segMap.clear(mousePos_abs,
                         window.uiControlHandler.segmentation_properties.brushType,

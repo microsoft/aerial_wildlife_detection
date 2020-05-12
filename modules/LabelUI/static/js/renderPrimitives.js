@@ -1466,6 +1466,32 @@ class SegmentationElement extends AbstractRenderElement {
             Pixels receive value -1 if no class match could be found.
         */
 
+        // assemble all possible R, G, and B values according to label classes.
+        // This is required because of the HTML canvas' color imprecision.
+        // TODO: ugly! Replace with something smarter and more efficient...
+        var reds = {};
+        var greens = {};
+        var blues = {};
+        for(var lc in window.labelClassHandler.labelClasses) {
+            var color = window.getColorValues(window.labelClassHandler.labelClasses[lc].color);
+            reds[color[0]] = 1;
+            greens[color[1]] = 1;
+            blues[color[2]] = 1;
+        }
+        reds = Object.keys(reds);
+        greens = Object.keys(greens);
+        blues = Object.keys(blues);
+        for(var i=0; i<reds.length; i++) {
+            reds[i] = parseInt(reds[i]);
+        }
+        for(var i=0; i<greens.length; i++) {
+            greens[i] = parseInt(greens[i]);
+        }
+        for(var i=0; i<blues.length; i++) {
+            blues[i] = parseInt(blues[i]);
+        }
+        var validColors = [reds, greens, blues];
+
         // get pixel values
         var pixels = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
         var data = pixels.data;
@@ -1473,8 +1499,18 @@ class SegmentationElement extends AbstractRenderElement {
         // convert to labelclass idx
         var indexedData = [];
         for(var i=0; i<data.length; i+=4) {
+            var colorValues = data.slice(i,i+3);
+
+            // correct color values if needed
+            for(var c=0; c<colorValues.length; c++) {
+                var closest = validColors[c].reduce(function(prev, curr) {
+                    return (Math.abs(curr - colorValues[c]) < Math.abs(prev - colorValues[c]) ? curr : prev);
+                });
+                colorValues[c] = closest;
+            }
+            
             // find label class at position
-            var lc = window.labelClassHandler.getByColor(data.slice(i,i+3));
+            var lc = window.labelClassHandler.getByColor(colorValues);
             indexedData.push(lc === null || lc === undefined ? -1 : lc.index);
         }
         return new Uint8Array(indexedData);
