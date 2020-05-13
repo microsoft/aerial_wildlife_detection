@@ -240,7 +240,7 @@
                     var formData = new FormData();
                     formData.append('existingFiles', existingFiles);
                     formData.append('splitPatches', doSplitPatches);
-                    formData.append('splitParams', splitParams);
+                    formData.append('splitParams', JSON.stringify(splitParams));
                     formData.append(key, nextItem);
                     window.imageBrowser.addImages({
                         key: {
@@ -291,7 +291,21 @@
                                     var url = window.dataServerURI + window.project + '/files/' +
                                     data['result']['imgPaths_valid'][0];
                                     window.imageBrowser.set('imageURL', this, url);
+                                    window.imageBrowser.set('url', this, data['result']['imgPaths_valid'][0]);
                                     window.imageBrowser.set('message', this, '<span style="color:green">upload successful</span>');
+                                    // add other entries for other tiles (if available)
+                                    for(var t=1; t<data['result']['imgPaths_valid'].length; t++) {
+                                        var key = data['result']['imgPaths_valid'][t];
+                                        var url = window.dataServerURI + window.project + '/files/' + key;
+                                        window.imageBrowser.addImages({
+                                            key: {
+                                                'id': key,
+                                                'url': key,
+                                                'imageURL': url,
+                                                'message': '<span style="color:green">upload successful</span>'
+                                            }
+                                        });
+                                    }
                                 }
                                 // show messages
                                 if(this in data['result']['imgs_error']) {
