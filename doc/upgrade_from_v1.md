@@ -9,8 +9,8 @@ If you already have an installation of the [first version](https://github.com/mi
 
 
 To upgrade a project from v1 to v2, follow these steps:
-1. Create a backup of your `settings.ini` file somewhere.
-2. Modify the new `config/settings.ini` file with the correct parameters.
+1. Create a backup of your v1 `settings.ini` file somewhere.
+2. Modify the new (v2) `config/settings.ini` file with the correct parameters.
    Notes:
     * Set a meaningful directory for the `staticfiles_dir` parameter under `[FileServer]`. AIDE v2 can host multiple projects, so it can be generic!
     * Any options specified in the v1 `settings.ini` file not present in the new version can be ignored. 
