@@ -10,6 +10,7 @@
 ''' import resources and initialize app '''
 import os
 from bottle import Bottle
+from setup.migrate_aide import migrate_aide
 from util.configDef import Config
 from modules import REGISTERED_MODULES
 
@@ -24,6 +25,18 @@ def _verify_unique(instances, moduleClass):
             instance = instances[key]
             if moduleClass.__class__.__name__ == instance.__class__.__name__:
                 raise Exception('Module {} already launched on this server.'.format(moduleClass.__class__.__name__))
+
+# bring AIDE up-to-date
+warnings, errors = migrate_aide()
+if len(warnings) or len(errors):
+    print(f'Warnings and/or errors occurred while updating AIDE to the latest version ({AIDE_VERSION}):')
+    print('\nWarnings:')
+    for w in warnings:
+        print(f'\t"{w}"')
+    
+    print('\nErrors:')
+    for e in errors:
+        print(f'\t"{e}"')
 
 # load configuration
 config = Config()

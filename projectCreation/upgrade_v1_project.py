@@ -1,6 +1,39 @@
 '''
-    Run this file whenever you update AIDE to bring your existing project setup up-to-date
-    with respect to changes due to newer versions.
+    Helper script to upgrade an existing project from AIDE v1 to a v2 (multi-project)
+    installation.
+
+    Use as follows:
+        1. Move the images from your v1 project to a sub-folder of v2's "file directory"
+           with the name of your v1 project's database schema (check parameter "staticfiles_dir"
+           under "[FileServer]" of the v2's configuration .ini file).
+           For example:
+                If your v1's images are stored under "/datadrive/images",
+                your v1's database schema is named "my_great_project",
+                and the "staticfiles_dir" of v2 is set to "/datadrive/new",
+                you have to move all images from "/datadrive/images" to
+                "/datadrive/new/my_great_project".
+           Alternatively, the script may ask you if it should create a symbolic link from the new
+           target place to the original folder. This is a temporary solution only. Also, you should
+           avoid using recursive links (e.g., "/datadrive/images/my_great_project" pointing to
+           "/datadrive/images").
+        1. Make sure the "AIDE_CONFIG_PATH" environment variable points to the
+           configuration .ini file of the NEW (v2) installation.
+        2. Run this script as follows:
+            python projectCreation/upgrade_v1_project.py --settings_filepath=/path/to/settings.ini
+           
+           replace "/path/to/settings.ini" with the file path to the configuration .ini file
+           of your original (v1) installation.
+
+    NOTES:
+        - This script does NOT transfer a v1 project to another database, it just upgrades an
+          existing v1 project to work with the v2 installation that points to the SAME database.
+        - Once a v1 project has been successfully upgraded with this script, the original
+          configuration .ini file can be discarded. There is no need to run this script more than
+          one time for a specific v1 project.
+        - THERE IS NO GUARANTEE THAT A v1 PROJECT, CONVERTED TO v2 WITH THIS SCRIPT, WILL STILL
+          RUN UNDER A v1 INSTALLATION. IT IS STRONGLY DISCOURAGED TO CONTINUE TO USE THE v1 SOFT-
+          WARE ON A PROJECT THAT HAS BEEN MIGRATED.
+
     
     2019-20 Benjamin Kellenberger
 '''
@@ -9,168 +42,21 @@ import os
 import argparse
 import json
 import secrets
+from setup.migrate_aide import migrate_aide, MODIFICATIONS_sql
 from urllib.parse import urlparse
-
-
-MODIFICATIONS_sql = [
-    'ALTER TABLE {schema}.annotation ADD COLUMN IF NOT EXISTS meta VARCHAR; ALTER TABLE {schema}.image_user ADD COLUMN IF NOT EXISTS meta VARCHAR;',
-    'ALTER TABLE {schema}.labelclass ADD COLUMN IF NOT EXISTS keystroke SMALLINT UNIQUE;',
-    'ALTER TABLE {schema}.image ADD COLUMN IF NOT EXISTS last_requested TIMESTAMPTZ;',
-
-    # support for multiple projects
-    'CREATE SCHEMA IF NOT EXISTS aide_admin',
-    '''DO $$
-        BEGIN
-            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'labeltype') THEN
-                create type labelType AS ENUM ('labels', 'points', 'boundingBoxes', 'segmentationMasks');
-            END IF;
-        END
-        $$;''',
-    '''CREATE TABLE IF NOT EXISTS aide_admin.project (
-        shortname VARCHAR UNIQUE NOT NULL,
-        name VARCHAR UNIQUE NOT NULL,
-        description VARCHAR,
-        isPublic BOOLEAN DEFAULT FALSE,
-        secret_token VARCHAR,
-        interface_enabled BOOLEAN DEFAULT FALSE,
-        demoMode BOOLEAN DEFAULT FALSE,
-        annotationType labelType NOT NULL,
-        predictionType labelType,
-        ui_settings VARCHAR,
-        numImages_autoTrain BIGINT,
-        minNumAnnoPerImage INTEGER,
-        maxNumImages_train BIGINT,
-        maxNumImages_inference BIGINT,
-        ai_model_enabled BOOLEAN NOT NULL DEFAULT FALSE,
-        ai_model_library VARCHAR,
-        ai_model_settings VARCHAR,
-        ai_alCriterion_library VARCHAR,
-        ai_alCriterion_settings VARCHAR,
-        PRIMARY KEY(shortname)
-    );''',
-    '''CREATE TABLE IF NOT EXISTS aide_admin.user (
-        name VARCHAR UNIQUE NOT NULL,
-        email VARCHAR,
-        hash BYTEA,
-        isSuperuser BOOLEAN DEFAULT FALSE,
-        canCreateProjects BOOLEAN DEFAULT FALSE,
-        session_token VARCHAR,
-        last_login TIMESTAMPTZ,
-        secret_token VARCHAR DEFAULT md5(random()::text),
-        PRIMARY KEY (name)
-    );''',
-    'ALTER TABLE aide_admin.user ADD COLUMN IF NOT EXISTS secret_token VARCHAR DEFAULT md5(random()::text);',
-    '''CREATE TABLE IF NOT EXISTS aide_admin.authentication (
-        username VARCHAR NOT NULL,
-        project VARCHAR NOT NULL,
-        isAdmin BOOLEAN DEFAULT FALSE,
-        PRIMARY KEY (username, project),
-        FOREIGN KEY (username) REFERENCES aide_admin.user (name),
-        FOREIGN KEY (project) REFERENCES aide_admin.project (shortname)
-    );''',
-    'ALTER TABLE {schema}.image_user DROP CONSTRAINT IF EXISTS image_user_image_fkey;',
-    'ALTER TABLE {schema}.image_user DROP CONSTRAINT IF EXISTS image_user_username_fkey;',
-    '''DO
-        $do$
-        BEGIN
-        IF EXISTS (
-            SELECT 1
-            FROM   information_schema.tables 
-            WHERE  table_schema = '{schema}'
-            AND    table_name = 'user'
-        ) THEN
-            INSERT INTO aide_admin.user (name, email, hash, isSuperUser, canCreateProjects, secret_token)
-            SELECT name, email, hash, false AS isSuperUser, false AS canCreateProjects, md5(random()::text) AS secret_token FROM {schema}.user
-            ON CONFLICT(name) DO NOTHING;
-        END IF;
-    END $do$;''',
-    'ALTER TABLE {schema}.image_user ADD CONSTRAINT image_user_image_fkey FOREIGN KEY (username) REFERENCES aide_admin.USER (name);',
-    'ALTER TABLE {schema}.annotation DROP CONSTRAINT IF EXISTS annotation_username_fkey;',
-    'ALTER TABLE {schema}.annotation ADD CONSTRAINT annotation_username_fkey FOREIGN KEY (username) REFERENCES aide_admin.USER (name);',
-    'ALTER TABLE {schema}.cnnstate ADD COLUMN IF NOT EXISTS model_library VARCHAR;',
-    'ALTER TABLE {schema}.cnnstate ADD COLUMN IF NOT EXISTS alCriterion_library VARCHAR;',
-    'ALTER TABLE {schema}.image ADD COLUMN IF NOT EXISTS isGoldenQuestion BOOLEAN NOT NULL DEFAULT FALSE;',
-    '''-- IoU function for statistical evaluations
-    CREATE OR REPLACE FUNCTION "intersection_over_union" (
-        "ax" real, "ay" real, "awidth" real, "aheight" real,
-        "bx" real, "by" real, "bwidth" real, "bheight" real)
-    RETURNS real AS $iou$
-        DECLARE
-            iou real;
-        BEGIN
-            SELECT (
-                CASE WHEN aright < bleft OR bright < aleft OR
-                    atop < bbottom OR btop < abottom THEN 0.0
-                ELSE GREATEST(inters / (unionplus - inters), 0.0)
-                END
-            ) INTO iou
-            FROM (
-                SELECT 
-                    ((iright - ileft) * (itop - ibottom)) AS inters,
-                    aarea + barea AS unionplus,
-                    aleft, aright, atop, abottom,
-                    bleft, bright, btop, bbottom
-                FROM (
-                    SELECT
-                        ((aright - aleft) * (atop - abottom)) AS aarea,
-                        ((bright - bleft) * (btop - bbottom)) AS barea,
-                        GREATEST(aleft, bleft) AS ileft,
-                        LEAST(atop, btop) AS itop,
-                        LEAST(aright, bright) AS iright,
-                        GREATEST(abottom, bbottom) AS ibottom,
-                        aleft, aright, atop, abottom,
-                        bleft, bright, btop, bbottom
-                    FROM (
-                        SELECT (ax - awidth/2) AS aleft, (ay + aheight/2) AS atop,
-                            (ax + awidth/2) AS aright, (ay - aheight/2) AS abottom,
-                            (bx - bwidth/2) AS bleft, (by + bheight/2) AS btop,
-                            (bx + bwidth/2) AS bright, (by - bheight/2) AS bbottom
-                    ) AS qq
-                ) AS qq2
-            ) AS qq3;
-            RETURN iou;
-        END;
-    $iou$ LANGUAGE plpgsql;
-    ''',
-    'ALTER TABLE {schema}.image ADD COLUMN IF NOT EXISTS date_added TIMESTAMPTZ NOT NULL DEFAULT NOW();',
-    'ALTER TABLE aide_admin.authentication ADD COLUMN IF NOT EXISTS admitted_until TIMESTAMPTZ;',
-    'ALTER TABLE aide_admin.authentication ADD COLUMN IF NOT EXISTS blocked_until TIMESTAMPTZ;',
-    '''ALTER TABLE {schema}.labelclassgroup DROP CONSTRAINT IF EXISTS labelclassgroup_name_unique;
-    ALTER TABLE {schema}.labelclassgroup ADD CONSTRAINT labelclassgroup_name_unique UNIQUE (name);''',
-    'ALTER TABLE {schema}.image ADD COLUMN IF NOT EXISTS corrupt BOOLEAN;',
-    '''
-    CREATE TABLE IF NOT EXISTS {schema}.workflow (
-        id uuid DEFAULT uuid_generate_v4(),
-        name VARCHAR UNIQUE,
-        workflow VARCHAR NOT NULL,
-        username VARCHAR NOT NULL,
-        timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        timeModified TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        PRIMARY KEY (id),
-        FOREIGN KEY (username) REFERENCES aide_admin.user(name)
-    )
-    ''',
-    'ALTER TABLE aide_admin.project ADD COLUMN IF NOT EXISTS default_workflow uuid',
-    'ALTER TABLE {schema}.image_user ADD COLUMN IF NOT EXISTS num_interactions INTEGER NOT NULL DEFAULT 0;'
-    'ALTER TABLE {schema}.image_user ADD COLUMN IF NOT EXISTS first_checked TIMESTAMPTZ;',
-    'ALTER TABLE {schema}.image_user ADD COLUMN IF NOT EXISTS total_time_required BIGINT;',
-    '''ALTER TABLE aide_admin.project ADD COLUMN IF NOT EXISTS segmentation_ignore_unlabeled BOOLEAN NOT NULL DEFAULT TRUE;
-        ALTER TABLE {schema}.labelclass ADD COLUMN IF NOT EXISTS hidden BOOLEAN NOT NULL DEFAULT FALSE;
-    ''',
-    'ALTER TABLE {schema}.annotation ADD COLUMN IF NOT EXISTS autoConverted BOOLEAN;'
-]
+from modules import UserHandling
 
 
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description='Update AIDE database structure.')
-    parser.add_argument('--settings_filepath', type=str, default='config/settings.ini', const=1, nargs='?',
-                    help='Manual specification of the directory of the settings.ini file; only considered if environment variable unset (default: "config/settings.ini").')
+    parser = argparse.ArgumentParser(description='Upgrade and register an AIDE v1 project to an existing v2 installation.')
+    parser.add_argument('--settings_filepath', type=str,
+                    help='Path of the configuration .ini file for the v1 project to be upgraded to v2.')
     args = parser.parse_args()
 
     if not 'AIDE_CONFIG_PATH' in os.environ:
-        os.environ['AIDE_CONFIG_PATH'] = str(args.settings_filepath)
+        raise Exception('ERROR: System environment variable "AIDE_CONFIG_PATH" must be set and must point to the configuration .ini file of the v2 installation.')
     if not 'AIDE_MODULES' in os.environ:
         os.environ['AIDE_MODULES'] = ''     # for compatibility with Celery worker import
 
@@ -181,41 +67,16 @@ if __name__ == '__main__':
     dbConn = Database(config)
     if dbConn.connectionPool is None:
         raise Exception('Error connecting to database.')
+
+    # db schema of v1 project
     dbSchema = config.getProperty('Database', 'schema')
 
-
-    # make modifications one at a time
+    # update tables: make modifications one at a time
     for mod in MODIFICATIONS_sql:
         dbConn.execute(mod.format(schema=dbSchema), None, None)
 
-    # also bring other projects up-to-date (if registered within AIDE)
-    try:
-        projects = dbConn.execute('SELECT shortname FROM aide_admin.project;', None, 'all')
-        if len(projects):
 
-            # get all schemata and check if project still exists
-            schemata = dbConn.execute('SELECT schema_name FROM information_schema.schemata', None, 'all')
-            schemata = set([s['schema_name'].lower() for s in schemata])
-            for p in projects:
-                try:
-                    pName = p['shortname'].lower()
-
-                    # check if project still exists
-                    if not pName in schemata:
-                        print(f'WARNING: project "{pName}" is registered but does not exist in database.')
-                        #TODO: option to auto-remove?
-                        continue
-
-                    # make modifications one at a time
-                    for mod in MODIFICATIONS_sql:
-                        dbConn.execute(mod.format(schema=pName), None, None)
-                except:
-                    pass
-    except:
-        # no other project registeret yet; skip...
-        pass
-
-    # for migration to multiple project support
+    # migrate to v2
 
     # assemble dict of dynamic project UI and AI settings
     try:
@@ -381,21 +242,18 @@ if __name__ == '__main__':
         print('You do not appear to be running AIDE on a "FileServer" instance.')
         print('INFO: In the process of AIDE supporting multiple projects, each')
         print('project\'s files must be put in a sub-folder named after the project\'s')
-        print('shorthand (i.e.: {}/{}/<images>).'.format(
-            softlinkName,
-            dbSchema))
-        print('Make sure to run this script on all "FileServer" instance(s) as well')
-        print('to address this issue.')
+        print(f'shorthand (i.e.: {softlinkName}/{dbSchema}/...).')
+        print('Make sure to move the files to the new path on the FileServer instance.')
     
     else:
         softlinkName = os.path.join(softlinkName, dbSchema)
         if os.path.islink(softlinkName):
-            print('INFO: Detected link to project file directory ({})'.format(softlinkName))
+            print(f'INFO: Detected link to project file directory ({softlinkName})')
             print('You might want to move the files to a dedicated folder at some point...')
         else:
             print('INFO: In the process of AIDE supporting multiple projects, each')
             print('project\'s files must be put in a sub-folder named after the project\'s')
-            print('shorthand (i.e.: {}/<images>).'.format(softlinkName))
+            print(f'shorthand (i.e.: {softlinkName}/<images>).')
             print('Ideally, you would want to move the images to that folder, but as a')
             print('temporary fix, you can also use a softlink:')
             print('{} -> {}'.format(softlinkName, config.getProperty('FileServer', 'staticfiles_dir')))
@@ -417,6 +275,21 @@ if __name__ == '__main__':
                     softlinkName
                 )
 
+    # add admin user (if not already present)
+    adminName = config.getProperty('Project', 'adminName', type=str, fallback=None)
+    if adminName is not None:
+        adminEmail = config.getProperty('Project', 'adminEmail')
+        adminPass = config.getProperty('Project', 'adminPassword')
+        uHandler = UserHandling.backend.middleware.UserMiddleware(config)
+        adminPass = uHandler._create_hash(adminPass.encode('utf8'))
+        dbConn.execute('''
+                INSERT INTO aide_admin.user (name, email, hash, issuperuser)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT (name) DO NOTHING;
+            ''',
+            (adminName, adminEmail, adminPass, True),
+            None
+        )
 
     # add authentication
     dbConn.execute('''
@@ -439,16 +312,4 @@ if __name__ == '__main__':
         None,
         None)
 
-    
-    # check fileServer URI
-    fileServerURI = config.getProperty('FileServer', 'staticfiles_uri')
-    if fileServerURI is not None and len(fileServerURI):
-        print('WARNING: please update entry "dataServer_uri" under "[Server]" in the configuration.ini file.')
-        print('The latest version of AIDE only specifies the base file server address and port, but nothing else.')
-        print('Example:\n')
-        print('[Server]')
-        print('dataServer_uri = http://fileserver.domain.info:8080')
-        print('\nIf you do not use a dedicated file server, you can leave "dataServer_uri" blank.')
-
-
-    print('Project "{}" is now up-to-date for the latest changes in AIDE.'.format(config.getProperty('Project', 'projectName')))
+    print('Project "{}" has been converted to AIDE v2 standards. Please do not use a v1 installation on this project anymore.'.format(config.getProperty('Project', 'projectName')))
