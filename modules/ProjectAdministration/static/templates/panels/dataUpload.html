@@ -187,6 +187,14 @@
 
             var existingFiles = $('#existing-files [name=existing-files]:checked').val();
 
+            // properties for patch splitting
+            var doSplitPatches = $('#split-patches-chck').prop('checked');
+            var splitParams = {
+                'patchSize': [parseInt($('#patch-size-width').val()), parseInt($('#patch-size-height').val())],
+                'stride': [parseInt($('#patch-stride-width').val()), parseInt($('#patch-stride-height').val())],
+                'tight': $('#patch-tight-chck').prop('checked')
+            };
+
             // global progress bar, status message, and stop button
             $('#global-progress-bar').empty();
             var pBar = new ProgressBar(true, 0, fileInput.files.length, false);
@@ -231,6 +239,8 @@
                     var key = fileName+'_'+i;
                     var formData = new FormData();
                     formData.append('existingFiles', existingFiles);
+                    formData.append('splitPatches', doSplitPatches);
+                    formData.append('splitParams', splitParams);
                     formData.append(key, nextItem);
                     window.imageBrowser.addImages({
                         key: {
@@ -453,15 +463,31 @@
             window.actionPanel_upload = $('<div></div>');
             var fileUploadSelect = $('<input id="file-upload-select" type="file" webkitdirectory directory multiple /><br />');
             window.actionPanel_upload.append(fileUploadSelect);
-            var existingFiles = $('<div>Existing files with the same name:</div><fieldset id="existing-files">' +
+            var optionsPanel = $('<div style="display:flex;flex-direction:row;"></div>');
+            window.actionPanel_upload.append(optionsPanel);
+            var existingFiles = $('<div><div>Existing files with the same name:</div><fieldset id="existing-files">' +
                     '<input type="radio" id="radio-keep-existing" name="existing-files" value="keepExisting" checked />' +
                     '<label for="radio-keep-existing">keep existing and rename new files</label><br />' +
                     '<input type="radio" id="radio-skip-existing" name="existing-files" value="skipExisting" />' +
                     '<label for="radio-skip-existing">skip</label><br />' +
                     '<input type="radio" id="radio-replace-existing" name="existing-files" value="replaceExisting" />' +
                     '<label for="radio-replace-existing">overwrite</label><br />' +
-                '</fieldset>');
-            window.actionPanel_upload.append(existingFiles);
+                    '</fieldset></div>');
+            optionsPanel.append(existingFiles);
+
+            // split options (TODO: add description on how this works...)
+            var splitOptions = $('<div style="margin-left:20px"><input type="checkbox" id="split-patches-chck" />' +
+                    '<label for="split-patches-chck">Split images into tiles:</label><br />' +
+                    '<div style="margin-left:20px">' +
+                    '<table><thead><tr><th></th><th>Horizontal</th><th>Vertical</th></tr></thead><tbody>' +
+                    '<tr><td>Patch size:</td>' +
+                    '<td><input type="number" id="patch-size-width" min="16" max="4096" value="800" /></td>' +
+                    '<td><input type="number" id="patch-size-height" min="16" max="4096" value="600" /></td></tr>' +
+                    '<tr><td>Stride:</td>' +
+                    '<td><input type="number" id="patch-stride-width" min="16" max="4096" value="800" /></td>' +
+                    '<td><input type="number" id="patch-stride-height" min="16" max="4096" value="600" /></td></tr></tbody></table>' +
+                    '<input type="checkbox" id="patch-tight-chck" /><label for="patch-tight-chck">Do not exceed image boundaries</label></div></div>');
+                optionsPanel.append(splitOptions);
             var startFileUpload = $('<button class="btn btn-sm btn-primary" id="upload-button">Upload</button>');
             startFileUpload.on('click', function() {
                 startUploadFilesFromDisk();

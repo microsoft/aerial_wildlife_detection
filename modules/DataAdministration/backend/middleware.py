@@ -165,12 +165,14 @@ class DataAdministrationMiddleware:
     
 
 
-    def uploadImages(self, project, images, existingFiles='keepExisting'):
+    def uploadImages(self, project, images, existingFiles='keepExisting',
+        splitImages=False, splitProperties=None):
         '''
             Image upload is handled directly through the
             dataWorker, without a Celery dispatching bridge.
         '''
-        return self.dataWorker.uploadImages(project, images, existingFiles)
+        return self.dataWorker.uploadImages(project, images, existingFiles,
+                                            splitImages, splitProperties)
 
 
 

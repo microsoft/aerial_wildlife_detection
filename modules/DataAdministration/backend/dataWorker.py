@@ -24,6 +24,7 @@ from psycopg2 import sql
 from modules.Database.app import Database
 from modules.LabelUI.backend.annotation_sql_tokens import QueryStrings_annotation, QueryStrings_prediction
 from util.helpers import valid_image_extensions, listDirectory, base64ToImage
+from util.imageSharding import split_image
 
 
 class DataWorker:
@@ -207,7 +208,8 @@ class DataWorker:
         return result
 
 
-    def uploadImages(self, project, images, existingFiles='keepExisting'):
+    def uploadImages(self, project, images, existingFiles='keepExisting',
+        splitImages=False, splitProperties=None):
         '''
             Receives a dict of files (bottle.py file format),
             verifies their file extension and checks if they
@@ -224,7 +226,30 @@ class DataWorker:
               same path/file name. Note: in this case all existing anno-
               tations, predictions, and other metadata about those images,
               will be removed from the database.
-            - ""
+            
+            If "splitImages" is True, the uploaded images will be automati-
+            cally divided into patches on a regular grid according to what
+            is defined in "splitProperties". For example, the following
+            definition:
+
+                splitProperties = {
+                    'patchSize': (800, 600),
+                    'stride': (400, 300),
+                    'tight': True
+                }
+
+            would divide the images into patches of size 800x600, with over-
+            lap of 50% (denoted by the "stride" being half the "patchSize"),
+            and with all patches completely inside the original image (para-
+            meter "tight" makes the last patches to the far left and bottom
+            of the image being fully inside the original image; they are shif-
+            ted if needed).
+            Instead of the full images, the patches are stored on disk and re-
+            ferenced through the database. The name format for patches is
+            "imageName_x_y.jpg", with "imageName" denoting the name of the ori-
+            ginal image, and "x" and "y" the left and top position of the patch
+            inside the original image.
+
             Returns image keys for images that were successfully
             saved, and keys and error messages for those that
             were not.
@@ -236,104 +261,127 @@ class DataWorker:
         for key in images.keys():
             try:
                 nextUpload = images[key]
-
+                nextFileName = nextUpload.raw_filename
                 #TODO: check if raw_filename is compatible with uploads made from Windows
 
                 # check if correct file suffix
-                _, ext = os.path.splitext(nextUpload.raw_filename)
+                _, ext = os.path.splitext(nextFileName)
                 if not ext.lower() in valid_image_extensions:
-                    raise Exception('Invalid file type (*{})'.format(ext))
-                
+                    raise Exception(f'Invalid file type (*{ext})')
+
                 # check if loadable as image
                 cache = io.BytesIO()
                 nextUpload.save(cache)
                 try:
-                    success = Image.open(cache)
-                    success.close()
+                    image = Image.open(cache)
                 except Exception:
                     raise Exception('File is not a valid image.')
 
-                parent, filename = os.path.split(nextUpload.raw_filename)
+                # prepare image(s) to save to disk
+                parent, filename = os.path.split(nextFileName)
                 destFolder = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), project, parent)
                 os.makedirs(destFolder, exist_ok=True)
-                absFilePath = os.path.join(destFolder, filename)
 
-                # check if an image with the same name does not already exist
-                newFileName = filename
-                fileExists = os.path.exists(absFilePath)
-                if fileExists:
-                    if existingFiles == 'keepExisting':
-                        # rename new file
-                        while(os.path.exists(absFilePath)):
-                            # rename file
-                            fn, ext = os.path.splitext(newFileName)
-                            match = self.countPattern.search(fn)
-                            if match is None:
-                                newFileName = fn + '_1' + ext
-                            else:
-                                # parse number
-                                number = int(fn[match.span()[0]+1:match.span()[1]])
-                                newFileName = fn[:match.span()[0]] + '_' + str(number+1) + ext
+                images = []
+                filenames = []
 
-                            absFilePath = os.path.join(destFolder, newFileName)
-                            if not os.path.exists(absFilePath):
-                                imgs_warn[key] = 'An image with name "{}" already exists under given path on disk. Image has been renamed to "{}".'.format(
-                                    filename, newFileName
-                                )
+                if not splitImages:
+                    # upload the single image directly
+                    images.append(image)
+                    filenames.append(filename)
+
+                else:
+                    # split image into patches instead
+                    images, coords = split_image(image,
+                                            splitProperties['patchSize'],
+                                            splitProperties['stride'],
+                                            splitProperties['tight'])
+                    bareFileName, ext = os.path.splitext(filename)
+                    filenames = [f'{bareFileName}_{c[0]}_{c[1]}{ext}' for c in coords]
+
+                # register and save all the images
+                for i in range(len(images)):
+                    subImage = images[i]
+                    subFilename = filenames[i]
+
+                    absFilePath = os.path.join(destFolder, subFilename)
+
+                    # check if an image with the same name does not already exist
+                    newFileName = subFilename
+                    fileExists = os.path.exists(absFilePath)
+                    if fileExists:
+                        if existingFiles == 'keepExisting':
+                            # rename new file
+                            while(os.path.exists(absFilePath)):
+                                # rename file
+                                fn, ext = os.path.splitext(newFileName)
+                                match = self.countPattern.search(fn)
+                                if match is None:
+                                    newFileName = fn + '_1' + ext
+                                else:
+                                    # parse number
+                                    number = int(fn[match.span()[0]+1:match.span()[1]])
+                                    newFileName = fn[:match.span()[0]] + '_' + str(number+1) + ext
+
+                                absFilePath = os.path.join(destFolder, newFileName)
+                                if not os.path.exists(absFilePath):
+                                    imgs_warn[key] = 'An image with name "{}" already exists under given path on disk. Image has been renamed to "{}".'.format(
+                                        subFilename, newFileName
+                                    )
+                        
+                        elif existingFiles == 'skipExisting':
+                            # ignore new file
+                            imgs_warn[key] = f'Image "{newFileName}" already exists on disk and has been skipped.'
+                            imgs_valid.append(key)
+                            imgPaths_valid.append(os.path.join(parent, newFileName))
+                            continue
+
+                        elif existingFiles == 'replaceExisting':
+                            # overwrite new file; first remove metadata
+                            queryStr = sql.SQL('''
+                                DELETE FROM {id_iu}
+                                WHERE image = (
+                                    SELECT id FROM {id_img}
+                                    WHERE filename = %s
+                                );
+                                DELETE FROM {id_anno}
+                                WHERE image = (
+                                    SELECT id FROM {id_img}
+                                    WHERE filename = %s
+                                );
+                                DELETE FROM {id_pred}
+                                WHERE image = (
+                                    SELECT id FROM {id_img}
+                                    WHERE filename = %s
+                                );
+                                DELETE FROM {id_img}
+                                WHERE filename = %s;
+                            ''').format(
+                                id_iu=sql.Identifier(project, 'image_user'),
+                                id_anno=sql.Identifier(project, 'annotation'),
+                                id_pred=sql.Identifier(project, 'prediction'),
+                                id_img=sql.Identifier(project, 'image')
+                            )
+                            self.dbConnector.execute(queryStr,
+                                tuple([nextFileName]*4), None)
+
+                            # remove file
+                            try:
+                                os.remove(absFilePath)
+                                imgs_warn[key] = 'Image "{}" already existed on disk and has been deleted.\n'.format(newFileName) + \
+                                                    'All metadata (views, annotations, predictions) have been removed from the database.'
+                            except:
+                                imgs_warn[key] = 'Image "{}" already existed on disk but could not be deleted.\n'.format(newFileName) + \
+                                                    'All metadata (views, annotations, predictions) have been removed from the database.'
                     
-                    elif existingFiles == 'skipExisting':
-                        # ignore new file
-                        imgs_warn[key] = 'Image "{}" already exists on disk and has been skipped.'.format(newFileName)
-                        imgs_valid.append(key)
-                        imgPaths_valid.append(os.path.join(parent, newFileName))
-                        continue
+                    # write to disk
+                    fileParent, _ = os.path.split(absFilePath)
+                    if len(fileParent):
+                        os.makedirs(fileParent, exist_ok=True)
+                    subImage.save(absFilePath)
 
-                    elif existingFiles == 'replaceExisting':
-                        # overwrite new file; first remove metadata
-                        queryStr = sql.SQL('''
-                            DELETE FROM {id_iu}
-                            WHERE image = (
-                                SELECT id FROM {id_img}
-                                WHERE filename = %s
-                            );
-                            DELETE FROM {id_anno}
-                            WHERE image = (
-                                SELECT id FROM {id_img}
-                                WHERE filename = %s
-                            );
-                            DELETE FROM {id_pred}
-                            WHERE image = (
-                                SELECT id FROM {id_img}
-                                WHERE filename = %s
-                            );
-                            DELETE FROM {id_img}
-                            WHERE filename = %s;
-                        ''').format(
-                            id_iu=sql.Identifier(project, 'image_user'),
-                            id_anno=sql.Identifier(project, 'annotation'),
-                            id_pred=sql.Identifier(project, 'prediction'),
-                            id_img=sql.Identifier(project, 'image')
-                        )
-                        self.dbConnector.execute(queryStr,
-                            tuple([nextUpload.raw_filename]*4), None)
-
-                        # remove file
-                        try:
-                            os.remove(absFilePath)
-                            imgs_warn[key] = 'Image "{}" already existed on disk and has been deleted.\n'.format(newFileName) + \
-                                                'All metadata (views, annotations, predictions) have been removed from the database.'
-                        except:
-                            imgs_warn[key] = 'Image "{}" already existed on disk but could not be deleted.\n'.format(newFileName) + \
-                                                'All metadata (views, annotations, predictions) have been removed from the database.'
-                
-                # write to disk
-                fileParent, _ = os.path.split(absFilePath)
-                if len(fileParent):
-                    os.makedirs(fileParent, exist_ok=True)
-                nextUpload.save(absFilePath)
-
-                imgs_valid.append(key)
-                imgPaths_valid.append(os.path.join(parent, newFileName))
+                    imgs_valid.append(key)
+                    imgPaths_valid.append(os.path.join(parent, newFileName))
 
             except Exception as e:
                 imgs_error[key] = str(e)

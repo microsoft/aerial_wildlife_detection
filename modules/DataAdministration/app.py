@@ -193,8 +193,18 @@ class DataAdministrator:
                     existingFiles = request.params.get('existingFiles')
                 except:
                     existingFiles='keepExisting'
+                try:
+                    splitIntoPatches = request.params.get('splitPatches')
+                    if splitIntoPatches:
+                        splitProperties = request.params.get('splitParams')
+                    else:
+                        splitProperties = None
+                except:
+                    splitIntoPatches = False
+                    splitProperties = None
 
-                result = self.middleware.uploadImages(project, images, existingFiles)
+                result = self.middleware.uploadImages(project, images, existingFiles,
+                                                    splitIntoPatches, splitProperties)
                 return {'result': result}
             except Exception as e:
                 return {'status': 1, 'message': str(e)}
