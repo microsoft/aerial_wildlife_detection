@@ -173,6 +173,7 @@ if __name__ == '__main__':
     secretToken = secrets.token_urlsafe(32)
     dbConn.execute('''
         INSERT INTO aide_admin.project (shortname, name, description,
+            owner,
             secret_token,
             interface_enabled,
             demoMode,
@@ -190,6 +191,7 @@ if __name__ == '__main__':
             %s,
             %s,
             %s,
+            %s,
             %s, %s, %s,
             %s, %s, %s, %s,
             %s,
@@ -201,6 +203,7 @@ if __name__ == '__main__':
             dbSchema,
             config.getProperty('Project', 'projectName'),
             config.getProperty('Project', 'projectDescription'),
+            config.getProperty('Project', 'adminName'),
             secretToken,
             True,
             config.getProperty('Project', 'demoMode'),

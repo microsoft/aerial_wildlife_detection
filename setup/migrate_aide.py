@@ -158,7 +158,10 @@ MODIFICATIONS_sql = [
     '''ALTER TABLE aide_admin.project ADD COLUMN IF NOT EXISTS segmentation_ignore_unlabeled BOOLEAN NOT NULL DEFAULT TRUE;
         ALTER TABLE "{schema}".labelclass ADD COLUMN IF NOT EXISTS hidden BOOLEAN NOT NULL DEFAULT FALSE;
     ''',
-    'ALTER TABLE "{schema}".annotation ADD COLUMN IF NOT EXISTS autoConverted BOOLEAN;'
+    'ALTER TABLE "{schema}".annotation ADD COLUMN IF NOT EXISTS autoConverted BOOLEAN;',
+    'ALTER TABLE aide_admin.project ADD COLUMN IF NOT EXISTS owner VARCHAR;',
+    '''ALTER TABLE aide_admin.project DROP CONSTRAINT IF EXISTS project_user_fkey;
+        ALTER TABLE aide_admin.project ADD CONSTRAINT project_user_fkey FOREIGN KEY (owner) REFERENCES aide_admin.USER (name);'''
 ]
 
 

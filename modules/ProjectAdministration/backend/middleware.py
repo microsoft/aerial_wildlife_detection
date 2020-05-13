@@ -245,6 +245,7 @@ class ProjectConfigMiddleware:
             Receives the most basic, mostly non-changeable settings for a new project
             ("properties") with the following entries:
             - shortname
+            - owner (the current username)
             - name
             - description
             - annotationType
@@ -299,6 +300,7 @@ class ProjectConfigMiddleware:
         # register project
         self.dbConnector.execute('''
             INSERT INTO aide_admin.project (shortname, name, description,
+                owner,
                 secret_token,
                 interface_enabled,
                 annotationType, predictionType,
@@ -306,6 +308,7 @@ class ProjectConfigMiddleware:
                 ui_settings)
             VALUES (
                 %s, %s, %s,
+                %s,
                 %s,
                 %s,
                 %s, %s,
@@ -317,6 +320,7 @@ class ProjectConfigMiddleware:
                 shortname,
                 properties['name'],
                 (properties['description'] if 'description' in properties else ''),
+                username,
                 secrets.token_urlsafe(32),
                 False,
                 properties['annotationType'],

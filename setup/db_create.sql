@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS aide_admin.project (
     shortname VARCHAR UNIQUE NOT NULL,
     name VARCHAR UNIQUE NOT NULL,
     description VARCHAR,
+    owner VARCHAR,
     isPublic BOOLEAN DEFAULT FALSE,
     secret_token VARCHAR,
     interface_enabled BOOLEAN DEFAULT FALSE,
@@ -55,6 +56,8 @@ CREATE TABLE IF NOT EXISTS aide_admin.user (
     last_login TIMESTAMPTZ,
     PRIMARY KEY (name)
 );
+
+ALTER TABLE aide_admin.project ADD CONSTRAINT project_user_fkey FOREIGN KEY (owner) REFERENCES aide_admin.USER (name);
 
 CREATE TABLE IF NOT EXISTS aide_admin.authentication (
     username VARCHAR NOT NULL,
