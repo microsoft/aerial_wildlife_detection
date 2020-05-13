@@ -18,15 +18,32 @@
             .new-project-fields > label {
                 margin-top: 20px;
             }
+            .warning {
+                color: red;
+            }
         </style>
         <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
         <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
         <script type="text/javascript">
+            const SHORTNAME_PATTERNS_REPLACE = [
+                '|',
+                '?',
+                '*',
+                ':'
+            ];
+
             $(document).ready(function() {
                 // globals
                 window.projNameAvailable = false;
                 window.projShortnameAvailable = false;
+
+                var replaceProhibitedShortnameStrings = function(shortname) {
+                    for(var p=0; p<SHORTNAME_PATTERNS_REPLACE.length; p++) {
+                        shortname = shortname.replace(SHORTNAME_PATTERNS_REPLACE[p], '_')
+                    }
+                    return shortname;
+                }
 
                 var checkValuesCorrect = function() {
                     
@@ -47,6 +64,10 @@
                     
                     promise = promise.then(function() {
                         if(projShortname.length) {
+                            // replace prohibited patterns
+                            projShortname = replaceProhibitedShortnameStrings(projShortname);
+                            $('#project-shortname-field').val(projShortname);
+
                             return checkNameAvailable('verifyProjectShort',
                                                             { shorthand: projShortname },
                                                             $('#project-shortname-availability'));
@@ -114,14 +135,16 @@
                 }
 
                 // name and shortname availability
-                $('#project-name-field').on('change focusout input', checkValuesCorrect);
-                $('#project-shortname-field').on('change focusout input', function() {
-                    checkValuesCorrect();
-                    if(window.projShortnameAvailable) {
-                        $('#project-shorthand-title').html($('#project-shortname-field').val());
-                    } else {
-                        $('#project-shorthand-title').html('');
-                    }
+                $('#project-name-field').on('focusout', checkValuesCorrect);
+                $('#project-shortname-field').on('focusout', function() {
+                    var promise = checkValuesCorrect();
+                    promise = promise.then(function() {
+                        if(window.projShortnameAvailable) {
+                            $('#project-shorthand-title').html($('#project-shortname-field').val());
+                        } else {
+                            $('#project-shorthand-title').html('');
+                        }
+                    });
                 });
 
                 $('#create-project-button').click(function() {
@@ -204,19 +227,19 @@
 
                 <div class="new-project-fields">
 
-                    <label for="project-name-field">Project name</label><br />
-                    <input type="text" id="project-name-field" />
+                    <label for="project-name-field">Project name <span class="warning">*</span></label><br />
+                    <input type="text" id="project-name-field" required />
                     <div id="project-name-availability" style="display:none"></div><br />
 
-                    <label for="project-shortname-field">Project shortname</label><br />
-                    <input type="text" id="project-shortname-field" />
+                    <label for="project-shortname-field">Project shortname <span class="warning">*</span></label><br />
+                    <input type="text" id="project-shortname-field" required />
                     <div id="project-shortname-availability" style="display:none"></div><br />
 
                     <label for="project-description-field">Short description</label><br />
                     <textarea type="text" id="project-description-field" placeholder="Short project description"></textarea><br />
 
 
-                    <label for="project-annotation-type">Annotation type</label><br />
+                    <label for="project-annotation-type">Annotation type <span class="warning">*</span></label><br />
                     <select id="project-annotation-type">
                         <option value="labels">Image Labels</option>
                         <option value="points">Points</option>
@@ -224,13 +247,17 @@
                         <option value="segmentationMasks">Segmentation Masks</option>
                     </select><br />
 
-                    <label for="project-prediction-type">Prediction type</label><br />
+                    <label for="project-prediction-type">Prediction type <span class="warning">*</span></label><br />
                     <select id="project-prediction-type">
                         <option value="labels">Image Labels</option>
                         <option value="points">Points</option>
                         <option value="boundingBoxes">Bounding Boxes</option>
                         <option value="segmentationMasks">Segmentation Masks</option>
                     </select><br />
+
+                    <div class="warning" style="margin-top:20px;">
+                        * Note: Values are required and cannot be changed once the project has been created.
+                    </div>
 
                     <!-- Submit and abort buttons -->
                     <div style="margin-top:20px;">

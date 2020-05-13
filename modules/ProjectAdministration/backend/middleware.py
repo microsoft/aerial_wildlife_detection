@@ -20,31 +20,8 @@ from util.helpers import parse_parameters
 
 class ProjectConfigMiddleware:
 
-    # prohibited project names (as a whole)
-    PROHIBITED_NAMES = [
-        'project',
-        'getavailableaimodels',
-        'backdrops',
-        'verifyprojectname',
-        'verifyprojectshort',
-        'newproject',
-        'createproject',
-        'statistics',
-        'static',
-        'getcreateaccountunrestricted'
-        'getprojects',
-        'about',
-        'favicon.ico',
-        'logincheck',
-        'logout',
-        'login',
-        'dologin',
-        'createaccount',
-        'loginscreen',
-        'accountexists',
-        'getauthentication',
-        'getusernames',
-        'docreateaccount',
+    # prohibited project shortnames
+    PROHIBITED_SHORTNAMES = [
         'con',  # for MS Windows
         'prn',
         'aux',
@@ -69,6 +46,34 @@ class ProjectConfigMiddleware:
         'lpt9'
     ]
 
+    # prohibited project names (both as a whole and for shortnames)
+    PROHIBITED_NAMES = [
+        '',
+        'project',
+        'getavailableaimodels',
+        'backdrops',
+        'verifyprojectname',
+        'verifyprojectshort',
+        'newproject',
+        'createproject',
+        'statistics',
+        'static',
+        'getcreateaccountunrestricted'
+        'getprojects',
+        'about',
+        'favicon.ico',
+        'logincheck',
+        'logout',
+        'login',
+        'dologin',
+        'createaccount',
+        'loginscreen',
+        'accountexists',
+        'getauthentication',
+        'getusernames',
+        'docreateaccount'
+    ]
+
     # prohibited name prefixes
     PROHIBITED_NAME_PREFIXES = [
         '/',
@@ -76,7 +81,15 @@ class ProjectConfigMiddleware:
         '&'
     ]
 
-    # patterns that are prohibited anywhere in the project names
+    # patterns that are prohibited anywhere for shortnames (replaced with underscores)
+    SHORTNAME_PATTERNS_REPLACE = [
+        '|',
+        '?',
+        '*',
+        ':'    # for macOS
+    ]
+
+    # patterns that are prohibited anywhere for both short and long names (no replacement)
     PROHIBITED_STRICT = [
         '&lt;',
         '<',
@@ -84,13 +97,9 @@ class ProjectConfigMiddleware:
         '&gt;',
         '..',
         '/',
-        '\\',
-        '|',
-        '?',
-        '*',
-        ':',    # for macOS
-        ''
+        '\\'
     ]
+
     
     def __init__(self, config):
         self.config = config
@@ -564,10 +573,10 @@ class ProjectConfigMiddleware:
         if not len(projectName):
             return False
 
-        # check if name matches prohibited AIDE keywords
-        if projectName in self.PROHIBITED_NAMES:
-            return False
+        # check if name matches prohibited AIDE keywords (we do not replace long names)
         if projectName in self.PROHIBITED_STRICT or any([p in projectName for p in self.PROHIBITED_STRICT]):
+            return False
+        if projectName in self.PROHIBITED_NAMES:
             return False
         if any([projectName.startswith(p) for p in self.PROHIBITED_NAME_PREFIXES]):
             return False
@@ -599,13 +608,15 @@ class ProjectConfigMiddleware:
         if not len(projectName):
             return False
 
-        # check if name matches prohibited AIDE keywords
-        if projectName in self.PROHIBITED_NAMES:
-            return False
+        # check if name matches prohibited AIDE keywords; replace where possible
         if projectName in self.PROHIBITED_STRICT or any([p in projectName for p in self.PROHIBITED_STRICT]):
+            return False
+        if projectName in self.PROHIBITED_NAMES or projectName in self.PROHIBITED_SHORTNAMES:
             return False
         if any([projectName.startswith(p) for p in self.PROHIBITED_NAME_PREFIXES]):
             return False
+        for p in self.SHORTNAME_PATTERNS_REPLACE:
+            projectName = projectName.replace(p, '_')
 
         # check if provided name is valid as per Postgres conventions
         matches = re.findall('(^(pg_|[0-9]).*|.*(\$|\s)+.*)', projectName)
