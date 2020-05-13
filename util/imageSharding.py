@@ -85,7 +85,7 @@ def split_image(image, patchSize, stride=None, tight=True):
     for x in range(len(xLoc)):
         for y in range(len(yLoc)):
             pos = (int(xLoc[x]), int(yLoc[y]))
-            patch = image.crop(pos[0], pos[1], pos[0]+patchSize[0], pos[1]+patchSize[1])
+            patch = image.crop((pos[0], pos[1], pos[0]+patchSize[0], pos[1]+patchSize[1]))
             patches.append(patch)
             coords.append(pos)
     

@@ -12,6 +12,7 @@ import os
 import datetime
 import tempfile
 import uuid
+import json
 from bottle import static_file, request, response, abort
 import requests
 from .backend.middleware import DataAdministrationMiddleware
@@ -196,7 +197,7 @@ class DataAdministrator:
                 try:
                     splitIntoPatches = request.params.get('splitPatches')
                     if splitIntoPatches:
-                        splitProperties = request.params.get('splitParams')
+                        splitProperties = json.loads(request.params.get('splitParams'))
                     else:
                         splitProperties = None
                 except:
