@@ -6,7 +6,7 @@
     </div>
     <hr style="margin-bottom:20px" />
 </div>
-<link rel="stylesheet" href="/static/statistics/libs/chartjs/Chart.min.css" />
+<link rel="stylesheet" href="/static/statistics/libs/chartjs/Chart.min.css?v={{ version }}" />
 <style>
     .chartWrapper {
         position: relative;
@@ -30,7 +30,7 @@
         max-height: 300px;
     } */
 </style>
-<script src="/static/statistics/libs/chartjs/Chart.min.js"></script>
+<script src="/static/statistics/libs/chartjs/Chart.min.js?v={{ version }}"></script>
 <script type="text/javascript">
     $(document).ready(function() {
         let mainContainer = $('#overview-container');
@@ -43,7 +43,7 @@
             success: function(response) {
                 try {
                     $('#project-title').html(response['settings']['name']);
-                    $('#project-description').html(response['settings']['description']);
+                    // $('#project-description').html(response['settings']['description']);
                 } catch {
                     $('#general-overview').hide();
                 }

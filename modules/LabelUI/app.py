@@ -9,6 +9,7 @@ import html
 from uuid import UUID
 import bottle
 from bottle import request, response, static_file, redirect, abort, SimpleTemplate
+from constants.version import AIDE_VERSION
 from .backend.middleware import DBMiddleware
 from util.helpers import parse_boolean
 
@@ -93,6 +94,7 @@ class LabelUI():
             except:
                 username = ''
             return self.interface_template.render(username=username,
+                version=AIDE_VERSION,
                 projectShortname=project,
                 projectTitle=projectData['projectName'], projectDescr=projectData['projectDescription'])
 

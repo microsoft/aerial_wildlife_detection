@@ -8,7 +8,8 @@
 
 import os
 import json
-from bottle import static_file, abort
+from bottle import static_file, abort, SimpleTemplate
+from constants.version import AIDE_VERSION
 
 
 class StaticFileServer:
@@ -40,15 +41,22 @@ class StaticFileServer:
     
     def _initBottle(self):
 
+        @self.app.route('/version')
+        def aide_version():
+            return AIDE_VERSION
+
+
         @self.app.route('/favicon.ico')
         def favicon():
             return static_file('favicon.ico', root='modules/StaticFiles/static/img')
 
+        with open(os.path.abspath(os.path.join('modules/StaticFiles/static/templates/about.html')), 'r') as f:
+            self.aboutPage = SimpleTemplate(f.read())
 
         @self.app.route('/about')
         @self.app.route('/<project>/about')
         def about(project=None):
-            return static_file('about.html', root='modules/StaticFiles/static/templates')
+            return self.aboutPage.render(version=AIDE_VERSION)
 
 
         @self.app.get('/getBackdrops')

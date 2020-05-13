@@ -5,22 +5,22 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous" />
-    <link rel="stylesheet" href="/static/interface/css/interface.css" />
+    <link rel="stylesheet" href="/static/interface/css/interface.css?v={{ version }}" />
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js?v={{ version }}" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
-    <script type="text/javascript" src="/static/interface/js/uiControlHandler.js"></script>
-    <script type="text/javascript" src="/static/interface/js/commandListener.js"></script>
-    <script type="text/javascript" src="/static/interface/js/configuration.js"></script>
-    <script type="text/javascript" src="/static/interface/js/renderPrimitives.js"></script>
-    <script type="text/javascript" src="/static/interface/js/viewport/imageViewport.js"></script>
-    <script type="text/javascript" src="/static/interface/js/annotationPrimitives.js"></script>
-    <script type="text/javascript" src="/static/interface/js/labelClassHandler.js"></script>
-    <script type="text/javascript" src="/static/interface/js/dataEntry.js"></script>
-    <script type="text/javascript" src="/static/interface/js/dataHandler.js"></script>
-    <script type="text/javascript" src="/static/interface/js/aiWorkerHandler.js"></script>
-    <script type="text/javascript" src="/static/interface/js/uitutorial.js"></script>
-    <script type="text/javascript" src="/static/interface/js/init.js"></script>
+    <script type="text/javascript" src="/static/interface/js/uiControlHandler.js?v={{ version }}"></script>
+    <script type="text/javascript" src="/static/interface/js/commandListener.js?v={{ version }}"></script>
+    <script type="text/javascript" src="/static/interface/js/configuration.js?v={{ version }}"></script>
+    <script type="text/javascript" src="/static/interface/js/renderPrimitives.js?v={{ version }}"></script>
+    <script type="text/javascript" src="/static/interface/js/viewport/imageViewport.js?v={{ version }}"></script>
+    <script type="text/javascript" src="/static/interface/js/annotationPrimitives.js?v={{ version }}"></script>
+    <script type="text/javascript" src="/static/interface/js/labelClassHandler.js?v={{ version }}"></script>
+    <script type="text/javascript" src="/static/interface/js/dataEntry.js?v={{ version }}"></script>
+    <script type="text/javascript" src="/static/interface/js/dataHandler.js?v={{ version }}"></script>
+    <script type="text/javascript" src="/static/interface/js/aiWorkerHandler.js?v={{ version }}"></script>
+    <script type="text/javascript" src="/static/interface/js/uitutorial.js?v={{ version }}"></script>
+    <script type="text/javascript" src="/static/interface/js/init.js?v={{ version }}"></script>
 </head>
 
 <body>
@@ -47,8 +47,8 @@
             <nav class="navbar navbar-expand-lg navbar-light bg-dark border-bottom">
                 <ul class="nav navbar-nav">
                     <li class="nav-item header-text">
-                        <h1 id="project-title"><a href="/">Projects</a> / <a href="/{{ projectShortname }}">{{ projectTitle }}</a> / Interface</h1>
-                        <p id="project-description">{{ projectDescr }}</p>
+                        <div class="project-path"><a href="/">Projects</a> / <a href="/{{ projectShortname }}" style="font-weight:bold">{{ projectShortname }}</a> / <a href="interface">interface</a></div>
+                        <h1 id="project-title">{{ projectTitle }}: annotation interface</h1>
                     </li>
                 </ul>
                 <ul class="nav navbar-nav ml-auto">

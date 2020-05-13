@@ -27,7 +27,7 @@
             <li>Drag and drop an entry to reposition it within the tree.</li>
             <li>An entry with one or more children is saved as a label class group.</li>
             <li>Your changes will not be applied to the project until you click "Save."</li>
-            <li>Label classes marked with "hidden" are auto-generated and cannot be removed.</li>
+            <!-- <li>Label classes marked with "hidden" are auto-generated and cannot be removed.</li> -->
         </ul>
     </div>
 
@@ -60,7 +60,7 @@
         <button id="lc-save-button" class="btn btn-primary" style="float:right">Save</button>
     </div>
 </div>
-<link rel="stylesheet" href="config/static/libs/jqtree/jqtree_custom.css" />
+<link rel="stylesheet" href="config/static/libs/jqtree/jqtree_custom.css?v={{ version }}" />
 <style>
     #label-classes {
         border: 1px solid #aaa;
@@ -73,8 +73,8 @@
         border-radius: 5px;
     }
 </style>
-<script src="config/static/libs/jqtree/tree.jquery.js"></script>
-<script src="config/static/js/jscolor.js"></script>
+<script src="config/static/libs/jqtree/tree.jquery.js?v={{ version }}"></script>
+<script src="config/static/js/jscolor.js?v={{ version }}"></script>
 <script type="text/javascript">
     const DELIMITERS = [
         ',,', ',', ';;', ';', '::', ':', '\t', ' '  //TODO: multiple white spaces?
@@ -124,7 +124,7 @@
 
     function loadLabelClasses() {
         return $.ajax({
-            url: 'getClassDefinitions?show_hidden=true',    //TODO: handle potential removal of background class in segmentation map case
+            url: 'getClassDefinitions?show_hidden=false',    //TODO: handle potential removal of background class in segmentation map case
             method: 'GET',
             success: function(data) {
                 // prepare data for tree
@@ -603,4 +603,4 @@
             window.showLoadingOverlay(false);
         });
     });
-</script sr>
+</script>

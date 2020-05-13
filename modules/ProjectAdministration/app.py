@@ -12,6 +12,7 @@ import json
 from urllib.parse import urljoin
 import bottle
 from bottle import request, response, static_file, redirect, abort, SimpleTemplate
+from constants.version import AIDE_VERSION
 from .backend.middleware import ProjectConfigMiddleware
 
 
@@ -70,7 +71,10 @@ class ProjectConfigurator:
         def send_static_panel(project, panel):
             if self.loginCheck(project=project, admin=True):
                 try:
-                    return self.panelTemplates[panel].render(project=project)
+                    return self.panelTemplates[panel].render(
+                        version=AIDE_VERSION,
+                        project=project
+                    )
                 except:
                     abort(404, 'not found')
             else:
@@ -96,6 +100,7 @@ class ProjectConfigurator:
                 username = ''
             
             return self.projLandPage_template.render(
+                version=AIDE_VERSION,
                 projectShortname=project,
                 projectTitle=projectData['name'],
                 projectDescription=projectData['description'],
@@ -127,6 +132,7 @@ class ProjectConfigurator:
                 username = ''
 
             return self.projConf_template.render(
+                    version=AIDE_VERSION,
                     projectShortname=project,
                     projectTitle=projectData['name'],
                     username=username)
@@ -274,6 +280,7 @@ class ProjectConfigurator:
             #     abort(401, 'forbidden')
             username = html.escape(request.get_cookie('username'))
             return self.newProject_template.render(
+                version=AIDE_VERSION,
                 username=username
             )
 

@@ -9,6 +9,7 @@ import os
 import html
 import json
 from bottle import request, response, static_file, redirect, abort, SimpleTemplate, HTTPResponse
+from constants.version import AIDE_VERSION
 from .backend.middleware import ReceptionMiddleware
 
 
@@ -43,7 +44,10 @@ class Reception:
                 username = html.escape(request.get_cookie('username'))
             except:
                 username = ''
-            return self.proj_template.render(username=username)
+            return self.proj_template.render(
+                version=AIDE_VERSION,
+                username=username
+            )
 
 
         @self.app.get('/getCreateAccountUnrestricted')
