@@ -8,6 +8,7 @@
 import html
 from bottle import request, static_file, abort
 from .backend.middleware import ProjectStatisticsMiddleware
+from util.helpers import parse_boolean
 
 
 class ProjectStatistics:
@@ -106,7 +107,7 @@ class ProjectStatistics:
                 except:
                     numDaysMax = 31
                 try:
-                    perUser = request.query['per_user']
+                    perUser = parse_boolean(request.query['per_user'])
                 except:
                     perUser = False
                 stats = self.middleware.getTimeActivity(project, type, numDaysMax, perUser)

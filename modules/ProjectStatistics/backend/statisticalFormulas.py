@@ -208,12 +208,12 @@ class StatisticalFormulas_user(Enum):
 
 
     segmentationMasks = '''
-        SELECT q1.image AS image, q1id, q1segMask, q2id, q2segMask FROM (
-            SELECT image, segmentationMask AS q1segMask FROM {id_anno}
+        SELECT q1.image AS image, q1id, q1segMask, q1width, q1height, q2id, q2.username, q2segMask, q2width, q2height FROM (
+            SELECT image, id AS q1id, segmentationMask AS q1segMask, width AS q1width, height AS q1height FROM {id_anno}
             WHERE username = %s
         ) AS q1
         JOIN (
-            SELECT image, segmentationMask AS q2segMask FROM {id_anno}
+            SELECT image, username, id AS q2id, segmentationMask AS q2segMask, width AS q2width, height AS q2height FROM {id_anno}
             WHERE username IN %s
         ) AS q2
         ON q1.image = q2.image
@@ -418,12 +418,12 @@ class StatisticalFormulas_model(Enum):
 
 
     segmentationMasks = '''
-        SELECT q1.image AS image, q1id, q1segMask, q2id, q2segMask FROM (
-            SELECT image, segmentationMask AS q1segMask FROM {id_anno}
+        SELECT q1.image AS image, q1id, q1segMask, q1width, q1height, q2id, q2.cnnstate, q2segMask, q2width, q2height FROM (
+            SELECT image, id AS q1id, segmentationMask AS q1segMask, width AS q1width, height AS q1height FROM {id_anno}
             WHERE username = %s
         ) AS q1
         JOIN (
-            SELECT image, segmentationMask AS q2segMask FROM {id_pred}
+            SELECT image, id AS q2id, cnnstate, segmentationMask AS q2segMask, width AS q2width, height AS q2height FROM {id_pred}
             WHERE cnnstate IN %s
         ) AS q2
         ON q1.image = q2.image

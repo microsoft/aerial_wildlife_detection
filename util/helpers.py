@@ -208,14 +208,17 @@ def imageToBase64(image):
 
 
 
-def base64ToImage(base64str, width, height):
+def base64ToImage(base64str, width, height, toPIL=True):
     '''
         Receives a base64-encoded string as stored in
         AIDE's database (e.g. for segmentation masks) and
-        returns a PIL image with its contents.
+        returns a PIL image with its contents if "toPIL" is
+        True (default), or an ndarray otherwise.
     '''
     raster = np.frombuffer(base64.b64decode(base64str), dtype=np.uint8)
-    raster = np.reshape(raster, (height,width,))
+    raster = np.reshape(raster, (int(height),int(width),))
+    if not toPIL:
+        return raster
     image = Image.fromarray(raster)
     return image
 

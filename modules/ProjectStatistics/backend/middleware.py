@@ -5,8 +5,10 @@
 '''
 
 from psycopg2 import sql
+import numpy as np
 from .statisticalFormulas import StatisticalFormulas_user, StatisticalFormulas_model
 from modules.Database.app import Database
+from util.helpers import base64ToImage
 
 
 class ProjectStatisticsMiddleware:
@@ -158,7 +160,7 @@ class ProjectStatisticsMiddleware:
                     IoU (max. with any target bounding box, regardless of label)
                     overall accuracy (labels)
             - segmentation masks:
-                    TODO: not supported yet
+                    TODO
 
             Value 'threshold' determines the geometric requirement for an annotation to be
             counted as correct (or incorrect) as follows:
@@ -176,6 +178,21 @@ class ProjectStatisticsMiddleware:
             (project,),
             1)
         annoType = annoType[0]['annotationtype']
+
+        # for segmentation masks: get label classes and their ordinals      #TODO: implement per-class statistics for all types
+        labelClasses = {}
+        lcDef = self.dbConnector.execute(sql.SQL('''
+            SELECT id, idx, color FROM {id_lc};
+        ''').format(id_lc=sql.Identifier(project, 'labelclass')),
+        None, 'all')
+        if lcDef is not None:
+            for l in lcDef:
+                labelClasses[str(l['id'])] = (l['idx'], l['color'])
+
+        else:
+            # no label classes defined
+            return {}               
+
 
         # compose args list and complete query
         queryArgs = [entity_target, tuple(entities_eval)]
@@ -228,6 +245,20 @@ class ProjectStatisticsMiddleware:
                 'avg_iou': 0.0
             }
             tokens_normalize = ['avg_iou']
+        elif annoType == 'segmentationMasks':
+            tokens = {
+                'num_matches': 0,
+                'overall_accuracy': 0.0,
+                'per_class': {}
+            }
+            for clID in labelClasses.keys():
+                tokens['per_class'][clID] = {
+                    'num_matches': 0,
+                    'prec': 0.0,
+                    'rec': 0.0,
+                    'f1': 0.0
+                }
+            tokens_normalize = []
         
         if entityType == 'user':
             queryStr = getattr(StatisticalFormulas_user, annoType).value
@@ -249,9 +280,7 @@ class ProjectStatisticsMiddleware:
         #TODO: update points query (according to bboxes); re-write stats parsing below
 
         # get stats
-        response = {
-            'per_entity': {}
-        }
+        response = {}
         with self.dbConnector.execute_cursor(queryStr, tuple(queryArgs)) as cursor:
             while True:
                 b = cursor.fetchone()
@@ -263,47 +292,94 @@ class ProjectStatisticsMiddleware:
                 else:
                     entity = str(b['cnnstate'])
 
-                if not entity in response['per_entity']:
-                    response['per_entity'][entity] = tokens.copy()
+                if not entity in response:
+                    response[entity] = tokens.copy()
                 if annoType in ('points', 'boundingBoxes'):
-                    response['per_entity'][entity]['num_matches'] = 1
+                    response[entity]['num_matches'] = 1
                     if b['num_target'] > 0:
-                        response['per_entity'][entity]['num_matches'] += 1
+                        response[entity]['num_matches'] += 1
                 
-                for key in tokens.keys():
-                    if key == 'correct' or key == 'incorrect':
-                        # classification
-                        correct = b['label_correct']
-                        # ignore None
-                        if correct is True:
-                            response['per_entity'][entity]['correct'] += 1
-                            response['per_entity'][entity]['num_matches'] += 1
-                        elif correct is False:
-                            response['per_entity'][entity]['incorrect'] += 1
-                            response['per_entity'][entity]['num_matches'] += 1
-                    elif key in b and b[key] is not None:
-                        response['per_entity'][entity][key] += b[key]
+                if annoType == 'segmentationMasks':
+                    # decode segmentation masks
+                    try:
+                        mask_target = np.array(base64ToImage(b['q1segmask'], b['q1width'], b['q1height']))
+                        mask_source = np.array(base64ToImage(b['q2segmask'], b['q2width'], b['q2height']))
+                        
+                        if mask_target.shape == mask_source.shape and np.any(mask_target) and np.any(mask_source):
 
-        for entity in response['per_entity'].keys():
+                            # calculate OA
+                            intersection = (mask_target>0) * (mask_source>0)
+                            if np.any(intersection):
+                                oa = np.mean(mask_target[intersection] == mask_source[intersection])
+                                response[entity]['overall_accuracy'] += oa
+                                response[entity]['num_matches'] += 1
+
+                            # calculate per-class precision and recall values
+                            for clID in labelClasses.keys():
+                                idx = labelClasses[clID][0]
+                                tp = np.sum((mask_target==idx) * (mask_source==idx))
+                                fp = np.sum((mask_target!=idx) * (mask_source==idx))
+                                fn = np.sum((mask_target==idx) * (mask_source!=idx))
+                                if (tp+fp+fn) > 0:
+                                    prec, rec, f1 = self._calc_geometric_stats(tp, fp, fn)
+                                    response[entity]['per_class'][clID]['num_matches'] += 1
+                                    response[entity]['per_class'][clID]['prec'] += prec
+                                    response[entity]['per_class'][clID]['rec'] += rec
+                                    response[entity]['per_class'][clID]['f1'] += f1
+
+                    except Exception as e:
+                        print(f'TODO: error in segmentation mask statistics calculation ("{str(e)}").')
+
+                else:
+                    for key in tokens.keys():
+                        if key == 'correct' or key == 'incorrect':
+                            # classification
+                            correct = b['label_correct']
+                            # ignore None
+                            if correct is True:
+                                response[entity]['correct'] += 1
+                                response[entity]['num_matches'] += 1
+                            elif correct is False:
+                                response[entity]['incorrect'] += 1
+                                response[entity]['num_matches'] += 1
+                        elif key in b and b[key] is not None:
+                            response[entity][key] += b[key]
+
+        for entity in response.keys():
             for t in tokens_normalize:
-                if t in response['per_entity'][entity]:
+                if t in response[entity]:
                     if t == 'overall_accuracy':
-                        response['per_entity'][entity][t] = float(response['per_entity'][entity]['correct']) / \
-                            float(response['per_entity'][entity]['correct'] + response['per_entity'][entity]['incorrect'])
+                        response[entity][t] = float(response[entity]['correct']) / \
+                            float(response[entity]['correct'] + response[entity]['incorrect'])
                     elif annoType in ('points', 'boundingBoxes'):
-                        response['per_entity'][entity][t] /= response['per_entity'][entity]['num_matches']
+                        response[entity][t] /= response[entity]['num_matches']
 
             if annoType == 'points' or annoType == 'boundingBoxes':
                 prec, rec, f1 = self._calc_geometric_stats(
-                    response['per_entity'][entity]['tp'],
-                    response['per_entity'][entity]['fp'],
-                    response['per_entity'][entity]['fn']
+                    response[entity]['tp'],
+                    response[entity]['fp'],
+                    response[entity]['fn']
                 )
-                response['per_entity'][entity]['prec'] = prec
-                response['per_entity'][entity]['rec'] = rec
-                response['per_entity'][entity]['f1'] = f1
+                response[entity]['prec'] = prec
+                response[entity]['rec'] = rec
+                response[entity]['f1'] = f1
 
-        return response
+            elif annoType == 'segmentationMasks':
+                # normalize OA
+                response[entity]['overall_accuracy'] /= response[entity]['num_matches']
+
+                # normalize all label class values as well
+                for lcID in labelClasses.keys():
+                    numMatches = response[entity]['per_class'][lcID]['num_matches']
+                    if numMatches > 0:
+                        response[entity]['per_class'][lcID]['prec'] /= numMatches
+                        response[entity]['per_class'][lcID]['rec'] /= numMatches
+                        response[entity]['per_class'][lcID]['f1'] /= numMatches
+
+        return {
+            'label_classes': labelClasses,
+            'per_entity': response
+            }
 
 
     def getUserFinished(self, project, username):
@@ -361,13 +437,14 @@ class ProjectStatisticsMiddleware:
         #TODO: homogenize series and add missing days
 
         if perUser:
+            response = {}
+        else:
             response = {
                 'counts': [],
                 'timestamps': [],
                 'labels': []
             }
-        else:
-            response = {}
+            
         for row in result:
             if perUser:
                 if row['username'] not in response:

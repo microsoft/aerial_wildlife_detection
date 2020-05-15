@@ -117,6 +117,13 @@
 <script src="/static/statistics/libs/chartjs/Chart.min.js?v={{ version }}"></script>
 <script type="text/javascript">
 
+    var detailedStatistics = {};
+
+    function showDetailedChart(modelStateID) {
+        let stats = detailedStatistics[modelStateID];
+        console.log(stats); //TODO
+    }
+
     function calculateModelStats() {
         // get control values
         var modelStates = [];
@@ -194,7 +201,7 @@
                 
                 // create overview chart
                 if(series.hasOwnProperty('overall_accuracy')) {
-                    // image labels; show OA
+                    // image labels or segmentation masks; show OA
                     let chartLabel = 'Overall Accuracy';
                     var cw_oa = $('<div class="chartWrapper"><div class="chartAreaWrapper"></div></div>');
                     let canvas_oa = $('<canvas width=400 height=300></canvas>');
@@ -353,6 +360,26 @@
                         }
                     });
                     resultsContainer.append(cw_geom);
+                }
+
+                
+                if(series.hasOwnProperty('per_class')) {
+                    // create detailed charts
+                    resultsContainer.append($('<h3>Per label class</h3>'));
+                    resultsContainer.append($('<span>Select model state:</span>'));
+                    var modelSelect = $('<select id="detailed-model-select"></select>');
+                    for(var m=0; m<modelStates.length; m++) {
+                        modelSelect.append($('<option value="'+modelStates[m]+'">'+(m+1)+'</option>'));
+                    }
+                    modelSelect.on('change', function() {
+                        showDetailedChart($(this).val());
+                    });
+                    resultsContainer.append(modelSelect);
+
+                    // parse detailed data
+                    detailedStatistics = {};
+                    //TODO
+                    
                 }
             },
             error: function(data) {
