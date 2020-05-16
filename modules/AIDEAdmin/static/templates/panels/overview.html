@@ -35,11 +35,20 @@
         </table>
     </div>
 
+    <!-- TODO: append Celery workers -->
+
 </div>
+<style>
+    table {
+        max-width: 1280px;
+    }
+    th, td {
+        padding: 10px;
+    }
+</style>
 <script type="text/javascript">
 
-    const LOCALHOST_ALIASES = [
-        '',
+    window.LOCALHOST_ALIASES = [
         '/',
         'localhost',
         window.location.protocol + '//localhost',
@@ -47,7 +56,6 @@
         window.location.protocol + '//127.0.0.1',
         window.location.host
     ];
-
     function queryServiceDetails() {
         return $.ajax({
             url: '/getServiceDetails',
@@ -67,8 +75,8 @@
 
                 // FileServer
                 var fs_uri = data['FileServer']['uri'];
-                for(var l=0; l<LOCALHOST_ALIASES.length; l++) {
-                    if(fs_uri.startsWith(LOCALHOST_ALIASES[l])) {
+                for(var l=0; l<window.LOCALHOST_ALIASES.length; l++) {
+                    if(fs_uri.startsWith(window.LOCALHOST_ALIASES[l])) {
                         fs_uri = '(this machine)';
                         break;
                     }
@@ -85,8 +93,8 @@
 
                 // AIController
                 var aic_uri = data['AIController']['uri'];
-                for(var l=0; l<LOCALHOST_ALIASES.length; l++) {
-                    if(aic_uri.startsWith(LOCALHOST_ALIASES[l])) {
+                for(var l=0; l<window.LOCALHOST_ALIASES.length; l++) {
+                    if(aic_uri.startsWith(window.LOCALHOST_ALIASES[l])) {
                         aic_uri = '(this machine)';
                         break;
                     }

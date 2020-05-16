@@ -26,7 +26,7 @@
     margin: 20px;
     border: 1px solid #333;
     background: #606060;
-    height: calc(100vh - 260px);
+    /* height: calc(100vh - 260px); */
     overflow-y: auto;
 }
 

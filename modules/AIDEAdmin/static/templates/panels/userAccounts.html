@@ -1,12 +1,159 @@
 <div>
     <h2>AIDE: user accounts</h2>
     
-    <p>Coming soon...</p>
+    <table id="users-table-thead">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>E-mail</th>
+                <th>No. projects</th>
+                <th>Can create projects</th>
+                <th>Super user</th>
+                <th>Last login</th>
+            </tr>
+        </thead>
+        <tbody id="users-table-tbody"></tbody>
+    </table>
 
+    <h3 id="selected-user-header">Selected user</h3>
+    <!-- TODO: show user details -->
+
+    <div style="color:red">Work in progress, not functional yet.</div>
+
+    Modify user:<br />
+    <select id="user-action-select">
+        <option value="">Choose...</option>
+        <option value="" disabled>__________</option>
+        <option value="" disabled>General:</option>
+        <option value="setPassword">set new password</option>
+        <option value="" disabled>__________</option>
+        <option value="" disabled>New projects:</option>
+        <option value="enableCanCreateProjects">allow creating new projects</option>
+        <option value="" disabled>__________</option>
+        <option value="" disabled>Project access:</option>
+        <option value="admitInProject">admit for</option>
+        <option value="blockInProject">block from</option>
+    </select>
+
+    <div id="project-details-specifier" style="display:none">
+        <select id="project-select"></select>
+        <span>until</span>
+        <input type="text" id="date-field" />
+    </div>
+    <div id="new-password-fields" style="display:none">
+        New password:<br />
+        <input type="password" id="new-password-a" /><br />
+
+        Re-type:<br />
+        <input type="password" id="new-password-b" />
+    </div>
+    <br />
+    <button id="do-action" class="btn btn-primary" style="margin-top:10px;" disabled>Go</button>
 </div>
+<style>
+    table {
+        margin-bottom: 20px;
+        border: 1px solid #aaa;
+    }
+    thead {
+        background: #5f5f5f;
+        font-weight: bold;
+    }
+    tbody {
+        overflow-y: auto;
+    }
+    th, td {
+        padding: 10px;
+    }
+    tr {
+        cursor: pointer;
+    }
+    tbody tr:hover {
+        background: #444444;
+    }
+    .active {
+        font-weight: bold;
+        background: #AAAAAA;
+    }
+</style>
+<link rel="stylesheet" href="/static/general/libs/datetimepicker/jquery.datetimepicker.css?v={{ version }}" />
+<script type="text/javascript" src="/static/general/libs/datetimepicker/jquery.datetimepicker.js?v={{ version }}"></script>
 <script type="text/javascript">
+
+    window.userData = {};
+    window.selectedUser = undefined;
+
+    function setSelectedUser(username) {
+        if(!window.userData.hasOwnProperty(username)) return;
+
+        if(window.selectedUser !== undefined) {
+            $('#'+window.selectedUser).removeClass('active');
+        }
+        window.selectedUser = username;
+        $('#'+window.selectedUser).addClass('active');
+
+        //TODO: show user details
+    }
+
+    function getUserDetails() {
+        let usersTable = $('#users-table-tbody');
+        usersTable.empty();
+        return $.ajax({
+            url: '/getUserDetails',
+            method: 'GET',
+            success: function(data) {
+                data = data['details'];
+                for(var user in data) {
+                    var ud = data[user];
+                    var numProjects = Object.keys(ud['enrolled_projects']).length;
+                    var canCreateProjects = (ud['canCreateProjects']===true? 'Y' : 'N');
+                    var isSuperUser = (ud['isSuperUser']===true? 'Y' : 'N');
+                    var lastLogin = '';
+                    if(typeof(ud['last_login']) === 'number') {
+                        lastLogin = new Date(ud['last_login']*1000).toLocaleString();
+                    }
+                    var markup = $('<tr id="'+user+'"><td>'+user+'</td>' +
+                        '<td>'+ud['email']+'</td>' +
+                        '<td>'+numProjects+'</td>' +
+                        '<td>'+canCreateProjects+'</td>' +
+                        '<td>'+isSuperUser+'</td>' +
+                        '<td>'+lastLogin+'</td></tr>');
+                    markup.on('click', function() {
+                        setSelectedUser($(this).attr('id'));
+                    });
+                    usersTable.append(markup);
+                }
+            },
+            error: function(xhr, status, error) {
+                var promise = window.renewSessionRequest(xhr);
+                promise = promise.done(function() {
+                    return getUserDetails();
+                });
+                return promise;
+            }
+        })
+    }
+
     $(document).ready(function() {
-        //TODO: show summary, running processes, etc.
-        window.showLoadingOverlay(false);
+        var now = new Date();
+        $('#date-field').datetimepicker({
+            startDate: now,
+            minDateTime: now
+        });
+        $('#user-action-select').on('input', function() {
+            let selectedAction = $(this).val();
+            $('#new-password-fields').hide();
+            $('#project-details-specifier').hide();
+            if(selectedAction === 'setPassword') {
+                $('#new-password-fields').show();
+            } else if(['admitInProject', 'blockInProject'].includes(selectedAction)) {
+                $('#project-details-specifier').show();
+            }
+        });
+
+        var promise = getUserDetails();
+        promise.done(function() {
+            window.showLoadingOverlay(false);
+        });
     });
 </script>

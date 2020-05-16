@@ -1,12 +1,109 @@
 <div>
     <h2>AIDE: projects</h2>
     
-    <p>Coming soon...</p>
+    <table id="projects-table">
+        <thead>
+            <tr>
+                <th>Shortname</th>
+                <th>Name</th>
+                <th>Created by</th>
+                <th>No. images</th>
+                <th>No. annotations</th>
+                <th>Last activity</th>
+            </tr>
+        </thead>
+        <tbody id="projects-table-tbody"></tbody>
+    </table>
+
+    <h3>Project details</h3>
+
+    Coming soon.
 
 </div>
+<style>
+    table {
+        margin-bottom: 20px;
+        border: 1px solid #aaa;
+    }
+    thead {
+        background: #5f5f5f;
+        font-weight: bold;
+    }
+    th, td {
+        padding: 10px;
+    }
+    tr {
+        cursor: pointer;
+    }
+    tbody tr:hover {
+        background: #444444;
+    }
+    .active {
+        font-weight: bold;
+        background: #AAAAAA;
+    }
+</style>
 <script type="text/javascript">
+
+    window.projectData = {};
+    window.selectedProject = undefined;
+
+    function setSelectedProject(shortname) {
+        if(!window.projectData.hasOwnProperty(shortname)) return;
+
+        if(window.selectedProject !== undefined) {
+            $('#'+window.selectedProject).removeClass('active');
+        }
+        window.selectedProject = shortname;
+        $('#'+window.selectedProject).addClass('active');
+
+        //TODO: show project details
+    }
+
+    function getProjectDetails() {
+        let projectsTable = $('#projects-table-tbody');
+        projectsTable.empty();
+        return $.ajax({
+            url: '/getProjectDetails',
+            method: 'GET',
+            success: function(data) {
+                data = data['details'];
+                window.projectData = data;
+                for(var shortname in data) {
+                    var projData = data[shortname];
+                    var owner = (typeof(projData['owner']) === 'string' ? projData['owner'] : '');
+                    var lastChecked = '';
+                    if(typeof(projData['last_checked']) === 'number') {
+                        lastChecked = new Date(projData['last_checked']*1000).toLocaleString();
+                    }
+                    var markup = $('<tr id="'+shortname+'"><td>'+shortname+'</td>' +
+                        '<td>'+projData['name']+'</td>' +
+                        '<td>'+owner+'</td>' +
+                        '<td>'+projData['num_img']+'</td>' +
+                        '<td>'+projData['num_anno']+'</td>' +
+                        '<td>'+lastChecked+'</td></tr>');
+                    markup.on('click', function() {
+                        setSelectedProject($(this).attr('id'));
+                    });
+                    projectsTable.append(markup);
+                }
+            },
+            error: function(xhr, status, error) {
+                var promise = window.renewSessionRequest(xhr);
+                promise = promise.done(function() {
+                    return getProjectDetails();
+                });
+                return promise;
+            }
+        });
+    }
+
     $(document).ready(function() {
-        //TODO: show summary, running processes, etc.
-        window.showLoadingOverlay(false);
+        
+        var promise = getProjectDetails();
+
+        promise.done(function() {
+            window.showLoadingOverlay(false);
+        });
     });
 </script>

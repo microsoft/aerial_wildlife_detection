@@ -71,7 +71,11 @@ class ProjectConfigMiddleware:
         'accountexists',
         'getauthentication',
         'getusernames',
-        'docreateaccount'
+        'docreateaccount',
+        'admin',
+        'getservicedetails',
+        'getprojectdetails',
+        'getuserdetails'
     ]
 
     # prohibited name prefixes

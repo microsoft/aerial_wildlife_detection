@@ -85,7 +85,7 @@ class AIDEAdmin:
                     username=username)
 
 
-        @self.app.route('/getServiceDetails')
+        @self.app.get('/getServiceDetails')
         def get_service_details():
             try:
                 if not self.loginCheck(superuser=True):
@@ -95,4 +95,21 @@ class AIDEAdmin:
                 abort(404, 'not found')
 
 
-        
+        @self.app.get('/getProjectDetails')
+        def get_project_details():
+            try:
+                if not self.loginCheck(superuser=True):
+                    return redirect('/')
+                return {'details': self.middleware.getProjectDetails()}
+            except Exception as e:
+                abort(404, 'not found')
+
+
+        @self.app.get('/getUserDetails')
+        def get_user_details():
+            try:
+                if not self.loginCheck(superuser=True):
+                    return redirect('/')
+                return {'details': self.middleware.getUserDetails()}
+            except Exception as e:
+                abort(404, 'not found')
