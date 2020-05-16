@@ -73,6 +73,8 @@ for i in instance_args:
     
     # launch project meta modules
     if moduleName == 'LabelUI':
+        aideAdmin = REGISTERED_MODULES['AIDEAdmin'](config, app)
+        aideAdmin.addLoginCheckFun(userHandler.checkAuthenticated)
         reception = REGISTERED_MODULES['Reception'](config, app)
         reception.addLoginCheckFun(userHandler.checkAuthenticated)
         configurator = REGISTERED_MODULES['ProjectConfigurator'](config, app)

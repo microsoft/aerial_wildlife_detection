@@ -17,6 +17,7 @@ from .ProjectAdministration.app import ProjectConfigurator
 from .ProjectStatistics.app import ProjectStatistics
 from .DataAdministration.app import DataAdministrator
 from .StaticFiles.app import StaticFileServer
+from .AIDEAdmin.app import AIDEAdmin
 
 
 #TODO
@@ -35,7 +36,8 @@ REGISTERED_MODULES = {
     'ProjectConfigurator': ProjectConfigurator,
     'ProjectStatistics': ProjectStatistics,
     'DataAdministrator': DataAdministrator,
-    'StaticFileServer': StaticFileServer
+    'StaticFileServer': StaticFileServer,
+    'AIDEAdmin': AIDEAdmin
 }
 
 

@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
     <head>
-        <title>AIDE: configure</title>
+        <title>AIDE: setup configuration</title>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
         <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous" />
@@ -21,7 +21,7 @@
                 window.showLoadingOverlay(true);
                 let contentPane = $('#contents');
                 $.ajax({
-                    url: 'config/panels/' + panelID,
+                    url: '/admin/config/panels/' + panelID,
                     success: function(data) {
                         contentPane.empty();
                         contentPane.append(data);
@@ -33,8 +33,7 @@
                         $('#panel-name').html($('#'+panelID).html());
 
                         // update URL and page title
-                        document.title = 'AIDE: ' + window.project + ' - ' + panelID;
-                        window.history.pushState('AIDE', 'AIDE: {{ projectShortname }}', '?t='+panelID);
+                        window.history.pushState('AIDE', 'AIDE: setup configuration', '?t='+panelID);
                     },
                     error: function() {
                         // invalid panel name; reset to default
@@ -68,7 +67,6 @@
                 }
 
                 window.showLoadingOverlay(true);
-                window.project = '{{ projectShortname }}';
                 window.user = '{{ username }}';
                 $('.navigation-entry').each(function() {
                     let id = $(this).attr('id');
@@ -81,30 +79,6 @@
                 var panel = parseURLparameter('t');
                 if(panel === null) panel = 'overview';  // default
                 setPanel(panel);
-
-                // add interface shortlink
-                $.ajax({
-                    url: 'getPermissions',
-                    method: 'GET',
-                    success: function(data) {
-                        try {
-                            if(!data['permissions']['can_view']) {
-                                // private project; redirect to home page
-                                window.location.href = '/';
-                            }
-                            if(data['permissions']['can_label']) {
-                                $('#start-labeling-button').show();
-                                $('#interface-disabled-placeholder').hide();
-                            } else {
-                                $('#start-labeling-button').hide();
-                                $('#interface-disabled-placeholder').show();
-                            }
-                        } catch {}
-                    },
-                    error: function(data) {
-                        console.error(data);
-                    }
-                });
             });
         </script>
     </head>
@@ -133,8 +107,8 @@
                 <nav class="navbar navbar-expand-lg navbar-light bg-dark border-bottom">
                     <ul class="nav navbar-nav">
                         <li class="nav-item header-text">
-                            <div class="project-path"><a href="/">Projects</a> / <a href="/{{ projectShortname }}" style="font-weight:bold">{{ projectShortname }}</a> / <a href="configuration">configuration</a></div>
-                            <h1>{{ projectTitle }}: <span id="panel-name">Configuration</span></h1>
+                            <div class="project-path"><a href="/aideConfig" style="color:#FFDF00">AIDE configuration</a></div>
+                            <h1>AIDE: <span id="panel-name">Configuration</span></h1>
                         </li>
                     </ul>
                     <ul class="nav navbar-nav ml-auto">
@@ -153,25 +127,11 @@
                 <div class="main-container">
 
                     <div class="navigation-panel">
-                        <div id="interface-shortlink-container">
-                            <a class="btn btn-lg btn-primary" id="start-labeling-button" href="interface" style="display:none">Start labeling</a>
-                            <div class="btn btn-lg btn-secondary label-button" id="interface-disabled-placeholder" style="cursor:not-allowed;" disabled="disabled">(interface disabled)</div>
-                        </div>
                         <div class="navigation-entry-container">
                             <div class="navigation-entry" id="overview">Overview</div>
-                            <div class="navigation-entry" id="userPerformance">User performance</div>
-                            <div class="navigation-entry" id="aiModel">AI model</div>
-                            <div class="navigation-entry navigation-sub-entry" id="aiModelSettings">Settings</div>
-                            <div class="navigation-entry navigation-sub-entry" id="modelPerformance">Model performance</div>
-                            <div class="navigation-entry navigation-sub-entry" id="workflowDesigner">Workflow designer</div>
-                            <div class="navigation-entry" id="projectSettings">Project settings</div>
-                            <div class="navigation-entry navigation-sub-entry" id="general">General</div>
-                            <div class="navigation-entry navigation-sub-entry" id="labelClasses">Label classes</div>
-                            <div class="navigation-entry navigation-sub-entry" id="userInterface">Interface</div>
-                            <div class="navigation-entry navigation-sub-entry" id="accessControl">Access control</div>
-                            <div class="navigation-entry" id="dataManagement">Data management</div>
-                            <div class="navigation-entry navigation-sub-entry" id="dataDownload">Data download</div>
-                            <div class="navigation-entry navigation-sub-entry" id="dataUpload">Data upload</div>
+                            <div class="navigation-entry" id="userAccounts">User accounts</div>
+                            <div class="navigation-entry" id="projects">Projects</div>
+                            <div class="navigation-entry" id="aiModels">AI models</div>
                         </div>
                     </div>
 

@@ -10,11 +10,12 @@
 '''
 
 import os
-import socket
 from urllib import request
-from urllib.parse import urlsplit
-from urllib.error import HTTPError
-import netifaces
+# import socket
+# from urllib.parse import urlsplit
+# from urllib.error import HTTPError
+# import netifaces
+from util.helpers import is_localhost
 
 
 class FileServer:
@@ -43,28 +44,28 @@ class FileServer:
             check for here.
         '''
         baseURI = self.config.getProperty('Server', 'dataServer_uri')
-
-        # check for explicit localhost or hostname appearance in URL
-        localhosts = ['localhost', socket.gethostname()]
-        interfaces = netifaces.interfaces()
-        for i in interfaces:
-            iface = netifaces.ifaddresses(i).get(netifaces.AF_INET)
-            if iface != None:
-                for j in iface:
-                    localhosts.append(j['addr'])
+        return is_localhost(baseURI)
+        # # check for explicit localhost or hostname appearance in URL
+        # localhosts = ['localhost', socket.gethostname()]
+        # interfaces = netifaces.interfaces()
+        # for i in interfaces:
+        #     iface = netifaces.ifaddresses(i).get(netifaces.AF_INET)
+        #     if iface != None:
+        #         for j in iface:
+        #             localhosts.append(j['addr'])
         
-        baseURI_fragments = urlsplit(baseURI)
-        baseURI_stripped = baseURI_fragments.netloc
-        for l in localhosts:
-            if baseURI_stripped.startswith(l):
-                return True
+        # baseURI_fragments = urlsplit(baseURI)
+        # baseURI_stripped = baseURI_fragments.netloc
+        # for l in localhosts:
+        #     if baseURI_stripped.startswith(l):
+        #         return True
         
-        # also check for local addresses that do not even specify the hostname (e.g. '/files' or just 'files')
-        if not baseURI.startswith('http'):
-            return True
+        # # also check for local addresses that do not even specify the hostname (e.g. '/files' or just 'files')
+        # if not baseURI.startswith('http'):
+        #     return True
         
-        # all checks failed; file server is running on another machine
-        return False
+        # # all checks failed; file server is running on another machine
+        # return False
 
     
 

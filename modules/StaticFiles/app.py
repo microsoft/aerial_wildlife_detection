@@ -8,8 +8,10 @@
 
 import os
 import json
+import requests
 from bottle import static_file, abort, SimpleTemplate
 from constants.version import AIDE_VERSION
+from util.helpers import is_localhost
 
 
 class StaticFileServer:
@@ -44,7 +46,7 @@ class StaticFileServer:
         @self.app.route('/version')
         def aide_version():
             return AIDE_VERSION
-
+            
 
         @self.app.route('/favicon.ico')
         def favicon():

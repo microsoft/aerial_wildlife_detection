@@ -382,16 +382,18 @@
                     
                 }
             },
-            error: function(data) {
-                console.error(data);
+            error: function(xhr, status, error) {
+                var promise = window.renewSessionRequest(xhr);
+                promise = promise.done(function() {
+                    calculateModelStats();
+                });
+                return promise;
             }
         });
     }
 
-    $(document).ready(function() {
-
-        // get project annotation and prediction types
-        var promise = $.ajax({
+    function getProjectSettings() {
+        return $.ajax({
             url: 'getProjectSettings',
             method: 'GET',
             success: function(data) {
@@ -403,76 +405,98 @@
                     $('#threshold-control').show();
                 }
             },
-            error: function(data) {
-                console.log('ERROR:')
-                console.log(data);
+            error: function(xhr, status, error) {
+                var promise = window.renewSessionRequest(xhr);
+                promise = promise.done(function() {
+                    return getProjectSettings();
+                });
+                return promise;
             }
         });
+    }
+
+    function listModelStates() {
+        let modelStateTable = $('#cnn-states-tbody');
+        return $.ajax({
+            url: 'listModelStates',
+            method: 'GET',
+            success: function(data) {
+                if(data.hasOwnProperty('modelStates')) {
+                    data = data['modelStates'];
+                    for(var i=0; i<data.length; i++) {
+                        // construct model state markup
+                        var markup = $('<tr></tr>');
+                        markup.append($('<td><input type="checkbox" id="'+data[i]['id']+'" checked /></td>'));
+                        markup.append($('<td>' + (data.length-i) + '</td>'));
+                        markup.append($('<td>'+new Date(data[i]['time_created'] * 1000).toLocaleString()+'</td>'));
+                        markup.append($('<td>'+data[i]['model_library']['name']+'</td>'));
+                        markup.append($('<td>'+data[i]['al_criterion_library']['name']+'</td>'));
+                        markup.append($('<td>'+data[i]['num_pred']+'</td>'));
+                        markup.append($('<td class="num-matches"></td>'));  // populated upon query
+                        modelStateTable.append(markup);
+                    }
+                }
+            },
+            error: function(xhr, status, error) {
+                var promise = window.renewSessionRequest(xhr);
+                promise = promise.done(function() {
+                    return listModelStates();
+                });
+                return promise;
+            }
+        });
+    }
+
+    function getUserNames() {
+        let targetUsersTable = $('#target-users');
+        return $.ajax({
+            url: 'getUserNames',
+            method: 'POST',
+            success: function(data) {
+                data = data['users'];
+                for(var idx in data) {
+                    var tableEntry_target = $('<tr></tr>');
+                    tableEntry_target.append($('<td><input type="radio" id="'+data[idx]+'" name="targetUser"></td>'))
+                    tableEntry_target.append($('<td>'+data[idx]+'</td>'));
+                    if(data[idx] === window.user) {
+                        tableEntry_target.find('input[type=radio]').prop('checked', 'checked');
+                    }
+                    targetUsersTable.append(tableEntry_target);
+                }
+            },
+            error: function(xhr, status, error) {
+                var promise = window.renewSessionRequest(xhr);
+                promise = promise.done(function() {
+                    return getUserNames();
+                });
+                return promise;
+            }
+        });
+    }
+
+    $(document).ready(function() {
+
+        // get project annotation and prediction types
+        var promise = getProjectSettings();
 
         // get all model states
-        let modelStateTable = $('#cnn-states-tbody');
         promise = promise.then(function() {
-            return $.ajax({
-                url: 'listModelStates',
-                method: 'GET',
-                success: function(data) {
-                    if(data.hasOwnProperty('modelStates')) {
-                        data = data['modelStates'];
-                        for(var i=0; i<data.length; i++) {
-                            // construct model state markup
-                            var markup = $('<tr></tr>');
-                            markup.append($('<td><input type="checkbox" id="'+data[i]['id']+'" checked /></td>'));
-                            markup.append($('<td>' + (data.length-i) + '</td>'));
-                            markup.append($('<td>'+new Date(data[i]['time_created'] * 1000).toLocaleString()+'</td>'));
-                            markup.append($('<td>'+data[i]['model_library']['name']+'</td>'));
-                            markup.append($('<td>'+data[i]['al_criterion_library']['name']+'</td>'));
-                            markup.append($('<td>'+data[i]['num_pred']+'</td>'));
-                            markup.append($('<td class="num-matches"></td>'));  // populated upon query
-                            modelStateTable.append(markup);
-                        }
-                    }
-                },
-                error: function(data) {
-                    console.error(data);
-                }
-            });
+            return listModelStates();
         });
 
         // populate users tables
-        let targetUsersTable = $('#target-users');
         promise = promise.then(function() {
-            return $.ajax({
-                url: 'getUserNames',
-                method: 'POST',
-                success: function(data) {
-                    data = data['users'];
-                    for(var idx in data) {
-                        var tableEntry_target = $('<tr></tr>');
-                        tableEntry_target.append($('<td><input type="radio" id="'+data[idx]+'" name="targetUser"></td>'))
-                        tableEntry_target.append($('<td>'+data[idx]+'</td>'));
-                        if(data[idx] === window.user) {
-                            tableEntry_target.find('input[type=radio]').prop('checked', 'checked');
-                        }
-                        targetUsersTable.append(tableEntry_target);
-                    }
-                },
-                error: function(data) {
-                    console.log('ERROR:');
-                    console.log(data);
-                }
-            });
+            return getUserNames();
         });
 
-        // get all users
-        promise = promise.then(function() {
-            return $.ajax({
+        // // get all users
+        // promise = promise.then(function() {
+        //     return $.ajax({
 
-            });
-        });
-
-
+        //     });
+        // });
+        
         promise = promise.done(function() {
-
             $('#select-all-states').click(function() {
                 var checked = $(this).prop('checked');
                 $.each($('#cnn-states-tbody').find('input[type=checkbox]'), function() {

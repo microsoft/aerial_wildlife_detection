@@ -1,0 +1,123 @@
+<div>
+    <h2>AIDE overview</h2>
+    
+    <!-- TODO: nicer formatting, e.g. a diagram -->
+    <div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Module</th>
+                    <th>AIDE version</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>This machine:</td>
+                    <td style="color:green">{{ version }}</td>
+                </tr>
+                <tr>
+                    <td>Database</td>
+                    <td id="db-ver">Querying version...</td>
+                    <td id="db-meta"></td>
+                </tr>
+                <tr>
+                    <td>File server</td>
+                    <td id="fs-ver">Querying version...</td>
+                    <td id="fs-meta"></td>
+                </tr>
+                <tr>
+                    <td>AIController:</td>
+                    <td id="aic-ver">Querying version...</td>
+                    <td id="aic-meta"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+<script type="text/javascript">
+
+    const LOCALHOST_ALIASES = [
+        '',
+        '/',
+        'localhost',
+        window.location.protocol + '//localhost',
+        '127.0.0.1',
+        window.location.protocol + '//127.0.0.1',
+        window.location.host
+    ];
+
+    function queryServiceDetails() {
+        return $.ajax({
+            url: '/getServiceDetails',
+            method: 'GET',
+            success: function(data) {
+                data = data['details'];
+                
+                // Database
+                var db_ver = data['Database']['version'];
+                var db_meta = data['Database']['details'];
+                if(db_meta !== undefined && db_meta !== null) {
+                    $('#db-meta').html(db_meta);
+                }
+                $('#db-ver').html(db_ver);
+                $('#db-ver').css('color', 'green');
+                
+
+                // FileServer
+                var fs_uri = data['FileServer']['uri'];
+                for(var l=0; l<LOCALHOST_ALIASES.length; l++) {
+                    if(fs_uri.startsWith(LOCALHOST_ALIASES[l])) {
+                        fs_uri = '(this machine)';
+                        break;
+                    }
+                }
+                $('#fs-meta').html(fs_uri);
+                var fs_ver = data['FileServer']['aide_version'];
+                if(fs_ver === null) {
+                    $('#fs-ver').html('Offline');
+                    $('#fs-ver').css('color', 'red');
+                } else {
+                    $('#fs-ver').html(fs_ver);
+                    $('#fs-ver').css('color', 'green');
+                }
+
+                // AIController
+                var aic_uri = data['AIController']['uri'];
+                for(var l=0; l<LOCALHOST_ALIASES.length; l++) {
+                    if(aic_uri.startsWith(LOCALHOST_ALIASES[l])) {
+                        aic_uri = '(this machine)';
+                        break;
+                    }
+                }
+                $('#aic-meta').html(aic_uri);
+                var aic_ver = data['AIController']['aide_version'];
+                if(aic_ver === null) {
+                    $('#aic-ver').html('Offline');
+                    $('#aic-ver').css('color', 'red');
+                } else {
+                    $('#aic-ver').html(aic_ver);
+                    $('#aic-ver').css('color', 'green');
+                }
+            },
+            error: function(xhr, status, error) {
+                var promise = window.renewSessionRequest(xhr);
+                promise = promise.done(function() {
+                    return queryServiceDetails();
+                });
+                return promise;
+            }
+        })
+    }
+
+    $(document).ready(function() {
+        
+        // show setup info
+        var promise = queryServiceDetails();
+
+        promise.done(function() {
+            window.showLoadingOverlay(false);
+        });
+    });
+</script>
