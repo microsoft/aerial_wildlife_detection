@@ -338,6 +338,7 @@ To register the model, append information as follows (example):
         # append your model here
         'ai.models.contrib.my_model.MyCustomModel': {
                                                         'name': 'My Custom Model',
+                                                        'author': 'your name here',
                                                         'description': 'This is what people will see when they select my model in the GUI from the drop-down menu.',
                                                         'annotationType': ['points', 'boundingBoxes'],
                                                         'predictionType': 'points'
@@ -363,6 +364,7 @@ Similarly, custom rankers can be registered as follows (example):
         # append your ranker here
         'ai.al.contrib.my_ranker.MyCustomRanker': {
                                                         'name': 'My custom ranker',
+                                                        'author': 'your name here',
                                                         'description': 'Description text to be shown in the GUI.',
                                                         'predictionType': ['labels', 'points', 'boundingBoxes', 'segmentationMasks']
                                                   }

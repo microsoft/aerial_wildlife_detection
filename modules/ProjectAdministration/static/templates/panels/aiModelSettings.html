@@ -13,6 +13,9 @@
         <select id="ai-model-class">
             <option value="unset">Choose:</option>
         </select>
+        <br />
+        <span style="color:gray">Author:</span>
+        <span id="ai-model-class-author"></span>
         <p id="ai-model-class-descr"></p>
     </div>
 
@@ -21,6 +24,9 @@
         <select id="al-model-class">
             <option value="unset">Choose:</option>
         </select>
+        <br />
+        <span style="color:gray">Author:</span>
+        <span id="al-model-class-author"></span>
         <p id="al-model-class-descr"></p>
     </div>
 
@@ -117,16 +123,20 @@
                     let rankerLib = data['ai_alcriterion_library'];
                     if(aiLib === null || aiLib === undefined || !(window.availableModels['prediction'].hasOwnProperty(aiLib))) {
                         aiModelSelect.val('unset');
+                        $('#ai-model-class-author').html('');
                         $('#ai-model-class-descr').html('');
                     } else {
                         aiModelSelect.val(data['ai_model_library']);
+                        $('#ai-model-class-author').html(window.availableModels['prediction'][data['ai_model_library']]['author']);
                         $('#ai-model-class-descr').html(window.availableModels['prediction'][data['ai_model_library']]['description']);
                     }
                     if(rankerLib === null || rankerLib === undefined || !(window.availableModels['ranking'].hasOwnProperty(rankerLib))) {
                         alModelSelect.val('unset');
+                        $('#al-model-class-author').html('');
                         $('#al-model-class-descr').html('');
                     } else {
                         alModelSelect.val(data['ai_alcriterion_library']);
+                        $('#al-model-class-author').html(window.availableModels['ranking'][data['ai_alcriterion_library']]['author']);
                         $('#al-model-class-descr').html(window.availableModels['ranking'][data['ai_alcriterion_library']]['description']);
                     }
 

@@ -69,6 +69,10 @@ class AIMiddleware():
                 model['description'] = re.sub(self.scriptPattern, '(script removed)', model['description'])
             else:
                 model['description'] = '(no description available)'
+            if 'author' in model and isinstance(model['author'], str):
+                model['author'] = re.sub(self.scriptPattern, '(script removed)', model['author'])
+            else:
+                model['author'] = '(unknown)'
             if not 'annotationType' in model or not 'predictionType' in model:
                 # no annotation and/or no prediction type specified; remove model
                 print(f'WARNING: model "{modelKey}" has no annotationType and/or no predictionType specified and is therefore ignored.')
@@ -101,6 +105,10 @@ class AIMiddleware():
                 ranker['name'] = re.sub(self.scriptPattern, '(script removed)', ranker['name'])
             else:
                 ranker['name'] = rankerKey
+            if 'author' in ranker and isinstance(ranker['author'], str):
+                ranker['author'] = re.sub(self.scriptPattern, '(script removed)', ranker['author'])
+            else:
+                ranker['author'] = '(unknown)'
             if 'description' in ranker and isinstance(ranker['description'], str):
                 ranker['description'] = re.sub(self.scriptPattern, '(script removed)', ranker['description'])
             else:
