@@ -234,7 +234,7 @@ class SQLStringBuilder:
         fields_anno, fields_pred, fields_union = self._assemble_colnames(annotationType, predictionType)
 
         queryStr = sql.SQL('''
-            SELECT id, image, cType, NULL AS viewcount, NULL AS last_checked, NULL AS username, filename, isGoldenQuestion, {allCols} FROM (
+            SELECT id, image, cType, 1 AS viewcount, NULL AS last_checked, NULL AS username, filename, isGoldenQuestion, {allCols} FROM (
                 SELECT id AS image, filename, isGoldenQuestion FROM {id_img}
                 WHERE COALESCE(corrupt,false) IS FALSE
                 AND id IN (
