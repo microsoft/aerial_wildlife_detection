@@ -229,6 +229,40 @@ class SQLStringBuilder:
         return queryStr
 
 
+    def getSampleDataQueryString(self, project, annotationType, predictionType):
+
+        fields_anno, fields_pred, fields_union = self._assemble_colnames(annotationType, predictionType)
+
+        queryStr = sql.SQL('''
+            SELECT id, image, cType, NULL AS viewcount, NULL AS last_checked, NULL AS username, filename, isGoldenQuestion, {allCols} FROM (
+                SELECT id AS image, filename, isGoldenQuestion FROM {id_img}
+                WHERE COALESCE(corrupt,false) IS FALSE
+                AND id IN (
+                    SELECT anno.image FROM {id_anno} AS anno
+                    JOIN {id_pred} AS pred
+                    ON anno.image = pred.image
+                )
+                ORDER BY isGoldenQuestion DESC NULLS LAST
+                LIMIT 1
+            ) AS img
+            JOIN (
+                SELECT id, image AS imID, 'annotation' AS cType, {annoCols} FROM {id_anno}
+                UNION ALL
+                SELECT id, image AS imID, 'prediction' AS cType, {predCols} FROM {id_pred}
+            ) AS meta
+            ON img.image = meta.imID
+        ''').format(
+            id_img=sql.Identifier(project, 'image'),
+            id_anno=sql.Identifier(project, 'annotation'),
+            id_pred=sql.Identifier(project, 'prediction'),
+            allCols=sql.SQL(', ').join(fields_union),
+            annoCols=sql.SQL(', ').join(fields_anno),
+            predCols=sql.SQL(', ').join(fields_pred)
+        )
+
+        return queryStr
+
+
     def getDateQueryString(self, project, annotationType, minAge, maxAge, userNames, skipEmptyImages, goldenQuestionsOnly):
         '''
             Assembles a DB query string that returns images between a time range.

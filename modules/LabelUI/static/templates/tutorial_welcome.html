@@ -9,21 +9,21 @@
 <h3>Instructions</h3>
 
 <p>You will see image(s) on the screen that might contain objects of interest.</p>
-<p>These are <b>predictions</b> made by the model:</p>
-<div style="padding:20px;background:#212529;text-align:center;">
-<canvas id="uitutorial-predictions" width=400 height=300 style="width:400px;height:300px;margin:0 auto;"></canvas>
+<div id="uitutorial-pred-container">
+    <p>These are <b>predictions</b> made by the model:</p>
+    <div id="uitutorial-predictions" style="display:inline"></div>
+    <p>They are merely there for information and do not count as annotations.</p>
 </div>
-<p>They are merely there for information and do not count as annotations.</p>
 <br />
 
-<p>These are <b>annotations</b> made by you:</p>
-<div style="padding:20px;background:#212529;text-align:center;">
-    <canvas id="uitutorial-annotations" width=400 height=300 style="width:400px;height:300px;margin:0 auto;"></canvas>
+<div id="uitutorial-anno-container">
+    <p>These are <b>annotations</b> made by you:</p>
+    <div id="uitutorial-annotations" style="display:inline"></div>
+    <p>Sometimes you might see already existing annotations; these are automatically converted from predictions if the model has a high confidence.</p>
+    <p>
+        Remember: every annotation in the image(s) must be correct. If you find one that is not good (e.g. a false positive, too tight, too loose, including multiple objects, wrong class, etc.), you must change it appropriately.
+    </p>
 </div>
-<p>Sometimes you might see already existing annotations; these are automatically converted from predictions if the model has a high confidence.</p>
-<p>
-    Remember: every annotation in the image(s) must be correct. If you find one that is not good (e.g. a false positive, too tight, too loose, including multiple objects, wrong class, etc.), you must change it appropriately.
-</p>
 
 
 <p>
@@ -38,40 +38,110 @@
         // show custom welcome screen
         $('#custom-welcome-message').html(window.welcomeMessage);
 
-        // create example predictions/annotations
-        var predVP = new ImageViewport($('#uitutorial-predictions'), true);
-        var predStyle = JSON.parse(JSON.stringify(window.styles.predictions));
-        var color = '#7AD124';
-        var className = 'Hartebeest';
-        predStyle['strokeColor'] = window.addAlpha(color, predStyle.lineOpacity);
-        predStyle['fillColor'] = window.addAlpha(color, predStyle.fillOpacity);
-        predVP.addRenderElement(new ImageElement('img', predVP, '/static/interface/img/tutorial_example.jpg',0, true));
+        // show example predictions/annotations
+        $.ajax({
+            url: 'getSampleData',
+            method: 'GET',
+            success: function(data) {
+                let key = Object.keys(data)[0];
+                data = data[key];
+                
+                // separate into annotations and predictions entry
+                let data_anno = JSON.parse(JSON.stringify(data));
+                let data_pred = JSON.parse(JSON.stringify(data));
+                delete data_anno['predictions'];
+                delete data_pred['annotations'];
 
-        var annoVP = new ImageViewport($('#uitutorial-annotations'), true);
-        var annoStyle = JSON.parse(JSON.stringify(window.styles.annotations));
-        annoStyle['strokeColor'] = window.addAlpha(color, annoStyle.lineOpacity);
-        annoStyle['fillColor'] = window.addAlpha(color, annoStyle.fillOpacity);
-        annoVP.addRenderElement(new ImageElement('img', annoVP, '/static/interface/img/tutorial_example.jpg',0, true));
+                // create new data entries
+                var annoEntry = null;
+                switch(String(window.annotationType)) {
+                    case 'labels':
+                        annoEntry = new ClassificationEntry(key, data_anno, true);
+                        break;
+                    case 'points':
+                        annoEntry = new PointAnnotationEntry(key, data_anno, true);
+                        break;
+                    case 'boundingBoxes':
+                        annoEntry = new BoundingBoxAnnotationEntry(key, data_anno, true);
+                        break;
+                    case 'segmentationMasks':
+                        annoEntry = new SemanticSegmentationEntry(key, data_anno, true);
+                        break;
+                    default:
+                        break;
+                }
+                if(annoEntry !== null) {
+                    $('#uitutorial-annotations').append(annoEntry.markup);
+                } else {
+                    $('#uitutorial-anno-container').hide();
+                }
+                
+                if(window.showPredictions) {
+                    var predEntry = null;
+                    switch(String(window.predictionType)) {
+                        case 'labels':
+                            predEntry = new ClassificationEntry(key, data_pred, true);
+                            break;
+                        case 'points':
+                            predEntry = new PointAnnotationEntry(key, data_pred, true);
+                            break;
+                        case 'boundingBoxes':
+                            predEntry = new BoundingBoxAnnotationEntry(key, data_pred, true);
+                            break;
+                        case 'segmentationMasks':
+                            predEntry = new SemanticSegmentationEntry(key, data_pred, true);
+                            break;
+                        default:
+                            break;
+                    }
+                    if(predEntry !== null) {
+                        $('#uitutorial-predictions').append(predEntry.markup);
+                    } else {
+                        $('#uitutorial-pred-container').hide();
+                    }
+                } else {
+                    $('#uitutorial-pred-container').hide();
+                }
+            },
+            error: function(xhr, status, error) {
+                //TODO
+            }
+        })
+
+        // // create example predictions/annotations
+        // var predVP = new ImageViewport($('#uitutorial-predictions'), true);
+        // var predStyle = JSON.parse(JSON.stringify(window.styles.predictions));
+        // var color = '#7AD124';
+        // var className = 'Hartebeest';
+        // predStyle['strokeColor'] = window.addAlpha(color, predStyle.lineOpacity);
+        // predStyle['fillColor'] = window.addAlpha(color, predStyle.fillOpacity);
+        // predVP.addRenderElement(new ImageElement('img', predVP, '/static/interface/exampleData/sample_image.jpg', 0, true));
+
+        // var annoVP = new ImageViewport($('#uitutorial-annotations'), true);
+        // var annoStyle = JSON.parse(JSON.stringify(window.styles.annotations));
+        // annoStyle['strokeColor'] = window.addAlpha(color, annoStyle.lineOpacity);
+        // annoStyle['fillColor'] = window.addAlpha(color, annoStyle.fillOpacity);
+        // annoVP.addRenderElement(new ImageElement('img', annoVP, '/static/interface/exampleData/sample_image.jpg', 0, true));
 
 
-        if(window.predictionType === 'labels') {
-            predVP.addRenderElement(new BorderStrokeElement('predLabel', className, predStyle, false, 1, true));
-        } else if(window.predictionType === 'points') {
-            predVP.addRenderElement(new PointElement('predPoint', 0.5, 0.55, predStyle, false, 1, true));
-        } else if(window.predictionType === 'boundingBoxes') {
-            predVP.addRenderElement(new RectangleElement('predBox', 0.5, 0.55, 0.5, 0.55, predStyle, false, 1, true));
-        }
+        // if(window.predictionType === 'labels') {
+        //     predVP.addRenderElement(new BorderStrokeElement('predLabel', className, predStyle, false, 1, true));
+        // } else if(window.predictionType === 'points') {
+        //     predVP.addRenderElement(new PointElement('predPoint', 0.5, 0.55, predStyle, false, 1, true));
+        // } else if(window.predictionType === 'boundingBoxes') {
+        //     predVP.addRenderElement(new RectangleElement('predBox', 0.5, 0.55, 0.5, 0.55, predStyle, false, 1, true));
+        // }
 
         var taskDescr = 'providing labels';
         if(window.annotationType === 'labels') {
             taskDescr = 'labeling all images that contain objects of interest';
-            annoVP.addRenderElement(new BorderStrokeElement('annoLabel', className, annoStyle, false, 1, true));
+            // annoVP.addRenderElement(new BorderStrokeElement('annoLabel', className, annoStyle, false, 1, true));
         } else if(window.annotationType === 'points') {
             taskDescr = 'placing points on the center of each individual object you encounter';
-            annoVP.addRenderElement(new PointElement('annoPoint', 0.5, 0.55, annoStyle, false, 1, true));
+            // annoVP.addRenderElement(new PointElement('annoPoint', 0.5, 0.55, annoStyle, false, 1, true));
         } else if(window.annotationType === 'boundingBoxes') {
             taskDescr = 'drawing <b>tight</b> rectangles around each individual object you encounter';
-            annoVP.addRenderElement(new RectangleElement('annoBox', 0.5, 0.55, 0.5, 0.55, annoStyle, false, 1, true));
+            // annoVP.addRenderElement(new RectangleElement('annoBox', 0.5, 0.55, 0.5, 0.55, annoStyle, false, 1, true));
         }
 
         var aiDescr = '';

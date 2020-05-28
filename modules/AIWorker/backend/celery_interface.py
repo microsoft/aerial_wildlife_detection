@@ -53,3 +53,8 @@ def call_inference(data, index, epoch, project):
             index, len(data)
         ))
         return 0
+
+
+@current_app.task(name='AIWorker.verify_model_state')
+def verify_model_state(project):
+    return worker.verify_model_state(project)

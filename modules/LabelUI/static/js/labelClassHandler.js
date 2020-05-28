@@ -1,7 +1,7 @@
 /*
     Helper classes responsible for displaying the available label classes on the screen.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 */
 
 window.parseClassdefEntry = function(id, entry, parent) {
@@ -287,6 +287,13 @@ class LabelClassHandler {
     constructor(classLegendDiv) {
         this.classLegendDiv = classLegendDiv;
         this.items = [];    // may be both labelclasses and groups
+        this.dummyClass = new LabelClass('00000000-0000-0000-0000-000000000000',
+            {
+                name: 'Label class',
+                index: 1,
+                color: '#17a2b8',
+                keystroke: null
+            });
         this._setupLabelClasses();
 
         this.setActiveClass(this.labelClasses[Object.keys(this.labelClasses)[0]]);
@@ -327,6 +334,10 @@ class LabelClassHandler {
     }
 
     getClass(id) {
+        if(id == '00000000-0000-0000-0000-000000000000') {
+            // dummy class for UI tutorial
+            return this.dummyClass;
+        }
         return this.labelClasses[id];
     }
 
@@ -347,10 +358,18 @@ class LabelClassHandler {
     }
 
     getColor(classID) {
+        if(classID == '00000000-0000-0000-0000-000000000000') {
+            // dummy class for UI tutorial
+            return this.dummyClass['color'];
+        }
         return this.labelClasses[classID]['color'];
     }
 
     getColor(classID, defaultColor) {
+        if(classID == '00000000-0000-0000-0000-000000000000') {
+            // dummy class for UI tutorial
+            return this.dummyClass['color'];
+        }
         try {
             return this.labelClasses[classID]['color'];
         } catch {
@@ -359,6 +378,10 @@ class LabelClassHandler {
     }
 
     getName(classID) {
+        if(classID == '00000000-0000-0000-0000-000000000000') {
+            // dummy class for UI tutorial
+            return this.dummyClass['name'];
+        }
         return (classID == null || !this.labelClasses.hasOwnProperty(classID)? null : this.labelClasses[classID]['name']);
     }
 

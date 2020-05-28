@@ -248,3 +248,28 @@ class AIWorker():
                 getattr(alCriterionInstance, 'rank'),
                 self.dbConnector, self.fileServer,
                 self.config.getProperty('AIWorker', 'inference_batch_size_limit', type=int, fallback=-1))
+
+
+
+    def verify_model_state(self, project, modelLibrary, stateDict, modelOptions):
+        '''
+            Launches a dummy training-averaging-inference chain
+            on a received model state and returns True if the chain
+            could be executed without any errors (else False). Does
+            not store anything in the database.
+            Inputs:
+                - project:      str, project shortname (used to retrieve
+                                sample data)
+                - modelLibrary: str, identifier of the AI model
+                - stateDict:    bytes object, AI model state
+                - modelOptions: str, model settings to be tested
+                                (optional)
+            
+            Returns a dict with the following entries:
+                - valid:    bool, True if the provided state dict and
+                            (optionally) model options are valid (i.e.,
+                            can be used to perform training, averaging,
+                            and inference), or False otherwise.
+                - messages: str, text describing the error(s) encounte-
+                            red if there are any.
+        '''
