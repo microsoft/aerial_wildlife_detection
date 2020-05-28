@@ -14,7 +14,7 @@ import netifaces
 import html
 import base64
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageColor
 from psycopg2 import sql
 
 
@@ -226,6 +226,24 @@ def listDirectory(baseDir, recursive=False):
     for f in files_scanned:
         files_disk.add(f.replace(baseDir, ''))
     return files_disk
+
+
+
+def hexToRGB(hexString):
+    '''
+        Receives a HTML/CSS-compliant hex color string
+        of one of the following formats (hash symbol optional):
+            "#RRGGBB"
+            "#RGB"
+        and returns a tuple of (Red, Green, Blue) values in the
+        range of [0, 255].
+    '''
+    assert isinstance(hexString, str), f'ERROR: "{str(hexString)}" is not a valid string.'
+    if not hexString.startswith('#'):
+        hexString = '#' + hexString
+    assert len(hexString)>1, f'ERROR: the provided string is empty.'
+
+    return ImageColor.getrgb(hexString)
 
 
 
