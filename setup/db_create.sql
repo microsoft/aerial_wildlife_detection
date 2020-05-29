@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS aide_admin.user (
     canCreateProjects BOOLEAN DEFAULT FALSE,
     session_token VARCHAR,
     last_login TIMESTAMPTZ,
+    secret_token VARCHAR DEFAULT md5(random()::text),
     PRIMARY KEY (name)
 );
 
