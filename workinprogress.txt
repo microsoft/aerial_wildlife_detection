@@ -1,0 +1,13 @@
+# Install GCC compiler on Ubuntu 16.04 on Docker:
+# https://askubuntu.com/questions/859256/how-to-install-gcc-7-or-clang-4-0
+
+$ sudo apt-get install software-properties-common
+
+$ sudo add-apt-repository ppa:jonathonf/gcc-7.1
+$ sudo apt-get update
+$ sudo apt-get install gcc-7 g++-7
+
+$ rm /usr/bin/gcc
+$ rm /usr/bin/g++
+$ sudo ln -s /usr/bin/gcc-7 /usr/bin/gcc
+$ sudo ln -s /usr/bin/g++-7 /usr/bin/g++
