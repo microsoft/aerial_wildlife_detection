@@ -273,3 +273,5 @@ class AIWorker():
                 - messages: str, text describing the error(s) encounte-
                             red if there are any.
         '''
+        #TODO
+        raise NotImplementedError('Not yet implemented.')

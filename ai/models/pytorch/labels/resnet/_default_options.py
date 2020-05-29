@@ -1,9 +1,7 @@
 '''
-    Default configuration properties for PyTorch classification models.
-    May be overridden (also partially) by models subclassig the classification trainer,
-    or else through the custom configuration loaded at runtime.
+    Default configuration properties for the ResNet classification model.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 DEFAULT_OPTIONS = {

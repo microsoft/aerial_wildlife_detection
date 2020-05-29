@@ -4,6 +4,7 @@
     2019-20 Benjamin Kellenberger
 '''
 
+import json
 from .._classification import ClassificationModel
 from ...functional.classification.resnet import ResNet as Model
 from ...functional.datasets.classificationDataset import LabelsDataset

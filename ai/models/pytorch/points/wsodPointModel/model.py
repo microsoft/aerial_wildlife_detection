@@ -4,6 +4,7 @@
     2019-20 Benjamin Kellenberger
 '''
 
+import json
 from .._points import PointModel
 from ...functional._wsodPoints.model import WSODPointModel as Model
 from ...functional.datasets.pointsDataset import PointsDataset

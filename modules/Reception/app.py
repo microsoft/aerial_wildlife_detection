@@ -35,7 +35,7 @@ class Reception:
 
     def _initBottle(self):
 
-        with open(os.path.abspath(os.path.join(self.staticDir, 'templates/projects.html')), 'r') as f:
+        with open(os.path.abspath(os.path.join(self.staticDir, 'templates/projects.html')), 'r', encoding='utf-8') as f:
             self.proj_template = SimpleTemplate(f.read())
 
         @self.app.route('/')
