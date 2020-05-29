@@ -13,7 +13,7 @@ from bottle import Bottle
 from setup.migrate_aide import migrate_aide
 from util.configDef import Config
 from modules import REGISTERED_MODULES
-
+from constants.version import AIDE_VERSION
 
 def _verify_unique(instances, moduleClass):
         '''

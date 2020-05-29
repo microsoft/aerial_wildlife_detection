@@ -12,7 +12,6 @@ import secrets
 from urllib.parse import urlparse
 from constants.version import AIDE_VERSION
 
-
 MODIFICATIONS_sql = [
     'ALTER TABLE "{schema}".annotation ADD COLUMN IF NOT EXISTS meta VARCHAR; ALTER TABLE "{schema}".image_user ADD COLUMN IF NOT EXISTS meta VARCHAR;',
     'ALTER TABLE "{schema}".labelclass ADD COLUMN IF NOT EXISTS keystroke SMALLINT UNIQUE;',

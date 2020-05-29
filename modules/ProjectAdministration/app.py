@@ -47,10 +47,10 @@ class ProjectConfigurator:
     def _initBottle(self):
 
         # read project configuration templates
-        with open(os.path.abspath(os.path.join(self.staticDir, 'templates/projectLandingPage.html')), 'r') as f:
+        with open(os.path.abspath(os.path.join(self.staticDir, 'templates/projectLandingPage.html')), 'r', encoding="utf-8") as f:
             self.projLandPage_template = SimpleTemplate(f.read())
 
-        with open(os.path.abspath(os.path.join(self.staticDir, 'templates/projectConfiguration.html')), 'r') as f:
+        with open(os.path.abspath(os.path.join(self.staticDir, 'templates/projectConfiguration.html')), 'r', encoding="utf-8") as f:
             self.projConf_template = SimpleTemplate(f.read())
         
         self.panelTemplates = {}
@@ -58,7 +58,7 @@ class ProjectConfigurator:
         for pn in panelNames:
             pnName, ext = os.path.splitext(pn)
             if ext.lower().startswith('.htm'):
-                with open(os.path.join(self.staticDir, 'templates/panels', pn), 'r') as f:
+                with open(os.path.join(self.staticDir, 'templates/panels', pn), 'r', encoding="utf-8") as f:
                     self.panelTemplates[pnName] = SimpleTemplate(f.read())
 
 

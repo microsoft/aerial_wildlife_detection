@@ -4,6 +4,7 @@
     2019-20 Benjamin Kellenberger
 '''
 
+import sys
 import os
 import html
 from uuid import UUID
@@ -12,7 +13,6 @@ from bottle import request, response, static_file, redirect, abort, SimpleTempla
 from constants.version import AIDE_VERSION
 from .backend.middleware import DBMiddleware
 from util.helpers import parse_boolean
-
 
 #TODO
 bottle.BaseRequest.MEMFILE_MAX = 1024**3
@@ -61,7 +61,7 @@ class LabelUI():
         #     return redirect('/' + project + '/interface')
 
 
-        with open(os.path.abspath(os.path.join('modules/LabelUI/static/templates/interface.html')), 'r') as f:
+        with open(os.path.abspath(os.path.join('modules/LabelUI/static/templates/interface.html')), 'r', encoding='utf-8') as f:
             self.interface_template = SimpleTemplate(f.read())
 
         @self.app.route('/<project>/interface')

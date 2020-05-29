@@ -1,0 +1,2 @@
+# for the AI backend
+celery[librabbitmq,redis,auth,msgpack]>=4.3.0

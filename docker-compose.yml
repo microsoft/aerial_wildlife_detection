@@ -1,0 +1,28 @@
+version: '3.7'
+volumes:
+  aide_v2_db_data:
+    name: aide_v2_db_data
+  aide_v2_files:
+    name: aide_v2_files
+services:
+  aide_app_v2:
+    hostname: 'aide_app_v2_host' 
+    build:
+      context:  '.'
+      dockerfile: 'Dockerfile'
+    image: 'aide_app_v2'
+    volumes:
+      - aide_v2_db_data:/var/lib/postgresql/10/main
+      - aide_v2_files:/home/aide/files
+      - .:/home/aide/app:cached
+      # replace left-side paths below with values valid for the container's host.
+      # - /home/jszczegielniak/src/data/images:/home/aide/images 
+      # - /home/jszczegielniak/src/data/labels:/home/aide/labels
+      - /Users/jarek/_Documents.Private/Objectivity/src/rspb/data/images:/home/aide/images
+      - /Users/jarek/_Documents.Private/Objectivity/src/rspb/data/labels:/home/aide/labels
+    ports:
+      - '8080:8080'
+
+# Overrides default command so things don't shut down after the process ends.
+    #command: gunicorn --workers=4 --bind 0.0.0.0:9000 --log-level=debug --error-logfile=- --access-logfile=- --timeout 60 --preload app:APP
+    #command: flask run --host 0.0.0.0 --port 9000
