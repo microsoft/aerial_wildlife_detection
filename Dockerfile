@@ -1,4 +1,4 @@
-FROM pytorch/pytorch:1.3-cuda10.1-cudnn7-devel
+FROM pytorch/pytorch:1.5-cuda10.1-cudnn7-devel
 
 # Avoid warnings by switching to noninteractive
 ENV DEBIAN_FRONTEND=noninteractive
@@ -45,9 +45,12 @@ WORKDIR /home/$USERNAME/app
 # RUN conda create -y -n aide python=3.7
 COPY requirements.txt requirements.txt
 COPY requirements_back.txt requirements_back.txt
+# COPY docker/lib/librabbitmq-2.0.0-cp37-cp37m-linux_x86_64.whl lib/librabbitmq-2.0.0-cp37-cp37m-linux_x86_64.whl
 
 RUN pip install -r requirements.txt 
 RUN pip install -r requirements_back.txt
+RUN pip install pyamqp
+# RUN pip install lib/librabbitmq-2.0.0-cp37-cp37m-linux_x86_64.whl
 
 # ============================ DB SERVER ONLY BEGINS ======================================
 # Setup PostreSQL database
