@@ -10,4 +10,4 @@ numpy
 requests
 
 # for the AI backend
-celery[pyamqp,redis,auth,msgpack]>=4.3.0  #TODO
+celery[redis,auth,msgpack]>=4.3.0  #TODO
