@@ -43,13 +43,10 @@ WORKDIR /home/$USERNAME/app
 
 # create environment (requires conda or miniconda) - on the second thought, I don't need environment for docker image
 # RUN conda create -y -n aide python=3.7
-COPY requirements.txt requirements.txt
-COPY requirements_back.txt requirements_back.txt
+COPY docker/requirements.txt docker/requirements.txt
 # COPY docker/lib/librabbitmq-2.0.0-cp37-cp37m-linux_x86_64.whl lib/librabbitmq-2.0.0-cp37-cp37m-linux_x86_64.whl
 
-RUN pip install -r requirements.txt 
-RUN pip install -r requirements_back.txt
-RUN pip install pyamqp
+RUN pip install -r docker/requirements.txt 
 # RUN pip install lib/librabbitmq-2.0.0-cp37-cp37m-linux_x86_64.whl
 
 # ============================ DB SERVER ONLY BEGINS ======================================
@@ -102,17 +99,18 @@ RUN sudo apt-get update && sudo apt-get -y install redis-server \
     #&& sudo systemctl enable redis-server.service
 # ============================ AI BACKEND ENDS ==========================================
 
+# download AIde source code (from local repository)
+# COPY . .
+# RUN git clone git+https://github.com/szjarek/aerial_wildlife_detection.git
+# RUN chmod a+rx docker/container_start.sh && chmod a+rx AIDE.sh
+
 # Set to proper settings file
 ENV PYTHONPATH=/home/${USERNAME}/app
-ENV AIDE_CONFIG_PATH=/home/$USERNAME/app/config/settings_docker.ini
+ENV AIDE_CONFIG_PATH=/home/${USERNAME}/app/docker/settings.ini
 ENV AIDE_MODULES=LabelUI,AIController,AIWorker,FileServer
 
-# download AIde source code (from local repository)
-COPY . .
-# RUN git clone git+https://github.com/szjarek/aerial_wildlife_detection.git
-RUN chmod a+rx container_setup.sh && chmod a+rx container_start.sh && chmod a+rx AIDE.sh
-
-CMD bash /home/aide/app/container_start.sh \
+CMD bash /home/aide/app/docker/container_start.sh \
     && bash AIDE.sh start
+
 # Temporary command to prevent container from stopping if no command is privided
-# && tail -f /dev/null
+# CMD tail -f /dev/null
