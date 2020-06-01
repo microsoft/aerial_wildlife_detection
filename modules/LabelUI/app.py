@@ -4,7 +4,6 @@
     2019-20 Benjamin Kellenberger
 '''
 
-import sys
 import os
 import html
 from uuid import UUID
@@ -61,7 +60,7 @@ class LabelUI():
         #     return redirect('/' + project + '/interface')
 
 
-        with open(os.path.abspath(os.path.join('modules/LabelUI/static/templates/interface.html')), 'r', encoding='utf-8') as f:
+        with open(os.path.abspath(os.path.join('modules/LabelUI/static/templates/interface.html')), 'r') as f:
             self.interface_template = SimpleTemplate(f.read())
 
         @self.app.route('/<project>/interface')

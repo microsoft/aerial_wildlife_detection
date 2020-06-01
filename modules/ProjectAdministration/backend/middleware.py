@@ -200,7 +200,6 @@ class ProjectConfigMiddleware:
         )
         result = self.dbConnector.execute(queryStr, (project,), 1)
         try:
-            print("RESULT:", result)
             result = result[0]
         except:
             print('debug')
