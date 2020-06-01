@@ -100,16 +100,15 @@ RUN sudo apt-get update && sudo apt-get -y install redis-server \
 # ============================ AI BACKEND ENDS ==========================================
 
 # download AIde source code (from local repository)
-# COPY . .
-# RUN git clone git+https://github.com/szjarek/aerial_wildlife_detection.git
-# RUN chmod a+rx docker/container_start.sh && chmod a+rx AIDE.sh
+COPY . .
+RUN chmod a+rx docker/container_init.sh && chmod a+rx AIDE.sh
 
 # Set to proper settings file
 ENV PYTHONPATH=/home/${USERNAME}/app
 ENV AIDE_CONFIG_PATH=/home/${USERNAME}/app/docker/settings.ini
 ENV AIDE_MODULES=LabelUI,AIController,AIWorker,FileServer
 
-CMD bash /home/aide/app/docker/container_start.sh \
+CMD bash /home/aide/app/docker/container_init.sh \
     && bash AIDE.sh start
 
 # Temporary command to prevent container from stopping if no command is privided

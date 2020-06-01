@@ -1,5 +1,8 @@
 #!/bin/bash
 
+sudo systemctl enable redis-server.service
+sudo service redis-server start 
+
 echo "============================="
 echo "Setup of database IS STARTING"
 echo "============================="
@@ -15,36 +18,36 @@ sudo -u postgres psql -d $dbName -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\
 sudo -u postgres psql -d $dbName -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO $dbUser;"
 
 # Create DB schema
-    python setup/setupDB.py
+python setup/setupDB.py
+sudo systemctl enable postgresql.service
+sudo service postgresql start
+
 echo "=============================="
 echo "Setup of database IS COMPLETED"
 echo "=============================="
+echo ""
 
-FILE=/home/aide/files/setup_complete.txt
+echo "=========================="
+echo "RABBITMQ SETUP IS STARTING"
+echo "=========================="
+# I need to set rabitmq user and permissions here, as it takes hostname (dynamic) during build of previous phases as part of config folder :-()
+RMQ_username=aide
+RMQ_password=password # This should never be left here for any serious use of course
+sudo service rabbitmq-server start
+# add the user we defined above
+sudo rabbitmqctl list_users|grep -q $RMQ_username || sudo rabbitmqctl add_user $RMQ_username $RMQ_password
 
-if [ -f "$FILE" ]; then
-    echo "RABBITMQ SETUP ALREADY COMPLETED"
-else
-    echo "=========================="
-    echo "RABBITMQ SETUP IS STARTING"
-    echo "=========================="
-    # I need to set rabitmq user and permissions here, as it takes hostname (dynamic) during build of previous phases as part of config folder :-()
-    RMQ_username=aide
-    RMQ_password=password # This should never be left here for any serious use of course
-    sudo service rabbitmq-server start
-    # add the user we defined above
-    sudo rabbitmqctl add_user $RMQ_username $RMQ_password
-    # add new virtual host
-    sudo rabbitmqctl add_vhost aide_vhost
-    # set permissions
-    sudo rabbitmqctl set_permissions -p aide_vhost $RMQ_username ".*" ".*" ".*"
+# add new virtual host
+sudo rabbitmqctl list_vhosts|grep -q 'aide_vhost' || sudo rabbitmqctl add_vhost aide_vhost
 
-    # Create file to avoid running this script again
-    touch $FILE
-    echo "==========================="
-    echo "RABBITMQ SETUP IS COMPLETED"
-    echo "==========================="
-fi
+# set permissions
+sudo rabbitmqctl set_permissions -p aide_vhost $RMQ_username ".*" ".*" ".*"
+
+sudo systemctl enable rabbitmq-server.service
+echo "==========================="
+echo "RABBITMQ SETUP IS COMPLETED"
+echo "==========================="
+echo ""
 
 # If AIde is run on MS Azure: TCP connections are dropped after 4 minutes of inactivity
 # (see https://docs.microsoft.com/en-us/azure/load-balancer/load-balancer-outbound-connections#idletimeout)
@@ -60,11 +63,3 @@ else
     sed -i "s/^\s*net.ipv4.tcp_keepalive_probes.*/net.ipv4.tcp_keepalive_probes = 20 /g" /etc/sysctl.conf
 fi
 sysctl -p
-
-sudo systemctl enable postgresql.service
-sudo systemctl enable rabbitmq-server.service
-sudo systemctl enable redis-server.service
-
-sudo service postgresql start
-sudo service rabbitmq-server start
-sudo service redis-server start 
