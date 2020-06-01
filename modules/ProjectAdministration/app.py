@@ -58,7 +58,7 @@ class ProjectConfigurator:
         for pn in panelNames:
             pnName, ext = os.path.splitext(pn)
             if ext.lower().startswith('.htm'):
-                with open(os.path.join(self.staticDir, 'templates/panels', pn), 'r', encoding="utf-8") as f:
+                with open(os.path.join(self.staticDir, 'templates/panels', pn), 'r') as f:
                     self.panelTemplates[pnName] = SimpleTemplate(f.read())
 
 

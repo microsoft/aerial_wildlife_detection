@@ -1,2 +1,0 @@
-# for the AI backend
-celery[redis,auth,msgpack]>=4.3.0
