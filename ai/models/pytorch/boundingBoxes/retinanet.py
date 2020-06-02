@@ -48,6 +48,42 @@ class RetinaNet(GenericPyTorchModel):
         return options
 
 
+    @staticmethod
+    def verifyOptions(options):
+        """
+            Placeholder to verify whether a given dict of options are valid
+            or not. To be overridden by subclasses.
+            Args:
+                options: a dict object containing parameters for a model.
+            
+            Returns:
+                - None if the subclass does not support the method (for compa-
+                  tibility reasons with legacy implementations)
+                - True/False if the given options are valid/invalid (minimal format)
+                - A dict with the following entries:
+                    - 'valid': bool, True/False if the given options are valid/invalid.
+                    - 'warnings': list of strings containing warnings encountered during
+                                  parsing (optional).
+                    - 'errors': list of strings containing errors encountered during par-
+                                sing (optional).
+                    - 'options': dict of updated options that will be used instead of the
+                                 provided ones. This can be used to e.g. auto-complete mis-
+                                 sing parameters in the provided options, or auto-correct
+                                 simple mistakes. If provided, these values will be used in
+                                 the GUI in lieu of what the user specified (optional).
+        """
+        # get default options to compare to
+        defaultOptions = RetinaNet.getDefaultOptions()
+
+        # updated options
+        updatedOptions = options.copy()
+
+        # verify key by key
+        #TODO
+
+        return None
+
+
     def train(self, stateDict, data, updateStateFun):
         '''
             Initializes a model based on the given stateDict and a data loader from the

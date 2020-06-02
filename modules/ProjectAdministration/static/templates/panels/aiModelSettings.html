@@ -105,17 +105,17 @@
                             message.append($('<div>Provided options have been auto-completed by model; see updated contents in text area.</div>'));
                         }
                         if(data.hasOwnProperty('warnings') && data['warnings'].length>0) {
-                            var warnings = $('<div style="color:orange;margin:10px"></div>');
+                            var warnings = $('<ul style="color:orange;margin:10px"></ul>');
                             for(var w=0; w<data['warnings'].length; w++) {
-                                warnings.append($('<div>'+data['warnings'][w]+'</div>'));
+                                warnings.append($('<li>'+data['warnings'][w]+'</li>'));
                             }
                             message.append($('<div>Warnings:</div>'));
                             message.append(warnings);
                         }
                         if(data.hasOwnProperty('errors') && data['errors'].length>0) {
-                            var errors = $('<div style="color:red;margin:10px"></div>');
+                            var errors = $('<ul style="color:red;margin:10px"></ul>');
                             for(var e=0; e<data['errors'].length; e++) {
-                                errors.append($('<div>'+data['errors'][e]+'</div>'));
+                                errors.append($('<li>'+data['errors'][e]+'</li>'));
                             }
                             message.append($('<div>Errors:</div>'));
                             message.append(errors);
