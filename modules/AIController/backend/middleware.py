@@ -7,6 +7,7 @@
 from datetime import datetime
 import uuid
 import re
+import json
 from constants.annotationTypes import ANNOTATION_TYPES
 from ai import PREDICTION_MODELS, ALCRITERION_MODELS
 from modules.AIController.backend import celery_interface as aic_int
@@ -20,7 +21,8 @@ from .messageProcessor import MessageProcessor
 from .annotationWatchdog import Watchdog
 from modules.AIController.taskWorkflow.workflowDesigner import WorkflowDesigner
 from modules.Database.app import Database
-from util.helpers import array_split, parse_parameters
+from modules.AIWorker.backend.fileserver import FileServer
+from util.helpers import array_split, parse_parameters, get_class_executable
 
 from .sql_string_builder import SQLStringBuilder
 
@@ -69,6 +71,10 @@ class AIMiddleware():
                 model['description'] = re.sub(self.scriptPattern, '(script removed)', model['description'])
             else:
                 model['description'] = '(no description available)'
+            if 'author' in model and isinstance(model['author'], str):
+                model['author'] = re.sub(self.scriptPattern, '(script removed)', model['author'])
+            else:
+                model['author'] = '(unknown)'
             if not 'annotationType' in model or not 'predictionType' in model:
                 # no annotation and/or no prediction type specified; remove model
                 print(f'WARNING: model "{modelKey}" has no annotationType and/or no predictionType specified and is therefore ignored.')
@@ -94,6 +100,14 @@ class AIMiddleware():
                 print(f'WARNING: no valid prediction type specified for model "{modelKey}"; ignoring...')
                 del models['prediction'][modelKey]
                 continue
+            # default model options
+            try:
+                modelClass = get_class_executable(modelKey)
+                defaultOptions = modelClass.getDefaultOptions()
+                model['defaultOptions'] = defaultOptions
+            except:
+                # no default options available; append no key to signal that there's no options
+                pass
             models['prediction'][modelKey] = model
         for rankerKey in models['ranking']:
             ranker = models['ranking'][rankerKey]
@@ -101,6 +115,10 @@ class AIMiddleware():
                 ranker['name'] = re.sub(self.scriptPattern, '(script removed)', ranker['name'])
             else:
                 ranker['name'] = rankerKey
+            if 'author' in ranker and isinstance(ranker['author'], str):
+                ranker['author'] = re.sub(self.scriptPattern, '(script removed)', ranker['author'])
+            else:
+                ranker['author'] = '(unknown)'
             if 'description' in ranker and isinstance(ranker['description'], str):
                 ranker['description'] = re.sub(self.scriptPattern, '(script removed)', ranker['description'])
             else:
@@ -120,6 +138,14 @@ class AIMiddleware():
                 print(f'WARNING: no valid prediction type specified for ranker "{rankerKey}"; ignoring...')
                 del models['ranking'][rankerKey]
                 continue
+            # default ranker options
+            try:
+                rankerClass = get_class_executable(rankerKey)
+                defaultOptions = rankerClass.getDefaultOptions()
+                ranker['defaultOptions'] = defaultOptions
+            except:
+                # no default options available; append no key to signal that there's no options
+                pass
             models['ranking'][rankerKey] = ranker
         self.aiModels = models
 
@@ -873,6 +899,58 @@ class AIMiddleware():
         return {
             'models': self.aiModels
         }
+
+
+    def verifyAImodelOptions(self, project, modelOptions, modelLibrary=None):
+        '''
+            Receives a dict of model options, a model library ID (optional)
+            and verifies whether the provided options are valid for the model
+            or not. Uses the following strategies to this end:
+            1. If the AI model implements the function "verifyOptions", and
+               if that function does not return None, it is being used.
+            2. Else, this temporarily instanciates a new AI model with the
+               given options and checks whether any errors occur. Returns
+               True if not, but appends a warning that the options could not
+               reliably be verified.
+        '''
+        # get AI model library if not specified
+        if modelLibrary is None or modelLibrary not in self.aiModels['prediction']:
+            modelLib = self.dbConn.execute('''
+                SELECT ai_model_library
+                FROM aide_admin.project
+                WHERE shortname = %s;
+            ''', (project,), 1)
+            modelLibrary = modelLib[0]['ai_model_library']
+
+        modelName = self.aiModels['prediction'][modelLibrary]['name']
+
+        response = None
+
+        modelClass = get_class_executable(modelLibrary)
+        if hasattr(modelClass, 'verifyOptions'):
+            response = modelClass.verifyOptions(modelOptions)
+        
+        if response is None:
+            # no verification implemented; alternative
+            #TODO: can we always do that on the AIController?
+            try:
+                modelClass(project=project,
+                            config=self.config,
+                            dbConnector=self.dbConn,
+                            fileServer=FileServer(self.config).get_secure_instance(project),
+                            options=modelOptions)
+                response = {
+                    'valid': True,
+                    'warnings': [f'A {modelName} instance could be launched, but the settings could not be verified.']
+                }
+            except Exception as e:
+                # model could not be instantiated; append error
+                response = {
+                    'valid': False,
+                    'errors': [ str(e) ]
+                }
+        
+        return response
 
 
     def updateAImodelSettings(self, project, settings):

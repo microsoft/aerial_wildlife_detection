@@ -270,16 +270,41 @@ class AIController:
                 return { 'response': {'status':1, 'message':str(e)} }
 
     
-        @self.app.get('/getAvailableAImodels')
-        def get_available_ai_models():
+        @self.app.get('/<project>/getAvailableAImodels')
+        def get_available_ai_models(project):
             '''
                 Returns all available AI models (class, name) that are
                 installed in this instance of AIDE.
             '''
-            if not self.loginCheck(canCreateProjects=True):
+            if not self.loginCheck(project=project, admin=True):
                 abort(401, 'unauthorized')
             
             return self.middleware.getAvailableAImodels()
+
+
+        @self.app.post('/<project>/verifyAImodelOptions')
+        def verify_model_options(project):
+            '''
+                Receives JSON-encoded options and verifies their
+                correctness with the AI model (either specified through
+                the JSON arguments, or taken from the default project
+                option). If the AI model does not support verification
+                (as is the case in legacy models), a warning is returned.
+            '''
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'unauthorized')
+            
+            try:
+                modelOptions = request.json['options']
+                try:
+                    modelLibrary = request.json['ai_model_library']
+                except:
+                    modelLibrary = None
+                status = self.middleware.verifyAImodelOptions(project, modelOptions, modelLibrary)
+                return {'status': status}
+            except Exception as e:
+                return {'status': 1, 'message': str(e)}
+
 
         
         @self.app.post('/<project>/saveAImodelSettings')

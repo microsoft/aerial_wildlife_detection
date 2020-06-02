@@ -11,6 +11,7 @@ from datetime import datetime
 import pytz
 import dateutil.parser
 import json
+from PIL import Image
 from psycopg2 import sql
 from modules.Database.app import Database
 from .sql_string_builder import SQLStringBuilder
@@ -119,6 +120,48 @@ class DBMiddleware():
             self.dbConnector.execute(queryStr, (now, tuple(vals),), None)
 
 
+    def _get_sample_metadata(self, metaType):
+        '''
+            Returns a dummy annotation or prediction for the sample
+            image in the "exampleData" folder, depending on the "metaType"
+            specified (i.e., labels, points, boundingBoxes, or segmentationMasks).
+        '''
+        if metaType == 'labels':
+            return {
+                'id': '00000000-0000-0000-0000-000000000000',
+                'label': '00000000-0000-0000-0000-000000000000',
+                'confidence': 1.0,
+                'priority': 1.0,
+                'viewcount': None
+            }
+        elif metaType == 'points' or metaType == 'boundingBoxes':
+            return {
+                'id': '00000000-0000-0000-0000-000000000000',
+                'label': '00000000-0000-0000-0000-000000000000',
+                'x': 0.542959427207637,
+                'y': 0.5322069489713102,
+                'width': 0.6133651551312653,
+                'height': 0.7407598263401316,
+                'confidence': 1.0,
+                'priority': 1.0,
+                'viewcount': None
+            }
+        elif metaType == 'segmentationMasks':
+            # read segmentation mask from disk
+            segmask = Image.open('modules/LabelUI/static/exampleData/sample_segmentationMask.tif')
+            segmask, width, height = helpers.imageToBase64(segmask)
+            return {
+                'id': '00000000-0000-0000-0000-000000000000',
+                'width': width,
+                'height': height,
+                'segmentationmask': segmask,
+                'confidence': 1.0,
+                'priority': 1.0,
+                'viewcount': None
+            }
+        else:
+            return {}
+
     def get_project_immutables(self, project):
         if project not in self.project_immutables:
             queryStr = 'SELECT annotationType, predictionType, demoMode FROM aide_admin.project WHERE shortname = %s;'
@@ -137,7 +180,7 @@ class DBMiddleware():
     def get_dynamic_project_settings(self, project):
         queryStr = 'SELECT ui_settings FROM aide_admin.project WHERE shortname = %s;'
         result = self.dbConnector.execute(queryStr, (project,), 1)
-        return json.loads(result[0]['ui_settings'])       #TODO: ast.literal_eval(result[0]['ui_settings'])
+        return json.loads(result[0]['ui_settings'])
 
 
     def getProjectSettings(self, project):
@@ -435,6 +478,44 @@ class DBMiddleware():
             return {
                 'error': 'no annotations made'
             }
+
+
+    def get_sampleData(self, project):
+        '''
+            Returns a sample image from the project, with annotations
+            (from one of the admins) and predictions.
+            If no image, no annotations, and/or no predictions are
+            available, a built-in default is returned instead.
+        '''
+        projImmutables = self.get_project_immutables(project)
+        queryStr = self.sqlBuilder.getSampleDataQueryString(project, projImmutables['annotationType'], projImmutables['predictionType'])
+
+        # query and parse results
+        response = None
+        with self.dbConnector.execute_cursor(queryStr, None) as cursor:
+            try:
+                response = self._assemble_annotations(project, cursor, True)
+            except:
+                pass
+        
+        if response is None:
+            # no valid data found for project; fall back to sample data
+            response = {
+                '00000000-0000-0000-0000-000000000000': {
+                    'fileName': '/static/interface/exampleData/sample_image.jpg',
+                    'viewcount': 1,
+                    'annotations': {
+                        '00000000-0000-0000-0000-000000000000': self._get_sample_metadata(projImmutables['annotationType'])
+                    },
+                    'predictions': {
+                        '00000000-0000-0000-0000-000000000000': self._get_sample_metadata(projImmutables['predictionType'])
+                    },
+                    'last_checked': None,
+                    'isGoldenQuestion': True
+                }
+            }
+        return response
+
 
 
     def submitAnnotations(self, project, username, submissions):

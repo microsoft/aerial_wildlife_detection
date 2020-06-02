@@ -8,19 +8,35 @@
         <label for="ai-model-enabled-checkbox">AI model enabled</label><br />
     </div>
     
+    <h3>Prediction model</h3>
     <div class="settings-group">
-        <label for="ai-model-class">Prediction model</label><br />
+        <label for="ai-model-class">Model:</label>
         <select id="ai-model-class">
             <option value="unset">Choose:</option>
         </select>
+        <br />
+        <span style="color:gray">Author:</span>
+        <span id="ai-model-class-author"></span>
         <p id="ai-model-class-descr"></p>
+
+        <div>Default model options:</div>
+        <textarea id="default-ai-model-options" rows="100" cols="100"></textarea>
+        <div>
+            <button id="load-ai-project-options" class="btn btn-sm btn-secondary">Load current</button>
+            <button id="load-ai-model-options" class="btn btn-sm btn-dark">Load model defaults</button>
+            <button id="verify-ai-model-options" class="btn btn-sm btn-secondary" style="float:right">Verify</button>
+        </div>
     </div>
 
+    <h3>Ranking criterion</h3>
     <div class="settings-group">
-        <label for="al-model-class">Ranking model</label><br />
+        <label for="al-model-class">Criterion:</label>
         <select id="al-model-class">
             <option value="unset">Choose:</option>
         </select>
+        <br />
+        <span style="color:gray">Author:</span>
+        <span id="al-model-class-author"></span>
         <p id="al-model-class-descr"></p>
     </div>
 
@@ -37,12 +53,95 @@
         <button id="save-button" class="btn btn-primary" style="float:right">Save</button>
     </div>
 </div>
+<style>
+    textarea {
+        width: 100%;
+        height: 400px;
+        font-family: monospace;
+    }
+</style>
 <script type="text/javascript">
     $(document).ready(function() {
 
         // AI model metadata
         var aiModelSelect = $('#ai-model-class');
         var alModelSelect = $('#al-model-class');
+
+        
+        function verifyModelOptions(type) {
+            if(type === 'model') {
+                var options = $('#default-ai-model-options').val();
+
+                // check first if valid JSON
+                try {
+                    JSON.parse(options);
+                } catch(error) {
+                    alert('Invalid options (error: "'+error+'").');
+                    return false;
+                }
+                // submit to server to check if model accepts it
+                $.ajax({
+                    url: 'verifyAImodelOptions',
+                    method: 'POST',
+                    contentType: 'application/json; charset=utf-8',
+                    dataType: 'json',
+                    data: JSON.stringify({
+                        ai_model_library: aiModelSelect.val(),
+                        options: options
+                    }),
+                    success: function(data) {
+                        data = data['status'];
+                        var message = $('<div></div>');
+                        var optionsValid = false;
+                        if(data['valid']) {
+                            message.append($('<div>The provided options appear to be valid.</div>'));
+                            optionsValid = true;
+                        } else {
+                            message.append($('<div>Errors occurred during options verification. Options will not be saved.</div>'));
+                        }
+                        if(data.hasOwnProperty('options') && data['options'].length>0) {
+                            // updated options provided, replace in textarea and notify user
+                            $('#default-ai-model-options').val(data['options']);
+                            message.append($('<div>Provided options have been auto-completed by model; see updated contents in text area.</div>'));
+                        }
+                        if(data.hasOwnProperty('warnings') && data['warnings'].length>0) {
+                            var warnings = $('<div style="color:orange;margin:10px"></div>');
+                            for(var w=0; w<data['warnings'].length; w++) {
+                                warnings.append($('<div>'+data['warnings'][w]+'</div>'));
+                            }
+                            message.append($('<div>Warnings:</div>'));
+                            message.append(warnings);
+                        }
+                        if(data.hasOwnProperty('errors') && data['errors'].length>0) {
+                            var errors = $('<div style="color:red;margin:10px"></div>');
+                            for(var e=0; e<data['errors'].length; e++) {
+                                errors.append($('<div>'+data['errors'][e]+'</div>'));
+                            }
+                            message.append($('<div>Errors:</div>'));
+                            message.append(errors);
+                        }
+                        let closeButton = $('<button class="btn btn-primary">Close</button>');
+                        closeButton.click(function() {
+                            window.showOverlay(null);
+                        });
+                        message.append(closeButton);
+
+                        window.showOverlay(message, true, false);
+                        return optionsValid;
+                    },
+                    error: function(xhr, status, error) {
+                        //TODO
+                        alert('Options could not be verified (message: "'+error+'").');
+                        return false;
+                    }
+                });
+
+            } else if(type === 'ranker') {
+                //TODO: not yet implemented
+                return false;
+            }
+        }
+
 
         //TODO: flag for case when AIController is not available...
         var promise = $.ajax({
@@ -59,7 +158,7 @@
         });
         promise = promise.then(function() {
             return $.ajax({
-                url: '/getAvailableAImodels',
+                url: 'getAvailableAImodels',
                 method: 'GET',
                 success: function(data) {
                     // populate selection fields, if suitable for selected annotation and prediction types
@@ -116,18 +215,46 @@
                     let aiLib = data['ai_model_library'];
                     let rankerLib = data['ai_alcriterion_library'];
                     if(aiLib === null || aiLib === undefined || !(window.availableModels['prediction'].hasOwnProperty(aiLib))) {
+                        window.currentAImodel = undefined;
                         aiModelSelect.val('unset');
+                        $('#ai-model-class-author').html('');
                         $('#ai-model-class-descr').html('');
                     } else {
+                        window.currentAImodel = data['ai_model_library'];
                         aiModelSelect.val(data['ai_model_library']);
+                        $('#ai-model-class-author').html(window.availableModels['prediction'][data['ai_model_library']]['author']);
                         $('#ai-model-class-descr').html(window.availableModels['prediction'][data['ai_model_library']]['description']);
                     }
                     if(rankerLib === null || rankerLib === undefined || !(window.availableModels['ranking'].hasOwnProperty(rankerLib))) {
+                        window.currentRankerModel = undefined;
                         alModelSelect.val('unset');
+                        $('#al-model-class-author').html('');
                         $('#al-model-class-descr').html('');
                     } else {
+                        window.currentRankerModel = data['ai_alcriterion_library'];
                         alModelSelect.val(data['ai_alcriterion_library']);
+                        $('#al-model-class-author').html(window.availableModels['ranking'][data['ai_alcriterion_library']]['author']);
                         $('#al-model-class-descr').html(window.availableModels['ranking'][data['ai_alcriterion_library']]['description']);
+                    }
+                    
+                    // store selected AI and AL model options
+                    window.currentAImodelOptions = data['ai_model_settings'];
+                    if(window.currentAImodelOptions === undefined || window.currentAImodelOptions === null) {
+                        // nothing saved; load defaults instead
+                        try {
+                            window.currentAImodelOptions = window.availableModels['prediction'][window.currentAImodel]['defaultOptions'];
+                        } catch {
+                            window.currentAImodelOptions = null;
+                        }
+                    }
+                    window.currentALmodelOptions = data['ai_alcriterion_settings'];
+                    if(window.currentALmodelOptions === undefined || window.currentALmodelOptions === null) {
+                        // nothing saved; load defaults instead
+                        try {
+                            window.currentALmodelOptions = window.availableModels['ranking'][window.currentRrankerModel]['defaultOptions'];
+                        } catch {
+                            window.currentALmodelOptions = null;
+                        }
                     }
 
                     // for segmentation masks only: how to treat unlabeled areas
@@ -137,6 +264,8 @@
                         $('#seg-unlabeled-select').trigger('change');
                         $('#seg-unlabeled-box').show();
                     }
+
+                    aiModelSelect.trigger('change');
                 }
             });
         }
@@ -150,8 +279,27 @@
             var selModel = $(this).val();
             if(selModel === 'unset') {
                 $('#ai-model-class-descr').html('');
+                $('#default-ai-model-options').val('');
             } else {
                 $('#ai-model-class-descr').html(window.availableModels['prediction'][selModel]['description']);
+                if(selModel === window.currentAImodel) {
+                    // show current model options
+                    $('#default-ai-model-options').val(JSON.stringify(window.currentAImodelOptions, null, 2));
+                    $('#default-ai-model-options').prop('placeholder', 'provide default model options here');
+                    $('#default-ai-model-options').prop('disabled', false);
+                } else {
+                    // show default options for selected model (or hide if no options available)
+                    let defaultOptions = window.availableModels['prediction'][selModel]['defaultOptions'];
+                    if(defaultOptions === undefined || defaultOptions === null) {
+                        $('#default-ai-model-options').val('');
+                        $('#default-ai-model-options').prop('placeholder', 'no options to configure');
+                        $('#default-ai-model-options').prop('disabled', true);
+                    } else {
+                        $('#default-ai-model-options').val(JSON.stringify(defaultOptions, null, 2));
+                        $('#default-ai-model-options').prop('placeholder', 'provide default model options here');
+                        $('#default-ai-model-options').prop('disabled', false);
+                    }
+                }
             }
         });
         alModelSelect.change(function() {
@@ -176,9 +324,36 @@
                 infoDiv.html('Any pixels that are not painted by annotators will be treated as "background." To this end, a new hidden "background" class with index (value) zero will be added to the project (if not existing).');
             }
         });
+        
+        $('#load-ai-project-options').click(function() {
+            let selectedModel = aiModelSelect.val();
+            if(selectedModel === window.currentAImodel) {
+                $('#default-ai-model-options').val(JSON.stringify(window.currentAImodelOptions, null, 2));
+                $('#default-ai-model-options').prop('placeholder', 'provide default model options here');
+                $('#default-ai-model-options').prop('disabled', false);
+            }
+        });
+        $('#load-ai-model-options').click(function() {
+            let defaultOptions = window.availableModels['prediction'][window.currentAImodel]['defaultOptions'];
+            if(defaultOptions === undefined || defaultOptions === null) {
+                $('#default-ai-model-options').val('');
+                $('#default-ai-model-options').prop('placeholder', 'no options to configure');
+                $('#default-ai-model-options').prop('disabled', true);
+            } else {
+                $('#default-ai-model-options').val(JSON.stringify(defaultOptions, null, 2));
+                $('#default-ai-model-options').prop('placeholder', 'provide default model options here');
+                $('#default-ai-model-options').prop('disabled', false);
+            }
+        });
+        $('#verify-ai-model-options').click(function() {
+            verifyModelOptions('model');
+        });
+
 
         $('#save-button').click(function() {
             window.showLoadingOverlay(true);
+
+            //TODO: add AI model options
 
             // assemble config parameters and submit
             let modelLib = (aiModelSelect.val() === 'unset'? null : aiModelSelect.val());

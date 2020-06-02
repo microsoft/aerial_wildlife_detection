@@ -5,6 +5,7 @@
     2020 Benjamin Kellenberger
 '''
 
+import json
 from .._segmentation import SegmentationModel
 from ...functional.segmentationMasks.unet import UNet as Model
 from ...functional.datasets.segmentationDataset import SegmentationDataset

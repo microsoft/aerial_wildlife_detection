@@ -44,7 +44,7 @@ class AIDEAdmin:
     def _initBottle(self):
 
         # read AIDE admin templates
-        with open(os.path.abspath(os.path.join(self.staticDir, 'templates/aideAdmin.html')), 'r') as f:
+        with open(os.path.abspath(os.path.join(self.staticDir, 'templates/aideAdmin.html')), 'r', encoding='utf-8') as f:
             self.adminTemplate = SimpleTemplate(f.read())
 
         self.panelTemplates = {}
@@ -52,7 +52,7 @@ class AIDEAdmin:
         for pn in panelNames:
             pnName, ext = os.path.splitext(pn)
             if ext.lower().startswith('.htm'):
-                with open(os.path.join(self.staticDir, 'templates/panels', pn), 'r') as f:
+                with open(os.path.join(self.staticDir, 'templates/panels', pn), 'r', encoding='utf-8') as f:
                     self.panelTemplates[pnName] = SimpleTemplate(f.read())
 
 

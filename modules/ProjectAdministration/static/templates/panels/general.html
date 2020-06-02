@@ -1,21 +1,90 @@
 <div>
     <h2>General</h2>
-
-    <p style="font-weight:bold;color:red">Work in progress, not functional yet.</p>
-
     <div class="settings-group">
         <label for="field-project-description">Project description</label><br />
         <textarea id="field-project-description" rows="6" placeholder="Short project description" style="width:500px"></textarea>
     </div>
 
+    <div class="settings-group">
+        <label for="field-welcome-message">Welcome message</label><br />
+        <textarea id="field-welcome-message" rows="6" placeholder="Message that is shown at the start, or whenever a user clicks the &quot;Help&quot; button." style="width:500px"></textarea>
+    </div>
+
     <!-- Submit and abort buttons -->
     <div>
-        <button class="btn btn-danger">Cancel</button>
-        <button id="proj-settings-save-button" class="btn btn-primary" style="float:right">Save</button>
+        <button id="save-button" class="btn btn-primary" style="float:right">Save</button>
     </div>
 </div>
 <script type="text/javascript">
+
+    function loadValues() {
+        return $.ajax({
+            url: 'getConfig',
+            method: 'GET',
+            success: function(data) {
+                data = data['settings'];
+                $('#field-project-description').val(data['description']);
+                $('#field-welcome-message').val(data['ui_settings']['welcomeMessage']);
+            },
+            error: function(xhr, status, error) {
+                var promise = window.renewSessionRequest(xhr);
+                promise = promise.done(function() {
+                    return loadValues();
+                });
+                return promise;
+            }
+        })
+    }
+
+    function saveValues() {
+        let settings = {
+            'description': $('#field-project-description').val(),
+            'ui_settings': {
+                'welcomeMessage': $('#field-welcome-message').val()
+            }
+        }
+        return $.ajax({
+            url: 'saveProjectConfiguration',
+            method: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            data: JSON.stringify(settings),
+            success: function(data) {
+                if(data.hasOwnProperty('success') && data['success']) {
+                    return loadValues();
+                } else {
+                    // something went wrong
+                    //TODO
+                    console.error('An unknown error occurred while saving project settings:');
+                    console.error(data);
+                    return $.Deferred().promise();
+                }
+            },
+            error: function(xhr, status, error) {
+                var promise = window.renewSessionRequest(xhr);
+                promise = promise.done(function() {
+                    return saveValues();
+                });
+                return promise;
+            }
+        });
+    }
+
     $(document).ready(function() {
-        window.showLoadingOverlay(false);
+
+        var promise = loadValues();
+
+        promise = promise.done(function() {
+
+            $('#save-button').on('click', function() {
+                window.showLoadingOverlay(true);
+                var promise = saveValues();
+                promise = promise.done(function() {
+                    window.showLoadingOverlay(false);
+                });
+            });
+            
+            window.showLoadingOverlay(false);
+        });
     });
 </script>

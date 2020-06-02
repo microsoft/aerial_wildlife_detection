@@ -311,9 +311,14 @@ class AbstractDataEntry {
         }
    }
 
-   getImageURI() {
-       return window.dataServerURI + window.projectShortname + '/files/' + this.fileName;
-   }
+    getImageURI() {
+        if(this.fileName.startsWith('/')) {
+            // static image; don't prepend data server URI & Co.
+            return this.fileName;
+        } else {
+            return window.dataServerURI + window.projectShortname + '/files/' + this.fileName;
+        }
+    }
 
    getProperties(minimal, onlyUserAnnotations) {
        var timeCreated = this.getTimeCreated();
@@ -472,8 +477,8 @@ class ClassificationEntry extends AbstractDataEntry {
        colored w.r.t. the user-selected class. A second click removes the user
        label again.
     */
-    constructor(entryID, properties) {
-        super(entryID, properties);
+    constructor(entryID, properties, disableInteractions) {
+        super(entryID, properties, disableInteractions);
 
         this._setup_markup();
         this.loadingPromise.then(response => {
@@ -686,8 +691,8 @@ class PointAnnotationEntry extends AbstractDataEntry {
        Implementation for point annotations (note: just image coordinates,
        no bounding boxes).
     */
-   constructor(entryID, properties) {
-       super(entryID, properties);
+   constructor(entryID, properties, disableInteractions) {
+       super(entryID, properties, disableInteractions);
        this._setup_markup();
    }
 
@@ -968,8 +973,8 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
    /*
        Implementation for bounding box annotations.
     */
-   constructor(entryID, properties) {
-       super(entryID, properties);
+   constructor(entryID, properties, disableInteractions) {
+       super(entryID, properties, disableInteractions);
        this._setup_markup();
    }
 
@@ -1299,8 +1304,8 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
     /*
         Implementation for segmentation maps.
     */
-    constructor(entryID, properties) {
-        super(entryID, properties);
+    constructor(entryID, properties, disableInteractions) {
+        super(entryID, properties, disableInteractions);
 
         this.loadingPromise.then(response => {
             if(response) {
@@ -1359,8 +1364,16 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
 
    _init_data(properties) {
         // create new blended segmentation map from annotation and prediction
-        let annoKeys = Object.keys(properties['annotations']);
-        let predKeys = Object.keys(properties['predictions']);
+        try {
+            var annoKeys = Object.keys(properties['annotations']);
+        } catch {
+            annoKeys = {};
+        }
+        try {
+            var predKeys = Object.keys(properties['predictions']);
+        } catch {
+            var predKeys = {};
+        }
         var entryProps = {};
         if(annoKeys.length > 0) {
             entryProps = properties['annotations'][annoKeys[0]];

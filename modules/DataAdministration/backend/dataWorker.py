@@ -641,6 +641,36 @@ class DataWorker:
         if metaType.lower() == 'segmentationmasks':
             is_segmentation = True
             fileExtension = '.zip'
+
+            # create indexed color palette for segmentation masks
+            try:
+                indexedColors = []
+                labelClasses = self.dbConnector.execute(sql.SQL('''
+                        SELECT idx, color FROM {id_lc} ORDER BY idx ASC;
+                    ''').format(id_lc=sql.Identifier(project, 'labelclass')),
+                    None, 'all')
+                currentIndex = 1
+                for lc in labelClasses:
+                    if lc['idx'] == 0:
+                        # background class
+                        continue
+                    while currentIndex < lc['idx']:
+                        # gaps in label classes; fill with zeros
+                        indexedColors.extend([0,0,0])
+                        currentIndex += 1
+                    color = lc['color']
+                    if color is None:
+                        # no color specified; add from defaults
+                        #TODO
+                        indexedColors.extend([0,0,0])
+                    else:
+                        # convert to RGB format
+                        indexedColors.extend(helpers.hexToRGB(color))
+
+            except:
+                # an error occurred; don't convert segmentation mask to indexed colors
+                indexedColors = None
+
         else:
             is_segmentation = False
             fileExtension = '.txt'      #TODO: support JSON?
@@ -712,9 +742,16 @@ class DataWorker:
                     # convert and store segmentation mask separately
                     segmask_filename = 'segmentation_masks/' + str(b['image']) + '.tif'
                     segmask = base64ToImage(b['segmentationmask'], b['width'], b['height'])
+
+                    if indexedColors is not None and len(indexedColors)>0:
+                        # convert to indexed color and add color palette from label classes
+                        segmask = segmask.convert('RGB').convert('P', palette=Image.ADAPTIVE, colors=3)
+                        segmask.putpalette(indexedColors)
+
+                    # save
                     bio = io.BytesIO()
-                    segmask.save(bio, 'TIFF')       #TODO: file format
-                    mainFile.writestr(segmask_filename, segmask.getvalue())
+                    segmask.save(bio, 'TIFF')
+                    mainFile.writestr(segmask_filename, bio.getvalue())
 
                 # store metadata
                 metaLine = ''

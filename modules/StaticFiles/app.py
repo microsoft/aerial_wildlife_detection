@@ -52,7 +52,7 @@ class StaticFileServer:
         def favicon():
             return static_file('favicon.ico', root='modules/StaticFiles/static/img')
 
-        with open(os.path.abspath(os.path.join('modules/StaticFiles/static/templates/about.html')), 'r') as f:
+        with open(os.path.abspath(os.path.join('modules/StaticFiles/static/templates/about.html')), 'r', encoding='utf-8') as f:
             self.aboutPage = SimpleTemplate(f.read())
 
         @self.app.route('/about')

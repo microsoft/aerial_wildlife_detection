@@ -290,6 +290,17 @@ class LabelUI():
             return json
 
 
+        @self.app.get('/<project>/getSampleData')
+        @self.app.post('/<project>/getSampleData')
+        def get_sample_data(project):
+            if self.loginCheck(project=project):
+                
+                json = self.middleware.get_sampleData(project)
+                return json
+            else:
+                abort(401, 'not logged in')
+
+
         @self.app.post('/<project>/submitAnnotations')
         def submit_annotations(project):
             if self.loginCheck(project=project):

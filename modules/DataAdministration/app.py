@@ -195,7 +195,7 @@ class DataAdministrator:
                 except:
                     existingFiles='keepExisting'
                 try:
-                    splitIntoPatches = request.params.get('splitPatches')
+                    splitIntoPatches = helpers.parse_boolean(request.params.get('splitPatches'))
                     if splitIntoPatches:
                         splitProperties = json.loads(request.params.get('splitParams'))
                     else:
