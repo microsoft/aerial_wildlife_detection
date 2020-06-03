@@ -1,3 +1,6 @@
+docker volume ls | grep -q aide_images || docker volume create aide_images
+docker volume ls | grep -q aide_db_data || docker volume create aide_db_data
+
 #docker run --user $(id -u):$(id -g) --gpus '"device=0"' --name aide_cnt --rm -it \
 docker run --name aide_cnt \
  --rm \
@@ -7,7 +10,7 @@ docker run --name aide_cnt \
  -v aide_images:/home/aide/images \
  -p 8080:8080 \
  -h 'aide_app_host' \
- aide_app
+ aide_app bash
 
  # Options:
  # --gpus   - sets GPU configuration

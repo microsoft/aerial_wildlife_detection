@@ -8,6 +8,7 @@ python-dateutil
 Pillow>=2.2.1
 numpy
 requests
+future
 
 # for the AI backend
 celery[redis,auth,msgpack]>=4.3.0  #TODO

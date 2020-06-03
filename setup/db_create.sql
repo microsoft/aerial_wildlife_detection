@@ -55,7 +55,6 @@ CREATE TABLE IF NOT EXISTS aide_admin.user (
     session_token VARCHAR,
     secret_token VARCHAR DEFAULT md5(random()::text),
     last_login TIMESTAMPTZ,
-    secret_token VARCHAR DEFAULT md5(random()::text),
     PRIMARY KEY (name)
 );
 
