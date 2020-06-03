@@ -112,4 +112,3 @@ RETURNS real AS $iou$
 		) AS qq3;
 		RETURN iou;
 	END;
-$iou$ LANGUAGE plpgsql;
