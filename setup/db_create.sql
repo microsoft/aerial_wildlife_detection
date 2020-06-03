@@ -3,7 +3,6 @@
     Unlike in previous versions of AIDE, this does not set up any project-specific
     schemata, but only the administrative environment of the Postgres database.
     For project creation, see modules.ProjectAdministration.static.sql.create_schema.sql.
-
     2019-20 Benjamin Kellenberger
 */
 
@@ -112,3 +111,4 @@ RETURNS real AS $iou$
 		) AS qq3;
 		RETURN iou;
 	END;
+$iou$ LANGUAGE plpgsql;
