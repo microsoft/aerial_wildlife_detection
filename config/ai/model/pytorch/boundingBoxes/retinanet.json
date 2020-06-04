@@ -16,7 +16,7 @@
 		"dataLoader": {
 			"kwargs": {
 				"shuffle": true,
-				"batch_size": 32
+				"batch_size": 4
 			}
 		},
 		"optim": {
@@ -124,7 +124,7 @@
 		"dataLoader": {
 			"kwargs": {
 				"shuffle": false,
-				"batch_size": 32
+				"batch_size": 4
 			}
 		}
 	}

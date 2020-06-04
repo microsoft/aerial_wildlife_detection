@@ -3,14 +3,14 @@ docker volume ls | grep -q aide_db_data || docker volume create aide_db_data
 
 #docker run --user $(id -u):$(id -g) --gpus '"device=0"' --name aide_cnt --rm -it \
 docker run --name aide_cnt \
+ --gpus device=1 \
  --rm \
- -it \
  -v `pwd`:/home/aide/app \
  -v aide_db_data:/var/lib/postgresql/10/main \
  -v aide_images:/home/aide/images \
  -p 8080:8080 \
  -h 'aide_app_host' \
- aide_app bash
+ aide_app
 
  # Options:
  # --gpus   - sets GPU configuration
