@@ -30,14 +30,14 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from ..genericPyTorchModel import GenericPyTorchModel
+from ..genericPyTorchModel import GenericPyTorchModel_Legacy
 from .. import parse_transforms
 from ..functional._wsodPoints import encoder, collation
 
 from util.helpers import get_class_executable, check_args
 
 
-class PointModel(GenericPyTorchModel):
+class PointModel(GenericPyTorchModel_Legacy):
 
     def __init__(self, config, dbConnector, fileServer, options, defaultOptions):
         super(PointModel, self).__init__(config, dbConnector, fileServer, options, defaultOptions)

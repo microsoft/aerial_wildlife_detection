@@ -8,7 +8,7 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from ..genericPyTorchModel import GenericPyTorchModel
+from ..genericPyTorchModel import GenericPyTorchModel_Legacy
 from .. import parse_transforms
 from ..functional.classification.collation import Collator
 
@@ -16,7 +16,7 @@ from util.helpers import get_class_executable, check_args
 
 
 
-class ClassificationModel(GenericPyTorchModel):
+class ClassificationModel(GenericPyTorchModel_Legacy):
 
     def __init__(self, project, config, dbConnector, fileServer, options, defaultOptions):
         super(ClassificationModel, self).__init__(project, config, dbConnector, fileServer,

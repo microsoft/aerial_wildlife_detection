@@ -22,6 +22,14 @@ class AIModel:
         self.fileServer = fileServer
         self.options = options
 
+        # verify options if possible
+        opts_verified = self.verifyOptions(options)
+        if opts_verified is not None and isinstance(opts_verified, dict):
+            if 'valid' in opts_verified and not opts_verified['valid']:
+                raise Exception('Model options appear to be invalid.')
+            if 'options' in opts_verified and isinstance(opts_verified['options'], dict):
+                self.options = opts_verified['options']
+
         # query how to treat unlabeled areas
         unlabeled = dbConnector.execute('''
             SELECT annotationtype, segmentation_ignore_unlabeled

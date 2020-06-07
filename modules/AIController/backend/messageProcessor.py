@@ -154,7 +154,7 @@ class MessageProcessor(Thread):
                             subEntry = {
                                 'id': res.id,
                                 'status': res.status,
-                                'meta': ('complete' if res.status == 'SUCCESS' else res.result)       #TODO
+                                'meta': ('complete' if res.status == 'SUCCESS' else str(res.result))       #TODO
                             }
                             subEntries.append(subEntry)
                         entry['subjobs'] = subEntries
@@ -162,7 +162,7 @@ class MessageProcessor(Thread):
                         entry = {
                             'id': subjob.id,
                             'status': subjob.status,
-                            'meta': ('complete' if subjob.status == 'SUCCESS' else subjob.result)       #TODO
+                            'meta': ('complete' if subjob.status == 'SUCCESS' else str(subjob.result))       #TODO
                         }
                     subjobEntries.append(entry)
                 status[key]['subjobs'] = subjobEntries

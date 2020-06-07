@@ -15,12 +15,15 @@
             <option value="unset">Choose:</option>
         </select>
         <br />
+        <div id="no-ai-models-available" style="display:none;color:red">Unfortunately, none of the available AI models support this project's combination of annotation and prediction types.</div>
+        <br />
         <span style="color:gray">Author:</span>
         <span id="ai-model-class-author"></span>
         <p id="ai-model-class-descr"></p>
 
         <div>Default model options:</div>
-        <textarea id="default-ai-model-options" rows="100" cols="100"></textarea>
+        <div id="default-ai-model-options-engine"></div>
+        <!-- <textarea id="default-ai-model-options" rows="100" cols="100"></textarea> -->
         <div>
             <button id="load-ai-project-options" class="btn btn-sm btn-secondary">Load current</button>
             <button id="load-ai-model-options" class="btn btn-sm btn-dark">Load model defaults</button>
@@ -34,6 +37,8 @@
         <select id="al-model-class">
             <option value="unset">Choose:</option>
         </select>
+        <br />
+        <div id="no-al-models-available" style="display:none;color:red">Unfortunately, none of the available ranking criteria support this project's combination of annotation and prediction types.</div>
         <br />
         <span style="color:gray">Author:</span>
         <span id="al-model-class-author"></span>
@@ -53,6 +58,7 @@
         <button id="save-button" class="btn btn-primary" style="float:right">Save</button>
     </div>
 </div>
+<link rel="stylesheet" href="/static/general/css/optionsEngine.css?v={{ version }}" />
 <style>
     textarea {
         width: 100%;
@@ -60,6 +66,7 @@
         font-family: monospace;
     }
 </style>
+<script src="/static/general/js/optionsEngine.js?v={{ version }}"></script>
 <script type="text/javascript">
     $(document).ready(function() {
 
@@ -67,20 +74,64 @@
         var aiModelSelect = $('#ai-model-class');
         var alModelSelect = $('#al-model-class');
 
+        function showModelOptionsPanel(data, onlyShowIfWarnings) {
+            let showPanel = false;
+            var message = $('<div style="overflow-y:auto"></div>');
+            if(data['valid']) {
+                message.append($('<div>The provided options appear to be valid.</div>'));
+            } else {
+                message.append($('<div>Errors occurred during options verification. Options will not be saved.</div>'));
+            }
+            if(data.hasOwnProperty('options') && data['options'] !== undefined && data['options'] !== null) {
+                // updated options provided, replace in textarea and notify user
+                window.optionsEngine.setOptions(data['options']);
+
+                // $('#default-ai-model-options').val(data['options']);
+                message.append($('<div style="font-style:italic">' +
+                    'Provided options have been auto-completed or updated by the AI model; see updated contents in text area.' +
+                    'New options will not be saved until you click the "Save" button.</div>'));
+            }
+            if(data.hasOwnProperty('warnings') && data['warnings'].length>0) {
+                showPanel = true;
+                var warnings = $('<ul style="color:orange;margin:10px"></ul>');
+                for(var w=0; w<data['warnings'].length; w++) {
+                    warnings.append($('<li>'+data['warnings'][w]+'</li>'));
+                }
+                message.append($('<div>Warnings:</div>'));
+                message.append(warnings);
+            }
+            if(data.hasOwnProperty('errors') && data['errors'].length>0) {
+                showPanel = true;
+                var errors = $('<ul style="color:red;margin:10px"></ul>');
+                for(var e=0; e<data['errors'].length; e++) {
+                    errors.append($('<li>'+data['errors'][e]+'</li>'));
+                }
+                message.append($('<div>Errors:</div>'));
+                message.append(errors);
+            }
+            let closeButton = $('<button class="btn btn-primary">Close</button>');
+            closeButton.click(function() {
+                window.showOverlay(null);
+            });
+            message.append(closeButton);
+            
+            if(!onlyShowIfWarnings || showPanel) {
+                window.showOverlay(message, true, false);
+            }
+        }
+
         
         function verifyModelOptions(type) {
             if(type === 'model') {
-                var options = $('#default-ai-model-options').val();
+                // var options = $('#default-ai-model-options').val();
 
-                // check first if valid JSON
-                try {
-                    JSON.parse(options);
-                } catch(error) {
-                    alert('Invalid options (error: "'+error+'").');
-                    return false;
+                let options = window.optionsEngine.getOptions();
+                if(typeof(options) === 'object') {
+                    options = JSON.stringify(options);
                 }
+                
                 // submit to server to check if model accepts it
-                $.ajax({
+                return $.ajax({
                     url: 'verifyAImodelOptions',
                     method: 'POST',
                     contentType: 'application/json; charset=utf-8',
@@ -91,43 +142,7 @@
                     }),
                     success: function(data) {
                         data = data['status'];
-                        var message = $('<div></div>');
-                        var optionsValid = false;
-                        if(data['valid']) {
-                            message.append($('<div>The provided options appear to be valid.</div>'));
-                            optionsValid = true;
-                        } else {
-                            message.append($('<div>Errors occurred during options verification. Options will not be saved.</div>'));
-                        }
-                        if(data.hasOwnProperty('options') && data['options'].length>0) {
-                            // updated options provided, replace in textarea and notify user
-                            $('#default-ai-model-options').val(data['options']);
-                            message.append($('<div>Provided options have been auto-completed by model; see updated contents in text area.</div>'));
-                        }
-                        if(data.hasOwnProperty('warnings') && data['warnings'].length>0) {
-                            var warnings = $('<ul style="color:orange;margin:10px"></ul>');
-                            for(var w=0; w<data['warnings'].length; w++) {
-                                warnings.append($('<li>'+data['warnings'][w]+'</li>'));
-                            }
-                            message.append($('<div>Warnings:</div>'));
-                            message.append(warnings);
-                        }
-                        if(data.hasOwnProperty('errors') && data['errors'].length>0) {
-                            var errors = $('<ul style="color:red;margin:10px"></ul>');
-                            for(var e=0; e<data['errors'].length; e++) {
-                                errors.append($('<li>'+data['errors'][e]+'</li>'));
-                            }
-                            message.append($('<div>Errors:</div>'));
-                            message.append(errors);
-                        }
-                        let closeButton = $('<button class="btn btn-primary">Close</button>');
-                        closeButton.click(function() {
-                            window.showOverlay(null);
-                        });
-                        message.append(closeButton);
-
-                        window.showOverlay(message, true, false);
-                        return optionsValid;
+                        showModelOptionsPanel(data);
                     },
                     error: function(xhr, status, error) {
                         //TODO
@@ -163,6 +178,8 @@
                 success: function(data) {
                     // populate selection fields, if suitable for selected annotation and prediction types
                     window.availableModels = data['models'];
+                    let numAvailableAImodels = 0;
+                    let numAvailableALmodels = 0;
                     for(var key in data['models']['prediction']) {
                         var annoTypes = data['models']['prediction'][key]['annotationType'];
                         var predTypes = data['models']['prediction'][key]['predictionType'];
@@ -171,17 +188,27 @@
                         if(annoTypes.includes(window.annotationType) && predTypes.includes(window.predictionType)) {
                             var entry = $('<option value="' + key + '">' + data['models']['prediction'][key]['name'] + '</option>');
                             aiModelSelect.append(entry);
+                            numAvailableAImodels++;
                         }
                     }
                     for(var key in data['models']['ranking']) {
-                        var entry = $('<option value="' + key + '">' + data['models']['ranking'][key]['name'] + '</option>');
-                        alModelSelect.append(entry);
+                        var predTypes = data['models']['ranking'][key]['predictionType'];
+                        if(predTypes.includes(window.predictionType)) {
+                            var entry = $('<option value="' + key + '">' + data['models']['ranking'][key]['name'] + '</option>');
+                            alModelSelect.append(entry);
+                            numAvailableALmodels++;
+                        }
+                    }
+                    if(numAvailableAImodels === 0) {
+                        $('#no-ai-models-available').show();
+                    }
+                    if(numAvailableALmodels === 0) {
+                        $('#no-al-models-available').show();
                     }
                 },
                 error: function(data) {
                     //TODO
-                    console.log('ERROR:')
-                    console.log(data)
+                    console.error(data)
                 }
             });
         });
@@ -274,30 +301,28 @@
             return loadSettings();
         });
 
+        // initialize options engine
+        window.optionsEngine = new OptionsEngine($('#default-ai-model-options-engine'));
+
         // show model descriptions upon change
         aiModelSelect.change(function() {
             var selModel = $(this).val();
-            if(selModel === 'unset') {
+            if(selModel === 'unset' || !window.availableModels['prediction'].hasOwnProperty(selModel)) {
                 $('#ai-model-class-descr').html('');
-                $('#default-ai-model-options').val('');
+                window.optionsEngine.setOptions(undefined);
+                // $('#default-ai-model-options').val('');
             } else {
                 $('#ai-model-class-descr').html(window.availableModels['prediction'][selModel]['description']);
                 if(selModel === window.currentAImodel) {
                     // show current model options
-                    $('#default-ai-model-options').val(JSON.stringify(window.currentAImodelOptions, null, 2));
-                    $('#default-ai-model-options').prop('placeholder', 'provide default model options here');
-                    $('#default-ai-model-options').prop('disabled', false);
+                    window.optionsEngine.setOptions(window.currentAImodelOptions);
                 } else {
                     // show default options for selected model (or hide if no options available)
                     let defaultOptions = window.availableModels['prediction'][selModel]['defaultOptions'];
                     if(defaultOptions === undefined || defaultOptions === null) {
-                        $('#default-ai-model-options').val('');
-                        $('#default-ai-model-options').prop('placeholder', 'no options to configure');
-                        $('#default-ai-model-options').prop('disabled', true);
+                        window.optionsEngine.setOptions(undefined);
                     } else {
-                        $('#default-ai-model-options').val(JSON.stringify(defaultOptions, null, 2));
-                        $('#default-ai-model-options').prop('placeholder', 'provide default model options here');
-                        $('#default-ai-model-options').prop('disabled', false);
+                        window.optionsEngine.setOptions(defaultOptions);
                     }
                 }
             }
@@ -328,21 +353,24 @@
         $('#load-ai-project-options').click(function() {
             let selectedModel = aiModelSelect.val();
             if(selectedModel === window.currentAImodel) {
-                $('#default-ai-model-options').val(JSON.stringify(window.currentAImodelOptions, null, 2));
-                $('#default-ai-model-options').prop('placeholder', 'provide default model options here');
-                $('#default-ai-model-options').prop('disabled', false);
+                window.optionsEngine.setOptions(window.currentAImodelOptions);
+                // $('#default-ai-model-options').val(JSON.stringify(window.currentAImodelOptions, null, 2));
+                // $('#default-ai-model-options').prop('placeholder', 'provide default model options here');
+                // $('#default-ai-model-options').prop('disabled', false);
             }
         });
         $('#load-ai-model-options').click(function() {
             let defaultOptions = window.availableModels['prediction'][window.currentAImodel]['defaultOptions'];
             if(defaultOptions === undefined || defaultOptions === null) {
-                $('#default-ai-model-options').val('');
-                $('#default-ai-model-options').prop('placeholder', 'no options to configure');
-                $('#default-ai-model-options').prop('disabled', true);
+                window.optionsEngine.setOptions(undefined);
+                // $('#default-ai-model-options').val('');
+                // $('#default-ai-model-options').prop('placeholder', 'no options to configure');
+                // $('#default-ai-model-options').prop('disabled', true);
             } else {
-                $('#default-ai-model-options').val(JSON.stringify(defaultOptions, null, 2));
-                $('#default-ai-model-options').prop('placeholder', 'provide default model options here');
-                $('#default-ai-model-options').prop('disabled', false);
+                window.optionsEngine.setOptions(defaultOptions);
+                // $('#default-ai-model-options').val(JSON.stringify(defaultOptions, null, 2));
+                // $('#default-ai-model-options').prop('placeholder', 'provide default model options here');
+                // $('#default-ai-model-options').prop('disabled', false);
             }
         });
         $('#verify-ai-model-options').click(function() {
@@ -353,16 +381,19 @@
         $('#save-button').click(function() {
             window.showLoadingOverlay(true);
 
-            //TODO: add AI model options
-
             // assemble config parameters and submit
             let modelLib = (aiModelSelect.val() === 'unset'? null : aiModelSelect.val());
             let rankerLib = (alModelSelect.val() === 'unset'? null : alModelSelect.val());
+            let aiModelOptions = window.optionsEngine.getOptions();
+            if(typeof(aiModelOptions) === 'object') {
+                aiModelOptions = JSON.stringify(aiModelOptions);
+            }
             var settings = {
                 'ai_model_enabled': $('#ai-model-enabled-checkbox').prop('checked'),
                 'ai_model_library': modelLib,
                 'ai_alcriterion_library': rankerLib,
-                'ai_alcriterion_library': alModelSelect.val()
+                'ai_alcriterion_library': alModelSelect.val(),
+                'ai_model_settings': aiModelOptions
             };
             if(window.annotationType === 'segmentationMasks') {
                 settings['segmentation_ignore_unlabeled'] = ($('#seg-unlabeled-select').val() === '1');
@@ -374,9 +405,11 @@
                 dataType: 'json',
                 data: JSON.stringify({'settings': settings}),
                 success: function(data) {
-                    console.log(data['status']);
-                    if(data.hasOwnProperty('message')) {
-                        console.log(data['message']);
+                    // display errors and warnings about options
+                    try {
+                        showModelOptionsPanel(data['message']['ai_model_settings_status'], true);
+                    } catch(err) {
+                        console.error(err)
                     }
                 },
                 error: function(data) {

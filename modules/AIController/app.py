@@ -314,7 +314,7 @@ class AIController:
             
             try:
                 settings = request.json['settings']
-                status = self.middleware.updateAImodelSettings(project, settings)
-                return {'status': (0 if status else 2)}
+                response = self.middleware.updateAImodelSettings(project, settings)
+                return {'status': 0, 'message': response}
             except Exception as e:
                 return {'status': 1, 'message': str(e)}

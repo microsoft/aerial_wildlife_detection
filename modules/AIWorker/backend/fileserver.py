@@ -13,7 +13,7 @@ import os
 from urllib import request
 # import socket
 # from urllib.parse import urlsplit
-# from urllib.error import HTTPError
+from urllib.error import HTTPError
 # import netifaces
 from util.helpers import is_localhost
 
@@ -76,11 +76,10 @@ class FileServer:
             the file is directly loaded from the local disk.
             Otherwise an HTTP request is being sent.
         '''
-
         try:
             #TODO: make generator that yields bytes?
             if project is not None:
-                queryPath = os.path.join(self.baseURI, project, filename)
+                queryPath = os.path.join(self.baseURI, project, 'files', filename)  #TODO: "files" required for images...
             else:
                 queryPath = os.path.join(self.baseURI, filename)
             

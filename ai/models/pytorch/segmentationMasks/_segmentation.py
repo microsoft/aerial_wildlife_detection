@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from ..genericPyTorchModel import GenericPyTorchModel
+from ..genericPyTorchModel import GenericPyTorchModel_Legacy
 from .. import parse_transforms
 from ..functional.segmentationMasks.collation import Collator
 
@@ -18,7 +18,7 @@ from util.helpers import get_class_executable, check_args
 
 
 
-class SegmentationModel(GenericPyTorchModel):
+class SegmentationModel(GenericPyTorchModel_Legacy):
 
     def __init__(self, project, config, dbConnector, fileServer, options, defaultOptions):
         super(SegmentationModel, self).__init__(project, config, dbConnector, fileServer,
