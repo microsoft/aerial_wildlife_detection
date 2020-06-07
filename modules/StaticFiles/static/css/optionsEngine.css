@@ -1,0 +1,60 @@
+.option-container {
+    padding-top: 5px;
+    padding-left: 20px;
+    padding-right: 20px;
+    padding-bottom: 0;
+    margin-bottom: 10px;
+}
+
+.option-container-composed {
+    margin-bottom: 5px;
+    
+}
+
+.option-container-border {
+    border: 1px solid white;
+    border-radius: 5px;
+}
+
+.options-inline {
+    display: flex;
+    flex-direction: row;
+}
+
+.option-header {
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+
+.option-name {
+    margin-right: 10px;
+}
+
+.option-description {
+    margin-bottom: 2px;
+    font-style: italic;
+    font-size: 10pt;
+}
+
+.option-number-field {
+    width: 80px;
+}
+
+.options-list {
+    overflow-y: auto;
+    border: 2px solid #454545;
+}
+
+.options-list-entry {
+    background: #606060;
+    margin: 5px;
+    padding-bottom: 1px;
+}
+
+.option-selected {
+    background: #454545;
+}
+
+.options-select {
+    margin-bottom: 10px;
+}

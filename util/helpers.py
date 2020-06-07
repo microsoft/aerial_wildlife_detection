@@ -6,6 +6,7 @@
 
 import os
 import importlib
+from functools import reduce
 from datetime import datetime
 import pytz
 import socket
