@@ -37,6 +37,6 @@ class FileServer():
 
         
         @enable_cors
-        @self.app.route(os.path.join(self.staticAddress, '<project>/files/<path:path>'))
+        @self.app.route(os.path.join('/', self.staticAddress, '<project>/files/<path:path>'))
         def send_file(project, path):
             return static_file(path, root=os.path.join(self.staticDir, project))
