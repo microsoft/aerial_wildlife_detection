@@ -1,5 +1,5 @@
 '''
-    Run this file whenever you update AIde to bring your existing project setup up-to-date
+    Run this file whenever you update AIDE to bring your existing project setup up-to-date
     with respect to changes due to newer versions.
     
     2019-20 Benjamin Kellenberger
@@ -23,7 +23,7 @@ MODIFICATIONS_sql = [
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description='Update AIde database structure.')
+    parser = argparse.ArgumentParser(description='Update AIDE database structure.')
     parser.add_argument('--settings_filepath', type=str, default='config/settings.ini', const=1, nargs='?',
                     help='Manual specification of the directory of the settings.ini file; only considered if environment variable unset (default: "config/settings.ini").')
     args = parser.parse_args()
@@ -45,4 +45,4 @@ if __name__ == '__main__':
     for mod in MODIFICATIONS_sql:
         dbConn.execute(mod.format(schema=dbSchema), None, None)
 
-    print('Project {} is now up-to-date for the latest changes in AIde.'.format(config.getProperty('Project', 'projectName')))
+    print('Project {} is now up-to-date for the latest changes in AIDE.'.format(config.getProperty('Project', 'projectName')))

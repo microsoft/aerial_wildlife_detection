@@ -1,7 +1,7 @@
 '''
     Abstract model class, providing code shells for the AIWorker.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 class AIModel:
@@ -10,7 +10,7 @@ class AIModel:
             Model constructor. This is called by both the AIWorker and AIController
             modules when starting up.
             Args:
-                config: Configuration for the current AIde project
+                config: Configuration for the current AIDE project
                 dbConnector: Access to the project database
                 fileServer: Access to the instance storing the images
                 options: A custom set of options in JSON format for this model
@@ -37,7 +37,7 @@ class AIModel:
 
     def average_model_states(self, stateDicts):
         """
-            Averaging function. If AIde is configured to distribute training to multiple
+            Averaging function. If AIDE is configured to distribute training to multiple
             AIWorkers, and if multiple AIWorkers are attached, this function will be called
             by exactly one AIWorker after the "train" function has finished.
             Args:

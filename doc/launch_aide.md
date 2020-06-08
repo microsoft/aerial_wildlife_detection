@@ -1,12 +1,12 @@
-# Launching AIde
+# Launching AIDE
 
-The instructions below manually launch AIde using the [Gunicorn server](https://gunicorn.org/).
-If you wish to deploy AIde properly, you might want to set up Gunicorn as a service and wrap it in a web server. To do so, see [here](deployment.md).
+The instructions below manually launch AIDE using the [Gunicorn server](https://gunicorn.org/).
+If you wish to deploy AIDE properly, you might want to set up Gunicorn as a service and wrap it in a web server. To do so, see [here](deployment.md).
 
 
 
 ## Environment variables
-Machines running an AIde service need to have the `AIDE_CONFIG_PATH` environment variable set:
+Machines running an AIDE service need to have the `AIDE_CONFIG_PATH` environment variable set:
 
 * `AIDE_CONFIG_PATH`: location (relative or absolute path) to the [configuration *.ini file](configure_settings.md) on the current machine.
 
@@ -23,7 +23,7 @@ Or permanently (requires re-login):
 
 
 ## Frontend
-The front-end modules of AIde (_LabelUI_, _AIController_, _FileServer_) can be run by launching Gunicorn with the correct Bottle application, accessible through the file `application.py` (`application:app`).
+The front-end modules of AIDE (_LabelUI_, _AIController_, _FileServer_) can be run by launching Gunicorn with the correct Bottle application, accessible through the file `application.py` (`application:app`).
 
 To launch just the frontend:
 ```bash
@@ -47,7 +47,7 @@ Modules in the `AIDE_MODULES` variable can be chained with commas. For example, 
 ```
 
 
-If, for some reason, you wish to launch AIde using Bottle directly (defaults to Python's built-in WSGI server), you can do so by launching `application.py` directly after setting environment variables `AIDE_CONFIG_PATH` and `AIDE_MODULES` accordingly:
+If, for some reason, you wish to launch AIDE using Bottle directly (defaults to Python's built-in WSGI server), you can do so by launching `application.py` directly after setting environment variables `AIDE_CONFIG_PATH` and `AIDE_MODULES` accordingly:
 ```bash
     conda activate aide
     export AIDE_CONFIG_PATH=config/settings.ini

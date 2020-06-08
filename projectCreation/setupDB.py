@@ -2,7 +2,7 @@
     Script to establish a database schema according to the specifications
     provided in the configuration file.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 import os
@@ -74,7 +74,7 @@ def _constructAnnotationFields(annoType, table, doublePrecision=False):
 if __name__ == '__main__':
 
     # setup
-    parser = argparse.ArgumentParser(description='Set up AIde database schema.')
+    parser = argparse.ArgumentParser(description='Set up AIDE database schema.')
     parser.add_argument('--settings_filepath', type=str, default='config/settings.ini', const=1, nargs='?',
                     help='Manual specification of the directory of the settings.ini file; only considered if environment variable unset (default: "config/settings.ini").')
     args = parser.parse_args()

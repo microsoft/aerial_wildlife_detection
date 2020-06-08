@@ -1,15 +1,15 @@
-# Import existing data into AIde
+# Import existing data into AIDE
 
-AIde ships with a couple of helper scripts that allow importing existing datasets into the platform. All of the scripts (and instructions below) need to be executed from the _FileServer_ instance. This means that you must have [installed](install.md) and [configured](configure_settings.md) AIde on that machine accordingly, and to have the [database instance running](setup_db.md).
+AIDE ships with a couple of helper scripts that allow importing existing datasets into the platform. All of the scripts (and instructions below) need to be executed from the _FileServer_ instance. This means that you must have [installed](install.md) and [configured](configure_settings.md) AIDE on that machine accordingly, and to have the [database instance running](setup_db.md).
 
 
 ## Import images only
 
-Importing unlabeled images into AIde can be achieved with the helper script `projectCreation/import_images.py`.
+Importing unlabeled images into AIDE can be achieved with the helper script `projectCreation/import_images.py`.
 This script scans the _FileServer_'s image directory folder for images that have no entry in the database and adds them accordingly. Images that are already in the database are skipped, and so are unsupported image formats and other files.
 In essence, this means that you have to first copy your images to the _FileServer_'s directory manually.
 
-All in all, you can import images into AIde as follows:
+All in all, you can import images into AIDE as follows:
 1. Organize your images into a folder. Arbitrary subfolders and nested directories are allowed, too (directories will be prepended to the individual file names in the database).
 2. Make sure the images are of one of the following formats:
     * TIFF
@@ -19,7 +19,7 @@ All in all, you can import images into AIde as follows:
     * BMP
     i.e., convert all images from custom formats, such as RAW (Canon CR2, Nikon NEF, etc.) to one of the above before continuing. Images with incorrect file extensions are automatically ignored.
 3. Copy the image folder with contents to the _FileServer_'s image root directory, as specified under `staticfiles_dir` in the [configuration *.ini file](configure_settings.md).
-4. From the _FileServer_ instance and AIde's root directory, execute the import script:
+4. From the _FileServer_ instance and AIDE's root directory, execute the import script:
     ```bash
         conda activate aide
         export AIDE_CONFIG_PATH=config/settings.ini     # set and adjust environment variable if not already done
@@ -29,7 +29,7 @@ All in all, you can import images into AIde as follows:
 
 ## Import an object detection dataset
 
-We provide a script that automatically parses and imports an object detection dataset (i.e., containing images and bounding boxes) into AIde.
+We provide a script that automatically parses and imports an object detection dataset (i.e., containing images and bounding boxes) into AIDE.
 
 ### Requirements
 This procedure requires the dataset to be organized as follows:
@@ -117,7 +117,7 @@ In this case, every annotation (or prediction) with class label zero is treated 
 
 1. Copy all the _contents_ of the `images/` folder into the `staticfiles_dir` of the _FileServer_ instance, as defined in the [configuration file](configure_settings.md).
 
-2. Once finished, run the import script from the AIde root with environment variables set on the _FileServer_ instance:
+2. Once finished, run the import script from the AIDE root with environment variables set on the _FileServer_ instance:
     ```bash
         conda activate aide
         export AIDE_CONFIG_PATH=config/settings.ini     # set and adjust environment variable if not already done

@@ -1,6 +1,6 @@
 # Custom AI Backend
 
-AIde supports the implementation of arbitrary prediction models, using any framework as long as they are implemented in, or provide the appropriate interface to, Python.
+AIDE supports the implementation of arbitrary prediction models, using any framework as long as they are implemented in, or provide the appropriate interface to, Python.
 In detail, the following portions are customizable:
 * The prediction model itself
 * The ranking model (_i.e._, the model providing priority scores for predictions)
@@ -26,7 +26,7 @@ Below is a sample code shell for a custom prediction model:
                 Model constructor. This is called by both the AIWorker and AIController
                 modules when starting up.
                 Args:
-                    config: Configuration for the current AIde project
+                    config: Configuration for the current AIDE project
                     dbConnector: Access to the project database
                     fileServer: Access to the instance storing the images
                     options: A custom set of options in JSON format for this model
@@ -54,7 +54,7 @@ Below is a sample code shell for a custom prediction model:
 
         def average_model_states(self, stateDicts):
             """
-                Averaging function. If AIde is configured to distribute training to multiple
+                Averaging function. If AIDE is configured to distribute training to multiple
                 AIWorkers, and if multiple AIWorkers are attached, this function will be called
                 by exactly one AIWorker after the "train" function has finished.
                 Args:
@@ -254,7 +254,7 @@ The following snippet shows a code shell for bare rankers:
                 Ranker constructor. This is called by both the AIWorker and AIController
                 modules when starting up.
                 Args:
-                    config: Configuration for the current AIde project
+                    config: Configuration for the current AIDE project
                     dbConnector: Access to the project database
                     fileServer: Access to the instance storing the images
                     options: A custom set of options in JSON format for this ranker
@@ -291,9 +291,9 @@ Notes:
 
 ### Progress and status updates
 
-Since model training and inference are likely to be long-running tasks, you are advised to regularly post progress updates to the _AIController_ instance. This can be done by using AIde's task queue [Celery](http://www.celeryproject.org/).
+Since model training and inference are likely to be long-running tasks, you are advised to regularly post progress updates to the _AIController_ instance. This can be done by using AIDE's task queue [Celery](http://www.celeryproject.org/).
 
-For example, the following snippet sets the job status to "in progress" and makes the AIde interface display a message "predicting" as well as a progress bar:
+For example, the following snippet sets the job status to "in progress" and makes the AIDE interface display a message "predicting" as well as a progress bar:
 ```python
 
     from celery import current_task

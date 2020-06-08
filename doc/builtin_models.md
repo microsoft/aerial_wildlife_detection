@@ -1,13 +1,13 @@
 # Configure the built-in models
 
-AIde comes with a number of built-in models for both the AI model and the ranker. These are, to a certain extent, customizable, which we will discuss below.  If you instead wish to completely write your own module(s) for modeling and/or ranking, you can do so by referring to the instructions [here](custom_model.md).
+AIDE comes with a number of built-in models for both the AI model and the ranker. These are, to a certain extent, customizable, which we will discuss below.  If you instead wish to completely write your own module(s) for modeling and/or ranking, you can do so by referring to the instructions [here](custom_model.md).
 
 
 ## AI models
 
-AIde ships with the following AI models built in:
+AIDE ships with the following AI models built in:
 * Classification:
-  * `ai.models.pytorch.labels.ResNet` ([Kaiming et al., 2015](https://arxiv.org/abs/1512.03385)).
+  * `ai.models.pytorch.labels.ResNet` ([He et al., 2015](https://arxiv.org/abs/1512.03385)).
 * Object detection:
   * Points:
     * `ai.models.pytorch.points.WSODPointModel`
@@ -436,7 +436,7 @@ Notes:
 
 For object detection (i.e., points and bounding boxes), certain transforms naturally should not be carried out on the image alone. For example, random horizontal flips affect both the image and the labeled points or bounding boxes.
 
-AIde therefore applies transforms to the image, points/bounding boxes, and class labels. This means that object detection models, such as `RetinaNet`, only accept one of the following transforms as a top-level transform object:
+AIDE therefore applies transforms to the image, points/bounding boxes, and class labels. This means that object detection models, such as `RetinaNet`, only accept one of the following transforms as a top-level transform object:
 
 * `ai.models.pytorch.boundingBoxes.Compose`
   Accepts an iterable of custom, detection-ready transforms and applies them in order.
