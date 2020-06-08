@@ -177,7 +177,11 @@ class UserHandler():
         @self.app.route('/createAccount')
         def showNewAccountPage():
             # check if token is required; if it is and wrong token provided, show login screen instead
-            targetToken = html.escape(self.config.getProperty('UserHandler', 'create_account_token'))
+            try:
+                targetToken = html.escape(self.config.getProperty('UserHandler', 'create_account_token'))
+            except:
+                # no secret token defined
+                targetToken = None
             if targetToken is not None and not(targetToken == ''):
                 try:
                     providedToken = html.escape(request.query['t'])

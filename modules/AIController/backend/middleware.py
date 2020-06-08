@@ -958,6 +958,10 @@ class AIMiddleware():
             Updates the project's AI model settings.
             Verifies whether the specified AI and ranking model libraries
             exist on this setup of AIDE. Raises an exception otherwise.
+
+            Also tries to verify any model options provided with the
+            model's built-in function (if present and implemented).
+            Returns warnings, errors, etc. about that.
         '''
         # AI libraries installed in AIDE
         availableModels = self.getAvailableAImodels()['models']
@@ -980,9 +984,7 @@ class AIMiddleware():
         fieldNames = [
             ('ai_model_enabled', bool),
             ('ai_model_library', str),
-            ('ai_model_settings', str),
             ('ai_alcriterion_library', str),
-            ('ai_alcriterion_settings', str),
             ('numimages_autotrain', int),           #TODO: replace this and next four entries with default workflow
             ('minnumannoperimage', int),
             ('maxnumimages_train', int),
@@ -1012,9 +1014,8 @@ class AIMiddleware():
                         raise Exception(f'Model "{modelLib}" does not support predictions of type "{predType}".')
             
             elif key == 'ai_model_settings':
-                # verify model parameters
-                #TODO: outsource; make dedicated function
-                pass
+                # model settings are verified separately
+                continue
                 
             elif key == 'ai_alcriterion_library':
                 modelLib = settings_new[idx]
@@ -1084,7 +1085,14 @@ class AIMiddleware():
                 ''').format(id_lc=sql.Identifier(project, 'labelclass')),
                 (bgName,), None)
 
-        return True
+        response = {'status': 0}
+
+        # check for and verify AI model settings
+        if 'ai_model_settings' in settings:
+            aiModelOptionsStatus = self.saveProjectModelSettings(project, settings['ai_model_settings'])
+            response['ai_model_settings_status'] = aiModelOptionsStatus
+
+        return response
 
 
     def listModelStates(self, project):
@@ -1151,13 +1159,23 @@ class AIMiddleware():
 
 
     def saveProjectModelSettings(self, project, settings):
-        '''
-            TODO
-        '''
-        pass
-
+        # verify settings first
+        optionsVerification = self.verifyAImodelOptions(project, settings)
+        if optionsVerification['valid']:
+            # save
+            if isinstance(settings, dict):
+                settings = json.dumps(settings)
+            self.dbConn.execute('''
+                UPDATE aide_admin.project
+                SET ai_model_settings = %s
+                WHERE shortname = %s;
+            ''', (settings, project), None)
+        else:
+            optionsVerification['errors'].append('Model options have not passed verification and where therefore not saved.')
+        return optionsVerification
 
     
+
     def getSavedWorkflows(self, project):
         queryStr = sql.SQL('''
             SELECT *

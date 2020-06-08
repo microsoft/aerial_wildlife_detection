@@ -8,6 +8,8 @@ python-dateutil
 Pillow>=2.2.1
 numpy
 requests
+celery[pylibrabbitmq,redis,auth,msgpack]>=4.3.0  #TODO: currently testing with pylibrabbitmq instead of librabbitmq
 
-# for the AI backend
-#celery[librabbitmq,redis,auth,msgpack]>=4.3.0  #TODO
+# for the built-in models (install via https://pytorch.org):
+# PyTorch>=1.1.0
+# torchvision>=0.3.0
