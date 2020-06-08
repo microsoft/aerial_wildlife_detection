@@ -7,7 +7,7 @@ AIDE comes with a number of built-in models for both the AI model and the ranker
 
 AIDE ships with the following AI models built in:
 * Classification:
-  * `ai.models.pytorch.labels.ResNet` ([Kaiming et al., 2015](https://arxiv.org/abs/1512.03385)).
+  * `ai.models.pytorch.labels.ResNet` ([He et al., 2015](https://arxiv.org/abs/1512.03385)).
 * Object detection:
   * Points:
     * `ai.models.pytorch.points.WSODPointModel`
