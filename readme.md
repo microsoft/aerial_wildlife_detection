@@ -15,7 +15,7 @@ Once ready, this branch of AIDE will replace the original one.
 
 ## News
 
-**June 18, 2020:** Thanks to the outstanding work of contributor [Jarek](https://github.com/szjarek), AIDE V2 finally supports one-line installation and setup through [Docker](https://www.docker.com)! See [below]() for instructions.
+**June 18, 2020:** Thanks to the outstanding work of contributor [Jarek](https://github.com/szjarek), AIDE V2 finally supports one-line installation and setup through [Docker](https://www.docker.com)! See [below](https://github.com/microsoft/aerial_wildlife_detection/tree/multiProject#with-docker) for instructions.
 
 
 ## Progress so far
@@ -77,7 +77,7 @@ You can try out the labeling frontend of AIDE (V1) in a couple of demo instances
 
 AIDE consists of individual _modules_, organized as follows:
 
-![AIDE module diagram](doc/figures/AIDE_diagram.png)
+![AIDE module diagram](https://github.com/microsoft/aerial_wildlife_detection/raw/master/doc/figures/AIde_diagram.png)
 
 * **LabelUI**: responsible for delivering and accepting predictions and annotations to and from the user/labeler
 * **AIWorker**: runs the AI model in the background to train and predict data
