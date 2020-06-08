@@ -1,0 +1,14 @@
+bottle>=0.12
+gunicorn>=19.9.0
+psycopg2>=2.8.2
+tqdm>=4.32.1
+bcrypt>=3.1.6
+netifaces>=0.10.9
+python-dateutil
+Pillow>=2.2.1
+numpy
+requests
+future
+
+# for the AI backend
+celery[redis,auth,msgpack]>=4.3.0  #TODO

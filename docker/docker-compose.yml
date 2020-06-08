@@ -1,0 +1,19 @@
+version: '3.7'
+volumes:
+  aide_db_data:
+    name: aide_db_data
+  aide_images:
+    name: aide_images
+services:
+  aide_app:
+    hostname: 'aide_app_host' 
+    build:
+      context:  '..'
+      dockerfile: 'docker/Dockerfile'
+    image: 'aide_app'
+    volumes:
+      - aide_db_data:/var/lib/postgresql/10/main
+      - aide_images:/home/aide/images
+      - ..:/home/aide/app:cached
+    ports:
+      - '8080:8080'

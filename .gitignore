@@ -115,3 +115,6 @@ venv.bak/
 /*.ini
 *.pth
 /*.json
+
+# logs and traces
+nohup.out
