@@ -2,7 +2,6 @@ docker volume ls | grep -q aide_images || docker volume create aide_images
 docker volume ls | grep -q aide_db_data || docker volume create aide_db_data
 
 docker run --name aide_cnt \
- --gpus device=0 \
  --rm \
  -v `pwd`:/home/aide/app \
  -v aide_db_data:/var/lib/postgresql/10/main \
