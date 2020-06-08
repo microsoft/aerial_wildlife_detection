@@ -49,7 +49,7 @@ echo "RABBITMQ SETUP IS COMPLETED"
 echo "==========================="
 echo ""
 
-# If AIde is run on MS Azure: TCP connections are dropped after 4 minutes of inactivity
+# If AIDE is run on MS Azure: TCP connections are dropped after 4 minutes of inactivity
 # (see https://docs.microsoft.com/en-us/azure/load-balancer/load-balancer-outbound-connections#idletimeout)
 # This is fatal for our database connection system, which keeps connections open.
 # To avoid idling/dead connections, we thus use Ubuntu's keepalive timer:

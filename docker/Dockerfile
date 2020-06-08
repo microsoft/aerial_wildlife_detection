@@ -18,7 +18,7 @@ RUN apt-get update \
     # Verify git, process tools, lsb-release (common in install instructions for CLIs) installed
     && apt-get -y install git openssh-client iproute2 procps iproute2 lsb-release \
     #
-    # TBC if all of this is required (from AIde scripts)
+    # TBC if all of this is required (from AIDE scripts)
     && apt-get -y install libpq-dev python-dev wget systemd \
     #
     # Install pylint
@@ -37,8 +37,8 @@ RUN apt-get update \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
 
-# AIde installation starts here
-# specify the root folder where you wish to install AIde
+# AIDE installation starts here
+# specify the root folder where you wish to install AIDE
 WORKDIR /home/$USERNAME/app
 
 # create environment (requires conda or miniconda) - on the second thought, I don't need environment for docker image
@@ -99,7 +99,7 @@ RUN sudo apt-get update && sudo apt-get -y install redis-server \
     #&& sudo systemctl enable redis-server.service
 # ============================ AI BACKEND ENDS ==========================================
 
-# download AIde source code (from local repository)
+# download AIDE source code (from local repository)
 COPY . .
 RUN chmod a+rx docker/container_init.sh && chmod a+rx AIDE.sh
 
