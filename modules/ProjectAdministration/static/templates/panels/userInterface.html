@@ -12,19 +12,19 @@
         <table>
             <tr>
                 <td>Number of images on screen:</td>
-                <td><input id="field-numImgsPerBatch" type="number" min="1" max="128" /></td>
+                <td><input class="number-input" id="field-numImgsPerBatch" type="number" min="1" max="128" /></td>
             </tr>
             <tr>
                 <td>Default image width (pixels):</td>
-                <td><input id="field-defaultImageWidth" type="number" min="32" max="8192" /></td>
+                <td><input class="number-input" id="field-defaultImageWidth" type="number" min="32" max="8192" /></td>
             </tr>
             <tr>
                 <td>Default image height (pixels):</td>
-                <td><input id="field-defaultImageHeight" type="number" min="32" max="8192" /></td>
+                <td><input class="number-input" id="field-defaultImageHeight" type="number" min="32" max="8192" /></td>
             </tr>
             <tr>
                 <td>Minimum image width (pixels):</td>
-                <td><input id="field-minImageWidth" type="number" min="32" max="8192" /></td>
+                <td><input class="number-input" id="field-minImageWidth" type="number" min="32" max="8192" /></td>
             </tr>
         </table>
     </div>
@@ -36,7 +36,7 @@
         <table>
             <tr>
                 <td>Minimum confidence to show:</td>
-                <td><input id="field-minModelConfidence-show" type="number" min="0" max="1" /></td>
+                <td><input class="number-input" id="field-minModelConfidence-show" type="number" min="0" max="1" /></td>
             </tr>
         </table>
 
@@ -45,7 +45,7 @@
         <table>
             <tr>
                 <td>Minimum confidence to convert:</td>
-                <td><input id="field-minModelConfidence-convert" type="number" min="0" max="1" /></td>
+                <td><input class="number-input" id="field-minModelConfidence-convert" type="number" min="0" max="1" /></td>
             </tr>
             <tr>
                 <td>Conversion rule (in case of multiple predictions):</td>
@@ -71,6 +71,11 @@
         <button id="proj-settings-save-button" class="btn btn-primary" style="float:right">Save</button>
     </div>
 </div>
+<style>
+    .number-input {
+        width: 80px;
+    }
+</style>
 <!-- <script src="config/static/js/jscolor.js"></script> -->
 <script type="text/javascript">
     $(document).ready(function() {
