@@ -136,8 +136,10 @@ MODIFICATIONS_sql = [
     'ALTER TABLE "{schema}".image ADD COLUMN IF NOT EXISTS date_added TIMESTAMPTZ NOT NULL DEFAULT NOW();',
     'ALTER TABLE aide_admin.authentication ADD COLUMN IF NOT EXISTS admitted_until TIMESTAMPTZ;',
     'ALTER TABLE aide_admin.authentication ADD COLUMN IF NOT EXISTS blocked_until TIMESTAMPTZ;',
-    '''ALTER TABLE "{schema}".labelclassgroup DROP CONSTRAINT IF EXISTS labelclassgroup_name_unique;
-    ALTER TABLE "{schema}".labelclassgroup ADD CONSTRAINT labelclassgroup_name_unique UNIQUE (name);''',
+    #TODO: we probably don't need unique group names (useful e.g. for nested groups)
+    # '''ALTER TABLE "{schema}".labelclassgroup DROP CONSTRAINT IF EXISTS labelclassgroup_name_unique;
+    # ALTER TABLE "{schema}".labelclassgroup ADD CONSTRAINT labelclassgroup_name_unique UNIQUE (name);''',
+    'ALTER TABLE "{schema}".labelclassgroup DROP CONSTRAINT IF EXISTS labelclassgroup_name_unique;',
     'ALTER TABLE "{schema}".image ADD COLUMN IF NOT EXISTS corrupt BOOLEAN;',
     '''
     CREATE TABLE IF NOT EXISTS "{schema}".workflow (

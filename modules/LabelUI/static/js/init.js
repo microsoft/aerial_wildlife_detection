@@ -284,11 +284,11 @@ $(document).ready(function() {
                     try {
                         window.isAdmin = window.parseBoolean(data['permissions']['isAdmin']);
                     } catch {
-                        window.location.href = '/login';  //window.indexURI;
+                        window.location.href = '/login?redirect='+window.projectShortname+'/interface';
                     }
                 },
                 error: function() {
-                    window.location.href = '/login';  //window.indexURI;
+                    window.location.href = '/login?redirect='+window.projectShortname+'/interface';
                 }
             });
         });
@@ -541,7 +541,7 @@ $(document).ready(function() {
             window.showOverlay(overlayHtml, false, false);
 
             $('#abort').click(function() {
-                window.location.href = '/login';  //window.indexURI;
+                window.location.href = '/login';
             })
 
             $('#confirm-password').click(function() {

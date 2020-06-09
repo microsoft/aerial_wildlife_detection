@@ -37,10 +37,13 @@ class ProjectConfigurator:
         self.login_check = loginCheckFun
 
     
-    def __redirect_login_page(self):
+    def __redirect_login_page(self, redirect=None):
+        location = '/login'
+        if redirect is not None:
+            location += '?redirect=' + redirect
         response = bottle.response
         response.status = 303
-        response.set_header('Location', '/login')
+        response.set_header('Location', location)
         return response
 
     
@@ -91,7 +94,7 @@ class ProjectConfigurator:
                 return self.__redirect_login_page()
 
             if not self.loginCheck(project=project, extend_session=True):
-                return redirect('/')
+                return self.__redirect_login_page(project)
 
             # render overview template
             try:

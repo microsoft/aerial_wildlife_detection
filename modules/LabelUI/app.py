@@ -37,10 +37,13 @@ class LabelUI():
         self.login_check = loginCheckFun
 
 
-    def __redirect_login_page(self):
+    def __redirect_login_page(self, redirect=None):
+        location = '/login'
+        if redirect is not None:
+            location += '?redirect=' + redirect
         response = bottle.response
         response.status = 303
-        response.set_header('Location', '/login')
+        response.set_header('Location', location)
         return response
 
 
@@ -69,7 +72,7 @@ class LabelUI():
             
             # check if user logged in
             if not self.loginCheck(project=project):
-                return self.__redirect_login_page()
+                return self.__redirect_login_page(project + '/interface')
             
             # check if user is enrolled in project; redirect if not
             if not self.loginCheck(project=project):
@@ -78,11 +81,11 @@ class LabelUI():
             # get project data (and check if project exists)
             projectData = self.middleware.getProjectInfo(project)
             if projectData is None:
-                return self.__redirect_login_page()
+                return self.__redirect_login_page('/')
             
             # check if user authenticated for project
             if not self.loginCheck(project=project, extend_session=True):
-                return self.__redirect_login_page()
+                return self.__redirect_login_page(project + '/interface')
             
             # redirect to project page if interface not enabled
             if not projectData['interfaceEnabled']:

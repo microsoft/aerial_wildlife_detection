@@ -242,11 +242,6 @@ class DBMiddleware():
         '''
             Returns a dictionary with entries for all classes in the project.
         '''
-        classdef = {
-            'entries': {
-                'default': {}   # default group for ungrouped label classes
-            }
-        }
 
         # query data
         if showHidden:
@@ -264,11 +259,6 @@ class DBMiddleware():
                 sql.SQL(hiddenSpec)
             )
 
-        # queryStr = '''
-        #     SELECT 'group' AS type, id, NULL as idx, name, color, parent, NULL AS keystroke FROM {schema}.labelclassgroup
-        #     UNION ALL
-        #     SELECT 'class' AS type, id, idx, name, color, labelclassgroup, keystroke FROM {schema}.labelclass;
-        # '''.format(schema=schema)
         classData = self.dbConnector.execute(queryStr, None, 'all')
 
         # assemble entries first
@@ -295,7 +285,7 @@ class DBMiddleware():
         # transform into tree
         def _find_parent(tree, parentID):
             if parentID is None:
-                return tree['entries']['default']
+                return None
             elif 'id' in tree and tree['id'] == parentID:
                 return tree
             elif 'entries' in tree:
@@ -308,34 +298,26 @@ class DBMiddleware():
                 return None
 
 
-        allEntries['default'] = {
-            'name': '(other)',
-            'entries': {}
-        }
         allEntries = {
             'entries': allEntries
         }
         for key in list(allEntries['entries'].keys()):
-            if key == 'default':
-                continue
-            if key in allEntries['entries']:
-                entry = allEntries['entries'][key]
-                parentID = entry['parent']
-                del entry['parent']
+            entry = allEntries['entries'][key]
+            parentID = entry['parent']
+            del entry['parent']
 
-                if 'entries' in entry and parentID is None:
-                    # group, but no parent: append to root directly
-                    allEntries['entries'][key] = entry
-                
-                else:
-                    # move item
-                    parent = _find_parent(allEntries, parentID)
-                    parent['entries'][key] = entry
-                    del allEntries['entries'][key]
+            if parentID is None:
+                # entry or group with no parent: append to root directly
+                allEntries['entries'][key] = entry
+            
+            else:
+                # move item
+                parent = _find_parent(allEntries, parentID)
+                parent['entries'][key] = entry
+                del allEntries['entries'][key]
 
-        classdef = allEntries
-        classdef['numClasses'] = numClasses
-        return classdef
+        allEntries['numClasses'] = numClasses
+        return allEntries
 
 
     def getBatch_fixed(self, project, username, data, hideGoldenQuestionInfo=True):

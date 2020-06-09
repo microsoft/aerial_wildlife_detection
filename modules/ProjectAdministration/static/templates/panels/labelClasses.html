@@ -12,9 +12,9 @@
         <input type="text" id="sel-node-title" />
         <div id="sel-node-color-wrapper">
             <label for="sel-node-color">Color:</label>
-            <input class="jscolor" id="sel-node-color" />
-            <button id="update-selected" class="btn btn-sm btn-primary">Apply</button>
+            <input class="jscolor" data-jscolor="{required:false}" id="sel-node-color" />
         </div>
+        <button id="update-selected" class="btn btn-sm btn-primary">Apply</button>
     </div>
 
     <div style="margin-top:20px">
@@ -55,7 +55,6 @@
         </p>
     </div>
 
-    <!-- Submit and abort buttons -->
     <div>
         <button id="lc-save-button" class="btn btn-primary" style="float:right">Save</button>
     </div>
@@ -76,7 +75,7 @@
 <script src="config/static/libs/jqtree/tree.jquery.js?v={{ version }}"></script>
 <script src="config/static/js/jscolor.js?v={{ version }}"></script>
 <script type="text/javascript">
-    const DELIMITERS = [
+    var DELIMITERS = [
         ',,', ',', ';;', ';', '::', ':', '\t', ' '  //TODO: multiple white spaces?
     ]
 
@@ -96,6 +95,25 @@
             }
         }
         return "#" + componentToHex(rgb[1]) + componentToHex(rgb[2]) + componentToHex(rgb[3]);
+    }
+
+    function getNumEntriesWithName(name, level, includeGroups) {
+        let isGroup = Array.isArray(level['children']) && level['children'].length > 0;
+        if(level.hasOwnProperty('name') && level['name'] === name) {
+            if(isGroup) {
+                return 1 + getNumEntriesWithName(name, level['children'][c], includeGroups);
+            } else {
+                return 1;
+            }
+        } else if(isGroup) {
+            let numEntries = 0;
+            for(var c=0; c<level['children'].length; c++) {
+                numEntries += getNumEntriesWithName(name, level['children'][c], includeGroups);
+            }
+            return numEntries;
+        } else {
+            return 0;
+        }
     }
 
     function parseClassEntry(entry, entryID) {
@@ -292,7 +310,6 @@
                         break;
                     }
                 }
-                console.log('"' + delimiter + '"')
 
                 if(delimiter === undefined) {
                     // no delimiter found; treat each line as a class name
@@ -368,7 +385,6 @@
         } else {
             // parse object         TODO: support e.g. PASCAL VOC or ImageNet formats...
             function _parse_entry(name, entry) {
-                // console.log(entry)
                 let treeEntry = {
                     // id: key,
                     name: name,
@@ -497,6 +513,10 @@
             } else {
                 if(node.color !== undefined && node.color !== null) {
                     $('#sel-node-color')[0].jscolor.fromString(node.color);
+                } else {
+                    // TODO: there's no option to programmatically set the color to null
+                    $('#sel-node-color').val('');
+                    $('#sel-node-color').css('background', '#FFFFFF');
                 }
                 $('#sel-node-color-wrapper').show();
             }
@@ -508,12 +528,29 @@
 
     function updateSelected() {
         if(!window.selectedNode) return;
+        // check if name is unique (in case of label class)
+        let newName = $('#sel-node-title').val();
+        let maxPermittedEntries = (newName === window.selectedNode.name ? 1 : 0);
+        if(!Array.isArray(window.selectedNode.children) || window.selectedNode.children.length === 0) {
+            let numEntries = getNumEntriesWithName(newName, $(window.lcTree).tree('getTree'), false);
+            let newName_extended = undefined;
+            let counter = 1;
+            while(numEntries>maxPermittedEntries) {
+                counter++;
+                newName_extended = newName + ' ' + counter;
+                numEntries = getNumEntriesWithName(newName_extended, $(window.lcTree).tree('getTree'), false);
+            }
+            if(newName_extended !== undefined) {
+                newName = newName_extended;
+                $('#sel-node-title').val(newName);
+            }
+        }
+        window.selectedNode.color = window.rgbToHex($('#sel-node-color').css('background-color'));
         window.lcTree.tree(
             'updateNode',
             window.selectedNode,
-            $('#sel-node-title').val()
+            newName
         );
-        window.selectedNode.color = window.rgbToHex($('#sel-node-color').css('background-color'));
     }
 
     function addElement() {

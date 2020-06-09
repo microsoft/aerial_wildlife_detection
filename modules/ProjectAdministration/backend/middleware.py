@@ -513,19 +513,33 @@ class ProjectConfigMiddleware:
         
         # apply changes
         if removeMissing:
+            queryArgs = []
+            if len(classes_update):
+                # remove all missing label classes
+                lcSpec = sql.SQL('WHERE id NOT IN %s')
+                queryArgs.append(tuple([(l['id'],) for l in classes_update]))
+            else:
+                # remove all label classes
+                lcgSpec = sql.SQL('')
+            if len(classgroups_update):
+                # remove all missing labelclass groups
+                lcgSpec = sql.SQL('WHERE id NOT IN %s')
+                queryArgs.append(tuple([(l['id'],) for l in classgroups_update]))
+            else:
+                # remove all labelclass groups
+                lcgSpec = sql.SQL('')
             queryStr = sql.SQL('''
                 DELETE FROM {id_lc}
-                WHERE id NOT IN %s;
+                {lcSpec};
                 DELETE FROM {id_lcg}
-                WHERE id NOT IN %s;
+                {lcgSpec};
             ''').format(
                 id_lc=sql.Identifier(project, 'labelclass'),
-                id_lcg=sql.Identifier(project, 'labelclassgroup')
+                id_lcg=sql.Identifier(project, 'labelclassgroup'),
+                lcSpec=lcSpec,
+                lcgSpec=lcgSpec
             )
-            self.dbConnector.execute(queryStr, (
-                tuple([(l['id'],) for l in classes_update]),
-                tuple([(l['id'],) for l in classgroups_update])),
-                None)
+            self.dbConnector.execute(queryStr, tuple(queryArgs), None)
         
         # add/update in order (groups, set their parents, label classes)
         groups_new = [(g['id'], g['name'], g['color'],) for g in classgroups_update]

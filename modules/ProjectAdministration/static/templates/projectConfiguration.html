@@ -14,7 +14,7 @@
         <script type="text/javascript">
             function parseURLparameter(name) {
                 let url = new URL(window.location.href);
-                return url.searchParams.get('t');
+                return url.searchParams.get(name);
             }
 
             function setPanel(panelID) {

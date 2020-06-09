@@ -98,12 +98,18 @@
     </script>
     <script type="text/javascript">
         $(document).ready(function() {
+
+            function parseURLparameter(name) {
+                let url = new URL(window.location.href);
+                return url.searchParams.get(name);
+            }
     
             $('#login-form').on('submit', function(e) {
                 e.preventDefault();
-                var username = $(this).find('[name=username]').val();
-                var password = $(this).find('[name=password]').val();
-    
+                let username = $(this).find('[name=username]').val();
+                let password = $(this).find('[name=password]').val();
+                let redirect = parseURLparameter('redirect');
+
                 $.ajax({
                     url: 'doLogin',
                     method: 'POST',
@@ -112,7 +118,11 @@
                         'password': $('form').find('[name=password]').val()
                     },
                     success: function(data) {
-                        window.location.href = '/';
+                        if(typeof(redirect) === 'string' && redirect.length > 0) {
+                            window.location.href = redirect;
+                        } else {
+                            window.location.href = '/';
+                        }
                     },
                     error: function(xhr, response, blank) {
                         console.log(xhr)
