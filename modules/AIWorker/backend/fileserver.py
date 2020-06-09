@@ -78,8 +78,9 @@ class FileServer:
         '''
         try:
             #TODO: make generator that yields bytes?
+            localSpec = ('files' if not self.isLocal else '')
             if project is not None:
-                queryPath = os.path.join(self.baseURI, project, 'files', filename)  #TODO: "files" required for images...
+                queryPath = os.path.join(self.baseURI, project, localSpec, filename)
             else:
                 queryPath = os.path.join(self.baseURI, filename)
             
