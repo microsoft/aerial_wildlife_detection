@@ -16,39 +16,46 @@
     </table>
 
     <h3 id="selected-user-header">Selected user</h3>
+    <div id="selected-user-name"></div>
     <!-- TODO: show user details -->
 
-    <div style="color:red">Work in progress, not functional yet.</div>
+    <div id="user-modification-panel" style="display:none">
+        <div style="color:red">Work in progress, not functional yet.</div>
 
-    Modify user:<br />
-    <select id="user-action-select">
-        <option value="">Choose...</option>
-        <option value="" disabled>__________</option>
-        <option value="" disabled>General:</option>
-        <option value="setPassword">set new password</option>
-        <option value="" disabled>__________</option>
-        <option value="" disabled>New projects:</option>
-        <option value="enableCanCreateProjects">allow creating new projects</option>
-        <option value="" disabled>__________</option>
-        <option value="" disabled>Project access:</option>
-        <option value="admitInProject">admit for</option>
-        <option value="blockInProject">block from</option>
-    </select>
+        <span>Action:</span>
+        <select id="user-action-select">
+            <option value="">Choose...</option>
+            <option value="" disabled>__________</option>
+            <option value="" disabled>General:</option>
+            <option value="setPassword">set new password</option>
+            <option value="" disabled>__________</option>
+            <option value="" disabled>New projects:</option>
+            <option value="enableCanCreateProjects">allow creating new projects</option>
+            <option value="disableCanCreateProjects">forbid creating new projects</option>
+            <option value="" disabled>__________</option>
+            <option value="" disabled>Project access:</option>
+            <option value="admitInProject">admit to project</option>
+            <option value="blockInProject">block from project</option>
+        </select>
 
-    <div id="project-details-specifier" style="display:none">
-        <select id="project-select"></select>
-        <span>until</span>
-        <input type="text" id="date-field" />
+        <div id="project-details-specifier" style="display:none">
+            <select id="project-select">
+                <option value="" disabled>Choose project:</option>
+            </select>
+            <span>until</span>
+            <input type="text" id="date-field" value="(unlimited)" />
+        </div>
+        <div id="new-password-fields" style="display:none">
+            New password:<br />
+            <input type="password" id="new-password-a" /><br />
+
+            Re-type:<br />
+            <input type="password" id="new-password-b" />
+        </div>
+        <br />
+        <div id="action-message" style="display:none"></div>
+        <button id="do-action" class="btn btn-primary" style="margin-top:10px;" disabled>Go</button>
     </div>
-    <div id="new-password-fields" style="display:none">
-        New password:<br />
-        <input type="password" id="new-password-a" /><br />
-
-        Re-type:<br />
-        <input type="password" id="new-password-b" />
-    </div>
-    <br />
-    <button id="do-action" class="btn btn-primary" style="margin-top:10px;" disabled>Go</button>
 </div>
 <style>
     table {
@@ -83,8 +90,25 @@
     window.userData = {};
     window.selectedUser = undefined;
 
+    function setActionMessage(message, color) {
+        let actionMessage = $('#action-message');
+        if(typeof(message) === 'string' && message.length > 0) {
+            actionMessage.html(message);
+            actionMessage.css('color', color);
+            actionMessage.show();
+        } else {
+            actionMessage.hide();
+        }
+    }
+
+
     function setSelectedUser(username) {
-        if(!window.userData.hasOwnProperty(username)) return;
+        $('#selected-user-name').html();
+        if(!window.userData.hasOwnProperty(username)) {
+            $('#do-action').prop('disabled', true);
+            $('#user-modification-panel').hide();
+            return;
+        }
 
         if(window.selectedUser !== undefined) {
             $('#'+window.selectedUser).removeClass('active');
@@ -92,7 +116,126 @@
         window.selectedUser = username;
         $('#'+window.selectedUser).addClass('active');
 
-        //TODO: show user details
+        if(window.selectedUser !== undefined) {
+            //TODO: show user details
+            $('#selected-user-name').html(window.selectedUser);
+            $('#user-modification-panel').show();
+        } else {
+            $('#selected-user-name').html('');
+            $('#user-modification-panel').hide();
+        }
+    }
+
+    function verifyPasswords() {
+        let pw_a = $('#new-password-a').val();
+        let pw_b = $('#new-password-b').val();
+        if(pw_a.length === 0 || pw_b.length === 0) {
+            setActionMessage(null);
+            $('#do-action').prop('disabled', true);
+            return false;
+        }
+        if(pw_a !== pw_b) {
+            setActionMessage('Passwords do not match', 'red');
+            $('#do-action').prop('disabled', true);
+            return false;
+        } else {
+            setActionMessage('Passwords match (not saved yet)', 'green');
+            $('#do-action').prop('disabled', false);
+            return true;
+        }
+    }
+
+    function updatePassword() {
+        setActionMessage(null);
+        if(window.selectedUser === undefined || window.selectedUser === null) return;
+        if(!verifyPasswords()) return;
+        
+        let password = $('#new-password-a').val();
+        return $.ajax({
+            url: '/setPassword',
+            method: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            data: JSON.stringify({
+                username: window.selectedUser,
+                password: password
+            }),
+            success: function(data) {
+                if(data['success']) {
+                    setActionMessage('Password changed successfully.', 'green');
+                } else {
+                    let msg = 'An error occurred while trying to change the password';
+                    if(data['message'] !== undefined) {
+                        msg += ' (message: ' + data['message'] + ').';
+                    }
+                    setActionMessage(msg, 'red');
+                }
+            },
+            error: function(xhr, message, error) {
+                var promise = window.renewSessionRequest(xhr);
+                promise = promise.done(function() {
+                    return updatePassword();
+                });
+                return promise;
+            }
+        })
+    }
+
+    function setCanCreateProjectsEnabled(enabled) {
+        setActionMessage(null);
+        if(window.selectedUser === undefined || window.selectedUser === null) return;
+        return $.ajax({
+            url: '/setCanCreateProjects',
+            method: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            data: JSON.stringify({
+                username: window.selectedUser,
+                canCreateProjects: enabled
+            }),
+            success: function(data) {
+                data = data['response'];
+                if(data['success']) {
+                    setActionMessage('Project creation privileges updated successfully.', 'green');
+                    return getUserDetails();
+                } else {
+                    let msg = 'An error occurred while trying to update project creation privileges';
+                    if(data['message'] !== undefined) {
+                        msg += ' (message: ' + data['message'] + ').';
+                    }
+                    setActionMessage(msg, 'red');
+                    return $.Deferred().promise();
+                }
+            },
+            error: function(xhr, message, error) {
+                var promise = window.renewSessionRequest(xhr);
+                promise = promise.done(function() {
+                    return setCanCreateProjectsEnabled();
+                });
+                return promise;
+            }
+        })
+    }
+
+    function getProjects() {
+        return $.ajax({
+            url: '/getProjects',
+            method: 'GET',
+            success: function(data) {
+                data = data['projects'];
+                for(var key in data) {
+                    let markup = $('<option value="'+key+'">'+data[key]['name']+' ('+key+')</option>');
+                    $('#project-select').append(markup);
+                }
+            },
+            error: function(xhr, response, error) {
+                var promise = window.renewSessionRequest(xhr);
+                promise = promise.done(function() {
+                    return getProjects();
+                });
+                return promise;
+            }
+        })
     }
 
     function getUserDetails() {
@@ -103,6 +246,7 @@
             method: 'GET',
             success: function(data) {
                 data = data['details'];
+                window.userData = data;
                 for(var user in data) {
                     var ud = data[user];
                     var numProjects = Object.keys(ud['enrolled_projects']).length;
@@ -142,16 +286,51 @@
         });
         $('#user-action-select').on('input', function() {
             let selectedAction = $(this).val();
+            let actionValid = true;
             $('#new-password-fields').hide();
             $('#project-details-specifier').hide();
             if(selectedAction === 'setPassword') {
                 $('#new-password-fields').show();
+                $('#new-password-a').html('');
+                $('#new-password-b').html('');
+                actionValid = false;
             } else if(['admitInProject', 'blockInProject'].includes(selectedAction)) {
                 $('#project-details-specifier').show();
+            } else if(['enableCanCreateProjects', 'disableCanCreateProjects'].includes(selectedAction)) {
+                actionValid = true;
+            } else {
+                actionValid = false;
+            }
+            if(!actionValid || window.selectedUser === undefined) {
+                $('#do-action').prop('disabled', true);
+            } else {
+                $('#do-action').prop('disabled', false);
             }
         });
 
-        var promise = getUserDetails();
+        $('#new-password-a').on('focusout', function() {
+            verifyPasswords();
+        });
+        $('#new-password-b').on('focusout', function() {
+            verifyPasswords();
+        });
+
+        $('#do-action').on('click', function() {
+            let selectedAction = $('#user-action-select').val();
+            if(selectedAction === 'setPassword') {
+                updatePassword();
+            } else if(selectedAction === 'enableCanCreateProjects') {
+                setCanCreateProjectsEnabled(true);
+            } else if(selectedAction === 'disableCanCreateProjects') {
+                setCanCreateProjectsEnabled(false);
+            }
+            //TODO: others
+        });
+
+        var promise = getProjects();
+        promise = promise.done(function() {
+            return getUserDetails();
+        });
         promise.done(function() {
             window.showLoadingOverlay(false);
         });

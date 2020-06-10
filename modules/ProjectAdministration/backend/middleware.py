@@ -74,8 +74,10 @@ class ProjectConfigMiddleware:
         'docreateaccount',
         'admin',
         'getservicedetails',
+        'getaiworkerdetails',
         'getprojectdetails',
-        'getuserdetails'
+        'getuserdetails',
+        'setpassword'
     ]
 
     # prohibited name prefixes

@@ -2,6 +2,7 @@
     <h2>AIDE overview</h2>
     
     <!-- TODO: nicer formatting, e.g. a diagram -->
+    <h3>Services</h3>
     <div>
         <table>
             <thead>
@@ -14,7 +15,7 @@
             <tbody>
                 <tr>
                     <td>This machine:</td>
-                    <td style="color:green">{{ version }}</td>
+                    <td id="main-version" style="color:green">{{ version }}</td>
                 </tr>
                 <tr>
                     <td>Database</td>
@@ -35,8 +36,20 @@
         </table>
     </div>
 
-    <!-- TODO: append Celery workers -->
-
+    
+    <h3 style="margin-top:40px">AI workers</h3>
+    <div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Worker</th>
+                    <th>AIDE version</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody id="aiworker-tbody"></tbody>
+        </table>
+    </div>
 </div>
 <style>
     table {
@@ -56,7 +69,13 @@
         window.location.protocol + '//127.0.0.1',
         window.location.host
     ];
+
+    window.mainAIDEversion = $('#main-version').html();
+
+
     function queryServiceDetails() {
+
+        // main services only
         return $.ajax({
             url: '/getServiceDetails',
             method: 'GET',
@@ -88,7 +107,11 @@
                     $('#fs-ver').css('color', 'red');
                 } else {
                     $('#fs-ver').html(fs_ver);
-                    $('#fs-ver').css('color', 'green');
+                    if(fs_ver !== window.mainAIDEversion) {
+                        $('#fs-ver').css('color', '#FFDF00');
+                    } else {
+                        $('#fs-ver').css('color', 'green');
+                    }
                 }
 
                 // AIController
@@ -106,7 +129,11 @@
                     $('#aic-ver').css('color', 'red');
                 } else {
                     $('#aic-ver').html(aic_ver);
-                    $('#aic-ver').css('color', 'green');
+                    if(aic_ver !== window.mainAIDEversion) {
+                        $('#aic-ver').css('color', '#FFDF00');
+                    } else {
+                        $('#aic-ver').css('color', 'green');
+                    }
                 }
             },
             error: function(xhr, status, error) {
@@ -116,16 +143,70 @@
                 });
                 return promise;
             }
-        })
+        });
+    }
+
+
+    function queryAIworkerDetails() {
+        // separate function since querying all AIWorkers might take some time
+        let tbody = $('#aiworker-tbody');
+        tbody.empty();
+        tbody.append($('<tr><td>Querying...</td><td></td><td></td>'));
+        return $.ajax({
+            url: '/getAIWorkerDetails',
+            method: 'GET',
+            success: function(data) {
+                data = data['details'];
+                tbody.empty();
+                if(Object.keys(data).length === 0) {
+                    tbody.append($('<tr><td>No AIWorkers connected.</td><td></td><td></td>'));
+                    return;
+                }
+                for(var key in data) {
+                    let markup = $('<tr></tr>');
+                    markup.append($('<td>'+key+'</td>'));
+                    let versionTd = $('<td></td>');
+                    let detailsTd = $('<td></td>');
+                    markup.append(versionTd);
+                    markup.append(detailsTd);
+                    if(data[key]['online'] === true) {
+                        if(data[key].hasOwnProperty('aide_version')) {
+                            versionTd.html(data[key]['aide_version']);
+                            if(data[key]['aide_version'] !== window.mainAIDEversion) {
+                                versionTd.css('color', '#FFDF00');
+                            } else {
+                                versionTd.css('color', 'green');
+                            }
+                        }
+                        if(data[key].hasOwnProperty('details')) {
+                            detailsTd.html(data[key]['details']);
+                        }
+                    } else {
+                        versionTd.html('(worker is down)');
+                        versionTd.css('color', 'red');
+                        if(data[key].hasOwnProperty('message')) {
+                            detailsTd.html(data[key]['message']);
+                        }
+                    }
+                    tbody.append(markup);
+                }
+            },
+            error: function(xhr, status, error) {
+                var promise = window.renewSessionRequest(xhr);
+                promise = promise.done(function() {
+                    return queryAIworkerDetails();
+                });
+                return promise;
+            }
+        });
     }
 
     $(document).ready(function() {
         
         // show setup info
-        var promise = queryServiceDetails();
+        queryServiceDetails();
+        queryAIworkerDetails();
 
-        promise.done(function() {
-            window.showLoadingOverlay(false);
-        });
+        window.showLoadingOverlay(false);
     });
 </script>

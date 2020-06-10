@@ -8,8 +8,10 @@
 import os
 import requests
 from psycopg2 import sql
+from celery import current_app
 from constants.version import AIDE_VERSION
 from modules.Database.app import Database
+from modules.AIWorker.backend import celery_interface as aiw_int
 from util.helpers import is_localhost
 
 
@@ -98,6 +100,34 @@ class AdminMiddleware:
                 }
             }
 
+    
+    def getAIWorkerDetails(self):
+        '''
+            Queries all AIWorkers for their details (name,
+            URL, capabilities, AIDE version, etc.)
+        '''
+        result = {}
+        
+        i = current_app.control.inspect()
+        workers = i.stats()
+
+        if workers is None or not len(workers):
+            return result
+
+        for w in workers:
+            aiwV = aiw_int.aide_version.s()
+            try:
+                res = aiwV.apply_async(queue=w)
+                res = res.get(timeout=20)                   #TODO: timeout (in seconds)
+                result[w] = res
+                result[w]['online'] = True
+            except Exception as e:
+                result[w] = {
+                    'online': False,
+                    'message': str(e)
+                }
+        return result
+
 
     def getProjectDetails(self):
         '''
@@ -149,10 +179,10 @@ class AdminMiddleware:
                     id_cnnstate=sql.Identifier(project, 'cnnstate')
                 ), None, 'all')
             projects[project]['num_img'] = stats[0]['count']
-            projects[project]['num_anno'] = stats[0]['count']
-            projects[project]['num_pred'] = stats[0]['count']
-            projects[project]['total_viewcount'] = stats[0]['count']
-            projects[project]['num_cnnstates'] = stats[0]['count']
+            projects[project]['num_anno'] = stats[1]['count']
+            projects[project]['num_pred'] = stats[2]['count']
+            projects[project]['total_viewcount'] = stats[3]['count']
+            projects[project]['num_cnnstates'] = stats[4]['count']
 
             # time statistics (last viewed)
             stats = self.dbConnector.execute(sql.SQL('''
@@ -202,3 +232,34 @@ class AdminMiddleware:
                         'blocked_until': ud['blocked_until']
                     }
         return users
+
+
+    def setCanCreateProjects(self, username, allowCreateProjects):
+        '''
+            Sets or unsets the flag on whether a user
+            can create new projects or not.
+        '''
+        # check if user exists
+        userExists = self.dbConnector.execute('''
+            SELECT * FROM aide_admin.user
+            WHERE name = %s;
+        ''', (username,), 1)
+        if not len(userExists):
+            return {
+                'success': False,
+                'message': f'User with name "{username}" does not exist.'
+            }
+        
+        result = self.dbConnector.execute('''
+            UPDATE aide_admin.user
+            SET cancreateprojects = %s
+            WHERE name = %s;
+            SELECT cancreateprojects
+            FROM aide_admin.user
+            WHERE name = %s;
+        ''', (allowCreateProjects, username, username), 1)
+        result = result[0]['cancreateprojects']
+        return {
+            'success': (result == allowCreateProjects)
+        }
+        

@@ -11,6 +11,7 @@
 '''
 
 import os
+import celery
 from celery import Celery
 from kombu import Queue
 from kombu.common import Broadcast
@@ -45,7 +46,11 @@ app.conf.update(
     worker_prefetch_multiplier = 1,         #TODO
     task_acks_late = True,
     task_create_missing_queues = True,
-    task_queues = (Broadcast('aide_broadcast'), Queue('FileServer'), Queue('AIController'), Queue('AIWorker')),
+    task_queues = (
+        Broadcast('aide_broadcast'),
+        Queue('FileServer'), Queue('AIController'), Queue('AIWorker'),
+        Queue('aide@'+celery.utils.nodenames.gethostname())
+    ),
     task_routes = {
         'AIController.get_training_images': {
             'queue': 'AIController',
@@ -54,6 +59,10 @@ app.conf.update(
         'AIController.get_inference_images': {
             'queue': 'AIController',
             'routing_key': 'get_inference_images'
+        },
+        'AIWorker.AIDEversion': {
+            'queue': 'aide@'+celery.utils.nodenames.gethostname(),
+            'routing_key': 'aide_version'
         },
         'AIWorker.call_train': {
             'queue': 'AIWorker',

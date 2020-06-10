@@ -8,6 +8,7 @@
 import os
 from celery import current_app
 from kombu.common import Broadcast
+from constants.version import AIDE_VERSION
 from modules.AIWorker.app import AIWorker
 from util.configDef import Config
 
@@ -16,6 +17,14 @@ from util.configDef import Config
 modules = os.environ['AIDE_MODULES']
 passiveMode = (os.environ['PASSIVE_MODE']=='1' if 'PASSIVE_MODE' in os.environ else False) or not('aiworker' in modules.lower())
 worker = AIWorker(Config(), passiveMode)
+
+
+@current_app.task(name='AIWorker.AIDEversion')
+def aide_version():
+    #TODO: add capabilities (CPU, RAM, GPU through pyNVML, etc.)
+    return {
+        'aide_version': AIDE_VERSION
+    }
 
 
 @current_app.task(name='AIWorker.aide_internal_notify')

@@ -247,6 +247,30 @@ class UserHandler():
                 }
 
 
+        @self.app.post('/setPassword')
+        def setPassword():
+            '''
+                Routine for super users to set the password of
+                a user.
+            '''
+            if self.checkAuthenticated(superuser=True):
+                try:
+                    data = request.json
+                    username = data['username']
+                    password = data['password']
+                    result = self.middleware.setPassword(username, password)
+                    return result
+
+                except Exception as e:
+                    return {
+                        'success': False,
+                        'message': str(e)
+                    }
+            else:
+                abort(404, 'not found')
+
+
+
     def checkAuthenticated(self, project=None, admin=False, superuser=False, canCreateProjects=False, extend_session=False, return_all=False):
         username = None
         sessionToken = None

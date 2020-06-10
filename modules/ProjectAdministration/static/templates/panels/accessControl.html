@@ -175,7 +175,7 @@
                 success: function(data) {
                     if(data.hasOwnProperty('secret_token')) {
                         $('#field-secret-token').val(window.location.host +
-                            window.location.pathname +
+                            window.project +
                             '/enroll'+'?t='+data['secret_token']);
                     } else {
                         $('#renew-secret-token').prop('disabled', true);

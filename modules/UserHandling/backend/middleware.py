@@ -555,3 +555,25 @@ class UserMiddleware():
         result = self.dbConnector.execute(queryStr, queryVals, 'all')
         response = [r['name'] for r in result]
         return response
+
+
+    def setPassword(self, username, password):
+        hashVal = self._create_hash(password.encode('utf8'))
+        queryStr = '''
+            UPDATE aide_admin.user
+            SET hash = %s
+            WHERE name = %s;
+            SELECT hash
+            FROM aide_admin.user
+            WHERE name = %s;
+        '''
+        result = self.dbConnector.execute(queryStr, (hashVal, username, username), 1)
+        if len(result):
+            return {
+                'success': True
+            }
+        else:
+            return {
+                'success': False,
+                'message': f'User with name "{username}" does not exist.'
+            }

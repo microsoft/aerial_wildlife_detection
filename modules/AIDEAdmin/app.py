@@ -71,6 +71,8 @@ class AIDEAdmin:
 
         @self.app.route('/admin')
         def send_aide_admin_page():
+            if not self.loginCheck():
+                return redirect('/login?redirect=/admin')
             if not self.loginCheck(superuser=True):
                 return redirect('/')
 
@@ -78,7 +80,7 @@ class AIDEAdmin:
             try:
                 username = html.escape(request.get_cookie('username'))
             except:
-                return redirect('/')
+                return redirect('/login?redirect=/admin')
 
             return self.adminTemplate.render(
                     version=AIDE_VERSION,
@@ -91,6 +93,16 @@ class AIDEAdmin:
                 if not self.loginCheck(superuser=True):
                     return redirect('/')
                 return {'details': self.middleware.getServiceDetails()}
+            except:
+                abort(404, 'not found')
+
+        
+        @self.app.get('/getAIWorkerDetails')
+        def get_aiworker_details():
+            try:
+                if not self.loginCheck(superuser=True):
+                    return redirect('/')
+                return {'details': self.middleware.getAIWorkerDetails()}
             except:
                 abort(404, 'not found')
 
@@ -111,5 +123,27 @@ class AIDEAdmin:
                 if not self.loginCheck(superuser=True):
                     return redirect('/')
                 return {'details': self.middleware.getUserDetails()}
+            except Exception as e:
+                abort(404, 'not found')
+
+
+        @self.app.post('/setCanCreateProjects')
+        def set_can_create_projects():
+            try:
+                if not self.loginCheck(superuser=True):
+                    return redirect('/')
+                
+                try:
+                    data = request.json
+                    username = data['username']
+                    canCreateProjects = data['canCreateProjects']
+                    return {'response': self.middleware.setCanCreateProjects(username, canCreateProjects)}
+                except Exception as e:
+                    return {
+                        'response': {
+                            'success': False,
+                            'message': str(e)
+                        }
+                    }
             except Exception as e:
                 abort(404, 'not found')
