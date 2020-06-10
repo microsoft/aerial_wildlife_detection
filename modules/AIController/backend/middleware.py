@@ -46,8 +46,6 @@ class AIMiddleware():
 
         self.messageProcessor = MessageProcessor(self.celery_app)
         if not self.passiveMode:
-            print("Active mode")
-            self._init_project_queues()
             self.watchdogs = {}    # one watchdog per project. Note: watchdog only created if users poll status (i.e., if there's activity)
             self.workflowDesigner = WorkflowDesigner(self.dbConn, self.celery_app)
             self.messageProcessor.start()
@@ -149,39 +147,6 @@ class AIMiddleware():
             models['ranking'][rankerKey] = ranker
         self.aiModels = models
 
-    
-    def _init_project_queues(self):
-        '''
-            Queries the database for projects that support AIWorkers
-            and adds respective management queues to Celery to listen to them.
-        '''
-        #TODO: deprecated?
-        return
-        if self.passiveMode:
-            return
-        if current_app.conf.task_queues is not None:
-            queues = list(current_app.conf.task_queues)
-            current_queue_names = set([c.name for c in queues])
-            # print('Existing queues: {}'.format(', '.join([c.name for c in queues])))
-        else:
-            queues = []
-            current_queue_names = set()
-        
-        log_updates = []
-        projects = self.dbConn.execute('SELECT shortname FROM aide_admin.project WHERE ai_model_enabled = TRUE;', None, 'all')
-        if len(projects):
-            for project in projects:
-                pName = project['shortname'] + '_aic'
-                if not pName in current_queue_names:
-                    current_queue_names.add(pName)
-                    queues.append(Queue(pName))
-                    current_app.control.add_consumer(pName)     #TODO: stalls if Celery app is not set up. Might be ok to just skip this
-                    log_updates.append(pName)
-            
-            current_app.conf.update(task_queues=tuple(queues))
-            if len(log_updates):
-                print('Added queue(s) for project(s): {}'.format(', '.join(log_updates)))
-
 
     def _init_watchdog(self, project, nudge=False):
         '''
@@ -232,6 +197,7 @@ class AIMiddleware():
                 return len(i.stats())
         return 1    #TODO
 
+
     def _get_project_settings(self, project):
         queryStr = sql.SQL('''SELECT numImages_autoTrain,
             minNumAnnoPerImage, maxNumImages_train,maxNumImages_inference
@@ -249,7 +215,6 @@ class AIMiddleware():
             raise Exception('Training process already running.')
 
         self.training[project] = True
-
 
         try:
             # sanity checks
@@ -406,9 +371,7 @@ class AIMiddleware():
         '''
         if self.passiveMode:
             return
-        if 'task' in message:
-            if message['task'] == 'add_projects':
-                self._init_project_queues()
+        #TODO: not required (yet)
 
 
     def get_training_images(self, project, minTimestamp='lastState', includeGoldenQuestions=True,

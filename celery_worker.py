@@ -28,6 +28,26 @@ if not 'AIDE_MODULES' in os.environ:
 config = Config()
 
 
+# parse AIDE modules and set up queues
+queues = []
+aideModules = os.environ['AIDE_MODULES'].split(',')
+aideModules = set([a.strip().lower() for a in aideModules])
+for m in aideModules:
+    module = m.strip().lower()
+    if module == 'aicontroller':
+        queues.append(Queue('AIController'))
+    elif module == 'fileserver':
+        queues.append(Queue('FileServer'))
+    elif module == 'aiworker':
+        queues.append(Queue('AIWorker'))
+
+queues.extend([
+    Broadcast('aide_broadcast'),
+    Queue('aide@'+celery.utils.nodenames.gethostname())
+])
+
+
+
 app = Celery('AIDE',
             broker=config.getProperty('AIController', 'broker_URL'),        #TODO
             backend=config.getProperty('AIController', 'result_backend'))   #TODO
@@ -46,11 +66,7 @@ app.conf.update(
     worker_prefetch_multiplier = 1,         #TODO
     task_acks_late = True,
     task_create_missing_queues = True,
-    task_queues = (
-        Broadcast('aide_broadcast'),
-        Queue('FileServer'), Queue('AIController'), Queue('AIWorker'),
-        Queue('aide@'+celery.utils.nodenames.gethostname())
-    ),
+    task_queues = tuple(queues),
     task_routes = {
         'AIController.get_training_images': {
             'queue': 'AIController',
@@ -102,20 +118,15 @@ app.conf.update(
 
 
 # initialize appropriate consumer functionalities
-aide_modules = os.environ['AIDE_MODULES'].split(',')
-aide_modules = set([a.strip().lower() for a in aide_modules])
 num_modules = 0
-if 'aicontroller' in aide_modules:
+if 'aicontroller' in aideModules:
     from modules.AIController.backend import celery_interface as aic_int
-    # aic_int.aide_internal_notify({'task': 'add_projects'})
     num_modules += 1
-if 'aiworker' in aide_modules:
+if 'aiworker' in aideModules:
     from modules.AIWorker.backend import celery_interface as aiw_int
-    aiw_int.aide_internal_notify({'task': 'add_projects'})
     num_modules += 1
-if 'fileserver' in aide_modules:
+if 'fileserver' in aideModules:
     from modules.DataAdministration.backend import celery_interface as da_int
-    da_int.aide_internal_notify({'task': 'add_projects'})
     num_modules += 1
 
 

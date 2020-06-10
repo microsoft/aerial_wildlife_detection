@@ -20,9 +20,6 @@ class AIWorker():
         self.dbConnector = Database(config)
         self.passiveMode = passiveMode
         self._init_fileserver()
-
-        if not self.passiveMode:
-            self._init_project_queues()
             
 
     def _init_fileserver(self):
@@ -32,39 +29,6 @@ class AIWorker():
             going through the loopback network.
         '''
         self.fileServer = fileserver.FileServer(self.config)
-
-
-    def _init_project_queues(self):
-        '''
-            Queries the database for projects that support AIWorkers
-            and adds respective queues to Celery to listen to them.
-        '''
-        #TODO: deprecated?
-        return
-        if self.passiveMode:
-            return
-        if current_app.conf.task_queues is not None:
-            queues = list(current_app.conf.task_queues)
-            current_queue_names = set([c.name for c in queues])
-            # print('Existing queues: {}'.format(', '.join([c.name for c in queues])))
-        else:
-            queues = []
-            current_queue_names = set()
-        
-        log_updates = []
-        projects = self.dbConnector.execute('SELECT shortname FROM aide_admin.project WHERE ai_model_enabled = TRUE;', None, 'all')
-        if len(projects):
-            for project in projects:
-                pName = project['shortname'] + '_aiw'
-                if not pName in current_queue_names:
-                    current_queue_names.add(pName)
-                    queues.append(Queue(pName))
-                    current_app.control.add_consumer(pName)     #TODO: stalls if Celery app is not set up. Might be ok to just skip this
-                    log_updates.append(pName)
-            
-            current_app.conf.update(task_queues=tuple(queues))
-            if len(log_updates):
-                print('Added queue(s) for project(s): {}'.format(', '.join(log_updates)))
 
 
     def _init_model_instance(self, project, modelLibrary, modelSettings):
@@ -211,9 +175,7 @@ class AIWorker():
         '''
         if self.passiveMode:
             return
-        if 'task' in message:
-            if message['task'] == 'add_projects':
-                self._init_project_queues()
+        # not required (yet)
 
 
 
