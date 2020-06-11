@@ -437,6 +437,19 @@ DEFAULT_OPTIONS = {
 					},
 					"value": "Image.BILINEAR"
 				}
+			},
+			"labelClasses": {
+				"name": "New and removed label classes",
+				"add_missing": {
+					"name": "Add new label classes",
+					"description": "If checked, neurons for newly added label classes will be added to the model.<br />Note that these new classes need extra training.",
+					"value": True
+				},
+				"remove_obsolete": {
+					"name": "Remove obsolete label classes",
+					"description": "If checked, neurons from label classes not present in this project will be removed during next model training.",
+					"value": False
+				}
 			}
 		},
 		"model": {

@@ -365,7 +365,9 @@ class RetinaNet(GenericPyTorchModel):
             Returns a serializable state dict of the resulting model.
         '''
         # initialize model
-        model, labelclassMap = self.initializeModel(stateDict, data)
+        model, labelclassMap = self.initializeModel(stateDict, data,
+                        optionsHelper.get_hierarchical_value(self.options, ['options', 'general', 'labelClasses', 'add_missing', 'value']),
+                        optionsHelper.get_hierarchical_value(self.options, ['options', 'general', 'labelClasses', 'remove_obsolete', 'value']))
 
         # setup transform, data loader, dataset, optimizer, criterion
         inputSize = (int(optionsHelper.get_hierarchical_value(self.options, ['options', 'general', 'imageSize', 'width', 'value'])),
@@ -429,7 +431,16 @@ class RetinaNet(GenericPyTorchModel):
             loss_value = criterion(bboxes_pred, bboxes_target, labels_pred, labels_target)
             loss_value.backward()
             optimizer.step()
-            
+
+            # check for Inf and NaN values and raise exception if needed
+            if any([
+                torch.any(torch.isinf(bboxes_pred)).item(),
+                torch.any(torch.isinf(labels_pred)).item(),
+                torch.any(torch.isnan(bboxes_pred)).item(),
+                torch.any(torch.isnan(labels_pred)).item()
+            ]):
+                raise Exception('Model produced Inf and/or NaN values; training was aborted. Try reducing the learning rate.')
+
             # update worker state
             imgCount += img.size(0)
             updateStateFun(state='PROGRESS', message='training', done=imgCount, total=len(dataLoader.dataset))

@@ -65,13 +65,20 @@ class GenericPyTorchModel(AIModel):
         return device
 
     
-    def initializeModel(self, stateDict, data):
+    def initializeModel(self, stateDict, data, addMissingLabelClasses=False, removeObsoleteLabelClasses=False):
         '''
             Converts the provided stateDict from a bytes array to a torch-loadable
             object and initializes a model from it. Also returns a 'labelClassMap',
             defining the indexing between label classes and the model.
             If the stateDict object is None, a new model and labelClassMap are crea-
             ted from the defaults.
+
+            If "addMissingLabelClasses" is True, new output neurons are appended for
+            label classes that are not present in the model's current labelclass map,
+            and the map is updated.
+            Likewise, if "removeObsoleteLabelClasses" is True, existing outputs for
+            label classes that are not present in the set of label classes anymore are
+            removed, and the map is also updated.
         '''
         # initialize model
         if stateDict is not None:
@@ -80,6 +87,12 @@ class GenericPyTorchModel(AIModel):
             
             # mapping labelclass (UUID) to index in model (number)
             labelclassMap = stateDict['labelclassMap']
+
+            if addMissingLabelClasses or removeObsoleteLabelClasses:
+                # modification of model outputs
+                if hasattr(model, 'updateModel'):
+                    model.updateModel(data['labelClasses'], addMissingLabelClasses, removeObsoleteLabelClasses)
+
         else:
             # create new label class map
             labelclassMap = {}
