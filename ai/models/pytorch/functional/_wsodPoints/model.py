@@ -66,6 +66,84 @@ class WSODPointModel(nn.Module):
         }
         return stateDict
 
+
+    def updateModel(self, labelClasses, addMissing=False, removeObsolete=False):
+        '''
+            Receives a new dict of label classes ("labelClasses") and compares
+            it with the current one. If "labelClasses" contains new label classes
+            that are not present in the current, and if "addMissing" is True, new
+            neurons are added for each class. Likewise, if the current model predicts
+            label classes that are not present in the new "labelClasses", and if
+            "removeObsolete" is True, those neurons are being removed.
+        '''
+        if not addMissing or not removeObsolete:
+            return
+        
+        classes_current = set([lc for lc in self.labelclassMap.keys()])
+        classes_new = set([lc for lc in labelClasses.keys()])
+        classes_missing = classes_new.difference(classes_current)
+        classes_obsolete = classes_current.difference(classes_new)
+
+        # add new neurons
+        if addMissing and len(classes_missing):
+            weights = self.classifier[-2].weight
+            biases = self.classifier[-2].bias
+
+            # find set of sum of weights and biases with minimal difference to zero
+            massValues = []
+            for idx in range(0, weights.size(0), self.numAnchors):
+                wbSum = torch.sum(torch.abs(weights[idx:(idx+self.numAnchors),...])) + \
+                        torch.sum(torch.abs(biases[idx:(idx+self.numAnchors)]))
+                massValues.append(wbSum.unsqueeze(0))
+            massValues = torch.cat(massValues, 0)
+            
+            smallest = torch.argmin(massValues)
+
+            newWeights = weights[smallest:(smallest+1), ...]
+            newBiases = biases[smallest:(smallest+1)]
+
+            for classname in classes_missing:
+                # add a tiny bit of noise for better specialization capabilities (TODO: assess long-term effect of that...)
+                noiseW = 0.01 * (0.5 - torch.rand_like(newWeights))
+                noiseB = 0.01 * (0.5 - torch.rand_like(newBiases))
+                weights = torch.cat((weights, newWeights.clone() + noiseW), 0)
+                biases = torch.cat((biases, newBiases.clone() + noiseB), 0)
+
+                # update labelclass map
+                self.labelclassMap[classname] = len(self.labelclassMap)
+        
+            # apply updated weights and biases
+            self.classifier[-2].weight = nn.Parameter(weights)
+            self.classifier[-2].bias = nn.Parameter(biases)
+
+            print(f'Neurons for {len(classes_missing)} new label classes added to ResNet model.')
+
+        # remove superfluous neurons
+        if removeObsolete and len(classes_obsolete):
+            weights = self.classifier[-2].weight
+            biases = self.classifier[-2].bias
+
+            for classname in classes_obsolete:
+                classIdx = self.labelclassMap[classname]
+
+                # remove neurons: slice tensors
+                weights = torch.cat((weights[0:classIdx,...], weights[(classIdx+1):,...]), 0)
+                biases = torch.cat((biases[0:classIdx], biases[(classIdx+1):]), 0)
+
+                # shift down indices of labelclass map
+                del self.labelclassMap[classname]
+                for key in self.labelclassMap.keys():
+                    if self.labelclassMap[key] > classIdx:
+                        self.labelclassMap[key] -= 1
+
+            # apply updated weights and biases
+            self.classifier[-2].weight = nn.Parameter(weights)
+            self.classifier[-2].bias = nn.Parameter(biases)
+
+            print(f'Neurons of {len(classes_obsolete)} obsolete label classes removed from RetinaNet model.')
+
+        self.numClasses = len(self.labelclassMap.keys())
+
     
     @staticmethod
     def loadFromStateDict(stateDict):

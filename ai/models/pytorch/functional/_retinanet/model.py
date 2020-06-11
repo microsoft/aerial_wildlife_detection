@@ -170,9 +170,6 @@ class RetinaNet(nn.Module):
 
             newWeights = weights[(smallest*self.numAnchors):(smallest+1)*self.numAnchors, ...]
             newBiases = biases[(smallest*self.numAnchors):(smallest+1)*self.numAnchors]
-            
-            newWeights += 0.01 * (0.5 - torch.rand_like(newWeights))
-            newBiases += 0.01 * (0.5 - torch.rand_like(newBiases))
 
             for classname in classes_missing:
                 # add a tiny bit of noise for better specialization capabilities (TODO: assess long-term effect of that...)
