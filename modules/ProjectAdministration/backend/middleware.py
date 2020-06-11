@@ -363,6 +363,8 @@ class ProjectConfigMiddleware:
 
         # check UI settings first
         if 'ui_settings' in projectSettings:
+            if isinstance(projectSettings['ui_settings'], str):
+                projectSettings['ui_settings'] = json.loads(projectSettings['ui_settings'])
             fieldNames = [
                 ('welcomeMessage', str),
                 ('numImagesPerBatch', int),
@@ -370,7 +372,7 @@ class ProjectConfigMiddleware:
                 ('numImageColumns_max', int),
                 ('defaultImage_w', int),
                 ('defaultImage_h', int),
-                ('styles', str),       #TODO
+                ('styles', dict),       #TODO
                 ('enableEmptyClass', bool),
                 ('showPredictions', bool),
                 ('showPredictions_minConf', float),
@@ -398,8 +400,6 @@ class ProjectConfigMiddleware:
         # parse remaining parameters
         fieldNames = [
             ('description', str),
-            # ('annotationType', str),
-            # ('predictionType', str),
             ('isPublic', bool),
             ('secret_token', str),
             ('demoMode', bool),

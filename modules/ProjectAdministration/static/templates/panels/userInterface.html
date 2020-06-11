@@ -63,8 +63,126 @@
         <h3>Display styles</h3>
 
         <!-- TODO: think about how to design this... maybe with preview? -->
-        <!-- <input class="jscolor" id="test" /> -->
-        Coming soon
+        <div id="styles-points" style="display:none">
+            <h4>Point size</h4>
+            <table>
+                <tr>
+                    <td>Annotations:</td>
+                    <td><input id="point-size-annotations" type="number" min="0.0" max="100.0" step="0.1" /></td>
+                </tr>
+                <tr>
+                    <td>Converted annotations:</td>
+                    <td><input id="point-size-annotations-converted" type="number" min="0.0" max="100.0" step="0.1" /></td>
+                </tr>
+                <tr>
+                    <td>Predictions:</td>
+                    <td><input id="point-size-predictions" type="number" min="0.0" max="100.0" step="0.1" /></td>
+                </tr>
+            </table>
+        </div>
+
+        <div id="styles-lines" style="display:none">
+            <h4>Line width</h4>
+            <table>
+                <tr>
+                    <td>Annotations:</td>
+                    <td><input id="line-width-annotations" type="number" min="0.0" max="100.0" step="0.1" /></td>
+                </tr>
+                <tr>
+                    <td>Converted annotations:</td>
+                    <td><input id="line-width-annotations-converted" type="number" min="0.0" max="100.0" step="0.1" /></td>
+                </tr>
+                <tr>
+                    <td>Predictions:</td>
+                    <td><input id="line-width-predictions" type="number" min="0.0" max="100.0" step="0.1" /></td>
+                </tr>
+            </table>
+
+            <h4>Line opacity</h4>
+            <table>
+                <tr>
+                    <td>Annotations:</td>
+                    <td>
+                        <input id="line-opacity-annotations-range" type="range" min="0.0" max="1.0" step="any" />
+                        <input class="number-small" id="line-opacity-annotations" type="number" min="0.0" max="1.0" step="0.1" />
+                    </td>
+                </tr>
+                <tr>
+                    <td>Converted annotations:</td>
+                    <td>
+                        <input id="line-opacity-annotations-converted-range" type="range" min="0.0" max="1.0" step="any" />
+                        <input class="number-small" id="line-opacity-annotations-converted" type="number" min="0.0" max="1.0" step="0.1" />
+                    </td>
+                </tr>
+                <tr>
+                    <td>Predictions:</td>
+                    <td>
+                        <input id="line-opacity-predictions-range" type="range" min="0.0" max="1.0" step="any" />
+                        <input class="number-small" id="line-opacity-predictions" type="number" min="0.0" max="1.0" step="0.1" />
+                    </td>
+                </tr>
+            </table>
+
+            <h4>Line dash</h4>
+            <table>
+                <tr>
+                    <td>Annotations:</td>
+                    <td>
+                        <input class="number-small" id="line-dash-annotations-0" type="number" min="0" max="10" step="1" />
+                        <input class="number-small" id="line-dash-annotations-1" type="number" min="0" max="10" step="1" />
+                        <input class="number-small" id="line-dash-annotations-2" type="number" min="0" max="10" step="1" />
+                        <input class="number-small" id="line-dash-annotations-3" type="number" min="0" max="10" step="1" />
+                        <input class="number-small" id="line-dash-annotations-4" type="number" min="0" max="10" step="1" />
+                    </td>
+                </tr>
+                <tr>
+                    <td>Converted annotations:</td>
+                    <td>
+                        <input class="number-small" id="line-dash-annotations-converted-0" type="number" min="0" max="1" step="1" />
+                        <input class="number-small" id="line-dash-annotations-converted-1" type="number" min="0" max="1" step="1" />
+                        <input class="number-small" id="line-dash-annotations-converted-2" type="number" min="0" max="1" step="1" />
+                        <input class="number-small" id="line-dash-annotations-converted-3" type="number" min="0" max="1" step="1" />
+                        <input class="number-small" id="line-dash-annotations-converted-4" type="number" min="0" max="1" step="1" />
+                    </td>
+                </tr>
+                <tr>
+                    <td>Predictions:</td>
+                    <td>
+                        <input class="number-small" id="line-dash-predictions-0" type="number" min="0" max="10" step="1" />
+                        <input class="number-small" id="line-dash-predictions-1" type="number" min="0" max="10" step="1" />
+                        <input class="number-small" id="line-dash-predictions-2" type="number" min="0" max="10" step="1" />
+                        <input class="number-small" id="line-dash-predictions-3" type="number" min="0" max="10" step="1" />
+                        <input class="number-small" id="line-dash-predictions-4" type="number" min="0" max="10" step="1" />
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <div id="styles-fill">
+            <h4>Fill opacity</h4>
+            <table>
+                <tr>
+                    <td>Annotations:</td>
+                    <td>
+                        <input id="fill-opacity-annotations-range" type="range" min="0.0" max="1.0" step="any" />
+                        <input class="number-small" id="fill-opacity-annotations" type="number" min="0.0" max="1.0" step="0.1" />
+                    </td>
+                </tr>
+                <tr>
+                    <td>Converted annotations:</td>
+                    <td>
+                        <input id="fill-opacity-annotations-converted-range" type="range" min="0.0" max="1.0" step="any" />
+                        <input class="number-small" id="fill-opacity-annotations-converted" type="number" min="0.0" max="1.0" step="0.1" />
+                    </td>
+                </tr>
+                <tr>
+                    <td>Predictions:</td>
+                    <td>
+                        <input id="fill-opacity-predictions-range" type="range" min="0.0" max="1.0" step="any" />
+                        <input class="number-small" id="fill-opacity-predictions" type="number" min="0.0" max="1.0" step="0.1" />
+                    </td>
+                </tr>
+            </table>
+        </div>
     </div>
 
     <div>
@@ -74,6 +192,9 @@
 <style>
     .number-input {
         width: 80px;
+    }
+    .number-small {
+        width: 60px;
     }
 </style>
 <!-- <script src="config/static/js/jscolor.js"></script> -->
@@ -91,7 +212,21 @@
             'ui_settings/showPredictions_minConf': {id: 'field-minModelConfidence-show', type: 'value'},
             'ui_settings/carryOverPredictions': {id: 'carryover-predictions-checkbox', type: 'checkbox'},
             'ui_settings/carryOverPredictions_minConf': {id: 'field-minModelConfidence-convert', type: 'value'},
-            'ui_settings/carryOverRule': {id: 'field-conversionRule', type: 'value'}
+            'ui_settings/carryOverRule': {id: 'field-conversionRule', type: 'value'},
+
+            // styles
+            'ui_settings/styles/annotations/pointSize': {id: 'point-size-annotations', type: 'value', dtype: 'float'},
+            'ui_settings/styles/annotations_converted/pointSize': {id: 'point-size-annotations-converted', type: 'value', dtype: 'float'},
+            'ui_settings/styles/predictions/pointSize': {id: 'point-size-predictions', type: 'value', dtype: 'float'},
+            'ui_settings/styles/annotations/lineWidth': {id: 'line-width-annotations', type: 'value', dtype: 'float'},
+            'ui_settings/styles/annotations_converted/lineWidth': {id: 'line-width-annotations-converted', type: 'value', dtype: 'float'},
+            'ui_settings/styles/predictions/lineWidth': {id: 'line-width-predictions', type: 'value', dtype: 'float'},
+            'ui_settings/styles/annotations/lineOpacity': {id: 'line-opacity-annotations', type: 'value', dtype: 'float'},
+            'ui_settings/styles/annotations_converted/lineOpacity': {id: 'line-opacity-annotations-converted', type: 'value', dtype: 'float'},
+            'ui_settings/styles/predictions/lineOpacity': {id: 'line-opacity-predictions', type: 'value', dtype: 'float'},
+            'ui_settings/styles/annotations/fillOpacity': {id: 'fill-opacity-annotations', type: 'value', dtype: 'float'},
+            'ui_settings/styles/annotations_converted/fillOpacity': {id: 'fill-opacity-annotations-converted', type: 'value', dtype: 'float'},
+            'ui_settings/styles/predictions/fillOpacity': {id: 'fill-opacity-predictions', type: 'value', dtype: 'float'}
         };
 
         function _parse_config_value(data, key) {
@@ -110,11 +245,34 @@
                 if(type === 'checkbox') {
                     $('#'+id).prop('checked', value);
                 } else if(type === 'value') {
+                    let dType = prop['dtype'];
+                    if(typeof(dType) === 'string') {
+                        if(dType === 'int') {
+                            value = parseInt(value);
+                        } else if(dType === 'float') {
+                            value = parseFloat(value);
+                        }
+                    }
                     $('#'+id).val(value);
                 }
             } catch {
                 return;
             }
+        }
+
+        function _set_config_value(dataObj, tokens, value) {
+            if(Array.isArray(tokens) && tokens.length > 1) {
+                if(!dataObj.hasOwnProperty(tokens[0])) {
+                    dataObj[tokens[0]] = {};
+                }
+                _set_config_value(dataObj[tokens[0]], tokens.slice(1), value);
+            } else {
+                if(Array.isArray(tokens)) {
+                    tokens = tokens[0];
+                }
+                dataObj[tokens] = value;
+            }
+            return dataObj;
         }
 
         function reloadUIsettings() {
@@ -124,10 +282,31 @@
                 success: function(data) {
                     // populate fields
                     data = data['settings'];
+
                     for(var key in PROPERTIES_MAP) {
                         _parse_config_value(data, key);
                     }
+                    // special cases: line dash
+                    let dTypes = ['annotations', 'annotations_converted', 'predictions'];
+                    for(var dt in dTypes) {
+                        let key = dTypes[dt];
+                        let lineDash = data['ui_settings']['styles'][key]['lineDash'];
+                        for(var l=0; l<5; l++) {
+                            $('#line-dash-'+key.replace('_','-')+'-'+l).val('');
+                        }
+                        if(Array.isArray(lineDash)) {
+                            for(var l=0; l<lineDash.length; l++) {
+                                $('#line-dash-'+key.replace('_','-')+'-'+l).val(lineDash[l]);
+                            }
+                        }
+                    }
                     
+                    // update GUI elements (sliders)
+                    $.each($.find('input[type=range]'), function(_, item) {
+                        let id_num = '#'+item.id.replace('-range', '');
+                        $(id_num).trigger('input');
+                    });
+
                     // adjust global interface shortlink button on config page
                     try {
                         if($('#interface-enabled-checkbox').prop('checked')) {
@@ -157,23 +336,33 @@
                     value = $('#'+id).prop('checked');
                 } else if(type === 'value') {
                     value = $('#'+id).val();
+                    let dType = prop['dtype'];
+                    if(typeof(dType) === 'string') {
+                        if(dType === 'int') {
+                            value = parseInt(value);
+                        } else if(dType === 'float') {
+                            value = parseFloat(value);
+                        }
+                    }
                 }
                 if(value !== undefined) {
                     var tokens = key.split('/');
-                    if(tokens.length === 1) {
-                        data[key] = value;
-                    } else {
-                        var dataObj = {};
-                        for(var t=1; t<tokens.length; t++) {
-                            if(t===tokens.length-1) {
-                                dataObj[tokens[t]] = value;
-                            } else {
-                                dataObj[tokens[t]] = {};
-                            }
-                        }
-                        data[tokens[0]] = {...data[tokens[0]], ...dataObj};
+                    data = _set_config_value(data, tokens, value);
+                }
+            }
+            
+            // special cases: line dash
+            let dTypes = ['annotations', 'annotations-converted', 'predictions'];
+            for(var dt in dTypes) {
+                let key = dTypes[dt];
+                let lineDash = [];
+                for(var i=0; i<5; i++) {
+                    let ld = $('#line-dash-'+key+'-'+i).val();
+                    if(ld.length > 0) {
+                        lineDash.push(parseInt(ld));
                     }
                 }
+                data['ui_settings']['styles'][key.replace('-','_')]['lineDash'] = lineDash;
             }
 
             // post to server
@@ -193,6 +382,17 @@
         }
 
 
+        $.each($.find('input[type=range]'), function(_, item) {
+            let id = '#'+item.id;
+            let id_num = id.replace('-range', '');
+            $(this).on('input', function() {
+                $(id_num).val($(this).val());
+            });
+            $(id_num).on('input', function() {
+                $(id).val($(this).val());
+            });
+        });
+
         // get project immutables
         var promise = $.ajax({
             url: 'getProjectImmutables',
@@ -200,9 +400,13 @@
             success: function(data) {
                 window.projectImmutables = data['immutables'];
 
-                // show or hide GUI fields according to annotation and prediction types
-                if(window.projectImmutables['annotationType'] === 'labels') {
-                    //TODO
+                // show or hide GUI fields according to annotation and prediction types (TODO: could be made better by hiding individual sections)
+                if(window.projectImmutables['annotationType'] === 'points' || 
+                    window.projectImmutables['predictionType'] === 'points') {
+                    $('#styles-points').show();
+                } else if(window.projectImmutables['annotationType'] === 'boundingBoxes' || 
+                    window.projectImmutables['predictionType'] === 'boundingBoxes') {
+                    $('#styles-lines').show();
                 }
             },
             error: function(data) {
