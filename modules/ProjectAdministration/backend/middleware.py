@@ -74,7 +74,7 @@ class ProjectConfigMiddleware:
         'docreateaccount',
         'admin',
         'getservicedetails',
-        'getaiworkerdetails',
+        'getceleryworkerdetails',
         'getprojectdetails',
         'getuserdetails',
         'setpassword'

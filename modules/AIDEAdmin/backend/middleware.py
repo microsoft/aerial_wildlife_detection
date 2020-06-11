@@ -11,7 +11,7 @@ from psycopg2 import sql
 from celery import current_app
 from constants.version import AIDE_VERSION
 from modules.Database.app import Database
-from modules.AIWorker.backend import celery_interface as aiw_int
+from util import celeryWorkerCommons
 from util.helpers import is_localhost
 
 
@@ -101,9 +101,9 @@ class AdminMiddleware:
             }
 
     
-    def getAIWorkerDetails(self):
+    def getCeleryWorkerDetails(self):
         '''
-            Queries all AIWorkers for their details (name,
+            Queries all Celery workers for their details (name,
             URL, capabilities, AIDE version, etc.)
         '''
         result = {}
@@ -115,7 +115,7 @@ class AdminMiddleware:
             return result
 
         for w in workers:
-            aiwV = aiw_int.aide_version.s()
+            aiwV = celeryWorkerCommons.get_worker_details.s()
             try:
                 res = aiwV.apply_async(queue=w)
                 res = res.get(timeout=20)                   #TODO: timeout (in seconds)

@@ -7,30 +7,40 @@
         <table>
             <thead>
                 <tr>
-                    <th>Module</th>
+                    <th class="category">Module</th>
                     <th>AIDE version</th>
                     <th>Details</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
-                    <td>This machine:</td>
+                    <td class="category">This machine:</td>
                     <td id="main-version" style="color:green">{{ version }}</td>
                 </tr>
                 <tr>
-                    <td>Database</td>
+                    <td class="category">Database:</td>
                     <td id="db-ver">Querying version...</td>
                     <td id="db-meta"></td>
                 </tr>
                 <tr>
-                    <td>File server</td>
+                    <td class="category">File server:</td>
                     <td id="fs-ver">Querying version...</td>
                     <td id="fs-meta"></td>
                 </tr>
                 <tr>
-                    <td>AIController:</td>
+                    <td class="sub-category">&rarr; worker:</td>
+                    <td id="fs-worker-ver">Querying...</td>
+                    <td id="fs-worker-meta"></td>
+                </tr>
+                <tr>
+                    <td class="category">AIController:</td>
                     <td id="aic-ver">Querying version...</td>
                     <td id="aic-meta"></td>
+                </tr>
+                <tr>
+                    <td class="sub-category">&rarr; worker:</td>
+                    <td id="aic-worker-ver">Querying...</td>
+                    <td id="aic-worker-meta"></td>
                 </tr>
             </tbody>
         </table>
@@ -57,6 +67,12 @@
     }
     th, td {
         padding: 10px;
+    }
+    .category, .sub-category {
+        text-align: right;
+    }
+    .sub-category {
+        font-style: italic;
     }
 </style>
 <script type="text/javascript">
@@ -147,13 +163,13 @@
     }
 
 
-    function queryAIworkerDetails() {
-        // separate function since querying all AIWorkers might take some time
+    function queryCeleryworkerDetails() {
+        // separate function since querying all Celery workers might take some time
         let tbody = $('#aiworker-tbody');
         tbody.empty();
         tbody.append($('<tr><td>Querying...</td><td></td><td></td>'));
         return $.ajax({
-            url: '/getAIWorkerDetails',
+            url: '/getCeleryWorkerDetails',
             method: 'GET',
             success: function(data) {
                 data = data['details'];
@@ -162,39 +178,86 @@
                     tbody.append($('<tr><td>No AIWorkers connected.</td><td></td><td></td>'));
                     return;
                 }
+                let workersFound = {
+                    AIController: false,
+                    AIWorker: false,
+                    FileServer: false
+                };
                 for(var key in data) {
-                    let markup = $('<tr></tr>');
-                    markup.append($('<td>'+key+'</td>'));
-                    let versionTd = $('<td></td>');
-                    let detailsTd = $('<td></td>');
-                    markup.append(versionTd);
-                    markup.append(detailsTd);
-                    if(data[key]['online'] === true) {
-                        if(data[key].hasOwnProperty('aide_version')) {
-                            versionTd.html(data[key]['aide_version']);
-                            if(data[key]['aide_version'] !== window.mainAIDEversion) {
+                    let aide_version = data[key]['aide_version'];
+                    let versionMismatch = (aide_version !== window.mainAIDEversion);
+
+                    // check capabilities
+                    if(data[key]['modules']['AIController']) {
+                        workersFound['AIController'] = true;
+                        let td = $('#aic-worker-ver');
+                        td.html(aide_version);
+                        if(versionMismatch) {
+                            td.css('color', '#FFDF00');
+                        } else {
+                            td.css('color', 'green');
+                        }
+                    }
+                    if(data[key]['modules']['FileServer']) {
+                        workersFound['FileServer'] = true;
+                        let td = $('#fs-worker-ver');
+                        td.html(aide_version);
+                        if(versionMismatch) {
+                            td.css('color', '#FFDF00');
+                        } else {
+                            td.css('color', 'green');
+                        }
+                    }
+
+                    if(data[key]['modules']['AIWorker']) {
+                        workersFound['AIWorker'] = true;
+                        let markup = $('<tr></tr>');
+                        markup.append($('<td>'+key+'</td>'));
+                        let versionTd = $('<td></td>');
+                        let detailsTd = $('<td></td>');
+                        markup.append(versionTd);
+                        markup.append(detailsTd);
+                        if(data[key]['online'] === true) {
+                            versionTd.html(aide_version);
+                            if(versionMismatch) {
                                 versionTd.css('color', '#FFDF00');
                             } else {
                                 versionTd.css('color', 'green');
                             }
+                            if(data[key].hasOwnProperty('details')) {
+                                detailsTd.html(data[key]['details']);
+                            }
+                        } else {
+                            versionTd.html('Offline');
+                            versionTd.css('color', 'red');
+                            if(data[key].hasOwnProperty('message')) {
+                                detailsTd.html(data[key]['message']);
+                            }
                         }
-                        if(data[key].hasOwnProperty('details')) {
-                            detailsTd.html(data[key]['details']);
-                        }
-                    } else {
-                        versionTd.html('(worker is down)');
-                        versionTd.css('color', 'red');
-                        if(data[key].hasOwnProperty('message')) {
-                            detailsTd.html(data[key]['message']);
-                        }
+                        tbody.append(markup);
                     }
-                    tbody.append(markup);
+                }
+
+                // adjust entries for missing workers
+                if(!workersFound['AIController']) {
+                    let td = $('#aic-worker-ver');
+                    td.html('Offline');
+                    td.css('color', 'red');
+                }
+                if(!workersFound['FileServer']) {
+                    let td = $('#fs-worker-ver');
+                    td.html('Offline');
+                    td.css('color', 'red');
+                }
+                if(!workersFound['AIWorker']) {
+                    tbody.empty();
+                    tbody.append($('<tr><td>No AI workers found.</td><td></td><td></td></tr>'));
                 }
             },
             error: function(xhr, status, error) {
                 var promise = window.renewSessionRequest(xhr);
                 promise = promise.done(function() {
-                    return queryAIworkerDetails();
+                    return queryCeleryworkerDetails();
                 });
                 return promise;
             }
@@ -205,7 +268,7 @@
         
         // show setup info
         queryServiceDetails();
-        queryAIworkerDetails();
+        queryCeleryworkerDetails();
 
         window.showLoadingOverlay(false);
     });

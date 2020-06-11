@@ -19,13 +19,6 @@ passiveMode = (os.environ['PASSIVE_MODE']=='1' if 'PASSIVE_MODE' in os.environ e
 worker = AIWorker(Config(), passiveMode)
 
 
-@current_app.task(name='AIWorker.AIDEversion')
-def aide_version():
-    #TODO: add capabilities (CPU, RAM, GPU through pyNVML, etc.)
-    return {
-        'aide_version': AIDE_VERSION
-    }
-
 
 @current_app.task(name='AIWorker.aide_internal_notify')
 def aide_internal_notify(message):

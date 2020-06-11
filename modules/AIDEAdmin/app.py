@@ -97,12 +97,12 @@ class AIDEAdmin:
                 abort(404, 'not found')
 
         
-        @self.app.get('/getAIWorkerDetails')
-        def get_aiworker_details():
+        @self.app.get('/getCeleryWorkerDetails')
+        def get_celery_worker_details():
             try:
                 if not self.loginCheck(superuser=True):
                     return redirect('/')
-                return {'details': self.middleware.getAIWorkerDetails()}
+                return {'details': self.middleware.getCeleryWorkerDetails()}
             except:
                 abort(404, 'not found')
 

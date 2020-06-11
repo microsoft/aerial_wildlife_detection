@@ -68,6 +68,10 @@ app.conf.update(
     task_create_missing_queues = True,
     task_queues = tuple(queues),
     task_routes = {
+        'general.get_worker_details': {
+            'queue': 'aide@'+celery.utils.nodenames.gethostname(),
+            'routing_key': 'worker_details'
+        },
         'AIController.get_training_images': {
             'queue': 'AIController',
             'routing_key': 'get_training_images'
@@ -75,10 +79,6 @@ app.conf.update(
         'AIController.get_inference_images': {
             'queue': 'AIController',
             'routing_key': 'get_inference_images'
-        },
-        'AIWorker.AIDEversion': {
-            'queue': 'aide@'+celery.utils.nodenames.gethostname(),
-            'routing_key': 'aide_version'
         },
         'AIWorker.call_train': {
             'queue': 'AIWorker',
@@ -118,6 +118,8 @@ app.conf.update(
 
 
 # initialize appropriate consumer functionalities
+from util import celeryWorkerCommons
+
 num_modules = 0
 if 'aicontroller' in aideModules:
     from modules.AIController.backend import celery_interface as aic_int
