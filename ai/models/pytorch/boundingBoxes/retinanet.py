@@ -284,6 +284,10 @@ class RetinaNet(GenericPyTorchModel):
         updatedOptions = optionsHelper.substitute_definitions(updatedOptions)
 
         # do the verification
+        missingClassOptions = optionsHelper.get_hierarchical_value(updatedOptions, ['options', 'general', 'labelClasses'])
+        if not isinstance(missingClassOptions, dict):
+            updatedOptions['options']['general']['labelClasses'] = \
+                optionsHelper.get_hierarchical_value(defaultOptions, ['options', 'general', 'labelClasses'])
         #TODO: verify rest
 
         # verify transforms
