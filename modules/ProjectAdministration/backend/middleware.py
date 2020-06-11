@@ -120,6 +120,21 @@ class ProjectConfigMiddleware:
             self.defaultUIsettings = json.load(open('modules/ProjectAdministration/static/json/default_ui_settings.json', 'r'))
 
 
+    @staticmethod
+    def _recursive_update(dictObject, target):
+        '''
+            Recursively iterates over all keys and sub-keys of "dictObject"
+            and its sub-dicts and copies over values from dict "target", if
+            they are available.
+        '''
+        for key in dictObject.keys():
+            if key in target:
+                if isinstance(dictObject[key], dict):
+                    ProjectConfigMiddleware._recursive_update(dictObject[key], target[key])
+                else:
+                    dictObject[key] = target[key]
+    
+    
     def getPlatformInfo(self, project, parameters=None):
         '''
             AIDE setup-specific platform metadata.
@@ -372,7 +387,7 @@ class ProjectConfigMiddleware:
                 ('numImageColumns_max', int),
                 ('defaultImage_w', int),
                 ('defaultImage_h', int),
-                ('styles', dict),       #TODO
+                ('styles', dict),
                 ('enableEmptyClass', bool),
                 ('showPredictions', bool),
                 ('showPredictions_minConf', float),
@@ -391,9 +406,12 @@ class ProjectConfigMiddleware:
                     FROM aide_admin.project
                     WHERE shortname = %s;            
                 ''', (project,), 1)
-            uiSettings = json.loads(uiSettings[0]['ui_settings'])     #TODO: ast.literal_eval(uiSettings[0]['ui_settings'])
+            uiSettings = json.loads(uiSettings[0]['ui_settings'])
             for kIdx in range(len(uiSettingsKeys_new)):
-                uiSettings[uiSettingsKeys_new[kIdx]] = uiSettings_new[kIdx]
+                if isinstance(uiSettings[uiSettingsKeys_new[kIdx]], dict):
+                    ProjectConfigMiddleware._recursive_update(uiSettings[uiSettingsKeys_new[kIdx]], uiSettings_new[kIdx])
+                else:
+                    uiSettings[uiSettingsKeys_new[kIdx]] = uiSettings_new[kIdx]
             projectSettings['ui_settings'] = json.dumps(uiSettings)
 
 
