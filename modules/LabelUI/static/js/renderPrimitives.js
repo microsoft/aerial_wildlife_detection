@@ -63,11 +63,6 @@ class AbstractRenderElement {
         if(this.style === null || this.style === undefined) {
             this.style = {};
         }
-        this.style.setProperty = function(propertyName, value) {
-            if(this.hasOwnProperty(propertyName)) {
-                this[propertyName] = value;
-            }
-        }
         this.zIndex = (zIndex == null? 0 : zIndex);
         this.disableInteractions = disableInteractions;
         this.isActive = false;
@@ -90,8 +85,9 @@ class AbstractRenderElement {
     setProperty(propertyName, value) {
 
         // handle style properties separately
-        this.style.setProperty(propertyName, value);
-
+        if(this.style.hasOwnProperty(propertyName)) {
+            this.style[propertyName] = value;
+        }
         this[propertyName] = value;
 
         // set to user-modified
@@ -211,12 +207,13 @@ class ImageElement extends AbstractRenderElement {
 
         } else {
             // loading failed
+            let text = 'Loading failed.';
             ctx.fillStyle = window.styles.background;
             ctx.fillRect(targetCoords[0], targetCoords[1], targetCoords[2], targetCoords[3]);
             ctx.font = '20px sans-serif';
-            var dimensions = ctx.measureText(this.image.loadingText);
+            var dimensions = ctx.measureText(text);
             ctx.fillStyle = '#FFFFFF';
-            ctx.fillText(this.image.loadingText, targetCoords[2]/2 - dimensions.width/2, targetCoords[3]/2);
+            ctx.fillText(text, targetCoords[2]/2 - dimensions.width/2, targetCoords[3]/2);
         }
     }
 }

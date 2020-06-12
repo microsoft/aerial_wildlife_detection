@@ -163,4 +163,24 @@ class Annotation {
     setVisible(visible) {
         this.geometry.setVisible(visible);
     }
+
+    styleChanged() {
+        /**
+         * To be called when the global window.styles object
+         * has been changed. Updates the new styles to all
+         * entries and re-renders them.
+         */
+        var color = window.labelClassHandler.getColor(this.label);
+        var style = JSON.parse(JSON.stringify(window.styles.annotations));  // copy default style
+        if(this.type === 'prediction') {
+            style = JSON.parse(JSON.stringify(window.styles.predictions));
+        } else if(this.autoConverted) {
+            // special style for annotations converted from predictions
+            style = JSON.parse(JSON.stringify(window.styles.annotations_converted));
+        }
+        style['strokeColor'] = window.addAlpha(color, style.lineOpacity);
+        style['fillColor'] = window.addAlpha(color, style.fillOpacity);
+
+        this.geometry.setProperty('style', style);
+    }
 }

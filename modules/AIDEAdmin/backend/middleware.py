@@ -33,6 +33,7 @@ class AdminMiddleware:
             AIController and/or FileServer is not the same as on the
             host, or if the servers cannot be contacted.
         '''
+        raise Exception('blabla')
         # check if running on the main host
         modules = os.environ['AIDE_MODULES'].strip().split(',')
         modules = set([m.strip() for m in modules])
@@ -83,7 +84,6 @@ class AdminMiddleware:
         except:
             pass
         dbInfo = self.dbConnector.execute('SELECT version() AS version;', None, 1)[0]['version']
-
         return {
                 'aide_version': AIDE_VERSION,
                 'AIController': {

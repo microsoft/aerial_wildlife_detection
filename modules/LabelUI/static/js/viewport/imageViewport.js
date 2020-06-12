@@ -8,6 +8,7 @@ class ImageViewport {
 
     constructor(canvas, disableInteractions) {
         this.canvas = canvas;
+        this.disableInteractions = disableInteractions;
         this.loadingText = 'loading...';
         this.ctx = canvas[0].getContext('2d');
         this.validArea = [0, 0, 1, 1];    // may be a part of the canvas if the main image is smaller
@@ -23,7 +24,8 @@ class ImageViewport {
             }
         });
 
-        this._setupCallbacks();
+        if(!disableInteractions)
+            this._setupCallbacks();
 
         // mini-map to be shown in the corner if zoomed in
         this.minimap = new MiniMap('minimap', this,
@@ -457,6 +459,7 @@ class ImageViewport {
     }
 
     addCallback(id, type, callbackFun) {
+        if(this.disableInteractions) return;
         if(!(id in this.callbacks[type])) {
             this.callbacks[type][id] = callbackFun;
             this._updateCallbacks();
@@ -464,6 +467,7 @@ class ImageViewport {
     }
 
     removeCallback(id, type) {
+        if(this.disableInteractions) return;
         if(id in this.callbacks[type]) {
             delete this.callbacks[type][id];
             this._updateCallbacks();

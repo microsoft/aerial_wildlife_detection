@@ -480,7 +480,7 @@ class DBMiddleware():
             except:
                 pass
         
-        if response is None:
+        if response is None or not len(response):
             # no valid data found for project; fall back to sample data
             response = {
                 '00000000-0000-0000-0000-000000000000': {

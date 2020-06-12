@@ -4,24 +4,6 @@
     2019-20 Benjamin Kellenberger
 */
 
-window.parseBoolean = function(value) {
-    return (value===1 || ['yes', '1', 'true'].includes(value.toString().toLowerCase()));
-}
-
-window.getCurrentDateString = function() {
-    var date = new Date();
-    return date.toString();
-}
-
-window.getRandomString = function() {
-    // only used for temporary IDs, never for sensitive hashing
-    return Math.random().toString(36).substring(7);
-}
-
-window.getRandomID = function() {
-    return window.getCurrentDateString() + window.getRandomString();
-}
-
 
 window.loadConfiguration = function() {
     // general properties

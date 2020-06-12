@@ -84,194 +84,194 @@ class AbstractDataEntry {
         })
     }
 
-   _setup_viewport() {
-       var self = this;
-       if(window.dataType == 'images') {
-           // create canvas
-           this.canvas = $('<canvas id="'+this.canvasID+'" width="'+window.defaultImage_w+'" height="'+window.defaultImage_h+'"></canvas>');
-           this.canvas.ready(function() {
-               self.viewport.resetViewport();
-           });
-           this.canvas.css('cursor', window.uiControlHandler.getDefaultCursor());
+_setup_viewport() {
+    var self = this;
+    if(window.dataType == 'images') {
+        // create canvas
+        this.canvas = $('<canvas id="'+this.canvasID+'" width="'+window.defaultImage_w+'" height="'+window.defaultImage_h+'"></canvas>');
+        this.canvas.ready(function() {
+            self.viewport.resetViewport();
+        });
+        this.canvas.css('cursor', window.uiControlHandler.getDefaultCursor());
 
-           this.viewport = new ImageViewport(this.canvas);
+        this.viewport = new ImageViewport(this.canvas, this.disableInteractions);
 
-       } else {
-           // maps
-           throw Error('Maps not yet implemented.');
-       }
-   }
+    } else {
+        // maps
+        throw Error('Maps not yet implemented.');
+    }
+}
 
-   _addElement(element) {
-       if(!element.isValid()) return;
-       var key = element['annotationID'];
-       if(element['type'] == 'annotation') {
-           this.annotations[key] = element;
-       } else if(element['type'] == 'prediction' && window.showPredictions) {
-           this.predictions[key] = element;
-       }
-       this.viewport.addRenderElement(element.getRenderElement());
-   }
+_addElement(element) {
+    if(!element.isValid()) return;
+    var key = element['annotationID'];
+    if(element['type'] == 'annotation') {
+        this.annotations[key] = element;
+    } else if(element['type'] == 'prediction' && window.showPredictions) {
+        this.predictions[key] = element;
+    }
+    this.viewport.addRenderElement(element.getRenderElement());
+}
 
-   _updateElement(element) {
-       var key = element['annotationID'];
-       if(element['type'] == 'annotation') {
-           this.annotations[key] = element;
-       } else if(element['type'] == 'prediction') {
-           this.predictions[key] = element;
-       }
-       this.viewport.updateRenderElement(
-           this.viewport.indexOfRenderElement(element.getRenderElement()),
-           element.getRenderElement()
-       );
-   }
+_updateElement(element) {
+    var key = element['annotationID'];
+    if(element['type'] == 'annotation') {
+        this.annotations[key] = element;
+    } else if(element['type'] == 'prediction') {
+        this.predictions[key] = element;
+    }
+    this.viewport.updateRenderElement(
+        this.viewport.indexOfRenderElement(element.getRenderElement()),
+        element.getRenderElement()
+    );
+}
 
-   _removeElement(element) {
-       this.viewport.removeRenderElement(element.getRenderElement());
-       if(element['type'] == 'annotation') {
-           delete this.annotations[element['annotationID']];
-       } else if(element['type'] == 'prediction') {
-           delete this.predictions[element['annotationID']];
-       }
-   }
+_removeElement(element) {
+    this.viewport.removeRenderElement(element.getRenderElement());
+    if(element['type'] == 'annotation') {
+        delete this.annotations[element['annotationID']];
+    } else if(element['type'] == 'prediction') {
+        delete this.predictions[element['annotationID']];
+    }
+}
 
-   getAnnotationType() {
-       throw Error('Not implemented.');
-   }
+getAnnotationType() {
+    throw Error('Not implemented.');
+}
 
-   _parseLabels(properties) {
-       /*
-           Iterates through properties object's entries "predictions" and "annotations"
-           and creates new primitive instances each.
-           Might automatically convert predictions and carry them over to the annotations
-           if applicable and specified in the project settings.
-       */
-       var geometryType_pred = String(window.predictionType);
-       var geometryType_anno = String(window.annotationType);
+_parseLabels(properties) {
+    /*
+        Iterates through properties object's entries "predictions" and "annotations"
+        and creates new primitive instances each.
+        Might automatically convert predictions and carry them over to the annotations
+        if applicable and specified in the project settings.
+    */
+    var geometryType_pred = String(window.predictionType);
+    var geometryType_anno = String(window.annotationType);
 
-       this.predictions = {};
-       this.annotations = {};
-       var hasAnnotations = (properties.hasOwnProperty('annotations') && Object.keys(properties['annotations']).length > 0);
-       var hasPredictions = (properties.hasOwnProperty('predictions') && Object.keys(properties['predictions']).length > 0);
-       var carryOverPredictions = window.carryOverPredictions && hasPredictions && !hasAnnotations && (!properties.hasOwnProperty('viewcount') || properties['viewcount'] == 0);
+    this.predictions = {};
+    this.annotations = {};
+    var hasAnnotations = (properties.hasOwnProperty('annotations') && Object.keys(properties['annotations']).length > 0);
+    var hasPredictions = (properties.hasOwnProperty('predictions') && Object.keys(properties['predictions']).length > 0);
+    var carryOverPredictions = window.carryOverPredictions && hasPredictions && !hasAnnotations && (!properties.hasOwnProperty('viewcount') || properties['viewcount'] == 0);
 
-       if(window.showPredictions || window.carryOverPredictions && hasPredictions) {
-           if(window.showPredictions && !hasAnnotations) {
-               // add predictions as static, immutable objects (only if entry has not yet been screened by user)
-               for(var key in properties['predictions']) {
-                   var prediction = new Annotation(key, properties['predictions'][key], geometryType_pred, 'prediction');
-                   if(prediction.confidence >= window.showPredictions_minConf) {
-                       this._addElement(prediction);
-                   }
-               }
-           }
+    if(window.showPredictions || window.carryOverPredictions && hasPredictions) {
+        if(window.showPredictions && !hasAnnotations) {
+            // add predictions as static, immutable objects (only if entry has not yet been screened by user)
+            for(var key in properties['predictions']) {
+                var prediction = new Annotation(key, properties['predictions'][key], geometryType_pred, 'prediction');
+                if(prediction.confidence >= window.showPredictions_minConf) {
+                    this._addElement(prediction);
+                }
+            }
+        }
 
-           if(carryOverPredictions) {
-               /*
-                   No annotations present for entry (i.e., entry not yet screened by user):
-                   show an initial guess provided by the predictions. Convert predictions
-                   if required. Also set annotation to "changed", since we assume the user
-                   to have visually screened the provided converted predictions, even if they
-                   are unchanged (i.e., deemed correct by the user).
-               */
-               if(window.annotationType === 'labels') {
-                   // need image-wide labels
-                   if(window.predictionType === 'points' || window.predictionType === 'boundingBoxes') {
-                       // check carry-over rule
-                       if(window.carryOverRule === 'maxConfidence') {
-                           // select arg max
-                           var maxConf = -1;
-                           var argMax = null;
-                           for(var key in properties['predictions']) {
-                               var predConf = properties['predictions'][key]['confidence'];
-                               if(predConf >= window.carryOverPredictions_minConf && predConf > maxConf) {
-                                   maxConf = predConf;
-                                   argMax = key;
-                               }
-                           }
-                           if(argMax != null) {
-                               // construct new classification entry
-                               var id = properties['predictions'][key]['id'];
-                               var label = properties['predictions'][key]['label'];
-                               var anno = new Annotation(window.getRandomID(), {'id':id, 'label':label, 'confidence':maxConf}, geometryType_anno, 'annotation', true);
-                               anno.setProperty('changed', true);
-                               this._addElement(anno);
-                           }
-                       } else if(window.carryOverRule === 'mode') {
-                           var counts = {};
-                           for(var key in properties['predictions']) {
-                               var prediction = new Annotation(window.getRandomID(), properties['predictions'][key], geometryType_anno, 'prediction');
-                               if(!(counts.hasOwnProperty(prediction.label))) {
-                                   counts[label] = 0;
-                               }
-                               counts[label] += 1;
-                           }
-                           // find mode
-                           var count = -1;
-                           var argMax = null;
-                           for(var key in counts) {
-                               if(counts[key] > count) {
-                                   count = counts[key];
-                                   argMax = key;
-                               }
-                           }
-                           // add new label annotation
-                           if(argMax != null) {
-                               var anno = new Annotation(window.getRandomID(), {'label':argMax}, geometryType_anno, 'annotation', true);
-                               anno.setProperty('changed', true);
-                               this._addElement(anno);
-                           }
-                       }
-                   }
-               } else if(window.annotationType === 'points' && window.predictionType === 'boundingBoxes') {
-                   // remove width and height
-                   for(var key in properties['predictions']) {
-                       var props = properties['predictions'][key];
-                       if(props['confidence'] >= window.carryOverPredictions_minConf) {
-                           delete props['width'];
-                           delete props['height'];
-                           var anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation', true);
-                           this._addElement(anno);
-                       }
-                   }
-               } else if(window.annotationType === 'boundingBoxes' && window.predictionType === 'points') {
-                   // add default width and height
-                   for(var key in properties['predictions']) {
-                       var props = properties['predictions'][key];
-                       if(props['confidence'] >= window.carryOverPredictions_minConf) {
-                           props['width'] = window.defaultBoxSize_w;
-                           props['height'] = window.defaultBoxSize_h;
-                           var anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation', true);
-                           anno.setProperty('changed', true);
-                           this._addElement(anno);
-                       }
-                   }
-               } else if(window.annotationType === window.predictionType) {
-                   // no conversion required
-                   for(var key in properties['predictions']) {
-                       var props = properties['predictions'][key];
-                       if(props['confidence'] >= window.carryOverPredictions_minConf) {
-                           var anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation', true);
-                           anno.setProperty('changed', true);
-                           this._addElement(anno);
-                       }
-                   }
-               }
+        if(carryOverPredictions) {
+            /*
+                No annotations present for entry (i.e., entry not yet screened by user):
+                show an initial guess provided by the predictions. Convert predictions
+                if required. Also set annotation to "changed", since we assume the user
+                to have visually screened the provided converted predictions, even if they
+                are unchanged (i.e., deemed correct by the user).
+            */
+            if(window.annotationType === 'labels') {
+                // need image-wide labels
+                if(window.predictionType === 'points' || window.predictionType === 'boundingBoxes') {
+                    // check carry-over rule
+                    if(window.carryOverRule === 'maxConfidence') {
+                        // select arg max
+                        var maxConf = -1;
+                        var argMax = null;
+                        for(var key in properties['predictions']) {
+                            var predConf = properties['predictions'][key]['confidence'];
+                            if(predConf >= window.carryOverPredictions_minConf && predConf > maxConf) {
+                                maxConf = predConf;
+                                argMax = key;
+                            }
+                        }
+                        if(argMax != null) {
+                            // construct new classification entry
+                            var id = properties['predictions'][key]['id'];
+                            var label = properties['predictions'][key]['label'];
+                            var anno = new Annotation(window.getRandomID(), {'id':id, 'label':label, 'confidence':maxConf}, geometryType_anno, 'annotation', true);
+                            anno.setProperty('changed', true);
+                            this._addElement(anno);
+                        }
+                    } else if(window.carryOverRule === 'mode') {
+                        var counts = {};
+                        for(var key in properties['predictions']) {
+                            var prediction = new Annotation(window.getRandomID(), properties['predictions'][key], geometryType_anno, 'prediction');
+                            if(!(counts.hasOwnProperty(prediction.label))) {
+                                counts[label] = 0;
+                            }
+                            counts[label] += 1;
+                        }
+                        // find mode
+                        var count = -1;
+                        var argMax = null;
+                        for(var key in counts) {
+                            if(counts[key] > count) {
+                                count = counts[key];
+                                argMax = key;
+                            }
+                        }
+                        // add new label annotation
+                        if(argMax != null) {
+                            var anno = new Annotation(window.getRandomID(), {'label':argMax}, geometryType_anno, 'annotation', true);
+                            anno.setProperty('changed', true);
+                            this._addElement(anno);
+                        }
+                    }
+                }
+            } else if(window.annotationType === 'points' && window.predictionType === 'boundingBoxes') {
+                // remove width and height
+                for(var key in properties['predictions']) {
+                    var props = properties['predictions'][key];
+                    if(props['confidence'] >= window.carryOverPredictions_minConf) {
+                        delete props['width'];
+                        delete props['height'];
+                        var anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation', true);
+                        this._addElement(anno);
+                    }
+                }
+            } else if(window.annotationType === 'boundingBoxes' && window.predictionType === 'points') {
+                // add default width and height
+                for(var key in properties['predictions']) {
+                    var props = properties['predictions'][key];
+                    if(props['confidence'] >= window.carryOverPredictions_minConf) {
+                        props['width'] = window.defaultBoxSize_w;
+                        props['height'] = window.defaultBoxSize_h;
+                        var anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation', true);
+                        anno.setProperty('changed', true);
+                        this._addElement(anno);
+                    }
+                }
+            } else if(window.annotationType === window.predictionType) {
+                // no conversion required
+                for(var key in properties['predictions']) {
+                    var props = properties['predictions'][key];
+                    if(props['confidence'] >= window.carryOverPredictions_minConf) {
+                        var anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation', true);
+                        anno.setProperty('changed', true);
+                        this._addElement(anno);
+                    }
+                }
+            }
 
-           }
-       }
+        }
+    }
 
-       if(hasAnnotations) {
-           for(var key in properties['annotations']) {
-               //TODO: make more failsafe?
-               var annotation = new Annotation(key, properties['annotations'][key], geometryType_anno, 'annotation');
-               // Only add annotation if it is of the correct type.
-               // if(annotation.getAnnotationType() == this.getAnnotationType()) {     //TODO: disabled for debugging purposes
-               this._addElement(annotation);
-               // }
-           }
-       }
-   }
+    if(hasAnnotations) {
+        for(var key in properties['annotations']) {
+            //TODO: make more failsafe?
+            var annotation = new Annotation(key, properties['annotations'][key], geometryType_anno, 'annotation');
+            // Only add annotation if it is of the correct type.
+            // if(annotation.getAnnotationType() == this.getAnnotationType()) {     //TODO: disabled for debugging purposes
+            this._addElement(annotation);
+            // }
+        }
+    }
+}
 
     _loadImage(imageURI) {
         return new Promise(resolve => {
@@ -288,7 +288,7 @@ class AbstractDataEntry {
         this.viewport.addRenderElement(this.imageEntry);
     }
 
-   _setup_markup() {
+_setup_markup() {
         this.markup = $('<div class="entry"></div>');
         this.markup.append(this.canvas);
         var self = this;
@@ -309,7 +309,7 @@ class AbstractDataEntry {
             });
             this.markup.append(this.flag);
         }
-   }
+}
 
     getImageURI() {
         if(this.fileName.startsWith('/')) {
@@ -320,85 +320,85 @@ class AbstractDataEntry {
         }
     }
 
-   getProperties(minimal, onlyUserAnnotations) {
-       var timeCreated = this.getTimeCreated();
-       if(timeCreated != null) timeCreated = timeCreated.toISOString();
-       var props = {
-           'id': this.entryID,
-           'timeCreated': timeCreated,
-           'timeRequired': this.getTimeRequired(),
-           'numInteractions': this.numInteractions
-       };
-       props['annotations'] = [];
-       for(var key in this.annotations) {
-           if(!onlyUserAnnotations || this.annotations[key].getChanged())
-               var annoProps = this.annotations[key].getProperties(minimal);
-               
-               // append time created and time required
-               annoProps['timeCreated'] = this.getTimeCreated();
-               var timeRequired = Math.max(0, this.annotations[key].getTimeChanged() - this.getTimeCreated());
-               annoProps['timeRequired'] = timeRequired;
-               props['annotations'].push(annoProps);
-       }
-       if(!minimal) {
-           props['fileName'] = this.fileName;
-           props['predictions'] = {};
-           if(!onlyUserAnnotations) {
-               for(var key in this.predictions) {
-                   props['predictions'][key] = this.predictions[key].getProperties(minimal);
-               }
-           }
-       }
-       return props;
-   }
+getProperties(minimal, onlyUserAnnotations) {
+    var timeCreated = this.getTimeCreated();
+    if(timeCreated != null) timeCreated = timeCreated.toISOString();
+    var props = {
+        'id': this.entryID,
+        'timeCreated': timeCreated,
+        'timeRequired': this.getTimeRequired(),
+        'numInteractions': this.numInteractions
+    };
+    props['annotations'] = [];
+    for(var key in this.annotations) {
+        if(!onlyUserAnnotations || this.annotations[key].getChanged())
+            var annoProps = this.annotations[key].getProperties(minimal);
+            
+            // append time created and time required
+            annoProps['timeCreated'] = this.getTimeCreated();
+            var timeRequired = Math.max(0, this.annotations[key].getTimeChanged() - this.getTimeCreated());
+            annoProps['timeRequired'] = timeRequired;
+            props['annotations'].push(annoProps);
+    }
+    if(!minimal) {
+        props['fileName'] = this.fileName;
+        props['predictions'] = {};
+        if(!onlyUserAnnotations) {
+            for(var key in this.predictions) {
+                props['predictions'][key] = this.predictions[key].getProperties(minimal);
+            }
+        }
+    }
+    return props;
+}
 
-   getTimeCreated() {
-       // returns the timestamp of the image having successfully loaded
-       return (this.imageEntry === null? null : this.imageEntry.getTimeCreated());
-   }
+getTimeCreated() {
+    // returns the timestamp of the image having successfully loaded
+    return (this.imageEntry === null? null : this.imageEntry.getTimeCreated());
+}
 
-   getTimeRequired() {
-       // returns the difference between now() and the annotation's creation
-       // date
-       return new Date() - this.startTime;
-   }
+getTimeRequired() {
+    // returns the difference between now() and the annotation's creation
+    // date
+    return new Date() - this.startTime;
+}
 
-   setLabel(label) {
-       for(var key in this.annotations) {
-           this.annotations[key].setProperty('label', label);
-       }
-       this.render();
-       this.numInteractions++;
+setLabel(label) {
+    for(var key in this.annotations) {
+        this.annotations[key].setProperty('label', label);
+    }
+    this.render();
+    this.numInteractions++;
 
-       window.dataHandler.updatePresentClasses();
-   }
+    window.dataHandler.updatePresentClasses();
+}
 
-   setPredictionsVisible(visible) {
-       for(var key in this.predictions) {
-           this.predictions[key].setVisible(visible);
-       }
-       this.render();
-   }
+setPredictionsVisible(visible) {
+    for(var key in this.predictions) {
+        this.predictions[key].setVisible(visible);
+    }
+    this.render();
+}
 
-   setAnnotationsVisible(visible) {
-       for(var key in this.annotations) {
-           this.annotations[key].setVisible(visible);
-       }
-       this.render();
-   }
+setAnnotationsVisible(visible) {
+    for(var key in this.annotations) {
+        this.annotations[key].setVisible(visible);
+    }
+    this.render();
+}
 
-   setMinimapVisible(visible) {
-       this.viewport.setMinimapVisible(visible);
-   }
+setMinimapVisible(visible) {
+    this.viewport.setMinimapVisible(visible);
+}
 
-   setAnnotationsInactive() {
-       for(var key in this.annotations) {
-           this.annotations[key].setActive(false, this.viewport);
-       }
-       this.render();
-   }
+setAnnotationsInactive() {
+    for(var key in this.annotations) {
+        this.annotations[key].setActive(false, this.viewport);
+    }
+    this.render();
+}
 
-   removeActiveAnnotations() {
+removeActiveAnnotations() {
         var numRemoved = 0;
         for(var key in this.annotations) {
             if(this.annotations[key].isActive()) {
@@ -411,51 +411,61 @@ class AbstractDataEntry {
         this.numInteractions++;
         window.dataHandler.updatePresentClasses();
         return numRemoved;
-   }
+}
 
-   removeAllAnnotations() {
-       for(var key in this.annotations) {
-           this.annotations[key].setActive(false, this.viewport);
-           this._removeElement(this.annotations[key]);
-       }
-       this.render();
-       this.numInteractions++;
-       window.dataHandler.updatePresentClasses();
-   }
+removeAllAnnotations() {
+    for(var key in this.annotations) {
+        this.annotations[key].setActive(false, this.viewport);
+        this._removeElement(this.annotations[key]);
+    }
+    this.render();
+    this.numInteractions++;
+    window.dataHandler.updatePresentClasses();
+}
 
-   toggleActiveAnnotationsUnsure() {
-       var active = false;
-       for(var key in this.annotations) {
-           if(this.annotations[key].isActive()) {
-               this.annotations[key].setProperty('unsure', !this.annotations[key].getProperty('unsure'));
-               active = true;
-           }
-       }
-       this.render();
-       this.numInteractions++;
-       return active;
-   }
+toggleActiveAnnotationsUnsure() {
+    var active = false;
+    for(var key in this.annotations) {
+        if(this.annotations[key].isActive()) {
+            this.annotations[key].setProperty('unsure', !this.annotations[key].getProperty('unsure'));
+            active = true;
+        }
+    }
+    this.render();
+    this.numInteractions++;
+    return active;
+}
 
-   getActiveClassIDs() {
-       /*
-           Returns distinct label class IDs of all annotations and predictions
-           present in the entry.
-       */
-       var classIDs = {};
-       for(var key in this.annotations) {
-           var label = this.annotations[key].label;
-           if(label != null) classIDs[label] = 1;
-       }
-       for(var key in this.predictions) {
-           var label = this.predictions[key].label;
-           if(label != null) classIDs[label] = 1;
-       }
-       return classIDs;
-   }
+getActiveClassIDs() {
+    /*
+        Returns distinct label class IDs of all annotations and predictions
+        present in the entry.
+    */
+    var classIDs = {};
+    for(var key in this.annotations) {
+        var label = this.annotations[key].label;
+        if(label != null) classIDs[label] = 1;
+    }
+    for(var key in this.predictions) {
+        var label = this.predictions[key].label;
+        if(label != null) classIDs[label] = 1;
+    }
+    return classIDs;
+}
 
-   render() {
-       this.viewport.render();
-   }
+styleChanged() {
+    for(var key in this.annotations) {
+        this.annotations[key].styleChanged();
+    }
+    for(var key in this.predictions) {
+            this.predictions[key].styleChanged();
+        }
+    this.render();
+}
+
+render() {
+    this.viewport.render();
+}
 }
 
 
