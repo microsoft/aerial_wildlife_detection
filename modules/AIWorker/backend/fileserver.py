@@ -10,11 +10,9 @@
 '''
 
 import os
+import requests
 from urllib import request
-# import socket
-# from urllib.parse import urlsplit
 from urllib.error import HTTPError
-# import netifaces
 from util.helpers import is_localhost
 
 
@@ -33,6 +31,7 @@ class FileServer:
         
         else:
             self.baseURI = self.config.getProperty('Server', 'dataServer_uri')
+            
 
     
     def _check_running_local(self):

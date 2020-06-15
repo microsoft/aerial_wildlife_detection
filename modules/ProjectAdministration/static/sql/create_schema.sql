@@ -109,4 +109,19 @@ CREATE TABLE IF NOT EXISTS {id_workflow} (
     timeModified TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (id),
     FOREIGN KEY (username) REFERENCES aide_admin.user(name)
-)
+);
+
+CREATE TABLE IF NOT EXISTS {id_workflowHistory} (
+    id uuid DEFAULT uuid_generate_v4(),
+    workflow VARCHAR NOT NULL,
+    tasks VARCHAR,
+    timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    timeFinished TIMESTAMPTZ,
+    launchedBy VARCHAR,
+    abortedBy VARCHAR,
+    succeeded BOOLEAN,
+    messages VARCHAR,
+    PRIMARY KEY (id),
+    FOREIGN KEY (launchedBy) REFERENCES aide_admin.user (name),
+    FOREIGN KEY (abortedBy) REFERENCES aide_admin.user (name)
+);

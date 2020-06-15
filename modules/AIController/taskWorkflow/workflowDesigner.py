@@ -142,6 +142,7 @@ class WorkflowDesigner:
     
     def _get_training_signature(self, project, taskArgs, fill_blank=True):
         epoch = taskArgs['epoch']
+        numEpochs = taskArgs['numEpochs']
         numWorkers = taskArgs['max_num_workers']
 
         # initialize list for Celery chain tasks
@@ -165,6 +166,7 @@ class WorkflowDesigner:
 
             task_kwargs = {'project': project,
                             'epoch': epoch,
+                            'numEpochs': numEpochs,
                             'minTimestamp': taskArgs['min_timestamp'],
                             'includeGoldenQuestions': taskArgs['include_golden_questions'],
                             'minNumAnnoPerImage': minNumAnnoPerImage,
@@ -177,6 +179,7 @@ class WorkflowDesigner:
             )
             trainArgs = {
                 'epoch': epoch,
+                'numEpochs': numEpochs,
                 'project': project
             }
         
@@ -184,6 +187,7 @@ class WorkflowDesigner:
             trainArgs = {
                 'data': taskArgs['data'],
                 'epoch': epoch,
+                'numEpochs': numEpochs,
                 'project': project
             }
         
@@ -197,7 +201,7 @@ class WorkflowDesigner:
             taskList.append(
                 celery.chord(
                     trainTasks,
-                    aiw_int.call_average_model_states.si(**{'epoch':epoch, 'project':project}).set(queue='AIWorker')
+                    aiw_int.call_average_model_states.si(**{'epoch':epoch, 'numEpochs':numEpochs, 'project':project}).set(queue='AIWorker')
                 )
             )
         
@@ -212,6 +216,7 @@ class WorkflowDesigner:
 
     def _get_inference_signature(self, project, taskArgs, fill_blank=True):
         epoch = taskArgs['epoch']
+        numEpochs = taskArgs['numEpochs']
         numWorkers = taskArgs['max_num_workers']
         maxNumImages = taskArgs['max_num_images']
         if isinstance(maxNumImages, str):
@@ -227,6 +232,7 @@ class WorkflowDesigner:
             # no list of images provided; prepend getting inference images
             task_kwargs = {'project': project,
                             'epoch': epoch,
+                            'numEpochs': numEpochs,
                             'goldenQuestionsOnly': taskArgs['golden_questions_only'],
                             'maxNumImages': maxNumImages,
                             'numWorkers': numWorkers}
@@ -237,6 +243,7 @@ class WorkflowDesigner:
             )
             inferenceArgs = {
                 'epoch': epoch,
+                'numEpochs': numEpochs,
                 'project': project
             }
         
@@ -244,6 +251,7 @@ class WorkflowDesigner:
             inferenceArgs = {
                 'data': taskArgs['data'],
                 'epoch': epoch,
+                'numEpochs': numEpochs,
                 'project': project
             }
 
@@ -355,14 +363,12 @@ class WorkflowDesigner:
 
                     # insert after
                     workflow_expanded = workflow_expanded[:startNodeIndex+1] + targetSubWorkflow + workflow_expanded[startNodeIndex+1:]
-
-        # initialize list for Celery chain tasks
-        tasklist = []
         
         # epoch counter (only training jobs can increment it)
         epoch = 1
 
         # parse entries in workflow
+        taskDescriptions = []
         for index, taskSpec in enumerate(workflow_expanded):
             if isinstance(taskSpec, str):
                 # task name provided
@@ -427,7 +433,16 @@ class WorkflowDesigner:
             if taskName.lower() == 'train':
                 epoch += 1
 
+            taskDescriptions.append(taskDesc)
             # construct celery task out of description
+            # task = self._create_celery_task(project, taskDesc, fill_blank=(True if index==0 else False), verifyOnly=verifyOnly)
+            # tasklist.append(task)
+
+        # construct celery tasks out of descriptions
+        tasklist = []
+        for index, taskDesc in enumerate(taskDescriptions):
+            # add number of epochs as argument
+            taskDesc['kwargs']['numEpochs'] = epoch
             task = self._create_celery_task(project, taskDesc, fill_blank=(True if index==0 else False), verifyOnly=verifyOnly)
             tasklist.append(task)
 

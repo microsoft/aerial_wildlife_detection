@@ -36,7 +36,7 @@ class AIControllerWorker:
 
 
 
-    def get_training_images(self, project, epoch=None, minTimestamp='lastState', includeGoldenQuestions=True,
+    def get_training_images(self, project, epoch=None, numEpochs=None, minTimestamp='lastState', includeGoldenQuestions=True,
                             minNumAnnoPerImage=0, maxNumImages=None, numChunks=1):
         '''
             Queries the database for the latest images to be used for model training.
@@ -140,7 +140,7 @@ class AIControllerWorker:
 
 
 
-    def get_inference_images(self, project, epoch=None, goldenQuestionsOnly=False, forceUnlabeled=False, maxNumImages=None, numChunks=1):
+    def get_inference_images(self, project, epoch=None, numEpochs=None, goldenQuestionsOnly=False, forceUnlabeled=False, maxNumImages=None, numChunks=1):
             '''
                 Queries the database for the latest images to be used for inference after model training.
                 Returns a list with image UUIDs accordingly, split into the number of available workers.

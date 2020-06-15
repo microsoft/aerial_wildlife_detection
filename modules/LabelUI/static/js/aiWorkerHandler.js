@@ -6,6 +6,8 @@
 */
 
 
+//TODO: THIS IS ALL DEPRECATED; REPLACE WITH workflowMonitor.js
+
 class AIWorker {
     /*
         Wrapper for worker status.

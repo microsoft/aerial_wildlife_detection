@@ -22,7 +22,8 @@ class StaticFileServer:
         'reception': 'modules/Reception/static',
         'dataAdmin': 'modules/DataAdministration/static',
         'projectAdmin': 'modules/ProjectAdministration/static',
-        'statistics': 'modules/ProjectStatistics/static'
+        'statistics': 'modules/ProjectStatistics/static',
+        'aiController': 'modules/AIController/static'
     }
 
     def __init__(self, config, app):

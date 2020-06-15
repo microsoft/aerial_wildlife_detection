@@ -33,7 +33,6 @@ class AdminMiddleware:
             AIController and/or FileServer is not the same as on the
             host, or if the servers cannot be contacted.
         '''
-        raise Exception('blabla')
         # check if running on the main host
         modules = os.environ['AIDE_MODULES'].strip().split(',')
         modules = set([m.strip() for m in modules])

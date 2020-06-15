@@ -163,7 +163,23 @@ MODIFICATIONS_sql = [
     'ALTER TABLE "{schema}".annotation ADD COLUMN IF NOT EXISTS autoConverted BOOLEAN;',
     'ALTER TABLE aide_admin.project ADD COLUMN IF NOT EXISTS owner VARCHAR;',
     '''ALTER TABLE aide_admin.project DROP CONSTRAINT IF EXISTS project_user_fkey;
-        ALTER TABLE aide_admin.project ADD CONSTRAINT project_user_fkey FOREIGN KEY (owner) REFERENCES aide_admin.USER (name);'''
+        ALTER TABLE aide_admin.project ADD CONSTRAINT project_user_fkey FOREIGN KEY (owner) REFERENCES aide_admin.USER (name);''',
+    
+    # new workflow history
+    ''' CREATE TABLE IF NOT EXISTS "{schema}".workflowHistory (
+        id uuid DEFAULT uuid_generate_v4(),
+        workflow VARCHAR NOT NULL,
+        tasks VARCHAR,
+        timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        timeFinished TIMESTAMPTZ,
+        launchedBy VARCHAR,
+        abortedBy VARCHAR,
+        succeeded BOOLEAN,
+        messages VARCHAR,
+        PRIMARY KEY (id),
+        FOREIGN KEY (launchedBy) REFERENCES aide_admin.user (name),
+        FOREIGN KEY (abortedBy) REFERENCES aide_admin.user (name)
+    );'''
 ]
 
 

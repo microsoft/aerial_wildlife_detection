@@ -179,33 +179,33 @@ class AIWorker():
 
 
 
-    def call_train(self, data, epoch, project, subset):
+    def call_train(self, data, epoch, numEpochs, project, subset):
 
         # get project-specific model
         modelInstance = self._get_model_instance(project)
 
-        return functional._call_train(project, data, epoch, subset, getattr(modelInstance, 'train'),
+        return functional._call_train(project, data, epoch, numEpochs, subset, getattr(modelInstance, 'train'),
                 self.dbConnector, self.fileServer)
     
 
 
-    def call_average_model_states(self, epoch, project):
+    def call_average_model_states(self, epoch, numEpochs, project):
 
         # get project-specific model
         modelInstance = self._get_model_instance(project)
         
-        return functional._call_average_model_states(project, epoch, getattr(modelInstance, 'average_model_states'),
+        return functional._call_average_model_states(project, epoch, numEpochs, getattr(modelInstance, 'average_model_states'),
                 self.dbConnector, self.fileServer)
 
 
 
-    def call_inference(self, imageIDs, epoch, project):
+    def call_inference(self, imageIDs, epoch, numEpochs, project):
         
         # get project-specific model and AL criterion
         modelInstance = self._get_model_instance(project)
         alCriterionInstance = self._get_alCriterion_instance(project)
 
-        return functional._call_inference(project, imageIDs, epoch,
+        return functional._call_inference(project, imageIDs, epoch, numEpochs,
                 getattr(modelInstance, 'inference'),
                 getattr(alCriterionInstance, 'rank'),
                 self.dbConnector, self.fileServer,

@@ -90,13 +90,13 @@
 <script type="text/javascript">
 
     $(document).ready(function() {
-        if(typeof ProgressBar === 'undefined') {
+        if(typeof(ProgressBar) === 'undefined') {
             $.getScript('/static/general/js/progressbar.js');
         }
 
         function _setDownloadEntry(data, taskID) {
             var msgCell = $($('#'+taskID).find('.file-message')[0]);
-            if(typeof data === 'string') {
+            if(typeof(data) === 'string') {
                 // download link sent
                 msgCell.empty();
                 msgCell.append($('<a href="downloadData/'+data+'" target="_blank">'+data+'</a>'));

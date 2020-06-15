@@ -258,7 +258,7 @@
         }
 
         var result = [];
-        if(typeof data === 'string') {
+        if(typeof(data) === 'string') {
             // parsers failed; try to read CSV or blank text
             let lines_raw = data.match(/[^\r\n]+/g);
 
@@ -391,10 +391,10 @@
                     children: []
                 };
                 var color = undefined;
-                if(typeof entry === 'string') {
+                if(typeof(entry) === 'string') {
                     treeEntry['name'] = entry;
 
-                } else if(typeof entry === 'object') {
+                } else if(typeof(entry) === 'object') {
                     let keys = Object.keys(entry);
                     for(var key in keys) {
                         if(key.toLowerCase() === 'name') {
@@ -414,7 +414,7 @@
                                     treeEntry['children'].push(nextChild);
                                 }
 
-                            } else if(typeof children === 'object') {
+                            } else if(typeof(children) === 'object') {
                                 for(var key in children) {
                                     var nextChild = _parse_entry(key, children[key]);
                                     treeEntry['children'].push(nextChild);
@@ -442,7 +442,7 @@
             if(Array.isArray(data)) {
                 for(var i=0; i<data.length; i++) {
                     var nextEntry = data[i];
-                    if(typeof nextEntry === 'string') {
+                    if(typeof(nextEntry) === 'string') {
                         // label class name
                         result.push({
                             // id: nextEntry,

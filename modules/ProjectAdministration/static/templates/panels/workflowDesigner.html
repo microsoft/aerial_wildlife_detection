@@ -2,7 +2,7 @@
     <h2>Model Workflow Designer</h2>
 
     <p style="font-weight:bold;color:red">Work in progress, not functional yet.</p>
-    <div style="display:flex;flex-direction:row;">
+    <div style="display:flex;flex-direction:row;margin-bottom:30px;">
         <!-- Quick workflow & saved workflows -->
         <div>
             <div id="quick-buttons" class="btn-group btn-group-toggle" role="group" aria-label="Workflow presets" data-toggle="buttons">
@@ -79,8 +79,13 @@
             </div>
         </div>
     </div>
+
+    <!-- TODO: just for tests -->
+    <div class="grad-border-h"></div>
+    <div id="task-status-div" style="margin-top:30px;max-height:800px;overflow-y:auto;"></div>
 </div>
 <link rel="stylesheet" href="config/static/css/workflowDesigner.css?v={{ version }}" />
+<link rel="stylesheet" href="/static/aiController/css/workflowMonitor.css?v={{ version }}" />
 <style>
     #workflow-preset-panel {
         border: 1px solid white;
@@ -105,9 +110,15 @@
         display: inline;
     }
 </style>
+<script src="/static/aiController/js/workflowMonitor.js?v={{ version }}"></script>
 <script src="config/static/js/workflowDesigner.js?v={{ version }}"></script>
 <script type="text/javascript">
     $(document).ready(function() {
+
+        //TODO
+        // if(typeof(ProgressBar) === 'undefined') {
+        //     $.getScript('/static/general/js/progressbar.js');
+        // }
 
         let canvasWrapper = document.getElementById('canvas-wrapper');
         window.workflowDesigner = new WorkflowDesigner(canvasWrapper);
@@ -235,6 +246,7 @@
 
 
         //TODO: show summary, running processes, etc.
+        window.wfMonitor = new WorkflowMonitor($('#task-status-div'), true, 1000, 10000, 10000);    //TODO: query intervals
 
 
         $('#create-workflow').on('click', function() {
@@ -314,6 +326,10 @@
                 data: JSON.stringify({workflow:workflow}),
                 success: function(response) {
                     console.log(response);      //TODO: show AI panel in footer and start polling
+
+                    //TODO: test
+                    window.wfMonitor.startQuerying();
+
                 },
                 error: function(response) {
                     console.error(response);    //TODO: show error message on screen

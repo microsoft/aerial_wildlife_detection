@@ -175,8 +175,9 @@ class AIController:
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
             try:
+                username = html.escape(request.get_cookie('username'))
                 params = request.json
-                taskID = self.middleware.launch_task(project, params['workflow'])
+                taskID = self.middleware.launch_task(project, params['workflow'], username)
 
                 return { 'status': 0,
                         'task_id': taskID}
@@ -186,7 +187,25 @@ class AIController:
                         'message': str(e) }
 
 
+        
+        @self.app.post('/<project>/abortWorkflow')
+        def abort_workflow(project):
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+            try:
+                username = html.escape(request.get_cookie('username'))
+                params = request.json
+                taskID = params['taskID']
+                self.middleware.revoke_task(project, taskID, username)
 
+                return { 'status': 0}
+
+            except Exception as e:
+                return { 'status': 1,
+                        'message': str(e) }
+
+
+        
         @self.app.get('/<project>/status')
         def check_status(project):
             '''

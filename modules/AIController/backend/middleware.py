@@ -20,6 +20,7 @@ from util.helpers import current_time
 from .messageProcessor import MessageProcessor
 from .annotationWatchdog import Watchdog
 from modules.AIController.taskWorkflow.workflowDesigner import WorkflowDesigner
+from modules.AIController.taskWorkflow.workflowTracker import WorkflowTracker
 from modules.Database.app import Database
 from modules.AIWorker.backend.fileserver import FileServer
 from util.helpers import array_split, parse_parameters, get_class_executable
@@ -44,10 +45,12 @@ class AIMiddleware():
         self.celery_app.set_current()
         self.celery_app.set_default()
 
+        #TODO: messageProcessor is now deprecated, in favor of workflowTracker
         self.messageProcessor = MessageProcessor(self.celery_app)
         if not self.passiveMode:
             self.watchdogs = {}    # one watchdog per project. Note: watchdog only created if users poll status (i.e., if there's activity)
             self.workflowDesigner = WorkflowDesigner(self.dbConn, self.celery_app)
+            self.workflowTracker = WorkflowTracker(self.dbConn, self.celery_app)
             self.messageProcessor.start()
 
 
@@ -800,7 +803,7 @@ class AIMiddleware():
 
 
     
-    def launch_task(self, project, workflow):
+    def launch_task(self, project, workflow, author=None):
         '''
             Accepts a dict containing a workflow definition as per workflow designer,
             parses it and launches the job if valid.
@@ -808,16 +811,30 @@ class AIMiddleware():
         '''
         process = self.workflowDesigner.parseWorkflow(project, workflow, False)
 
-        task_id = self.messageProcessor.task_id(project)
-        job = process.apply_async(task_id=task_id,
-                            queue='AIWorker',
-                            ignore_result=False,
-                            # result_extended=True,
-                            headers={'headers':{'project':project,'submitted': str(current_time())}})
+        task_id = self.workflowTracker.launchWorkflow(project, process, workflow, author)
+
+        #TODO:
+        # task_id = self.messageProcessor.task_id(project)
+        # job = process.apply_async(task_id=task_id,
+        #                     queue='AIWorker',
+        #                     ignore_result=False,
+        #                     # result_extended=True,
+        #                     headers={'headers':{'project':project,'submitted': str(current_time())}})
         
-        self.messageProcessor.register_job(project, job, 'workflow')    #TODO: task type; task ID for polling...
+        # self.messageProcessor.register_job(project, job, 'workflow')    #TODO: task type; task ID for polling...
 
         return task_id
+
+
+
+    def revoke_task(self, project, taskID, username):
+        '''
+            Revokes (aborts) a task with given task ID for a given
+            project, if it exists.
+            Also sets an entry in the database (and notes who aborted
+            the task).
+        '''
+        self.workflowTracker.revokeTask(username, project, taskID)
 
 
 
@@ -848,13 +865,19 @@ class AIMiddleware():
 
         # running tasks status
         if checkTasks:
-            status['tasks'] = self.messageProcessor.poll_status(project)
+            status['tasks'] = self.workflowTracker.pollAllTaskStatuses(project)       #TODO: self.messageProcessor.poll_status(project)
 
         # get worker status (this is very expensive, as each worker needs to be pinged)
         if checkWorkers:
             status['workers'] = self.messageProcessor.poll_worker_status(project)
         
         return status
+
+
+
+    #TODO
+    def pollTaskStatus(self, project, taskID):
+        return self.workflowTracker.pollStatus(project, taskID)
 
 
 

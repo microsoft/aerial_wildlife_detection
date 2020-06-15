@@ -19,13 +19,13 @@ function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
      * 
      * source: https://stackoverflow.com/questions/1255512/how-to-draw-a-rounded-rectangle-on-html-canvas
      */
-    if (typeof stroke == 'undefined') {
+    if (typeof(stroke) == 'undefined') {
       stroke = true;
     }
-    if (typeof radius === 'undefined') {
+    if (typeof(radius) === 'undefined') {
       radius = 5;
     }
-    if (typeof radius === 'number') {
+    if (typeof(radius) === 'number') {
       radius = {tl: radius, tr: radius, br: radius, bl: radius};
     } else {
       var defaultRadius = {tl: 0, tr: 0, br: 0, bl: 0};

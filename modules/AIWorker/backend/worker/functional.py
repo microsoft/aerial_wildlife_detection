@@ -32,7 +32,7 @@ from constants.dbFieldNames import FieldNames_annotation, FieldNames_prediction
 
 
 
-def __get_message_fun(project, epoch=None):
+def __get_message_fun(project, cumulatedTotal=None, epoch=None, numEpochs=None):
     def __on_message(state, message, done=None, total=None):
         meta = {
             'project': project,
@@ -40,10 +40,21 @@ def __get_message_fun(project, epoch=None):
         }
         if (isinstance(done, int) or isinstance(done, float)) and \
             (isinstance(total, int) or isinstance(total, float)):
-            meta['done'] = min(done, total)
-            meta['total'] = max(done, total)
+            trueTotal = total
+            if isinstance(cumulatedTotal, int) or isinstance(cumulatedTotal, float):
+                trueTotal = max(trueTotal, total)
+            meta['done'] = min(done, trueTotal)
+            meta['total'] = max(done, trueTotal)
+
+        message_combined = ''
+        if isinstance(epoch, int) and isinstance(numEpochs, int):
+            message_combined += f'[Epoch {epoch}/{numEpochs}] '
+
         if isinstance(message, str):
-            meta['message'] = message
+            message_combined += message
+        
+        if len(message_combined):
+            meta['message'] = message_combined
         current_task.update_state(
             state=state,
             meta=meta
@@ -146,7 +157,7 @@ def __get_ai_library_names(project, dbConnector):
         return model_library, alcriterion_library
 
 
-def _call_train(project, imageIDs, epoch, subset, trainingFun, dbConnector, fileServer):
+def _call_train(project, imageIDs, epoch, numEpochs, subset, trainingFun, dbConnector, fileServer):
     '''
         Initiates model training and maintains workers, status and failure
         events.
@@ -166,7 +177,7 @@ def _call_train(project, imageIDs, epoch, subset, trainingFun, dbConnector, file
     '''
 
     print(f'[{project}] Epoch {epoch}: Initiated training...')
-    update_state = __get_message_fun(project, epoch)
+    update_state = __get_message_fun(project, len(imageIDs), epoch, numEpochs)
 
 
     # load model state
@@ -215,7 +226,7 @@ def _call_train(project, imageIDs, epoch, subset, trainingFun, dbConnector, file
 
 
 
-def _call_average_model_states(project, epoch, averageFun, dbConnector, fileServer):
+def _call_average_model_states(project, epoch, numEpochs, averageFun, dbConnector, fileServer):
     '''
         Receives a number of model states (coming from different AIWorker instances),
         averages them by calling the AI model's 'average_model_states' function and inserts
@@ -223,7 +234,7 @@ def _call_average_model_states(project, epoch, averageFun, dbConnector, fileServ
     '''
 
     print(f'[{project}] Epoch {epoch}: Initiated model state averaging...')
-    update_state = __get_message_fun(project, epoch)
+    update_state = update_state = __get_message_fun(project, None, epoch, numEpochs)
 
     # get all model states
     update_state(state='PREPARING', message=f'[Epoch {epoch}] loading model states')
@@ -288,12 +299,12 @@ def _call_average_model_states(project, epoch, averageFun, dbConnector, fileServ
 
 
 
-def _call_inference(project, imageIDs, epoch, inferenceFun, rankFun, dbConnector, fileServer, batchSizeLimit):
+def _call_inference(project, imageIDs, epoch, numEpochs, inferenceFun, rankFun, dbConnector, fileServer, batchSizeLimit):
     '''
 
     '''
     print(f'[{project}] Epoch {epoch}: Initiated inference on {len(imageIDs)} images...')
-    update_state = __get_message_fun(project, epoch)
+    update_state = update_state = __get_message_fun(project, len(imageIDs), epoch, numEpochs)
 
     # get project's prediction type
     projectMeta = dbConnector.execute(sql.SQL('''

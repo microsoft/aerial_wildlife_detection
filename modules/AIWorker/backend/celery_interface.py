@@ -26,10 +26,10 @@ def aide_internal_notify(message):
 
 
 @current_app.task(name='AIWorker.call_train', rate_limit=1)
-def call_train(data, index, epoch, project):
+def call_train(data, index, epoch, numEpochs, project):
     is_subset = (len(data) > 1)
     if index < len(data):
-        return worker.call_train(data[index], epoch, project, is_subset)
+        return worker.call_train(data[index], epoch, numEpochs, project, is_subset)
     else:
         # worker not needed
         print("[{}] Subset {} requested, but only {} chunk(s) provided. Skipping...".format(
@@ -40,14 +40,14 @@ def call_train(data, index, epoch, project):
 
 
 @current_app.task(name='AIWorker.call_average_model_states', rate_limit=1)
-def call_average_model_states(blank, epoch, project, *args):
-    return worker.call_average_model_states(epoch, project)
+def call_average_model_states(blank, epoch, numEpochs, project, *args):
+    return worker.call_average_model_states(epoch, numEpochs, project)
 
 
 @current_app.task(name='AIWorker.call_inference')
-def call_inference(data, index, epoch, project):
+def call_inference(data, index, epoch, numEpochs, project):
     if index < len(data):
-        return worker.call_inference(data[index], epoch, project)
+        return worker.call_inference(data[index], epoch, numEpochs, project)
     else:
         # worker not needed
         print("[{}] Subset {} requested, but only {} chunk(s) provided. Skipping...".format(

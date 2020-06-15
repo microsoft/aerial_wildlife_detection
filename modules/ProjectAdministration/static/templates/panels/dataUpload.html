@@ -60,7 +60,7 @@
 
     $(document).ready(function() {
 
-        if(typeof ProgressBar === 'undefined') {
+        if(typeof(ProgressBar) === 'undefined') {
             $.getScript('/static/general/js/progressbar.js');
         }
 
@@ -281,7 +281,7 @@
                         success: function(data) {
                             // retrieve image URL for uploaded image
                             try {
-                                if(typeof data === 'string') {
+                                if(typeof(data) === 'string') {
                                     data = JSON.parse(data);
                                 }
                                 if(data['result']['imgPaths_valid'].length === 0) {

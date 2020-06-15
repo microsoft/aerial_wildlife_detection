@@ -1,0 +1,67 @@
+.task-list {
+    /* max-height: 400px;
+    overflow-y: auto; */
+    margin-bottom: 20px;
+}
+
+.task-list-header {
+    cursor: pointer;
+    font-size: 14pt;
+    font-weight: bold;
+}
+
+.task {
+    margin-top: 5px;
+    padding: 5px;
+    background: #606060;
+}
+
+.subtask {
+    padding-left: 10px;
+    background: #333333;
+}
+
+.task-header {
+    display: flex;
+    color: gray;
+}
+
+.task-sub-header {
+    flex-grow: 1;
+    color: gray;
+}
+
+.task-number {
+    margin-right: 10px;
+    color: white !important;
+}
+
+.task-type {
+    margin-right: 30px;
+    color: white !important;
+}
+
+.task-status-icon, .task-status-icon * {
+    float: right;
+    padding: 2px;
+}
+
+.task-info-button {
+    margin-right: 10px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+}
+
+.task-info-pane {
+    display: none;
+}
+
+.subtask .task-progress-container {
+    margin-left: 20px;
+    margin-right: 20px;
+}
+
+.task-children-list {
+    /* max-height: 300px; */
+    overflow-y: auto;
+}
