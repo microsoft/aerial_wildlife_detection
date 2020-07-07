@@ -262,6 +262,7 @@ class UserMiddleware():
             'isAdmin': False,
             'isPublic': False
         }
+
         queryStr = sql.SQL('''
             SELECT * FROM aide_admin.authentication AS auth
             JOIN (SELECT shortname, demoMode, isPublic FROM aide_admin.project) AS proj
@@ -283,6 +284,12 @@ class UserMiddleware():
         except:
             # no results to fetch: user is not authenticated
             pass
+    
+        # check if super user
+        superUser = self._check_user_privileges(username, superuser=True)
+        if superUser:
+            response['enrolled'] = True
+            response['isAdmin'] = True
 
         if return_all:
             return response
