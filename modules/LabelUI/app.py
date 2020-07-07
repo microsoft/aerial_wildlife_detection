@@ -88,7 +88,7 @@ class LabelUI():
                 return self.__redirect_login_page(project + '/interface')
             
             # redirect to project page if interface not enabled
-            if not projectData['interfaceEnabled']:
+            if not projectData['interface_enabled']:
                 return self.__redirect_project_page(project)
 
             # render interface template

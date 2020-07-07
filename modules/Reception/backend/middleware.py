@@ -63,7 +63,7 @@ class ReceptionMiddleware:
                     'predictionType': r['predictiontype'],
                     'isPublic': r['ispublic'],
                     'demoMode': r['demomode'],
-                    'interfaceEnabled': r['interface_enabled'],
+                    'interface_enabled': r['interface_enabled'],
                     'aiModelEnabled': r['ai_model_enabled'],
                     'userAdmitted': userAdmitted
                 }

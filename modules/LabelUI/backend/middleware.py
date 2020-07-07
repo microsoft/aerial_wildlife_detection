@@ -232,7 +232,7 @@ class DBMiddleware():
             'projectName': result['name'],
             'projectDescription': result['description'],
             'demoMode': result['demomode'],
-            'interfaceEnabled': result['interface_enabled'],
+            'interface_enabled': result['interface_enabled'],
             'ai_model_available': aiModelAvailable,
             'segmentation_ignore_unlabeled': result['segmentation_ignore_unlabeled']
         }
