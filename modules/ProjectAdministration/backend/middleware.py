@@ -216,10 +216,7 @@ class ProjectConfigMiddleware:
             sql.SQL(sqlParameters)
         )
         result = self.dbConnector.execute(queryStr, (project,), 1)
-        try:
-            result = result[0]
-        except:
-            print('debug')
+        result = result[0]
 
         # assemble response
         response = {}

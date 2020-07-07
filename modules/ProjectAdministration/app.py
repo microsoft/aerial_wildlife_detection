@@ -37,9 +37,9 @@ class ProjectConfigurator:
         self.login_check = loginCheckFun
 
     
-    def __redirect_login_page(self, redirect=None):
-        location = '/login'
-        if redirect is not None:
+    def __redirect(self, loginPage=False, redirect=None):
+        location = ('/login' if loginPage else '/')
+        if loginPage and redirect is not None:
             location += '?redirect=' + redirect
         response = bottle.response
         response.status = 303
@@ -89,12 +89,15 @@ class ProjectConfigurator:
         def send_project_overview(project):
 
             # get project data (and check if project exists)
-            projectData = self.middleware.getProjectInfo(project, ['name', 'description', 'interface_enabled', 'demomode'])
-            if projectData is None:
-                return self.__redirect_login_page()
+            try:
+                projectData = self.middleware.getProjectInfo(project, ['name', 'description', 'interface_enabled', 'demomode'])
+                if projectData is None:
+                    return self.__redirect()
+            except:
+                return self.__redirect()
 
             if not self.loginCheck(project=project, extend_session=True):
-                return self.__redirect_login_page(project)
+                return self.__redirect(True, project)
 
             # render overview template
             try:
@@ -120,7 +123,7 @@ class ProjectConfigurator:
             # get project data (and check if project exists)
             projectData = self.middleware.getProjectInfo(project, ['name', 'description', 'interface_enabled', 'demomode'])
             if projectData is None:
-                return self.__redirect_login_page()
+                return self.__redirect()
 
             if not self.loginCheck(project=project, extend_session=True):
                 return redirect('/')
