@@ -29,6 +29,40 @@
             </thead>
             <tbody id="users-list"></tbody>
         </table>
+
+        <div id="segmentation-options" style="display:none">
+            <span>Segmentation mask file name:</span>
+            <select id="segmask-filename">
+                <option value="filename">Image file name</option>
+                <option value="id">Image UUID</option>
+            </select>
+            <br />
+            <div>Customize file name:</div>
+            <table id="segmask-filename-modifier-fields">
+                <tr>
+                    <td>Prefix:</td>
+                    <td><input type="text" id="segmask-filename-prefix" /></td>
+                </tr>
+                <tr>
+                    <td>Suffix:</td>
+                    <td><input type="text" id="segmask-filename-suffix" /></td>
+                </tr>
+            </table>
+            <span>Preview:</span> <span id="segmask-filename-preview" style="font-family:monospace"></span>
+            <br />
+
+            <span>Color encoding for segmentation masks:</span>
+            <select id="segmask-encoding">
+                <option value="rgb">RGB colors</option>
+                <option value="indexed">Indexed colors</option>
+            </select>
+            <div style="font-style:italic">
+                "RGB colors" assigns triplets of 8-bit color values to pixels according to the settings per label class,
+                or else with random, default colors if unspecified (example for color red: 255, 0, 0).<br />
+                "Indexed colors" assigns the label classes' actual index number to the pixels and defines their colors
+                in a lookup table. These images are easier to parse, but may not render properly in conventional image viewers.
+            </div>
+        </div>
     </div>
     <button class="btn btn-sm btn-primary" id="request-download">Request Download</button>
     <br />
@@ -59,14 +93,14 @@
         margin-top: 30px;
     }
 
-    table {
+    #downloads-table {
         width: 100%;
         border: 1px solid #aaa;
         height: 200px;
         min-height: 200px;
     }
 
-    thead {
+    #downloads-table thead {
         display: block;
         background-color:#606060;
         font-weight: bold;
@@ -78,7 +112,7 @@
         word-break: break-all;
     }
 
-    tbody {
+    #downloads-table tbody {
         display: block;
         height: calc(100% - 26px);
         overflow-y: auto;
@@ -92,6 +126,38 @@
     $(document).ready(function() {
         if(typeof(ProgressBar) === 'undefined') {
             $.getScript('/static/general/js/progressbar.js');
+        }
+
+        let FILENAMES_PROHIBITED_CHARS = [
+            '&lt;',
+            '<',
+            '>',
+            '&gt;',
+            '..',
+            '/',
+            '\\',
+            '|',
+            '?',
+            '*',
+            ':'    // for macOS
+        ];
+
+        function updateSegmaskNamePreview() {
+            let nameType = $('#segmask-filename').val();
+            let prefix = $('#segmask-filename-prefix').val();
+            let suffix = $('#segmask-filename-suffix').val();
+            let previewField = $('#segmask-filename-preview');
+            
+            for(var c=0; c<FILENAMES_PROHIBITED_CHARS.length; c++) {
+                prefix = prefix.replace(FILENAMES_PROHIBITED_CHARS[c], '_');
+                suffix = suffix.replace(FILENAMES_PROHIBITED_CHARS[c], '_');
+            }
+
+            if(nameType === 'id') {
+                previewField.html(prefix+'7f64f1d0-8801-4bdc-8123-87135a5763f1'+suffix+'.tif');
+            } else {
+                previewField.html('example/path/'+prefix+'imageName'+suffix+'.tif');
+            }
         }
 
         function _setDownloadEntry(data, taskID) {
@@ -134,6 +200,16 @@
                     }
                 });
                 params['users'] = usersList;
+            }
+
+            // extra parameters for segmentation masks
+            if(window.annotationType === 'segmentationMasks') {
+                params['segmask_encoding'] = $('#segmask-encoding').val();
+                params['segmask_filename'] = {
+                    'baseName': $('#segmask-filename').val(),
+                    'prefix': $('#segmask-filename-prefix').val(),
+                    'suffix': $('#segmask-filename-suffix').val()
+                };
             }
 
             // make request
@@ -245,10 +321,36 @@
             });
         });
 
-        $('#request-download').click(function() {
-            requestDownload();
+        // enable extra settings for certain annotation types
+        var promise = $.ajax({
+            url: 'getProjectImmutables',
+            method: 'GET',
+            success: function(data) {
+                data = data['immutables'];
+                window.annotationType = data['annotationType'];
+                window.predictionType = data['predictionType'];
+                if(window.annotationType === 'segmentationMasks') {
+                    // advanced options for segmentation masks
+                    $('#segmentation-options').show();
+                    $('#segmask-filename').on('input', function() {
+                        updateSegmaskNamePreview();
+                    });
+                    $('#segmask-filename-modifier-fields').find('input').each(function() {
+                        $(this).on('input', function() {
+                            updateSegmaskNamePreview();
+                        });
+                    });
+                    updateSegmaskNamePreview();
+                }
+            }
         });
 
-        window.showLoadingOverlay(false);
+        promise.done(function() {
+            $('#request-download').click(function() {
+                requestDownload();
+            });
+
+            window.showLoadingOverlay(false);
+        });
     });
 </script>

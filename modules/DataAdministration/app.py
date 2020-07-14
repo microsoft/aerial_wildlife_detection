@@ -333,11 +333,27 @@ class DataAdministrator:
                     userList = params['users']
                 else:
                     userList = None
-                
+
+                # advanced parameters for segmentation masks
+                if 'segmask_filename' in params:
+                    segmaskFilenameOptions = params['segmask_filename']
+                else:
+                    segmaskFilenameOptions = {
+                        'baseName': 'filename',
+                        'prefix': None,
+                        'suffix': None
+                    }
+                if 'segmask_encoding' in params:
+                    segmaskEncoding = params['segmask_encoding']
+                else:
+                    segmaskEncoding = 'rgb'
+
                 taskID = self.middleware.prepareDataDownload(project,
                                                             dataType,
                                                             userList,
-                                                            dateRange)
+                                                            dateRange,
+                                                            segmaskFilenameOptions,
+                                                            segmaskEncoding)
                 return {'response': taskID}
 
             except Exception as e:

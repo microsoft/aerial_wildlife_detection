@@ -29,6 +29,22 @@ from util.imageSharding import split_image
 
 class DataWorker:
 
+    FILENAMES_PROHIBITED_CHARS = (
+        '&lt;',
+        '<',
+        '>',
+        '&gt;',
+        '..',
+        '/',
+        '\\',
+        '|',
+        '?',
+        '*',
+        ':'    # for macOS
+    )
+
+
+
     def __init__(self, config, passiveMode=False):
         self.config = config
         self.dbConnector = Database(config)
@@ -551,7 +567,7 @@ class DataWorker:
         return imgs_del
 
 
-    def prepareDataDownload(self, project, dataType='annotation', userList=None, dateRange=None):
+    def prepareDataDownload(self, project, dataType='annotation', userList=None, dateRange=None, segmaskFilenameOptions=None, segmaskEncoding='rgb'):
         '''
             Polls the database for project data according to the
             specified restrictions:
@@ -560,6 +576,10 @@ class DataWorker:
                         an iterable of user names
             - dateRange: None (all dates) or two values for a mini-
                          mum and maximum timestamp
+            - segmaskFilenameOptions: customization parameters for segmentation
+                                      mask images' file names.
+            - segmaskEncoding: encoding of the segmentation mask pixel
+                               values ("rgb" or "indexed")
             
             Creates a file in this machine's temporary directory
             and returns the file name to it.
@@ -580,6 +600,29 @@ class DataWorker:
             dateRange = []
         elif len(dateRange) == 1:
             dateRange = [dateRange, now]
+        
+        if segmaskFilenameOptions is None:
+            segmaskFilenameOptions = {
+                'baseName': 'filename',
+                'prefix': '',
+                'suffix': ''
+            }
+        else:
+            if not 'baseName' in segmaskFilenameOptions or \
+                segmaskFilenameOptions['baseName'] not in ('filename', 'id'):
+                segmaskFilenameOptions['baseName'] = 'filename'
+            try:
+                segmaskFilenameOptions['prefix'] = str(segmaskFilenameOptions['prefix'])
+            except:
+                segmaskFilenameOptions['prefix'] = ''
+            try:
+                segmaskFilenameOptions['suffix'] = str(segmaskFilenameOptions['suffix'])
+            except:
+                segmaskFilenameOptions['suffix'] = ''
+
+            for char in self.FILENAMES_PROHIBITED_CHARS:
+                segmaskFilenameOptions['prefix'] = segmaskFilenameOptions['prefix'].replace(char, '_')
+                segmaskFilenameOptions['suffix'] = segmaskFilenameOptions['suffix'].replace(char, '_')
 
         # check metadata type: need to deal with segmentation masks separately
         if dataType == 'annotation':
@@ -601,32 +644,35 @@ class DataWorker:
             fileExtension = '.zip'
 
             # create indexed color palette for segmentation masks
-            try:
-                indexedColors = []
-                labelClasses = self.dbConnector.execute(sql.SQL('''
-                        SELECT idx, color FROM {id_lc} ORDER BY idx ASC;
-                    ''').format(id_lc=sql.Identifier(project, 'labelclass')),
-                    None, 'all')
-                currentIndex = 1
-                for lc in labelClasses:
-                    if lc['idx'] == 0:
-                        # background class
-                        continue
-                    while currentIndex < lc['idx']:
-                        # gaps in label classes; fill with zeros
-                        indexedColors.extend([0,0,0])
-                        currentIndex += 1
-                    color = lc['color']
-                    if color is None:
-                        # no color specified; add from defaults
-                        #TODO
-                        indexedColors.extend([0,0,0])
-                    else:
-                        # convert to RGB format
-                        indexedColors.extend(helpers.hexToRGB(color))
+            if segmaskEncoding == 'indexed':
+                try:
+                    indexedColors = []
+                    labelClasses = self.dbConnector.execute(sql.SQL('''
+                            SELECT idx, color FROM {id_lc} ORDER BY idx ASC;
+                        ''').format(id_lc=sql.Identifier(project, 'labelclass')),
+                        None, 'all')
+                    currentIndex = 1
+                    for lc in labelClasses:
+                        if lc['idx'] == 0:
+                            # background class
+                            continue
+                        while currentIndex < lc['idx']:
+                            # gaps in label classes; fill with zeros
+                            indexedColors.extend([0,0,0])
+                            currentIndex += 1
+                        color = lc['color']
+                        if color is None:
+                            # no color specified; add from defaults
+                            #TODO
+                            indexedColors.extend([0,0,0])
+                        else:
+                            # convert to RGB format
+                            indexedColors.extend(helpers.hexToRGB(color))
 
-            except:
-                # an error occurred; don't convert segmentation mask to indexed colors
+                except:
+                    # an error occurred; don't convert segmentation mask to indexed colors
+                    indexedColors = None
+            else:
                 indexedColors = None
 
         else:
@@ -645,7 +691,9 @@ class DataWorker:
         userStr = sql.SQL('')
         iuStr = sql.SQL('')
         dateStr = sql.SQL('')
-        queryFields = []
+        queryFields = [
+            'filename', 'isGoldenQuestion', 'date_image_added', 'last_requested_image', 'image_corrupt'     # default image fields
+        ]
         if dataType == 'annotation':
             iuStr = sql.SQL('''
                 JOIN (SELECT image AS iu_image, username AS iu_username, viewcount, last_checked, last_time_required FROM {id_iu}) AS iu
@@ -663,6 +711,8 @@ class DataWorker:
 
         else:
             queryFields.extend(getattr(QueryStrings_prediction, metaType).value)
+        
+        queryFields = list(set(queryFields))    # remove duplicates
 
         if len(dateRange):
             if len(userStr.string):
@@ -673,11 +723,16 @@ class DataWorker:
 
         queryStr = sql.SQL('''
             SELECT * FROM {tableID} AS t
+            JOIN (
+                SELECT id AS imgID, filename, isGoldenQuestion, date_added AS date_image_added, last_requested AS last_requested_image, corrupt AS image_corrupt
+                FROM {id_img}
+            ) AS img ON t.image = img.imgID
             {iuStr}
             {userStr}
             {dateStr}
         ''').format(
             tableID=tableID,
+            id_img=sql.Identifier(project, 'image'),
             iuStr=iuStr,
             userStr=userStr,
             dateStr=dateStr
@@ -698,7 +753,17 @@ class DataWorker:
 
                 if is_segmentation:
                     # convert and store segmentation mask separately
-                    segmask_filename = 'segmentation_masks/' + str(b['image']) + '.tif'
+                    segmask_filename = 'segmentation_masks/'
+
+                    if segmaskFilenameOptions['baseName'] == 'id':
+                        innerFilename = b['image']
+                        parent = ''
+                    else:
+                        innerFilename = b['filename']
+                        parent, innerFilename = os.path.split(innerFilename)
+                    finalFilename = os.path.join(parent, segmaskFilenameOptions['prefix'] + innerFilename + segmaskFilenameOptions['suffix'] +'.tif')
+                    segmask_filename += finalFilename
+
                     segmask = base64ToImage(b['segmentationmask'], b['width'], b['height'])
 
                     if indexedColors is not None and len(indexedColors)>0:

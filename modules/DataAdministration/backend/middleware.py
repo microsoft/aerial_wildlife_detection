@@ -241,7 +241,7 @@ class DataAdministrationMiddleware:
 
 
 
-    def prepareDataDownload(self, project, dataType='annotation', userList=None, dateRange=None):
+    def prepareDataDownload(self, project, dataType='annotation', userList=None, dateRange=None, segmaskFilenameOptions=None, segmaskEncoding='rgb'):
         '''
             #TODO: update description
             Polls the database for project data according to the
@@ -251,6 +251,14 @@ class DataAdministrationMiddleware:
                         an iterable of user names
             - dateRange: None (all dates) or two values for a mini-
                          mum and maximum timestamp
+            - segmaskFilenameOptions: for segmentation masks only: None (defaults)
+                                      or a dict of fields 'baseName' ("id" or "filename"),
+                                      'prefix' (str) and 'suffix' (str) to customize the
+                                      segmentation masks' file names.
+            - segmaskEncoding: for segmentation masks only: set to 'rgb'
+                               to encode pixel values with red-green-blue,
+                               or to 'indexed' to assign label class index
+                               to pixels.
             
             Creates a file in this machine's temporary directory
             and returns the file name to it.
@@ -259,12 +267,13 @@ class DataAdministrationMiddleware:
             file size and free disk space restrictions. An upper cei-
             ling is specified in the configuration *.ini file ('TODO')
         '''
-
         # submit job
         process = celery_interface.prepareDataDownload.si(project,
                                                     dataType,
                                                     userList,
-                                                    dateRange)
+                                                    dateRange,
+                                                    segmaskFilenameOptions,
+                                                    segmaskEncoding)
 
         task_id = self._submit_job(project, process)
         return task_id
