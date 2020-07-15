@@ -567,7 +567,7 @@ class DataWorker:
         return imgs_del
 
 
-    def prepareDataDownload(self, project, dataType='annotation', userList=None, dateRange=None, segmaskFilenameOptions=None, segmaskEncoding='rgb'):
+    def prepareDataDownload(self, project, dataType='annotation', userList=None, dateRange=None, extraFields=None, segmaskFilenameOptions=None, segmaskEncoding='rgb'):
         '''
             Polls the database for project data according to the
             specified restrictions:
@@ -576,6 +576,8 @@ class DataWorker:
                         an iterable of user names
             - dateRange: None (all dates) or two values for a mini-
                          mum and maximum timestamp
+            - extraFields: None (no field) or dict of keywords and bools for
+                           additional fields (e.g. browser meta) to be queried.
             - segmaskFilenameOptions: customization parameters for segmentation
                                       mask images' file names.
             - segmaskEncoding: encoding of the segmentation mask pixel
@@ -600,6 +602,14 @@ class DataWorker:
             dateRange = []
         elif len(dateRange) == 1:
             dateRange = [dateRange, now]
+        
+        if extraFields is None or not isinstance(extraFields, dict):
+            extraFields = {
+                'meta': False
+            }
+        else:
+            if not 'meta' in extraFields or not isinstance(extraFields['meta'], bool):
+                extraFields['meta'] = False
         
         if segmaskFilenameOptions is None:
             segmaskFilenameOptions = {
@@ -711,8 +721,6 @@ class DataWorker:
 
         else:
             queryFields.extend(getattr(QueryStrings_prediction, metaType).value)
-        
-        queryFields = list(set(queryFields))    # remove duplicates
 
         if len(dateRange):
             if len(userStr.string):
@@ -721,18 +729,41 @@ class DataWorker:
                 dateStr = sql.SQL('WHERE timecreated >= to_timestamp(%s) AND timecreated <= to_timestamp(%s)')
             queryArgs.extend(dateRange)
 
+        if not is_segmentation:
+            # join label classes
+            lcStr = sql.SQL('''
+                JOIN (SELECT id AS lcID, name AS labelclass_name, idx AS labelclass_index
+                    FROM {id_lc}
+                ) AS lc
+                ON label = lc.lcID
+            ''').format(
+                id_lc=sql.Identifier(project, 'labelclass')
+            )
+            queryFields.extend(['labelclass_name', 'labelclass_index'])
+        else:
+            lcStr = sql.SQL('')
+
+        # remove redundant query fields
+        queryFields = set(queryFields)
+        for key in extraFields.keys():
+            if not extraFields[key]:
+                queryFields.remove(key)
+        queryFields = list(queryFields)
+
         queryStr = sql.SQL('''
             SELECT * FROM {tableID} AS t
             JOIN (
                 SELECT id AS imgID, filename, isGoldenQuestion, date_added AS date_image_added, last_requested AS last_requested_image, corrupt AS image_corrupt
                 FROM {id_img}
             ) AS img ON t.image = img.imgID
+            {lcStr}
             {iuStr}
             {userStr}
             {dateStr}
         ''').format(
             tableID=tableID,
             id_img=sql.Identifier(project, 'image'),
+            lcStr=lcStr,
             iuStr=iuStr,
             userStr=userStr,
             dateStr=dateStr
@@ -788,6 +819,26 @@ class DataWorker:
             mainFile.writestr('query.txt', metaStr)
         else:
             mainFile.write(metaStr)
+
+        if is_segmentation:
+            # append separate text file for label classes
+            labelclassQuery = sql.SQL('''
+                SELECT id, name, color, labelclassgroup, idx AS labelclass_index
+                FROM {id_lc};
+            ''').format(
+                id_lc=sql.Identifier(project, 'labelclass')
+            )
+            result = self.dbConnector.execute(labelclassQuery, None, 'all')
+            lcStr = 'id,name,color,labelclassgroup,labelclass_index\n'
+            for r in result:
+                lcStr += '{},{},{},{},{}\n'.format(
+                    r['id'],
+                    r['name'],
+                    r['color'],
+                    r['labelclassgroup'],
+                    r['labelclass_index']
+                )
+            mainFile.writestr('labelclasses.csv', lcStr)
 
         mainFile.close()
 

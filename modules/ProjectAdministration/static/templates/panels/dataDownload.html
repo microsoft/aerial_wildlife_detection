@@ -30,6 +30,12 @@
             <tbody id="users-list"></tbody>
         </table>
 
+        <div>Include extra fields:</div>
+        <input type="checkbox" id="field-browser-meta" />
+        <label for="field-browser-meta">Browser metadata</label>
+
+        <br />
+
         <div id="segmentation-options" style="display:none">
             <span>Segmentation mask file name:</span>
             <select id="segmask-filename">
@@ -200,6 +206,11 @@
                     }
                 });
                 params['users'] = usersList;
+            }
+
+            // additional query fields
+            params['extra_fields'] = {
+                'meta': $('#field-browser-meta').prop('checked')
             }
 
             // extra parameters for segmentation masks

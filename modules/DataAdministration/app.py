@@ -334,6 +334,14 @@ class DataAdministrator:
                 else:
                     userList = None
 
+                # extra query fields
+                if 'extra_fields' in params:
+                    extraFields = params['extra_fields']
+                else:
+                    extra_fields = {
+                        'meta': False
+                    }
+
                 # advanced parameters for segmentation masks
                 if 'segmask_filename' in params:
                     segmaskFilenameOptions = params['segmask_filename']
@@ -352,6 +360,7 @@ class DataAdministrator:
                                                             dataType,
                                                             userList,
                                                             dateRange,
+                                                            extraFields,
                                                             segmaskFilenameOptions,
                                                             segmaskEncoding)
                 return {'response': taskID}

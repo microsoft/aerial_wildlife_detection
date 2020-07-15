@@ -241,7 +241,7 @@ class DataAdministrationMiddleware:
 
 
 
-    def prepareDataDownload(self, project, dataType='annotation', userList=None, dateRange=None, segmaskFilenameOptions=None, segmaskEncoding='rgb'):
+    def prepareDataDownload(self, project, dataType='annotation', userList=None, dateRange=None, extraFields=None, segmaskFilenameOptions=None, segmaskEncoding='rgb'):
         '''
             #TODO: update description
             Polls the database for project data according to the
@@ -251,6 +251,9 @@ class DataAdministrationMiddleware:
                         an iterable of user names
             - dateRange: None (all dates) or two values for a mini-
                          mum and maximum timestamp
+            - extraFields: additional DB relation columns to query, such as the
+                           browser metadata / user agent. To be supplied as a dict.
+                           If None, no extra fields will be queried.
             - segmaskFilenameOptions: for segmentation masks only: None (defaults)
                                       or a dict of fields 'baseName' ("id" or "filename"),
                                       'prefix' (str) and 'suffix' (str) to customize the
@@ -272,6 +275,7 @@ class DataAdministrationMiddleware:
                                                     dataType,
                                                     userList,
                                                     dateRange,
+                                                    extraFields,
                                                     segmaskFilenameOptions,
                                                     segmaskEncoding)
 
