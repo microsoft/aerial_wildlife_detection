@@ -445,7 +445,7 @@ class DataWorker:
         ''').format(
             id_img=sql.Identifier(project, 'image')
         )
-        self.dbConnector.insert(queryStr, [(i,) for i in imgs_add])     #TODO: incorrect
+        self.dbConnector.insert(queryStr, tuple([(i,) for i in imgs_add]))
 
         # get IDs of newly added images
         queryStr = sql.SQL('''
@@ -454,7 +454,7 @@ class DataWorker:
         ''').format(
             id_img=sql.Identifier(project, 'image')
         )
-        result = self.dbConnector.execute(queryStr, (imgs_add,), 'all')
+        result = self.dbConnector.execute(queryStr, (tuple(imgs_add),), 'all')
 
         status = (0 if result is not None and len(result) else 1)  #TODO
         return status, result
@@ -608,7 +608,7 @@ class DataWorker:
             id_anno=sql.Identifier(project, 'annotation'),
             id_pred=sql.Identifier(project, 'prediction'),
             id_img=sql.Identifier(project, 'image')
-        ), tuple([imgs_orphaned] * 4), None)
+        ), tuple([tuple(imgs_orphaned)] * 4), None)
 
         return imgs_orphaned
 
