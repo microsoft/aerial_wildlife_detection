@@ -142,7 +142,8 @@ class ProjectConfigMiddleware:
         # parse parameters (if provided) and compare with mutable entries
         allParams = set([
             'server_uri',
-            'server_dir'
+            'server_dir',
+            'watch_folder_interval'
         ])
         if parameters is not None and parameters != '*':
             if isinstance(parameters, str):
@@ -161,6 +162,9 @@ class ProjectConfigMiddleware:
             elif param.lower() == 'server_dir':
                 sdir = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), project)
                 response[param] = sdir
+            elif param.lower() == 'watch_folder_interval':
+                interval = self.config.getProperty('FileServer', 'watch_folder_interval', type=float, fallback=60)
+                response[param] = interval
         
         return response
 
@@ -196,7 +200,9 @@ class ProjectConfigMiddleware:
             'ai_alcriterion_settings',
             'numimages_autotrain',
             'minnumannoperimage',
-            'maxnumimages_train'
+            'maxnumimages_train',
+            'watch_folder_enabled',
+            'watch_folder_remove_missing_enabled'
         ])
         if parameters is not None and parameters != '*':
             if isinstance(parameters, str):
@@ -420,7 +426,9 @@ class ProjectConfigMiddleware:
             ('secret_token', str),
             ('demoMode', bool),
             ('ui_settings', str),
-            ('interface_enabled', bool)
+            ('interface_enabled', bool),
+            ('watch_folder_enabled', bool),
+            ('watch_folder_remove_missing_enabled', bool)
         ]
 
         vals, params = parse_parameters(projectSettings, fieldNames, absent_ok=True, escape=False)

@@ -51,6 +51,8 @@ class DataWorker:
         self.countPattern = re.compile('\_[0-9]+$')
         self.passiveMode = passiveMode
 
+        self.tempDir = self.config.getProperty('FileServer', 'tempfiles_dir', type=str, fallback=tempfile.gettempdir())
+
 
 
     def aide_internal_notify(self, message):
@@ -434,7 +436,7 @@ class DataWorker:
             imgs_add = list(set(imgs_candidates).intersection(set(imageList)))
 
         if not len(imgs_add):
-            return 0, None
+            return 0, []
 
         # add to database
         queryStr = sql.SQL('''
@@ -567,6 +569,51 @@ class DataWorker:
         return imgs_del
 
 
+    def removeOrphanedImages(self, project):
+        '''
+            Queries the project's image entries in the database and retrieves
+            entries for which no image can be found on disk anymore. Removes
+            and returns those entries and all associated (meta-) data from the
+            database.
+        '''
+        imgs_DB = self.dbConnector.execute(sql.SQL('''
+            SELECT id, filename FROM {id_img};
+        ''').format(
+            id_img=sql.Identifier(project, 'image')
+        ), None, 'all')
+
+        projectFolder = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), project)
+        if (not os.path.isdir(projectFolder)) and (not os.path.islink(projectFolder)):
+            return []
+        imgs_disk = listDirectory(projectFolder, recursive=True)
+        imgs_disk = set(imgs_disk)
+        
+        # get orphaned images
+        imgs_orphaned = []
+        for i in imgs_DB:
+            if i['filename'] not in imgs_disk:
+                imgs_orphaned.append(i['id'])
+        # imgs_orphaned = list(set(imgs_DB).difference(imgs_disk))
+        if not len(imgs_orphaned):
+            return []
+        
+        # remove
+        self.dbConnector.execute(sql.SQL('''
+            DELETE FROM {id_iu} WHERE image IN %s;
+            DELETE FROM {id_anno} WHERE image IN %s;
+            DELETE FROM {id_pred} WHERE image IN %s;
+            DELETE FROM {id_img} WHERE id IN %s;
+        ''').format(
+            id_iu=sql.Identifier(project, 'image_user'),
+            id_anno=sql.Identifier(project, 'annotation'),
+            id_pred=sql.Identifier(project, 'prediction'),
+            id_img=sql.Identifier(project, 'image')
+        ), tuple([imgs_orphaned] * 4), None)
+
+        return imgs_orphaned
+
+
+
     def prepareDataDownload(self, project, dataType='annotation', userList=None, dateRange=None, extraFields=None, segmaskFilenameOptions=None, segmaskEncoding='rgb'):
         '''
             Polls the database for project data according to the
@@ -691,7 +738,7 @@ class DataWorker:
 
         # prepare output file
         filename = 'aide_query_{}'.format(now.strftime('%Y-%m-%d_%H-%M-%S')) + fileExtension
-        destPath = os.path.join(tempfile.gettempdir(), 'aide/downloadRequests', project)
+        destPath = os.path.join(self.tempDir, 'aide/downloadRequests', project)
         os.makedirs(destPath, exist_ok=True)
         destPath = os.path.join(destPath, filename)
 
@@ -843,3 +890,32 @@ class DataWorker:
         mainFile.close()
 
         return filename
+
+
+
+    def watchImageFolders(self):
+        '''
+            Queries all projects that have the image folder watch functionality
+            enabled and updates the projects, one by one, with the latest image
+            changes.
+        '''
+        print('Scanning project image folders for changes...')
+        projects = self.dbConnector.execute('''
+                SELECT shortname, watch_folder_remove_missing_enabled
+                FROM aide_admin.project
+                WHERE watch_folder_enabled IS TRUE;
+            ''', None, 'all')
+
+        for p in projects:
+            pName = p['shortname']
+
+            # add new images
+            _, imgs_added = self.addExistingImages(pName)
+
+            # remove orphaned images (if enabled)
+            if p['watch_folder_remove_missing_enabled']:
+                imgs_orphaned = self.removeOrphanedImages(pName)
+                print(f'\t[Project {pName}] {len(imgs_added)} new images found and added, {len(imgs_orphaned)} orphaned images removed from database.')
+
+            else:
+                print(f'\t[Project {pName}] {len(imgs_added)} new images found and added.')

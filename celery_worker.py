@@ -111,6 +111,10 @@ app.conf.update(
         'DataAdministration.prepare_data_download': {
             'queue': 'FileServer',
             'routing_key': 'prepare_data_download'
+        },
+        'DataAdministration.watch_image_folders': {
+            'queue': 'FileServer',
+            'routing_key': 'watch_image_folders'
         }
     }
     #task_default_queue = Broadcast('aide_admin')
@@ -130,6 +134,13 @@ if 'aiworker' in aideModules:
 if 'fileserver' in aideModules:
     from modules.DataAdministration.backend import celery_interface as da_int
     num_modules += 1
+
+    # scanning project folders for new images: set up periodic task
+    scanInterval = config.getProperty('FileServer', 'watch_folder_interval', type=float, fallback=60)
+    if scanInterval > 0:
+        @app.on_after_configure.connect
+        def setup_periodic_tasks(sender, **kwargs):
+            sender.add_periodic_task(scanInterval, da_int.watchImageFolders.s())
 
 
 

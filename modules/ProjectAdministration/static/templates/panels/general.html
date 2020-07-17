@@ -10,7 +10,32 @@
         <textarea id="field-welcome-message" rows="6" placeholder="Message that is shown at the start, or whenever a user clicks the &quot;Help&quot; button." style="width:500px"></textarea>
     </div>
 
-    <!-- Submit and abort buttons -->
+    <!-- Data management -->
+    <div class="settings-group">
+        <h2>Data Management</h2>
+        <table>
+            <tr>
+                <td>Image folder on server:</td>
+                <td id="server-image-folder-address" style="font-family:monospace">(loading...)</td>
+            </tr>
+        </table>
+        <br />
+        <div id="watch-folder-disabled" style="font-weight:bold;color:red;display:none">Automated image folder watching is not enabled on this server.</div>
+        <div id="watch-folder-options">
+            <input type="checkbox" id="watch-folder-enabled-check" />
+            <label for="watch-folder-enabled-check">Watch images folder for changes</label><br />
+            <span style="font-style:italic">Enable this checkbox to automatically register images with the project that get added to this project's image folder.<br />
+            A scan for new images will be carried out every <span id="new-image-scan-interval"></span> seconds.
+            </span>
+            <div style="margin-left:20px;margin-top:10px;">
+                <input type="checkbox" id="remove-missing-images-check" disabled />
+                <label for="remove-missing-images-check">Remove data for missing images</label><br />
+                <span style="font-style:italic">If checked, any annotations, predictions, and statistics for images that can no longer be found on disk will be automatically removed from the database.</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Save button -->
     <div>
         <button id="save-button" class="btn btn-primary" style="float:right">Save</button>
     </div>
@@ -18,13 +43,18 @@
 <script type="text/javascript">
 
     function loadValues() {
-        return $.ajax({
+        var promise = $.ajax({
             url: 'getConfig',
             method: 'GET',
             success: function(data) {
                 data = data['settings'];
                 $('#field-project-description').val(data['description']);
                 $('#field-welcome-message').val(data['ui_settings']['welcomeMessage']);
+
+                // data management
+                $('#watch-folder-enabled-check').prop('checked', data['watch_folder_enabled']);
+                $('#remove-missing-images-check').prop('checked', data['watch_folder_remove_missing_enabled']);
+                $('#remove-missing-images-check').prop('disabled', !$('#watch-folder-enabled-check').prop('checked'));
             },
             error: function(xhr, status, error) {
                 var promise = window.renewSessionRequest(xhr);
@@ -33,7 +63,10 @@
                 });
                 return promise;
             }
-        })
+        });
+        return promise.done(function() {
+            return loadDataManagementSettings();
+        });
     }
 
     function saveValues() {
@@ -41,7 +74,9 @@
             'description': $('#field-project-description').val(),
             'ui_settings': {
                 'welcomeMessage': $('#field-welcome-message').val()
-            }
+            },
+            'watch_folder_enabled': $('#watch-folder-enabled-check').prop('checked'),
+            'watch_folder_remove_missing_enabled': $('#remove-missing-images-check').prop('checked')
         }
         return $.ajax({
             url: 'saveProjectConfiguration',
@@ -70,11 +105,52 @@
         });
     }
 
+    function loadDataManagementSettings() {
+        return $.ajax({
+            url: 'getPlatformInfo',
+            method: 'GET',
+            success: function(data) {
+                if(data.hasOwnProperty('settings')) {
+                    $('#server-image-folder-address').html(data['settings']['server_dir']);
+
+                    let scanInterval = data['settings']['watch_folder_interval'];
+
+                    if(scanInterval > 0) {
+                        $('#new-image-scan-interval').html(scanInterval);
+                    } else {
+                        // folder watch option is disabled on this instance of AIDE
+                        $('#watch-folder-disabled').show();
+                        $('#watch-folder-options').find('input').each(function() {
+                            $(this).prop('disabled', true);
+                        });
+                        $('#watch-folder-options').css('color', 'gray');
+                    }
+                    
+                }
+            },
+            error: function(xhr, status, error) {
+                var promise = window.renewSessionRequest(xhr);
+                promise = promise.done(function() {
+                    return loadDataManagementSettings();
+                });
+                return promise;
+            }
+        });
+    }
+
     $(document).ready(function() {
 
         var promise = loadValues();
 
         promise = promise.done(function() {
+            
+            $('#watch-folder-enabled-check').on('input', function() {
+                let disabled = !$('#watch-folder-enabled-check').prop('checked');
+                $('#remove-missing-images-check').prop('disabled', disabled);
+                if(disabled) {
+                    $('#remove-missing-images-check').prop('checked', false);
+                }
+            });
 
             $('#save-button').on('click', function() {
                 window.showLoadingOverlay(true);

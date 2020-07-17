@@ -60,3 +60,8 @@ def removeImages(project, imageList, forceRemove=False, deleteFromDisk=False):
 @current_app.task(name='DataAdministration.prepare_data_download')
 def prepareDataDownload(project, dataType='annotation', userList=None, dateRange=None, extraFields=None, segmaskFilenameOptions=None, segmaskEncoding='rgb'):
     return worker.prepareDataDownload(project, dataType, userList, dateRange, extraFields, segmaskFilenameOptions, segmaskEncoding)
+
+
+@current_app.task(name='DataAdministration.watch_image_folders', rate_limit=1)
+def watchImageFolders():
+    return worker.watchImageFolders()

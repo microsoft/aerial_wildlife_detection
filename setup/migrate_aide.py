@@ -179,7 +179,11 @@ MODIFICATIONS_sql = [
         PRIMARY KEY (id),
         FOREIGN KEY (launchedBy) REFERENCES aide_admin.user (name),
         FOREIGN KEY (abortedBy) REFERENCES aide_admin.user (name)
-    );'''
+    );''',
+
+    # project folder watching
+    'ALTER TABLE aide_admin.project ADD COLUMN IF NOT EXISTS watch_folder_enabled BOOLEAN NOT NULL DEFAULT FALSE;',
+    'ALTER TABLE aide_admin.project ADD COLUMN IF NOT EXISTS watch_folder_remove_missing_enabled BOOLEAN NOT NULL DEFAULT FALSE;'
 ]
 
 
