@@ -1,6 +1,6 @@
 # Upgrade from AIDE v1
 
-If you already have an installation of the [first version](https://github.com/microsoft/aerial_wildlife_detection) (v1) of AIDE installed, you can upgrade it to the latest version (v2) as described below.
+If you already have an installation of the [first version](https://github.com/microsoft/aerial_wildlife_detection/tree/v1) (v1) of AIDE installed, you can upgrade it to the latest version (v2) as described below.
 
 **Notes:**
 * These instructions do not transfer a v1 project to a _new_ database, they just upgrade an existing v1 project to work with the v2 installation that points to the _same_ database.
@@ -20,8 +20,8 @@ To upgrade a project from v1 to v2, follow these steps:
     * Your v1 project's database schema name is `my_great_project` (parameter `schema`under `[Database]` of the v1 settings.ini file),
     * You specify `/datadrive/v2/images` as the new folder for AIDE v2 (parameter `staticfiles_dir` under `[FileServer]` of the v2 settings.ini file),
     * Then you must move your images from `/datadrive/v1/images` to `/datadrive/v2/images/my_great_project`.
-4. Clone the appropriate GitHub branch into a new folder:
-`git clone -b multiProject https://github.com/microsoft/aerial_wildlife_detection.git`
+4. Clone the AIDE repository into a new folder:
+`git clone https://github.com/microsoft/aerial_wildlife_detection.git`
 5. Install missing dependencies in your environment
 ```bash
     conda activate aide
