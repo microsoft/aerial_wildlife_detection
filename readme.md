@@ -2,7 +2,7 @@
 
 
 **NOTE: This is the old, V1 version, which is now officially deprecated! This version will only receive occasional maintenance updates.
-Please see [here](https://github.com/microsoft/aerial_wildlife_detection/tree/multiProject) for AIDE V2.**
+Please see [here](https://github.com/microsoft/aerial_wildlife_detection) for AIDE V2.**
 
 
 ---
