@@ -1,46 +1,3 @@
-# AIDE V2
-
-Big update for AIDE:
-* Support for multiple projects
-* Advanced user and data management
-* On-the-fly user and model evaluation
-
-And everything through the web browser!
-
-
-Due to non-automatic upgradeability, AIDE V2 currently resides on its own branch (here). However, this version is the future of AIDE, and the original one will only be maintained for bug fixes. It is strongly recommended to start new projects from this version.
-Once ready, this branch of AIDE will replace the original one.
-
-
-
-## News
-
-**July 17, 2020:** AIDE now supports watching image folders for changes! Every project can be configured to automatically register newly added images and, optionally, remove all data for deleted images. See "Project Settings" > "General" and the new entry `watch_folder_interval` in the settings.ini file.
-**June 11, 2020:** The built-in RetinaNet now adapts to the project's label classes by adding or removing neurons whenever classes change! Check out the new, GUI-enhanced options in the project configuration page under "AI model" &gt; "Settings".
-**June 10, 2020:** Thanks to the outstanding work of contributor [Jarek](https://github.com/szjarek), AIDE V2 finally supports one-line installation and setup through [Docker](https://www.docker.com)! See [below](https://github.com/microsoft/aerial_wildlife_detection/tree/multiProject#with-docker) for instructions.
-
-
-## Progress so far
-
-:heavy_check_mark: Adapted core labeling UI front-end for multi-project support (incl. database communication).
-
-:heavy_check_mark: Updated migration scripts.
-
-:heavy_check_mark: Updated documentation.
-
-:clock8: Adapt AI backend for multi-project support. _Mostly completed_ **TODO:** need to clean up message processor and watchdog code. Still needs extensive testing.
-
-:clock8: Update data import scripts (and add GUI solution). _Work in progress_
-
-:clock8: Create meta modules for project overview and project settings editors for admins.  _Work in progress; a lot is already implemented_
-
-:white_check_mark: Enable user evaluation.  _Mostly completed; still needs fine details_
-
-:clock8: Update and polish the UI
-
-
-
-
 # AIDE: Annotation Interface for Data-driven Ecology
 
 AIDE is two things in one: <i>a tool for manually annotating images</i> and <i>a tool for training and running machine (deep) learning models</i>. Those two things are coupled in an <i>active learning loop</i>: the human annotates a few images, the system trains a model, that model is used to make predictions and to select more images for the human to annotate, etc.
@@ -63,6 +20,16 @@ AIDE is primarily developed by [Benjamin Kellenberger](https://bkellenb.github.i
 * **Modular:** AIDE is separated into individual _modules_, each of which can be run on separate machines for scalability. It even supports on-the-fly addition of computational workers for computationally intensive model training!
 
 ![AIDE highlights](doc/figures/Aide_highlights.png)
+
+
+
+## News
+
+* **August 17, 2020:** AIDE v2 now officially replaces the old version as the new master! If you have a v1 project running, you may want to migrate it according to the instructions [below](https://github.com/microsoft/aerial_wildlife_detection#migration-from-aide-v1). For the legacy v1 code, see [here](https://github.com/microsoft/aerial_wildlife_detection/tree/v1).
+* **July 17, 2020:** AIDE now supports watching image folders for changes! Every project can be configured to automatically register newly added images and, optionally, remove all data for deleted images. See "Project Settings" > "General" and the new entry `watch_folder_interval` in the settings.ini file.
+* **June 11, 2020:** The built-in RetinaNet now adapts to the project's label classes by adding or removing neurons whenever classes change! Check out the new, GUI-enhanced options in the project configuration page under "AI model" &gt; "Settings".
+* **June 10, 2020:** Thanks to the outstanding work of contributor [Jarek](https://github.com/szjarek), AIDE V2 finally supports one-line installation and setup through [Docker](https://www.docker.com)! See [below](https://github.com/microsoft/aerial_wildlife_detection/tree/multiProject#with-docker) for instructions.
+
 
 
 ## Demos
@@ -155,6 +122,7 @@ Here's how to install and launch AIDE with Docker on the current machine:
 See [here](doc/install.md) for instructions on configuring an instance of AIDE.
 
 After that, see [here](doc/launch_aide.md) for instructions on launching an instance of AIDE.
+
 
 
 
