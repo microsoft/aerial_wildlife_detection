@@ -17,6 +17,7 @@ AIDE is primarily developed by [Benjamin Kellenberger](https://bkellenb.github.i
     * Support for image classification, point annotations, and bounding boxes (object detection)
     * A number of AI models and Active Learning criteria [built-in](doc/builtin_models.md)
     * Interfaces for custom AI models and criteria, using any framework or library you want (see how to [write your own model](doc/custom_model.md)).
+* **Fully featured:** Beyond image labeling and model training, AIDE has management and graphical user/machine performance evaluation tools built-in, right in the web browser, allowing for advanced, manual label quality checks.
 * **Modular:** AIDE is separated into individual _modules_, each of which can be run on separate machines for scalability. It even supports on-the-fly addition of computational workers for computationally intensive model training!
 
 ![AIDE highlights](doc/figures/Aide_highlights.png)
