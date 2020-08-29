@@ -9,22 +9,16 @@
 '''
 
 import os
+
+if not 'AIDE_MODULES' in os.environ:
+    os.environ['AIDE_MODULES'] = 'FileServer'     # for compatibility with Celery worker import
+
 import argparse
 from util.configDef import Config
 from modules import Database, UserHandling
 
 
-if __name__ == '__main__':
-
-    # setup
-    parser = argparse.ArgumentParser(description='Set up AIDE database schema.')
-    parser.add_argument('--settings_filepath', type=str, default='config/settings.ini', const=1, nargs='?',
-                    help='Manual specification of the directory of the settings.ini file; only considered if environment variable unset (default: "config/settings.ini").')
-    args = parser.parse_args()
-
-    if not 'AIDE_CONFIG_PATH' in os.environ:
-        os.environ['AIDE_CONFIG_PATH'] = args.settings_filepath
-
+def setupDB():
     config = Config()
     dbConn = Database(config)
 
@@ -42,6 +36,7 @@ if __name__ == '__main__':
     sql = '''
         INSERT INTO aide_admin.user (name, email, hash, issuperuser)
         VALUES (%s, %s, %s, %s)
+        ON CONFLICT (name) DO NOTHING;
     '''
     adminPass = config.getProperty('Project', 'adminPassword')
     uHandler = UserHandling.backend.middleware.UserMiddleware(config)
@@ -49,3 +44,17 @@ if __name__ == '__main__':
 
     values = (config.getProperty('Project', 'adminName'), config.getProperty('Project', 'adminEmail'), adminPass, True,)
     dbConn.execute(sql, values, None)
+
+
+if __name__ == '__main__':
+
+    # setup
+    parser = argparse.ArgumentParser(description='Set up AIDE database schema.')
+    parser.add_argument('--settings_filepath', type=str, default='config/settings.ini', const=1, nargs='?',
+                    help='Manual specification of the directory of the settings.ini file; only considered if environment variable unset (default: "config/settings.ini").')
+    args = parser.parse_args()
+
+    if not 'AIDE_CONFIG_PATH' in os.environ:
+        os.environ['AIDE_CONFIG_PATH'] = args.settings_filepath
+    
+    setupDB()

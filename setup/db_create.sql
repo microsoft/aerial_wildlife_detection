@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS aide_admin.user (
     PRIMARY KEY (name)
 );
 
+ALTER TABLE aide_admin.project DROP CONSTRAINT IF EXISTS project_user_fkey;
 ALTER TABLE aide_admin.project ADD CONSTRAINT project_user_fkey FOREIGN KEY (owner) REFERENCES aide_admin.USER (name);
 
 CREATE TABLE IF NOT EXISTS aide_admin.authentication (

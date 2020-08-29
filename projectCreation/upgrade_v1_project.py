@@ -51,6 +51,7 @@ import argparse
 import json
 import secrets
 from psycopg2 import sql
+from setup.setupDB import setupDB
 from setup.migrate_aide import migrate_aide, MODIFICATIONS_sql
 from urllib.parse import urlparse
 from modules import UserHandling
@@ -80,12 +81,119 @@ if __name__ == '__main__':
     dbSchema = v1Config.getProperty('Database', 'schema')
     projectName = v1Config.getProperty('Project', 'projectName')
 
+    # verify we're running a database on v2 standards
+    isV2 = dbConn.execute('''
+        SELECT 1
+        FROM   information_schema.tables 
+        WHERE  table_schema = 'aide_admin'
+        AND    table_name = 'project';
+    ''', None, 'all')
+    if isV2 is None or not len(isV2):
+        # upgrade to v2
+        dbName = config.getProperty('Database', 'name')
+        print(f'WARNING: Target database "{dbName}" has not (yet) been upgraded to the AIDE v2 schema; we will attempt to do this now...')
+        setupDB()
+
+    # verify that project is unique
+    uniqueQuery = dbConn.execute('''
+        SELECT shortname, name
+        FROM aide_admin.project;
+    ''', None, 'all')
+    if uniqueQuery is not None and len(uniqueQuery):
+        for u in uniqueQuery:
+            if u['shortname'] == dbSchema:
+                print(f'Project with short name "{dbSchema}" seems to have already been migrated to AIDE v2. Aborting...')
+                sys.exit(0)
+            if u['name'] == projectName:
+                projectName_old = projectName
+                projectName = f'{projectName_old} ({dbSchema})'
+                print(f'WARNING: project name "{projectName_old}" already exists in database. Renaming to "{projectName}"...')
+
+    # migrate user names before applying changes to database
+
+    # add admin user (if not already present)
+    adminName = v1Config.getProperty('Project', 'adminName', type=str, fallback=None)
+    if adminName is not None:
+        adminEmail = v1Config.getProperty('Project', 'adminEmail')
+        adminPass = v1Config.getProperty('Project', 'adminPassword')
+        uHandler = UserHandling.backend.middleware.UserMiddleware(config)
+        adminPass = uHandler._create_hash(adminPass.encode('utf8'))
+        dbConn.execute('''
+                INSERT INTO aide_admin.user (name, email, hash, issuperuser)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT (name) DO NOTHING;
+            ''',
+            (adminName, adminEmail, adminPass, True),
+            None
+        )
+
+    # add users
+    dbConn.execute(sql.SQL('''
+            DO
+            $do$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1
+                    FROM   information_schema.tables 
+                    WHERE  table_schema = %s
+                    AND    table_name = 'user'
+                ) THEN
+                    INSERT INTO aide_admin.user (name, email, hash, isSuperUser, canCreateProjects, session_token, last_login)
+                    SELECT name, email, hash, FALSE, FALSE, session_token, last_login
+                    FROM {id_user}
+                    ON CONFLICT (name) DO NOTHING;
+                END IF;
+            END $do$;
+        ''').format(id_user=sql.Identifier(dbSchema, 'user')),
+        (dbSchema))
+
     # update tables: make modifications one at a time
     for mod in MODIFICATIONS_sql:
         dbConn.execute(mod.format(schema=dbSchema), None, None)
 
+    # migrate project to v2
 
-    # migrate to v2
+    # The multi-project AIDE setup requires images to be in a subfolder named after
+    # the project shorthand. Here we tell the user about moving the files, or else
+    # propose a temporary fix (softlink).
+    softlinkName = config.getProperty('FileServer', 'staticfiles_dir')
+    if not os.path.isdir(softlinkName):
+        # not running on file server; show message
+        print('You do not appear to be running AIDE on a "FileServer" instance.')
+        print('INFO: In the process of AIDE supporting multiple projects, each')
+        print('project\'s files must be put in a sub-folder named after the project\'s')
+        print(f'shorthand (i.e.: {softlinkName}/{dbSchema}/...).')
+        print('Make sure to move the files to the new path on the FileServer instance.')
+    
+    else:
+        softlinkName = os.path.join(softlinkName, dbSchema)
+        if os.path.islink(softlinkName):
+            print(f'INFO: Detected link to project file directory ({softlinkName})')
+            print('You might want to move the files to a dedicated folder at some point...')
+        else:
+            print('INFO: In the process of AIDE supporting multiple projects, each')
+            print('project\'s files must be put in a sub-folder named after the project\'s')
+            print(f'shorthand (i.e.: {softlinkName}/<images>).')
+            print('Ideally, you would want to move the images to that folder, but as a')
+            print('temporary fix, you can also use a softlink:')
+            print('{} -> {}'.format(softlinkName, config.getProperty('FileServer', 'staticfiles_dir')))
+            print('Would you like to create this softlink now?')
+            confirmation = None
+            while confirmation is None:
+                try:
+                    confirmation = input('[Y/n]: ')
+                    if 'Y' in confirmation:
+                        confirmation = True
+                    elif 'n' in confirmation.lower():
+                        confirmation = False
+                    else: raise Exception('Invalid value')
+                except:
+                    confirmation = None
+            if confirmation:
+                os.symlink(
+                    v1Config.getProperty('FileServer', 'staticfiles_dir'),
+                    softlinkName
+                )
 
     # assemble dict of dynamic project UI and AI settings
     try:
@@ -177,21 +285,6 @@ if __name__ == '__main__':
     #         autoTrainSpec = autoTrainSpec[0]
     #         #TODO
 
-    # verify project is unique
-    uniqueQuery = dbConn.execute('''
-        SELECT shortname, name
-        FROM aide_admin.project;
-    ''', None, 'all')
-    if uniqueQuery is not None and len(uniqueQuery):
-        for u in uniqueQuery:
-            if u['shortname'] == dbSchema:
-                print(f'Project with short name "{dbSchema}" seems to have already been migrated to AIDE v2. Aborting...')
-                sys.exit(0)
-            if u['name'] == projectName:
-                projectName_old = projectName
-                projectName = f'{projectName_old} ({dbSchema})'
-                print(f'WARNING: project name "{projectName_old}" already exists in database. Renaming to "{projectName}"...')
-
     # register project
     secretToken = secrets.token_urlsafe(32)
     dbConn.execute('''
@@ -243,108 +336,24 @@ if __name__ == '__main__':
         )
     )
 
-    # add admin user (if not already present)
-    adminName = v1Config.getProperty('Project', 'adminName', type=str, fallback=None)
-    if adminName is not None:
-        adminEmail = v1Config.getProperty('Project', 'adminEmail')
-        adminPass = v1Config.getProperty('Project', 'adminPassword')
-        uHandler = UserHandling.backend.middleware.UserMiddleware(config)
-        adminPass = uHandler._create_hash(adminPass.encode('utf8'))
-        dbConn.execute('''
-                INSERT INTO aide_admin.user (name, email, hash, issuperuser)
-                VALUES (%s, %s, %s, %s)
-                ON CONFLICT (name) DO NOTHING;
-            ''',
-            (adminName, adminEmail, adminPass, True),
-            None
-        )
-
-    # add authentication
-    dbConn.execute('''
-            DO
-            $do$
-            BEGIN
-                IF EXISTS (
-                    SELECT 1
-                    FROM   information_schema.tables 
-                    WHERE  table_schema = '{schema}'
-                    AND    table_name = 'user'
-                ) THEN
-                    INSERT INTO aide_admin.authentication (username, project, isAdmin)
-                    SELECT name, '{schema}', isAdmin FROM {schema}.user
-                    WHERE name IN (SELECT name FROM aide_admin.user)
-                    ON CONFLICT (username, project) DO NOTHING;
-                END IF;
-            END $do$;
-        '''.format(schema=dbSchema),
-        None,
-        None)
-
-    # add and register users
+    # add user authentication for project
     dbConn.execute(sql.SQL('''
-            INSERT INTO aide_admin.user (name, email, hash, isSuperUser, canCreateProjects, session_token, last_login)
-            SELECT name, email, hash, FALSE, FALSE, session_token, last_login
-            FROM {id_user}
-            ON CONFLICT (name) DO NOTHING;
-        ''').format(id_user=sql.Identifier(dbSchema, 'user')),
-        None)
-    # dbConn.execute('''DO
-    #     $do$
-    #     BEGIN
-    #         IF EXISTS (
-    #             SELECT 1
-    #             FROM   information_schema.tables 
-    #             WHERE  table_schema = '{schema}'
-    #             AND    table_name = 'user'
-    #         ) THEN
-    #             INSERT INTO aide_admin.authentication (username, project, isAdmin)
-    #                 SELECT name, %s AS project, isAdmin FROM {schema}.user;
-    #         END IF;
-    #     END $do$;
-    #     '''.format(schema=dbSchema),
-    #     (dbSchema,), None)
-
-
-    # The multi-project AIDE setup requires images to be in a subfolder named after
-    # the project shorthand. Here we tell the user about moving the files, or else
-    # propose a temporary fix (softlink).
-    softlinkName = config.getProperty('FileServer', 'staticfiles_dir')
-    if not os.path.isdir(softlinkName):
-        # not running on file server; show message
-        print('You do not appear to be running AIDE on a "FileServer" instance.')
-        print('INFO: In the process of AIDE supporting multiple projects, each')
-        print('project\'s files must be put in a sub-folder named after the project\'s')
-        print(f'shorthand (i.e.: {softlinkName}/{dbSchema}/...).')
-        print('Make sure to move the files to the new path on the FileServer instance.')
-    
-    else:
-        softlinkName = os.path.join(softlinkName, dbSchema)
-        if os.path.islink(softlinkName):
-            print(f'INFO: Detected link to project file directory ({softlinkName})')
-            print('You might want to move the files to a dedicated folder at some point...')
-        else:
-            print('INFO: In the process of AIDE supporting multiple projects, each')
-            print('project\'s files must be put in a sub-folder named after the project\'s')
-            print(f'shorthand (i.e.: {softlinkName}/<images>).')
-            print('Ideally, you would want to move the images to that folder, but as a')
-            print('temporary fix, you can also use a softlink:')
-            print('{} -> {}'.format(softlinkName, config.getProperty('FileServer', 'staticfiles_dir')))
-            print('Would you like to create this softlink now?')
-            confirmation = None
-            while confirmation is None:
-                try:
-                    confirmation = input('[Y/n]: ')
-                    if 'Y' in confirmation:
-                        confirmation = True
-                    elif 'n' in confirmation.lower():
-                        confirmation = False
-                    else: raise Exception('Invalid value')
-                except:
-                    confirmation = None
-            if confirmation:
-                os.symlink(
-                    v1Config.getProperty('FileServer', 'staticfiles_dir'),
-                    softlinkName
-                )
+        DO
+        $do$
+        BEGIN
+            IF EXISTS (
+                SELECT 1
+                FROM   information_schema.tables 
+                WHERE  table_schema = %s
+                AND    table_name = 'user'
+            ) THEN
+                INSERT INTO aide_admin.authentication (username, project, isAdmin)
+                SELECT name, %s, isAdmin FROM {id_user}
+                WHERE name IN (SELECT name FROM aide_admin.user)
+                ON CONFLICT (username, project) DO NOTHING;
+            END IF;
+        END $do$;
+    ''').format(id_user=sql.Identifier(dbSchema, 'user')),
+    (dbSchema, dbSchema))
 
     print(f'Project "{projectName}" has been converted to AIDE v2 standards. Please do not use a v1 installation on this project anymore.')
