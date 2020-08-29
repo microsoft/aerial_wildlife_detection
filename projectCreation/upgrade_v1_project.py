@@ -39,9 +39,18 @@
 '''
 
 import os
+
+# verify environment variables
+if not 'AIDE_CONFIG_PATH' in os.environ:
+        raise Exception('ERROR: System environment variable "AIDE_CONFIG_PATH" must be set and must point to the configuration .ini file of the v2 installation.')
+if not 'AIDE_MODULES' in os.environ:
+    os.environ['AIDE_MODULES'] = 'FileServer'     # for compatibility with Celery worker import
+
+import sys
 import argparse
 import json
 import secrets
+from psycopg2 import sql
 from setup.migrate_aide import migrate_aide, MODIFICATIONS_sql
 from urllib.parse import urlparse
 from modules import UserHandling
@@ -55,21 +64,24 @@ if __name__ == '__main__':
                     help='Path of the configuration .ini file for the v1 project to be upgraded to v2.')
     args = parser.parse_args()
 
-    if not 'AIDE_CONFIG_PATH' in os.environ:
-        raise Exception('ERROR: System environment variable "AIDE_CONFIG_PATH" must be set and must point to the configuration .ini file of the v2 installation.')
-    if not 'AIDE_MODULES' in os.environ:
-        os.environ['AIDE_MODULES'] = ''     # for compatibility with Celery worker import
+    #TODO
+    args.settings_filepath = 'settings_objectCentered.ini'
 
     from util.configDef import Config
     from modules import Database
 
+    # v2 config file
     config = Config()
     dbConn = Database(config)
     if dbConn.connectionPool is None:
         raise Exception('Error connecting to database.')
 
+    # v1 config file
+    v1Config = Config(args.settings_filepath)
+
     # db schema of v1 project
-    dbSchema = config.getProperty('Database', 'schema')
+    dbSchema = v1Config.getProperty('Database', 'schema')
+    projectName = v1Config.getProperty('Project', 'projectName')
 
     # update tables: make modifications one at a time
     for mod in MODIFICATIONS_sql:
@@ -80,53 +92,53 @@ if __name__ == '__main__':
 
     # assemble dict of dynamic project UI and AI settings
     try:
-        with open(config.getProperty('LabelUI', 'styles_file', type=str, fallback='modules/LabelUI/static/json/styles.json'), 'r') as f:
+        with open(v1Config.getProperty('LabelUI', 'styles_file', type=str, fallback='modules/LabelUI/static/json/styles.json'), 'r') as f:
             styles = json.load(f)
             styles = styles['styles']
     except:
         styles = {}
     try:
-        with open(config.getProperty('Project', 'backdrops_file', type=str, fallback='modules/LabelUI/static/json/backdrops.json'), 'r') as f:
+        with open(v1Config.getProperty('Project', 'backdrops_file', type=str, fallback='modules/LabelUI/static/json/backdrops.json'), 'r') as f:
             backdrops = json.load(f)
     except:
         backdrops = {}
     try:
-        with open(config.getProperty('Project', 'welcome_message_file', type=str, fallback='modules/LabelUI/static/templates/welcome_message.html'), 'r') as f:
+        with open(v1Config.getProperty('Project', 'welcome_message_file', type=str, fallback='modules/LabelUI/static/templates/welcome_message.html'), 'r') as f:
             welcomeMessage = f.readlines()
     except:
         welcomeMessage = ''
     uiSettings = {
-        'enableEmptyClass': config.getProperty('Project', 'enableEmptyClass', fallback='no'),
-        'showPredictions': config.getProperty('LabelUI', 'showPredictions', fallback='yes'),
-        'showPredictions_minConf': config.getProperty('LabelUI', 'showPredictions_minConf', type=float, fallback=0.5),
-        'carryOverPredictions': config.getProperty('LabelUI', 'carryOverPredictions', fallback='no'),
-        'carryOverRule': config.getProperty('LabelUI', 'carryOverRule', fallback='maxConfidence'),
-        'carryOverPredictions_minConf': config.getProperty('LabelUI', 'carryOverPredictions_minConf', type=float, fallback=0.75),
-        'defaultBoxSize_w': config.getProperty('LabelUI', 'defaultBoxSize_w', type=int, fallback=10),
-        'defaultBoxSize_h': config.getProperty('LabelUI', 'defaultBoxSize_h', type=int, fallback=10),
-        'minBoxSize_w': config.getProperty('Project', 'box_minWidth', type=int, fallback=1),
-        'minBoxSize_h': config.getProperty('Project', 'box_minHeight', type=int, fallback=1),
-        'numImagesPerBatch': config.getProperty('LabelUI', 'numImagesPerBatch', type=int, fallback=1),
-        'minImageWidth': config.getProperty('LabelUI', 'minImageWidth', type=int, fallback=300),
-        'numImageColumns_max': config.getProperty('LabelUI', 'numImageColumns_max', type=int, fallback=1),
-        'defaultImage_w': config.getProperty('LabelUI', 'defaultImage_w', type=int, fallback=800),
-        'defaultImage_h': config.getProperty('LabelUI', 'defaultImage_h', type=int, fallback=600),
+        'enableEmptyClass': v1Config.getProperty('Project', 'enableEmptyClass', fallback='no'),
+        'showPredictions': v1Config.getProperty('LabelUI', 'showPredictions', fallback='yes'),
+        'showPredictions_minConf': v1Config.getProperty('LabelUI', 'showPredictions_minConf', type=float, fallback=0.5),
+        'carryOverPredictions': v1Config.getProperty('LabelUI', 'carryOverPredictions', fallback='no'),
+        'carryOverRule': v1Config.getProperty('LabelUI', 'carryOverRule', fallback='maxConfidence'),
+        'carryOverPredictions_minConf': v1Config.getProperty('LabelUI', 'carryOverPredictions_minConf', type=float, fallback=0.75),
+        'defaultBoxSize_w': v1Config.getProperty('LabelUI', 'defaultBoxSize_w', type=int, fallback=10),
+        'defaultBoxSize_h': v1Config.getProperty('LabelUI', 'defaultBoxSize_h', type=int, fallback=10),
+        'minBoxSize_w': v1Config.getProperty('Project', 'box_minWidth', type=int, fallback=1),
+        'minBoxSize_h': v1Config.getProperty('Project', 'box_minHeight', type=int, fallback=1),
+        'numImagesPerBatch': v1Config.getProperty('LabelUI', 'numImagesPerBatch', type=int, fallback=1),
+        'minImageWidth': v1Config.getProperty('LabelUI', 'minImageWidth', type=int, fallback=300),
+        'numImageColumns_max': v1Config.getProperty('LabelUI', 'numImageColumns_max', type=int, fallback=1),
+        'defaultImage_w': v1Config.getProperty('LabelUI', 'defaultImage_w', type=int, fallback=800),
+        'defaultImage_h': v1Config.getProperty('LabelUI', 'defaultImage_h', type=int, fallback=600),
         'styles': styles,
         'backdrops': backdrops,
         'welcomeMessage': welcomeMessage
     }
 
     # models
-    modelPath = config.getProperty('AIController', 'model_lib_path', fallback=None)
+    modelPath = v1Config.getProperty('AIController', 'model_lib_path', fallback=None)
     if modelPath is not None and len(modelPath):
         dbConn.execute('UPDATE {schema}.cnnstate SET model_library = %s WHERE model_library IS NULL;'.format(schema=dbSchema),
         (modelPath,), None)
     else:
         modelPath = None
-    alCriterionPath = config.getProperty('AIController', 'al_criterion_lib_path', fallback=None)
+    alCriterionPath = v1Config.getProperty('AIController', 'al_criterion_lib_path', fallback=None)
     if alCriterionPath is None or not len(alCriterionPath): alCriterionPath = None
 
-    modelSettingsPath = config.getProperty('AIController', 'model_options_path', fallback=None)
+    modelSettingsPath = v1Config.getProperty('AIController', 'model_options_path', fallback=None)
     if modelSettingsPath is not None and len(modelSettingsPath):
         try:
             with open(modelSettingsPath, 'r') as f:
@@ -136,7 +148,7 @@ if __name__ == '__main__':
             modelSettings = None
     else:
         modelSettings = None
-    alCriterionSettingsPath = config.getProperty('AIController', 'al_criterion_options_path', fallback=None)
+    alCriterionSettingsPath = v1Config.getProperty('AIController', 'al_criterion_options_path', fallback=None)
     if alCriterionSettingsPath is not None and len(alCriterionSettingsPath):
         try:
             with open(alCriterionSettingsPath, 'r') as f:
@@ -168,6 +180,20 @@ if __name__ == '__main__':
     #         autoTrainSpec = autoTrainSpec[0]
     #         #TODO
 
+    # verify project is unique
+    uniqueQuery = dbConn.execute('''
+        SELECT shortname, name
+        FROM aide_admin.project;
+    ''', None, 'all')
+    if uniqueQuery is not None and len(uniqueQuery):
+        for u in uniqueQuery:
+            if u['shortname'] == dbSchema:
+                print(f'Project with short name "{dbSchema}" seems to have already been migrated to AIDE v2. Aborting...')
+                sys.exit(0)
+            if u['name'] == projectName:
+                projectName_old = projectName
+                projectName = f'{projectName_old} ({dbSchema})'
+                print(f'WARNING: project name "{projectName_old}" already exists in database. Renaming to "{projectName}"...')
 
     # register project
     secretToken = secrets.token_urlsafe(32)
@@ -201,39 +227,85 @@ if __name__ == '__main__':
     ''',
         (
             dbSchema,
-            config.getProperty('Project', 'projectName'),
-            config.getProperty('Project', 'projectDescription'),
-            config.getProperty('Project', 'adminName'),
+            projectName,
+            v1Config.getProperty('Project', 'projectDescription'),
+            v1Config.getProperty('Project', 'adminName'),
             secretToken,
             True,
-            config.getProperty('Project', 'demoMode'),
-            config.getProperty('Project', 'annotationType'),
-            config.getProperty('Project', 'predictionType'),
+            v1Config.getProperty('Project', 'demoMode'),
+            v1Config.getProperty('Project', 'annotationType'),
+            v1Config.getProperty('Project', 'predictionType'),
             json.dumps(uiSettings),
-            config.getProperty('AIController', 'numImages_autoTrain'),
-            config.getProperty('AIController', 'minNumAnnoPerImage'),
-            config.getProperty('AIController', 'maxNumImages_train'),
-            config.getProperty('AIController', 'maxNumImages_inference'),
+            v1Config.getProperty('AIController', 'numImages_autoTrain'),
+            v1Config.getProperty('AIController', 'minNumAnnoPerImage'),
+            v1Config.getProperty('AIController', 'maxNumImages_train'),
+            v1Config.getProperty('AIController', 'maxNumImages_inference'),
             (modelPath is not None),
             modelPath, modelSettings,
             alCriterionPath, alCriterionSettings
         )
     )
-    dbConn.execute('''DO
-        $do$
-        BEGIN
-            IF EXISTS (
-                SELECT 1
-                FROM   information_schema.tables 
-                WHERE  table_schema = '{schema}'
-                AND    table_name = 'user'
-            ) THEN
-                INSERT INTO aide_admin.authentication (username, project, isAdmin)
-                    SELECT name, %s AS project, isAdmin FROM {schema}.user;
-            END IF;
-        END $do$;
+
+    # add admin user (if not already present)
+    adminName = v1Config.getProperty('Project', 'adminName', type=str, fallback=None)
+    if adminName is not None:
+        adminEmail = v1Config.getProperty('Project', 'adminEmail')
+        adminPass = v1Config.getProperty('Project', 'adminPassword')
+        uHandler = UserHandling.backend.middleware.UserMiddleware(config)
+        adminPass = uHandler._create_hash(adminPass.encode('utf8'))
+        dbConn.execute('''
+                INSERT INTO aide_admin.user (name, email, hash, issuperuser)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT (name) DO NOTHING;
+            ''',
+            (adminName, adminEmail, adminPass, True),
+            None
+        )
+
+    # add authentication
+    dbConn.execute('''
+            DO
+            $do$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1
+                    FROM   information_schema.tables 
+                    WHERE  table_schema = '{schema}'
+                    AND    table_name = 'user'
+                ) THEN
+                    INSERT INTO aide_admin.authentication (username, project, isAdmin)
+                    SELECT name, '{schema}', isAdmin FROM {schema}.user
+                    WHERE name IN (SELECT name FROM aide_admin.user)
+                    ON CONFLICT (username, project) DO NOTHING;
+                END IF;
+            END $do$;
         '''.format(schema=dbSchema),
-        (dbSchema,), None)
+        None,
+        None)
+
+    # add and register users
+    dbConn.execute(sql.SQL('''
+            INSERT INTO aide_admin.user (name, email, hash, isSuperUser, canCreateProjects, session_token, last_login)
+            SELECT name, email, hash, FALSE, FALSE, session_token, last_login
+            FROM {id_user}
+            ON CONFLICT (name) DO NOTHING;
+        ''').format(id_user=sql.Identifier(dbSchema, 'user')),
+        None)
+    # dbConn.execute('''DO
+    #     $do$
+    #     BEGIN
+    #         IF EXISTS (
+    #             SELECT 1
+    #             FROM   information_schema.tables 
+    #             WHERE  table_schema = '{schema}'
+    #             AND    table_name = 'user'
+    #         ) THEN
+    #             INSERT INTO aide_admin.authentication (username, project, isAdmin)
+    #                 SELECT name, %s AS project, isAdmin FROM {schema}.user;
+    #         END IF;
+    #     END $do$;
+    #     '''.format(schema=dbSchema),
+    #     (dbSchema,), None)
 
 
     # The multi-project AIDE setup requires images to be in a subfolder named after
@@ -274,45 +346,8 @@ if __name__ == '__main__':
                     confirmation = None
             if confirmation:
                 os.symlink(
-                    config.getProperty('FileServer', 'staticfiles_dir'),
+                    v1Config.getProperty('FileServer', 'staticfiles_dir'),
                     softlinkName
                 )
 
-    # add admin user (if not already present)
-    adminName = config.getProperty('Project', 'adminName', type=str, fallback=None)
-    if adminName is not None:
-        adminEmail = config.getProperty('Project', 'adminEmail')
-        adminPass = config.getProperty('Project', 'adminPassword')
-        uHandler = UserHandling.backend.middleware.UserMiddleware(config)
-        adminPass = uHandler._create_hash(adminPass.encode('utf8'))
-        dbConn.execute('''
-                INSERT INTO aide_admin.user (name, email, hash, issuperuser)
-                VALUES (%s, %s, %s, %s)
-                ON CONFLICT (name) DO NOTHING;
-            ''',
-            (adminName, adminEmail, adminPass, True),
-            None
-        )
-
-    # add authentication
-    dbConn.execute('''
-            DO
-            $do$
-            BEGIN
-                IF EXISTS (
-                    SELECT 1
-                    FROM   information_schema.tables 
-                    WHERE  table_schema = '{schema}'
-                    AND    table_name = 'user'
-                ) THEN
-                    INSERT INTO aide_admin.authentication (username, project, isAdmin)
-                    SELECT name, '{schema}', isAdmin FROM {schema}.user
-                    WHERE name IN (SELECT name FROM aide_admin.user)
-                    ON CONFLICT (username, project) DO NOTHING;
-                END IF;
-            END $do$;
-        '''.format(schema=dbSchema),
-        None,
-        None)
-
-    print('Project "{}" has been converted to AIDE v2 standards. Please do not use a v1 installation on this project anymore.'.format(config.getProperty('Project', 'projectName')))
+    print(f'Project "{projectName}" has been converted to AIDE v2 standards. Please do not use a v1 installation on this project anymore.')

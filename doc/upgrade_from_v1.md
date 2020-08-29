@@ -34,7 +34,7 @@ To upgrade a project from v1 to v2, follow these steps:
 ```
 7. Run the following migration script (with the appropriate path at the end):
 ```bash
-    python setup/upgrade_v1_project.py --settings_filepath=/path/to/v1/settings.ini
+    python projectCreation/upgrade_v1_project.py --settings_filepath=/path/to/v1/settings.ini
 ```
 If you did not do step 3, you might be asked if you want AIDE to create a symbolic link to your images. Be aware that although this works as a quick fix, it is not recommended for deployment, as other projects in AIDE v2 may be able to see each other's images this way, due to the recursive nature of the link.
 7. Launch AIDE v2:

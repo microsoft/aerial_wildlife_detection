@@ -10,11 +10,16 @@ from configparser import ConfigParser
 
 class Config():
 
-    def __init__(self):
-        if not 'AIDE_CONFIG_PATH' in os.environ:
-            raise ValueError('Missing system environment variable "AIDE_CONFIG_PATH".')
+    def __init__(self, override_config_path=None):
+        if isinstance(override_config_path, str) and len(override_config_path):
+            configPath = override_config_path
+        elif 'AIDE_CONFIG_PATH' in os.environ:
+            configPath = os.environ['AIDE_CONFIG_PATH']
+        else:
+            raise ValueError('Neither system environment variable "AIDE_CONFIG_PATH" nor override path are set.')
+            
         self.config = ConfigParser()
-        self.config.read(os.environ['AIDE_CONFIG_PATH'])
+        self.config.read(configPath)
 
 
     def getProperty(self, module, propertyName, type=str, fallback=None):
