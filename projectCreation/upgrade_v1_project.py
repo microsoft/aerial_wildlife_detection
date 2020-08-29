@@ -145,7 +145,7 @@ if __name__ == '__main__':
                 END IF;
             END $do$;
         ''').format(id_user=sql.Identifier(dbSchema, 'user')),
-        (dbSchema))
+        (dbSchema,))
 
     # update tables: make modifications one at a time
     for mod in MODIFICATIONS_sql:
@@ -157,6 +157,7 @@ if __name__ == '__main__':
     # the project shorthand. Here we tell the user about moving the files, or else
     # propose a temporary fix (softlink).
     softlinkName = config.getProperty('FileServer', 'staticfiles_dir')
+    v1StaticFilesDir = v1Config.getProperty('FileServer', 'staticfiles_dir')
     if not os.path.isdir(softlinkName):
         # not running on file server; show message
         print('You do not appear to be running AIDE on a "FileServer" instance.')
@@ -176,7 +177,7 @@ if __name__ == '__main__':
             print(f'shorthand (i.e.: {softlinkName}/<images>).')
             print('Ideally, you would want to move the images to that folder, but as a')
             print('temporary fix, you can also use a softlink:')
-            print('{} -> {}'.format(softlinkName, config.getProperty('FileServer', 'staticfiles_dir')))
+            print('{} -> {}'.format(softlinkName, v1StaticFilesDir))
             print('Would you like to create this softlink now?')
             confirmation = None
             while confirmation is None:
@@ -186,12 +187,15 @@ if __name__ == '__main__':
                         confirmation = True
                     elif 'n' in confirmation.lower():
                         confirmation = False
+                        print('You selected not to create a softlink. AIDE will not find the image files')
+                        print(f'before they have been moved to the new folder ("{softlinkName}").')
+                        print(f'Please create this folder and move the contents of "{v1StaticFilesDir}" to it manually.')
                     else: raise Exception('Invalid value')
                 except:
                     confirmation = None
             if confirmation:
                 os.symlink(
-                    v1Config.getProperty('FileServer', 'staticfiles_dir'),
+                    v1StaticFilesDir,
                     softlinkName
                 )
 
