@@ -64,9 +64,6 @@ if __name__ == '__main__':
                     help='Path of the configuration .ini file for the v1 project to be upgraded to v2.')
     args = parser.parse_args()
 
-    #TODO
-    args.settings_filepath = 'settings_objectCentered.ini'
-
     from util.configDef import Config
     from modules import Database
 
