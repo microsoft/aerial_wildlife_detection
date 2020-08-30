@@ -46,6 +46,10 @@ if not 'AIDE_CONFIG_PATH' in os.environ:
 if not 'AIDE_MODULES' in os.environ:
     os.environ['AIDE_MODULES'] = 'FileServer'     # for compatibility with Celery worker import
 
+# verify execution directory
+if not os.path.isdir(os.path.join(os.getcwd(), 'modules')):
+    raise Exception('ERROR: Upgrade script needs to be launched from the root directory of the AIDE v2 installation.')
+
 import sys
 import argparse
 import json
@@ -55,6 +59,7 @@ from setup.setupDB import setupDB
 from setup.migrate_aide import migrate_aide, MODIFICATIONS_sql
 from urllib.parse import urlparse
 from modules import UserHandling
+from util import helpers
 
 
 
@@ -200,17 +205,24 @@ if __name__ == '__main__':
                 )
 
     # assemble dict of dynamic project UI and AI settings
+
+    # styles: try to get provided ones and fallback to defaults, if needed
     try:
-        with open(v1Config.getProperty('LabelUI', 'styles_file', type=str, fallback='modules/LabelUI/static/json/styles.json'), 'r') as f:
+        # check if custom default styles are provided
+        defaultStyles = json.load(open('config/default_ui_settings.json', 'r'))
+    except:
+        # resort to built-in styles
+        defaultStyles = json.load(open('modules/ProjectAdministration/static/json/default_ui_settings.json', 'r'))
+    try:
+        with open(v1Config.getProperty('LabelUI', 'styles_file'), 'r') as f:
             styles = json.load(f)
             styles = styles['styles']
+
+            # compare with defaults
+            styles = helpers.check_args(styles, defaultStyles)
     except:
-        styles = {}
-    try:
-        with open(v1Config.getProperty('Project', 'backdrops_file', type=str, fallback='modules/LabelUI/static/json/backdrops.json'), 'r') as f:
-            backdrops = json.load(f)
-    except:
-        backdrops = {}
+        # fallback to defaults
+        styles = defaultStyles
     try:
         with open(v1Config.getProperty('Project', 'welcome_message_file', type=str, fallback='modules/LabelUI/static/templates/welcome_message.html'), 'r') as f:
             welcomeMessage = f.readlines()
@@ -233,7 +245,6 @@ if __name__ == '__main__':
         'defaultImage_w': v1Config.getProperty('LabelUI', 'defaultImage_w', type=int, fallback=800),
         'defaultImage_h': v1Config.getProperty('LabelUI', 'defaultImage_h', type=int, fallback=600),
         'styles': styles,
-        'backdrops': backdrops,
         'welcomeMessage': welcomeMessage
     }
 

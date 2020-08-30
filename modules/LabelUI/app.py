@@ -100,31 +100,7 @@ class LabelUI():
                 version=AIDE_VERSION,
                 projectShortname=project,
                 projectTitle=projectData['projectName'], projectDescr=projectData['projectDescription'])
-
-
-        # # @self.app.route('/static/<filename:re:.*>')
-        # # def send_static(filename):
-        # #     return static_file(filename, root=self.staticDir)
-        # @self.app.route('/<project>/static/<filename:re:.*>')
-        # @self.app.route('/<project>/interface/static/<filename:re:.*>')
-        # def send_static_proj(project, filename):
-        #     return static_file(filename, root=self.staticDir)
-
-
-        # @self.app.route('/backdrops/<filename:re:.*>')
-        # def send_backdrop_image(filename):
-        #     try:
-        #         return static_file(filename, root=self.middleware.projectSettings['backdrops']['basePath'])
-        #     except:
-        #         abort(404, 'backdrop not found')
-
-
-        # @self.app.route('/<project>/backdrops/<filename:re:.*>')
-        # def send_backdrop_image_proj(project, filename):
-        #     try:
-        #         return static_file(filename, root=self.middleware.projectSettings['backdrops']['basePath'])
-        #     except:
-        #         abort(404, 'backdrop not found')
+        
 
         @self.app.get('/<project>/getProjectInfo')
         def get_project_info(project):

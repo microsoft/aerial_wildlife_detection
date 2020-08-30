@@ -46,6 +46,14 @@ class DBMiddleware():
             'aiControllerURI': aiControllerURI
         }
 
+        # default styles
+        try:
+            # check if custom default styles are provided
+            self.defaultStyles = json.load(open('config/default_ui_settings.json', 'r'))
+        except:
+            # resort to built-in styles
+            self.defaultStyles = json.load(open('modules/ProjectAdministration/static/json/default_ui_settings.json', 'r'))
+
 
     def _assemble_annotations(self, project, cursor, hideGoldenQuestionInfo):
         response = {}
@@ -180,7 +188,12 @@ class DBMiddleware():
     def get_dynamic_project_settings(self, project):
         queryStr = 'SELECT ui_settings FROM aide_admin.project WHERE shortname = %s;'
         result = self.dbConnector.execute(queryStr, (project,), 1)
-        return json.loads(result[0]['ui_settings'])
+        result = json.loads(result[0]['ui_settings'])
+
+        # complete styles with defaults where necessary (may be required for project that got upgraded from v1)
+        result = helpers.check_args(result, self.defaultStyles)
+
+        return result
 
 
     def getProjectSettings(self, project):

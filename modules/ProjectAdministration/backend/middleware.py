@@ -15,7 +15,7 @@ from psycopg2 import sql
 from modules.Database.app import Database
 from modules.DataAdministration.backend import celery_interface as fileServer_interface
 from .db_fields import Fields_annotation, Fields_prediction
-from util.helpers import parse_parameters
+from util.helpers import parse_parameters, check_args
 
 
 class ProjectConfigMiddleware:
@@ -51,7 +51,7 @@ class ProjectConfigMiddleware:
         '',
         'project',
         'getavailableaimodels',
-        'backdrops',
+        'getbackdrops',
         'verifyprojectname',
         'verifyprojectshort',
         'newproject',
@@ -229,7 +229,10 @@ class ProjectConfigMiddleware:
         for param in parameters:
             value = result[param]
             if param == 'ui_settings':
-                value = json.loads(value)     #TODO: ast.literal_eval(value)
+                value = json.loads(value)
+
+                # auto-complete with defaults where missing
+                value = check_args(value, self.defaultUIsettings)
             response[param] = value
 
         return response
@@ -416,6 +419,10 @@ class ProjectConfigMiddleware:
                     ProjectConfigMiddleware._recursive_update(uiSettings[uiSettingsKeys_new[kIdx]], uiSettings_new[kIdx])
                 else:
                     uiSettings[uiSettingsKeys_new[kIdx]] = uiSettings_new[kIdx]
+
+            # auto-complete with defaults where missing
+            uiSettings = check_args(uiSettings, self.defaultUIsettings)
+
             projectSettings['ui_settings'] = json.dumps(uiSettings)
 
 
