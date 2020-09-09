@@ -137,6 +137,10 @@ for i in instance_args:
     elif moduleName == 'AIController':
         from modules.AIController.backend import celery_interface as aic_int
 
+        # launch model marketplace with AIController
+        modelMarketplace = REGISTERED_MODULES['ModelMarketplace'](config, app)
+        modelMarketplace.addLoginCheckFun(userHandler.checkAuthenticated)
+
     elif moduleName == 'AIWorker':
         from modules.AIWorker.backend import celery_interface as aiw_int
 

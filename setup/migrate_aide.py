@@ -183,7 +183,27 @@ MODIFICATIONS_sql = [
 
     # project folder watching
     'ALTER TABLE aide_admin.project ADD COLUMN IF NOT EXISTS watch_folder_enabled BOOLEAN NOT NULL DEFAULT FALSE;',
-    'ALTER TABLE aide_admin.project ADD COLUMN IF NOT EXISTS watch_folder_remove_missing_enabled BOOLEAN NOT NULL DEFAULT FALSE;'
+    'ALTER TABLE aide_admin.project ADD COLUMN IF NOT EXISTS watch_folder_remove_missing_enabled BOOLEAN NOT NULL DEFAULT FALSE;',
+
+    # model marketplace
+    '''CREATE TABLE IF NOT EXISTS aide_admin.modelMarketplace (
+        id uuid DEFAULT uuid_generate_v4(),
+        name VARCHAR UNIQUE NOT NULL,
+        description VARCHAR NOT NULL,
+        labelclasses VARCHAR NOT NULL,
+        author VARCHAR NOT NULL,
+        model_library VARCHAR NOT NULL,
+        statedict BYTEA NOT NULL,
+        timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        alCriterion_library VARCHAR,
+        origin_project VARCHAR,
+        origin_uuid UUID,
+        public BOOLEAN NOT NULL DEFAULT TRUE,
+        anonymous BOOLEAN NOT NULL DEFAULT FALSE,
+        selectCount INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (id),
+        FOREIGN KEY (author) REFERENCES aide_admin.user(name)
+    );'''
 ]
 
 

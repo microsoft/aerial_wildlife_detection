@@ -18,6 +18,7 @@ from .ProjectStatistics.app import ProjectStatistics
 from .DataAdministration.app import DataAdministrator
 from .StaticFiles.app import StaticFileServer
 from .AIDEAdmin.app import AIDEAdmin
+from .ModelMarketplace.app import ModelMarketplace
 
 
 #TODO
@@ -37,7 +38,8 @@ REGISTERED_MODULES = {
     'ProjectStatistics': ProjectStatistics,
     'DataAdministrator': DataAdministrator,
     'StaticFileServer': StaticFileServer,
-    'AIDEAdmin': AIDEAdmin
+    'AIDEAdmin': AIDEAdmin,
+    'ModelMarketplace': ModelMarketplace
 }
 
 

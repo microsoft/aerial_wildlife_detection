@@ -37,6 +37,8 @@ class AIController:
             '''
                 Returns a list of saved AI model states'
                 metadata for a given project.
+                Also checks whether model states have been
+                shared through the model marketplace.
             '''
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')

@@ -114,3 +114,27 @@ RETURNS real AS $iou$
 		RETURN iou;
 	END;
 $iou$ LANGUAGE plpgsql;
+
+
+
+-- Model marketplace
+CREATE TABLE IF NOT EXISTS aide_admin.modelMarketplace (
+    id UUID DEFAULT uuid_generate_v4(),
+    name VARCHAR UNIQUE NOT NULL,
+    description VARCHAR NOT NULL,
+    labelclasses VARCHAR NOT NULL,
+    author VARCHAR NOT NULL,
+    model_library VARCHAR NOT NULL,
+    annotationType labelType NOT NULL,
+    predictionType labelType NOT NULL,
+    statedict BYTEA NOT NULL,
+    timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    alCriterion_library VARCHAR,
+    origin_project VARCHAR,
+    origin_uuid UUID,
+    public BOOLEAN NOT NULL DEFAULT TRUE,
+    anonymous BOOLEAN NOT NULL DEFAULT FALSE,
+    selectCount INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    FOREIGN KEY (author) REFERENCES aide_admin.user(name)
+);

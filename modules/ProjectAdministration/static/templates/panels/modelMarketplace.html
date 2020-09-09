@@ -1,0 +1,359 @@
+<div>
+    <h2>Model Marketplace</h2>
+    
+    <div id="marketplace-container">
+        <div class="selection-buttons" class="btn-group btn-group-toggle" role="group" aria-label="Model source" data-toggle="buttons">
+            <button id="marketplace-button" class="btn btn-sm btn-secondary">Marketplace</button>
+            <button id="projectmodels-button" class="btn btn-sm btn-secondary">Project models</button>
+            <!-- <button id="upload-button" class="btn btn-sm btn-secondary">Upload from disk</button>
+            <button id="webimport-button" class="btn btn-sm btn-secondary">Web import</button> -->
+        </div>
+
+        <!-- marketplace models table -->
+        <div class="table-container" id="modelmarketplace-container">
+            <!-- TODO: sort, search, filter -->
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Author</th>
+                        <th>Source project</th>
+                        <th>Model</th>
+                        <th>Time created</th>
+                        <th>No. classes</th>
+                    </tr>
+                </thead>
+                <tbody id="marketplace-models-tbody"></tbody>
+            </table>
+
+            <!-- selected model info -->
+            <div id="info-container">
+                <h3>Selected model</h3>
+                <div>Name:</div>
+                <div class="info-field" id="marketplace-info-name"></div>
+                <div>Description:</div>
+                <div class="info-field" id="marketplace-info-description"></div>
+                <div>Author:</div>
+                <div class="info-field" id="marketplace-info-author"></div>
+                <div>Label classes:</div>
+                <div id="marketplace-info-labelclasses"></div>
+                <!-- TODO: more -->
+
+                <!-- control buttons -->
+                <div>
+                    <button class="btn btn-primary" id="marketplace-model-select">Add to Project</button>
+                    <!-- <button class="btn btn-primary" id="marketplace-model-share">Download</button> -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- project-specific models table -->
+    <div class="table-container" id="projectmodels-container" style="display:none">
+        <!-- TODO: sort, search, filter -->
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Model</th>
+                    <th>Time created</th>
+                    <th>No. predictions</th>
+                    <th>Shared</th>
+                </tr>
+            </thead>
+            <tbody id="project-models-tbody"></tbody>
+        </table>
+
+        <!-- selected model info -->
+        <div id="info-container">
+            <h3>Selected model</h3>
+            <div>Name:</div>
+            <input type="text" id="project-info-name"></input>
+            <div>Description:</div>
+            <textarea id="project-info-description"></textarea>
+            <br />
+            <label for="project-model-share-public">Share with:</label>
+            <select id="project-model-share-public">
+                <option value="everyone">Everyone</option>
+                <option value="projects">My own projects only</option>
+            </select>
+            <br />
+            <input type="checkbox" id="project-model-share-anonymous" />
+            <label for="project-model-share-anonymous">Anonymous (hide author name and project information)</label>
+            
+            <!-- control buttons -->
+            <div>
+                <button class="btn btn-primary" id="project-model-share">Share</button>
+                <!-- <button class="btn btn-primary" id="project-model-download">Download</button> -->
+            </div>
+        </div>
+    </div>
+</div>
+<link rel="stylesheet" href="/static/statistics/libs/chartjs/Chart.min.css?v={{ version }}" />
+<style>
+    #options-container {
+        margin-bottom: 5px;
+    }
+
+    .table-container {
+        display: flex;
+        flex-direction: column;
+    }
+
+    table {
+        display: inline-block;
+        width: 100%;
+        height: 90%;
+        max-height: 90%;
+        border: 1px solid #aaa;
+    }
+
+    thead {
+        background: #5f5f5f;
+        font-weight: bold;
+    }
+
+    tbody {
+        overflow-x: hidden;
+        overflow-y: auto;
+        max-height: 200px;
+    }
+
+    thead, tbody {
+        display: block;
+        padding-left: 5px;
+        padding-right: 5px;
+    }
+
+    td, th {
+        padding-right: 5px;
+    }
+
+    .tr-highlighted {
+        font-weight: bold;
+        background: #AAAAAA;
+    }
+</style>
+<script src="/static/statistics/libs/chartjs/Chart.min.js?v={{ version }}"></script>
+<script type="text/javascript">
+
+    let availableAImodels = {};
+    let modelsMarketplace = {};
+    let modelsProject = [];
+    let modelsMarketplaceMarkups = [];
+    let modelsProjectMarkups = [];
+    let selectedModel_id = null;
+    let selectedModel_source = null;
+
+
+    function getAvailableAImodels() {
+        return $.ajax({
+            url: 'getAvailableAImodels',
+            method: 'GET',
+            success: function(data) {
+                availableAImodels = data['models']['prediction'];
+            },
+            error: function(xhr, status, error) {
+                var promise = window.renewSessionRequest(xhr);
+                promise = promise.done(function() {
+                    return getAvailableAImodels();
+                });
+                return promise;
+            }
+        });
+    }
+
+    function getModelsMarketplace() {
+        let marketplaceTbody = $('#marketplace-models-tbody');
+        return $.ajax({
+            url: 'getModelsMarketplace',
+            method: 'GET',
+            success: function(data) {
+                console.log(data)
+                modelsMarketplace = data['modelStates'];
+
+                // populate table
+                marketplaceTbody.empty();
+                modelsMarketplaceMarkups = [];
+                for(var mID in modelsMarketplace) {
+                    let model = modelsMarketplace[mID];
+                    let author = (typeof(model['author']) === 'string' ? model['author'] : '(anonymous)');
+                    let originProject = (typeof(model['projectname']) === 'string' ? model['projectname'] : '(anonymous)');
+                    if(!availableAImodels.hasOwnProperty(model['model_library'])) {
+                        continue;
+                    }
+                    let modelLibrary = availableAImodels[model['model_library']]['name'];
+                    let timeCreated = new Date(model['time_created'] * 1000).toLocaleString();
+                    let no_classes = 0; //TODO
+                    let markup = $('<tr id="modelMarketplace::' + mID + '">' +
+                        '<td>' + model['name'] + '</td>' +
+                        '<td>' + author + '</td>' +
+                        '<td>' + originProject + '</td>' +
+                        '<td>' + modelLibrary + '</td>' +
+                        '<td>' + timeCreated + '</td>' +
+                        '<td>' + no_classes + '</td>' +
+                        '</tr>');
+                    
+                    // click handler
+                    markup.on('click', function() {
+                        let selID = $(this).attr('id').split('::')[1];
+                        let selectedModel = modelsMarketplace[selID];
+                        selectedModel_id = selID;
+                        selectedModel_source = 'modelMarketplace';
+                        for(var i=0; i<modelsMarketplaceMarkups.length; i++) {
+                            modelsMarketplaceMarkups[i].removeClass('tr-highlighted');
+                        }
+                        markup.toggleClass('tr-highlighted');
+
+                        // populate info panel
+                        $('#marketplace-info-name').html(selectedModel['name']);
+                        $('#marketplace-info-description').html(selectedModel['description']);
+                        $('#marketplace-info-author').html(selectedModel['author']);
+                    });
+                    marketplaceTbody.append(markup);
+                    modelsMarketplaceMarkups.push(markup);
+                }
+            },
+            error: function(xhr, status, error) {
+                var promise = window.renewSessionRequest(xhr);
+                promise = promise.done(function() {
+                    return getModelsMarketplace();
+                });
+                return promise;
+            }
+        });
+    }
+
+    function getModelsProject() {
+        let modelsProjectTbody = $('#project-models-tbody');
+        return $.ajax({
+            url: 'listModelStates',
+            method: 'GET',
+            success: function(data) {
+                modelsProject = data['modelStates'];
+                modelsProjectTbody.empty();
+                modelsProjectMarkups = [];
+                for(var i=0; i<modelsProject.length; i++) {
+                    if(!availableAImodels.hasOwnProperty(modelsProject[i]['model_library']['name'])) {
+                        continue;
+                    }
+                    let modelLibrary = availableAImodels[modelsProject[i]['model_library']['name']]['name'];
+                    let shared = '';
+                    if(modelsProject[i]['marketplace_info'].hasOwnProperty('id')) {
+                        shared = 'Y';   //TODO: also include shared meta data
+                    }
+
+                    let markup = $('<tr id="project::' + i + '">' +
+                        '<td>' + (i+1) + '</td>' +
+                        '<td>' + modelLibrary + '</td>' +
+                        '<td>' + new Date(modelsProject[i]['time_created'] * 1000).toLocaleString() + '</td>' +
+                        '<td>' + modelsProject[i]['num_pred'] + '</td>' +
+                        '<td>' + shared + '</td>' +
+                        '</tr>');
+                    markup.on('click', function() {
+                        let selID = $(this).attr('id').split('::')[1];
+                        
+                        let selectedModel = modelsProject[selID];
+                        selectedModel_id = selectedModel['id'];
+                        selectedModel_source = 'project';
+                        for(var m=0; m<modelsProjectMarkups.length; m++) {
+                            modelsProjectMarkups[m].removeClass('tr-highlighted');
+                        }
+                        markup.toggleClass('tr-highlighted');
+
+                        // populate info panel
+                        $('#info-name').html(selectedModel['name']);
+                        $('#info-description').html(selectedModel['description']);
+                        $('#info-author').html(selectedModel['author']);
+                    });
+                    modelsProjectTbody.append(markup);
+                    modelsProjectMarkups.push(markup);
+                }
+            },
+            error: function(xhr, status, error) {
+                var promise = window.renewSessionRequest(xhr);
+                promise = promise.done(function() {
+                    return getModelsProject();
+                });
+                return promise;
+            }
+        })
+    }
+
+    function shareModel() {
+        if(selectedModel_id === null || selectedModel_id === undefined) {
+            return $.Deferred().promise();
+        }
+        //TODO: verify; show loading overlay; etc.
+        params = {
+            model_id: selectedModel_id,
+            model_name: $('#project-info-name').val(),
+            model_description: $('#project-info-description').val(),
+            public: ($('#project-model-share-public').val() == 'everyone'? true : false),
+            anonymous: $('#project-model-share-anonymous').prop('checked')
+        };
+
+        return $.ajax({
+            url: 'shareModel',
+            method: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            data: JSON.stringify(params),
+            success: function(data) {
+                console.log(data);  //TODO
+                loadData();
+            },
+            error: function(xhr, status, error) {
+                var promise = window.renewSessionRequest(xhr);
+                promise = promise.done(function() {
+                    return shareModel();
+                });
+                return promise;
+            }
+        })
+    }
+
+    function loadData() {
+        //TODO: promises; empty selected model info panels
+        getModelsMarketplace();
+        getModelsProject();
+    }
+
+    function setupUI() {
+        $('#project-model-share').on('click', function() {
+            shareModel();
+        });
+        function showPanel(type) {
+            if(type === 'modelMarketplace') {
+                $('#modelmarketplace-container').show();
+                $('#projectmodels-container').hide();
+                $('#marketplace-button').addClass('active');
+                $('#projectmodels-button').removeClass('active');
+            } else {
+                $('#modelmarketplace-container').hide();
+                $('#projectmodels-container').show();
+                $('#marketplace-button').removeClass('active');
+                $('#projectmodels-button').addClass('active');
+            }
+        }
+        $('#marketplace-button').click(function(e) {
+            e.preventDefault();
+            showPanel('modelMarketplace');
+        });
+        $('#projectmodels-button').click(function(e) {
+            e.preventDefault();
+            showPanel('projectModels');
+        });
+        showPanel('modelMarketplace');
+    }
+
+    $(document).ready(function() {
+        var promise = getAvailableAImodels();
+        promise = promise.done(function() {
+            $.when(getModelsMarketplace(), getModelsProject()).done(function () {
+                setupUI();
+                window.showLoadingOverlay(false);
+            });
+        });
+    });
+</script>

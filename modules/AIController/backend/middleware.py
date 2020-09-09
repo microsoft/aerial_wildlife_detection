@@ -877,7 +877,7 @@ class AIMiddleware():
 
     #TODO
     def pollTaskStatus(self, project, taskID):
-        return self.workflowTracker.pollStatus(project, taskID)
+        return self.workflowTracker.pollTaskStatus(project, taskID)
 
 
 
@@ -1083,6 +1083,29 @@ class AIMiddleware():
 
     def listModelStates(self, project):
         modelLibraries = self.getAvailableAImodels()
+
+        # get meta data about models shared through model marketplace
+        result = self.dbConn.execute('''
+            SELECT id, origin_uuid,
+            author, anonymous, public
+            FROM aide_admin.modelMarketplace
+            WHERE origin_project = %s;
+        ''', (project,), 'all')
+        if result is not None and len(result):
+            modelMarketplaceMeta = {}
+            for r in result:
+                mmID = str(r['id'])
+                values = {}
+                for key in r.keys():
+                    if isinstance(r[key], uuid.UUID):
+                        values[key] = str(r[key])
+                    else:
+                        values[key] = r[key]
+                modelMarketplaceMeta[mmID] = values
+        else:
+            modelMarketplaceMeta = {}
+
+        # get projectspecific model states
         queryStr = sql.SQL('''
             SELECT id, EXTRACT(epoch FROM timeCreated) AS time_created, model_library, alCriterion_library, num_pred
             FROM {id_cnnstate} AS cnnstate
@@ -1114,12 +1137,19 @@ class AIMiddleware():
                     'name': '(not found)'
                 }
             alCriterionLibrary['id'] = r['alcriterion_library']
+
+            if r['id'] in modelMarketplaceMeta:
+                marketplaceInfo = modelMarketplaceMeta[r['id']]
+            else:
+                marketplaceInfo = {}
+
             response.append({
                 'id': str(r['id']),
                 'time_created': r['time_created'],
                 'model_library': modelLibrary,
                 'al_criterion_library': alCriterionLibrary,
-                'num_pred': (r['num_pred'] if r['num_pred'] is not None else 0)
+                'num_pred': (r['num_pred'] if r['num_pred'] is not None else 0),
+                'marketplace_info': marketplaceInfo
             })
         return response
 
