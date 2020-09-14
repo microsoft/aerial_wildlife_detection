@@ -28,21 +28,30 @@
 
             <!-- selected model info -->
             <div id="info-container">
-                <h3>Selected model</h3>
-                <div>Name:</div>
-                <div class="info-field" id="marketplace-info-name"></div>
-                <div>Description:</div>
-                <div class="info-field" id="marketplace-info-description"></div>
-                <div>Author:</div>
-                <div class="info-field" id="marketplace-info-author"></div>
-                <div>Label classes:</div>
-                <div id="marketplace-info-labelclasses"></div>
-                <!-- TODO: more -->
+                <div id="no-model-selected">
+                    No model selected.
+                </div>
+                <div id="selected-model-info" style="display:none">
+                    <h3>Selected model</h3>
+                    <div>Name:</div>
+                    <div class="info-field" id="marketplace-info-name"></div>
+                    <div>Description:</div>
+                    <div class="info-field" id="marketplace-info-description"></div>
+                    <div>Author:</div>
+                    <div class="info-field" id="marketplace-info-author"></div>
+                    <div>Label classes:</div>
+                    <div class="info-field" id="marketplace-info-labelclasses"></div>
+                    <!-- TODO: more -->
 
-                <!-- control buttons -->
-                <div>
-                    <button class="btn btn-primary" id="marketplace-model-select">Add to Project</button>
-                    <!-- <button class="btn btn-primary" id="marketplace-model-share">Download</button> -->
+                    <span id="marketplace-model-type-disclaimer" style="font-style:italic"></span>
+                    <br />
+
+                    <!-- control buttons -->
+                    <div>
+                        <button class="btn btn-danger" id="marketplace-model-remove" style="display:none">Remove from Marketplace</button>
+                        <button class="btn btn-primary" id="marketplace-model-select" style="display:none">Add to Project</button>
+                        <!-- <button class="btn btn-primary" id="marketplace-model-share">Download</button> -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -90,9 +99,20 @@
     </div>
 </div>
 <link rel="stylesheet" href="/static/statistics/libs/chartjs/Chart.min.css?v={{ version }}" />
+<link rel="stylesheet" href="config/static/libs/jqtree/jqtree_custom.css?v={{ version }}" />
+<script src="config/static/libs/jqtree/tree.jquery.js?v={{ version }}"></script>
 <style>
     #options-container {
         margin-bottom: 5px;
+    }
+
+    .info-field {
+        margin: 10px;
+        border: 1px solid white;
+        border-radius: 5px;
+        padding: 10px;
+        background: #aaaaaa;
+        font-weight: bold;
     }
 
     .table-container {
@@ -133,6 +153,10 @@
         font-weight: bold;
         background: #AAAAAA;
     }
+
+    tbody tr {
+        cursor: pointer;
+    }
 </style>
 <script src="/static/statistics/libs/chartjs/Chart.min.js?v={{ version }}"></script>
 <script type="text/javascript">
@@ -143,7 +167,6 @@
     let modelsMarketplaceMarkups = [];
     let modelsProjectMarkups = [];
     let selectedModel_id = null;
-    let selectedModel_source = null;
 
 
     function getAvailableAImodels() {
@@ -169,7 +192,6 @@
             url: 'getModelsMarketplace',
             method: 'GET',
             success: function(data) {
-                console.log(data)
                 modelsMarketplace = data['modelStates'];
 
                 // populate table
@@ -196,19 +218,42 @@
                     
                     // click handler
                     markup.on('click', function() {
-                        let selID = $(this).attr('id').split('::')[1];
-                        let selectedModel = modelsMarketplace[selID];
-                        selectedModel_id = selID;
-                        selectedModel_source = 'modelMarketplace';
                         for(var i=0; i<modelsMarketplaceMarkups.length; i++) {
                             modelsMarketplaceMarkups[i].removeClass('tr-highlighted');
                         }
-                        markup.toggleClass('tr-highlighted');
+                        let selID = $(this).attr('id').split('::')[1];
+                        if(selID === selectedModel_id) {
+                            // deselect
+                            selectedModel_id = null;
+                            markup.removeClass('tr-highlighted');
+                            $('#no-model-selected').show();
+                            $('#selected-model-info').hide();
+                            return;
+                        }
+                        selectedModel_id = selID;
+                        let selectedModel = modelsMarketplace[selID];
+                        let author = (typeof(selectedModel['author']) === 'string' ? selectedModel['author'] : '(anonymous)');
+                        let timeCreated = new Date(model['time_created'] * 1000).toLocaleString();
+                        markup.addClass('tr-highlighted');
 
                         // populate info panel
                         $('#marketplace-info-name').html(selectedModel['name']);
                         $('#marketplace-info-description').html(selectedModel['description']);
-                        $('#marketplace-info-author').html(selectedModel['author']);
+                        $('#marketplace-info-author').html(author);
+                        parseLabelclassDefinition(selectedModel['labelclasses']);
+
+                        // buttons for actions
+                        if(selectedModel['is_owner']) {
+                            $('#marketplace-model-type-disclaimer').html('You are the author of this model and have shared it on '+ timeCreated + '.');
+                            $('#marketplace-model-select').hide();
+                            $('#marketplace-model-remove').show();
+                        } else {
+                            $('#marketplace-model-type-disclaimer').html('You can import this model to your project.');
+                            $('#marketplace-model-select').show();
+                            $('#marketplace-model-remove').hide();
+                        }
+                        $('#no-model-selected').hide();
+                        $('#selected-model-info').show();
                     });
                     marketplaceTbody.append(markup);
                     modelsMarketplaceMarkups.push(markup);
@@ -234,10 +279,10 @@
                 modelsProjectTbody.empty();
                 modelsProjectMarkups = [];
                 for(var i=0; i<modelsProject.length; i++) {
-                    if(!availableAImodels.hasOwnProperty(modelsProject[i]['model_library']['name'])) {
+                    if(!availableAImodels.hasOwnProperty(modelsProject[i]['model_library']['id'])) {
                         continue;
                     }
-                    let modelLibrary = availableAImodels[modelsProject[i]['model_library']['name']]['name'];
+                    let modelLibrary = availableAImodels[modelsProject[i]['model_library']['id']]['name'];
                     let shared = '';
                     if(modelsProject[i]['marketplace_info'].hasOwnProperty('id')) {
                         shared = 'Y';   //TODO: also include shared meta data
@@ -255,7 +300,6 @@
                         
                         let selectedModel = modelsProject[selID];
                         selectedModel_id = selectedModel['id'];
-                        selectedModel_source = 'project';
                         for(var m=0; m<modelsProjectMarkups.length; m++) {
                             modelsProjectMarkups[m].removeClass('tr-highlighted');
                         }
@@ -284,33 +328,162 @@
         if(selectedModel_id === null || selectedModel_id === undefined) {
             return $.Deferred().promise();
         }
-        //TODO: verify; show loading overlay; etc.
-        params = {
-            model_id: selectedModel_id,
-            model_name: $('#project-info-name').val(),
-            model_description: $('#project-info-description').val(),
-            public: ($('#project-model-share-public').val() == 'everyone'? true : false),
-            anonymous: $('#project-model-share-anonymous').prop('checked')
+
+        let doShareModel = function() {
+            params = {
+                model_id: selectedModel_id,
+                model_name: $('#project-info-name').val(),
+                model_description: $('#project-info-description').val(),
+                public: ($('#project-model-share-public').val() == 'everyone'? true : false),
+                anonymous: $('#project-model-share-anonymous').prop('checked')
+            };
+
+            return $.ajax({
+                url: 'shareModel',
+                method: 'POST',
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+                data: JSON.stringify(params),
+                success: function(data) {
+                    console.log(data);  //TODO
+                    loadData();
+                },
+                error: function(xhr, status, error) {
+                    var promise = window.renewSessionRequest(xhr);
+                    promise = promise.done(function() {
+                        return shareModel();
+                    });
+                    return promise;
+                }
+            });
+        }
+
+        window.showYesNoOverlay($('<div>Proceeding will make the selected model available on the marketplace.<br />Are you sure?</div>'),
+            doShareModel, null, 'Share', 'Cancel', 'btn-danger', 'btn-secondary', false, false);
+    }
+
+    function unshareModel() {
+        if(selectedModel_id === null || selectedModel_id === undefined) {
+            return $.Deferred().promise();
+        }
+
+        // let promise = null;  //TODO
+
+        let doUnshareModel = function() {
+            return $.ajax({
+                url: 'unshareModel',
+                method: 'POST',
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+                data: JSON.stringify({model_id: selectedModel_id}),
+                success: function(data) {
+                    var message = '';
+                    switch(data['status']) {
+                        case '0':
+                            message = 'Model successfully hidden from marketplace';
+                            break;
+                        default:
+                            message = 'An error occurred while hiding the selected model from the marketplace';
+                    }
+                    if(typeof(data['message']) === 'string') {
+                        message += ' (message: "' + data['message'] + '")".'
+                    } else {
+                        message += '.';
+                    }
+                    console.log(message);   //TODO: notification system
+                    loadData();
+                },
+                error: function(xhr, status, error) {
+                    var promise = window.renewSessionRequest(xhr);
+                    promise = promise.done(function() {
+                        return unshareModel();
+                    });
+                    return promise;
+                }
+            });
+        }
+
+        window.showYesNoOverlay($('<div>Proceeding hides the selected model from the model marketplace.<br />Are you sure?</div>'),
+            doUnshareModel, null, 'Remove', 'Cancel', 'btn-danger', 'btn-secondary', false, false);
+    }
+
+    function importModelToProject() {
+        if(selectedModel_id === null || selectedModel_id === undefined) {
+            return $.Deferred().promise();
+        }
+
+        let doImportModel = function() {
+            return $.ajax({
+                url: 'importModel',
+                method: 'POST',
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+                data: JSON.stringify({model_id: selectedModel_id}),
+                success: function(data) {
+                    //TODO
+                    console.log(data);  //TODO: notification system
+                    loadData();
+                },
+                error: function(xhr, status, error) {
+                    var promise = window.renewSessionRequest(xhr);
+                    promise = promise.done(function() {
+                        return unshareModel();
+                    });
+                    return promise;
+                }
+            })
+        }
+
+        window.showYesNoOverlay($('<div>Proceeding will import the selected model to the project and make it the starting point for future workflows in that project.<br />Are you sure?</div>'),
+            doImportModel, null, 'Import', 'Cancel', 'btn-primary', 'btn-secondary', false, false);
+    }
+
+    function parseClassEntry(entry, entryID) {
+        // works recursively
+        var name = entry['name'];
+        if(entry['hidden']) {
+            name += ' (hidden)';
+        }
+        let treeEntry = {
+            id: entryID,
+            name: name,
+            color: entry['color'],
+            hidden: entry['hidden']
         };
 
-        return $.ajax({
-            url: 'shareModel',
-            method: 'POST',
-            contentType: 'application/json; charset=utf-8',
-            dataType: 'json',
-            data: JSON.stringify(params),
-            success: function(data) {
-                console.log(data);  //TODO
-                loadData();
-            },
-            error: function(xhr, status, error) {
-                var promise = window.renewSessionRequest(xhr);
-                promise = promise.done(function() {
-                    return shareModel();
-                });
-                return promise;
+        if(entry.hasOwnProperty('entries')) {
+            let children = [];
+            for(var child in entry['entries']) {
+                children.push(parseClassEntry(entry['entries'][child], child));
             }
-        })
+            treeEntry['children'] = children;
+        }
+
+        return treeEntry;
+    }
+
+    function parseLabelclassDefinition(labelclassInfo) {
+        let targetDiv = $('#marketplace-info-labelclasses');
+        targetDiv.empty();
+        if(typeof(labelclassInfo) === 'string') {
+            labelclassInfo = JSON.parse(labelclassInfo);
+        }
+
+        if(labelclassInfo.hasOwnProperty('entries')) {
+            let tree = [];
+            for(var child in labelclassInfo['entries']) {
+                tree.push(parseClassEntry(labelclassInfo['entries'][child], child));
+            }
+
+            let lcTree = $('<div id="lc-tree"></div>');
+            lcTree.tree({
+                data: tree,
+                selectable: false,
+                dragAndDrop: false,
+                autoOpen: true
+            });
+            targetDiv.append(lcTree);
+        }
     }
 
     function loadData() {
@@ -322,6 +495,12 @@
     function setupUI() {
         $('#project-model-share').on('click', function() {
             shareModel();
+        });
+        $('#marketplace-model-remove').on('click', function() {
+            unshareModel();
+        });
+        $('#marketplace-model-select').on('click', function() {
+            importModelToProject();
         });
         function showPanel(type) {
             if(type === 'modelMarketplace') {

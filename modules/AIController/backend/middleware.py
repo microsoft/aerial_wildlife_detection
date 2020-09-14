@@ -1105,7 +1105,7 @@ class AIMiddleware():
         else:
             modelMarketplaceMeta = {}
 
-        # get projectspecific model states
+        # get project-specific model states
         queryStr = sql.SQL('''
             SELECT id, EXTRACT(epoch FROM timeCreated) AS time_created, model_library, alCriterion_library, num_pred
             FROM {id_cnnstate} AS cnnstate
@@ -1122,35 +1122,36 @@ class AIMiddleware():
         )
         result = self.dbConn.execute(queryStr, None, 'all')
         response = []
-        for r in result:
-            try:
-                modelLibrary = modelLibraries['models']['prediction'][r['model_library']]
-            except:
-                modelLibrary = {
-                    'name': '(not found)'
-                }
-            modelLibrary['id'] = r['model_library']
-            try:
-                alCriterionLibrary = modelLibraries['models']['ranking'][r['alcriterion_library']]
-            except:
-                alCriterionLibrary = {
-                    'name': '(not found)'
-                }
-            alCriterionLibrary['id'] = r['alcriterion_library']
+        if result is not None and len(result):
+            for r in result:
+                try:
+                    modelLibrary = modelLibraries['models']['prediction'][r['model_library']]
+                except:
+                    modelLibrary = {
+                        'name': '(not found)'
+                    }
+                modelLibrary['id'] = r['model_library']
+                try:
+                    alCriterionLibrary = modelLibraries['models']['ranking'][r['alcriterion_library']]
+                except:
+                    alCriterionLibrary = {
+                        'name': '(not found)'
+                    }
+                alCriterionLibrary['id'] = r['alcriterion_library']
 
-            if r['id'] in modelMarketplaceMeta:
-                marketplaceInfo = modelMarketplaceMeta[r['id']]
-            else:
-                marketplaceInfo = {}
+                if r['id'] in modelMarketplaceMeta:
+                    marketplaceInfo = modelMarketplaceMeta[r['id']]
+                else:
+                    marketplaceInfo = {}
 
-            response.append({
-                'id': str(r['id']),
-                'time_created': r['time_created'],
-                'model_library': modelLibrary,
-                'al_criterion_library': alCriterionLibrary,
-                'num_pred': (r['num_pred'] if r['num_pred'] is not None else 0),
-                'marketplace_info': marketplaceInfo
-            })
+                response.append({
+                    'id': str(r['id']),
+                    'time_created': r['time_created'],
+                    'model_library': modelLibrary,
+                    'al_criterion_library': alCriterionLibrary,
+                    'num_pred': (r['num_pred'] if r['num_pred'] is not None else 0),
+                    'marketplace_info': marketplaceInfo
+                })
         return response
 
 

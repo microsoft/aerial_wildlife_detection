@@ -84,7 +84,9 @@ CREATE TABLE IF NOT EXISTS {id_cnnstate} (
     timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     stateDict bytea NOT NULL,
     partial boolean NOT NULL,
-    PRIMARY KEY (id)
+    marketplace_origin_id UUID UNIQUE,
+    PRIMARY KEY (id),
+    FOREIGN KEY (marketplace_origin_id) REFERENCES aide_admin.modelMarketplace(id)
 );
 
 CREATE TABLE IF NOT EXISTS {id_prediction} (

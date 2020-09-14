@@ -60,7 +60,8 @@ class ModelMarketplace:
                 abort(401, 'forbidden')
             
             try:
-                modelStates = self.middleware.getModelsMarketplace(project)
+                username = html.escape(request.get_cookie('username'))
+                modelStates = self.middleware.getModelsMarketplace(project, username)
                 return {'modelStates': modelStates}
             except Exception as e:
                 return {'status': 1, 'message': str(e)}
@@ -73,8 +74,10 @@ class ModelMarketplace:
             
             try:
                 # get data
+                username = html.escape(request.get_cookie('username'))
                 modelID = request.json['model_id']
-                #TODO
+                result = self.middleware.importModel(project, username, modelID)
+                return result
 
             except Exception as e:
                 return {'status': 1, 'message': str(e)}
@@ -97,6 +100,22 @@ class ModelMarketplace:
                 result = self.middleware.shareModel(project, username,
                                                     modelID, modelName, modelDescription,
                                                     public, anonymous)
+                return result
+            except Exception as e:
+                return {'status': 1, 'message': str(e)}
+
+
+        @self.app.post('/<project>/unshareModel')
+        def unshare_model(project):
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+
+            try:
+                # get data
+                username = html.escape(request.get_cookie('username'))
+                modelID = request.json['model_id']
+
+                result = self.middleware.unshareModel(project, username, modelID)
                 return result
             except Exception as e:
                 return {'status': 1, 'message': str(e)}

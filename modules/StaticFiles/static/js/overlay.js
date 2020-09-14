@@ -44,6 +44,54 @@ window.showOverlay = function(contents, large, uiBlocked_after) {
 }
 
 
+// Yes-No screen
+window.showYesNoOverlay = function(contents, callbackYes, callbackNo, buttonTextYes, buttonTextNo, buttonClassesYes, buttonClassesNo, large, uiBlocked_after) {
+    let markup = $('<div></div>');
+    if(typeof(buttonTextYes) !== 'string' || buttonTextYes.length === 0) {
+        buttonTextYes = 'Yes';
+    }
+    if(typeof(buttonTextNo) !== 'string' || buttonTextNo.length === 0) {
+        buttonTextNo = 'Yes';
+    }
+    let bclYes = buttonClassesYes;
+    if(typeof(bclYes) !== 'string' || bclYes.length === 0) {
+        bclYes = 'btn btn-primary';
+    }
+    if(bclYes.indexOf('/\bbtn\b/') === -1) {
+        bclYes = 'btn ' + bclYes;
+    }
+    let bclNo = buttonClassesNo;
+    if(typeof(bclNo) !== 'string' || bclNo.length === 0) {
+        bclNo = 'btn btn-secondary';
+    }
+    if(bclNo.indexOf('/\bbtn\b/') === -1) {
+        bclNo = 'btn ' + bclNo;
+    }
+    let buttonYes = $('<button style="float:right" class="'+bclYes+'">'+buttonTextYes+'</button>');
+    buttonYes.on('click', function() {
+        window.showOverlay(null);
+        if(typeof(callbackYes) === 'function') {
+            callbackYes();
+        }
+    });
+    let buttonNo = $('<button class="'+bclNo+'">'+buttonTextNo+'</button>');
+    buttonNo.on('click', function() {
+        window.showOverlay(null);
+        if(typeof(callbackNo) === 'function') {
+            callbackNo();
+        }
+    });
+    let buttonMarkup = $('<div style="margin-top:10px"></div>');
+    buttonMarkup.append(buttonNo);
+    buttonMarkup.append(buttonYes);
+    if(typeof(contents) !== 'undefined') {
+        markup.append($(contents));
+    }
+    markup.append(buttonMarkup);
+    window.showOverlay(markup, large, uiBlocked_after);
+}
+
+
 // Login verification / session renewal
 window.renewSessionRequest = function(xhr) {
     /**

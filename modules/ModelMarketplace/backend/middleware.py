@@ -8,6 +8,7 @@
 from uuid import UUID
 import json
 from psycopg2 import sql
+from ai import PREDICTION_MODELS
 from modules.Database.app import Database
 from modules.LabelUI.backend.middleware import DBMiddleware     # required to obtain label class definitions (TODO: make more elegant)
 
@@ -21,7 +22,7 @@ class ModelMarketplaceMiddleware:
         self.labelUImiddleware = DBMiddleware(config)
     
 
-    def getModelsMarketplace(self, project):
+    def getModelsMarketplace(self, project, username):
         '''
             Returns a dict of model state meta data,
             filtered by the project settings (model library;
@@ -53,12 +54,13 @@ class ModelMarketplaceMiddleware:
                     public, anonymous, selectCount,
                     CASE WHEN anonymous THEN NULL ELSE author END AS author,
                     CASE WHEN anonymous THEN NULL ELSE origin_project END AS origin_project,
-                    CASE WHEN anonymous THEN NULL ELSE origin_uuid END AS origin_uuid
+                    CASE WHEN anonymous THEN NULL ELSE origin_uuid END AS origin_uuid,
+                    CASE WHEN author = %s AND origin_project = %s THEN TRUE ELSE FALSE END AS is_owner
                     FROM aide_admin.modelMarketplace
                     WHERE annotationType = %s AND
                     predictionType = %s
                     AND (
-                        public = TRUE OR
+                        (public = TRUE AND shared = TRUE) OR
                         origin_project = %s
                     )
                 ) AS mm
@@ -68,7 +70,7 @@ class ModelMarketplaceMiddleware:
                 ) AS pn
                 ON mm.origin_project = pn.shortname;
             ''',
-            (annotationType, predictionType, project),
+            (username, project, annotationType, predictionType, project),
             'all'
         )
         if result is not None and len(result):
@@ -89,7 +91,9 @@ class ModelMarketplaceMiddleware:
 
 
 
-    def importModel(self, project, modelID):
+    def importModel(self, project, username, modelID):
+
+        modelID = UUID(modelID)
 
         # get model meta data
         meta = self.dbConnector.execute('''
@@ -101,11 +105,90 @@ class ModelMarketplaceMiddleware:
             CASE WHEN anonymous THEN NULL ELSE origin_uuid END AS origin_uuid
             FROM aide_admin.modelMarketplace
             WHERE id = %s;
-        ''', (UUID(modelID),), 1)
+        ''', (modelID,), 1)
+
+        if meta is None or not len(meta):
+            return {
+                'status': 2,
+                'message': f'Model state with id "{str(modelID)}" could not be found in the model marketplace.'
+            }
+        meta = meta[0]
+
+        # check if model type is registered with AIDE
+        modelLib = meta['model_library']
+        if modelLib not in PREDICTION_MODELS:
+            return {
+                'status': 3,
+                'message': f'Model type with identifier "{modelLib}" is not registered with this installation of AIDE.'
+            }
+
+        # check if model hasn't already been imported to current project
+        modelExists = self.dbConnector.execute(sql.SQL('''
+            SELECT id
+            FROM {id_cnnstate}
+            WHERE marketplace_origin_id = %s;
+        ''').format(
+            id_cnnstate=sql.Identifier(project, 'cnnstate')
+        ), (modelID), 1)
+        if modelExists is not None and len(modelExists):
+            # model already exists in project; update timestamp to make it current (TODO: find a better solution)
+            self.dbConnector.execute(sql.SQL('''
+                UPDATE {id_cnnstate}
+                SET timeCreated = NOW()
+                WHERE marketplace_origin_id = %s;
+            ''').format(
+                id_cnnstate=sql.Identifier(project, 'cnnstate')
+            ), (modelID))
+            return {
+                'status': 0,
+                'message': 'Model had already been imported to project and was elevated to be the most current.'
+            }
 
         # check if model is suitable for current project
-        #TODO
-        return 0
+        immutables = self.labelUImiddleware.get_project_immutables(project)
+        errors = ''
+        if immutables['annotationType'] != meta['annotationtype']:
+            meta_at = meta['annotationtype']
+            proj_at = immutables['annotationType']
+            errors = f'Annotation type of model ({meta_at}) is not compatible with project\'s annotation type ({proj_at}).'
+        if immutables['predictionType'] != meta['predictiontype']:
+            meta_pt = meta['predictiontype']
+            proj_pt = immutables['predictionType']
+            errors += f'\nPrediction type of model ({meta_pt}) is not compatible with project\'s prediction type ({proj_pt}).'
+        if len(errors):
+            return {
+                'status': 4,
+                'message': errors
+            }
+
+        # set project's selected model
+        self.dbConnector.execute('''
+            UPDATE aide_admin.project
+            SET ai_model_library = %s
+            WHERE shortname = %s;
+        ''', (meta['model_library'], project))
+
+        # finally, increase selection counter and import model state
+        #TODO: - retain existing alCriterion library
+        insertedModelID = self.dbConnector.execute(sql.SQL('''
+            UPDATE aide_admin.modelMarketplace
+            SET selectCount = selectCount + 1
+            WHERE id = %s;
+            INSERT INTO {id_cnnstate} (marketplace_origin_id, stateDict, timeCreated, partial, model_library, alCriterion_library)
+            SELECT id, stateDict, timeCreated, FALSE, model_library, alCriterion_library
+            FROM aide_admin.modelMarketplace
+            WHERE id = %s
+            RETURNING id;
+        ''').format(
+            id_cnnstate=sql.Identifier(project, 'cnnstate')
+            ),
+            (modelID, modelID),
+            1
+        )
+        return {
+            'status': 0,
+            'id': str(insertedModelID)
+        }
 
 
     
@@ -117,15 +200,42 @@ class ModelMarketplaceMiddleware:
 
         # check if model hasn't already been shared
         isShared = self.dbConnector.execute('''
-            SELECT author
+            SELECT author, shared
             FROM aide_admin.modelMarketplace
             WHERE origin_project = %s AND origin_uuid = %s;
         ''', (project, modelID), 'all')
         if isShared is not None and len(isShared):
-            author = isShared[0]['author']
+            if not isShared[0]['shared']:
+                # model had been shared in the past but then hidden; unhide
+                self.dbConnector.execute('''
+                    UPDATE aide_admin.modelMarketplace
+                    SET shared = True
+                    WHERE origin_project = %s AND origin_uuid = %s;
+                ''', (project, modelID))
+                return {'status': 0}
+            else:
+                # model has been shared and still is
+                author = isShared[0]['author']
+                return {
+                    'status': 2,
+                    'message': f'Model state has already been shared by {author}.'
+                }
+
+        # check if model hasn't been imported from the marketplace
+        isImported = self.dbConnector.execute(sql.SQL('''
+            SELECT marketplace_origin_id
+            FROM {id_cnnstate}
+            WHERE id = %s;
+        ''').format(
+            id_cnnstate=sql.Identifier(project, 'cnnstate')
+        ),
+        (modelID,),
+        1)
+        if isImported is not None and len(isImported):
+            marketplaceID = str(isImported[0]['marketplace_origin_id'])
             return {
-                'status': 2,
-                'message': f'Model state has already been shared by {author}.'
+                'status': 3,
+                'message': f'The selected model is already shared through the marketplace (id "{marketplaceID}").'
             }
 
         # get project immutables
@@ -142,7 +252,7 @@ class ModelMarketplaceMiddleware:
         ''', (modelName,), 'all')
         if nameTaken is not None and len(nameTaken) and nameTaken[0]['cnt']:
             return {
-                'status': 3,
+                'status': 4,
                 'message': f'A model state with name "{modelName}" already exists in the Model Marketplace.'
             }
 
@@ -168,5 +278,35 @@ class ModelMarketplaceMiddleware:
 
         return {
             'status': 0,
-            'shared_model_id': sharedModelID
+            'shared_model_id': str(sharedModelID)
         }
+
+    
+    def unshareModel(self, project, username, modelID):
+        '''
+            Sets the "shared" flag to False for a given model state,
+            if the provided username is the owner of it.
+        '''
+        modelID = UUID(modelID)
+
+        # check if user is authorized
+        isAuthorized = self.dbConnector.execute('''
+            SELECT shared FROM aide_admin.modelMarketplace
+            WHERE author = %s AND id = %s;
+        ''', (username, modelID), 1)
+
+        if isAuthorized is None or not len(isAuthorized):
+            # model does not exist or else user has no modification rights
+            return {
+                'status': 2,
+                'message': f'Model with id "{str(modelID)}"" does not exist or else user {username} does not have modification rights to it.'
+            }
+
+        # unshare
+        self.dbConnector.execute('''
+            UPDATE aide_admin.modelMarketplace
+            SET shared = FALSE
+            WHERE author = %s AND id = %s;
+        ''', (username, modelID))
+
+        return {'status': 0}
