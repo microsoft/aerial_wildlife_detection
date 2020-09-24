@@ -250,8 +250,8 @@
                 for(var user in data) {
                     var ud = data[user];
                     var numProjects = Object.keys(ud['enrolled_projects']).length;
-                    var canCreateProjects = (ud['canCreateProjects']===true? 'Y' : 'N');
-                    var isSuperUser = (ud['isSuperUser']===true? 'Y' : 'N');
+                    var canCreateProjects = (ud['canCreateProjects']===true? '<img src="/static/general/img/success.svg" />' : '<img src="/static/general/img/error.svg" />');
+                    var isSuperUser = (ud['isSuperUser']===true? '<img src="/static/general/img/success.svg" />' : '<img src="/static/general/img/error.svg" />');
                     var lastLogin = '';
                     if(typeof(ud['last_login']) === 'number') {
                         lastLogin = new Date(ud['last_login']*1000).toLocaleString();

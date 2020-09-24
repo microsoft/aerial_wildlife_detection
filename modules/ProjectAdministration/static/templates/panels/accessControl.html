@@ -139,7 +139,7 @@
                         for(var i=0; i<data['users'].length; i++) {
                             let uName = data['users'][i]['username'];
                             var uName_vis = uName;
-                            let isAdmin = (data['users'][i]['isadmin'] ? 'Y' : 'N');    //TODO: replace with images
+                            let isAdmin = (data['users'][i]['isadmin'] ? '<img src="/static/general/img/success.svg" />' : '<img src="/static/general/img/error.svg" />');
                             var admittedUntil = data['users'][i]['admitted_until'];
                             if(admittedUntil === null) admittedUntil = '';
                             var blockedUntil = data['users'][i]['blocked_until'];

@@ -48,13 +48,15 @@ class ModelMarketplaceMiddleware:
         # get matching model states
         result = self.dbConnector.execute(
             '''
-                SELECT * FROM (
-                    SELECT id, name, description, labelclasses, model_library,
+                SELECT id, name, description, labelclasses, model_library,
                     annotationType, predictionType, EXTRACT(epoch FROM timeCreated) AS time_created, alcriterion_library,
                     public, anonymous, selectCount,
-                    CASE WHEN anonymous THEN NULL ELSE author END AS author,
-                    CASE WHEN anonymous THEN NULL ELSE origin_project END AS origin_project,
-                    CASE WHEN anonymous THEN NULL ELSE origin_uuid END AS origin_uuid,
+                    is_owner, shared,
+                    CASE WHEN NOT is_owner AND anonymous THEN NULL ELSE author END AS author,
+                    CASE WHEN NOT is_owner AND anonymous THEN NULL ELSE origin_project END AS origin_project,
+                    CASE WHEN NOT is_owner AND anonymous THEN NULL ELSE origin_uuid END AS origin_uuid
+                FROM (
+                    SELECT *,
                     CASE WHEN author = %s AND origin_project = %s THEN TRUE ELSE FALSE END AS is_owner
                     FROM aide_admin.modelMarketplace
                     WHERE annotationType = %s AND
@@ -93,7 +95,8 @@ class ModelMarketplaceMiddleware:
 
     def importModel(self, project, username, modelID):
 
-        modelID = UUID(modelID)
+        if not isinstance(modelID, UUID):
+            modelID = UUID(modelID)
 
         # get model meta data
         meta = self.dbConnector.execute('''
@@ -196,7 +199,8 @@ class ModelMarketplaceMiddleware:
                     public, anonymous):
         #TODO: export as Celery task
 
-        modelID = UUID(modelID)
+        if not isinstance(modelID, UUID):
+            modelID = UUID(modelID)
 
         # check if model hasn't already been shared
         isShared = self.dbConnector.execute('''
@@ -232,11 +236,12 @@ class ModelMarketplaceMiddleware:
         (modelID,),
         1)
         if isImported is not None and len(isImported):
-            marketplaceID = str(isImported[0]['marketplace_origin_id'])
-            return {
-                'status': 3,
-                'message': f'The selected model is already shared through the marketplace (id "{marketplaceID}").'
-            }
+            marketplaceID = isImported[0]['marketplace_origin_id']
+            if marketplaceID is not None:
+                return {
+                    'status': 3,
+                    'message': f'The selected model is already shared through the marketplace (id "{str(marketplaceID)}").'
+                }
 
         # get project immutables
         immutables = self.labelUImiddleware.get_project_immutables(project)
@@ -274,12 +279,37 @@ class ModelMarketplaceMiddleware:
             id_cnnstate=sql.Identifier(project, 'cnnstate')
         ), (modelName, modelDescription, labelclasses, username,
             immutables['annotationType'], immutables['predictionType'],
-            project, public, anonymous, UUID(modelID)))
+            project, public, anonymous, modelID))
 
         return {
             'status': 0,
             'shared_model_id': str(sharedModelID)
         }
+
+
+    def reshareModel(self, project, username, modelID):
+        '''
+            Unlike "shareModel", this checks for a model that had already been
+            shared in the past, but then hidden from the marketplace, and simply
+            turns the "shared" attribute back on, if the model could be found.
+        '''
+        # get origin UUID of model and delegate to "shareModel" function
+        modelID = self.dbConnector.execute('''
+            SELECT origin_uuid FROM aide_admin.modelMarketplace
+            WHERE origin_project = %s
+            AND author = %s
+            AND id = %s;
+        ''',
+        (project, username, UUID(modelID)), 1)
+        if modelID is None or not len(modelID):
+            return {
+                'status': 2,
+                'message': f'Model with ID "{str(modelID)}" could not be found on the Model Marketplace.'
+            }
+        
+        modelID = modelID[0]['origin_uuid']
+        return self.shareModel(project, username, modelID, None, None, None, None)
+    
 
     
     def unshareModel(self, project, username, modelID):
@@ -287,7 +317,8 @@ class ModelMarketplaceMiddleware:
             Sets the "shared" flag to False for a given model state,
             if the provided username is the owner of it.
         '''
-        modelID = UUID(modelID)
+        if not isinstance(modelID, UUID):
+            modelID = UUID(modelID)
 
         # check if user is authorized
         isAuthorized = self.dbConnector.execute('''

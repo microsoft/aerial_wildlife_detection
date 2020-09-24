@@ -1087,14 +1087,15 @@ class AIMiddleware():
         # get meta data about models shared through model marketplace
         result = self.dbConn.execute('''
             SELECT id, origin_uuid,
-            author, anonymous, public
+            author, anonymous, public,
+            shared
             FROM aide_admin.modelMarketplace
             WHERE origin_project = %s;
         ''', (project,), 'all')
         if result is not None and len(result):
             modelMarketplaceMeta = {}
             for r in result:
-                mmID = str(r['id'])
+                mmID = r['origin_uuid']
                 values = {}
                 for key in r.keys():
                     if isinstance(r[key], uuid.UUID):

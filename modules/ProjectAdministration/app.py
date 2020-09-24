@@ -72,6 +72,8 @@ class ProjectConfigurator:
         
         @self.app.route('/<project>/config/panels/<panel>')
         def send_static_panel(project, panel):
+            if not self.loginCheck(project=project):
+                return self.__redirect(True, project + '/configuration?t=' + panel)
             if self.loginCheck(project=project, admin=True):
                 try:
                     return self.panelTemplates[panel].render(
