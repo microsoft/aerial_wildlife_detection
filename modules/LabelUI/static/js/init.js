@@ -208,7 +208,7 @@ $(document).ready(function() {
             // resize canvas to fit height (so that as little scrolling as possible is needed)
             var aspectRatio = canvas.width / canvas.height;
 
-            var height = Math.max(window.minImageWidth/aspectRatio, gallery.height() / numRows);
+            var height = Math.max(window.minImageWidth/aspectRatio, gallery.height() / numRows - numCols*24);   // subtract 24 pixels height for each image (footer)
             var width = Math.max(window.minImageWidth, gallery.width() / numCols);
             if(height > width/aspectRatio) {
                 height = width/aspectRatio;
@@ -370,7 +370,8 @@ $(document).ready(function() {
                     data: {username: username, password: password},
                     success: function(response) {
                         window.showOverlay(null);
-                        callback();
+                        if(typeof(callback) === 'function')
+                            callback();
                     },
                     error: function(error) {
                         $('#invalid-password').show();

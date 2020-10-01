@@ -61,7 +61,8 @@ window.getProjectSettings = function() {
         if(window.annotationType === 'segmentationMasks' && window.predictionType === 'segmentationMasks') {
             window.segmentation_ignoreUnlabeled = data['settings']['segmentation_ignore_unlabeled'];
         }
-        // window.demoMode = parseBoolean(data['settings']['demoMode']);
+        window.showImageNames = data['settings']['showImageNames'];
+        window.showImageURIs = data['settings']['showImageURIs'];
 
 
         // adjust number of images to one for mobile devices

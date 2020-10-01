@@ -114,7 +114,9 @@ h3 {
 }
 .entry {
     display: inline-block;
-    padding: 18px;
+    padding: 10px;  /* 18px without margin */
+    margin: 8px;
+    background: #1d1d1d;
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
@@ -133,6 +135,13 @@ canvas {
     width: 20px;
     height: 20px;
     cursor: pointer;
+}
+
+.image-footer {
+    height: 24px;
+    width: 100%;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* tools */

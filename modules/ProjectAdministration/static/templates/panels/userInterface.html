@@ -5,6 +5,15 @@
     <div class="settings-group">
         <input type="checkbox" id="interface-enabled-checkbox" />
         <label for="interface-enabled-checkbox">Enable annotation interface</label>
+        <br />
+
+        <input type="checkbox" id="show-image-names-checkbox" />
+        <label for="show-image-names-checkbox">Show file names below images</label>
+        <br />
+        <div style="margin-left:20px">
+            <input type="checkbox" id="show-image-uris-checkbox" disabled />
+            <label for="show-image-uris-checkbox">Enable hyperlinks to images</label>
+        </div>
     </div>
 
     <h3>Image viewer</h3>
@@ -227,6 +236,8 @@
     // field-to-token mapping
     var PROPERTIES_MAP = {
         'interface_enabled': {id: 'interface-enabled-checkbox', type: 'checkbox'},
+        'ui_settings/showImageNames': {id: 'show-image-names-checkbox', type: 'checkbox'},
+        'ui_settings/showImageURIs': {id: 'show-image-uris-checkbox', type: 'checkbox'},
         'ui_settings/numImagesPerBatch': {id: 'field-numImgsPerBatch', type: 'value'},
         'ui_settings/defaultImage_w': {id: 'field-defaultImageWidth', type: 'value'},
         'ui_settings/defaultImage_h': {id: 'field-defaultImageHeight', type: 'value'},
@@ -332,11 +343,12 @@
                     }
                 }
                 
-                // update GUI elements (sliders)
+                // update GUI elements (sliders, checkboxes, etc.)
                 $.each($.find('input[type=range]'), function(_, item) {
                     let id_num = '#'+item.id.replace('-range', '');
                     $(id_num).trigger('input');
                 });
+                $('#show-image-uris-checkbox').prop('disabled', !$('#show-image-names-checkbox').prop('checked'));
 
                 // adjust global interface shortlink button on config page
                 try {
@@ -536,6 +548,10 @@
         // get current UI settings
         promise = promise.then(function() {
             return reloadUIsettings();
+        });
+
+        $('#show-image-names-checkbox').on('click', function() {
+            $('#show-image-uris-checkbox').prop('disabled', !$(this).prop('checked'));
         });
 
         $('#proj-settings-save-button').on('click', function() {

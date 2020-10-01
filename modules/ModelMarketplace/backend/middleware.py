@@ -18,8 +18,8 @@ class ModelMarketplaceMiddleware:
     def __init__(self, config):
         self.config = config
         self.dbConnector = Database(config)
-
         self.labelUImiddleware = DBMiddleware(config)
+        self._init_available_ai_models()
 
     
     def _init_available_ai_models(self):

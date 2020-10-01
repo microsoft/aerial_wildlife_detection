@@ -404,7 +404,9 @@ class ProjectConfigMiddleware:
                 ('defaultBoxSize_w', int),
                 ('defaultBoxSize_h', int),
                 ('minBoxSize_w', int),
-                ('minBoxSize_h', int)
+                ('minBoxSize_h', int),
+                ('showImageNames', bool),
+                ('showImageURIs', bool)
             ]
             uiSettings_new, uiSettingsKeys_new = parse_parameters(projectSettings['ui_settings'], fieldNames, absent_ok=True, escape=True)   #TODO: escape
             
@@ -415,7 +417,9 @@ class ProjectConfigMiddleware:
                 ''', (project,), 1)
             uiSettings = json.loads(uiSettings[0]['ui_settings'])
             for kIdx in range(len(uiSettingsKeys_new)):
-                if isinstance(uiSettings[uiSettingsKeys_new[kIdx]], dict):
+                if uiSettingsKeys_new[kIdx] not in uiSettings:  #TODO: may be a bit careless, as any new keywords could be added...
+                    uiSettings[uiSettingsKeys_new[kIdx]] = uiSettings_new[kIdx]
+                elif isinstance(uiSettings[uiSettingsKeys_new[kIdx]], dict):
                     ProjectConfigMiddleware._recursive_update(uiSettings[uiSettingsKeys_new[kIdx]], uiSettings_new[kIdx])
                 else:
                     uiSettings[uiSettingsKeys_new[kIdx]] = uiSettings_new[kIdx]
