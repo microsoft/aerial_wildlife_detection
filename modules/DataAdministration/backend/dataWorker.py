@@ -424,15 +424,20 @@ class DataWorker:
             the intersection between identified images on
             disk and in the iterable are added.
 
+            If 'imageList' is a string with contents 'all',
+            all untracked images will be added.
+
             Returns a list of image IDs and file names that
             were eventually added to the project database schema.
         '''
         # get all images on disk that are not in database
         imgs_candidates = self.scanForImages(project)
 
-        if imageList is None:
+        if imageList is None or (isinstance(imageList, str) and imageList.lower() == 'all'):
             imgs_add = imgs_candidates
         else:
+            if isinstance(imageList, dict):
+                imageList = list(imageList.keys())
             imgs_add = list(set(imgs_candidates).intersection(set(imageList)))
 
         if not len(imgs_add):
@@ -910,7 +915,7 @@ class DataWorker:
             pName = p['shortname']
 
             # add new images
-            _, imgs_added = self.addExistingImages(pName)
+            _, imgs_added = self.addExistingImages(pName, None)
 
             # remove orphaned images (if enabled)
             if p['watch_folder_remove_missing_enabled']:

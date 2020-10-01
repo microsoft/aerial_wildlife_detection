@@ -203,6 +203,8 @@ class DataAdministrationMiddleware:
             If an imageList iterable is provided, only
             the intersection between identified images on
             disk and in the iterable are added.
+            If imageList is a string with contents 'all', all
+            untracked images on disk will be added.
 
             Returns a list of image IDs and file names that
             were eventually added to the project database schema.

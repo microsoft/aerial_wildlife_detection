@@ -237,6 +237,12 @@ class DataAdministrator:
 
             try:
                 imageNames = request.json
+                if isinstance(imageNames, dict) and 'images' in imageNames:
+                    imageNames = imageNames['images']
+                elif isinstance(imageNames, str) and imageNames.lower() == 'all':
+                    pass
+                else:
+                    return {'status': 2, 'message': 'Invalid parameters provided.'}
                 result = self.middleware.addExistingImages(project, imageNames['images'])
                 return {'response': result}
             except Exception as e:

@@ -136,7 +136,8 @@
         }
 
         function _do_add_untracked(imgList) {
-            if(imgList.length === 0) return;
+            let params = {};
+            if(Array.isArray(imgList) && imgList.length === 0) return;
             return $.ajax({
                 url: 'addExistingImages',
                 method: 'POST',
@@ -169,13 +170,13 @@
 
         function addAllUntracked() {
             if(window.untrackedFiles === undefined) return;
-            var imgList = [];
-            let entries = window.imageBrowser.getEntries();
-            for(var key in entries) {
-                imgList.push(entries[key].data['url']);
-            }
-            imgList = imgList.concat(window.untrackedFiles);
-            return _do_add_untracked(imgList);
+            // var imgList = [];
+            // let entries = window.imageBrowser.getEntries();
+            // for(var key in entries) {
+            //     imgList.push(entries[key].data['url']);
+            // }
+            // imgList = imgList.concat(window.untrackedFiles);
+            return _do_add_untracked('all');
         }
 
 
