@@ -103,6 +103,11 @@ class AbstractDataEntry {
     }
 
     _addElement(element) {
+        if(typeof(this.annotations) !== 'object') {
+            // not yet initialized; abort
+            return;
+        }
+
         if(!element.isValid()) return;
         var key = element['annotationID'];
         if(element['type'] ==='annotation') {
@@ -519,6 +524,11 @@ class ClassificationEntry extends AbstractDataEntry {
     }
 
     _addElement(element) {
+        if(typeof(this.annotations) !== 'object') {
+            // not yet initialized; abort
+            return;
+        }
+
         // allow only one label for classification entry
         var key = element['annotationID'];
         if(element['type'] ==='annotation') {
@@ -704,7 +714,13 @@ class ClassificationEntry extends AbstractDataEntry {
     }
 
     removeAllAnnotations() {
-        this.labelInstance.setProperty('label', null);
+        // this is technically not needed for classification; we do it nonetheless for completeness
+        for(var key in this.annotations) {
+            this.annotations[key].setActive(false, this.viewport);
+            this._removeElement(this.annotations[key]);
+        }
+        if(typeof(this.labelInstance) === 'object')
+            this.labelInstance.setProperty('label', null);
         this.render();
 
         window.dataHandler.updatePresentClasses();
@@ -1368,10 +1384,15 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
     }
 
     _addElement(element) {
+        if(typeof(this.annotations) !== 'object') {
+            // not yet initialized; abort
+            return;
+        }
+
         // allow only one annotation for segmentation entry
         var key = element['annotationID'];
         if(element['type'] ==='annotation') {
-            if(Object.keys(this.annotations).length > 0) {
+            if(typeof(this.annotations) === 'object' && Object.keys(this.annotations).length > 0) {
                 // replace current annotation
                 var currentKey = Object.keys(this.annotations)[0];
                 this.viewport.removeRenderElement(this.annotations[currentKey]);
