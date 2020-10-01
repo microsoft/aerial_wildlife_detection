@@ -20,6 +20,20 @@ class ModelMarketplaceMiddleware:
         self.dbConnector = Database(config)
 
         self.labelUImiddleware = DBMiddleware(config)
+
+    
+    def _init_available_ai_models(self):
+        '''
+            Checks the locally installed model implementations
+            and retains a list of those that support sharing
+            (i.e., the addition of new label classes).
+        '''
+        self.availableModels = set()
+        for key in PREDICTION_MODELS:
+            if 'canAddLabelclasses' in PREDICTION_MODELS[key] and \
+                PREDICTION_MODELS[key]['canAddLabelclasses'] is True:
+                self.availableModels.add(key)
+
     
 
     def getModelsMarketplace(self, project, username):
@@ -119,10 +133,10 @@ class ModelMarketplaceMiddleware:
 
         # check if model type is registered with AIDE
         modelLib = meta['model_library']
-        if modelLib not in PREDICTION_MODELS:
+        if modelLib not in self.availableModels:
             return {
                 'status': 3,
-                'message': f'Model type with identifier "{modelLib}" is not registered with this installation of AIDE.'
+                'message': f'Model type with identifier "{modelLib}" does not support sharing across project, or else is not registered with this installation of AIDE.'
             }
 
         # check if model hasn't already been imported to current project
@@ -201,6 +215,24 @@ class ModelMarketplaceMiddleware:
 
         if not isinstance(modelID, UUID):
             modelID = UUID(modelID)
+        
+        # check if model class supports sharing
+        isShareable = self.dbConnector.execute('''
+            SELECT ai_model_library
+            FROM aide_admin.project
+            WHERE shortname = %s;
+        ''', (project,), 1)
+        if isShareable is None or not len(isShareable):
+            return {
+                'status': 1,
+                'message': f'Project {project} could not be found in database.'
+            }
+        modelLib = isShareable[0]['ai_model_library']
+        if modelLib not in self.availableModels:
+            return {
+                'status': 2,
+                'message': f'The model with id "{modelLib}" does not support sharing, or else is not installed in this instance of AIDE.'
+            }
 
         # check if model hasn't already been shared
         isShared = self.dbConnector.execute('''
@@ -221,7 +253,7 @@ class ModelMarketplaceMiddleware:
                 # model has been shared and still is
                 author = isShared[0]['author']
                 return {
-                    'status': 2,
+                    'status': 3,
                     'message': f'Model state has already been shared by {author}.'
                 }
 
@@ -239,7 +271,7 @@ class ModelMarketplaceMiddleware:
             marketplaceID = isImported[0]['marketplace_origin_id']
             if marketplaceID is not None:
                 return {
-                    'status': 3,
+                    'status': 4,
                     'message': f'The selected model is already shared through the marketplace (id "{str(marketplaceID)}").'
                 }
 
@@ -257,10 +289,11 @@ class ModelMarketplaceMiddleware:
         ''', (modelName,), 'all')
         if nameTaken is not None and len(nameTaken) and nameTaken[0]['cnt']:
             return {
-                'status': 4,
+                'status': 5,
                 'message': f'A model state with name "{modelName}" already exists in the Model Marketplace.'
             }
 
+        # share model state
         sharedModelID = self.dbConnector.execute(sql.SQL('''
             INSERT INTO aide_admin.modelMarketplace
             (name, description, labelclasses, author, statedict,

@@ -54,7 +54,7 @@ class ResNet(nn.Module):
             label classes that are not present in the new "labelClasses", and if
             "removeObsolete" is True, those neurons are being removed.
         '''
-        if not addMissing or not removeObsolete:
+        if not (addMissing or removeObsolete):
             return
         
         classes_current = set([lc for lc in self.labelclassMap.keys()])
