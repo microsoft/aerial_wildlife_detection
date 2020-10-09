@@ -1,7 +1,6 @@
 # Launching AIDE
 
 The instructions below manually launch AIDE using the [Gunicorn server](https://gunicorn.org/).
-<!-- If you wish to deploy AIDE properly, you might want to set up Gunicorn as a service and wrap it in a web server. To do so, see [here](deployment.md). -->
 
 
 

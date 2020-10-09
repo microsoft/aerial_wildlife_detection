@@ -20,9 +20,7 @@ class FileServer():
             raise Exception('Not a valid FileServer instance.')
 
         self.staticDir = self.config.getProperty('FileServer', 'staticfiles_dir')
-        self.staticAddress = self.config.getProperty('FileServer', 'staticfiles_uri', type=str, fallback='')
-        if not self.staticAddress.startswith(os.sep):
-            self.staticAddress = os.sep + self.staticAddress
+        self.staticAddressSuffix = self.config.getProperty('FileServer', 'staticfiles_uri_addendum', type=str, fallback='').strip()
 
         self._initBottle()
 
@@ -31,12 +29,12 @@ class FileServer():
 
         ''' static routing to files '''
         # @enable_cors
-        # @self.app.route(os.path.join(self.staticAddress, '<path:path>'))
+        # @self.app.route(os.path.join(self.staticAddressSuffix, '<path:path>'))
         # def send_file_deprecated(path):
         #     return static_file(path, root=self.staticDir)
 
         
         @enable_cors
-        @self.app.route(os.path.join('/', self.staticAddress, '<project>/files/<path:path>'))
+        @self.app.route(os.path.join('/', self.staticAddressSuffix, '/<project>/files/<path:path>'))
         def send_file(project, path):
             return static_file(path, root=os.path.join(self.staticDir, project))
