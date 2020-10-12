@@ -11,4 +11,4 @@ requests
 future
 
 # for the AI backend
-celery[redis,auth,msgpack]>=4.3.0  #TODO
+celery[redis,auth,msgpack]==4.4.7  #TODO
