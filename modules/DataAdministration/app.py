@@ -29,6 +29,8 @@ class DataAdministrator:
         self.is_fileServer = helpers.is_fileServer(config)  # set up either direct methods or relaying
         self.middleware = DataAdministrationMiddleware(config)
 
+        self.tempDir = self.config.getProperty('FileServer', 'tempfiles_dir', type=str, fallback=tempfile.gettempdir())
+
         self.login_check = None
         self._initBottle()
 
@@ -340,7 +342,7 @@ class DataAdministrator:
                 else:
                     userList = None
 
-                # extra query fields
+                # extra query fields (TODO)
                 if 'extra_fields' in params:
                     extraFields = params['extra_fields']
                 else:
@@ -385,10 +387,11 @@ class DataAdministrator:
                 abort(401, 'forbidden')
 
             if not self.is_fileServer:
+                #TODO: fix headers for relay requests
                 headers = {}
                 # headers[str("content-type")] = 'text/csv'
                 headers['Content-Disposition'] = 'attachment'   #;filename="somefilename.csv"'
                 return self.relay_request(project, os.path.join('downloadData', filename), 'get',
                         headers)
             
-            return static_file(filename, root=os.path.join(tempfile.gettempdir(), 'aide/downloadRequests', project), download=True)
+            return static_file(filename, root=os.path.join(self.tempDir, 'aide/downloadRequests', project), download=True)
