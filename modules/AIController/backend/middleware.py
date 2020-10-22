@@ -881,10 +881,39 @@ class AIMiddleware():
 
 
 
-    def getAvailableAImodels(self):
-        return {
-            'models': self.aiModels
-        }
+    def getAvailableAImodels(self, project=None):
+        if project is None:
+            return {
+                'models': self.aiModels
+            }
+        else:
+            models = {
+                'prediction': {},
+                'ranking': self.aiModels['ranking']
+            }
+
+            # identify models that are compatible with project's annotation and prediction type
+            projImmutables = self.dbConn.execute(
+                '''
+                    SELECT annotationtype, predictiontype
+                    FROM aide_admin.project
+                    WHERE shortname = %s;
+                ''',
+                (project,),
+                1
+            )
+            projImmutables = projImmutables[0]
+            projAnnoType = projImmutables['annotationtype']
+            projPredType = projImmutables['predictiontype']
+            for key in self.aiModels['prediction'].keys():
+                model = self.aiModels['prediction'][key]
+                if projAnnoType in model['annotationType'] and \
+                    projPredType in model['predictionType']:
+                    models['prediction'][key] = model
+
+            return {
+                'models': models
+            }
 
 
     def verifyAImodelOptions(self, project, modelOptions, modelLibrary=None):

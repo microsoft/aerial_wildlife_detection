@@ -11,48 +11,62 @@
 
         <!-- marketplace models table -->
         <div class="table-container" id="modelmarketplace-container">
-            <!-- TODO: sort, search, filter -->
-            <table>
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Author</th>
-                        <th>Shared</th>
-                        <th>Source project</th>
-                        <th>Model</th>
-                        <th>Time created</th>
-                        <th>No. classes</th>
-                    </tr>
-                </thead>
-                <tbody id="marketplace-models-tbody"></tbody>
-            </table>
-
-            <!-- selected model info -->
-            <div class="info-container">
-                <div id="no-model-selected-marketplace">
-                    No model selected.
-                </div>
-                <div id="selected-model-info-marketplace" style="display:none">
-                    <h3>Selected model</h3>
-                    <div>Name:</div>
-                    <div class="info-field" id="marketplace-info-name"></div>
-                    <div>Description:</div>
-                    <div class="info-field" id="marketplace-info-description"></div>
-                    <div>Author:</div>
-                    <div class="info-field" id="marketplace-info-author"></div>
-                    <div>Label classes:</div>
-                    <div class="info-field" id="marketplace-info-labelclasses"></div>
-                    <!-- TODO: more -->
-
-                    <span id="marketplace-model-type-disclaimer" style="font-style:italic"></span>
+            <div class="option-box">
+                <h3 id="marketplace-search-header">Search and filter</h3>
+                <div id="marketplace-search-body">
+                    <label for="marketplace-search-keyword">Keyword:</label>
+                    <input type="text" id="marketplace-search-keyword" />
                     <br />
 
-                    <!-- control buttons -->
-                    <div>
-                        <button class="btn btn-danger" id="marketplace-model-remove" style="display:none">Remove from Marketplace</button>
-                        <button class="btn btn-warning" id="marketplace-model-reshare" style="display:none">Re-share on Marketplace</button>
-                        <button class="btn btn-primary" id="marketplace-model-select" style="display:none">Add to Project</button>
-                        <!-- <button class="btn btn-primary" id="marketplace-model-share">Download</button> -->
+                    <span>Model type:</span>
+                    <div id="marketplace-search-modeltype"></div>
+                </div>
+            </div>
+            <div class="flex-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Author</th>
+                            <th>Shared</th>
+                            <th>Source project</th>
+                            <th>Model</th>
+                            <th>Time created</th>
+                            <th>No. classes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="marketplace-models-tbody"></tbody>
+                </table>
+
+                <!-- selected model info -->
+                <div class="info-container">
+                    <div id="no-model-selected-marketplace">
+                        No model selected.
+                    </div>
+                    <div id="selected-model-info-marketplace" style="display:none">
+                        <h3>Selected model</h3>
+                        <div>Name:</div>
+                        <div class="info-field" id="marketplace-info-name"></div>
+                        <div>Description:</div>
+                        <div class="info-field" id="marketplace-info-description"></div>
+                        <div>Author:</div>
+                        <div class="info-field" id="marketplace-info-author"></div>
+                        <div>Label classes:</div>
+                        <div class="info-field" id="marketplace-info-labelclasses"></div>
+                        <div>Tags:</div>
+                        <div class="info-field" id="marketplace-info-tags"></div>
+                        <!-- TODO: more -->
+
+                        <span id="marketplace-model-type-disclaimer" style="font-style:italic"></span>
+                        <br />
+
+                        <!-- control buttons -->
+                        <div>
+                            <button class="btn btn-danger" id="marketplace-model-remove" style="display:none">Remove from Marketplace</button>
+                            <button class="btn btn-warning" id="marketplace-model-reshare" style="display:none">Re-share on Marketplace</button>
+                            <button class="btn btn-primary" id="marketplace-model-select" style="display:none">Add to Project</button>
+                            <!-- <button class="btn btn-primary" id="marketplace-model-share">Download</button> -->
+                        </div>
                     </div>
                 </div>
             </div>
@@ -86,6 +100,12 @@
                     <div>Description:</div>
                     <textarea id="project-info-description"></textarea>
                     <br />
+                    <div>Tags:</div>
+                    <p style="font-style:italic">Tags allow users to find your model more easily on the Marketplace.</p>
+                    <input type="text" id="project-info-add-tag"></input>
+                    <button id="project-info-add-tag-button" class="btn btn-sm btn-primary">+ add</button>
+                    <div class="info-field" id="project-info-tags" style="min-height:54px"></div>
+                    <br />
                     <label for="project-model-share-public">Share with:</label>
                     <select id="project-model-share-public">
                         <option value="everyone">Everyone</option>
@@ -115,6 +135,13 @@
         margin-bottom: 5px;
     }
 
+    .option-box {
+        border: 1px solid #aaa;
+        border-radius: 5px;
+        padding: 10px;
+        margin-bottom: 10px;
+    }
+
     .info-field {
         margin: 10px;
         border: 1px solid white;
@@ -124,7 +151,7 @@
         font-weight: bold;
     }
 
-    .table-container {
+    .flex-container {
         display: flex;
         flex-direction: row;
         flex-wrap: wrap;
@@ -173,6 +200,20 @@
         flex-grow: 2;
         width: 400px;
     }
+
+    .tag {
+        display: inline;
+        background: #5a5a5a;
+        color: white;
+        padding: 8px 12px 8px 12px;
+        border-radius: 5px;
+        margin: 5px;
+        font-weight: normal;
+    }
+    .tag > button {
+        margin-left: 5px;
+        border-radius: 50px;
+    }
 </style>
 <script src="/static/statistics/libs/chartjs/Chart.min.js?v={{ version }}"></script>
 <script type="text/javascript">
@@ -192,6 +233,16 @@
             method: 'GET',
             success: function(data) {
                 availableAImodels = data['models']['prediction'];
+
+                // populate filter table as well
+                let filterTable = $('#marketplace-search-modeltype');
+                filterTable.empty();
+                for(var key in availableAImodels) {
+                    let entry = $('<div id="modeltype_'+key+'"></div>');
+                    entry.append($('<input type="checkbox" checked />'));
+                    entry.append($('<span>'+availableAImodels[key]['name']+'</span>'));
+                    filterTable.append(entry);
+                }
             },
             error: function(xhr, status, error) {
                 var promise = window.renewSessionRequest(xhr);
@@ -229,7 +280,7 @@
                         no_classes = classdef['numClasses'];
                     } catch {}
                     let shared = (model['shared'] ? '<img src="/static/general/img/success.svg" />' : '<img src="/static/general/img/error.svg" />');
-                    let markup = $('<tr id="modelMarketplace::' + mID + '">' +
+                    let markup = $('<tr id="modelMarketplace_' + mID + '">' +
                         '<td>' + model['name'] + '</td>' +
                         '<td>' + author + '</td>' +
                         '<td>' + shared + '</td>' +
@@ -244,7 +295,7 @@
                         for(var i=0; i<modelsMarketplaceMarkups.length; i++) {
                             modelsMarketplaceMarkups[i].removeClass('tr-highlighted');
                         }
-                        let selID = $(this).attr('id').split('::')[1];
+                        let selID = $(this).attr('id').split('_')[1];
                         if(selID === selectedModel_id_marketplace) {
                             // deselect
                             selectedModel_id_marketplace = null;
@@ -264,6 +315,16 @@
                         $('#marketplace-info-description').html(selectedModel['description']);
                         $('#marketplace-info-author').html(author);
                         parseLabelclassDefinition(selectedModel['labelclasses']);
+
+                        let tagsDiv = $('#marketplace-info-tags');
+                        tagsDiv.empty();
+                        let tags = selectedModel['tags'];
+                        if(typeof(tags) === 'string' && tags.length > 0) {
+                            tags = tags.split(';;');
+                            for(var t=0; t<tags.length; t++) {
+                                tagsDiv.append($('<span class="tag">'+tags[t]+'</span>'));
+                            }
+                        }
 
                         // buttons for actions
                         if(selectedModel['is_owner']) {
@@ -324,7 +385,7 @@
                         }
                     }
 
-                    let markup = $('<tr id="project::' + i + '">' +
+                    let markup = $('<tr id="project_' + i + '">' +
                         '<td>' + (i+1) + '</td>' +
                         '<td>' + modelLibrary + '</td>' +
                         '<td>' + new Date(modelsProject[i]['time_created'] * 1000).toLocaleString() + '</td>' +
@@ -332,7 +393,7 @@
                         '<td>' + shared + '</td>' +
                         '</tr>');
                     markup.on('click', function() {
-                        let selID = $(this).attr('id').split('::')[1];
+                        let selID = $(this).attr('id').split('_')[1];
                         for(var m=0; m<modelsProjectMarkups.length; m++) {
                             modelsProjectMarkups[m].removeClass('tr-highlighted');
                         }
@@ -616,6 +677,77 @@
         }
     }
 
+    function _string_matches(object, keywords) {
+        if(keywords.length === 0) return true;
+        if(object === undefined || object === null) {
+            return false;
+        } else if(Array.isArray(object)) {
+            for(var k=0; k<object.length; k++) {
+                if(_string_matches(object[k], keywords)) return true;
+            }
+            return false;
+        } else if(typeof(object) === 'object') {
+            let keys = Object.keys(object);
+            for(var k=0; k<keys.length; k++) {
+                if(_string_matches(object[keys[k]], keywords)) return true;
+            }
+            return false;
+        } else {
+            object = object.toString().toLowerCase();
+            for(var k=0; k<keywords.length; k++) {
+                if(!object.includes(keywords[k].toLowerCase())) return false;
+            }
+            return true;
+        }
+    }
+
+    function _isMatch_marketplace(entryID, keywords, modelTypes) {
+        let entry = modelsMarketplace[entryID];
+        if(typeof(entry) !== 'object') return false;
+
+        if(!modelTypes.hasOwnProperty(entry['model_library'])) return false;
+
+        if(keywords.length === 0) return true;
+
+        if(_string_matches(entry, keywords)) return true;
+        
+        // also check table entry for converted fields (anonymous authors, date, etc.)
+        let tableMarkup = $('#modelMarketplace_'+entryID).map(function(){
+            return $(this).text();
+        }).get(0);
+        if(_string_matches(tableMarkup, keywords)) return true;
+
+        // no match
+        return false;
+    }
+
+    function filterMarketplace() {
+        let keywords = $('#marketplace-search-keyword').val().trim().split(' ');
+        for(var k=0; k<keywords.length; k++) {
+            keywords[k] = keywords[k].trim().toLowerCase();
+        }
+        let modelTypes = {};
+        let modelTypesDivs = $('#marketplace-search-modeltype').children();
+        for(var c=0; c<modelTypesDivs.length; c++) {
+            if($($(modelTypesDivs[c]).find('input[type=checkbox]')[0]).prop('checked')) {
+                let modelID = $(modelTypesDivs[c]).attr('id').substring(10);    // get rid of "modeltype_" prefix
+                modelTypes[modelID] = 0;
+            }
+        }
+
+        // show or hide entries according to filter criteria
+        let entries = $('#marketplace-models-tbody').find('tr');
+        for(var e=0; e<entries.length; e++) {
+            let entry = $(entries[e]);
+            let entryID = entry.attr('id').substring(17);   // get rid of "modelMarketplace_" prefix
+            if(_isMatch_marketplace(entryID, keywords, modelTypes)) {
+                entry.show();
+            } else {
+                entry.hide();
+            }
+        }
+    }
+
     function loadData() {
         //TODO: promises
 
@@ -650,6 +782,57 @@
         $('#marketplace-model-select').on('click', function() {
             importModelToProject();
         });
+
+        // search and filter
+        $('#marketplace-search-keyword').on('input', function() {
+            filterMarketplace();
+        });
+        $('#marketplace-search-modeltype').on('change', function() {
+            filterMarketplace();
+        });
+
+        // tags
+        function _getTags(preserveCase) {
+            let tagDivs = $('#project-info-tags').children();
+            if(tagDivs.length === 0) return {};
+            let tags = {};
+            for(var c=0; c<tagDivs.length; c++) {
+                let tag = $(tagDivs[c]).html();
+                if(!preserveCase) {
+                    tag = tag.toLowerCase();
+                }
+                tags[tag] = 0;
+            }
+            return tags;
+        }
+        function _tagValid(tag) {
+            if(typeof(tag) !== 'string') return false;
+            tag = tag.trim().toLowerCase();
+            if(tag.length === 0 || tag.includes(';;')) return false;
+            let tags = _getTags(false);
+            if(tags.hasOwnProperty(tag)) return false;
+            return true;
+        }
+        $('#project-info-add-tag-button').on('click', function() {
+            let tag = $('#project-info-add-tag').val();
+            if(_tagValid(tag)) {
+                let tagsDiv = $('#project-info-tags');
+                let tagDiv = $('<div class="tag"></div>');
+                tagDiv.append($('<span>' + tag + '</span>'));
+                let removeBtn = $('<button class="btn btn-sm btn-secondary">X</button>');
+                removeBtn.on('click', function() {
+                    $(this).parent().remove();
+                });
+                tagDiv.append(removeBtn);
+                tagsDiv.append(tagDiv);
+                $('#project-info-add-tag').val('');
+            }
+        });
+        $('#project-info-add-tag').on('input', function() {
+            let tag = $('#project-info-add-tag').val();
+            $('#project-info-add-tag-button').prop('disabled', !_tagValid(tag));
+        });
+
 
         function showPanel(type) {
             if(type === 'modelMarketplace') {

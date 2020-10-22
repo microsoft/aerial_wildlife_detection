@@ -136,6 +136,7 @@ CREATE TABLE IF NOT EXISTS aide_admin.modelMarketplace (
     anonymous BOOLEAN NOT NULL DEFAULT FALSE,
     selectCount INTEGER NOT NULL DEFAULT 0,
     shared BOOLEAN NOT NULL DEFAULT TRUE,
+    tags VARCHAR,
     PRIMARY KEY (id),
     FOREIGN KEY (author) REFERENCES aide_admin.user(name)
 );

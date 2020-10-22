@@ -65,7 +65,7 @@ class ModelMarketplaceMiddleware:
                 SELECT id, name, description, labelclasses, model_library,
                     annotationType, predictionType, EXTRACT(epoch FROM timeCreated) AS time_created, alcriterion_library,
                     public, anonymous, selectCount,
-                    is_owner, shared,
+                    is_owner, shared, tags,
                     CASE WHEN NOT is_owner AND anonymous THEN NULL ELSE author END AS author,
                     CASE WHEN NOT is_owner AND anonymous THEN NULL ELSE origin_project END AS origin_project,
                     CASE WHEN NOT is_owner AND anonymous THEN NULL ELSE origin_uuid END AS origin_uuid

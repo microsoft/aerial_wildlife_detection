@@ -295,12 +295,13 @@ class AIController:
         def get_available_ai_models(project):
             '''
                 Returns all available AI models (class, name) that are
-                installed in this instance of AIDE.
+                installed in this instance of AIDE and compatible with
+                the project's annotation and prediction types.
             '''
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'unauthorized')
             
-            return self.middleware.getAvailableAImodels()
+            return self.middleware.getAvailableAImodels(project)
 
 
         @self.app.post('/<project>/verifyAImodelOptions')
