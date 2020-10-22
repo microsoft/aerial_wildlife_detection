@@ -349,3 +349,27 @@ class ProjectConfigurator:
 
             except:
                 abort(400, 'bad request')
+
+
+        @self.app.post('/<project>/deleteProject')
+        def delete_project(project):
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+            
+            try:
+                # verify user-provided project name
+                projNameUser = request.json['projName']
+                if projNameUser != project:
+                    return {
+                        'status': 2,
+                        'message': 'User-provided project name does not match actual project name.'
+                    }
+                deleteFiles = request.json['deleteFiles']
+
+                result = self.middleware.deleteProject(project, deleteFiles)
+                return {
+                    'status': 0
+                }
+                
+            except:
+                abort(400, 'bad request')

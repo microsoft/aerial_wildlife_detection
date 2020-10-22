@@ -702,3 +702,27 @@ class ProjectConfigMiddleware:
             return result[0]['result'] != 1
         else:
             return True
+
+
+    def setProjectArchived(self, project, archived):
+        '''
+            Archives or unarchives a project by setting the "archived" flag in the database
+            to the value in "archived".
+            An archived project is simply hidden from the list and unchangeable, but stays
+            intact as-is and can be unarchived if needed. No data is deleted.
+        '''
+        #TODO: implement, incl. field in DB
+        return 1
+
+
+    def deleteProject(self, project, deleteFiles=False):
+        '''
+            Removes a project from the database, including all metadata.
+            Also dispatches a Celery task to the FileServer to
+            delete images (and other project-specific data on disk)
+            if "deleteFiles" is True.
+            WARNING: this seriously deletes a project in its entirety; any data will be
+            lost forever.
+        '''
+        #TODO: implement
+        return 1

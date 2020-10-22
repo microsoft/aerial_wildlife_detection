@@ -1,0 +1,97 @@
+<div>
+    <h2>Danger Zone</h2>
+    
+    <div style="color:red">
+        <b>TODO: work in progress; not functional yet.</b><br />
+
+        <span style="font-weight:bold">WARNING:</span>
+        Be extremely careful with the settings and options below; a wrong click could destroy all your project's data.
+        This cannot be undone.
+    </div>
+
+    <div class="panel">
+        <button class="btn btn-primary" id="archive-project">Archive project</button>
+
+        <p style="font-style:italic">An archived project will be frozen and hidden from the projects overview page.
+        No annotations can be made and no models trained. The project will however remain intact as-is and can be
+        unarchived at any point in time if desired.</p>
+    </div>
+
+
+    <div class="panel">
+        <button class="btn btn-danger" id="show-delete-project">Delete project</button>
+
+        <div id="delete-project-panel">
+            <input type="checkbox" id="delete-project-remove-data" />
+            <label for="delete-project-remove-data">Also remove images and other data on disk.</label>
+            <div style="margin-left:20px;font-style:italic">This will be done in the background and might take a while to finish.</div>
+            <br />
+            <button class="btn btn-lg btn-danger" id="delete-project">Delete</button>
+        </div>
+    </div>
+</div>
+<style>
+    .panel {
+        margin-top: 20px;
+    }
+
+    #delete-project-panel {
+        display: none;
+        border: 1px solid #aaa;
+        border-radius: 5px;
+        padding: 10px;
+        margin-bottom: 10px;
+    }
+</style>
+
+<script type="text/javascript">
+
+    function deleteProject() {
+
+        let projNameField = $('<input type="text" id="project-name-verifier" />');
+        
+        function _doDelete() {
+            let projName = projNameField.val();
+            
+            $.ajax({
+                url: 'deleteProject',       //TODO: not yet implemented
+                method: 'POST',
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+                data: JSON.stringify({
+                    projName: projName,
+                    deleteFiles: $('#delete-project-remove-data').prop('checked')
+                }),
+                success: function(response) {
+                    console.log(response);  //TODO
+                },
+                error: function(xhr, message, error) {
+                    var promise = window.renewSessionRequest(xhr);
+                    promise = promise.done(function() {
+                        return _doDelete();
+                    });
+                    return promise;
+                }
+            })
+        }
+
+        let markup = $('<div></div>');
+        markup.append($('<p>To proceed, please enter the shortname of the project as in the URL in the field below:</p>'));
+        markup.append(projNameField);
+        
+        window.showYesNoOverlay(markup, _doDelete, null, 'Delete project', 'Cancel', 'btn btn-danger', 'btn btn-secondary', false, false);
+    }
+
+
+    $(document).ready(function() {
+        
+        $('#show-delete-project').on('click', function() {
+            $('#delete-project-panel').slideDown();
+        });
+        $('#delete-project').on('click', function() {
+            deleteProject();
+        });
+
+        window.showLoadingOverlay(false);
+    });
+</script>
