@@ -138,7 +138,7 @@ class AdminMiddleware:
         projects = {}
         response = self.dbConnector.execute('''
                 SELECT shortname, name, owner, annotationtype, predictiontype,
-                    ispublic, demomode, ai_model_enabled, interface_enabled,
+                    ispublic, demomode, ai_model_enabled, interface_enabled, archived,
                     COUNT(username) AS num_users
                 FROM aide_admin.project AS p
                 JOIN aide_admin.authentication AS auth
@@ -149,6 +149,8 @@ class AdminMiddleware:
         for r in response:
             projDef = {}
             for key in r.keys():
+                if key == 'interface_enabled':
+                    projDef[key] = r['interface_enabled'] and not r['archived']
                 if key != 'shortname':
                     projDef[key] = r[key]
             projects[r['shortname']] = projDef

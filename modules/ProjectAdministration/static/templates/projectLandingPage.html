@@ -166,25 +166,23 @@
                 });
 
                 // load background picture wall
-                promise = promise.then(function() {
-                    let picWall = $('#picture-wall');
-                    var numImgs = 128;  //TODO
-                    for(var i=0; i<numImgs; i++) {
-                        picWall.append($('<img id="picwall_'+i+'" />'));
-                    }
+                let picWall = $('#picture-wall');
+                var numImgs = 128;  //TODO
+                for(var i=0; i<numImgs; i++) {
+                    picWall.append($('<img id="picwall_'+i+'" />'));
+                }
 
-                    return $.ajax({
-                        url: '{{ projectShortname }}/getSampleImages',
-                        method: 'GET',
-                        data: {limit: numImgs},
-                        success: function(data) {
-                            // add images
-                            for(var i=0; i<data['images'].length; i++) {
-                                $('#picwall_'+i).attr('src',window.dataServerURI+'{{ projectShortname }}/files/'+data['images'][i]);
-                            }
-                            picWall.show();
+                return $.ajax({
+                    url: '{{ projectShortname }}/getSampleImages',
+                    method: 'GET',
+                    data: {limit: numImgs},
+                    success: function(data) {
+                        // add images
+                        for(var i=0; i<data['images'].length; i++) {
+                            $('#picwall_'+i).attr('src',window.dataServerURI+'{{ projectShortname }}/files/'+data['images'][i]);
                         }
-                    });
+                        picWall.show();
+                    }
                 });
             });
         </script>

@@ -57,16 +57,50 @@
                 <div class="grad-border-h"></div>
 
                 <div class="main-container">
-                    <a id="new-project-button" class="btn btn-lg btn-outline-primary" href="newProject" style="display:none">+ New Project</a>
+                    
+                    <div id="navigation-panel">
+                        <a id="new-project-button" class="btn btn-lg btn-outline-primary" href="newProject" style="display:none;width:100%;">+ New Project</a>
 
-                    <div id="projects"></div>
+                        <div id="project-folders" class="navigation-entry-container">
+                            <div class="navigation-entry active" id="all-projects">All projects</div>
+                            <div class="navigation-entry" id="your-projects">Projects you own</div>
+                            <div class="navigation-entry" id="admin-projects">Projects you administer</div>
+                            <div class="navigation-entry" id="projects-shared">Projects shared with you</div>
+                            <div class="navigation-entry" id="projects-demo">Demo projects</div>
+                            <div class="navigation-entry" id="projects-archived">Archived projects</div>
+                        </div>
+                    </div>
 
-                    <div id="projects-placeholder">
-                        <div style="margin:20px;">Log in to see (more) available projects.</div>
-                        <a class="btn btn-lg btn-primary" href="login">Log in</a>
-                        <div id="create-account-panel" style="display:none">
-                            <div>&ndash; OR &ndash;</div>
-                            <a class="btn btn-lg btn-primary" href="createAccount">Create account</a>
+                    <div id="side-border" class="grad-border-v" style="display:none;order:2;flex-shrink:0;"></div>
+
+                    <div class="content-panel">
+
+                        <!-- Main projects -->
+                        <div id="main-projects-panel">
+                            <div id="projects"></div>
+
+                            <div id="projects-placeholder">
+                                <div style="margin:20px;">Log in to see (more) available projects.</div>
+                                <a class="btn btn-lg btn-primary" href="login">Log in</a>
+                                <div id="create-account-panel" style="display:none">
+                                    <div>&ndash; OR &ndash;</div>
+                                    <a class="btn btn-lg btn-primary" href="createAccount">Create account</a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Archived projects -->
+                        <div id="archived-projects-panel">
+                            <div style="color:red">Work in progress, not functional yet.</div>
+                            <table>
+                                <thead>
+                                    <th>
+                                        <td>Name</td>
+                                        <td></td>
+                                    </th>
+                                </thead>
+                                <tbody id="projects-archived-tbody"></tbody>
+                            </table>
                         </div>
                     </div>
                 </div>

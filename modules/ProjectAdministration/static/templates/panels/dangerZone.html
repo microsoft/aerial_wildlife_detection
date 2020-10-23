@@ -10,11 +10,13 @@
     </div>
 
     <div class="panel">
-        <button class="btn btn-primary" id="archive-project">Archive project</button>
+        <button class="btn btn-secondary" id="archive-project" disabled>waiting...</button>
 
         <p style="font-style:italic">An archived project will be frozen and hidden from the projects overview page.
         No annotations can be made and no models trained. The project will however remain intact as-is and can be
-        unarchived at any point in time if desired.</p>
+        unarchived at any point in time if desired.<br />
+        Only project owners and AIDE super users can archive or unarchive projects. This excludes regular project administrators.
+        </p>
     </div>
 
 
@@ -46,6 +48,79 @@
 
 <script type="text/javascript">
 
+    var projectArchived = undefined;
+
+    function getProjectArchived() {
+        let archiveBtn = $('#archive-project');
+        return $.ajax({
+            url: 'isArchived',
+            method: 'GET',
+            success: function(data) {
+                if(data.hasOwnProperty('archived')) {
+                    console.log(data);
+                    projectArchived = data['archived'];
+
+                    if(typeof(projectArchived) !== 'boolean') {
+                        // could not determine whether project is archived or not
+                        archiveBtn.prop('disabled', true);
+                        archiveBtn.removeClass('btn-primary');
+                        archiveBtn.addClass('btn-secondary');
+                        archiveBtn.off();
+                    } else {
+                        archiveBtn.removeClass('btn-secondary');
+                        archiveBtn.addClass('btn-primary');
+                        if(projectArchived) {
+                            archiveBtn.html('Unarchive project');
+                        } else {
+                            archiveBtn.html('Archive project');
+                        }
+                        archiveBtn.on('click', function() {
+                            toggleProjectArchived();
+                        });
+                        archiveBtn.prop('disabled', false);
+                    }
+                } else {
+                    console.log(data);      //TODO
+                    // could not determine whether project is archived or not
+                    archiveBtn.prop('disabled', true);
+                    archiveBtn.removeClass('btn-primary');
+                    archiveBtn.addClass('btn-secondary');
+                    archiveBtn.off();
+                }
+            },
+            error: function(xhr, message, error) {
+                var promise = window.renewSessionRequest(xhr);
+                promise = promise.done(function() {
+                    return getProjectArchived();
+                });
+                return promise;
+            }
+        });
+    }
+
+    function toggleProjectArchived() {
+        return $.ajax({
+            url: 'setArchived',
+            method: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            data: JSON.stringify({
+                archived: !projectArchived
+            }),
+            success: function(response) {
+                console.log(response);  //TODO
+                return getProjectArchived();
+            },
+            error: function(xhr, message, error) {
+                var promise = window.renewSessionRequest(xhr);
+                promise = promise.done(function() {
+                    return toggleProjectArchived();
+                });
+                return promise;
+            }
+        });
+    }
+
     function deleteProject() {
 
         let projNameField = $('<input type="text" id="project-name-verifier" />');
@@ -54,7 +129,7 @@
             let projName = projNameField.val();
             
             $.ajax({
-                url: 'deleteProject',       //TODO: not yet implemented
+                url: 'deleteProject',
                 method: 'POST',
                 contentType: 'application/json; charset=utf-8',
                 dataType: 'json',
@@ -72,7 +147,7 @@
                     });
                     return promise;
                 }
-            })
+            });
         }
 
         let markup = $('<div></div>');
@@ -84,14 +159,18 @@
 
 
     $(document).ready(function() {
-        
-        $('#show-delete-project').on('click', function() {
-            $('#delete-project-panel').slideDown();
-        });
-        $('#delete-project').on('click', function() {
-            deleteProject();
-        });
 
-        window.showLoadingOverlay(false);
+        let promise = getProjectArchived();
+
+        promise.done(function() {
+            $('#show-delete-project').on('click', function() {
+                $('#delete-project-panel').slideDown();
+            });
+            $('#delete-project').on('click', function() {
+                deleteProject();
+            });
+
+            window.showLoadingOverlay(false);
+        });
     });
 </script>

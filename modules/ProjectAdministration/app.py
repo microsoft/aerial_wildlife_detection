@@ -259,7 +259,7 @@ class ProjectConfigurator:
             config = self.middleware.getProjectInfo(project)
             if config['demomode']:
                 permissions['can_view'] = True
-                permissions['can_label'] = config['interface_enabled']
+                permissions['can_label'] = config['interface_enabled'] and not config['archived']
             isPublic = config['ispublic']
             if not isPublic and not self.loginCheck(project=project):
                 # pretend project does not exist (TODO: suboptimal solution; does not properly hide project from view)
@@ -269,7 +269,7 @@ class ProjectConfigurator:
             userPrivileges = self.loginCheck(project=project, return_all=True)
             if userPrivileges['logged_in']:
                 permissions['can_view'] = (config['demomode'] or isPublic or userPrivileges['project']['enrolled'])
-                permissions['can_label'] = config['interface_enabled'] and (config['demomode'] or userPrivileges['project']['enrolled'])
+                permissions['can_label'] = config['interface_enabled'] and not config['archived'] and (config['demomode'] or userPrivileges['project']['enrolled'])
                 permissions['is_admin'] = userPrivileges['project']['isAdmin']
             
             return {'permissions': permissions}
@@ -350,6 +350,35 @@ class ProjectConfigurator:
             except:
                 abort(400, 'bad request')
 
+        
+        @self.app.get('/<project>/isArchived')
+        def is_archived(project):
+            if not self.loginCheck(project=project):
+                abort(401, 'forbidden')
+            
+            try:
+                username = html.escape(request.get_cookie('username'))
+                result = self.middleware.getProjectArchived(project, username)
+                return result
+                
+            except:
+                abort(400, 'bad request')
+
+
+        @self.app.post('/<project>/setArchived')
+        def set_project_archived(project):
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+            
+            try:
+                username = html.escape(request.get_cookie('username'))
+                archived = request.json['archived']
+                result = self.middleware.setProjectArchived(project, username, archived)
+                return result
+                
+            except:
+                abort(400, 'bad request')
+
 
         @self.app.post('/<project>/deleteProject')
         def delete_project(project):
@@ -367,9 +396,7 @@ class ProjectConfigurator:
                 deleteFiles = request.json['deleteFiles']
 
                 result = self.middleware.deleteProject(project, deleteFiles)
-                return {
-                    'status': 0
-                }
+                return result
                 
             except:
                 abort(400, 'bad request')

@@ -191,6 +191,7 @@ class ProjectConfigMiddleware:
             'secret_token',
             'demomode',
             'interface_enabled',
+            'archived',
             'ui_settings',
             'segmentation_ignore_unlabeled',
             'ai_model_enabled',
@@ -209,7 +210,10 @@ class ProjectConfigMiddleware:
                 parameters = [parameters.lower()]
             else:
                 parameters = [p.lower() for p in parameters]
-            set(parameters).intersection_update(allParams)
+            parameters = set(parameters)
+            parameters.intersection_update(allParams)
+            parameters.add('archived')
+            parameters = list(parameters)
         else:
             parameters = allParams
         parameters = list(parameters)
@@ -233,6 +237,8 @@ class ProjectConfigMiddleware:
 
                 # auto-complete with defaults where missing
                 value = check_args(value, self.defaultUIsettings)
+            elif param == 'interface_enabled':
+                value = value and not result['archived']
             response[param] = value
 
         return response
@@ -704,18 +710,96 @@ class ProjectConfigMiddleware:
             return True
 
 
-    def setProjectArchived(self, project, archived):
+    def getProjectArchived(self, project, username):
+        '''
+            Returns the "archived" flag of a project.
+            Throws an error if user is not registered in project,
+            or if the project is not in demo mode.
+        '''
+
+        # check if user is authenticated
+        isAuthenticated = self.dbConnector.execute('''
+            SELECT username, isSuperUser FROM (
+                SELECT username
+                FROM aide_admin.authentication
+                WHERE project = %s
+            ) AS auth
+            RIGHT OUTER JOIN (
+                SELECT name, isSuperUser
+                FROM aide_admin.user
+                WHERE name = %s
+            ) AS usr
+            ON auth.username = usr.name
+        ''', (project, username), 1)
+        
+        if isAuthenticated is None or not len(isAuthenticated) or \
+            (isAuthenticated[0]['username'] is None and not isAuthenticated[0]['issuperuser']):
+            # project does not exist or user is neither member nor super user
+            return {
+                'status': 2,
+                'message': 'User cannot view project details.'
+            }
+        
+        isArchived = self.dbConnector.execute('''
+            SELECT archived FROM aide_admin.project
+            WHERE shortname = %s;
+        ''', (project,), 1)
+
+        if isArchived is None or not len(isArchived):
+            return {
+                'status': 3,
+                'message': 'Project does not exist.'
+            }
+
+        return {
+            'status': 0,
+            'archived': isArchived[0]['archived']
+        }
+        
+
+    def setProjectArchived(self, project, username, archived):
         '''
             Archives or unarchives a project by setting the "archived" flag in the database
             to the value in "archived".
             An archived project is simply hidden from the list and unchangeable, but stays
             intact as-is and can be unarchived if needed. No data is deleted.
+
+            Only project owners and super users can archive projects (i.e., even being a
+            project administrator is not enough).
         '''
-        #TODO: implement, incl. field in DB
-        return 1
+
+        # check if user is authenticated
+        isAuthenticated = self.dbConnector.execute('''
+            SELECT CASE WHEN owner = %s THEN TRUE ELSE FALSE END AS result
+            FROM aide_admin.project
+            WHERE shortname = %s
+            UNION ALL
+            SELECT isSuperUser AS result
+            FROM aide_admin.user
+            WHERE name = %s;
+        ''', (username, project, username), 2)
+        
+        if not isAuthenticated[0]['result'] \
+            and not isAuthenticated[1]['result']:
+            # user is neither project owner nor super user; reject
+            return {
+                'status': 2,
+                'message': 'User is not authenticated to archive or unarchive project.'
+            }
+
+        # archive project
+        self.dbConnector.execute('''
+            UPDATE aide_admin.project
+            SET ARCHIVED = %s
+            WHERE shortname = %s;
+        ''', (archived, project), None)
+
+        return {
+            'status': 0
+        }
 
 
-    def deleteProject(self, project, deleteFiles=False):
+    def deleteProject(self, project, username, deleteFiles=False):
         '''
             Removes a project from the database, including all metadata.
             Also dispatches a Celery task to the FileServer to
@@ -723,6 +807,56 @@ class ProjectConfigMiddleware:
             if "deleteFiles" is True.
             WARNING: this seriously deletes a project in its entirety; any data will be
             lost forever.
+
+            Only project owners and super users can delete projects (i.e., even being a
+            project administrator is not enough).
         '''
-        #TODO: implement
-        return 1
+
+        # check if user is authenticated
+        isAuthenticated = self.dbConnector.execute('''
+            SELECT CASE WHEN owner = %s THEN TRUE ELSE FALSE END AS result
+            FROM aide_admin.project
+            WHERE shortname = %s
+            UNION ALL
+            SELECT isSuperUser AS result
+            FROM aide_admin.user
+            WHERE name = %s;
+        ''', (username, project, username), 2)
+        
+        if not isAuthenticated[0]['result'] \
+            and not isAuthenticated[1]['result']:
+            # user is neither project owner nor super user; reject
+            return {
+                'status': 2,
+                'message': 'User is not authenticated to delete project.'
+            }
+
+        # check if project exists; if not it may already be deleted
+        projectExists = self.dbConnector.execute('''
+            SELECT shortname
+            FROM aide_admin.project
+            WHERE shortname = %s;
+        ''', (project,), 1)
+        if projectExists is None or not len(projectExists):
+            # project does not exist; return        #TODO: still allow deleting files on disk?
+            return {
+                'status': 3,
+                'message': 'Project does not exist.'
+            }
+
+        # remove rows from database
+        self.dbConnector.execute('''
+            DELETE FROM aide_admin.authentication
+            WHERE project = %s;
+            DELETE FROM aide_admin.project
+            WHERE shortname = %s;
+        ''', (project, project,), None)
+        
+        # dispatch Celery task to remove DB schema and files (if requested)
+        process = fileServer_interface.deleteProject.si(project, deleteFiles)
+        process.apply_async()       #TODO: task ID? Progress monitoring?
+
+        #TODO: return Celery task ID?
+        return {
+                'status': 0
+            }

@@ -208,7 +208,8 @@ MODIFICATIONS_sql = [
     'ALTER TABLE "{schema}".cnnstate ADD COLUMN IF NOT EXISTS marketplace_origin_id UUID UNIQUE;',
     'ALTER TABLE "{schema}".cnnstate DROP CONSTRAINT IF EXISTS marketplace_origin_id_fkey;'
     'ALTER TABLE "{schema}".cnnstate ADD CONSTRAINT marketplace_origin_id_fkey FOREIGN KEY (marketplace_origin_id) REFERENCES aide_admin.modelMarketplace(id);',
-    'ALTER TABLE aide_admin.modelMarketplace ADD COLUMN IF NOT EXISTS tags VARCHAR;'
+    'ALTER TABLE aide_admin.modelMarketplace ADD COLUMN IF NOT EXISTS tags VARCHAR;',
+    'ALTER TABLE aide_admin.project ADD COLUMN IF NOT EXISTS archived BOOLEAN DEFAULT FALSE;'
 ]
 
 

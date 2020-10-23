@@ -20,6 +20,7 @@ class ReceptionMiddleware:
         '''
             Returns metadata about projects:
             - names
+            - whether the projects are archived or not
             - links to interface (if user is authenticated)
             - requests for authentication (else)    TODO
             - links to stats and review page (if admin) TODO
@@ -37,9 +38,11 @@ class ReceptionMiddleware:
             authStr = sql.SQL('WHERE demoMode = TRUE OR isPublic = TRUE')
             queryVals = None
         
-        queryStr = sql.SQL('''SELECT shortname, name, description, username, isAdmin,
+        queryStr = sql.SQL('''SELECT shortname, name, description, archived,
+            username, isAdmin,
             admitted_until, blocked_until,
-            annotationType, predictionType, isPublic, demoMode, interface_enabled, ai_model_enabled
+            annotationType, predictionType, isPublic, demoMode, interface_enabled, archived, ai_model_enabled,
+            CASE WHEN username = owner THEN TRUE ELSE FALSE END AS is_owner
             FROM aide_admin.project AS proj
             FULL OUTER JOIN (SELECT * FROM aide_admin.authentication
             ) AS auth ON proj.shortname = auth.project
@@ -59,11 +62,13 @@ class ReceptionMiddleware:
                 response[projShort] = {
                     'name': r['name'],
                     'description': r['description'],
+                    'archived': r['archived'],
+                    'isOwner': r['is_owner'],
                     'annotationType': r['annotationtype'],
                     'predictionType': r['predictiontype'],
                     'isPublic': r['ispublic'],
                     'demoMode': r['demomode'],
-                    'interface_enabled': r['interface_enabled'],
+                    'interface_enabled': r['interface_enabled'] and not r['archived'],
                     'aiModelEnabled': r['ai_model_enabled'],
                     'userAdmitted': userAdmitted
                 }

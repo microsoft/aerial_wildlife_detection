@@ -11,6 +11,7 @@ import os
 import io
 import re
 import glob
+import shutil
 import tempfile
 import zipfile
 import zlib
@@ -924,3 +925,50 @@ class DataWorker:
 
             else:
                 print(f'\t[Project {pName}] {len(imgs_added)} new images found and added.')
+
+
+    
+    def deleteProject(self, project, deleteFiles=False):
+        '''
+            Irreproducibly deletes a project, including all data and metadata, from the database.
+            If "deleteFiles" is True, then any data on disk (images, etc.) are also deleted.
+
+            This cannot be undone.
+        '''
+        print(f'Deleting project with shortname "{project}"...')
+
+        # remove database entries
+        print('\tRemoving database entries...')
+        self.dbConnector.execute('''
+            DELETE FROM aide_admin.authentication
+            WHERE project = %s;
+            DELETE FROM aide_admin.project
+            WHERE shortname = %s;
+        ''', (project, project,), None)     # already done by DataAdministration.middleware, but we do it again to be sure
+
+        self.dbConnector.execute('''
+            DROP SCHEMA IF EXISTS {} CASCADE;
+        '''.format(project), None, None)        #TODO: Identifier?
+
+        if deleteFiles:
+            print('\tRemoving files...')
+
+            messages = []
+
+            def _onError(function, path, excinfo):
+                #TODO
+                from celery.contrib import rdb
+                rdb.set_trace()
+                messages.append({
+                    'function': function,
+                    'path': path,
+                    'excinfo': excinfo
+                })
+            try:
+                shutil.rmtree(os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), project), onerror=_onError)
+            except Exception as e:
+                messages.append(str(e))
+
+            return messages
+        
+        return 0

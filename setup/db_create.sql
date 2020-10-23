@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS aide_admin.project (
     description VARCHAR,
     owner VARCHAR,
     isPublic BOOLEAN DEFAULT FALSE,
+    archived BOOLEAN DEFAULT FALSE,
     secret_token VARCHAR,
     interface_enabled BOOLEAN DEFAULT FALSE,
     demoMode BOOLEAN DEFAULT FALSE,

@@ -65,3 +65,8 @@ def prepareDataDownload(project, dataType='annotation', userList=None, dateRange
 @current_app.task(name='DataAdministration.watch_image_folders', rate_limit=1)
 def watchImageFolders():
     return worker.watchImageFolders()
+
+
+@current_app.task(name='DataAdministration.delete_project')
+def deleteProject(project, deleteFiles=False):
+    return worker.deleteProject(project, deleteFiles)

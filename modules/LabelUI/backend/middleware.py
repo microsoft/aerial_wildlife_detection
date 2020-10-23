@@ -225,7 +225,7 @@ class DBMiddleware():
         '''
         queryStr = '''
             SELECT shortname, name, description, demoMode,
-            interface_enabled, ai_model_enabled,
+            interface_enabled, archived, ai_model_enabled,
             ai_model_library, ai_alcriterion_library,
             segmentation_ignore_unlabeled
             FROM aide_admin.project
@@ -245,7 +245,7 @@ class DBMiddleware():
             'projectName': result['name'],
             'projectDescription': result['description'],
             'demoMode': result['demomode'],
-            'interface_enabled': result['interface_enabled'],
+            'interface_enabled': result['interface_enabled'] and not result['archived'],
             'ai_model_available': aiModelAvailable,
             'segmentation_ignore_unlabeled': result['segmentation_ignore_unlabeled']
         }
