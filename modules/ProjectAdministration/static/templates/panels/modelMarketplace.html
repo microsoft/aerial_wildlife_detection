@@ -15,7 +15,7 @@
                 <h3 id="marketplace-search-header">Search and filter</h3>
                 <div id="marketplace-search-body">
                     <label for="marketplace-search-keyword">Keyword:</label>
-                    <input type="text" id="marketplace-search-keyword" />
+                    <input type="search" id="marketplace-search-keyword" placeholder="search" />
                     <br />
 
                     <span>Model type:</span>
@@ -73,7 +73,7 @@
         </div>
 
         <!-- project-specific models table -->
-        <div class="table-container" id="projectmodels-container" style="display:none">
+        <div class="table-container flex-container" id="projectmodels-container" style="display:none">
             <!-- TODO: sort, search, filter -->
             <table>
                 <thead>
@@ -322,7 +322,7 @@
                         if(typeof(tags) === 'string' && tags.length > 0) {
                             tags = tags.split(';;');
                             for(var t=0; t<tags.length; t++) {
-                                tagsDiv.append($('<span class="tag">'+tags[t]+'</span>'));
+                                tagsDiv.append($('<span class="tag" id="tag__'+tags[t]+'">'+tags[t]+'</span>'));
                             }
                         }
 
@@ -410,9 +410,33 @@
                         markup.addClass('tr-highlighted');
 
                         // populate info panel
-                        $('#info-name').html(selectedModel['name']);
-                        $('#info-description').html(selectedModel['description']);
-                        $('#info-author').html(selectedModel['author']);
+                        $('#project-info-name').val(null);
+                        $('#project-info-description').html(null);
+                        $('#project-model-share-public').val(null);
+                        $('#project-model-share-anonymous').prop('checked', false);
+
+                        $('#project-info-name').val(selectedModel['marketplace_info']['name']);
+                        $('#project-info-description').html(selectedModel['marketplace_info']['description']);
+                        $('#project-model-share-public').val(selectedModel['marketplace_info']['shared'] ? 'everyone' : 'projects');
+                        $('#project-model-share-anonymous').prop('checked', !selectedModel['marketplace_info']['public']);
+
+                        // tags
+                        let tagsDiv = $('#project-info-tags');
+                        tagsDiv.empty();
+                        let tags = selectedModel['marketplace_info']['tags'];
+                        if(typeof(tags) === 'string' && tags.length > 0) {
+                            tags = tags.split(';;');
+                            for(var t=0; t<tags.length; t++) {
+                                tagDiv = $('<span class="tag" id="tag__'+tags[t]+'">'+tags[t]+'</span>');
+                                let removeBtn = $('<button class="btn btn-sm btn-secondary">X</button>');
+                                removeBtn.on('click', function() {
+                                    $(this).parent().remove();
+                                });
+                                tagDiv.append(removeBtn);
+                                tagsDiv.append(tagDiv);
+                            }
+                        }
+
                         $('#no-model-selected-project').hide();
                         $('#selected-model-info-project').show();
 
@@ -420,19 +444,23 @@
                         try {
                             let modelShared = selectedModel['marketplace_info']['shared'];
                             if(modelShared) {
-                                $('#project-model-share').hide();
+                                $('#project-model-share').html('Update shared model');
+                                $('#project-model-share').show();
                                 $('#project-model-unshare').show();
                                 $('#project-model-reshare').hide();
                             } else if(modelShared === false) {
-                                $('#project-model-share').hide();
+                                $('#project-model-share').html('Update and re-share');
+                                $('#project-model-share').show();
                                 $('#project-model-unshare').hide();
                                 $('#project-model-reshare').show();
                             } else {
+                                $('#project-model-share').html('Share model');
                                 $('#project-model-share').show();
                                 $('#project-model-unshare').hide();
                                 $('#project-model-reshare').hide();
                             }
                         } catch {
+                            $('#project-model-share').html('Share model');
                             $('#project-model-share').show();
                             $('#project-model-unshare').hide();
                             $('#project-model-reshare').hide();
@@ -462,6 +490,7 @@
                 model_id: modelsProject[selectedModel_id_project]['id'],
                 model_name: $('#project-info-name').val(),
                 model_description: $('#project-info-description').val(),
+                tags: Object.keys(getTags('project', true)),
                 public: ($('#project-model-share-public').val() == 'everyone'? true : false),
                 anonymous: $('#project-model-share-anonymous').prop('checked')
             };
@@ -763,6 +792,29 @@
         getModelsProject();
     }
 
+    function getTags(source, preserveCase) {
+        let tagListID = (source === 'project' ? '#project-info-tags' : '#marketplace-info-tags');
+        let tagDivs = $(tagListID).children();
+        if(tagDivs.length === 0) return {};
+        let tags = {};
+        for(var c=0; c<tagDivs.length; c++) {
+            let tag = $(tagDivs[c]).prop('id').replace('tag__','');
+            if(!preserveCase) {
+                tag = tag.toLowerCase();
+            }
+            tags[tag] = 0;
+        }
+        return tags;
+    }
+    function tagValid(tag, source) {
+        if(typeof(tag) !== 'string') return false;
+        tag = tag.trim().toLowerCase();
+        if(tag.length === 0 || tag.includes(';;')) return false;
+        let tags = getTags(source, false);
+        if(tags.hasOwnProperty(tag)) return false;
+        return true;
+    }
+
     function setupUI() {
         $('#project-model-share').on('click', function() {
             shareModel(true);
@@ -792,32 +844,11 @@
         });
 
         // tags
-        function _getTags(preserveCase) {
-            let tagDivs = $('#project-info-tags').children();
-            if(tagDivs.length === 0) return {};
-            let tags = {};
-            for(var c=0; c<tagDivs.length; c++) {
-                let tag = $(tagDivs[c]).html();
-                if(!preserveCase) {
-                    tag = tag.toLowerCase();
-                }
-                tags[tag] = 0;
-            }
-            return tags;
-        }
-        function _tagValid(tag) {
-            if(typeof(tag) !== 'string') return false;
-            tag = tag.trim().toLowerCase();
-            if(tag.length === 0 || tag.includes(';;')) return false;
-            let tags = _getTags(false);
-            if(tags.hasOwnProperty(tag)) return false;
-            return true;
-        }
         $('#project-info-add-tag-button').on('click', function() {
             let tag = $('#project-info-add-tag').val();
-            if(_tagValid(tag)) {
+            if(tagValid(tag, 'project')) {
                 let tagsDiv = $('#project-info-tags');
-                let tagDiv = $('<div class="tag"></div>');
+                let tagDiv = $('<div class="tag" id="tag__'+tag+'"></div>');
                 tagDiv.append($('<span>' + tag + '</span>'));
                 let removeBtn = $('<button class="btn btn-sm btn-secondary">X</button>');
                 removeBtn.on('click', function() {
@@ -830,7 +861,7 @@
         });
         $('#project-info-add-tag').on('input', function() {
             let tag = $('#project-info-add-tag').val();
-            $('#project-info-add-tag-button').prop('disabled', !_tagValid(tag));
+            $('#project-info-add-tag-button').prop('disabled', !tagValid(tag, 'project'));
         });
 
 

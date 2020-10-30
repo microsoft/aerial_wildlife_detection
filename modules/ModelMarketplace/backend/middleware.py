@@ -209,12 +209,17 @@ class ModelMarketplaceMiddleware:
 
 
     
-    def shareModel(self, project, username, modelID, modelName, modelDescription,
+    def shareModel(self, project, username, modelID, modelName, modelDescription, tags,
                     public, anonymous):
         #TODO: export as Celery task
 
         if not isinstance(modelID, UUID):
             modelID = UUID(modelID)
+        
+        if tags is None:
+            tags = ''
+        elif isinstance(tags, list) or isinstance(tags, tuple):
+            tags = ';;'.join(tags)
         
         # check if model class supports sharing
         isShareable = self.dbConnector.execute('''
@@ -236,7 +241,7 @@ class ModelMarketplaceMiddleware:
 
         # check if model hasn't already been shared
         isShared = self.dbConnector.execute('''
-            SELECT author, shared
+            SELECT id, author, shared
             FROM aide_admin.modelMarketplace
             WHERE origin_project = %s AND origin_uuid = %s;
         ''', (project, modelID), 'all')
@@ -248,14 +253,19 @@ class ModelMarketplaceMiddleware:
                     SET shared = True
                     WHERE origin_project = %s AND origin_uuid = %s;
                 ''', (project, modelID))
-                return {'status': 0}
-            else:
-                # model has been shared and still is
-                author = isShared[0]['author']
-                return {
-                    'status': 3,
-                    'message': f'Model state has already been shared by {author}.'
-                }
+            
+            # update shared model meta data
+            self.dbConnector.execute('''
+                UPDATE aide_admin.modelMarketplace
+                SET name = %s,
+                description = %s,
+                public = %s,
+                anonymous = %s,
+                tags = %s
+                WHERE id = %s AND author = %s;
+            ''', (modelName, modelDescription, public, anonymous, tags,
+                isShared[0]['id'], username), None)
+            return {'status': 0}
 
         # check if model hasn't been imported from the marketplace
         isImported = self.dbConnector.execute(sql.SQL('''
@@ -296,12 +306,12 @@ class ModelMarketplaceMiddleware:
         # share model state
         sharedModelID = self.dbConnector.execute(sql.SQL('''
             INSERT INTO aide_admin.modelMarketplace
-            (name, description, labelclasses, author, statedict,
+            (name, description, tags, labelclasses, author, statedict,
             model_library, alCriterion_library,
             annotationType, predictionType,
             origin_project, origin_uuid, public, anonymous)
 
-            SELECT %s, %s, %s, %s, statedict,
+            SELECT %s, %s, %s, %s, %s, statedict,
             model_library, alCriterion_library,
             %s, %s,
             %s, id, %s, %s
@@ -310,7 +320,7 @@ class ModelMarketplaceMiddleware:
             RETURNING id;
         ''').format(
             id_cnnstate=sql.Identifier(project, 'cnnstate')
-        ), (modelName, modelDescription, labelclasses, username,
+        ), (modelName, modelDescription, tags, labelclasses, username,
             immutables['annotationType'], immutables['predictionType'],
             project, public, anonymous, modelID))
 
@@ -341,7 +351,7 @@ class ModelMarketplaceMiddleware:
             }
         
         modelID = modelID[0]['origin_uuid']
-        return self.shareModel(project, username, modelID, None, None, None, None)
+        return self.shareModel(project, username, modelID, None, None, None, None, None)
     
 
     

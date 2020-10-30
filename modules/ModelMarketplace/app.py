@@ -94,11 +94,11 @@ class ModelMarketplace:
                 modelID = request.json['model_id']
                 modelName = request.json['model_name']
                 modelDescription = request.json['model_description']
+                tags = request.json['tags']
                 public = request.json['public']
                 anonymous = request.json['anonymous']
-
                 result = self.middleware.shareModel(project, username,
-                                                    modelID, modelName, modelDescription,
+                                                    modelID, modelName, modelDescription, tags,
                                                     public, anonymous)
                 return result
             except Exception as e:
