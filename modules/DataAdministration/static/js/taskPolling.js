@@ -47,6 +47,13 @@ function poll_status(taskID, successHandle, errorHandle, timeout) {
                         return errorHandle(data);
                     } catch {}
                 }
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return __do_poll();                 //TODO: verify whether this causes infinite loops
+                    });
+                }
             }
         });
     }

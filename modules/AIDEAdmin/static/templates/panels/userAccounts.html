@@ -172,11 +172,15 @@
                 }
             },
             error: function(xhr, message, error) {
-                var promise = window.renewSessionRequest(xhr);
-                promise = promise.done(function() {
-                    return updatePassword();
-                });
-                return promise;
+                console.error(error);   //TODO
+                window.messager.addMessage('An error occurred while trying to update password (message: "' + error + '").', 'error', 0);
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return updatePassword();
+                    });
+                }
             }
         })
     }
@@ -208,11 +212,15 @@
                 }
             },
             error: function(xhr, message, error) {
-                var promise = window.renewSessionRequest(xhr);
-                promise = promise.done(function() {
-                    return setCanCreateProjectsEnabled();
-                });
-                return promise;
+                console.error(error);   //TODO
+                window.messager.addMessage('An error occurred while trying to update permissions (message: "' + error + '").', 'error', 0);
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return setCanCreateProjectsEnabled(enabled);
+                    });
+                }
             }
         })
     }
@@ -228,12 +236,16 @@
                     $('#project-select').append(markup);
                 }
             },
-            error: function(xhr, response, error) {
-                var promise = window.renewSessionRequest(xhr);
-                promise = promise.done(function() {
-                    return getProjects();
-                });
-                return promise;
+            error: function(xhr, message, error) {
+                console.error(error);   //TODO
+                window.messager.addMessage('An error occurred while trying to load projects (message: "' + error + '").', 'error', 0);
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return getProjects();
+                    });
+                }
             }
         })
     }
@@ -268,12 +280,16 @@
                     usersTable.append(markup);
                 }
             },
-            error: function(xhr, status, error) {
-                var promise = window.renewSessionRequest(xhr);
-                promise = promise.done(function() {
-                    return getUserDetails();
-                });
-                return promise;
+            error: function(xhr, message, error) {
+                console.error(error);   //TODO
+                window.messager.addMessage('An error occurred while trying to retrieve user accounts (message: "' + error + '").', 'error', 0);
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return getUserDetails();
+                    });
+                }
             }
         })
     }

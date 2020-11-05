@@ -92,11 +92,17 @@
             }
             updateUntrackedCount();
             window.imageBrowser.setLoadingOverlay(false);
+
+            if(data.length) {
+                window.messager.addMessage('Found ' + data.length + ' untracked images on file server.', 'success');
+            } else {
+                window.messager.addMessage('No untracked images have been found.');
+            }
         }
 
         function scanUntracked() {
             window.imageBrowser.setLoadingOverlay(true, 'loading...');
-            $.ajax({
+            return $.ajax({
                 url: 'scanForImages',
                 method: 'GET',
                 success: function(data) {
@@ -104,9 +110,17 @@
                     var taskID = data['response'];
                     poll_status(taskID, _update_browser_scanUntracked, undefined, 1000);
                 },
-                error: function(data) {
-                    console.error(data);    //TODO
+                error: function(xhr, status, error) {
+                    console.error(error);
                     window.imageBrowser.setLoadingOverlay(false);
+                    window.messager.addMessage('An error occurred while trying to find untracked images (message: "'+error+'").', 'error', 0);
+                },
+                statusCode: {
+                    401: function(xhr) {
+                        return window.renewSessionRequest(xhr, function() {
+                            return scanUntracked();
+                        });
+                    }
                 }
             });
         }
@@ -145,16 +159,25 @@
                 contentType: 'application/json; charset=utf-8',
                 dataType: 'json',
                 success: function(response) {
-                    console.log(response);  //TODO
                     if(response['status'] === 0) {
                         // remove selected images from image browser
                         //TODO
+
+                        window.messager.addMessage(imgList.length + ' images added successfully.', 'success');
+                    } else {
+                        let message = 'An error occurred while adding untracked images to project';
+                        if(typeof(response['message']) === 'string') {
+                            message += ' (message:"' + response['message'] + '")';
+                        }
+                        message += '.';
+                        window.messager.addMessage(message, 'error', 0);
                     }
                     updateUntrackedCount();
                 },
-                error: function(response) {
-                    console.error(response);    //TODO
+                error: function(xhr, status, error) {
+                    console.error(error);    //TODO
                     updateUntrackedCount();
+                    window.messager.addMessage('An error occurred while trying to add existing images (message: "' + error + '").', 'error', 0);
                 }
             });
         }
@@ -222,6 +245,7 @@
                 $('#global-progress-bar').hide();
                 $('#global-progress-bar').empty();
                 setControlsDisabled(false);
+                window.messager.addMessage('Upload aborted.');
             });
             $('#global-progress-bar').append(stopButton);
             $('#global-progress-bar').show();
@@ -329,7 +353,7 @@
                             }
                             window.uploadedFiles[this] = 1;
                         }.bind(key),
-                        error: function(data) {
+                        error: function(xhr, status, error) {
                             window.imageBrowser.set('imageURL', this, '/static/dataAdmin/img/error.png');
                             pBar.set(true, pBar.getValue()+1);
                         }.bind(key)

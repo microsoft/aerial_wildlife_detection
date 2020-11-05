@@ -174,9 +174,18 @@
 
                 window.lcTree = lcTree;
             },
-            error: function(data) {
-                console.log('ERROR:');
-                console.log(data);
+            error: function(xhr, status, error) {
+                console.error(error);
+                if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                    window.messager.addMessage('An error occurred while trying to load label class definitions (message: "' + error + '").', 'error', 0);
+                }
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return loadLabelClasses();
+                    });
+                }
             }
         })
     }
@@ -591,14 +600,27 @@
             success: function(data) {
                 if(data.hasOwnProperty('success') && data['success']) {
                     // re-load label classes
-                    loadLabelClasses();
+                    loadLabelClasses().done(function() {
+                        window.messager.addMessage('Label class definition saved successfully.', 'success');
+                    });
                 } else {
                     // something went wrong...
+                    window.messager.addMessage('An unknown error occurred when trying to save label classes.', 'error', 0);
                     console.error(data);
                 }
             },
-            error: function(data) {
-                console.error(data);
+            error: function(xhr, status, error) {
+                console.error(error);
+                if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                    window.messager.addMessage('An error occurred while trying to save label class definitions (message: "' + error + '").', 'error', 0);
+                }
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return save();
+                    });
+                }
             }
         });
 
@@ -611,6 +633,7 @@
             //TODO
             window.showLoadingOverlay(false);
         });
+        return $.Deferred().promise();
     }
 
     $(document).ready(function() {

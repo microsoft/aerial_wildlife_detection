@@ -130,6 +130,13 @@
                                 window.projNameAvailable = false;
                             }
                             return false;
+                        },
+                        statusCode: {
+                            401: function(xhr) {
+                                return window.renewSessionRequest(xhr, function() {
+                                    return checkNameAvailable(url, params, div);    //TODO
+                                });
+                            }
                         }
                     });
                 }
@@ -147,13 +154,13 @@
                     });
                 });
 
-                $('#create-project-button').click(function() {
+                var _doCreateProject = function() {
                     var promise = checkValuesCorrect();
                     promise.then(function() {
                         if(window.projNameAvailable && window.projShortnameAvailable) {
                             // submit data and create new project
                             var shortname = $('#project-shortname-field').val();
-                            $.ajax({
+                            return $.ajax({
                                 url: '/createProject',
                                 method: 'POST',
                                 contentType: 'application/json; charset=utf-8',
@@ -169,16 +176,30 @@
                                     if(response.hasOwnProperty('success') && response['success']) {
                                         window.location.href = '/' + shortname;
                                     } else {
-                                        console.error('An unknown error occurred.')
+                                        console.error('An unknown error occurred.');
+                                        window.messager.addMessage('An unknown error occurred while trying to create project.', 'error', 0);
                                     }
                                 },
                                 error: function(xhr, status, error) {
                                     console.error(error);
                                     window.messager.addMessage('Project could not be created (message: "'+error+'").', 'error', 0);
+                                },
+                                statusCode: {
+                                    401: function(xhr) {
+                                        return window.renewSessionRequest(xhr, function() {
+                                            return _doCreateProject();
+                                        });
+                                    }
                                 }
-                            })
+                            });
+                        } else {
+                            return $.Deferred().promise();
                         }
                     });
+                }
+
+                $('#create-project-button').click(function() {
+                    _doCreateProject();
                 });
             });
         </script>

@@ -154,7 +154,7 @@
         // update chart
         let resultsContainer = $('#performance-container');
         resultsContainer.empty();
-        $.ajax({
+        return $.ajax({
             url: 'getPerformanceStatistics',
             method: 'POST',
             data: JSON.stringify(params),
@@ -383,12 +383,18 @@
                 }
             },
             error: function(xhr, status, error) {
-                var promise = window.renewSessionRequest(xhr);
-                promise = promise.done(function() {
-                    calculateModelStats();
-                });
-                return promise;
-            }
+                    console.error(error);
+                    if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                        window.messager.addMessage('An error occurred while trying to calculate AI model statistics (message: "' + error + '").', 'error', 0);
+                    }
+                },
+                statusCode: {
+                    401: function(xhr) {
+                        return window.renewSessionRequest(xhr, function() {
+                            return calculateModelStats();
+                        });
+                    }
+                }
         });
     }
 
@@ -406,11 +412,17 @@
                 }
             },
             error: function(xhr, status, error) {
-                var promise = window.renewSessionRequest(xhr);
-                promise = promise.done(function() {
-                    return getProjectSettings();
-                });
-                return promise;
+                console.error(error);
+                if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                    window.messager.addMessage('An error occurred while trying to retrieve project settings (message: "' + error + '").', 'error', 0);
+                }
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return getProjectSettings();
+                    });
+                }
             }
         });
     }
@@ -438,11 +450,17 @@
                 }
             },
             error: function(xhr, status, error) {
-                var promise = window.renewSessionRequest(xhr);
-                promise = promise.done(function() {
-                    return listModelStates();
-                });
-                return promise;
+                console.error(error);
+                if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                    window.messager.addMessage('An error occurred while trying to retrieve AI model states (message: "' + error + '").', 'error', 0);
+                }
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return listModelStates();
+                    });
+                }
             }
         });
     }
@@ -465,11 +483,17 @@
                 }
             },
             error: function(xhr, status, error) {
-                var promise = window.renewSessionRequest(xhr);
-                promise = promise.done(function() {
-                    return getUserNames();
-                });
-                return promise;
+                console.error(error);
+                if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                    window.messager.addMessage('An error occurred while trying to retrieve project members (message: "' + error + '").', 'error', 0);
+                }
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return getUserNames();
+                    });
+                }
             }
         });
     }
@@ -488,13 +512,6 @@
         promise = promise.then(function() {
             return getUserNames();
         });
-
-        // // get all users
-        // promise = promise.then(function() {
-        //     return $.ajax({
-
-        //     });
-        // });
         
         promise = promise.done(function() {
             $('#select-all-states').click(function() {

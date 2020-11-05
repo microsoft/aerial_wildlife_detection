@@ -32,21 +32,8 @@
 </style>
 <script src="/static/statistics/libs/chartjs/Chart.min.js?v={{ version }}"></script>
 <script type="text/javascript">
-    $(document).ready(function() {
-        let mainContainer = $('#overview-container');
-        var statsContainer = $('<div></div>');
-
-        // project metadata
-        var promise = $.ajax({
-            url: 'getProjectSettings',
-            method: 'GET',
-            success: function(data) {
-                window.annotationType = data['settings']['annotationType'];
-                window.predictionType = data['settings']['predictionType'];
-            }
-        });
-
-        $.ajax({
+    function getConfig() {
+        return $.ajax({
             url: 'getConfig',
             method: 'GET',
             success: function(response) {
@@ -69,33 +56,169 @@
                 }
             },
             error: function(xhr, status, error) {
-                console.log(xhr);
-                console.log(status);
-                console.log(error);
-                $('#general-overview').hide();
+                console.error(error);
+                if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                    window.messager.addMessage('An error occurred while trying to retrieve project configuration (message: "' + error + '").', 'error', 0);
+                }
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return getConfig();
+                    });
+                }
             }
         });
+    }
 
-        // general project statistics
-        promise = promise.done(function() {
-            return $.ajax({
-                url: 'getProjectStatistics',
-                method: 'GET',
-                success: function(response) {
-                    response = response['statistics'];
+    function getProjectStatistics(statsContainer) {
+        return $.ajax({
+            url: 'getProjectStatistics',
+            method: 'GET',
+            success: function(response) {
+                response = response['statistics'];
 
-                    // general progress
-                    statsContainer.append($('<h2>Progress</h2>'));
-                    let generalCanvas = $('<canvas id="chart-general-progress" width=400 height=200 style="width:100%;max-height:200px;"></canvas>');
-                    statsContainer.append(generalCanvas);
-                    var generalChart = new Chart(generalCanvas[0].getContext('2d'), {
-                        type: 'horizontalBar',
+                // general progress
+                statsContainer.append($('<h2>Progress</h2>'));
+                let generalCanvas = $('<canvas id="chart-general-progress" width=400 height=200 style="width:100%;max-height:200px;"></canvas>');
+                statsContainer.append(generalCanvas);
+                var generalChart = new Chart(generalCanvas[0].getContext('2d'), {
+                    type: 'horizontalBar',
+                    data: {
+                        labels: ['viewed'],
+                        datasets: [{
+                            label: '# images viewed',
+                            data: [response['num_viewed']],
+                            backgroundColor: '#007bff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            xAxes: [{
+                                ticks: {
+                                    min: 0,
+                                    max: response['num_images']
+                                },
+                                scaleLabel: {
+                                    display: true,
+                                    labelString: '# images'
+                                }
+                            }]
+                        }
+                    }
+                });
+                let percViewed = (Math.round(response['num_viewed']/response['num_images'] * 100)).toFixed(2);
+                statsContainer.append('Users have viewed <b>'+response['num_viewed']+' out of '+response['num_images']+'</b> images ('+percViewed+'%).');
+
+                // per-user statistics
+                if(response.hasOwnProperty('user_stats')) {
+                    var usernames = [];
+                    var numImgs_viewed = [];
+                    var numGoldenQuestions = [];
+                    var numAnnotations_made = [];
+                    for(var user in response['user_stats']) {
+                        usernames.push(user);
+                        var numViewed = response['user_stats'][user]['num_viewed'];
+                        if(numViewed === null) numViewed = 0;
+                        var numAnno = response['user_stats'][user]['num_annotations'];
+                        if(numAnno === null) numAnno = 0;
+                        numImgs_viewed.push(numViewed);
+                        numAnnotations_made.push(numAnno);
+                        numGoldenQuestions.push(response['num_goldenQuestions']);
+                    }
+
+                    statsContainer.append($('<h2>Images annotated</h2>'));
+                    var cw_numImgs = $('<div class="chartWrapper"><div class="chartAreaWrapper"></div></div>');
+                    let perUser_numImgs = $('<canvas id="chart-user-imgs" width=400 height=300></canvas>');
+                    cw_numImgs.find('.chartAreaWrapper').append(perUser_numImgs);
+                    statsContainer.append(cw_numImgs);
+                    var userImgsChart = new Chart(perUser_numImgs[0].getContext('2d'), {
+                        type: 'bar',
                         data: {
-                            labels: ['viewed'],
+                            labels: usernames,
+                            datasets: [{
+                                label: '# golden questions',
+                                data: numGoldenQuestions,   //TODO: disable if no golden questions
+                                type: 'line',
+                                borderColor: '#ffee54'
+                            },
+                            {
+                                label: '# images viewed',
+                                data: numImgs_viewed,
+                                backgroundColor: '#007bff'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }
+                    });
+
+                    statsContainer.append($('<h2>Annotations made</h2>'));
+                    var cw_numAnnos = $('<div class="chartWrapper"><div class="chartAreaWrapper"></div></div>');
+                    let perUser_numAnnos = $('<canvas id="chart-user-annos" width=400 height=300></canvas>');
+                    cw_numAnnos.find('.chartAreaWrapper').append(perUser_numAnnos);
+                    statsContainer.append(cw_numAnnos);
+                    var userAnnosChart = new Chart(perUser_numAnnos[0].getContext('2d'), {
+                        type: 'bar',
+                        data: {
+                            labels: usernames,
+                            datasets: [{
+                                label: '# annotations made',
+                                data: numAnnotations_made,
+                                backgroundColor: '#007bff'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }
+                    });
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+                if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                    window.messager.addMessage('An error occurred while trying to retrieve project statistics (message: "' + error + '").', 'error', 0);
+                }
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return getProjectStatistics(statsContainer);
+                    });
+                }
+            }
+        });
+    }
+
+    function getTimeActivity(statsContainer) {
+        return $.ajax({
+            url: 'getTimeActivity',
+            method: 'GET',
+            data: {
+                type: 'image',
+                num_days: 31,
+                per_user: false
+            },
+            success: function(data) {
+                if(data.hasOwnProperty('result')) {
+                    data = data['result'];
+
+                    statsContainer.append($('<h2>Activity</h2>'));
+                    let activityCanvas = $('<canvas id="chart-temporal-activity" width=400 height=200 style="width:100%;max-height:200px;"></canvas>');
+                    statsContainer.append(activityCanvas);
+                    var activityChart = new Chart(activityCanvas[0].getContext('2d'), {
+                        type: 'line',
+                        data: {
+                            labels: data['labels'],
                             datasets: [{
                                 label: '# images viewed',
-                                data: [response['num_viewed']],
-                                backgroundColor: '#007bff'
+                                data: data['counts'],
+                                borderColor: '#007bff',
+                                fill: false
                             }]
                         },
                         options: {
@@ -103,10 +226,11 @@
                             maintainAspectRatio: false,
                             scales: {
                                 xAxes: [{
-                                    ticks: {
-                                        min: 0,
-                                        max: response['num_images']
-                                    },
+                                    // ticks: {
+                                    //     callback: function(value, index, values) {
+                                    //         return data['labels'][index];
+                                    //     }
+                                    // },
                                     scaleLabel: {
                                         display: true,
                                         labelString: '# images'
@@ -115,218 +239,147 @@
                             }
                         }
                     });
-                    let percViewed = (Math.round(response['num_viewed']/response['num_images'] * 100)).toFixed(2);
-                    statsContainer.append('Users have viewed <b>'+response['num_viewed']+' out of '+response['num_images']+'</b> images ('+percViewed+'%).');
 
-                    // per-user statistics
-                    if(response.hasOwnProperty('user_stats')) {
-                        var usernames = [];
-                        var numImgs_viewed = [];
-                        var numGoldenQuestions = [];
-                        var numAnnotations_made = [];
-                        for(var user in response['user_stats']) {
-                            usernames.push(user);
-                            var numViewed = response['user_stats'][user]['num_viewed'];
-                            if(numViewed === null) numViewed = 0;
-                            var numAnno = response['user_stats'][user]['num_annotations'];
-                            if(numAnno === null) numAnno = 0;
-                            numImgs_viewed.push(numViewed);
-                            numAnnotations_made.push(numAnno);
-                            numGoldenQuestions.push(response['num_goldenQuestions']);
+
+                } else {
+                    console.error(data);
+                    window.messager.addMessage('An error occurred while retrieving recent activity (message: "' + data + '").', 'error', 0);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+                if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                    window.messager.addMessage('An error occurred while trying to retrieve recent activity (message: "' + error + '").', 'error', 0);
+                }
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return getTimeActivity(statsContainer);
+                    });
+                }
+            }
+        });
+    }
+
+    function getLabelclassStatistics(statsContainer) {
+        if(window.annotationType !== 'segmentationMasks') {
+            return $.ajax({
+                url: 'getLabelclassStatistics',
+                method: 'GET',
+                success: function(response) {
+                    response = response['statistics'];
+                    statsContainer.append($('<h2>Per label class</h2>'));
+
+                    // assemble series
+                    var classnames = [];
+                    var numAnnotated = [];
+                    var numPredicted = [];
+                    
+                    for(var labelclass in response) {
+                        classnames.push(labelclass);
+                        numAnnotated.push(response[labelclass]['num_anno']);
+                        numPredicted.push(response[labelclass]['num_pred']);
+                    }
+
+                    // num. annotated
+                    statsContainer.append($('<h3>Annotations</h3>'));
+                    var cw_numAnnos = $('<div class="chartWrapper"><div class="chartAreaWrapper"></div></div>');
+                    let perLabelClass_numAnnos = $('<canvas id="chart-labelclass-annos" width=400 height=300></canvas>');
+                    cw_numAnnos.find('.chartAreaWrapper').append(perLabelClass_numAnnos);
+                    statsContainer.append(cw_numAnnos);
+                    var labelAnnosChart = new Chart(perLabelClass_numAnnos[0].getContext('2d'), {
+                        type: 'bar',
+                        data: {
+                            labels: classnames,
+                            datasets: [{
+                                label: '# annotations made',
+                                data: numAnnotated,
+                                backgroundColor: '#007bff'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false
                         }
+                    });
 
-                        statsContainer.append($('<h2>Images annotated</h2>'));
-                        var cw_numImgs = $('<div class="chartWrapper"><div class="chartAreaWrapper"></div></div>');
-                        let perUser_numImgs = $('<canvas id="chart-user-imgs" width=400 height=300></canvas>');
-                        cw_numImgs.find('.chartAreaWrapper').append(perUser_numImgs);
-                        statsContainer.append(cw_numImgs);
-                        var userImgsChart = new Chart(perUser_numImgs[0].getContext('2d'), {
-                            type: 'bar',
-                            data: {
-                                labels: usernames,
-                                datasets: [{
-                                    label: '# golden questions',
-                                    data: numGoldenQuestions,   //TODO: disable if no golden questions
-                                    type: 'line',
-                                    borderColor: '#ffee54'
-                                },
-                                {
-                                    label: '# images viewed',
-                                    data: numImgs_viewed,
-                                    backgroundColor: '#007bff'
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false
-                            }
-                        });
-
-                        statsContainer.append($('<h2>Annotations made</h2>'));
-                        var cw_numAnnos = $('<div class="chartWrapper"><div class="chartAreaWrapper"></div></div>');
-                        let perUser_numAnnos = $('<canvas id="chart-user-annos" width=400 height=300></canvas>');
-                        cw_numAnnos.find('.chartAreaWrapper').append(perUser_numAnnos);
-                        statsContainer.append(cw_numAnnos);
-                        var userAnnosChart = new Chart(perUser_numAnnos[0].getContext('2d'), {
-                            type: 'bar',
-                            data: {
-                                labels: usernames,
-                                datasets: [{
-                                    label: '# annotations made',
-                                    data: numAnnotations_made,
-                                    backgroundColor: '#007bff'
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false
-                            }
-                        });
+                    // num. predicted
+                    statsContainer.append($('<h3>Predictions</h3>'));
+                    var cw_numPreds = $('<div class="chartWrapper"><div class="chartAreaWrapper"></div></div>');
+                    let perLabelClass_numPreds = $('<canvas id="chart-labelclass-annos" width=400 height=300></canvas>');
+                    cw_numPreds.find('.chartAreaWrapper').append(perLabelClass_numPreds);
+                    statsContainer.append(cw_numPreds);
+                    var labelPredsChart = new Chart(perLabelClass_numPreds[0].getContext('2d'), {
+                        type: 'bar',
+                        data: {
+                            labels: classnames,
+                            datasets: [{
+                                label: '# predictions made',
+                                data: numPredicted,
+                                backgroundColor: '#007bff'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }
+                    });
+                },
+                error: function(xhr, status, error) {
+                    console.error(error);
+                    if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                        window.messager.addMessage('An error occurred while trying to retrieve per-label class statistics (message: "' + error + '").', 'error', 0);
                     }
                 },
-                error: function(data) {
-                    console.log('ERROR:');
-                    console.log(data);
+                statusCode: {
+                    401: function(xhr) {
+                        return window.renewSessionRequest(xhr, function() {
+                            return getLabelclassStatistics(statsContainer);
+                        });
+                    }
                 }
             });
+        } else {
+            return $.Deferred().promise();
+        }
+    }
+
+    $(document).ready(function() {
+        var statsContainer = $('<div></div>');
+
+        // project metadata
+        var promise = $.ajax({
+            url: 'getProjectSettings',
+            method: 'GET',
+            success: function(data) {
+                window.annotationType = data['settings']['annotationType'];
+                window.predictionType = data['settings']['predictionType'];
+            }
+        });
+
+        // promise = promise.done(function() {
+        //     return getConfig(); //getProjectStatistics();
+        // });
+        getConfig();
+
+        // general project statistics
+        promise = promise.done(function() {
+            return getProjectStatistics(statsContainer);
         });
 
         // recent activity
         promise = promise.done(function() {
-            return $.ajax({
-                url: 'getTimeActivity',
-                method: 'GET',
-                data: {
-                    type: 'image',
-                    num_days: 31,
-                    per_user: false
-                },
-                success: function(data) {
-                    if(data.hasOwnProperty('result')) {
-                        data = data['result'];
-                        console.log(data)
-
-                        statsContainer.append($('<h2>Activity</h2>'));
-                        let activityCanvas = $('<canvas id="chart-temporal-activity" width=400 height=200 style="width:100%;max-height:200px;"></canvas>');
-                        statsContainer.append(activityCanvas);
-                        var activityChart = new Chart(activityCanvas[0].getContext('2d'), {
-                            type: 'line',
-                            data: {
-                                labels: data['labels'],
-                                datasets: [{
-                                    label: '# images viewed',
-                                    data: data['counts'],
-                                    borderColor: '#007bff',
-                                    fill: false
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                scales: {
-                                    xAxes: [{
-                                        // ticks: {
-                                        //     callback: function(value, index, values) {
-                                        //         return data['labels'][index];
-                                        //     }
-                                        // },
-                                        scaleLabel: {
-                                            display: true,
-                                            labelString: '# images'
-                                        }
-                                    }]
-                                }
-                            }
-                        });
-
-
-                    } else {
-                        console.error(data);    //TODO
-                    }
-                },
-                error: function(data) {
-                    console.error(data);    //TODO
-                }
-            })
+            return getTimeActivity(statsContainer);
         });
 
         // per-labelclass statistics
         promise = promise.done(function() {
-            if(window.annotationType !== 'segmentationMasks') {
-                return $.ajax({
-                    url: 'getLabelclassStatistics',
-                    method: 'GET',
-                    success: function(response) {
-                        response = response['statistics'];
-                        statsContainer.append($('<h2>Per label class</h2>'));
-
-                        // assemble series
-                        var classnames = [];
-                        var numAnnotated = [];
-                        var numPredicted = [];
-                        
-                        for(var labelclass in response) {
-                            classnames.push(labelclass);
-                            numAnnotated.push(response[labelclass]['num_anno']);
-                            numPredicted.push(response[labelclass]['num_pred']);
-                        }
-
-                        // num. annotated
-                        statsContainer.append($('<h3>Annotations</h3>'));
-                        var cw_numAnnos = $('<div class="chartWrapper"><div class="chartAreaWrapper"></div></div>');
-                        let perLabelClass_numAnnos = $('<canvas id="chart-labelclass-annos" width=400 height=300></canvas>');
-                        cw_numAnnos.find('.chartAreaWrapper').append(perLabelClass_numAnnos);
-                        statsContainer.append(cw_numAnnos);
-                        var labelAnnosChart = new Chart(perLabelClass_numAnnos[0].getContext('2d'), {
-                            type: 'bar',
-                            data: {
-                                labels: classnames,
-                                datasets: [{
-                                    label: '# annotations made',
-                                    data: numAnnotated,
-                                    backgroundColor: '#007bff'
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false
-                            }
-                        });
-
-                        // num. predicted
-                        statsContainer.append($('<h3>Predictions</h3>'));
-                        var cw_numPreds = $('<div class="chartWrapper"><div class="chartAreaWrapper"></div></div>');
-                        let perLabelClass_numPreds = $('<canvas id="chart-labelclass-annos" width=400 height=300></canvas>');
-                        cw_numPreds.find('.chartAreaWrapper').append(perLabelClass_numPreds);
-                        statsContainer.append(cw_numPreds);
-                        var labelPredsChart = new Chart(perLabelClass_numPreds[0].getContext('2d'), {
-                            type: 'bar',
-                            data: {
-                                labels: classnames,
-                                datasets: [{
-                                    label: '# predictions made',
-                                    data: numPredicted,
-                                    backgroundColor: '#007bff'
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false
-                            }
-                        });
-                    },
-                    error: function(data) {
-                        console.log('ERROR:');
-                        console.log(data);
-                    }
-                });
-            } else {
-                return $.Deferred().promise();
-            }
+            return getLabelclassStatistics(statsContainer);
         });
 
         promise.done(function() {
-            mainContainer.append(statsContainer);
+            $('#overview-container').append(statsContainer);
             window.showLoadingOverlay(false);
         });
     });

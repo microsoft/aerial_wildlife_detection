@@ -73,7 +73,7 @@ class ProjectConfigurator:
         @self.app.route('/<project>/config/panels/<panel>')
         def send_static_panel(project, panel):
             if not self.loginCheck(project=project):
-                return self.__redirect(True, project + '/configuration?t=' + panel)
+                abort(401, 'forbidden')
             if self.loginCheck(project=project, admin=True):
                 try:
                     return self.panelTemplates[panel].render(
@@ -120,7 +120,7 @@ class ProjectConfigurator:
             
             #TODO
             if not self.loginCheck():
-                return redirect('/')
+                return self.__redirect(loginPage=True, redirect='/' + project + '/configuration')
 
             # get project data (and check if project exists)
             projectData = self.middleware.getProjectInfo(project, ['name', 'description', 'interface_enabled', 'demomode'])

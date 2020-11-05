@@ -153,11 +153,15 @@
                 }
             },
             error: function(xhr, status, error) {
-                var promise = window.renewSessionRequest(xhr);
-                promise = promise.done(function() {
-                    return queryServiceDetails();
-                });
-                return promise;
+                console.error(error);
+                window.messager.addMessage('An error occurred while trying to query service details (message: "' + error + '").', 'error', 0);
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return queryServiceDetails();
+                    });
+                }
             }
         });
     }
@@ -255,11 +259,15 @@
                 }
             },
             error: function(xhr, status, error) {
-                var promise = window.renewSessionRequest(xhr);
-                promise = promise.done(function() {
-                    return queryCeleryworkerDetails();
-                });
-                return promise;
+                console.error(error);   //TODO
+                window.messager.addMessage('An error occurred while trying to query worker details (message: "' + error + '").', 'error', 0);
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return queryCeleryworkerDetails();
+                    });
+                }
             }
         });
     }

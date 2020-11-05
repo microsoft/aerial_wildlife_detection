@@ -5,9 +5,7 @@
     right: 40px;
     bottom: 40px;
     width: 450px;
-    height: 20vh;
-    min-height: 400px;
-    max-height: 800px;
+    max-height: min(50vh, 500px);
     overflow-y: auto;
     z-index: 1000;
 }
@@ -17,8 +15,7 @@
 }
 
 .messager-message {
-    display: flex;
-    flex-direction: row;
+    display: none;
     color: white;
     padding: 15px;
     border-radius: 10px;
@@ -29,6 +26,11 @@
     border: 2px solid;
     max-height: 80px;
     box-shadow: 4px 2px 6px 0px #373737bf;
+}
+
+.messager-message-body {
+    display: flex;
+    flex-direction: row;
 }
 
 .messager-message:first-of-type {
@@ -52,6 +54,7 @@
 
 .messager-message-text {
     flex-grow: 1;
+    height: 40px;
     overflow-y: auto;
     text-shadow: 1px 1px 5px #373737bf;
 }

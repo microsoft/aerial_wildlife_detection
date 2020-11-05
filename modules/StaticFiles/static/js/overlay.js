@@ -93,7 +93,7 @@ window.showYesNoOverlay = function(contents, callbackYes, callbackNo, buttonText
 
 
 // Login verification / session renewal
-window.renewSessionRequest = function(xhr) {
+window.renewSessionRequest = function(xhr, callback) {
     /**
      * Function can be called with a failed AJAX request
      * ("error"); parses the error for 401 "unauthorized"
@@ -103,7 +103,7 @@ window.renewSessionRequest = function(xhr) {
      * input. Otherwise, a deferred promise is returned.
      */
     if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] === 401) {
-        return window.verifyLogin();
+        return window.verifyLogin(callback);
     } else {
         return $.Deferred().promise();
     }
@@ -116,28 +116,30 @@ window.verifyLogin = function(callback) {
         success: function() {
             window.showOverlay(null);
             if(typeof(callback) === 'function')
-                callback();
+                return callback();
         },
         error: function() {
             // show login verification overlay
-            window.showVerificationOverlay(callback);
+            return window.showVerificationOverlay(callback);
         }
     });
 }
 
 window.showVerificationOverlay = function(callback) {
-    if(!window.overlayAvailable) return;
+    if(!window.overlayAvailable) return $.Deferred().promise();
     var loginFun = function(callback) {
         var username = $('#navbar-user-dropdown').html();       // cannot use cookie since it has already been deleted by the server
         var password = $('#password').val();
-        $.ajax({
+        return $.ajax({
             url: 'doLogin',
             method: 'post',
             data: {username: username, password: password},
             success: function(response) {
                 window.showOverlay(null);
                 if(typeof(callback) === 'function')
-                    callback();
+                    return callback();
+                else
+                    return $.Deferred().promise();
             },
             error: function(error) {
                 $('#invalid-password').show();
@@ -155,7 +157,7 @@ window.showVerificationOverlay = function(callback) {
     window.showOverlay(overlayHtml, false, false);
 
     $('#abort').click(function() {
-        window.location.href = '/';     //TODO: '/login'
+        window.location.href = '/';
     })
 
     $('#confirm-password').click(function() {

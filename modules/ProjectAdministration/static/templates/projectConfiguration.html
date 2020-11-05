@@ -46,9 +46,16 @@
                         document.title = 'AIDE: ' + window.project + ' - ' + panelID;
                         window.history.pushState('AIDE', 'AIDE: {{ projectShortname }}', '?t='+panelID);
                     },
-                    error: function() {
-                        // invalid panel name; reset to default
-                        window.location.href = '?t=overview';
+                    statusCode: {
+                        401: function(xhr) {
+                            window.renewSessionRequest(xhr, function() {
+                                setPanel(panelID);
+                            });
+                        },
+                        404: function(xhr) {
+                            // invalid panel name; reset to default
+                            window.location.href = '?t=overview';
+                        }
                     }
                 });
             }
@@ -112,7 +119,7 @@
                         } catch {}
                     },
                     error: function(data) {
-                        console.error(data);
+                        console.error(data);    //TODO
                     }
                 });
             });

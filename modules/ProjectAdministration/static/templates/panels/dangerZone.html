@@ -57,7 +57,6 @@
             method: 'GET',
             success: function(data) {
                 if(data.hasOwnProperty('archived')) {
-                    console.log(data);
                     projectArchived = data['archived'];
 
                     if(typeof(projectArchived) !== 'boolean') {
@@ -88,12 +87,15 @@
                     archiveBtn.off();
                 }
             },
-            error: function(xhr, message, error) {
-                var promise = window.renewSessionRequest(xhr);
-                promise = promise.done(function() {
-                    return getProjectArchived();
-                });
-                return promise;
+            error: function(xhr, status, error) {
+                window.messager.addMessage('An error occurred while trying to retrieve project archival status (message: "' + error + '").', 'error', 0);
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return getProjectArchived();
+                    });
+                }
             }
         });
     }
@@ -108,15 +110,29 @@
                 archived: !projectArchived
             }),
             success: function(response) {
-                console.log(response);  //TODO
-                return getProjectArchived();
-            },
-            error: function(xhr, message, error) {
-                var promise = window.renewSessionRequest(xhr);
-                promise = promise.done(function() {
-                    return toggleProjectArchived();
+                return getProjectArchived().done(function() {
+                    if(response['status'] === 0) {
+                        window.messager.addMessage('Project archival status changed successfully.', 'success');
+                    } else {
+                        let message = 'An error occurred while changing project archival status';
+                        if(typeof(response['message']) === 'string') {
+                            message += ' (message: "' + respones['message'] + '")';
+                        }
+                        message += '.';
+                        window.messager.addMessage(message, 'error', 0);
+                    }
+                    return $.Deferred().promise();
                 });
-                return promise;
+            },
+            error: function(xhr, status, error) {
+                window.messager.addMessage('An error occurred while trying to set or un-set project archived (message: "' + error + '").', 'error', 0);
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return toggleProjectArchived();
+                    });
+                }
             }
         });
     }
@@ -138,14 +154,29 @@
                     deleteFiles: $('#delete-project-remove-data').prop('checked')
                 }),
                 success: function(response) {
-                    console.log(response);  //TODO
+                    if(response['status'] === 0) {
+                        window.messager.addMessage('Project deleted successfully. Redirecting to overview page...');
+                        setTimeout(function() {
+                            window.location.href = '/';
+                        }, 5000);
+                    } else {
+                        let message = 'An error occurred while deleting project';
+                        if(typeof(response['message']) === 'string') {
+                            message += ' (message: "' + respones['message'] + '")';
+                        }
+                        message += '.';
+                        window.messager.addMessage(message, 'error', 0);
+                    }
                 },
-                error: function(xhr, message, error) {
-                    var promise = window.renewSessionRequest(xhr);
-                    promise = promise.done(function() {
-                        return _doDelete();
-                    });
-                    return promise;
+                error: function(xhr, status, error) {
+                    window.messager.addMessage('An error occurred while trying to delete project (message: "' + error + '").', 'error', 0);
+                },
+                statusCode: {
+                    401: function(xhr) {
+                        return window.renewSessionRequest(xhr, function() {
+                            return _doDelete();
+                        });
+                    }
                 }
             });
         }

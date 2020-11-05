@@ -88,6 +88,49 @@
 <link rel="stylesheet" href="/static/general/libs/datetimepicker/jquery.datetimepicker.css?v={{ version }}" />
 <script type="text/javascript" src="/static/general/libs/datetimepicker/jquery.datetimepicker.js?v={{ version }}"></script>
 <script type="text/javascript">
+    function getUsers(usersListMarkup) {
+        return $.ajax({
+            url: 'getUsers',
+            method: 'GET',
+            success: function(data) {
+                if(data.hasOwnProperty('users')) {
+                    for(var i=0; i<data['users'].length; i++) {
+                        let uName = data['users'][i]['username'];
+                        var uName_vis = uName;
+                        let isAdmin = data['users'][i]['isadmin'] ? '<img src="/static/general/img/success.svg"></img>' : '<img src="/static/general/img/error.svg"></img>';
+                        var admittedUntil = data['users'][i]['admitted_until'];
+                        if(admittedUntil === null) admittedUntil = '';
+                        var blockedUntil = data['users'][i]['blocked_until'];
+                        if(blockedUntil === null) blockedUntil = '';
+                        var markup = $('<tr id="'+uName+'"></tr>');
+                        if(uName === window.user) {
+                            var checkbox = $('<input type="checkbox" id="'+uName+'__select" disabled />');
+                            uName_vis += ' (You)';
+                        } else {
+                            var checkbox = $('<input type="checkbox" id="'+uName+'__select" />');
+                        }
+                        markup.append($('<td></td>').append(checkbox));
+                        markup.append($('<td>'+uName_vis+'</td>'));
+                        markup.append($('<td>'+isAdmin+'</td>'));
+                        markup.append($('<td>'+admittedUntil+'</td>'));
+                        markup.append($('<td>'+blockedUntil+'</td>'));
+                        usersListMarkup.append(markup);
+                    }
+                }
+            },
+            error: function(xhr, status, error) {
+                window.messager.addMessage('An error occurred while trying to retrieve project members (message: "' + error + '").', 'error', 0);
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return getUsers(usersListMarkup);
+                    });
+                }
+            }
+        });
+    }
+
     $(document).ready(function() {
         // general settings
         var promise = $.ajax({
@@ -108,7 +151,7 @@
                 $('#field-secret-token').val(window.location.host + window.location.pathname + '/enroll'+'?t='+settings['secret_token']);
                 $('#demo-checkbox').prop('checked', settings['demomode']);
             },
-            error: function(data) {
+            error: function(xhr, status, error) {
                 console.log('ERROR:');
                 console.log(data);
             }
@@ -131,40 +174,7 @@
         }
 
         promise = promise.done(function() {
-            return $.ajax({
-                url: 'getUsers',
-                method: 'GET',
-                success: function(data) {
-                    if(data.hasOwnProperty('users')) {
-                        for(var i=0; i<data['users'].length; i++) {
-                            let uName = data['users'][i]['username'];
-                            var uName_vis = uName;
-                            let isAdmin = data['users'][i]['isadmin'] ? '<img src="/static/general/img/success.svg"></img>' : '<img src="/static/general/img/error.svg"></img>';
-                            var admittedUntil = data['users'][i]['admitted_until'];
-                            if(admittedUntil === null) admittedUntil = '';
-                            var blockedUntil = data['users'][i]['blocked_until'];
-                            if(blockedUntil === null) blockedUntil = '';
-                            var markup = $('<tr id="'+uName+'"></tr>');
-                            if(uName === window.user) {
-                                var checkbox = $('<input type="checkbox" id="'+uName+'__select" disabled />');
-                                uName_vis += ' (You)';
-                            } else {
-                                var checkbox = $('<input type="checkbox" id="'+uName+'__select" />');
-                            }
-                            markup.append($('<td></td>').append(checkbox));
-                            markup.append($('<td>'+uName_vis+'</td>'));
-                            markup.append($('<td>'+isAdmin+'</td>'));
-                            markup.append($('<td>'+admittedUntil+'</td>'));
-                            markup.append($('<td>'+blockedUntil+'</td>'));
-                            uList.append(markup);
-                        }
-                    }
-                },
-                error: function(data) {
-                    console.log('ERROR:')
-                    console.log(data);
-                }
-            });
+            return getUsers(uList);
         });
 
         // misc.

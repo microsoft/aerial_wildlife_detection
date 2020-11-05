@@ -361,8 +361,18 @@
                     }
                 } catch {}
             },
-            error: function(data) {
-                console.error(data);
+            error: function(xhr, status, error) {
+                console.error(error);
+                if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                    window.messager.addMessage('An error occurred while trying to load interface configuration (message: "' + error + '").', 'error', 0);
+                }
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return reloadUIsettings();
+                    });
+                }
             }
         });
     }
@@ -421,10 +431,23 @@
             dataType: 'json',
             data: JSON.stringify(data),
             success: function(data) {
-                return reloadUIsettings();
+                return reloadUIsettings().done(function() {
+                    window.messager.addMessage('Configuration saved successfully.', 'success');
+                    return $.Deferred().promise();
+                });
             },
-            error: function(data) {
-                console.error(data);
+            error: function(xhr, status, error) {
+                console.error(error);
+                if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                    window.messager.addMessage('An error occurred while trying to save interface configuration (message: "' + error + '").', 'error', 0);
+                }
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return saveUIsettings();
+                    });
+                }
             }
         });
     }
@@ -494,7 +517,17 @@
                 $('#styles-preview-entry').append(window.sampleEntry.markup);
             },
             error: function(xhr, status, error) {
-                //TODO
+                console.error(error);
+                if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                    window.messager.addMessage('An error occurred while trying to load sample data for visualization (message: "' + error + '").', 'error', 0);
+                }
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return loadSampleData();
+                    });
+                }
             }
         });
     }
@@ -516,10 +549,8 @@
         window.sampleEntry.styleChanged();
     }
 
-    $(document).ready(function() {
-
-        // get project immutables
-        var promise = $.ajax({
+    function getProjectImmutables() {
+        return $.ajax({
             url: 'getProjectImmutables',
             method: 'GET',
             success: function(data) {
@@ -540,10 +571,26 @@
                     $('#display-styles-group').hide();
                 }
             },
-            error: function(data) {
-                console.error(data);
+            error: function(xhr, status, error) {
+                console.error(error);
+                if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                    window.messager.addMessage('An error occurred while trying to load project properties (message: "' + error + '").', 'error', 0);
+                }
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return getProjectImmutables();
+                    });
+                }
             }
-        })
+        });
+    }
+
+    $(document).ready(function() {
+
+        // get project immutables
+        var promise = getProjectImmutables();
 
         // get current UI settings
         promise = promise.then(function() {

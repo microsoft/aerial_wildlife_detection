@@ -229,12 +229,30 @@ class Task {
                 taskID: self.id
             }),
             success: function(data) {
-                console.log(data);  //TODO
-                window.messager.addMessage('Workflow aborted.');
+                let message = 'Workflow aborted.';
+                let success = undefined;
+                let duration = undefined;
+                if(data['status'] !== 0) {
+                    success = 'error';
+                    duration = 0;
+                    message = 'Workflow could not be aborted';
+                    if(typeof(data['message']) === 'string') {
+                        message += ' (message: "' + data['message'] + '")';
+                    }
+                    message += '.';
+                }
+                window.messager.addMessage(message, success, duration);
             },
             error: function(xhr, status, error) {
-                console.error(error);   //TODO
+                console.error(error);
                 window.messager.addMessage('Workflow with id "'+self.id+'" could not be revoked (message: "'+error+'").', 'error', 0);
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        self.revokeTask();
+                    });
+                }
             }
         })
     }
@@ -378,11 +396,9 @@ class WorkflowMonitor {
                 //TODO
                 console.error(error);
                 self.setQueryInterval(self.queryIntervals['error'], false);
-                var promise = window.renewSessionRequest(xhr);
-                promise = promise.done(function() {
-                    return self._query_workflows();
+                return window.renewSessionRequest(xhr, function() {
+                    self._query_workflows();
                 });
-                return promise;
             }
         });
 

@@ -229,7 +229,7 @@
             }
 
             // make request
-            $.ajax({
+            return $.ajax({
                 url: 'requestDownload',
                 method: 'POST',
                 data: JSON.stringify(params),
@@ -255,8 +255,8 @@
                         _setDownloadEntry(data, taskID);
                     }, 1000);
                 },
-                error: function(data) {
-                    console.error(data);
+                error: function(xhr, status, error) {
+                    console.error(error);
                     // append error row
                     var markup = $('<tr id="' + taskID + '"></tr>');
                     markup.append($('<td>' + new Date().toLocaleString() + '</td>'));
@@ -265,6 +265,14 @@
                     msgCell.append(pb.getMarkup());
                     markup.append(msgCell);
                     $('#download-body').append(markup);
+                    window.messager.addMessage('An error occurred while processing download request (message: "'+error+'").', 'error', 0);
+                },
+                statusCode: {
+                    401: function(xhr) {
+                        return window.renewSessionRequest(xhr, function() {
+                            return requestDownload();
+                        });
+                    }
                 }
             })
         }
@@ -279,8 +287,8 @@
         });
 
         // load users list
-        let uList = $('#users-list');
-        promise = promise.done(function() {
+        function _loadUsers() {
+            let uList = $('#users-list');
             return $.ajax({
                 url: 'getUsers',
                 method: 'GET',
@@ -300,8 +308,18 @@
                 error: function(xhr, status, error) {
                     console.error(data);
                     window.messager.addMessage('Users could not be loaded (message: "'+error+'").', 'error', 0);
+                },
+                statusCode: {
+                    401: function(xhr) {
+                        return window.renewSessionRequest(xhr, function() {
+                            return _loadUsers();
+                        });
+                    }
                 }
             });
+        }
+        promise = promise.done(function() {
+            return _loadUsers();
         });
 
         var now = new Date();

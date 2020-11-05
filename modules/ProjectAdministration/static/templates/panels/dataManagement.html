@@ -275,6 +275,7 @@
             var data = undefined;
             var url = undefined;
             var action = $('#action-select').val();
+            let actionText = 'Task completed successfully';
             if(action === 'golden_question_yes') {
                 data = {};
                 for(var i=0; i<checked.length; i++) {
@@ -283,6 +284,7 @@
                 }
                 data = {'goldenQuestions': data};
                 url = 'setGoldenQuestions';
+                actionText = 'Successfully set golden questions for ' + checked.length + ' images.';
 
             } else if(action === 'golden_question_no') {
                 data = {};
@@ -292,6 +294,7 @@
                 }
                 data = {'goldenQuestions': data};
                 url = 'setGoldenQuestions';
+                actionText = 'Successfully un-set golden questions for ' + checked.length + ' images.';
 
             } else if(action === 'remove_annotations') {
                 error('Not yet supported.');
@@ -308,26 +311,32 @@
                     'deleteFromDisk': $('#delete-from-disk').prop('checked')
                 };
                 url = 'removeImages';
+                actionText = 'Successfully removed ' + checked.length + ' images.';
             }
 
             if(data === undefined || url === undefined) return;
 
             // execute
-            $.ajax({
-                url: url,
-                method: 'POST',
-                data: JSON.stringify(data),
-                contentType: 'application/json; charset=utf-8',
-                dataType: 'json',
-                success: function(response) {
-                    console.log(response);  //TODO: show pane, then reload image browser
-                    updateImageBrowser(true, true);
-                },
-                error: function(response) {
-                    console.log('error:');   //TODO: show pane
-                    console.log(response);
-                }
-            })
+            function _doExecuteAction() {
+                return $.ajax({
+                    url: url,
+                    method: 'POST',
+                    data: JSON.stringify(data),
+                    contentType: 'application/json; charset=utf-8',
+                    dataType: 'json',
+                    success: function(response) {
+                        console.log(response);  //TODO: show pane, then reload image browser
+                        return updateImageBrowser(true, false).done(function() {
+                            window.messager.addMessage(actionText, 'success');
+                        });
+                    },
+                    error: function(response) {
+                        console.log('error:');   //TODO: show pane
+                        console.log(response);
+                    }
+                })
+            }
+            return _doExecuteAction();
         }
 
         function _imageBrowser_event(event) {

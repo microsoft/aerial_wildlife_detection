@@ -245,11 +245,17 @@
                 }
             },
             error: function(xhr, status, error) {
-                var promise = window.renewSessionRequest(xhr);
-                promise = promise.done(function() {
-                    return getAvailableAImodels();
-                });
-                return promise;
+                console.error(error);
+                if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                    window.messager.addMessage('An error occurred while trying to load installed AI model types (message: "' + error + '").', 'error', 0);
+                }
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return getAvailableAImodels();
+                    });
+                }
             }
         });
     }
@@ -352,11 +358,17 @@
                 }
             },
             error: function(xhr, status, error) {
-                var promise = window.renewSessionRequest(xhr);
-                promise = promise.done(function() {
-                    return getModelsMarketplace();
-                });
-                return promise;
+                console.error(error);
+                if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                    window.messager.addMessage('An error occurred while trying to get available AI models on the Model Marketplace (message: "' + error + '").', 'error', 0);
+                }
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return getModelsMarketplace();
+                    });
+                }
             }
         });
     }
@@ -471,11 +483,17 @@
                 }
             },
             error: function(xhr, status, error) {
-                var promise = window.renewSessionRequest(xhr);
-                promise = promise.done(function() {
-                    return getModelsProject();
-                });
-                return promise;
+                console.error(error);
+                if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                    window.messager.addMessage('An error occurred while trying to retrieve project-specific model states (message: "' + error + '").', 'error', 0);
+                }
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return getModelsProject();
+                    });
+                }
             }
         })
     }
@@ -528,11 +546,17 @@
                     loadData();
                 },
                 error: function(xhr, status, error) {
-                    var promise = window.renewSessionRequest(xhr);
-                    promise = promise.done(function() {
-                        return doShareModel();
-                    });
-                    return promise;
+                    console.error(error);
+                    if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                        window.messager.addMessage('An error occurred while trying to share model (message: "' + error + '").', 'error', 0);
+                    }
+                },
+                statusCode: {
+                    401: function(xhr) {
+                        return window.renewSessionRequest(xhr, function() {
+                            return doShareModel();
+                        });
+                    }
                 }
             });
         }
@@ -585,11 +609,17 @@
                     loadData();
                 },
                 error: function(xhr, status, error) {
-                    var promise = window.renewSessionRequest(xhr);
-                    promise = promise.done(function() {
-                        return doReshareModel();
-                    });
-                    return promise;
+                    console.error(error);
+                    if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                        window.messager.addMessage('An error occurred while trying to re-share model (message: "' + error + '").', 'error', 0);
+                    }
+                },
+                statusCode: {
+                    401: function(xhr) {
+                        return window.renewSessionRequest(xhr, function() {
+                            return doReshareModel();
+                        });
+                    }
                 }
             });
         }
@@ -644,11 +674,17 @@
                     loadData();
                 },
                 error: function(xhr, status, error) {
-                    var promise = window.renewSessionRequest(xhr);
-                    promise = promise.done(function() {
-                        return doUnshareModel();
-                    });
-                    return promise;
+                    console.error(error);
+                    if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                        window.messager.addMessage('An error occurred while trying to hide selected model from Model Marketplace (message: "' + error + '").', 'error', 0);
+                    }
+                },
+                statusCode: {
+                    401: function(xhr) {
+                        return window.renewSessionRequest(xhr, function() {
+                            return doUnshareModel();
+                        });
+                    }
                 }
             });
         }
@@ -686,11 +722,17 @@
                     loadData();
                 },
                 error: function(xhr, status, error) {
-                    var promise = window.renewSessionRequest(xhr);
-                    promise = promise.done(function() {
-                        return unshareModel();
-                    });
-                    return promise;
+                    console.error(error);
+                    if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                        window.messager.addMessage('An error occurred while trying to import model to project (message: "' + error + '").', 'error', 0);
+                    }
+                },
+                statusCode: {
+                    401: function(xhr) {
+                        return window.renewSessionRequest(xhr, function() {
+                            return doImportModel();
+                        });
+                    }
                 }
             })
         }

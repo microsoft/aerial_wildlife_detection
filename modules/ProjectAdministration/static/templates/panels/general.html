@@ -57,11 +57,17 @@
                 $('#remove-missing-images-check').prop('disabled', !$('#watch-folder-enabled-check').prop('checked'));
             },
             error: function(xhr, status, error) {
-                var promise = window.renewSessionRequest(xhr);
-                promise = promise.done(function() {
-                    return loadValues();
-                });
-                return promise;
+                console.error(error);
+                if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                    window.messager.addMessage('An error occurred while trying to get project configuration (message: "' + error + '").', 'error', 0);
+                }
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return loadValues();
+                    });
+                }
             }
         });
         return promise.done(function() {
@@ -86,21 +92,29 @@
             data: JSON.stringify(settings),
             success: function(data) {
                 if(data.hasOwnProperty('success') && data['success']) {
-                    return loadValues();
+                    return loadValues().done(function() {
+                        window.messager.addMessage('Configuration saved successfully.', 'success');
+                        return $.Deferred().promise();
+                    });
                 } else {
                     // something went wrong
-                    //TODO
-                    console.error('An unknown error occurred while saving project settings:');
                     console.error(data);
+                    window.messager.addMessage('An unknown error occurred while saving project settings.', 'error', 0);
                     return $.Deferred().promise();
                 }
             },
             error: function(xhr, status, error) {
-                var promise = window.renewSessionRequest(xhr);
-                promise = promise.done(function() {
-                    return saveValues();
-                });
-                return promise;
+                console.error(error);
+                if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                    window.messager.addMessage('An error occurred while trying to save project configuration (message: "' + error + '").', 'error', 0);
+                }
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return saveValues();
+                    });
+                }
             }
         });
     }
@@ -129,11 +143,17 @@
                 }
             },
             error: function(xhr, status, error) {
-                var promise = window.renewSessionRequest(xhr);
-                promise = promise.done(function() {
-                    return loadDataManagementSettings();
-                });
-                return promise;
+                console.error(error);
+                if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                    window.messager.addMessage('An error occurred while trying to get AIDE configuration details (message: "' + error + '").', 'error', 0);
+                }
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return loadDataManagementSettings();
+                    });
+                }
             }
         });
     }

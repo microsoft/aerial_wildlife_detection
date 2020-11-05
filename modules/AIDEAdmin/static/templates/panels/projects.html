@@ -89,11 +89,14 @@
                 }
             },
             error: function(xhr, status, error) {
-                var promise = window.renewSessionRequest(xhr);
-                promise = promise.done(function() {
-                    return getProjectDetails();
-                });
-                return promise;
+                console.error(error);   //TODO
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return getProjectDetails();
+                    });
+                }
             }
         });
     }

@@ -153,8 +153,18 @@
                         }
                     }
                 },
-                error: function(data) {
-                    console.error(data);    //TODO
+                error: function(xhr, status, error) {
+                    console.error(error);
+                    if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                        window.messager.addMessage('An error occurred while trying to load saved workflows (message: "' + error + '").', 'error', 0);
+                    }
+                },
+                statusCode: {
+                    401: function(xhr) {
+                        return window.renewSessionRequest(xhr, function() {
+                            return loadSavedWorkflows();
+                        });
+                    }
                 }
             });
         }
@@ -212,12 +222,54 @@
                     // update table
                     loadSavedWorkflows();
                 },
-                error: function(data) {
-                    //TODO: show error message
-                    console.error(data);
+                error: function(xhr, status, error) {
+                    console.error(error);
+                    if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                        window.messager.addMessage('An error occurred while trying to save workflow (message: "' + error + '").', 'error', 0);
+                    }
+                },
+                statusCode: {
+                    401: function(xhr) {
+                        return window.renewSessionRequest(xhr, function() {
+                            return saveWorkflow();
+                        });
+                    }
                 }
-            })
+            });
         }
+
+        function runWorkflow() {
+            var workflow = window.workflowDesigner.toJSON();
+            return $.ajax({
+                url: 'launchWorkflow',
+                method: 'POST',
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+                data: JSON.stringify({workflow:workflow}),
+                success: function(response) {
+                    console.log(response);      //TODO: show AI panel in footer and start polling
+
+                    //TODO: test
+                    window.wfMonitor.startQuerying();
+
+                    window.messager.addMessage('Workflow launched.', 'success');
+                },
+                error: function(xhr, status, error) {
+                    console.error(error);
+                    if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                        window.messager.addMessage('An error occurred while trying to launch workflow (message: "' + error + '").', 'error', 0);
+                    }
+                },
+                statusCode: {
+                    401: function(xhr) {
+                        return window.renewSessionRequest(xhr, function() {
+                            return runWorkflow();
+                        });
+                    }
+                }
+            });
+        }
+
         $('#save-workflow').on('click', function() {
             saveWorkflow();
         });
@@ -317,24 +369,7 @@
 
         //TODO: simple test
         $('#run-workflow').on('click', function() {
-            var workflow = window.workflowDesigner.toJSON();
-            $.ajax({
-                url: 'launchWorkflow',
-                method: 'POST',
-                contentType: 'application/json; charset=utf-8',
-                dataType: 'json',
-                data: JSON.stringify({workflow:workflow}),
-                success: function(response) {
-                    console.log(response);      //TODO: show AI panel in footer and start polling
-
-                    //TODO: test
-                    window.wfMonitor.startQuerying();
-
-                },
-                error: function(response) {
-                    console.error(response);    //TODO: show error message on screen
-                }
-            });
+            runWorkflow();
         });
 
         function showQuickPanel(type) {

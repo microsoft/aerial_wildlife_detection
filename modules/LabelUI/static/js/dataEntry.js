@@ -59,7 +59,7 @@ class AbstractDataEntry {
         var goldenQuestions = {};
         goldenQuestions[self.entryID] = self.isGoldenQuestion;
 
-        $.ajax({
+        return $.ajax({
             url: 'setGoldenQuestions',
             method: 'POST',
             contentType: "application/json; charset=utf-8",
@@ -77,9 +77,16 @@ class AbstractDataEntry {
                     }
                 }
             },
-            error: function(xhr, status, error) {
-                console.error(data);
-                window.messager.addMessage('Inference started.');
+            error: function(xhr, message, error) {
+                console.error(error);   //TODO
+                window.messager.addMessage('An error occurred while trying to set golden question (message: "' + error + '").', 'error', 0);
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return _toggleGoldenQuestion();
+                    });
+                }
             }
         })
     }

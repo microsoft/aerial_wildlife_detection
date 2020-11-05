@@ -112,6 +112,35 @@
 <script src="/static/statistics/libs/chartjs/Chart.min.js?v={{ version }}"></script>
 <script type="text/javascript">
 
+    function getProjectSettings() {
+        return $.ajax({
+            url: 'getProjectSettings',
+            method: 'GET',
+            success: function(data) {
+                window.annotationType = data['settings']['annotationType'];
+                window.predictionType = data['settings']['predictionType'];
+
+                // show advanced controls for points & bounding boxes
+                if(window.annotationType === 'points' || window.annotationType === 'boundingBoxes') {
+                    $('#threshold-control').show();
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+                if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                    window.messager.addMessage('An error occurred while trying to retrieve project settings (message: "' + error + '").', 'error', 0);
+                }
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return getProjectSettings();
+                    });
+                }
+            }
+        });
+    }
+
     function calculateUserStats() {
         // get control values
         var evalUsers = [];
@@ -334,12 +363,56 @@
                     resultsContainer.append(cw_geom);
                 }
             },
-            error: function(data) {
-                console.log('ERROR:');
-                console.log(data);
+            error: function(xhr, status, error) {
+                console.error(error);
+                if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                    window.messager.addMessage('An error occurred while trying to calculate user statistics (message: "' + error + '").', 'error', 0);
+                }
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return calculateUserStats();
+                    });
+                }
             }
         });
+    }
 
+    function getUserNames(evalUsersTable, targetUsersTable) {
+        return $.ajax({
+            url: 'getUserNames',
+            method: 'POST',
+            success: function(data) {
+                data = data['users'];
+                for(var idx in data) {
+                    var tableEntry_eval = $('<tr></tr>');
+                    tableEntry_eval.append($('<td><input type="checkbox" id="'+data[idx]+'" name="evalUser" checked></td>'))
+                    tableEntry_eval.append($('<td>'+data[idx]+'</td>'));
+                    evalUsersTable.append(tableEntry_eval);
+                    var tableEntry_target = $('<tr></tr>');
+                    tableEntry_target.append($('<td><input type="radio" id="'+data[idx]+'" name="targetUser"></td>'))
+                    tableEntry_target.append($('<td>'+data[idx]+'</td>'));
+                    if(data[idx] === window.user) {
+                        tableEntry_target.find('input[type=radio]').prop('checked', 'checked');
+                    }
+                    targetUsersTable.append(tableEntry_target);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+                if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                    window.messager.addMessage('An error occurred while trying to retrieve project members (message: "' + error + '").', 'error', 0);
+                }
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return getUserNames(evalUsersTable, targetUsersTable);
+                    });
+                }
+            }
+        });
     }
 
     $(document).ready(function() {
@@ -373,51 +446,12 @@
         });
 
         // get project annotation and prediction types
-        var promise = $.ajax({
-            url: 'getProjectSettings',
-            method: 'GET',
-            success: function(data) {
-                window.annotationType = data['settings']['annotationType'];
-                window.predictionType = data['settings']['predictionType'];
-
-                // show advanced controls for points & bounding boxes
-                if(window.annotationType === 'points' || window.annotationType === 'boundingBoxes') {
-                    $('#threshold-control').show();
-                }
-            },
-            error: function(data) {
-                console.log('ERROR:')
-                console.log(data);
-            }
-        });
+        var promise = getProjectSettings();
 
 
         // populate users tables
         promise = promise.then(function() {
-            return $.ajax({
-                url: 'getUserNames',
-                method: 'POST',
-                success: function(data) {
-                    data = data['users'];
-                    for(var idx in data) {
-                        var tableEntry_eval = $('<tr></tr>');
-                        tableEntry_eval.append($('<td><input type="checkbox" id="'+data[idx]+'" name="evalUser" checked></td>'))
-                        tableEntry_eval.append($('<td>'+data[idx]+'</td>'));
-                        evalUsersTable.append(tableEntry_eval);
-                        var tableEntry_target = $('<tr></tr>');
-                        tableEntry_target.append($('<td><input type="radio" id="'+data[idx]+'" name="targetUser"></td>'))
-                        tableEntry_target.append($('<td>'+data[idx]+'</td>'));
-                        if(data[idx] === window.user) {
-                            tableEntry_target.find('input[type=radio]').prop('checked', 'checked');
-                        }
-                        targetUsersTable.append(tableEntry_target);
-                    }
-                },
-                error: function(data) {
-                    console.log('ERROR:');
-                    console.log(data);
-                }
-            });
+            return getUserNames(evalUsersTable, targetUsersTable);
         });
 
         $('#calc-stats').click(calculateUserStats);

@@ -15,14 +15,17 @@ class Message {
         // setup markup
         this.markup = $('<div class="messager-message messager-message-'+this.type+'"></div>');
         
+        let body = $('<div class="messager-message-body"></div>');
+        this.markup.append(body);
+
         let textDiv = $('<div class="messager-message-text">'+this.text+'</div>');
-        this.markup.append(textDiv);
+        body.append(textDiv);
 
         let closeButton = $('<button class="messager-message-close-button btn btn-sm btn-secondary">X</button>');
         closeButton.on('click', (function() {
             this.setVisible(false);
         }).bind(this));
-        this.markup.append(closeButton);
+        body.append(closeButton);
 
         this.setVisible(true);
     }
