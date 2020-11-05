@@ -230,9 +230,11 @@ class Task {
             }),
             success: function(data) {
                 console.log(data);  //TODO
+                window.messager.addMessage('Workflow aborted.');
             },
             error: function(xhr, status, error) {
                 console.error(error);   //TODO
+                window.messager.addMessage('Workflow with id "'+self.id+'" could not be revoked (message: "'+error+'").', 'error', 0);
             }
         })
     }

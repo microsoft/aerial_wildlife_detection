@@ -482,13 +482,15 @@
 
     function shareModel(fromProject) {
         let params = null;
+        let modelName = null;
         if(fromProject) {
             if(typeof(modelsProject[selectedModel_id_project]) !== 'object' || !modelsProject[selectedModel_id_project].hasOwnProperty('id')) {
                 return $.Deferred().promise();
             }
+            modelName = $('#project-info-name').val();
             params = {
                 model_id: modelsProject[selectedModel_id_project]['id'],
-                model_name: $('#project-info-name').val(),
+                model_name: modelName,
                 model_description: $('#project-info-description').val(),
                 tags: Object.keys(getTags('project', true)),
                 public: ($('#project-model-share-public').val() == 'everyone'? true : false),
@@ -498,6 +500,7 @@
             if(typeof(selectedModel_id_marketplace) !== 'string') {
                 return $.Deferred().promise();
             }
+            modelName = modelsMarketplace[selectedModel_id_marketplace]['name'];
             params = {
                 model_id: selectedModel_id_marketplace
             };
@@ -511,7 +514,17 @@
                 dataType: 'json',
                 data: JSON.stringify(params),
                 success: function(data) {
-                    console.log(data);  //TODO
+                    let success = 'success';
+                    let message = 'Model "'+modelName+'" shared successfully.';
+                    if(data['status'] !== 0) {
+                        success = 'error';
+                        message = 'An error occurred trying to share model "'+modelName+'"';
+                        if(data['message'] !== undefined) {
+                            message += ' (message: "'+data['message'] + '")';
+                        }
+                        message += '.';
+                    }
+                    window.messager.addMessage(message, success, (success === 'success' ? undefined : 0));
                     loadData();
                 },
                 error: function(xhr, status, error) {
@@ -530,9 +543,11 @@
 
     function reshareModel(fromProject) {
         let modelID = null;
+        let modelName = null;
         if(fromProject) {
             try {
                 modelID = modelsProject[selectedModel_id_project]['marketplace_info']['id'];
+                modelName = modelsProject[selectedModel_id_project]['marketplace_info']['name'];
             } catch {
                 return $.Deferred().promise();
             }
@@ -541,6 +556,7 @@
                 return $.Deferred().promise();
             }
             modelID = selectedModel_id_marketplace;
+            modelName = modelsMarketplace[modelID]['name'];
         }
 
         let doReshareModel = function() {
@@ -555,7 +571,17 @@
                 dataType: 'json',
                 data: JSON.stringify(params),
                 success: function(data) {
-                    console.log(data);  //TODO
+                    let success = 'success';
+                    let message = 'Model "'+modelName+'" re-shared successfully.';
+                    if(data['status'] !== 0) {
+                        success = 'error';
+                        message = 'An error occurred trying to re-share model "'+modelName+'"';
+                        if(data['message'] !== undefined) {
+                            message += ' (message: "'+data['message'] + '")';
+                        }
+                        message += '.';
+                    }
+                    window.messager.addMessage(message, success, (success === 'success' ? undefined : 0));
                     loadData();
                 },
                 error: function(xhr, status, error) {
@@ -574,6 +600,7 @@
 
     function unshareModel(fromProject) {
         let modelID = null;
+        let modelName = null;
         if(fromProject) {
             try {
                 modelID = modelsProject[selectedModel_id_project]['marketplace_info']['id'];
@@ -595,14 +622,17 @@
                 dataType: 'json',
                 data: JSON.stringify({model_id: modelID}),
                 success: function(data) {
-                    console.log(data)
-                    var message = '';
+                    let message = '';
+                    let success = 'success';
+                    let timeout = undefined;
                     switch(data['status']) {
                         case 0:
                             message = 'Model successfully hidden from marketplace';
                             break;
                         default:
                             message = 'An error occurred while hiding the selected model from the marketplace';
+                            success = 'error';
+                            timeout = 0;
                             break;
                     }
                     if(typeof(data['message']) === 'string') {
@@ -610,7 +640,7 @@
                     } else {
                         message += '.';
                     }
-                    console.log(message);   //TODO: notification system
+                    window.messager.addMessage(message, success, timeout);
                     loadData();
                 },
                 error: function(xhr, status, error) {
@@ -632,6 +662,8 @@
             return $.Deferred().promise();
         }
 
+        let modelName = modelsMarketplace[selectedModel_id_marketplace]['name'];
+
         let doImportModel = function() {
             return $.ajax({
                 url: 'importModel',
@@ -640,8 +672,17 @@
                 dataType: 'json',
                 data: JSON.stringify({model_id: selectedModel_id_marketplace}),
                 success: function(data) {
-                    //TODO
-                    console.log(data);  //TODO: notification system
+                    let success = 'success';
+                    let message = 'Model "'+modelName+'" imported successfully.';
+                    if(data['status'] !== 0) {
+                        success = 'error';
+                        message = 'An error occurred trying to import model "'+modelName+'" to project';
+                        if(data['message'] !== undefined) {
+                            message += ' (message: "'+data['message'] + '")';
+                        }
+                        message += '.';
+                    }
+                    window.messager.addMessage(message, success, (success === 'success' ? undefined : 0));
                     loadData();
                 },
                 error: function(xhr, status, error) {
@@ -844,7 +885,7 @@
         });
 
         // tags
-        $('#project-info-add-tag-button').on('click', function() {
+        function _addTag() {
             let tag = $('#project-info-add-tag').val();
             if(tagValid(tag, 'project')) {
                 let tagsDiv = $('#project-info-tags');
@@ -858,12 +899,21 @@
                 tagsDiv.append(tagDiv);
                 $('#project-info-add-tag').val('');
             }
+        }
+
+        $('#project-info-add-tag-button').on('click', function() {
+            _addTag();
         });
         $('#project-info-add-tag').on('input', function() {
             let tag = $('#project-info-add-tag').val();
             $('#project-info-add-tag-button').prop('disabled', !tagValid(tag, 'project'));
         });
-
+        $('#project-info-add-tag').on('keyup', function(keystroke) {
+            if(keystroke.keyCode === 13) {
+                // enter key pressed; add tag
+                _addTag();
+            }
+        });
 
         function showPanel(type) {
             if(type === 'modelMarketplace') {

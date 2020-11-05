@@ -172,15 +172,20 @@
                 // download link sent
                 msgCell.empty();
                 msgCell.append($('<a href="downloadData/'+data+'" target="_blank">'+data+'</a>'));
+                window.messager.addMessage('Download is ready.', 'success');
 
             } else if(data.hasOwnProperty('status') && data['status'] === 'FAILURE') {
                 // error
-                var message = '(an unknown error occurred)';
+                let message = '(an unknown error occurred)';
+                let popupMessage = 'Could not prepare download.';
                 if(data.hasOwnProperty('meta') && data['meta'].hasOwnProperty('message')) {
                     message = '(' + data['meta']['message'] + ')';
+                    popupMessage = 'Could not prepare download ' + message + '.';
                 }
                 msgCell.empty();
                 msgCell.append($('<span style="color:red">failed ' + message + '</span>'));
+
+                window.messager.addMessage(popupMessage, 'error', 0);
             }
         }
 
@@ -292,9 +297,9 @@
                         }
                     }
                 },
-                error: function(data) {
-                    console.log('ERROR:')
-                    console.log(data);
+                error: function(xhr, status, error) {
+                    console.error(data);
+                    window.messager.addMessage('Users could not be loaded (message: "'+error+'").', 'error', 0);
                 }
             });
         });

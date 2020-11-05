@@ -449,6 +449,7 @@ class AIWorkerHandler {
             method: 'POST',
             success: function(data) {
                 // console.log(data);
+                window.messager.addMessage('Inference started.');
             },
             error: function(xhr, status, error) {
                 if(error == 'Unauthorized') {
@@ -466,6 +467,7 @@ class AIWorkerHandler {
             method: 'POST',
             success: function(data) {
                 // console.log(data);
+                window.messager.addMessage('Training started.');
             },
             error: function(xhr, status, error) {
                 if(error == 'Unauthorized') {
@@ -509,6 +511,7 @@ class AIWorkerHandler {
             dataType: 'json',
             success: function(response) {
                 // console.log(response);  //TODO
+                window.messager.addMessage('Workflow started.');
             },
             error: function(xhr, status, error) {
                 if(error == 'Unauthorized') {

@@ -116,7 +116,7 @@
     $(document).ready(function() {
         // general functions
         function onClickMore(event) {
-            updateImageBrowser(false);
+            updateImageBrowser(false, true);
         }
 
         function initializeImageBrowser() {
@@ -150,10 +150,10 @@
             $(window).on('resize', function() {
                 setImageBrowserSize();
             });
-            return updateImageBrowser(true);
+            return updateImageBrowser(true, false);
         }
 
-        function updateImageBrowser(replaceImages) {
+        function updateImageBrowser(replaceImages, showPopupMessage) {
             // parse filter parameters
             var orderBy = $('#order-by').val();
             var order = $('#order').val();
@@ -244,6 +244,10 @@
                     // append
                     window.imageBrowser.addImages(images);
                 }
+
+                if(showPopupMessage) {
+                    window.messager.addMessage('Images loaded.', 'success');   
+                }
             }
 
             return $.ajax({
@@ -257,9 +261,9 @@
                     var taskID = data['response'];
                     poll_status(taskID, _update_browser_populate, undefined, 1000);
                 },
-                error: function(data) {
-                    console.log('ERROR:');
-                    console.log(data);
+                error: function(xhr, status, error) {
+                    console.error(error);
+                    window.messager.addMessage('Images could not be loaded (message: "'+error+'").', 'error', 0);
                 }
             });
         }
@@ -317,7 +321,7 @@
                 dataType: 'json',
                 success: function(response) {
                     console.log(response);  //TODO: show pane, then reload image browser
-                    updateImageBrowser(true);
+                    updateImageBrowser(true, true);
                 },
                 error: function(response) {
                     console.log('error:');   //TODO: show pane
@@ -352,7 +356,7 @@
 
         promise = promise.done(function() {
             $('#update-image-browser').click(function() {
-                updateImageBrowser(true);
+                updateImageBrowser(true, true);
             });
             $('#action-select').on('change', function() {
                 if($(this).val() === 'delete_images') {

@@ -172,9 +172,9 @@
                                         console.error('An unknown error occurred.')
                                     }
                                 },
-                                error: function(response) {
-                                    console.log('ERROR')
-                                    console.log(response);
+                                error: function(xhr, status, error) {
+                                    console.error(error);
+                                    window.messager.addMessage('Project could not be created (message: "'+error+'").', 'error', 0);
                                 }
                             })
                         }

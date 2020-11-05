@@ -77,9 +77,9 @@ class AbstractDataEntry {
                     }
                 }
             },
-            error: function(data) {
-                console.log('ERROR')
-                console.log(data);
+            error: function(xhr, status, error) {
+                console.error(data);
+                window.messager.addMessage('Inference started.');
             }
         })
     }
