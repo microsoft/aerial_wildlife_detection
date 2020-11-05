@@ -305,6 +305,9 @@ class MessageProcessor(Thread):
                 for t in taskList:
                     taskID = t['id']
                     taskType = t['name']
+                    if 'project' not in t['kwargs']:
+                        # non-project-specific task; ignore (TODO)
+                        continue
                     project = t['kwargs']['project']
 
                     if not project in self.messages:

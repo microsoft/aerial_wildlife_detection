@@ -1,4 +1,5 @@
 let projects = {};      // general info about projects
+let selectedFolder = 'all-projects';
 
 
 function loadProjectInfo() {
@@ -12,6 +13,7 @@ function loadProjectInfo() {
                 projects = {};
                 for(var key in data['projects']) {
                     let projName = data['projects'][key]['name'];
+                    let projDescr = data['projects'][key]['description'];
                     let archived = data['projects'][key]['archived'];
                     let demoMode = data['projects'][key]['demoMode'];
                     let isOwner = data['projects'][key]['isOwner'];
@@ -20,16 +22,17 @@ function loadProjectInfo() {
 
                     if(archived) {
                         // append to separate table
-                        let markup = $('<tr></tr>');
+                        let markup = $('<tr id="archivedEntry_'+key+'"></tr>');
                         markup.append($('<td><a href="' + key + '">' + projName + '</a></td>'));
 
                         if(isOwner || role === 'super user') {
                             // only owners and super users are allowed to unarchive a project
                             let unarchive = $('<td></td>');
-                            let unarchiveBtn = $('<button class="btn btn-sm btn-primary">Unarchive</button>');
+                            let unarchiveBtn = $('<button class="btn btn-sm btn-primary unarchive-button">Unarchive</button>');
                             unarchiveBtn.on('click', function() {
-                                console.log('I would now unarchive this project: ' + key);
-                            })
+                                //TODO
+                                window.messager.addMessage('Button not yet implemented. Please unarchive project <a href="' + key + '/configuration?t=dangerZone">here</a>.', 'error', 0);
+                            });
                             unarchive.append(unarchiveBtn);
                             markup.append(unarchive);
                         } else {
@@ -80,7 +83,7 @@ function loadProjectInfo() {
 
                         var markup = $('<div class="project-entry" id="projectEntry_' + key + '"></div>');
                         markup.append($('<h2><a href="' + key + '">' + projName + '</a></h2>'));
-                        markup.append($('<p>' + data['projects'][key]['description'] + '</p>'));
+                        markup.append($('<p>' + projDescr + '</p>'));
                         markup.append(authDescr);
                         if(demoMode) {
                             markup.append($('<p>Project is in demo mode.</p>'));
@@ -92,6 +95,10 @@ function loadProjectInfo() {
                     }
 
                     projects[key] = {
+                        meta: {
+                            name: projName,
+                            description: projDescr,
+                        },
                         demoMode: demoMode,
                         isOwner: isOwner,
                         isAdmin: (role === 'admin' || isOwner),        //TODO: super user
@@ -109,10 +116,60 @@ function loadProjectInfo() {
 }
 
 
-function filterProjects(folderType) {
+function _string_matches(object, keywords) {
+    if(object === undefined || object === null) {
+        return false;
+    } else if(Array.isArray(object)) {
+        for(var k=0; k<object.length; k++) {
+            if(_string_matches(object[k], keywords)) return true;
+        }
+        return false;
+    } else if(typeof(object) === 'object') {
+        let keys = Object.keys(object);
+        for(var k=0; k<keys.length; k++) {
+            if(_string_matches(object[keys[k]], keywords))
+                return true;
+        }
+        return false;
+    } else {
+        object = object.toString().toLowerCase();
+        for(var k=0; k<keywords.length; k++) {
+            if(object.includes(keywords[k].toLowerCase()))
+                return true;
+        }
+        return false;
+    }
+}
+
+
+function containsKeywords(object, searchString) {
+    if(searchString === undefined || searchString === null || searchString.length === 0) return true;
+    let keywords = searchString.toLowerCase().split(' ');
+    if(keywords.length === 0) return true;
+    let hasValidKeyword = false;
+    for(var k=0; k<keywords.length; k++) {
+        keywords[k] = keywords[k].trim();
+        if(keywords[k].length > 0) hasValidKeyword = true;
+    }
+    if(!hasValidKeyword) return true;
+    return _string_matches(object, keywords);
+}
+
+
+function filterProjects(folderType, keywords) {
     if(folderType === 'projects-archived') {
         $('#main-projects-panel').hide();
         $('#archived-projects-panel').show();
+
+        // check keywords
+        $('#projects-archived-tbody').children().each(function() {
+            let id = $(this).attr('id').replace('archivedEntry_', '');
+            if(containsKeywords(projects[id]['meta'], keywords)) {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        });
 
     } else {
         let attr = undefined
@@ -132,8 +189,12 @@ function filterProjects(folderType) {
         }
         for(var key in projects) {
             let markup = $('#projectEntry_'+key);
-            if(attr === undefined || projects[key][attr]) {
-                // all projects or attribute matches
+            
+            // check keywords
+            let keywordMatch = containsKeywords(projects[key]['meta'], keywords);
+
+            if((attr === undefined || projects[key][attr]) && keywordMatch) {
+                // all projects or attributes as well as keywords match
                 markup.show();
             } else {
                 markup.hide();
@@ -159,10 +220,15 @@ $(document).ready(function() {
     // navigation controls
     $('#project-folders').children().each(function() {
         $(this).on('click', function() {
-            filterProjects($(this).attr('id'));
+            selectedFolder = $(this).attr('id');
+            filterProjects(selectedFolder, $('#project-search-field').val());
         });
     });
 
+    // search field
+    $('#project-search-field').on('input', function() {
+        filterProjects(selectedFolder, $('#project-search-field').val());
+    });
 
     // hide name ta (log in button) if not logged in (out)
     if($('#navbar-user-dropdown').html() === '') {

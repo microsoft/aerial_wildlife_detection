@@ -41,7 +41,7 @@
                     <ul class="nav navbar-nav">
                         <li class="nav-item header-text">
                             <div class="project-path"><a href="/">Projects</a></div>
-                            <h1>Projects Overview</h1>
+                            <h1>AIDE: Projects Overview</h1>
                         </li>
                     </ul>
                     <ul class="nav navbar-nav ml-auto" id="name-dropdown-menu">
@@ -77,6 +77,8 @@
 
                     <div class="content-panel">
 
+                        <input type="search" id="project-search-field" placeholder="Find project…" />
+
                         <!-- Main projects -->
                         <div id="main-projects-panel">
                             <div id="projects"></div>
@@ -93,13 +95,12 @@
 
                         <!-- Archived projects -->
                         <div id="archived-projects-panel">
-                            <div style="color:red">Work in progress, not functional yet.</div>
                             <table>
                                 <thead>
-                                    <th>
-                                        <td>Name</td>
-                                        <td></td>
-                                    </th>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th></th>
+                                    </tr>
                                 </thead>
                                 <tbody id="projects-archived-tbody"></tbody>
                             </table>

@@ -1,5 +1,5 @@
 .main-container {
-    overflow: auto;
+    overflow: hidden;
     height: calc(100vh - 140px);
     padding: 40px;
     display: flex;
@@ -50,14 +50,23 @@
 .content-panel {
     order: 3;
     flex-grow: 1;
-    overflow-y: auto;
-    height: calc(100vh - 150px);
+    overflow-y: hidden;
+    height: calc(100vh - 200px);
     color: white;
-    padding-top: 30px;
+    padding-top: 10px;
     padding-right: 30px;
 }
 
-#projects {
+#project-search-field {
+    border-radius: 20px;
+    margin-left: 30px;
+    padding: 5px;
+    padding-left: 20px;
+    width: 400px;
+}
+
+#projects, 
+#archived-projects-panel {
     margin-left: 30px;
     margin-top: 20px;
     max-height: calc(100vh - 240px);
@@ -92,4 +101,23 @@
 
 #archived-projects-panel {
     display: none;
+}
+
+table {
+    width: 100%;
+    border: 1px solid #aaa;
+}
+
+thead {
+    background: #5f5f5f;
+    font-weight: bold;
+}
+
+td, th {
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+.unarchive-button {
+    float: right;
 }
