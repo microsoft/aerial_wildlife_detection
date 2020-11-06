@@ -51,7 +51,7 @@
             </div>
         </div>
     </div>
-    <div class="file-navigator">
+    <div class="file-navigator" style="flex-grow:1">
         <div>
             <div>Folders</div>
             <div id="file-directory-browser"></div>
@@ -72,12 +72,11 @@
         margin-top: 9px;
         margin-right: 15px;
         padding: 15px;
-        min-width: 15%;
         overflow: auto;
     }
 
     #file-browser {
-        flex-grow: 1;
+        flex-grow: 2;
     }
 
     #filter-box, #action-box {
@@ -412,6 +411,9 @@
                             $('.image-browser-view-buttons').outerHeight() - 60;    // -60 for header and margins
             $('.list-container').css('height', height);
             $('.thumbs-container').css('height', height);
+
+            // also for directory browser
+            $('#file-directory-browser').css('height', height);
         }
 
         // get data server URI

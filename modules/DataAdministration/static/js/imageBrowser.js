@@ -764,7 +764,7 @@ class ImageBrowser {
         viewStyle.append(this.tileViewBtn);
         div.append(viewStyle);
 
-        this.viewPane = $('<div style="height:100%;border:1px solid #aaa;"></div>');
+        this.viewPane = $('<div style="border:1px solid #aaa;"></div>');
         div.append(this.viewPane);
 
 
