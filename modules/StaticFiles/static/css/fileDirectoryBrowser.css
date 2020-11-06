@@ -1,0 +1,26 @@
+.file-directory-entry-collapsible {
+    display: inline;
+    float: left;
+    margin-right: 5px;
+    cursor: pointer;
+    transform: rotate(90deg);
+    WebkitTransform: rotate(90deg);
+    -moz-transform: rotate(90deg);
+}
+
+.file-directory-entry-name {
+    cursor: pointer;
+}
+
+.file-directory-entry-children {
+    margin-left: 10px;
+}
+
+.file-directory-highlighted {
+    background: #aaa;
+    font-weight: bold;
+}
+
+.file-directory-highlighted-weak {
+    background: rgb(99, 99, 99);
+}

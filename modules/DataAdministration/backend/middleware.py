@@ -139,7 +139,41 @@ class DataAdministrationMiddleware:
 
 
 
-    def listImages(self, project, imageAddedRange=None, lastViewedRange=None,
+    def getImageFolders(self, project):
+        '''
+            Returns a dict representing a hierarchical directory
+            tree under which the images are stored for a specific
+            project.
+        '''
+
+        def _integrateBranch(tree, members):
+            if not len(members):
+                return tree
+            elif members[0] not in tree:
+                tree[members[0]] = {}
+            if len(members)>1:
+                tree[members[0]] = _integrateBranch(tree[members[0]], members[1:])
+            return tree
+
+        tree = {}
+        folderNames = self.dbConnector.execute('''
+            SELECT folder FROM "{schema}".fileHierarchy
+            ORDER BY folder ASC;
+        '''.format(
+            schema=html.escape(project)
+        ), None, 'all')
+        if folderNames is not None and len(folderNames):
+            for f in folderNames:
+                folder = f['folder']
+                if folder is None or not len(folder):
+                    continue
+                parents = folder.strip('/').split('/')
+                tree = _integrateBranch(tree, parents)
+        return tree
+
+
+
+    def listImages(self, project, folder=None, imageAddedRange=None, lastViewedRange=None,
             viewcountRange=None, numAnnoRange=None, numPredRange=None,
             orderBy=None, order='desc', startFrom=None, limit=None):
         '''
@@ -155,7 +189,7 @@ class DataAdministrationMiddleware:
         '''
         
         # submit job 
-        process = celery_interface.listImages.si(project, imageAddedRange,
+        process = celery_interface.listImages.si(project, folder, imageAddedRange,
                                                 lastViewedRange, viewcountRange,
                                                 numAnnoRange, numPredRange,
                                                 orderBy, order, startFrom, limit)

@@ -209,7 +209,42 @@ MODIFICATIONS_sql = [
     'ALTER TABLE "{schema}".cnnstate DROP CONSTRAINT IF EXISTS marketplace_origin_id_fkey;'
     'ALTER TABLE "{schema}".cnnstate ADD CONSTRAINT marketplace_origin_id_fkey FOREIGN KEY (marketplace_origin_id) REFERENCES aide_admin.modelMarketplace(id);',
     'ALTER TABLE aide_admin.modelMarketplace ADD COLUMN IF NOT EXISTS tags VARCHAR;',
-    'ALTER TABLE aide_admin.project ADD COLUMN IF NOT EXISTS archived BOOLEAN DEFAULT FALSE;'
+    'ALTER TABLE aide_admin.project ADD COLUMN IF NOT EXISTS archived BOOLEAN DEFAULT FALSE;',
+    '''
+        /*
+            Last occurrence of substring. Function obtained from here:
+            https://wiki.postgresql.org/wiki/Strposrev
+        */
+        CREATE OR REPLACE FUNCTION strposrev(instring text, insubstring text)
+        RETURNS integer AS
+        $BODY$
+        DECLARE result INTEGER;
+        BEGIN
+            IF strpos(instring, insubstring) = 0 THEN
+            -- no match
+            result:=0;
+            ELSEIF length(insubstring)=1 THEN
+            -- add one to get the correct position from the left.
+            result:= 1 + length(instring) - strpos(reverse(instring), insubstring);
+            ELSE 
+            -- add two minus the legth of the search string
+            result:= 2 + length(instring)- length(insubstring) - strpos(reverse(instring), reverse(insubstring));
+            END IF;
+            RETURN result;
+        END;
+        $BODY$
+        LANGUAGE plpgsql IMMUTABLE STRICT
+        COST 4;
+  ''',
+  '''
+    CREATE OR REPLACE VIEW "{schema}".fileHierarchy AS (
+        SELECT DISTINCT
+        CASE WHEN position('/' IN filename) = 0 THEN null
+        ELSE left(filename, strposrev(filename, '/')-1) END
+        AS folder
+        FROM "{schema}".image
+    );
+  '''
 ]
 
 

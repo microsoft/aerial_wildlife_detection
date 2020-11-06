@@ -9,7 +9,7 @@ class Message {
 
     constructor(text, type, fadeOutTime) {
         this.text = text;
-        this.type = (['success', 'error'].includes(type) ? type : 'regular');
+        this.type = (['success', 'warning', 'error'].includes(type) ? type : 'regular');
         this.fadeOutTime = (typeof(fadeOutTime) === 'number' ? fadeOutTime : 10000);
 
         // setup markup

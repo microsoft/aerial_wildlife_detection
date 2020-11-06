@@ -51,10 +51,35 @@
             </div>
         </div>
     </div>
-    <div id="file-browser"></div>
+    <div class="file-navigator">
+        <div>
+            <div>Folders</div>
+            <div id="file-directory-browser"></div>
+        </div>
+        <div id="file-browser"></div>
+    </div>
 </div>
+<link rel="stylesheet" href="/static/general/css/fileDirectoryBrowser.css?v={{ version }}" />
 <link rel="stylesheet" href="/static/dataAdmin/css/imageBrowser.css?v={{ version }}" />
 <style>
+    .file-navigator {
+        display: flex;
+        flex-direction: row;
+    }
+
+    #file-directory-browser {
+        border: 1px solid #aaa;
+        margin-top: 9px;
+        margin-right: 15px;
+        padding: 15px;
+        min-width: 15%;
+        overflow: auto;
+    }
+
+    #file-browser {
+        flex-grow: 1;
+    }
+
     #filter-box, #action-box {
         border: 1px solid #aaa;
         border-radius: 5px;
@@ -110,6 +135,7 @@
     }
 </style>
 <script src="/static/dataAdmin/js/imageBrowser.js?v={{ version }}"></script>
+<script src="/static/general/js/fileDirectoryBrowser.js?v={{ version }}"></script>
 <script src="/static/dataAdmin/js/taskPolling.js?v={{ version }}"></script>
 <script type="text/javascript">
 
@@ -117,6 +143,25 @@
         // general functions
         function onClickMore(event) {
             updateImageBrowser(false, true);
+        }
+
+        function initializeDirectoryBrowser() {
+            let treeBrowserDiv = $('#file-directory-browser');
+            $.ajax({
+                url: 'getImageFolders',
+                method: 'GET',
+                success: function(data) {
+                    window.directoryBrowser = new DirectoryBrowser(treeBrowserDiv, data['tree']);
+
+                    // refresh listed images on folder select
+                    window.directoryBrowser.on('select', function(element) {
+                        updateImageBrowser(true, false);
+                    });
+                    window.directoryBrowser.on('deselect', function(element) {
+                        updateImageBrowser(true, false);
+                    });
+                }
+            });
         }
 
         function initializeImageBrowser() {
@@ -157,7 +202,15 @@
             // parse filter parameters
             var orderBy = $('#order-by').val();
             var order = $('#order').val();
+
+            let folder = null;
+            if(window.directoryBrowser !== undefined) {
+                folder = window.directoryBrowser.getSelected();
+                if(folder !== null) folder = folder.id;
+            }
+
             params = {
+                folder: folder,
                 orderBy: orderBy,
                 order: order,
                 limit: 100  //TODO
@@ -362,6 +415,9 @@
                 window.dataServerURI += '/';
             }
         });
+
+        // load image folder hierarchy
+        initializeDirectoryBrowser();
 
         promise = promise.done(function() {
             $('#update-image-browser').click(function() {

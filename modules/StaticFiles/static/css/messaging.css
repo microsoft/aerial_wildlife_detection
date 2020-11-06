@@ -47,6 +47,11 @@
     border-color: #69ea5b;
 }
 
+.messager-message-warning {
+    background: #905e18c9;
+    border-color: #edb118;
+}
+
 .messager-message-error {
     background: #8c2a2ac9;
     border-color: #ff4c4c;

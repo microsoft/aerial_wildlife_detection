@@ -121,6 +121,32 @@ class DataAdministrator:
 
 
         ''' Image management functionalities '''
+        @self.app.get('/<project>/getImageFolders')
+        def getImageFolders(project):
+            '''
+                Returns a dict that represents a hierarchical
+                directory tree under which the images are stored
+                in this project. This tree is obtained from the
+                database itself, resp. a view that is generated
+                from the image file names.
+            '''
+            if not self.loginCheck(project=project):
+                abort(401, 'forbidden')
+            
+            try:
+                result = self.middleware.getImageFolders(project)
+                return {
+                    'status': 0,
+                    'tree': result
+                }
+            
+            except Exception as e:
+                return {
+                    'status': 1,
+                    'message': str(e)
+                }
+
+
         @enable_cors
         @self.app.post('/<project>/listImages')
         def listImages(project):
@@ -135,6 +161,8 @@ class DataAdministrator:
             # parse parameters
             now = helpers.current_time()
             params = request.json
+
+            folder = (params['folder'] if 'folder' in params else None)
 
             imageAddedRange = self._parse_range(params, 'imageAddedRange',
                                             datetime.time.min,
@@ -164,6 +192,7 @@ class DataAdministrator:
 
             # get images
             result = self.middleware.listImages(project,
+                                            folder,
                                             imageAddedRange,
                                             lastViewedRange,
                                             viewcountRange,

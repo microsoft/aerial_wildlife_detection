@@ -312,6 +312,7 @@
                                 if(data['result']['imgPaths_valid'].length === 0) {
                                     // something went wrong uploading the image
                                     window.imageBrowser.set('imageURL', this, '/static/dataAdmin/img/error.png');
+                                    window.messager.addMessage('Image "'+fileName+'" could not be uploaded.', 'error', 0);
                                 } else {
                                     var url = window.dataServerURI + window.project + '/files/' +
                                     data['result']['imgPaths_valid'][0];
@@ -336,13 +337,16 @@
                                 if(this in data['result']['imgs_error']) {
                                     var msg = '<span style="color:red">' + data['result']['imgs_error'][this] + '</span>';
                                     window.imageBrowser.set('message', this, msg);
+                                    window.messager.addMessage('Image "'+fileName+'" could not be uploaded (message: "'+data['result']['imgs_error'][this]+'").', 'error', 0);
                                 } else if(this in data['result']['imgs_warn']) {
                                     var msg = '<span style="color:yellow">' + data['result']['imgs_warn'][this] + '</span>';
                                     window.imageBrowser.set('message', this, msg);
+                                    window.messager.addMessage('Warning(s) occurred while uploading image "'+fileName+'": "'+data['result']['imgs_warn'][this]+'".', 'warning', 0);
                                 }
                             } catch(error) {
                                 window.imageBrowser.set('imageURL', this, '/static/dataAdmin/img/error.png');
                                 window.imageBrowser.set('message', this, '<span style="color:red">an unknown error occurred</span>');
+                                window.messager.addMessage('Image "'+fileName+'" could not be uploaded.', 'error', 0);
                             }
                             window.imageBrowser.setProgressBar(this, false);
                             pBar.set(true, pBar.getValue()+1);
@@ -352,6 +356,7 @@
                                 pBar.set(false);
                             }
                             window.uploadedFiles[this] = 1;
+                            window.messager.addMessage('Image "'+fileName+'" uploaded successfully.', 'success');
                         }.bind(key),
                         error: function(xhr, status, error) {
                             window.imageBrowser.set('imageURL', this, '/static/dataAdmin/img/error.png');

@@ -73,7 +73,7 @@ class DataWorker:
 
     
     ''' Image administration functionalities '''
-    def listImages(self, project, imageAddedRange=None, lastViewedRange=None,
+    def listImages(self, project, folder=None, imageAddedRange=None, lastViewedRange=None,
             viewcountRange=None, numAnnoRange=None, numPredRange=None,
             orderBy=None, order='desc', startFrom=None, limit=None):
         '''
@@ -89,8 +89,11 @@ class DataWorker:
         queryArgs = []
 
         filterStr = ''
+        if folder is not None:
+            filterStr += ' filename LIKE %s%'
+            queryArgs.append(folder)
         if imageAddedRange is not None:     #TODO
-            filterStr += ' date_added >= to_timestamp(%s) AND date_added <= to_timestamp(%s) '
+            filterStr += 'AND date_added >= to_timestamp(%s) AND date_added <= to_timestamp(%s) '
             queryArgs.append(imageAddedRange[0])
             queryArgs.append(imageAddedRange[1])
         if lastViewedRange is not None:     #TODO

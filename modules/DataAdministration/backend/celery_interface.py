@@ -28,10 +28,10 @@ def aide_internal_notify(message):
 
 
 @current_app.task(name='DataAdministration.list_images')
-def listImages(project, imageAddedRange=None, lastViewedRange=None,
+def listImages(project, folder=None, imageAddedRange=None, lastViewedRange=None,
         viewcountRange=None, numAnnoRange=None, numPredRange=None,
         orderBy=None, order='desc', startFrom=None, limit=None):
-    return worker.listImages(project, imageAddedRange, lastViewedRange,
+    return worker.listImages(project, folder, imageAddedRange, lastViewedRange,
         viewcountRange, numAnnoRange, numPredRange,
         orderBy, order, startFrom, limit)
 
