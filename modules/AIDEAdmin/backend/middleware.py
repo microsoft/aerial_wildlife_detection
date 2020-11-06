@@ -12,7 +12,7 @@ from celery import current_app
 from constants.version import AIDE_VERSION
 from modules.Database.app import Database
 from util import celeryWorkerCommons
-from util.helpers import is_localhost
+from util.helpers import LogDecorator, is_localhost
 
 
 class AdminMiddleware:
@@ -33,6 +33,9 @@ class AdminMiddleware:
             AIController and/or FileServer is not the same as on the
             host, or if the servers cannot be contacted.
         '''
+        if warn_error:
+            print('Contacting AIController...', end='')
+
         # check if running on the main host
         modules = os.environ['AIDE_MODULES'].strip().split(',')
         modules = set([m.strip() for m in modules])
@@ -53,28 +56,43 @@ class AdminMiddleware:
                     print(f'\tAIController URI: {aic_uri}')
                     print(f'\tAIController AIDE version:    {aic_version}')
                     print(f'\tAIDE version on this machine: {AIDE_VERSION}')
+                
+                elif warn_error:
+                    LogDecorator.print_status('ok')
             except Exception as e:
                 if warn_error:
+                    LogDecorator.print_status('fail')
                     print(f'WARNING: error connecting to AIController (message: "{str(e)}").')
                 aic_version = None
         else:
             aic_version = AIDE_VERSION
+            if warn_error:
+                LogDecorator.print_status('ok')
+
         if not is_localhost(fs_uri):
             # same for the file server
+            if warn_error:
+                print('Contacting FileServer...', end='')
             try:
                 fs_response = requests.get(os.path.join(fs_uri, 'version'))
                 fs_version = fs_response.text
                 if warn_error and aic_version != AIDE_VERSION:
+                    LogDecorator.print_status('warn')
                     print('WARNING: AIDE version of connected FileServer differs from main host.')
                     print(f'\tFileServer URI: {fs_uri}')
                     print(f'\tFileServer AIDE version:       {fs_version}')
                     print(f'\tAIDE version on this machine: {AIDE_VERSION}')
+                elif warn_error:
+                    LogDecorator.print_status('ok')
             except Exception as e:
                 if warn_error:
+                    LogDecorator.print_status('fail')
                     print(f'WARNING: error connecting to FileServer (message: "{str(e)}").')
                 fs_version = None
         else:
             fs_version = AIDE_VERSION
+            if warn_error:
+                LogDecorator.print_status('ok')
 
         # query database
         dbVersion = self.dbConnector.execute('SHOW server_version;', None, 1)[0]['server_version']

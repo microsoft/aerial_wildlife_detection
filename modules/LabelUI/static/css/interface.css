@@ -253,7 +253,7 @@ canvas {
     top: 0;
     bottom: 0;
     padding: 40px;
-    z-index: 10;
+    z-index: 100;
     width: 720px;
     height: 250px;
     max-width: 50%;

@@ -12,17 +12,30 @@ from util import helpers
 
 class FileServer():
 
-    def __init__(self, config, app):
+    def __init__(self, config, app, verbose_start=False):
         self.config = config
         self.app = app
 
+        if verbose_start:
+            print('FileServer'.ljust(20), end='')
+
         if not helpers.is_fileServer(config):
+            if verbose_start:
+                helpers.LogDecorator.print_status('fail')
             raise Exception('Not a valid FileServer instance.')
+        
+        try:
+            self.staticDir = self.config.getProperty('FileServer', 'staticfiles_dir')
+            self.staticAddressSuffix = self.config.getProperty('FileServer', 'staticfiles_uri_addendum', type=str, fallback='').strip()
 
-        self.staticDir = self.config.getProperty('FileServer', 'staticfiles_dir')
-        self.staticAddressSuffix = self.config.getProperty('FileServer', 'staticfiles_uri_addendum', type=str, fallback='').strip()
+            self._initBottle()
+        except Exception as e:
+            if verbose_start:
+                helpers.LogDecorator.print_status('fail')
+            raise Exception(f'Could not launch FileServer (message: "{str(e)}").')
 
-        self._initBottle()
+        if verbose_start:
+            helpers.LogDecorator.print_status('ok')
 
 
     def _initBottle(self):

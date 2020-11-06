@@ -8,18 +8,31 @@ import html
 from bottle import post, request, response, abort
 from modules.AIController.backend.middleware import AIMiddleware
 from modules.AIController.backend import celery_interface
+from util.helpers import LogDecorator
 
 
 class AIController:
 
     #TODO: relay routings if AIController is on a different machine
 
-    def __init__(self, config, app):
+    def __init__(self, config, app, verbose_start=False):
         self.config = config
         self.app = app
-        self.middleware = AIMiddleware(config)
-        self.login_check = None
-        self._initBottle()
+
+        if verbose_start:
+            print('AIController'.ljust(18), end='')
+
+        try:
+            self.middleware = AIMiddleware(config)
+            self.login_check = None
+            self._initBottle()
+        except Exception as e:
+            if verbose_start:
+                LogDecorator.print_status('fail')
+            raise Exception(f'Could not launch AIController (message: "{str(e)}").')
+
+        if verbose_start:
+            LogDecorator.print_status('ok')
 
 
     def loginCheck(self, project=None, admin=False, superuser=False, canCreateProjects=False, extend_session=False):

@@ -10,17 +10,29 @@ from kombu import Queue
 from modules.AIWorker.backend.worker import functional
 from modules.AIWorker.backend import fileserver
 from modules.Database.app import Database
-from util.helpers import get_class_executable
+from util.helpers import LogDecorator, get_class_executable
 
 
 class AIWorker():
 
-    def __init__(self, config, passiveMode=False):
+    def __init__(self, config, passiveMode=False, verbose_start=False):
         self.config = config
-        self.dbConnector = Database(config)
-        self.passiveMode = passiveMode
-        self._init_fileserver()
-            
+
+        if verbose_start:
+            print('AIWorker'.ljust(22), end='')
+
+        try:
+            self.dbConnector = Database(config)
+            self.passiveMode = passiveMode
+            self._init_fileserver()
+        except Exception as e:
+            if verbose_start:
+                LogDecorator.print_status('fail')
+            raise Exception(f'Could not launch AIWorker (message: "{str(e)}").')
+
+        if verbose_start:
+            LogDecorator.print_status('ok')
+
 
     def _init_fileserver(self):
         '''

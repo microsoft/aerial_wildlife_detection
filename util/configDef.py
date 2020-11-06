@@ -6,20 +6,34 @@
 
 import os
 from configparser import ConfigParser
+from util.helpers import LogDecorator
 
 
 class Config():
 
-    def __init__(self, override_config_path=None):
+    def __init__(self, override_config_path=None, verbose_start=False):
+        if verbose_start:
+            print('Reading configuration...'.ljust(6), end='')
         if isinstance(override_config_path, str) and len(override_config_path):
             configPath = override_config_path
         elif 'AIDE_CONFIG_PATH' in os.environ:
             configPath = os.environ['AIDE_CONFIG_PATH']
         else:
+            if verbose_start:
+                LogDecorator.print_status('fail')
             raise ValueError('Neither system environment variable "AIDE_CONFIG_PATH" nor override path are set.')
-            
-        self.config = ConfigParser()
-        self.config.read(configPath)
+        
+        self.config = None
+        try:
+            self.config = ConfigParser()
+            self.config.read(configPath)
+        except Exception as e:
+            if verbose_start:
+                LogDecorator.print_status('fail')
+            raise Exception(f'Could not read configuration file (message: "{str(e)}").')
+        
+        if verbose_start:
+            LogDecorator.print_status('ok')
 
 
     def getProperty(self, module, propertyName, type=str, fallback=None):

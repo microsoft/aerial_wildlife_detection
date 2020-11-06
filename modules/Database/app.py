@@ -1,7 +1,7 @@
 '''
     Database connection functionality.
 
-    2019 Benjamin Kellenberger
+    2019-20 Benjamin Kellenberger
 '''
 
 from contextlib import contextmanager
@@ -9,22 +9,38 @@ import psycopg2
 from psycopg2.pool import ThreadedConnectionPool
 from psycopg2.extras import RealDictCursor, execute_values
 psycopg2.extras.register_uuid()
-
+from util.helpers import LogDecorator
 
 
 class Database():
 
-    def __init__(self, config):
+    def __init__(self, config, verbose_start=False):
         self.config = config
 
-        # get DB parameters
-        self.database = config.getProperty('Database', 'name').lower()
-        self.host = config.getProperty('Database', 'host')
-        self.port = config.getProperty('Database', 'port')
-        self.user = config.getProperty('Database', 'user').lower()
-        self.password = config.getProperty('Database', 'password')
+        if verbose_start:
+            print('Connecting to database...'.ljust(5), end='')
 
-        self._createConnectionPool()
+        # get DB parameters
+        try:
+            self.database = config.getProperty('Database', 'name').lower()
+            self.host = config.getProperty('Database', 'host')
+            self.port = config.getProperty('Database', 'port')
+            self.user = config.getProperty('Database', 'user').lower()
+            self.password = config.getProperty('Database', 'password')
+        except Exception as e:
+            if verbose_start:
+                LogDecorator.print_status('fail')
+            raise Exception(f'Incomplete database credentials provided in configuration file (message: "{str(e)}").')
+
+        try:
+            self._createConnectionPool()
+        except Exception as e:
+            if verbose_start:
+                LogDecorator.print_status('fail')
+            raise Exception(f'Could not connect to database (message: "{str(e)}").')
+
+        if verbose_start:
+            LogDecorator.print_status('ok')
 
 
     def _createConnectionPool(self):

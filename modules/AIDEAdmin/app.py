@@ -14,10 +14,9 @@ from constants.version import AIDE_VERSION
 from .backend.middleware import AdminMiddleware
 
 
-
 class AIDEAdmin:
 
-    def __init__(self, config, app):
+    def __init__(self, config, app, verbose_start=False):
         self.config = config
         self.app = app
         self.staticDir = 'modules/AIDEAdmin/static'

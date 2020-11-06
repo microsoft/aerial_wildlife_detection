@@ -11,7 +11,7 @@ import bottle
 from bottle import request, response, static_file, redirect, abort, SimpleTemplate
 from constants.version import AIDE_VERSION
 from .backend.middleware import DBMiddleware
-from util.helpers import parse_boolean
+from util.helpers import LogDecorator, parse_boolean
 
 
 #TODO
@@ -19,14 +19,26 @@ bottle.BaseRequest.MEMFILE_MAX = 1024**3
 
 class LabelUI():
 
-    def __init__(self, config, app):
+    def __init__(self, config, app, verbose_start=False):
         self.config = config
         self.app = app
         self.staticDir = 'modules/LabelUI/static'
-        self.middleware = DBMiddleware(config)
-        self.login_check = None
 
-        self._initBottle()
+        if verbose_start:
+            print('LabelUI'.ljust(23), end='')
+        
+        try:
+            self.middleware = DBMiddleware(config)
+            self.login_check = None
+
+            self._initBottle()
+        except Exception as e:
+            if verbose_start:
+                LogDecorator.print_status('fail')
+            raise Exception(f'Could not launch LabelUI (message: "{str(e)}").')
+
+        if verbose_start:
+            LogDecorator.print_status('ok')
 
     
     def loginCheck(self, project=None, admin=False, superuser=False, canCreateProjects=False, extend_session=False):

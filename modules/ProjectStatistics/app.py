@@ -13,7 +13,7 @@ from util.helpers import parse_boolean
 
 class ProjectStatistics:
 
-    def __init__(self, config, app):
+    def __init__(self, config, app, verbose_start=False):
         self.config = config
         self.app = app
         self.staticDir = 'modules/ProjectStatistics/static'

@@ -24,7 +24,7 @@ from util import helpers
 
 class ModelMarketplace:
 
-    def __init__(self, config, app):
+    def __init__(self, config, app, verbose_start=False):
         self.config = config
         self.app = app
 
