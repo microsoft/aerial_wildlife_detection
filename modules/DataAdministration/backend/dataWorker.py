@@ -89,9 +89,9 @@ class DataWorker:
         queryArgs = []
 
         filterStr = ''
-        if folder is not None:
-            filterStr += ' filename LIKE %s%'
-            queryArgs.append(folder)
+        if folder is not None and isinstance(folder, str):
+            filterStr += ' filename LIKE %s '
+            queryArgs.append(folder + '%')
         if imageAddedRange is not None:     #TODO
             filterStr += 'AND date_added >= to_timestamp(%s) AND date_added <= to_timestamp(%s) '
             queryArgs.append(imageAddedRange[0])

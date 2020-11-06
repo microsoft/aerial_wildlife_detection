@@ -199,6 +199,24 @@
         }
 
         function updateImageBrowser(replaceImages, showPopupMessage) {
+            // keep track of latest value for "show more" button
+            if(!replaceImages) {
+                try {
+                    var numEntries = window.imageBrowser.getNumEntries();
+                    if(numEntries > 0) {
+                        var lastEntryID = window.imageBrowser.getEntry(numEntries-1)['id'];
+                        if(lastEntryID !== null && lastEntryID !== undefined) {
+                            params['start_from'] = lastEntryID;
+                        }
+                    }
+                } catch {}
+            } else {
+                // temporarily clear existing items while we await result
+                window.imageBrowser.setImages(null);
+                window.imageBrowser.setLoadingOverlay(true, 'Loading...');
+            }
+
+
             // parse filter parameters
             var orderBy = $('#order-by').val();
             var order = $('#order').val();
@@ -215,19 +233,6 @@
                 order: order,
                 limit: 100  //TODO
             };
-
-            // keep track of latest value for "show more" button
-            if(!replaceImages) {
-                try {
-                    var numEntries = window.imageBrowser.getNumEntries();
-                    if(numEntries > 0) {
-                        var lastEntryID = window.imageBrowser.getEntry(numEntries-1)['id'];
-                        if(lastEntryID !== null && lastEntryID !== undefined) {
-                            params['start_from'] = lastEntryID;
-                        }
-                    }
-                } catch {}
-            }
             
 
             //TODO: params['start_from'] = null;
@@ -297,6 +302,7 @@
                     // append
                     window.imageBrowser.addImages(images);
                 }
+                window.imageBrowser.setLoadingOverlay(false);
 
                 if(showPopupMessage) {
                     window.messager.addMessage('Images loaded.', 'success');   

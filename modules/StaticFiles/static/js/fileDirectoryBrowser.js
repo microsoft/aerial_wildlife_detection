@@ -11,7 +11,10 @@ class DirectoryElement {
         this.name = name;
         this.parent = parent;
         this.browser = browser;
-        this.id = parent.id + '/' + this.name;
+        if(typeof(parent.id) === 'string' && parent.id.length > 0)
+            this.id = parent.id + '/' + this.name;
+        else
+            this.id = this.name;
         this.selected = false;
 
         this.children = {};
@@ -142,8 +145,7 @@ class DirectoryBrowser {
                 this.selectedElement = child.id;
                 this._fireEvent('select', child);
             } else {
-                this._fire
-                Event('deselect', child);
+                this._fireEvent('deselect', child);
             }
         }
     }
