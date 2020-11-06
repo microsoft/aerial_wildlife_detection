@@ -15,6 +15,7 @@ import shutil
 import tempfile
 import zipfile
 import zlib
+import math
 from datetime import datetime
 import pytz
 from uuid import UUID
@@ -136,7 +137,17 @@ class DataWorker:
             )
 
         limitStr = sql.SQL('')
-        if isinstance(limit, int):
+        if isinstance(limit, float):
+            if not math.isnan(limit):
+                limit = int(limit)
+            else:
+                limit = None
+        elif isinstance(limit, str):
+            try:
+                limit = int(limit)
+            except:
+                limit = None
+        if isinstance(limit, int) and limit > 0:
             limitStr = sql.SQL('LIMIT %s')
             queryArgs.append(limit)
 

@@ -5,8 +5,8 @@
             <div id="filter-box">
                 <h3 id="filter-images-heading" style="cursor:pointer">Filter options</h3>
                 <div id="filter-images">
-                    <label for="order-by">Order by:</label>
-                    <select id="order-by">
+                    <label for="order-by" style="width:80px">Order by:</label>
+                    <select id="order-by" style="width:150px">
                         <option value="filename">file name</option>
                         <option value="date_added">date added</option>
                         <option value="last_viewed">last viewed</option>
@@ -19,8 +19,12 @@
                         <option value="desc">descending</option>
                         <option value="asc">ascending</option>
                     </select>
+                    <br />
+                    <label for="limit-to" style="width:80px">Limit to:</label>
+                    <input type="number" id="limit-to" min="0" value="100" style="width:150px" />
+                    <span>images (0 = unlimited)</span>
 
-                    <button id="update-image-browser" class="btn btn-sm btn-primary">Update</button>
+                    <button id="update-image-browser" class="btn btn-sm btn-primary" style="float:right">Update</button>
                 </div>
             </div>
         </div>
@@ -217,8 +221,9 @@
 
 
             // parse filter parameters
-            var orderBy = $('#order-by').val();
-            var order = $('#order').val();
+            let limitTo = parseInt($('#limit-to').val());
+            let orderBy = $('#order-by').val();
+            let order = $('#order').val();
 
             let folder = null;
             if(window.directoryBrowser !== undefined) {
@@ -230,7 +235,7 @@
                 folder: folder,
                 orderBy: orderBy,
                 order: order,
-                limit: 100  //TODO
+                limit: limitTo
             };
             
 
