@@ -147,7 +147,7 @@ class DataWorker:
                 limit = int(limit)
             except:
                 limit = self.NUM_IMAGES_LIMIT
-        else:
+        elif not isinstance(limit, int):
             limit = self.NUM_IMAGES_LIMIT
         limit = max(min(limit, self.NUM_IMAGES_LIMIT), 1)
         limitStr = sql.SQL('LIMIT %s')
