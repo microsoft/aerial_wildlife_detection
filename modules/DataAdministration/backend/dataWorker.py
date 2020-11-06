@@ -45,7 +45,7 @@ class DataWorker:
         ':'    # for macOS
     )
 
-
+    NUM_IMAGES_LIMIT = 4096         # maximum number of images that can be queried at once (to avoid bottlenecks)
 
     def __init__(self, config, passiveMode=False):
         self.config = config
@@ -141,19 +141,18 @@ class DataWorker:
             if not math.isnan(limit):
                 limit = int(limit)
             else:
-                limit = None
+                limit = self.NUM_IMAGES_LIMIT
         elif isinstance(limit, str):
             try:
                 limit = int(limit)
             except:
-                limit = None
-        if isinstance(limit, int) and limit > 0:
-            limitStr = sql.SQL('LIMIT %s')
-            queryArgs.append(limit)
-
-        if not len(queryArgs):
-            queryArgs = None
-
+                limit = self.NUM_IMAGES_LIMIT
+        else:
+            limit = self.NUM_IMAGES_LIMIT
+        limit = max(min(limit, self.NUM_IMAGES_LIMIT), 1)
+        limitStr = sql.SQL('LIMIT %s')
+        queryArgs.append(limit)
+        
         queryStr = sql.SQL('''
             SELECT img.id, filename, EXTRACT(epoch FROM date_added) AS date_added,
                 COALESCE(viewcount, 0) AS viewcount,
