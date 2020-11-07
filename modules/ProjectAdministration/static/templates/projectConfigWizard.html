@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <title>AIDE: new project</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous" />
+        <link rel="stylesheet" href="/static/interface/css/interface.css?v={{ version }}" />
+        <link rel="stylesheet" href="/static/general/css/messaging.css?v={{ version }}" />
+        <link rel="stylesheet" href="/static/projectAdmin/css/config-page.css?v={{ version }}" />
+        <style>
+            #setup-navigation-controls {
+                text-align: center;
+                padding: 20px;
+            }
+            #setup-navigation-controls > button {
+                border-radius: 20px;
+                margin-left: 10px;
+                margin-right: 10px;
+            }
+
+            #contents {
+                color: white;
+                margin: 0 auto;
+                width: 90vw;
+                padding: 20px;
+                height: calc(100vh - 300px);
+                overflow-y: auto;
+            }
+
+            #prev-next-navigation-controls {
+                width: 90vh;
+                text-align: center;
+            }
+        </style>
+        <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+        <!-- TODO: ugly solution; these are only needed in "userInterface.html", but should not be loaded twice: -->
+        <script type="text/javascript" src="/static/interface/js/labelClassHandler.js?v={{ version }}"></script>
+        <script type="text/javascript" src="/static/interface/js/dataEntry.js?v={{ version }}"></script>
+        <script type="text/javascript" src="/static/interface/js/annotationPrimitives.js?v={{ version }}"></script>
+        <script type="text/javascript" src="/static/interface/js/viewport/imageViewport.js?v={{ version }}"></script>
+        <script type="text/javascript" src="/static/interface/js/renderPrimitives.js?v={{ version }}"></script>
+        <script type="text/javascript" src="/static/interface/js/util.js?v={{ version }}"></script>
+        <script type="text/javascript">
+
+            window.projectShortname = '{{ projectShortname }}';
+            selectedPanel = null;
+
+            function parseURLparameter(name) {
+                let url = new URL(window.location.href);
+                return url.searchParams.get(name);
+            }
+
+            function setPanel(panelID) {
+                window.showLoadingOverlay(true);
+                let contentPane = $('#contents');
+                $.ajax({
+                    url: 'config/panels/' + panelID,
+                    success: function(data) {
+
+                        selectedPanel = panelID;
+                        contentPane.empty();
+                        contentPane.append(data);
+
+                        $('#setup-navigation-controls').find('button').each(function() {
+                            if($(this).attr('id') === panelID) {
+                                $(this).removeClass('btn-outline-secondary');
+                                $(this).addClass('btn-primary');
+                            } else {
+                                $(this).addClass('btn-outline-secondary');
+                                $(this).removeClass('btn-primary');
+                            }
+                        });
+
+                        // update URL and page title
+                        document.title = 'AIDE: ' + window.projectShortname + ' - ' + panelID;
+                        window.history.pushState('AIDE', 'AIDE: {{ projectShortname }}', '?t='+panelID);
+                    },
+                    statusCode: {
+                        401: function(xhr) {
+                            window.renewSessionRequest(xhr, function() {
+                                setPanel(panelID);
+                            });
+                        },
+                        404: function(xhr) {
+                            // invalid panel name; reset to default
+                            window.location.href = '?t=overview';
+                        }
+                    }
+                });
+            }
+
+            $(document).ready(function() {
+
+                if(selectedPanel === null) {
+                    selectedPanel = parseURLparameter('t');
+                    if(selectedPanel === null) selectedPanel = 'labelClasses';  // default
+                    setPanel(selectedPanel);
+                }
+
+                $('#setup-navigation-controls').find('button').each(function() {
+                    $(this).on('click', function() {
+                        let id = $(this).attr('id');
+                        if(typeof(id) === 'string') {
+                            setPanel(id);
+                        }
+                    });
+                });
+
+                window.showLoadingOverlay(false);
+            });
+        </script>
+    </head>
+
+    <body>
+        <!-- Page Content -->
+        <div id="page-container">
+            <div id="content-wrapper">
+                <!-- Overlay -->
+                <div id="overlay" class="overlay">
+                    <div id="overlay-card" class="overlay-card card container"></div>
+                    <div id="overlay-loader">
+                        <div style="text-align:center;margin-bottom:20px;font-size:20px;text-align:center;">Loading...</div>
+                        <!-- blatant copy of MS azure's splash screen loading dots -->
+                        <div class="azure-loadingdots">
+                            <div></div>
+                            <div></div>
+                            <div></div>
+                            <div></div>
+                            <div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navigation bar -->
+                <nav class="navbar navbar-expand-lg navbar-light bg-dark border-bottom">
+                    <ul class="nav navbar-nav">
+                        <li class="nav-item header-text">
+                            <div class="project-path"><a href="/">Projects</a> / <a href="/{{ projectShortname }}">{{ projectTitle }}</a> / <a href="/{{ projectShortname }}/setup">setup</a></div>
+                            <h1>Setup</h1>
+                        </li>
+                    </ul>
+                    <ul class="nav navbar-nav ml-auto">
+                        <li class="nav-item dropdown float-right">
+                            <div class="dropdown nav navbar-nav" style="float:right;">
+                                <a class="dropdown-toggle btn" id="navbar-user-dropdown" data-toggle="dropdown" href="#" style="color:white;font-weight:bold;" >{{ username }}</a>
+                                <ul class="dropdown-menu" role="menu" aria-labelledby="navbar-user-dropdown">
+                                    <li class="dropdown-item"><a id="logout" href="logout" class="btn btn-sm btn-danger">Log Out</a></li>
+                                </ul>
+                            </div>
+                        </li>
+                    </ul>
+                </nav>
+                <div class="grad-border-h"></div>
+
+                <!-- setup navigation -->
+                <div id="setup-navigation-controls">
+                    <button class="setup-navigation-step btn btn-outline-secondary" disabled>
+                        1 – New Project
+                    </button>
+                    <button id="labelClasses" class="setup-navigation-step btn btn-outline-secondary">
+                        2 – Label Classes
+                    </button>
+                    <button id="dataUpload" class="setup-navigation-step btn btn-outline-secondary">
+                        3 – Data Upload
+                    </button>
+                    <!-- TODO: new page with Model Marketplace -->
+                    <button id="modelMarketplace" class="setup-navigation-step btn btn-outline-secondary">
+                        4 – AI model
+                    </button>
+                    <button id="userInterface" class="setup-navigation-step btn btn-outline-secondary">
+                        5 – Interface
+                    </button>
+                </div>
+                
+                <!-- panel contents -->
+                <div id="contents"></div>
+
+                <!-- navigation buttons -->
+                <div id="prev-next-navigation-controls">
+                    <button id="previous-field" class="btn btn-primary" style="float:left;margin-left:120px;">Previous</button>
+                    <button id="next-field" class="btn btn-primary" style="float:right;margin-right:120px;">Next</button>
+                </div>
+            </div>
+
+            <footer class="page-footer" id="footer">
+                <div class="ms-logo">
+                    <a href="about"><img height="100%" src="/static/general/img/ms_logo.png" /></a>
+                </div>
+            </footer>
+        </div>
+    </body>
+</html>

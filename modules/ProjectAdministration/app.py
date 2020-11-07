@@ -55,6 +55,10 @@ class ProjectConfigurator:
 
         with open(os.path.abspath(os.path.join(self.staticDir, 'templates/projectConfiguration.html')), 'r', encoding='utf-8') as f:
             self.projConf_template = SimpleTemplate(f.read())
+
+        with open(os.path.abspath(os.path.join(self.staticDir, 'templates/projectConfigWizard.html')), 'r', encoding='utf-8') as f:
+            self.projSetup_template = SimpleTemplate(f.read())
+            
         
         self.panelTemplates = {}
         panelNames = os.listdir(os.path.join(self.staticDir, 'templates/panels'))
@@ -113,6 +117,37 @@ class ProjectConfigurator:
                 projectTitle=projectData['name'],
                 projectDescription=projectData['description'],
                 username=username)
+
+
+        @self.app.route('/<project>/setup')
+        def send_project_setup_page(project):
+
+            #TODO
+            if not self.loginCheck():
+                return self.__redirect(loginPage=True, redirect='/' + project + '/setup')
+
+            # get project data (and check if project exists)
+            projectData = self.middleware.getProjectInfo(project, ['name', 'description', 'interface_enabled', 'demomode'])
+            if projectData is None:
+                return self.__redirect()
+
+            if not self.loginCheck(project=project, extend_session=True):
+                return redirect('/')
+
+            if not self.loginCheck(project=project, admin=True, extend_session=True):
+                return redirect('/' + project + '/interface')
+
+            # render configuration template
+            try:
+                username = html.escape(request.get_cookie('username'))
+            except:
+                username = ''
+
+            return self.projSetup_template.render(
+                    version=AIDE_VERSION,
+                    projectShortname=project,
+                    projectTitle=projectData['name'],
+                    username=username)
 
 
         @self.app.route('/<project>/configuration')
