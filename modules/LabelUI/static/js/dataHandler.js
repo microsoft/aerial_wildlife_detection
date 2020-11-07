@@ -182,6 +182,22 @@ class DataHandler {
     }
 
 
+    _loadFirstBatch() {
+        /**
+         * Checks if an image UUID or a list thereof is provided in the URL
+         * and loads those image(s) in that case.
+         * Else proceeds loading regular batches.
+         */
+        let url = new URL(window.location.href);
+        let uuids_load = url.searchParams.get('imgs');
+        if(typeof(uuids_load) === 'string') {
+            uuids_load = uuids_load.split(',');
+            return this._loadFixedBatch(uuids_load);
+        } else {
+            return this._loadNextBatch();
+        }
+    }
+
     _loadNextBatch() {
         var self = this;
 
@@ -193,6 +209,8 @@ class DataHandler {
                 // clear current entries
                 self.parentDiv.empty();
                 self.dataEntries = [];
+
+                let imgIDs = '';
 
                 for(var d in data['entries']) {
                     // create new data entry
@@ -216,6 +234,8 @@ class DataHandler {
                     // append
                     self.parentDiv.append(entry.markup);
                     self.dataEntries.push(entry);
+                    
+                    imgIDs += d + ','
                 }
 
                 // update present classes list
@@ -231,6 +251,14 @@ class DataHandler {
                         // re-check
                         self._check_user_finished();
                     }
+                }
+
+                // modify URL
+                if(imgIDs.length > 0) {
+                    imgIDs = imgIDs.slice(0, imgIDs.length-1);  // remove trailing comma
+                    window.history.replaceState({}, document.title, 'interface?imgs=' + imgIDs);
+                } else {
+                    window.history.replaceState({}, document.title, 'interface');
                 }
             },
             error: function(xhr, status, error) {
@@ -280,6 +308,8 @@ class DataHandler {
                 self.parentDiv.empty();
                 self.dataEntries = [];
 
+                let imgIDs = '';
+
                 for(var d in data['entries']) {
                     // create new data entry
                     switch(String(window.annotationType)) {
@@ -306,6 +336,8 @@ class DataHandler {
                     // update min and max timestamp
                     var nextTimestamp = data['entries'][d]['last_checked'];
                     minTimestamp = Math.max(minTimestamp, nextTimestamp+1);
+
+                    imgIDs += d + ',';
                 }
 
                 // update present classes list
@@ -317,6 +349,14 @@ class DataHandler {
 
                 // adjust width of entries
                 window.windowResized();
+
+                // modify URL
+                if(imgIDs.length > 0) {
+                    imgIDs = imgIDs.slice(0, imgIDs.length-1);  // remove trailing comma
+                    window.history.replaceState({}, document.title, 'interface?imgs=' + imgIDs);
+                } else {
+                    window.history.replaceState({}, document.title, 'interface');
+                }
             },
             error: function(xhr, status, error) {
                 if(error == 'Unauthorized') {
@@ -396,7 +436,7 @@ class DataHandler {
         var self = this;
 
         // check if changed and then submit current annotations first
-        $.ajax({
+        return $.ajax({
             url: 'getImages',
             contentType: "application/json; charset=utf-8",
             dataType: 'json',
@@ -404,11 +444,22 @@ class DataHandler {
             type: 'POST',
             success: function(data) {
 
+                let imgIDs = '';    // for updating URL in case of errors
+                let errors = '';
+
                 // clear current entries
                 self.parentDiv.empty();
                 self.dataEntries = [];
+
+                // add new ones
                 for(var d in batch) {
-                    var entryID = batch[d];
+                    let entryID = batch[d];
+
+                    if(!data['entries'].hasOwnProperty(entryID) || (data.hasOwnProperty('imgs_malformed') && data['imgs_malformed'].hasOwnProperty(entryID))) {
+                        errors += entryID + ', ';
+                        continue;
+                    }
+
                     switch(String(window.annotationType)) {
                         case 'labels':
                             var entry = new ClassificationEntry(entryID, data['entries'][entryID]);
@@ -429,6 +480,8 @@ class DataHandler {
                     // append
                     self.parentDiv.append(entry.markup);
                     self.dataEntries.push(entry);
+
+                    imgIDs += entryID + ',';
                 }
 
                 // update present classes list
@@ -438,6 +491,20 @@ class DataHandler {
                 window.windowResized();
 
                 window.setUIblocked(false);
+
+                // modify URL
+                if(imgIDs.length > 0) {
+                    imgIDs = imgIDs.slice(0, imgIDs.length-1);  // remove trailing comma
+                    window.history.replaceState({}, document.title, 'interface?imgs=' + imgIDs);
+                } else {
+                    window.history.replaceState({}, document.title, 'interface');
+                }
+
+                // show message in case of errors
+                if(errors.length > 0) {
+                    if(errors.endsWith(', ')) errors = errors.slice(0, errors.length-2);
+                    window.messager.addMessage('The following images could not be found or loaded:\n'+errors, 'error');
+                }
             },
             error: function(xhr, status, error) {
                 if(error == 'Unauthorized') {

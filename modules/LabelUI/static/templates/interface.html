@@ -58,9 +58,15 @@
                     </li>
                 </ul>
                 <ul class="nav navbar-nav ml-auto">
+                    <li class="nav-item" id="project-config-links" style="display:none;margin-right:120px;">
+                        <a class="btn btn-sm btn-success" href="configuration?t=overview" target="_blank">Statistics</a>
+                        <a class="btn btn-sm btn-secondary" href="configuration?t=general" target="_blank">Configure</a>
+                        <a class="btn btn-sm btn-dark" href="configuration?t=dataManagement" target="_blank">Data Management</a>
+                        <a class="btn btn-sm btn-info" href="configuration?t=aiModel" target="_blank">AI model</a>
+                    </li>
                     <li class="nav-item dropdown float-right">
-                        <button class="btn btn-info" onclick="javascript:window.showTutorial();">Help</button>
-                        <a id="login-button" class="btn btn-primary" href="/login?redirect={{ projectShortname }}/interface" style="display:none;">Log in</a>
+                        <button class="btn btn-sm btn-info" onclick="javascript:window.showTutorial();">Help</button>
+                        <a id="login-button" class="btn btn-sm btn-primary" href="/login?redirect={{ projectShortname }}/interface" style="display:none;">Log in</a>
                         <div class="dropdown nav navbar-nav" id="navbar-dropdown" style="float:right;">
                             <a class="dropdown-toggle btn" id="navbar-user-dropdown" data-toggle="dropdown" href="#" style="color:white;font-weight:bold;" >{{ username }}</a>
                             <ul class="dropdown-menu" role="menu" aria-labelledby="navbar-user-dropdown">

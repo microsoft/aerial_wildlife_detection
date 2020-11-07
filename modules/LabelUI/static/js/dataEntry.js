@@ -1183,7 +1183,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
 
     _drawCrosshairLines(coords, visible) {
         if(window.uiBlocked) return;
-        if(this.crosshairLines ===null && visible) {
+        if((this.crosshairLines === null || this.crosshairLines === undefined) && visible) {
             // create
             var vertLine = new LineElement(this.entryID + '_crosshairX', coords[0], 0, coords[0], window.defaultImage_h,
                                 window.styles.crosshairLines,
@@ -1197,7 +1197,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
             this.viewport.addRenderElement(this.crosshairLines);
             this.canvas.css('cursor', 'crosshair');
 
-        } else {
+        } else if(this.crosshairLines !== null && this.crosshairLines !== undefined) {
             if(visible) {
                 // update
                 this.crosshairLines.elements[0].setProperty('startX', coords[0]);

@@ -18,7 +18,7 @@ class DirectoryElement {
         this.selected = false;
 
         this.children = {};
-        if(typeof(childDefinitions) === 'object') {
+        if(childDefinitions !== undefined && typeof(childDefinitions) === 'object') {
             let childKeys = Object.keys(childDefinitions);
             for(var k=0; k<childKeys.length; k++) {
                 let child = new DirectoryElement(childKeys[k], childDefinitions[childKeys[k]], this, this.browser);
@@ -93,8 +93,13 @@ class DirectoryElement {
 
 class DirectoryBrowser {
 
-    constructor(domElement, tree) {
+    constructor(domElement, tree, rootElementName) {
         this.domElement = $(domElement);
+        
+        this.rootElementName = rootElementName;
+        if(this.rootElementName === undefined || typeof(this.rootElementName) !== 'string') {
+            this.rootElementName = '/';
+        }
 
         this.elements = {};
         this.selectedElement = null;
@@ -114,12 +119,8 @@ class DirectoryBrowser {
         this.elements = {};
         this.selectedElement = null;
 
-        if(this.tree === undefined || typeof(this.tree) !== 'object') return;
-
-        for(var childKey in this.tree) {
-            let child = new DirectoryElement(childKey, this.tree[childKey], this, this);
-            this.domElement.append(child.markup);
-        }
+        this.rootElement = new DirectoryElement(this.rootElementName, this.tree, this, this);
+        this.domElement.append(this.rootElement.markup);
     }
 
     setTree(tree) {
@@ -150,7 +151,7 @@ class DirectoryBrowser {
         }
     }
 
-    getSelected() {
+    getSelected(prependRoot) {
         if(this.selectedElement === null) return null;
         else return this.elements[this.selectedElement];
     }

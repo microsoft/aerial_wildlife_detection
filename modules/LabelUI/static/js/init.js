@@ -125,6 +125,12 @@ $(document).ready(function() {
                 success: function(data) {
                     try {
                         window.isAdmin = window.parseBoolean(data['permissions']['isAdmin']);
+
+                        // show project admin shortcut buttons if admin
+                        if(window.isAdmin) {
+                            $('#project-config-links').show();
+                        }
+
                     } catch {
                         window.location.href = '/login?redirect='+window.projectShortname+'/interface';
                     }
@@ -442,7 +448,7 @@ $(document).ready(function() {
 
     // load image batch
     promise = promise.then(function() {
-        return window.dataHandler._loadNextBatch();
+        return window.dataHandler._loadFirstBatch();    //_loadNextBatch();
     });
 
 

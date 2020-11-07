@@ -345,10 +345,27 @@ class DBMiddleware():
         projImmutables = self.get_project_immutables(project)
         queryStr = self.sqlBuilder.getFixedImagesQueryString(project, projImmutables['annotationType'], projImmutables['predictionType'], projImmutables['demoMode'])
 
+        # verify provided UUIDs
+        uuids = []
+        imgs_malformed = []
+        for d in data:
+            try:
+                uuids.append(UUID(d))
+            except:
+                imgs_malformed.append(d)
+        uuids = tuple(uuids)
+
+        if not len(uuids):
+            return {
+                'entries': {},
+                'imgs_malformed': imgs_malformed
+            }
+
         # parse results
-        queryVals = (tuple(UUID(d) for d in data), username, username,)
         if projImmutables['demoMode']:
-            queryVals = (tuple(UUID(d) for d in data),)
+            queryVals = (uuids,)
+        else:
+            queryVals = (uuids, username, username,)
 
         with self.dbConnector.execute_cursor(queryStr, queryVals) as cursor:
             try:
@@ -360,11 +377,20 @@ class DBMiddleware():
             finally:
                 pass
                 # cursor.close()
+        
+        # filter out images that are invalid
+        imgs_malformed = list(set(imgs_malformed).union(set(data).difference(set(response.keys()))))
 
         # mark images as requested
         self._set_images_requested(project, response)
 
-        return { 'entries': response }
+        response = {
+            'entries': response
+        }
+        if len(imgs_malformed):
+            response['imgs_malformed'] = imgs_malformed
+
+        return response
         
 
     def getBatch_auto(self, project, username, order='unlabeled', subset='default', limit=None, hideGoldenQuestionInfo=True):

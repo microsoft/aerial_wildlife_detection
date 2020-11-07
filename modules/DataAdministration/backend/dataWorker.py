@@ -934,9 +934,10 @@ class DataWorker:
             # remove orphaned images (if enabled)
             if p['watch_folder_remove_missing_enabled']:
                 imgs_orphaned = self.removeOrphanedImages(pName)
-                print(f'\t[Project {pName}] {len(imgs_added)} new images found and added, {len(imgs_orphaned)} orphaned images removed from database.')
+                if len(imgs_added) or len(imgs_orphaned):
+                    print(f'\t[Project {pName}] {len(imgs_added)} new images found and added, {len(imgs_orphaned)} orphaned images removed from database.')
 
-            else:
+            elif len(imgs_added):
                 print(f'\t[Project {pName}] {len(imgs_added)} new images found and added.')
 
 

@@ -108,33 +108,39 @@
         margin-left: 20px;
     }
 
+    .list-table thead tr th,
+    .list-table thead tr td {
+        word-break: break-all;
+    }
+
     .list-table thead tr th:nth-child(2),
     .list-table tbody tr td:nth-child(2) {
         width: 100px;
         text-align: center;
-        word-break: break-all;
     }
 
     .list-table thead tr th:nth-child(3),
     .list-table tbody tr td:nth-child(3) {
-        width: 200px;
-        word-break: break-all;
+        width: 250px;
     }
 
     .list-table thead tr th:nth-child(4),
     .list-table tbody tr td:nth-child(4),
     .list-table thead tr th:nth-child(5),
     .list-table tbody tr td:nth-child(5) {
-        width: 180px;
-        word-break: break-all;
+        width: 110px;
     }
 
     .list-table thead tr th:nth-child(6),
     .list-table tbody tr td:nth-child(6),
     .list-table thead tr th:nth-child(7),
     .list-table tbody tr td:nth-child(7) {
-        width: 100px;
-        word-break: break-all;
+        width: 70px;
+    }
+
+    .list-table thead tr th:nth-child(8),
+    .list-table tbody tr td:nth-child(8) {
+        width: 140px;
     }
 </style>
 <script src="/static/dataAdmin/js/imageBrowser.js?v={{ version }}"></script>
@@ -154,7 +160,7 @@
                 url: 'getImageFolders',
                 method: 'GET',
                 success: function(data) {
-                    window.directoryBrowser = new DirectoryBrowser(treeBrowserDiv, data['tree']);
+                    window.directoryBrowser = new DirectoryBrowser(treeBrowserDiv, data['tree'], window.project);
 
                     // refresh listed images on folder select
                     window.directoryBrowser.on('select', function(element) {
@@ -182,7 +188,8 @@
                     {'last_viewed': 'Last viewed'},
                     {'num_anno': '# Anno'},
                     {'num_pred': '# Pred'},
-                    {'golden_question': 'Golden question'}
+                    {'golden_question': 'Golden question'},
+                    {'link': 'View in annotator'}
                 ]
             });
             window.imageBrowser.setTrailingButton(true,
@@ -228,7 +235,11 @@
             let folder = null;
             if(window.directoryBrowser !== undefined) {
                 folder = window.directoryBrowser.getSelected();
-                if(folder !== null) folder = folder.id;
+                if(folder !== null) {
+                    folder = folder.id.replace(window.project, '');
+                    if(folder.startsWith('/')) folder = folder.slice(1);
+                    if(folder.length === 0) folder = null;
+                }
             }
 
             params = {
@@ -295,7 +306,8 @@
                         'num_pred': data[idx]['num_pred'],
                         'golden_question': (data[idx]['isgoldenquestion'] ? 
                                 '<img src="/static/interface/img/controls/flag_active.svg" height="16px" />' :
-                                '<img src="/static/interface/img/controls/flag.svg" height="16px" />')
+                                '<img src="/static/interface/img/controls/flag.svg" height="16px" />'),
+                        'link': '<a class="btn btn-sm btn-primary" href="interface?imgs=' + data[idx]['id'] + '" target="_blank">view</a>'
                     });
                 }
 
