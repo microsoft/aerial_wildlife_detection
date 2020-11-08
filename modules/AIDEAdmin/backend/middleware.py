@@ -76,7 +76,7 @@ class AdminMiddleware:
             try:
                 fs_response = requests.get(os.path.join(fs_uri, 'version'))
                 fs_version = fs_response.text
-                if warn_error and aic_version != AIDE_VERSION:
+                if warn_error and fs_version != AIDE_VERSION:
                     LogDecorator.print_status('warn')
                     print('WARNING: AIDE version of connected FileServer differs from main host.')
                     print(f'\tFileServer URI: {fs_uri}')
