@@ -918,7 +918,6 @@ class DataWorker:
             enabled and updates the projects, one by one, with the latest image
             changes.
         '''
-        print('Scanning project image folders for changes...')
         projects = self.dbConnector.execute('''
                 SELECT shortname, watch_folder_remove_missing_enabled
                 FROM aide_admin.project
@@ -935,10 +934,10 @@ class DataWorker:
             if p['watch_folder_remove_missing_enabled']:
                 imgs_orphaned = self.removeOrphanedImages(pName)
                 if len(imgs_added) or len(imgs_orphaned):
-                    print(f'\t[Project {pName}] {len(imgs_added)} new images found and added, {len(imgs_orphaned)} orphaned images removed from database.')
+                    print(f'[Project {pName}] {len(imgs_added)} new images found and added, {len(imgs_orphaned)} orphaned images removed from database.')
 
             elif len(imgs_added):
-                print(f'\t[Project {pName}] {len(imgs_added)} new images found and added.')
+                print(f'[Project {pName}] {len(imgs_added)} new images found and added.')
 
 
     

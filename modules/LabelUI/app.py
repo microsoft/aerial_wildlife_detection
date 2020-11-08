@@ -334,3 +334,24 @@ class LabelUI():
 
             else:
                 abort(403, 'forbidden')
+
+
+        @self.app.post('/<project>/setBookmark')
+        def set_bookmark(project):
+            if not self.loginCheck(project=project):
+                abort(403, 'forbidden')
+            
+            try:
+                username = html.escape(request.get_cookie('username'))
+                if username is None:
+                    # 100% failsafety for projects in demo mode
+                    raise Exception('no username provided')
+
+                bookmarks = request.json['bookmarks']
+                response = self.middleware.setBookmark(project, username, bookmarks)
+                return response
+            except Exception as e:
+                return {
+                    'status': 1,
+                    'message': str(e)
+                }

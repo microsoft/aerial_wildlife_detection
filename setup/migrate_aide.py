@@ -244,6 +244,16 @@ MODIFICATIONS_sql = [
         AS folder
         FROM "{schema}".image
     );
+  ''',
+  '''
+    CREATE TABLE IF NOT EXISTS "{schema}".bookmark (
+        username VARCHAR NOT NULL,
+        image uuid NOT NULL,
+        timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (username, image),
+        FOREIGN KEY (username) REFERENCES "aide_admin".user(name),
+        FOREIGN KEY (image) REFERENCES "{schema}".image
+    );
   '''
 ]
 

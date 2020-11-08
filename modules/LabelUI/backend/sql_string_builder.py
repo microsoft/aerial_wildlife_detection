@@ -74,7 +74,8 @@ class SQLStringBuilder:
             usernameString = ''
 
         queryStr = sql.SQL('''
-            SELECT id, image, cType, viewcount, EXTRACT(epoch FROM last_checked) as last_checked, filename, isGoldenQuestion, {allCols} FROM (
+            SELECT id, image, cType, viewcount, EXTRACT(epoch FROM last_checked) as last_checked, filename, isGoldenQuestion,
+            COALESCE(bookmark, false) AS isBookmarked, {allCols} FROM (
                 SELECT id AS image, filename, isGoldenQuestion FROM {id_img}
                 WHERE id IN %s
             ) AS img
@@ -85,12 +86,17 @@ class SQLStringBuilder:
                 SELECT id, image AS imID, 'prediction' AS cType, {predCols} FROM {id_pred} AS pred
             ) AS contents ON img.image = contents.imID
             LEFT OUTER JOIN (SELECT image AS iu_image, viewcount, last_checked, username FROM {id_iu}
-            {usernameString}) AS iu ON img.image = iu.iu_image;
+            {usernameString}) AS iu ON img.image = iu.iu_image
+            LEFT OUTER JOIN (
+                SELECT image AS bmImg, true AS bookmark
+                FROM {id_bookmark}
+            ) AS bm ON img.image = bm.bmImg;
         ''').format(
             id_img=sql.Identifier(project, 'image'),
             id_anno=sql.Identifier(project, 'annotation'),
             id_pred=sql.Identifier(project, 'prediction'),
             id_iu=sql.Identifier(project, 'image_user'),
+            id_bookmark=sql.Identifier(project, 'bookmark'),
             allCols=sql.SQL(', ').join(fields_union),
             annoCols=sql.SQL(', ').join(fields_anno),
             predCols=sql.SQL(', ').join(fields_pred),
@@ -167,7 +173,8 @@ class SQLStringBuilder:
             )
 
         queryStr = sql.SQL('''
-            SELECT id, image, cType, viewcount, EXTRACT(epoch FROM last_checked) as last_checked, filename, isGoldenQuestion, {allCols} FROM (
+            SELECT id, image, cType, viewcount, EXTRACT(epoch FROM last_checked) as last_checked, filename, isGoldenQuestion,
+            COALESCE(bookmark, false) AS isBookmarked, {allCols} FROM (
             SELECT id AS image, filename, 0 AS viewcount, 0 AS annoCount, NULL AS last_checked, 1E9 AS score, NULL AS timeCreated, isGoldenQuestion FROM {id_img} AS img
             WHERE isGoldenQuestion = TRUE
             {gq_user}
@@ -207,6 +214,10 @@ class SQLStringBuilder:
                     LIMIT 1
                 )
             ) AS contents ON img_query.image = contents.imID
+            LEFT OUTER JOIN (
+                SELECT image AS bmImg, true AS bookmark
+                FROM {id_bookmark}
+            ) AS bm ON img_query.image = bm.bmImg
             {subset_b}
             {order_b};
         ''').format(
@@ -215,6 +226,7 @@ class SQLStringBuilder:
             id_pred=sql.Identifier(project, 'prediction'),
             id_iu=sql.Identifier(project, 'image_user'),
             id_cnnstate=sql.Identifier(project, 'cnnstate'),
+            id_bookmark=sql.Identifier(project, 'bookmark'),
             gq_user=gq_user,
             allCols=sql.SQL(', ').join(fields_union),
             annoCols=sql.SQL(', ').join(fields_anno),
@@ -234,7 +246,8 @@ class SQLStringBuilder:
         fields_anno, fields_pred, fields_union = self._assemble_colnames(annotationType, predictionType)
 
         queryStr = sql.SQL('''
-            SELECT id, image, cType, 1 AS viewcount, NULL AS last_checked, NULL AS username, filename, isGoldenQuestion, {allCols} FROM (
+            SELECT id, image, cType, 1 AS viewcount, NULL AS last_checked, NULL AS username, filename, isGoldenQuestion,
+            COALESCE(bookmark, false) AS isBookmarked, {allCols} FROM (
                 SELECT id AS image, filename, isGoldenQuestion FROM {id_img}
                 WHERE COALESCE(corrupt,false) IS FALSE
                 AND id IN (
@@ -251,10 +264,15 @@ class SQLStringBuilder:
                 SELECT id, image AS imID, 'prediction' AS cType, {predCols} FROM {id_pred}
             ) AS meta
             ON img.image = meta.imID
+            LEFT OUTER JOIN (
+                SELECT image AS bmImg, true AS bookmark
+                FROM {id_bookmark}
+            ) AS bm ON img.id = bm.bmImg;
         ''').format(
             id_img=sql.Identifier(project, 'image'),
             id_anno=sql.Identifier(project, 'annotation'),
             id_pred=sql.Identifier(project, 'prediction'),
+            id_bookmark=sql.Identifier(project, 'bookmark'),
             allCols=sql.SQL(', ').join(fields_union),
             annoCols=sql.SQL(', ').join(fields_anno),
             predCols=sql.SQL(', ').join(fields_pred)

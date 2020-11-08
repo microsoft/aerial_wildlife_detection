@@ -83,6 +83,8 @@ class DBMiddleware():
             if not hideGoldenQuestionInfo:
                 response[imgID]['isGoldenQuestion'] = b['isgoldenquestion']
 
+            response[imgID]['isBookmarked'] = b['isbookmarked']
+
             # parse annotations and predictions
             entryID = str(b['id'])
             if b['ctype'] is not None:
@@ -720,3 +722,85 @@ class DBMiddleware():
         self.dbConnector.insert(queryStr, submissions)
 
         return 0
+
+
+    def setBookmark(self, project, user, bookmarks):
+        '''
+            Receives a user name and a dict of image IDs (key)
+            and whether they should become bookmarks (True) or
+            be removed from the list (False).
+        '''
+        if bookmarks is None or not isinstance(bookmarks, dict) or len(bookmarks.keys()) == 0:
+            return {
+                'status': 2,
+                'message': 'No images provided.'
+            }
+
+        # prepare IDs
+        imgs_success = []
+        imgs_error = []
+        imgs_set, imgs_clear = [], []
+
+        for b in bookmarks:
+            try:
+                imageID = UUID(b)
+                if bool(bookmarks[b]):
+                    imgs_set.append(tuple((user, imageID)))
+                else:
+                    imgs_clear.append(imageID)
+            except:
+                imgs_error.append(b)
+        imgs_error = set(imgs_error)
+
+        # insert new bookmarks
+        if len(imgs_set):
+            queryStr = sql.SQL('''
+                INSERT INTO {id_bookmark} (username, image)
+                SELECT val.username, val.imgID
+                FROM (
+                    VALUES %s
+                ) AS val (username, imgID)
+                JOIN (
+                    SELECT id AS imgID FROM {id_img}
+                ) AS img USING (imgID)
+                ON CONFLICT (username, image) DO NOTHING
+                RETURNING image;
+            ''').format(
+                id_bookmark=sql.Identifier(project, 'bookmark'),
+                id_img=sql.Identifier(project, 'image')
+            )
+            result = self.dbConnector.execute(queryStr, imgs_set, 'all')
+            imageIDs_set = set([str(i[1]) for i in imgs_set])
+            for r in result:
+                imageID = str(r['image'])
+                if imageID not in imageIDs_set:
+                    imgs_error.add(imageID)
+                else:
+                    imgs_success.append(imageID)
+        
+        # remove existing bookmarks
+        if len(imgs_clear):
+            queryStr = sql.SQL('''
+                DELETE FROM {id_bookmark}
+                WHERE username = %s
+                AND image IN %s
+                RETURNING image;
+            ''').format(
+                id_bookmark=sql.Identifier(project, 'bookmark')
+            )
+            result = self.dbConnector.execute(queryStr, (user, tuple(imgs_clear)), 'all')
+            for r in result:
+                imageID = str(r['image'])
+                imgs_success.append(imageID)
+
+            imgs_error.update(set(imgs_clear).difference(set([r['image'] for r in result])))
+
+        response = {
+            'status': 0,
+            'bookmarks_success': imgs_success
+        }
+        if len(imgs_error):
+            imgs_error = [str(i) for i in list(imgs_error)]
+            response['bookmarks_error'] = imgs_error
+        
+        return response

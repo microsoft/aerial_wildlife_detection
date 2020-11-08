@@ -192,7 +192,17 @@ class DataHandler {
         let uuids_load = url.searchParams.get('imgs');
         if(typeof(uuids_load) === 'string') {
             uuids_load = uuids_load.split(',');
-            return this._loadFixedBatch(uuids_load);
+
+            // make sure image UUIDs are unique
+            let uuids_filtered = [];
+            let uuids_added = {};
+            for(var u=0; u<uuids_load.length; u++) {
+                if(!uuids_added.hasOwnProperty(uuids_load[u])) {
+                    uuids_filtered.push(uuids_load[u]);
+                    uuids_added[uuids_load[u]] = 1;
+                }
+            }
+            return this._loadFixedBatch(uuids_filtered);
         } else {
             return this._loadNextBatch();
         }

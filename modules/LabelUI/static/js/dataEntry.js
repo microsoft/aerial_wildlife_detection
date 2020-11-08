@@ -12,6 +12,8 @@ class AbstractDataEntry {
         this.entryID = entryID;
         this.canvasID = entryID + '_canvas';
         this.fileName = properties['fileName'];
+        this.isGoldenQuestion = ( typeof(properties['isGoldenQuestion']) === 'boolean' ? properties['isGoldenQuestion'] : false);
+        this.isBookmarked = ( typeof(properties['isBookmarked']) === 'boolean' ? properties['isBookmarked'] : false);
         this.numInteractions = 0;
         this.disableInteractions = disableInteractions;
 
@@ -49,14 +51,14 @@ class AbstractDataEntry {
 
     _toggleGoldenQuestion() {
         /*
-                Posts to the server to flip the bool about the entry
-                being a golden question (if user is admin).
+            Posts to the server to flip the bool about the entry
+            being a golden question (if user is admin).
         */
         if(!window.isAdmin) return;
 
-        var self = this;
+        let self = this;
         self.isGoldenQuestion = !self.isGoldenQuestion;
-        var goldenQuestions = {};
+        let goldenQuestions = {};
         goldenQuestions[self.entryID] = self.isGoldenQuestion;
 
         return $.ajax({
@@ -80,6 +82,50 @@ class AbstractDataEntry {
             error: function(xhr, message, error) {
                 console.error(error);   //TODO
                 window.messager.addMessage('An error occurred while trying to set golden question (message: "' + error + '").', 'error', 0);
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return _toggleGoldenQuestion();
+                    });
+                }
+            }
+        })
+    }
+
+    _toggleBookmark() {
+        /*
+            Same for bookmarking, although this is allowed also for
+            non-admins.
+        */
+        let self = this;
+        let bookmarks = {};
+        bookmarks[this.entryID] = !this.isBookmarked;
+
+        return $.ajax({
+            url: 'setBookmark',
+            method: 'POST',
+            contentType: "application/json; charset=utf-8",
+            dataType: 'json',
+            data: JSON.stringify({
+                bookmarks: bookmarks
+            }),
+            success: function(data) {
+                if(data.hasOwnProperty('bookmarks_success') && data['bookmarks_success'].includes(self.entryID)) {
+                    // change successful; set flag accordingly
+                    self.isBookmarked = !self.isBookmarked;
+                    if(self.isBookmarked) {
+                        self.bookmark.attr('src', '/static/interface/img/controls/bookmark_active.svg');    //TODO
+                    } else {
+                        self.bookmark.attr('src', '/static/interface/img/controls/bookmark.svg');           //TODO
+                    }
+                } else if(data.hasOwnProperty('errors')) {
+                    window.messager.addMessage('Image could not be bookmarked.', 'error', 0);
+                }
+            },
+            error: function(xhr, message, error) {
+                console.error(error);
+                window.messager.addMessage('An error occurred while trying to bookmark image (message: "' + error + '").', 'error', 0);
             },
             statusCode: {
                 401: function(xhr) {
@@ -302,10 +348,13 @@ class AbstractDataEntry {
 
     _setup_markup() {
         this.markup = $('<div class="entry"></div>');
+
+        let self = this;
+
         this.markup.append(this.canvas);
 
         let imageFooterDiv = $('<div class="image-footer"></div>');
-        
+
         // file name (if enabled)
         if(window.showImageNames) {
             
@@ -316,9 +365,11 @@ class AbstractDataEntry {
             }
         }
         
-        var self = this;
         if(!this.disableInteractions)
             this.markup.on('click', (self._click).bind(self));
+
+        let flagContainer = $('<div class="flag-container"></div>');
+        imageFooterDiv.append(flagContainer);
 
         // flag for golden questions (if admin)
         if(window.isAdmin) {
@@ -328,12 +379,32 @@ class AbstractDataEntry {
             } else {
                 this.flag.attr('src', '/static/interface/img/controls/flag.svg');
             }
-            this.flag.click(function() {
-                // toggle golden question on server
-                self._toggleGoldenQuestion();
-            });
-            imageFooterDiv.append(this.flag);
+            if(!this.disableInteractions) {
+                this.flag.click(function() {
+                    // toggle golden question on server
+                    self._toggleGoldenQuestion();
+                });
+            }
+            flagContainer.append(this.flag);
         }
+
+        // flag for bookmarking
+        if(!window.demoMode) {
+            this.bookmark = $('<img class="bookmark" title="toggle bookmark" />');
+            if(this.isBookmarked) {
+                this.bookmark.attr('src', '/static/interface/img/controls/bookmark_active.svg');
+            } else {
+                this.bookmark.attr('src', '/static/interface/img/controls/bookmark.svg');
+            }
+            if(!this.disableInteractions) {
+                this.bookmark.click(function() {
+                    // toggle bookmark on server
+                    self._toggleBookmark();
+                });
+            }
+            flagContainer.append(this.bookmark);
+        }
+
         this.markup.append(imageFooterDiv);
     }
 
@@ -587,69 +658,72 @@ class ClassificationEntry extends AbstractDataEntry {
 
         if(!this.disableInteractions) {
             // click handler
-            this.markup.mouseup(function(event) {
+            this.viewport.addCallback(this.entryID, 'mouseup', (function(event) {
                 if(window.uiBlocked) return;
                 else if(window.uiControlHandler.getAction() === ACTIONS.DO_NOTHING) {
                     if(window.unsureButtonActive) {
-                        self.labelInstance.setProperty('unsure', !self.labelInstance.getProperty('unsure'));
+                        this.labelInstance.setProperty('unsure', !this.labelInstance.getProperty('unsure'));
                         window.unsureButtonActive = false;
-                        self.render();
+                        this.render();
                     } else {
-                        self.toggleUserLabel(event.altKey);
+                        this.toggleUserLabel(event.altKey);
                     }
                 }
                 this.numInteractions++;
                 window.dataHandler.updatePresentClasses();
-            });
+            }).bind(this));
 
             // tooltip for label change
-            this.markup.mousemove(function(event) {
+            this.viewport.addCallback(this.entryID, 'mousemove', (function(event) {
                 if(window.uiBlocked) return;
-                var pos = self.viewport.getRelativeCoordinates(event, 'validArea');
+                var pos = this.viewport.getRelativeCoordinates(event, 'validArea');
 
                 // offset tooltip position if loupe is active
                 if(window.uiControlHandler.showLoupe) {
                     pos[0] += 0.2;  //TODO: does not account for zooming in
                 }
 
-                self.hoverTextElement.position = pos;
+                this.hoverTextElement.position = pos;
                 if(window.uiControlHandler.getAction() in [ACTIONS.DO_NOTHING,
                     ACTIONS.ADD_ANNOTATION,
                     ACTIONS.REMOVE_ANNOTATIONS]) {
                     if(event.altKey) {
-                        self.hoverTextElement.setProperty('text', 'mark as unlabeled');
-                        self.hoverTextElement.setProperty('fillColor', window.styles.hoverText.box.fill);
+                        this.hoverTextElement.setProperty('text', 'mark as unlabeled');
+                        this.hoverTextElement.setProperty('fillColor', window.styles.hoverText.box.fill);
                     } else if(window.unsureButtonActive) {
-                        self.hoverTextElement.setProperty('text', 'toggle unsure');
-                        self.hoverTextElement.setProperty('fillColor', window.styles.hoverText.box.fill);
-                    } else if(typeof(self.labelInstance) !== 'object') {
-                        self.hoverTextElement.setProperty('text', 'set label to "' + window.labelClassHandler.getActiveClassName() + '"');
-                        self.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getActiveColor());
-                    } else if(self.labelInstance.label != window.labelClassHandler.getActiveClassID()) {
-                        self.hoverTextElement.setProperty('text', 'change label to "' + window.labelClassHandler.getActiveClassName() + '"');
-                        self.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getActiveColor());
+                        this.hoverTextElement.setProperty('text', 'toggle unsure');
+                        this.hoverTextElement.setProperty('fillColor', window.styles.hoverText.box.fill);
+                    } else if(typeof(this.labelInstance) !== 'object') {
+                        this.hoverTextElement.setProperty('text', 'set label to "' + window.labelClassHandler.getActiveClassName() + '"');
+                        this.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getActiveColor());
+                    } else if(this.labelInstance.label != window.labelClassHandler.getActiveClassID()) {
+                        this.hoverTextElement.setProperty('text', 'change label to "' + window.labelClassHandler.getActiveClassName() + '"');
+                        this.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getActiveColor());
                     } else {
-                        self.hoverTextElement.setProperty('text', null);
+                        this.hoverTextElement.setProperty('text', null);
                     }
                 } else {
-                    self.hoverTextElement.setProperty('text', null);
+                    this.hoverTextElement.setProperty('text', null);
                 }
 
                 // flip text color if needed
-                var htFill = self.hoverTextElement.getProperty('fillColor');
+                var htFill = this.hoverTextElement.getProperty('fillColor');
                 if(htFill != null && window.getBrightness(htFill) >= 92) {
-                    self.hoverTextElement.setProperty('textColor', '#000000');
+                    this.hoverTextElement.setProperty('textColor', '#000000');
                 } else {
-                    self.hoverTextElement.setProperty('textColor', '#FFFFFF');
+                    this.hoverTextElement.setProperty('textColor', '#FFFFFF');
                 }
 
                 // set active (for e.g. "unsure" functionality)
                 if(typeof(self.labelInstance) === 'object') {
-                    self.labelInstance.setActive(true);
+                    this.labelInstance.setActive(true);
                 }
 
-                self.render();
-            });
+                this.render();
+            }).bind(this));
+            // this.canvas.mousemove(function(event) {
+                
+            // });
             this.markup.mouseout(function(event) {
                 if(window.uiBlocked) return;
                 self.hoverTextElement.setProperty('text', null);
@@ -662,7 +736,7 @@ class ClassificationEntry extends AbstractDataEntry {
     }
 
     setLabel(label) {
-        if(typeof(this.labelInstance !== 'object')) {
+        if(typeof(this.labelInstance) !== 'object') {
             // add new annotation
             var anno = new Annotation(window.getRandomID(), {'label':label}, 'labels', 'annotation');
             this._addElement(anno);
@@ -699,13 +773,13 @@ class ClassificationEntry extends AbstractDataEntry {
 
         } else {
             var activeLabel = window.labelClassHandler.getActiveClassID();
-            if(typeof(this.labelInstance !== 'object')) {
+            if(typeof(this.labelInstance) !== 'object') {
                 // add new annotation
                 var anno = new Annotation(window.getRandomID(), {'label':activeLabel}, 'labels', 'annotation');
                 this._addElement(anno);
 
             } else {
-                if(this.labelInstance.label ===activeLabel && window.enableEmptyClass) {
+                if(this.labelInstance.label === activeLabel && window.enableEmptyClass) {
                     // same label; disable
                     this.setLabel(null);
 

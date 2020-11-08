@@ -226,7 +226,7 @@ $(document).ready(function() {
             var style = {
                 'min-width':  window.minImageWidth+'px',
                 'width': width + 'px',
-                'height': height + 'px'
+                //'height': height + 'px'
             };
             $('.entry').css(style);
 
