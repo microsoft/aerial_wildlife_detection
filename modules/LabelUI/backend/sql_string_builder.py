@@ -84,6 +84,11 @@ class SQLStringBuilder:
                 {usernameString}
                 UNION ALL
                 SELECT id, image AS imID, 'prediction' AS cType, {predCols} FROM {id_pred} AS pred
+                WHERE cnnstate = (
+                    SELECT id FROM {id_cnnstate}
+                    ORDER BY timeCreated DESC
+                    LIMIT 1
+                )
             ) AS contents ON img.image = contents.imID
             LEFT OUTER JOIN (SELECT image AS iu_image, viewcount, last_checked, username FROM {id_iu}
             {usernameString}) AS iu ON img.image = iu.iu_image
@@ -95,6 +100,7 @@ class SQLStringBuilder:
             id_img=sql.Identifier(project, 'image'),
             id_anno=sql.Identifier(project, 'annotation'),
             id_pred=sql.Identifier(project, 'prediction'),
+            id_cnnstate=sql.Identifier(project, 'cnnstate'),
             id_iu=sql.Identifier(project, 'image_user'),
             id_bookmark=sql.Identifier(project, 'bookmark'),
             allCols=sql.SQL(', ').join(fields_union),
