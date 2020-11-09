@@ -6,6 +6,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
         <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous" />
         <link rel="stylesheet" href="/static/interface/css/interface.css?v={{ version }}" />
+        <link rel="stylesheet" href="/static/dataAdmin/css/imageBrowser.css?v={{ version }}" />
         <link rel="stylesheet" href="/static/general/css/messaging.css?v={{ version }}" />
         <link rel="stylesheet" href="/static/projectAdmin/css/config-page.css?v={{ version }}" />
         <style>
@@ -104,24 +105,68 @@
                 z-index: -1;
                 background-color: #a4a4a457;
             }
+
+            #bookmarks-navigation-controls {
+                display: none;
+                text-align: center;
+            }
+
+            #image-browser-container {
+                width: 80vw;
+                height: calc(100vh - 550px);
+                left: 10px;
+                right: 10px;
+                margin: 0 auto;
+            }
+
+            .list-container, .thumbs-container {
+                height: 320px !important;
+            }
+
+            tr, .thumbnail {
+                cursor: pointer;
+            }
         </style>
         <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
         <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+        <script src="/static/dataAdmin/js/imageBrowser.js?v={{ version }}"></script>
         <script type="text/javascript" src="/static/general/js/messaging.js?v={{ version }}"></script>
         <script type="text/javascript">
-            $(document).ready(function() {
+            window.isAdmin = false;
+            window.demoMode = false;
 
+            let ib_bookmarks = [];
+            let ib_goldenQuestions = [];
+
+            function loginCheck() {
                 // hide user menu if not logged in
-                $.ajax({
+                return $.ajax({
                     url: 'loginCheck',
                     method: 'post',
                     error: function() {
                         $('#navbar-user-dropdown').hide();
                     }
                 });
-                
+            }
+
+            function checkDemoMode() {
+                // check if demo mode
+                return $.ajax({
+                    url: '{{ projectShortname }}/getProjectInfo',
+                    success: function(data) {
+                        data = data['info'];
+                        window.demoMode = data['demoMode'];
+                    },
+                    error: function(xhr, status, error) {
+                        console.error(error);
+                    }
+                });
+            }
+
+            
+            function checkAuthentication() {
                 // check authentication and put interface buttons accordingly
-                var promise = $.ajax({
+                return $.ajax({
                     url: '{{ projectShortname }}/getPermissions',
                     method: 'GET',
                     success: function(data) {
@@ -131,7 +176,8 @@
                                 window.location.href = '/';
                             }
                             // project configuration button
-                            if(data['permissions']['is_admin']) {
+                            window.isAdmin = data['permissions']['is_admin'];
+                            if(window.isAdmin) {
                                 var btn = $('<a class="btn btn-lg btn-secondary" id="configure-project-button" href="{{ projectShortname }}/configuration">Configure</a>');
                                 $('#project-buttons-container').append(btn);
                             }
@@ -153,38 +199,170 @@
                         console.error(data);
                     }
                 });
-
+            }
+            
+            function getServerURI() {
                 // get server URI
-                promise = promise.done(function() {
-                    return $.ajax({
-                        url: '{{ projectShortname }}/getProjectSettings',
-                        success: function(data) {
-                            window.dataServerURI = data['settings']['dataServerURI'];
-                            if(!window.dataServerURI.endsWith('/')) {
-                                window.dataServerURI += '/';
-                            }
+                return $.ajax({
+                    url: '{{ projectShortname }}/getProjectSettings',
+                    success: function(data) {
+                        window.dataServerURI = data['settings']['dataServerURI'];
+                        if(!window.dataServerURI.endsWith('/')) {
+                            window.dataServerURI += '/';
                         }
-                    });
+                    }
+                });
+            }
+
+            function getBookmarks() {
+                // bookmarks
+                if(window.demoMode) {
+                    $('#image-browser-bookmarks').hide();
+                    $('#bookmarks-navigation-controls').hide();
+                    return $.Deferred().promise();
+                }
+                
+                // initialize image browser
+                ib_bookmarks = new ImageBrowser($('#image-browser-bookmarks'), {
+                    'baseURL': window.dataServerURI + '{{ projectShortname }}/files/',
+                    'images': [],
+                    'showCheckboxes': false,
+                    'showImages': true,
+                    'selectable': false,
+                    'colnames': [
+                        {'url': 'Bookmarks'},
+                        // {'timestamp': 'Timestamp'}
+                    ]
+                });
+                ib_bookmarks.setTrailingButton(false);
+                ib_bookmarks.on('imageClick', function(event) {
+                    window.open('{{ projectShortname }}/interface?imgs=' + event[0].id);
                 });
 
-                // load background picture wall
-                let picWall = $('#picture-wall');
-                var numImgs = 128;  //TODO
-                for(var i=0; i<numImgs; i++) {
-                    picWall.append($('<img id="picwall_'+i+'" />'));
+                return $.ajax({
+                    url: '{{ projectShortname }}/getBookmarks',
+                    method: 'GET',
+                    success: function(data) {
+                        if(data.hasOwnProperty('bookmarks')) {
+                            let bookmarks = [];
+                            for(var b=0; b<data['bookmarks'].length; b++) {
+                                let bookmark = data['bookmarks'][b];
+                                bookmarks.push({
+                                    'id': bookmark[0],
+                                    'url': bookmark[1],
+                                    'timestamp': new Date(bookmark[2]*1000).toLocaleString()
+                                });
+                            }
+                            ib_bookmarks.setImages(bookmarks);
+                            $('#image-browser-bookmarks').show();
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error(error);
+                        window.messager.addMessage('Could not retrieve bookmarks (message: "'+error+'").', 'error');
+                    }
+                });
+            }
+
+            function getGoldenQuestions() {
+                // golden questions
+                if(!window.isAdmin || window.demoMode) {
+                    $('#image-browser-golden-questions').hide();
+                    $('#bookmarks-navigation-controls').hide();
+                    return $.Deferred().promise();
                 }
 
+                // initialize image browser
+                ib_goldenQuestions = new ImageBrowser($('#image-browser-golden-questions'), {
+                    'baseURL': window.dataServerURI + '{{ projectShortname }}/files/',
+                    'images': [],
+                    'showCheckboxes': false,
+                    'showImages': true,
+                    'selectable': false,
+                    'colnames': [
+                        {'url': 'Golden questions'}
+                    ]
+                });
+                ib_goldenQuestions.setTrailingButton(false);
+                ib_goldenQuestions.on('imageClick', function(event) {
+                    window.open('{{ projectShortname }}/interface?imgs=' + event[0].id);
+                })
                 return $.ajax({
-                    url: '{{ projectShortname }}/getSampleImages',
+                    url: '{{ projectShortname }}/getGoldenQuestions',
                     method: 'GET',
-                    data: {limit: numImgs},
                     success: function(data) {
-                        // add images
-                        for(var i=0; i<data['images'].length; i++) {
-                            $('#picwall_'+i).attr('src',window.dataServerURI+'{{ projectShortname }}/files/'+data['images'][i]);
+                        if(data.hasOwnProperty('images')) {
+                            let goldenQuestions = [];
+                            for(var b=0; b<data['images'].length; b++) {
+                                let image = data['images'][b];
+                                goldenQuestions.push({
+                                    'id': image[0],
+                                    'url': image[1]
+                                });
+                            }
+                            ib_goldenQuestions.setImages(goldenQuestions);
+                            $('#bookmarks-navigation-controls').show();
                         }
-                        picWall.show();
+                    },
+                    error: function(xhr, status, error) {
+                        console.error(error);
+                        window.messager.addMessage('Could not retrieve golden questions (message: "'+error+'").', 'error');
                     }
+                });
+            }
+
+            function setupPictureWall() {
+                // load background picture wall
+                if(window.demoMode) {
+                    let picWall = $('#picture-wall');
+                    var numImgs = 128;  //TODO
+                    for(var i=0; i<numImgs; i++) {
+                        picWall.append($('<img id="picwall_'+i+'" />'));
+                    }
+                    return $.ajax({
+                        url: '{{ projectShortname }}/getSampleImages',
+                        method: 'GET',
+                        data: {limit: numImgs},
+                        success: function(data) {
+                            // add images
+                            for(var i=0; i<data['images'].length; i++) {
+                                $('#picwall_'+i).attr('src',window.dataServerURI+'{{ projectShortname }}/files/'+data['images'][i]);
+                            }
+                            picWall.show();
+                        }
+                    });
+                } else {
+                    return $.Deferred().promise();
+            }
+            }
+
+            function setupUI() {
+                let bmButton = $('#bookmarks-button');
+                let gqButton = $('#golden-questions-button');
+                bmButton.on('click', function() {
+                    $('#image-browser-golden-questions').hide();
+                    $('#image-browser-bookmarks').show();
+                    bmButton.addClass('btn-primary');
+                    bmButton.removeClass('btn-secondary');
+                    gqButton.addClass('btn-secondary');
+                    gqButton.removeClass('btn-primary');
+                });
+                gqButton.on('click', function() {
+                    $('#image-browser-golden-questions').show();
+                    $('#image-browser-bookmarks').hide();
+                    bmButton.removeClass('btn-primary');
+                    bmButton.addClass('btn-secondary');
+                    gqButton.removeClass('btn-secondary');
+                    gqButton.addClass('btn-primary');
+                });
+            }
+
+            $(document).ready(function() {
+                $.when.apply($, [loginCheck(), checkDemoMode(), checkAuthentication(), getServerURI()]).then(function() {
+                    getBookmarks();
+                    getGoldenQuestions();
+                    setupUI();
+                    setupPictureWall();
                 });
             });
         </script>
@@ -243,10 +421,25 @@
                             <p id="project-description" style="font-size:20px;">{{ projectDescription }}</p>
                             <div id="project-buttons-container" style="margin-top:50px;"></div>
                         </div>
-                        <hr style="margin-bottom:20px" />
+                        <hr style="margin-bottom:40px" />
+
+                        <!-- bookmarks and golden questions -->
+                        <div id="bookmarks-navigation-controls" style="display:none;">
+                            <button class="btn btn-primary" id="bookmarks-button">
+                                <span>Bookmarks</span>
+                                <img style="display:inline;height:18px;" src="/static/interface/img/controls/bookmark_active.svg" />
+                            </button>
+                            <button class="btn btn-secondary" id="golden-questions-button">
+                                <span>Golden questions</span>
+                                <img style="display:inline;height:18px;" src="/static/interface/img/controls/flag_active.svg" />
+                            </button>
+                        </div>
+
+                        <div id="image-browser-container">
+                            <div id="image-browser-bookmarks" style="display:none;"></div>
+                            <div id="image-browser-golden-questions" style="display:none"></div>
+                        </div>
                     </div>
-
-
                 </div>
             </div>
             <footer class="page-footer" id="footer">

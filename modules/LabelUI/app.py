@@ -312,6 +312,19 @@ class LabelUI():
             else:
                 abort(401, 'not logged in')
 
+
+        @self.app.get('/<project>/getGoldenQuestions')
+        def get_golden_questions(project):
+            if not self.loginCheck(project=project, admin=True):
+                abort(403, 'forbidden')
+            try:
+                return self.middleware.getGoldenQuestions(project)
+            except Exception as e:
+                return {
+                    'status': 1,
+                    'message': str(e)
+                }
+
         
         @self.app.post('/<project>/setGoldenQuestions')
         def set_golden_questions(project):
@@ -328,12 +341,28 @@ class LabelUI():
                 except:
                     abort(400, 'malformed submissions')
 
-                status = self.middleware.setGoldenQuestions(project, tuple(submissions_))
+                response = self.middleware.setGoldenQuestions(project, tuple(submissions_))
 
-                return { 'status': status }
+                return response
 
             else:
                 abort(403, 'forbidden')
+
+
+        @self.app.get('/<project>/getBookmarks')
+        def get_bookmarks(project):
+            if not self.loginCheck(project=project):
+                abort(403, 'forbidden')
+            try:
+                username = html.escape(request.get_cookie('username'))
+                if username is None:
+                    abort(403, 'forbidden')
+                return self.middleware.getBookmarks(project, username)
+            except Exception as e:
+                return {
+                    'status': 1,
+                    'message': str(e)
+                }
 
 
         @self.app.post('/<project>/setBookmark')

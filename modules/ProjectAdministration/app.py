@@ -302,7 +302,13 @@ class ProjectConfigurator:
 
             # user-specific permissions
             userPrivileges = self.loginCheck(project=project, return_all=True)
-            if userPrivileges['logged_in']:
+            if userPrivileges is None or userPrivileges is False:
+                # user not logged in; only demo mode projects allowed
+                permissions['can_view'] = config['demomode']
+                permissions['can_label'] = config['demomode']
+                permissions['is_admin'] = False
+
+            elif userPrivileges['logged_in']:
                 permissions['can_view'] = (config['demomode'] or isPublic or userPrivileges['project']['enrolled'])
                 permissions['can_label'] = config['interface_enabled'] and not config['archived'] and (config['demomode'] or userPrivileges['project']['enrolled'])
                 permissions['is_admin'] = userPrivileges['project']['isAdmin']

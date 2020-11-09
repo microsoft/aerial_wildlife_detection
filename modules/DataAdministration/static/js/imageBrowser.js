@@ -191,19 +191,21 @@ class ImageEntry {
 
     setSelected(selected) {
         this.selected = selected;
-        if(selected) {
-            if('list' in this.markups) {
-                this.markups['list'].addClass('list-entry-selected');
-            }
-            if('thumbs' in this.markups) {
-                this.markups['thumbs'].addClass('thumbnail-selected');
-            }
-        } else {
-            if('list' in this.markups) {
-                this.markups['list'].removeClass('list-entry-selected');
-            }
-            if('thumbs' in this.markups) {
-                this.markups['thumbs'].removeClass('thumbnail-selected');
+        if(this.data['selectable']) {
+            if(selected) {
+                if('list' in this.markups) {
+                    this.markups['list'].addClass('list-entry-selected');
+                }
+                if('thumbs' in this.markups) {
+                    this.markups['thumbs'].addClass('thumbnail-selected');
+                }
+            } else {
+                if('list' in this.markups) {
+                    this.markups['list'].removeClass('list-entry-selected');
+                }
+                if('thumbs' in this.markups) {
+                    this.markups['thumbs'].removeClass('thumbnail-selected');
+                }
             }
         }
     }
@@ -740,6 +742,9 @@ class ImageBrowser {
         }
         if(!this.data.hasOwnProperty('showImages')) {
             this.data['showImages'] = false;
+        }
+        if(!this.data.hasOwnProperty('selectable')) {
+            this.data['selectable'] = true;
         }
 
         this.callbacks = {

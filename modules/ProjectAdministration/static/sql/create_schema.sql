@@ -42,6 +42,15 @@ CREATE TABLE IF NOT EXISTS {id_iu} (
     FOREIGN KEY (image) REFERENCES {id_image}(id)
 );
 
+CREATE TABLE IF NOT EXISTS {id_bookmark} (
+    username VARCHAR NOT NULL,
+    image uuid NOT NULL,
+    timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (username, image),
+    FOREIGN KEY (username) REFERENCES "aide_admin".user(name),
+    FOREIGN KEY (image) REFERENCES "{schema}".image
+);
+
 CREATE TABLE IF NOT EXISTS {id_labelclassGroup} (
     id uuid DEFAULT uuid_generate_v4(),
     name VARCHAR NOT NULL,

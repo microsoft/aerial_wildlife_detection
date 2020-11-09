@@ -54,7 +54,7 @@ class AbstractDataEntry {
             Posts to the server to flip the bool about the entry
             being a golden question (if user is admin).
         */
-        if(!window.isAdmin) return;
+        if(!window.isAdmin || window.demoMode) return;
 
         let self = this;
         self.isGoldenQuestion = !self.isGoldenQuestion;
@@ -72,6 +72,9 @@ class AbstractDataEntry {
             success: function(data) {
                 if(data.hasOwnProperty('status') && data['status'] === 0) {
                     // change successful; set flag accordingly
+                    if(data.hasOwnProperty('golden_questions') && data['golden_questions'].hasOwnProperty(self.entryID)) {
+                        self.isGoldenQuestion = data['golden_questions'][self.entryID];
+                    }
                     if(self.isGoldenQuestion) {
                         self.flag.attr('src', '/static/interface/img/controls/flag_active.svg');
                     } else {
@@ -80,7 +83,7 @@ class AbstractDataEntry {
                 }
             },
             error: function(xhr, message, error) {
-                console.error(error);   //TODO
+                console.error(error);
                 window.messager.addMessage('An error occurred while trying to set golden question (message: "' + error + '").', 'error', 0);
             },
             statusCode: {
@@ -98,6 +101,7 @@ class AbstractDataEntry {
             Same for bookmarking, although this is allowed also for
             non-admins.
         */
+        if(window.demoMode) return;
         let self = this;
         let bookmarks = {};
         bookmarks[this.entryID] = !this.isBookmarked;
@@ -130,7 +134,7 @@ class AbstractDataEntry {
             statusCode: {
                 401: function(xhr) {
                     return window.renewSessionRequest(xhr, function() {
-                        return _toggleGoldenQuestion();
+                        return _toggleBookmark();
                     });
                 }
             }
@@ -372,7 +376,7 @@ class AbstractDataEntry {
         imageFooterDiv.append(flagContainer);
 
         // flag for golden questions (if admin)
-        if(window.isAdmin) {
+        if(window.isAdmin && !window.demoMode) {
             this.flag = $('<img class="golden-question-flag" title="toggle golden question" />');
             if(self.isGoldenQuestion) {
                 this.flag.attr('src', '/static/interface/img/controls/flag_active.svg');

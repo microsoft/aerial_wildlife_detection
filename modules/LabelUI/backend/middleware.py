@@ -702,6 +702,24 @@ class DBMiddleware():
         return 0
 
 
+    def getGoldenQuestions(self, project):
+        '''
+            Returns a list of image UUIDs and their file names that have been flagged
+            as golden questions for a given project.
+            TODO: augment tables with who added the golden question and when it
+            happened...
+        '''
+        queryStr = sql.SQL('SELECT id, filename FROM {id_img} WHERE isGoldenQuestion = true;').format(
+            id_img=sql.Identifier(project, 'image')
+        )
+        result = self.dbConnector.execute(queryStr, None, 'all')
+        result = [(str(r['id']), r['filename']) for r in result]
+        return {
+            'status': 0,
+            'images': result
+        }
+
+
     def setGoldenQuestions(self, project, submissions):
         '''
             Receives an iterable of tuples (uuid, bool) and updates the
@@ -709,19 +727,52 @@ class DBMiddleware():
         '''
         projImmutables = self.get_project_immutables(project)
         if projImmutables['demoMode']:
-            return 1
+            return {
+                'status': 2,
+                'message': 'Not allowed in demo mode.'
+            }
         
         queryStr = sql.SQL('''
             UPDATE {id_img} AS img SET isGoldenQuestion = c.isGoldenQuestion
             FROM (VALUES %s)
             AS c (id, isGoldenQuestion)
-            WHERE c.id = img.id;
+            WHERE c.id = img.id
+            RETURNING img.id, img.isGoldenQuestion;
         ''').format(
             id_img=sql.Identifier(project, 'image')
         )
-        self.dbConnector.insert(queryStr, submissions)
+        result = self.dbConnector.execute(queryStr, submissions, 'all')
+        imgs_result = {}
+        for r in result:
+            imgs_result[str(r['id'])] = r['isgoldenquestion']
 
-        return 0
+        return {
+            'status': 0,
+            'golden_questions': imgs_result
+        }
+
+
+    def getBookmarks(self, project, user):
+        '''
+            Returns a list of image UUIDs and file names that have been bookmarked by a
+            given user, along with the timestamp at which the bookmarks got created.
+        '''
+        queryStr = sql.SQL('''SELECT image, filename, EXTRACT(epoch FROM timeCreated) AS timeCreated
+            FROM {id_bookmark} AS bm
+            JOIN {id_img} AS img
+            ON bm.image = img.id
+            WHERE username = %s
+            ORDER BY timeCreated DESC;
+        ''').format(
+            id_bookmark=sql.Identifier(project, 'bookmark'),
+            id_img=sql.Identifier(project, 'image')
+        )
+        result = self.dbConnector.execute(queryStr, (user,), 'all')
+        result = [(str(r['image']), r['filename'], r['timecreated']) for r in result]
+        return {
+            'status': 0,
+            'bookmarks': result
+        }
 
 
     def setBookmark(self, project, user, bookmarks):

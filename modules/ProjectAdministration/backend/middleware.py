@@ -317,6 +317,7 @@ class ProjectConfigMiddleware:
                 id_auth=sql.Identifier(self.config.getProperty('Database', 'user')),
                 id_image=sql.Identifier(shortname, 'image'),
                 id_iu=sql.Identifier(shortname, 'image_user'),
+                id_bookmark=sql.Identifier(shortname, 'bookmark'),
                 id_labelclassGroup=sql.Identifier(shortname, 'labelclassgroup'),
                 id_labelclass=sql.Identifier(shortname, 'labelclass'),
                 id_annotation=sql.Identifier(shortname, 'annotation'),
