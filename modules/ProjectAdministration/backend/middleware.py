@@ -11,6 +11,7 @@ import ast
 import secrets
 import json
 import uuid
+from datetime import datetime
 from psycopg2 import sql
 from modules.Database.app import Database
 from modules.DataAdministration.backend import celery_interface as fileServer_interface
@@ -262,6 +263,64 @@ class ProjectConfigMiddleware:
             return None
 
 
+    def setPermissions(self, project, userList, privileges):
+        '''
+            Sets project permissions for a given list of user names.
+            Permissions may be set through a dict of "privileges" with
+            values and include the following privilege keywords and
+            value types:
+                - "isAdmin": bool
+                - "blocked_until": datetime or anything else for no limit
+                - "admitted_until": datetime or anything else for no limit
+                - "remove": bool        # removes users from project
+        '''
+        userList = [(u,) for u in userList]
+
+        for p in privileges.keys():
+            queryType = 'update'
+            if p.lower() == 'isadmin':
+                queryVal = bool(privileges[p])
+            elif p.lower() in ('admitted_until', 'blocked_until'):
+                try:
+                    queryVal = datetime.fromtimestamp(privileges[p])
+                except:
+                    queryVal = None
+            elif p.lower() == 'remove':
+                queryVal = None
+                queryType = 'remove'
+            else:
+                raise Exception(f'"{p}" is not a recognized privilege type.')
+
+            if queryType == 'update':
+                queryStr = f'''
+                    UPDATE aide_admin.authentication
+                    SET {p} = %s
+                    WHERE username IN %s
+                    AND project = %s
+                    RETURNING username;
+                '''
+                result = self.dbConnector.execute(queryStr, (queryVal, tuple(userList), project), 'all')
+            else:
+                queryStr = '''
+                    DELETE FROM aide_admin.authentication
+                    WHERE username IN %s
+                    AND project = %s
+                    RETURNING username;
+                '''
+                result = self.dbConnector.execute(queryStr, (tuple(userList), project), 'all')
+            
+            if result is None or not len(result):
+                #TODO: provide more sophisticated error response
+                return {
+                    'status': 2,
+                    'message': f'An error occurred while trying to set permission type "{p}"'
+                }
+
+        return {
+            'status': 0
+        }
+
+
     def getProjectUsers(self, project):
         '''
             Returns a list of users that are enrolled in the project,
@@ -270,7 +329,17 @@ class ProjectConfigMiddleware:
 
         queryStr = sql.SQL('SELECT * FROM aide_admin.authentication WHERE project = %s;')
         result = self.dbConnector.execute(queryStr, (project,), 'all')
-        return result
+        response = []
+        for r in result:
+            user = {}
+            for key in r.keys():
+                if isinstance(r[key], datetime):
+                    val = r[key].timestamp()
+                else:
+                    val = r[key]
+                user[key] = val
+            response.append(user)
+        return response
 
 
     def createProject(self, username, properties):

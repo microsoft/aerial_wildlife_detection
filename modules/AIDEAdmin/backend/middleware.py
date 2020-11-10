@@ -6,6 +6,7 @@
 '''
 
 import os
+import datetime
 import requests
 from psycopg2 import sql
 from celery import current_app
@@ -246,9 +247,15 @@ class AdminMiddleware:
                     'enrolled_projects': {}
                 }
                 if ud['project'] is not None:
+                    admitted_until = ud['admitted_until']
+                    if isinstance(admitted_until, datetime.datetime):
+                        admitted_until = admitted_until.timestamp()
+                    blocked_until = ud['admitted_until']
+                    if isinstance(blocked_until, datetime.datetime):
+                        blocked_until = blocked_until.timestamp()
                     users[ud['name']]['enrolled_projects'][ud['project']] = {
-                        'admitted_until': ud['admitted_until'],
-                        'blocked_until': ud['blocked_until']
+                        'admitted_until': admitted_until,
+                        'blocked_until': blocked_until
                     }
         return users
 

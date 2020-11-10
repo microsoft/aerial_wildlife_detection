@@ -315,6 +315,24 @@ class ProjectConfigurator:
             
             return {'permissions': permissions}
 
+        
+        @self.app.post('/<project>/setPermissions')
+        def set_permissions(project):
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+            
+            try:
+                userList = request.json['users']
+                privileges = request.json['privileges']
+
+                return self.middleware.setPermissions(project, userList, privileges)
+
+            except Exception as e:
+                return {
+                    'status': 1,
+                    'message': str(e)
+                }
+
 
 
         ''' Project creation '''

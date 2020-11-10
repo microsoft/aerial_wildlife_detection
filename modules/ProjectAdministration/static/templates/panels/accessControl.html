@@ -20,23 +20,18 @@
         <p style="font-style:italic;">Demo mode opens the project to anyone (even without an account)
         and disables saving annotations and the AI model, if configured.
         Existing annotations will be retained as they are.</p>
+
+        <div>
+            <button id="proj-settings-save-button" class="btn btn-primary" style="float:right">Save</button>
+        </div>
     </div>
 
 
     <!-- User list -->
+    <h3>Users</h3>
+
     <!-- TODO: implement search function to add new users -->
-    <div>
-        <span>Selection:</span>
-        <select id="selection-action">
-            <option value="elevate-admin" name="user-action">elevate to project administrators</option>
-            <option value="revoke-admin" name="user-action">revoke administrator privileges</option>
-            <option value="admitUntil" name="user-action">admit until</option>
-            <option value="blockUntil" name="user-action">block until</option>
-            <option value="deregister" name="user-action">remove from project</option>
-        </select>
-        <input type="text" id="datetime-specifier" style="display:none" />
-        <button id="selection-action-proceed" class="btn btn-sm btn-light">Apply</button>
-    </div>
+    <div id="letter-picker"></div>
     <table>
         <thead>
             <tr>
@@ -49,18 +44,22 @@
         </thead>
         <tbody id="users-list"></tbody>
     </table>
-
-    <!-- Submit and abort buttons -->
     <div>
-        <button class="btn btn-danger">Cancel</button>
-        <button id="proj-settings-save-button" class="btn btn-primary" style="float:right">Save</button>
+        <span>Selection:</span>
+        <select id="selection-action">
+            <option value="elevate-admin" name="user-action">elevate to project administrators</option>
+            <option value="revoke-admin" name="user-action">revoke administrator privileges</option>
+            <option value="admitUntil" name="user-action">admit until</option>
+            <option value="blockUntil" name="user-action">block until</option>
+            <option value="deregister" name="user-action">remove from project</option>
+        </select>
+        <input type="text" id="datetime-specifier" style="display:none" />
+        <button id="selection-action-proceed" class="btn btn-sm btn-light">Apply</button>
     </div>
 </div>
 <style>
     table {
         width: 100%;
-        max-width: 400px;
-        max-height: 200px;
         border: 1px solid #aaa;
     }
 
@@ -72,7 +71,7 @@
     tbody {
         overflow-x: hidden;
         overflow-y: auto;
-        height: 500px;
+        height: calc(100vh - 620px);
     }
 
     thead, tbody {
@@ -86,23 +85,46 @@
     }
 </style>
 <link rel="stylesheet" href="/static/general/libs/datetimepicker/jquery.datetimepicker.css?v={{ version }}" />
+<link rel="stylesheet" href="/static/general/css/letterPicker.css?v={{ version }}" />
 <script type="text/javascript" src="/static/general/libs/datetimepicker/jquery.datetimepicker.js?v={{ version }}"></script>
+<script type="text/javascript" src="/static/general/js/letterPicker.js?v={{ version }}"></script>
 <script type="text/javascript">
-    function getUsers(usersListMarkup) {
+    function getUsers() {
+        let uList = $('#users-list');
+        uList.empty();
         return $.ajax({
             url: 'getUsers',
             method: 'GET',
             success: function(data) {
                 if(data.hasOwnProperty('users')) {
+                    let usernames = [];
                     for(var i=0; i<data['users'].length; i++) {
                         let uName = data['users'][i]['username'];
+                        usernames.push(uName);
                         var uName_vis = uName;
                         let isAdmin = data['users'][i]['isadmin'] ? '<img src="/static/general/img/success.svg"></img>' : '<img src="/static/general/img/error.svg"></img>';
                         var admittedUntil = data['users'][i]['admitted_until'];
-                        if(admittedUntil === null) admittedUntil = '';
+                        if(typeof(admittedUntil) === 'number') {
+                            try {
+
+                                admittedUntil = new Date(admittedUntil * 1000).toDateString();
+                            } catch {
+                                admittedUntil = '';
+                            }
+                        } else {
+                            admittedUntil = '';
+                        }
                         var blockedUntil = data['users'][i]['blocked_until'];
-                        if(blockedUntil === null) blockedUntil = '';
-                        var markup = $('<tr id="'+uName+'"></tr>');
+                        if(typeof(blockedUntil) === 'number') {
+                            try {
+                                blockedUntil = new Date(blockedUntil * 1000).toDateString();
+                            } catch {
+                                blockedUntil = '';
+                            }
+                        } else {
+                            blockedUntil = '';
+                        }
+                        let markup = $('<tr id="'+uName+'"></tr>');
                         if(uName === window.user) {
                             var checkbox = $('<input type="checkbox" id="'+uName+'__select" disabled />');
                             uName_vis += ' (You)';
@@ -114,8 +136,19 @@
                         markup.append($('<td>'+isAdmin+'</td>'));
                         markup.append($('<td>'+admittedUntil+'</td>'));
                         markup.append($('<td>'+blockedUntil+'</td>'));
-                        usersListMarkup.append(markup);
+                        uList.append(markup);
                     }
+
+                    // set up letter picker
+                    window.letterPicker = new LetterPicker($('#letter-picker'),
+                        {
+                            data: usernames,
+                            allowMultipleSelection: false
+                        }
+                    );
+                    window.letterPicker.on('click', function() {
+                        filterUsersTable();
+                    });
                 }
             },
             error: function(xhr, status, error) {
@@ -124,11 +157,133 @@
             statusCode: {
                 401: function(xhr) {
                     return window.renewSessionRequest(xhr, function() {
-                        return getUsers(usersListMarkup);
+                        return getUsers();
                     });
                 }
             }
         });
+    }
+
+    function filterUsersTable() {
+        let letters = window.letterPicker.getSelected();
+        let alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+        let table = $('#users-list');
+        table.children().each(function() {
+            let initial = $(this).attr('id').slice(0,1).toUpperCase();
+            if(letters === undefined || letters.length === 0) {
+                // everything deselected; show all
+                $(this).show();
+            } else if(letters.includes(initial)) {
+                $(this).show();
+            } else if(letters.includes('#') && !alphabet.includes(initial)) {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        });
+    }
+
+    function saveProjectSettings() {
+        return $.ajax({
+            url: 'saveProjectConfiguration',
+            method: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            data: JSON.stringify({
+                'demoMode': $('#demo-checkbox').prop('checked'),
+                'isPublic': $('#public-checkbox').prop('checked')
+            }),
+            success: function(data) {
+                if(data['success']) {
+                    window.messager.addMessage('Settings saved successfully.', 'success');
+                } else {
+                    window.messager.addMessage('Settings could not be saved due to an unknown error.', 'error', 0);
+                }
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        saveProjectSettings();
+                    });
+                }
+            }
+        });
+    }
+
+    function setUserAuthentication() {
+        let users = [];
+        let uList = $('#users-list');
+        uList.children().each(function() {
+            let chckbx = $('#'+$(this).attr('id')+'__select');
+            if($(this).is(':visible') && chckbx.prop('checked')) {
+                users.push($(this).attr('id'));
+            }
+        });
+        if(users.length === 0) return;
+
+        console.log(users);
+
+        let timestamp = null;
+        try {
+            timestamp = new Date($('#datetime-specifier').val()).getTime() / 1000;
+        } catch {}
+        let privilege = $('#selection-action').val();
+        switch(privilege) {
+            case 'elevate-admin':
+                privilege = {
+                    'isAdmin': true
+                };
+                break;
+            case 'revoke-admin':
+                privilege = {
+                    'isAdmin': false
+                };
+                break;
+            case 'admitUntil':
+                privilege = {
+                    'admitted_until': timestamp
+                };
+                break;
+            case 'blockUntil':
+                privilege = {
+                    'blocked_until': timestamp
+                };
+                break;
+            case 'deregister':
+                privilege = {
+                    'remove': true
+                };
+                break;
+        }
+
+        return $.ajax({
+            url: 'setPermissions',
+            method: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            data: JSON.stringify({
+                users: users,
+                privileges: privilege
+            }),
+            success: function(response) {
+                if(response['status'] === 0) {
+                    window.messager.addMessage('User permissions changed successfully.', 'success');
+                }
+                return getUsers().then(function() {
+                    return filterUsersTable();
+                });
+            },
+            error: function(xhr, status, error) {
+                window.messager.addMessage('Could not set user permissions (message: "' + error + '").', 'error', 0);
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return setUserAuthentication();
+                    });
+                }
+            }
+        })
     }
 
     $(document).ready(function() {
@@ -148,7 +303,7 @@
             success: function(data) {
                 settings = data['settings'];
                 $('#public-checkbox').prop('checked', settings['ispublic']);
-                $('#field-secret-token').val(window.location.host + window.location.pathname + '/enroll'+'?t='+settings['secret_token']);
+                $('#field-secret-token').val(window.location.host + window.location.pathname.replace('/configuration','') + '/enroll'+'?t='+settings['secret_token']);
                 $('#demo-checkbox').prop('checked', settings['demomode']);
             },
             error: function(xhr, status, error) {
@@ -174,7 +329,7 @@
         }
 
         promise = promise.done(function() {
-            return getUsers(uList);
+            return getUsers();
         });
 
         // misc.
@@ -216,7 +371,11 @@
         });
 
         $('#selection-action-proceed').click(function() {
-            //TODO
+            setUserAuthentication();
+        });
+
+        $('#proj-settings-save-button').click(function() {
+            saveProjectSettings();
         });
         
         promise.done(function() {
