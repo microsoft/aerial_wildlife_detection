@@ -41,12 +41,12 @@ class LetterPicker {
             let letterMarkup = $('<div id="letterpicker-letter-'+this.letterArray[l]+'" class="letterpicker-letter">'+letter+'</div>');
             if(this.letterMap[this.letterArray[l]]) {
                 letterMarkup.addClass('letterpicker-letter-available');
+                letterMarkup.on('click', function() {
+                    self._letterClicked($(this).attr('id').replace('letterpicker-letter-', ''));
+                });
             } else {
                 letterMarkup.addClass('letterpicker-letter-disabled');
             }
-            letterMarkup.on('click', function() {
-                self._letterClicked($(this).attr('id').replace('letterpicker-letter-', ''));
-            });
             baseElement.append(letterMarkup);
         }
         this.domElement.append(baseElement);
