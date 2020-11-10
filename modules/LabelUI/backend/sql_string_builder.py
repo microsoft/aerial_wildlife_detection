@@ -273,7 +273,7 @@ class SQLStringBuilder:
             LEFT OUTER JOIN (
                 SELECT image AS bmImg, true AS bookmark
                 FROM {id_bookmark}
-            ) AS bm ON img.id = bm.bmImg;
+            ) AS bm ON img.image = bm.bmImg;
         ''').format(
             id_img=sql.Identifier(project, 'image'),
             id_anno=sql.Identifier(project, 'annotation'),

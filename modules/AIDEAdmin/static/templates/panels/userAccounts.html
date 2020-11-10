@@ -1,6 +1,7 @@
 <div>
     <h2>AIDE: user accounts</h2>
     
+    <div id="letter-picker"></div>
     <table id="users-table-thead">
         <thead>
             <tr>
@@ -84,6 +85,8 @@
     }
 </style>
 <link rel="stylesheet" href="/static/general/libs/datetimepicker/jquery.datetimepicker.css?v={{ version }}" />
+<link rel="stylesheet" href="/static/general/css/letterPicker.css?v={{ version }}" />
+<script type="text/javascript" src="/static/general/js/letterPicker.js?v={{ version }}"></script>
 <script type="text/javascript" src="/static/general/libs/datetimepicker/jquery.datetimepicker.js?v={{ version }}"></script>
 <script type="text/javascript">
 
@@ -259,6 +262,7 @@
             success: function(data) {
                 data = data['details'];
                 window.userData = data;
+                let usernames = [];
                 for(var user in data) {
                     var ud = data[user];
                     var numProjects = Object.keys(ud['enrolled_projects']).length;
@@ -278,7 +282,19 @@
                         setSelectedUser($(this).attr('id'));
                     });
                     usersTable.append(markup);
+                    usernames.push(user);
                 }
+
+                // set up letter picker
+                window.letterPicker = new LetterPicker($('#letter-picker'),
+                    {
+                        data: usernames,
+                        allowMultipleSelection: false
+                    }
+                );
+                window.letterPicker.on('click', function() {
+                    filterUsersTable(window.letterPicker.getSelected());
+                });
             },
             error: function(xhr, message, error) {
                 console.error(error);   //TODO
@@ -291,7 +307,25 @@
                     });
                 }
             }
-        })
+        });
+    }
+
+    function filterUsersTable(letters) {
+        let alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+        let table = $('#users-table-tbody');
+        table.children().each(function() {
+            let initial = $(this).attr('id').slice(0,1).toUpperCase();
+            if(letters === undefined || letters.length === 0) {
+                // everything deselected; show all
+                $(this).show();
+            } else if(letters.includes(initial)) {
+                $(this).show();
+            } else if(letters.includes('#') && !alphabet.includes(initial)) {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        });
     }
 
     $(document).ready(function() {
