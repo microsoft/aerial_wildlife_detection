@@ -78,8 +78,8 @@ class Reception:
             return {'projects': projectInfo}
 
 
-        @self.app.get('/<project>/enroll')
-        def enroll_in_project(project):
+        @self.app.get('/<project>/enroll/<token>')
+        def enroll_in_project(project, token):
             '''
                 Adds a user to the list of contributors to a project
                 if it is set to "public", or else if the secret token
@@ -87,20 +87,20 @@ class Reception:
             '''
             try:
                 if not self.loginCheck():
-                    return redirect('/')
+                    return redirect(f'/login?redirect={project}/enroll/{token}')
                 
                 username = html.escape(request.get_cookie('username'))
 
-                # try to get secret token
-                try:
-                    providedToken = html.escape(request.query['t'])
-                except:
-                    providedToken = None
+                # # try to get secret token
+                # try:
+                #     providedToken = html.escape(request.query['t'])
+                # except:
+                #     providedToken = None
 
-                success = self.middleware.enroll_in_project(project, username, providedToken)
+                success = self.middleware.enroll_in_project(project, username, token)
                 if not success:
                     abort(401)
-                return redirect('/' + project + '/interface')
+                return redirect(f'/{project}/interface')
             except HTTPResponse as res:
                 return res
             except Exception as e:

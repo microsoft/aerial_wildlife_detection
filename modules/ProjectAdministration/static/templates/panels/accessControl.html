@@ -1,8 +1,6 @@
 <div>
     <h2>Access control</h2>
 
-    <p style="font-weight:bold;color:red">Work in progress, not completely functional yet.</p>
-
     <div class="settings-group">
         <input type="checkbox" id="public-checkbox" />
         <label for="public-checkbox">Public project</label>
@@ -303,7 +301,7 @@
             success: function(data) {
                 settings = data['settings'];
                 $('#public-checkbox').prop('checked', settings['ispublic']);
-                $('#field-secret-token').val(window.location.host + window.location.pathname.replace('/configuration','') + '/enroll'+'?t='+settings['secret_token']);
+                $('#field-secret-token').val(window.location.host + window.location.pathname.replace('/configuration','') + '/enroll/'+settings['secret_token']);
                 $('#demo-checkbox').prop('checked', settings['demomode']);
             },
             error: function(xhr, status, error) {
