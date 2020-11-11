@@ -10,9 +10,24 @@
         <h3>Selected node:</h3>
         <label for="sel-node-title">Name:</label>
         <input type="text" id="sel-node-title" />
-        <div id="sel-node-color-wrapper">
+        <div id="sel-node-leaf-wrapper">
             <label for="sel-node-color">Color:</label>
             <input class="jscolor" data-jscolor="{required:false}" id="sel-node-color" />
+            <br />
+            <label for="sel-node-shortcut">Keyboard shortcut:</label>
+            <select id="sel-node-shortcut">
+                <option value="unassigned">(none)</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+                <option value="8">8</option>
+                <option value="9">9</option>
+                <option value="0">0</option>
+            </select>
         </div>
         <button id="update-selected" class="btn btn-sm btn-primary">Apply</button>
     </div>
@@ -80,6 +95,7 @@
     ]
 
     window.lcTree = undefined;
+    window.keystrokeMap = {};
 
     window.rgbToHex = function(rgb) {
         var componentToHex = function(c) {
@@ -126,8 +142,12 @@
             id: entryID,
             name: name,
             color: entry['color'],
-            hidden: entry['hidden']
+            hidden: entry['hidden'],
+            keystroke: entry['keystroke']
         };
+        if(treeEntry.keystroke !== undefined && typeof(treeEntry.keystroke) === 'number') {
+            window.keystrokeMap[treeEntry.keystroke] = entryID;
+        }
 
         if(entry.hasOwnProperty('entries')) {
             let children = [];
@@ -518,8 +538,15 @@
         if(node !== null && node !== undefined && node) {
             $('#sel-node-title').val(node.name);
             if(node.children.length) {
-                $('#sel-node-color-wrapper').hide();
+                // remove keystroke if group has one
+                if(node.keystroke !== undefined && typeof(node.keystroke) === 'number') {
+                    delete window.keystrokeMap[node.keystroke];
+                    $($('#sel-node-shortcut').find('option[value="'+node.keystroke.toString()+'"]')).prop('disabled', false);
+                    node.keystroke = undefined;
+                }
+                $('#sel-node-leaf-wrapper').hide();
             } else {
+                // color
                 if(node.color !== undefined && node.color !== null) {
                     $('#sel-node-color')[0].jscolor.fromString(node.color);
                 } else {
@@ -527,7 +554,24 @@
                     $('#sel-node-color').val('');
                     $('#sel-node-color').css('background', '#FFFFFF');
                 }
-                $('#sel-node-color-wrapper').show();
+
+                // shortcut: set to current & disable other taken ones
+                for(var k=0; k<10; k++) {
+                    if(window.keystrokeMap.hasOwnProperty(k)) {
+                        // keystroke taken; disable
+                        $($('#sel-node-shortcut').find('option[value="'+k.toString()+'"]')).prop('disabled', true);
+                    }
+                }
+
+                if(node.keystroke !== undefined && typeof(node.keystroke) === 'number') {
+                    $('#sel-node-shortcut').val(node.keystroke.toString());
+                    // re-enable currently selected one
+                    $($('#sel-node-shortcut').find('option[value="'+node.keystroke+'"]')).prop('disabled', false);
+                } else {
+                    $('#sel-node-shortcut').val('unassigned');
+                }
+
+                $('#sel-node-leaf-wrapper').show();
             }
             $('#selected-node-controls').show();
         } else {
@@ -555,6 +599,26 @@
             }
         }
         window.selectedNode.color = window.rgbToHex($('#sel-node-color').css('background-color'));
+
+        // keystroke
+        if(window.keystrokeMap.hasOwnProperty(window.selectedNode.keystroke)) {
+            delete window.keystrokeMap[window.selectedNode.keystroke];
+        }
+        let selectedKeystroke = $('#sel-node-shortcut').val();
+        if(selectedKeystroke !== 'unassigned') {
+            // set assigned & update keystroke map
+            window.selectedNode.keystroke = parseInt(selectedKeystroke);
+            window.keystrokeMap[parseInt(selectedKeystroke)] = window.selectedNode['id'];
+
+            // update keystroke map
+            for(var k=0; k<10; k++) {
+                if(window.keystrokeMap.hasOwnProperty(k)) {
+                    // keystroke taken; disable
+                    $($('#sel-node-shortcut').find('option[value="'+k.toString()+'"]')).prop('disabled', true);
+                }
+            }
+        }
+
         window.lcTree.tree(
             'updateNode',
             window.selectedNode,
@@ -563,6 +627,12 @@
     }
 
     function addElement() {
+        // remove keystroke of current node (as it becomes a group now)
+        if(window.selectedNode.keystroke !== undefined && typeof(window.selectedNode.keystroke) === 'number') {
+            delete window.keystrokeMap[window.selectedNode.keystroke];
+            $($('#sel-node-shortcut').find('option[value="'+window.selectedNode.keystroke.toString()+'"]')).prop('disabled', false);
+            window.selectedNode.keystroke = undefined;
+        }
         window.lcTree.tree(
             'appendNode',
             {
