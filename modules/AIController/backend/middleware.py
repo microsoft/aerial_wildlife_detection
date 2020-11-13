@@ -805,25 +805,78 @@ class AIMiddleware():
     
     def launch_task(self, project, workflow, author=None):
         '''
-            Accepts a dict containing a workflow definition as per workflow designer,
+            Accepts a workflow as one of the following three variants:
+            - ID (str or UUID): ID of a saved workflow in this project
+            - 'default': uses the default workflow for this project
+            - dict: an actual workflow as per specifications
             parses it and launches the job if valid.
-            Returns the task ID (TODO: useless due to sub-IDs being generated).
+            Returns the task ID accordingly.
         '''
-        process = self.workflowDesigner.parseWorkflow(project, workflow, False)
+        if isinstance(workflow, str):
+            if workflow.lower() == 'default':
+                # load default workflow
+                queryStr = sql.SQL('''
+                    SELECT workflow FROM {id_workflow}
+                    WHERE id = (
+                        SELECT default_workflow
+                        FROM aide_admin.project
+                        WHERE shortname = %s
+                    );
+                ''').format(
+                    id_workflow=sql.Identifier(project, 'workflow')
+                )
+                result = self.dbConn.execute(queryStr, (project,), 1)
+                if result is None or not len(result):
+                    return {
+                        'status': 2,
+                        'message': f'Workflow with ID "{str(workflow)}" does not exist in this project'
+                    }
+                workflow = result[0]['workflow']
+            else:
+                # try first to parse workflow
+                try:
+                    workflow = json.loads(workflow)
+                except:
+                    # try to convert to UUID instead
+                    try:
+                        workflow = uuid.UUID(workflow)
+                    except:
+                        return {
+                            'status': 3,
+                            'message': f'"{str(workflow)}" is not a valid workflow ID'
+                        }
+        
+        if isinstance(workflow, uuid.UUID):
+            # load workflow as per UUID
+            queryStr = sql.SQL('''
+                    SELECT workflow FROM {id_workflow}
+                    WHERE id %s;
+                ''').format(
+                    id_workflow=sql.Identifier(project, 'workflow')
+                )
+            result = self.dbConn.execute(queryStr, (project,), 1)
+            if result is None or not len(result):
+                return {
+                    'status': 2,
+                    'message': f'Workflow with ID "{str(workflow)}" does not exist in this project'
+                }
+            workflow = result[0]['workflow']
+
+        # try to parse workflow
+        try:
+            process = self.workflowDesigner.parseWorkflow(project, workflow, False)
+        except Exception as e:
+            return {
+                'status': 4,
+                'message': f'Workflow could not be parsed (message: "{str(e)}")'
+            }
 
         task_id = self.workflowTracker.launchWorkflow(project, process, workflow, author)
 
-        #TODO:
-        # task_id = self.messageProcessor.task_id(project)
-        # job = process.apply_async(task_id=task_id,
-        #                     queue='AIWorker',
-        #                     ignore_result=False,
-        #                     # result_extended=True,
-        #                     headers={'headers':{'project':project,'submitted': str(current_time())}})
-        
-        # self.messageProcessor.register_job(project, job, 'workflow')    #TODO: task type; task ID for polling...
-
-        return task_id
+        return {
+            'status': 0,
+            'task_id': task_id
+        }
 
 
 
@@ -1265,7 +1318,8 @@ class AIMiddleware():
             valid = self.workflowDesigner.parseWorkflow(project, workflow, verifyOnly=True)
             if not valid:
                 raise Exception('Workflow is not valid.')   #TODO: detailed error message
-            
+            workflow = json.dumps(workflow)
+
             updateExisting = False
             if workflowID is not None:
                 # ID provided; query first if id exists
@@ -1326,3 +1380,76 @@ class AIMiddleware():
                 'status': 1,
                 'message': str(e)
             }
+
+
+    
+    def setDefaultWorkflow(self, project, workflowID):
+        '''
+            Receives a str (workflow ID) and sets the associated
+            workflow as default, if it exists for a given project.
+        '''
+        if isinstance(workflowID, str):
+            workflowID = uuid.UUID(workflowID)
+        if not isinstance(workflowID, uuid.UUID):
+            return {
+                'status': 2,
+                'message': f'Provided argument "{str(workflowID)}" is not a valid workflow ID'
+            }
+        queryStr = sql.SQL('''
+            UPDATE aide_admin.project
+            SET default_workflow = (
+                SELECT id FROM {id_workflow}
+                WHERE id = %s
+                LIMIT 1
+            )
+            WHERE shortname = %s
+            RETURNING default_workflow;
+        ''').format(
+            id_workflow=sql.Identifier(project, 'workflow')
+        )
+        result = self.dbConn.execute(queryStr, (workflowID, project,), 1)
+        if result is None or not len(result) or str(result[0]['default_workflow']) != str(workflowID):
+            return {
+                'status': 3,
+                'message': f'Provided argument "{str(workflowID)}" is not a valid workflow ID'
+            }
+        else:
+            return {
+                'status': 0
+            }
+
+
+    
+    def deleteWorkflow(self, project, username, workflowID):
+        '''
+            Receives a str or iterable of str variables under
+            "workflowID" and finds and deletes them for a given
+            project. Only deletes them if they were created by
+            the user provided in "username", or if they are
+            deleted by a super user.
+        '''
+        if isinstance(workflowID, str):
+            workflowID = (workflowID,)
+        else:
+            workflowID = tuple([(w,) for w in workflowID])
+
+        queryStr = sql.SQL('''
+            DELETE FROM {id_workflow}
+            WHERE username = %s
+            OR username IN (
+                SELECT name
+                FROM aide_admin.user
+                WHERE isSuperUser = true
+            )
+            AND id IN %s
+            RETURNING id;
+        ''').format(
+            id_workflow=sql.Identifier(project, 'workflow')
+        )
+        result = self.dbConn.execute(queryStr, (username, workflowID,), 'all')
+        result = [str(r['id']) for r in result]
+
+        return {
+            'status': 0,
+            'workflowIDs': result
+        }

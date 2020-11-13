@@ -192,10 +192,8 @@ class AIController:
             try:
                 username = html.escape(request.get_cookie('username'))
                 params = request.json
-                taskID = self.middleware.launch_task(project, params['workflow'], username)
-
-                return { 'status': 0,
-                        'task_id': taskID}
+                result = self.middleware.launch_task(project, params['workflow'], username)
+                return result
 
             except Exception as e:
                 return { 'status': 1,
@@ -302,6 +300,48 @@ class AIController:
 
             except Exception as e:
                 return { 'response': {'status':1, 'message':str(e)} }
+
+
+        
+        @self.app.post('/<project>/setDefaultWorkflow')
+        def set_default_workflow(project):
+            '''
+                Receives a string (ID) of a workflow and sets it as default
+                for a given project.
+            '''
+            if not self.loginCheck(project, admin=True):
+                abort(401, 'unauthorized')
+            
+            try:
+                workflowID = request.json['workflow_id']
+                
+                status = self.middleware.setDefaultWorkflow(project, workflowID)
+                return status
+
+            except Exception as e:
+                return {'status':1, 'message':str(e)}
+
+
+
+
+        @self.app.post('/<project>/deleteWorkflow')
+        def delete_workflow(project):
+            '''
+                Receives a string (ID) or list of strings (IDs) for work-
+                flow(s) to be deleted. They can only be deleted by the
+                authors or else super users.
+            '''
+            if not self.loginCheck(project, admin=True):
+                abort(401, 'unauthorized')
+            
+            try:
+                username = html.escape(request.get_cookie('username'))
+                workflowID = request.json['workflow_id']
+                status = self.middleware.deleteWorkflow(project, username, workflowID)
+                return status
+
+            except Exception as e:
+                return {'status':1, 'message':str(e)}
 
     
         @self.app.get('/<project>/getAvailableAImodels')

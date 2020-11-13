@@ -1091,7 +1091,9 @@ class WorkflowDesigner {
         // clear current nodes first
         this.clear(this.startingNode);
 
-        if(!workflow.hasOwnProperty('tasks') || !Array.isArray(workflow['tasks'])) return;
+        if(typeof(workflow) === 'string') {
+            workflow = JSON.parse(workflow);
+        }
 
         // add nodes
         for(var i=0; i<workflow['tasks'].length; i++) {
@@ -1119,16 +1121,18 @@ class WorkflowDesigner {
         }
 
         // add id if not present
+        let idSet = false;
         if(!(nodeParams.hasOwnProperty('id'))) {
             nodeParams['id'] = this.newID();
+            idSet = true;
         }
 
         // get position
+        var latestNode = this._get_last_node();
         if(nodeParams.hasOwnProperty('extent') && Array.isArray(nodeParams['extent'])) {
             var position = nodeParams['extent'];
             var positionSpecified = true;
         } else {
-            var latestNode = this._get_last_node();
             var position = latestNode.getExtent(); 
             position = [position[0]+position[2]+50, position[1]+position[3]+50]; // shift from previous element
             var positionSpecified = false;
@@ -1141,6 +1145,12 @@ class WorkflowDesigner {
             var node = new RepeaterNode(this, nodeParams, position);
         } else if(type === 'connector') {
             if(typeof(nodeParams) === 'object') {
+                if((nodeParams['is_start_node'] || (typeof(nodeParams['kwargs']) === 'object' && nodeParams['kwargs']['is_start_node']))
+                    && !idSet) {
+                    // starting node; only update ID but skip otherwise
+                    this.startingNode.id = nodeParams['id'];
+                    return this.startingNode;
+                }
                 nodeParams['is_start_node'] = false;
             }
             var node = new ConnectionNode(this, nodeParams, position);
@@ -1253,12 +1263,12 @@ class WorkflowDesigner {
         var nodeSpec = [];
         var currentNode = this.startingNode;
         do {
-            currentNode = currentNode.getNextElement(false);
             if(currentNode !== undefined && currentNode !== null) {
                 nodeSpec.push(currentNode.toJSON());
             } else {
                 break;
             }
+            currentNode = currentNode.getNextElement(false);
         } while(currentNode !== undefined && currentNode !== null);
 
         // add repeater nodes

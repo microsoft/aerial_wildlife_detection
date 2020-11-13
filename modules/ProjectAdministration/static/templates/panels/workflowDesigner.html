@@ -4,7 +4,7 @@
     <p style="font-weight:bold;color:red">Work in progress, not functional yet.</p>
     <div style="display:flex;flex-direction:row;margin-bottom:30px;">
         <!-- Quick workflow & saved workflows -->
-        <div>
+        <div style="flex-grow:1">
             <div id="quick-buttons" class="btn-group btn-group-toggle" role="group" aria-label="Workflow presets" data-toggle="buttons">
                 <button id="quick-workflow-button" class="btn btn-sm btn-secondary">Quick workflow</button>
                 <button id="saved-workflows-button" class="btn btn-sm btn-secondary">Saved workflows</button>
@@ -61,7 +61,7 @@
         </div>
 
         <!-- Workflow pane and controls -->
-        <div style="position:relative;width:100%">
+        <div style="position:relative;width:100%;flex-grow:2">
             <div class="workflow-pane-buttons">
                 <button id="add-train-node" class="btn btn-sm btn-primary">+ Train</button>
                 <button id="add-inference-node" class="btn btn-sm btn-primary">+ Inference</button>
@@ -91,7 +91,8 @@
         border: 1px solid white;
         padding: 10px;
         margin-right: 10px;
-        width: 250px;
+        /* width: 250px; */
+        min-width: 242px;
         height: calc(100vh - 300px);
         overflow-y: auto;
     }
@@ -108,6 +109,10 @@
 
     .workflow-pane-buttons * {
         display: inline;
+    }
+
+    #saved-workflows-tbody > tr {
+        cursor: pointer;
     }
 </style>
 <script src="/static/aiController/js/workflowMonitor.js?v={{ version }}"></script>
@@ -134,12 +139,13 @@
                     if(data.hasOwnProperty('workflows')) {
                         window.savedWorkflows = data['workflows'];
                         for(var key in window.savedWorkflows) {
-                            var markup = $('<tr id="'+key+'" class="saved-workflow-row" style="cursor_pointer"></tr>');
+                            let markup = $('<tr id="'+key+'" class="saved-workflow-row" style="cursor_pointer"></tr>');
+                            let defaultWorkflow = (window.savedWorkflows[key]['default_workflow'] ? '<img src="/static/general/img/success.svg" />' : '');
                             markup.append($('<td>'+window.savedWorkflows[key]['name']+'</td>'));
                             markup.append($('<td>'+window.savedWorkflows[key]['author']+'</td>'));
-                            markup.append($('<td>'+'TODO'+'</td>'));
-                            markup.append($('<td>'+'TODO'+'</td>'));
-                            markup.append($('<td>'+window.savedWorkflows[key]['default_workflow']+'</td>'));
+                            markup.append($('<td>'+new Date(window.savedWorkflows[key]['time_created'] * 1000).toLocaleString()+'</td>'));
+                            markup.append($('<td>'+new Date(window.savedWorkflows[key]['time_modified'] * 1000).toLocaleString()+'</td>'));
+                            markup.append($('<td>'+defaultWorkflow+'</td>'));
                             markup.click(function() {
                                 var isActive = $(this).hasClass('active');
                                 $('#saved-workflows-tbody').children().each(function() {
@@ -170,13 +176,23 @@
         }
         loadSavedWorkflows();
 
+        function getSelectedWorkflowID() {
+            let workflows = $('#saved-workflows-tbody').children();
+            for(var w=0; w<workflows.length; w++) {
+                if($(workflows[w]).hasClass('active')) {
+                    return $(workflows[w]).attr('id');
+                }
+            }
+            return null;
+        }
+
         function saveWorkflow() {
             $('#save-workflow').prop('disabled', true);
             var wName = $('#workflow-name').val();
             if(wName === '') return;
 
             // get mode: if ID given and name identical, we overwrite, otherwise we create a new workflow
-            let idGiven = (window.editedWorkflowID !== undefined);
+            let idGiven = (window.editedWorkflowID !== undefined && typeof(window.savedWorkflows[window.editedWorkflowID]) === 'object');
             if(idGiven) {
                 var nameIdentical = (wName === window.savedWorkflows[window.editedWorkflowID]['name']);
             } else {
@@ -213,14 +229,24 @@
                 dataType: 'json',
                 data: JSON.stringify(data),
                 success: function(data) {
-                    var response = data['response'];
-                    if(response.hasOwnProperty('status') && ['status'] === 1) {
-                        // error occurred (TODO: show message)
-                        console.log('An error occurred while saving the workflow (message: "' + response['message'] + '").');
+                    let response = data['response'];
+                    if(response['status'] === 0) {
+                        loadSavedWorkflows().then(function() {
+                            window.messager.addMessage('Workflow saved successfully.', 'success');
+                        });
+                    } else {
+                        // error occurred; update table anyway
+                        loadSavedWorkflows().then(function() {
+                            let message = 'An error occurred while trying to set workflow as default';
+                            if(typeof(response['message']) === 'string') {
+                                message += ' (message: "' + response['message'] + '")';
+                            }
+                            message += '.';
+                            window.messager.addMessage(message, 'error', 0);
+                        });
                     }
 
-                    // update table
-                    loadSavedWorkflows();
+                    
                 },
                 error: function(xhr, status, error) {
                     console.error(error);
@@ -238,6 +264,86 @@
             });
         }
 
+        function setSelectedAsDefault() {
+            let selectedWorkflowID = getSelectedWorkflowID();
+            if(selectedWorkflowID === null) return;
+
+            return $.ajax({
+                url: 'setDefaultWorkflow',
+                method: 'POST',
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+                data: JSON.stringify({workflow_id:selectedWorkflowID}),
+                success: function(data) {
+                    if(data['status'] === 0) {
+                        // re-populate saved workflows table
+                        return loadSavedWorkflows().then(function() {
+                            window.messager.addMessage('Workflow successfully set as default.', 'success');
+                            return $.Deferred().promise();
+                        });
+                    } else {
+                        let message = 'An error occurred while trying to set workflow as default';
+                        if(typeof(data['message']) === 'string') {
+                            message += ' (message: "' + data['message'] + '")';
+                        }
+                        message += '.';
+                        window.messager.addMessage(message, 'error', 0);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error(error);
+                    if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                        window.messager.addMessage('An error occurred while trying to set workflow as default (message: "' + error + '").', 'error', 0);
+                    }
+                },
+                statusCode: {
+                    401: function(xhr) {
+                        return window.renewSessionRequest(xhr, function() {
+                            return setSelectedAsDefault();
+                        });
+                    }
+                }
+            })
+        }
+
+        function deleteSelectedWorkflow() {
+            let selectedWorkflowID = getSelectedWorkflowID();
+            if(selectedWorkflowID === null) return;
+
+            function _do_delete() {
+                return $.ajax({
+                    url: 'deleteWorkflow',
+                    method: 'POST',
+                    contentType: 'application/json; charset=utf-8',
+                    dataType: 'json',
+                    data: JSON.stringify({workflow_id:selectedWorkflowID}),
+                    success: function(response) {
+                        // re-populate saved workflows table
+                        return loadSavedWorkflows().then(function() {
+                            window.messager.addMessage('Workflow successfully deleted.', 'success');
+                            return $.Deferred().promise();
+                        });
+                    },
+                    error: function(xhr, status, error) {
+                        console.error(error);
+                        if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                            window.messager.addMessage('An error occurred while trying to delete workflow (message: "' + error + '").', 'error', 0);
+                        }
+                    },
+                    statusCode: {
+                        401: function(xhr) {
+                            return window.renewSessionRequest(xhr, function() {
+                                return _do_delete();
+                            });
+                        }
+                    }
+                });
+            }
+
+            window.showYesNoOverlay($('<div>Are you sure you want to delete the selected workflow? This cannot be undone.</div>'),
+                _do_delete, null, 'Delete', 'Cancel', 'btn-danger', 'btn-secondary', false, false);
+        }
+
         function runWorkflow() {
             var workflow = window.workflowDesigner.toJSON();
             return $.ajax({
@@ -247,12 +353,19 @@
                 dataType: 'json',
                 data: JSON.stringify({workflow:workflow}),
                 success: function(response) {
-                    console.log(response);      //TODO: show AI panel in footer and start polling
+                    if(response['status'] === 0) {
+                        //TODO: test
+                        window.wfMonitor.startQuerying();
+                        window.messager.addMessage('Workflow launched.', 'success');
 
-                    //TODO: test
-                    window.wfMonitor.startQuerying();
-
-                    window.messager.addMessage('Workflow launched.', 'success');
+                    } else {
+                        let message = 'An error occurred while trying to launch workflow';
+                        if(typeof(response['message']) === 'string') {
+                            message += ' (message: "' + response['message'] + '")';
+                        }
+                        message += '.';
+                        window.messager.addMessage(message, 'error', 0);
+                    }
                 },
                 error: function(xhr, status, error) {
                     console.error(error);
@@ -281,19 +394,23 @@
             //TODO: ask for confirmation if unsaved changes to current workflow
 
             // find selected workflow
-            window.editedWorkflowID = undefined;
-            let tbody = $('#saved-workflows-tbody');
-            tbody.children().each(function() {
-                if($(this).hasClass('active')) {
-                    window.editedWorkflowID = $(this).attr('id');
-                    return false;
-                }
-            });
-
-            if(window.editedWorkflowID === undefined) return;
+            window.editedWorkflowID = getSelectedWorkflowID();
+            if(window.editedWorkflowID === null) return;
 
             // draw workflow
-            window.workflowDesigner.fromJSON(window.savedWorkflows[window.editedWorkflowID]['workflow']);
+            try {
+                window.workflowDesigner.fromJSON(window.savedWorkflows[window.editedWorkflowID]['workflow']);
+            } catch(err) {
+                window.messager.addMessage('Could not load workflow (message: "' + error + '").', 'error', 0);
+            }
+        });
+
+        $('#set-selected-default').on('click', function() {
+            setSelectedAsDefault();
+        });
+
+        $('#delete-selected').on('click', function() {
+            deleteSelectedWorkflow();
         });
 
 
