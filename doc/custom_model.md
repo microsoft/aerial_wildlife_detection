@@ -14,7 +14,9 @@ The following sections will provide details on how to implement custom models fo
 
 ## Implement a custom prediction model
 
-Below is a sample code shell for a custom prediction model:
+As a bare minimum, a custom prediction model must support routines for training, inference (prediction), and model state averaging (for combining model parameters when training was distributed across multiple AIWorkers).
+
+Below is a sample code shell for a minimal custom prediction model:
 
 ```python
 
@@ -267,6 +269,168 @@ These may look as follows (bounding box example shown):
     * Make sure to always predict a segmentation mask that has the same spatial dimensions as the input image.
     * Return either a list of lists or a NumPy ndarray for `label`, `confidence` and `logits`, _not_ a base64-encoded string.
 
+
+### Registering your model
+
+In order to make your model visible through AIDE, it needs to be registered.
+To do so, add an entry to the [ai/__init__.py](https://github.com/microsoft/aerial_wildlife_detection/blob/master/ai/__init__.py) file:
+```python
+
+PREDICTION_MODELS = {
+
+    # built-ins
+    # ...
+
+    # your custom model
+    'ai.models.contrib.MyGreatModel': {
+        'name': 'My great model',
+        'author': 'Awesome contributor',
+        'description': 'Description of my great model. See <a href="https://bkellenb.github.io" target="_blank">here</a>.',
+        'annotationType': ['points', 'boundingBoxes'],
+        'predictionType': 'points',
+        'canAddLabelclasses': False,
+        'canRemoveLabelclasses': False
+    }
+}
+```
+
+Notes:
+* Key: your custom model's key (`ai.models.contrib.MyGreatModel` in the example) is the unique identifier of your model's architecture and should reflect the Python import path under which your model's main class (as described above) can be accessed. In the example, your model's main file has to reside under `aerial_wildlife_detection/ai/models/contrib/MyGreatModel`. You can also add a file `aerial_wildlife_detection/ai/models/contrib/__init__.py` and specify the import in there (`from xx.yy import MyGreatModel`).
+* `description`: you can put HTML elements in here, such as links (as shown), images, and more. Be aware that AIDE itself does not serve static content like images from the model directory; this has to come from another server. Also, `<script>` tags will be removed.
+* `annotationType`: specify here what kind of annotations your model supports. This can either be a single string, or a list of strings if the model can cope with different types of inputs. Has to be one of {'labels', 'points', 'boundingBoxes', 'segmentationMasks'}.
+* `predictionType`: likewise, this is the kind of output the model generates and must be a string.
+* `canAddLabelclasses` and `canRemoveLabelclasses`: flags whether the custom model implementation supports the addition of new, resp. removal of obsolete label classes. If at least the first parameter is set to `True`, training states of the model will be shareable with others through the Model Marketplace. However, just setting this value to `True` does not mean that it automatically supports sharing! You still have to implement it (see below).
+
+
+### Extra features
+
+In addition to the bare minimum explained above, a prediction model can provide the following enhancements, if implemented:
+1. Support for adding new and removing obsolete label classes. This is a requirement for the model to be shareable on the Model Marketplace (to be announced soon).
+2. Verify integrity of provided configuration options.
+2. Support for pretty-printed configuration options through the GUI.
+
+For best user experience, it is strongly recommended to implement all three aspects into your custom model.
+
+
+#### 1. Adding new and removing obsolete label classes
+
+If a custom model (state) is to be shared with other projects, the chances are virtually 100% that the new projects' label class definitions are different from the one the model has been trained on. Even if the label class names are identical, __their IDs are not__. Hence, a shareable custom model must provide routines to incorporate new label classes.
+
+Basically, this requires doing the following:
+1. At the start of the training routine (`train`), go through the label classes and compare the entries with what your model is trained on:
+```python
+# get all label class IDs from the project and the model
+classes_project = set(data['labelClasses'].keys())
+classes_model = set(...)     # extract from variable "stateDict"
+
+# find new and obsolete classes
+classes_new = classes_project.difference(classes_model)
+classes_obsolete = classes_model.difference(classes_project)
+```
+2. Modify your model to reflect changes. For deep learning models, doing so requires at least adding new output neurons for new classes and removing outputs for obsolete ones. Doing this the most efficient way is an entire research area in its own. A viable approach is the following (pseudocode):
+```python
+for label in classes_new:
+    # perform inference on images with new class:
+    pred, weights = model(images[label])    # keep class activations and weights of final layer
+    newWeight = mean(pred * weights)      # calc. an average of per-class output weights times their activations across all images with new class
+    model.weights += newWeight          # append new weight to model's last layer's weights
+```
+3. Don't forget to update your model's label class definitions to reflect that new classes have been added (and old ones deleted).
+
+
+Finally, make sure to enable sharing of model states across projects through the Model Marketplace by setting `canAddLabelclasses` and (if implemented) `canRemoveLabelclasses` to `True` (see above). Only if done so, your custom model will be visible on the Model Marketplace.
+
+
+#### 2. Advanced model options
+
+AIDE allows users to set and modify model parameters through the web interface:
+![model options](figures/modelOptions_plain.png)
+
+In this process, there is a high risk of them introducing errors into the configuration. These may include value errors (e.g., negative learning rates) as well as formatting errors.
+
+To this end, AIDE includes two mechanisms:
+1. A function to load default values, as defined by the model author;
+2. Functionality to verify user-provided model options for integrity.
+
+Both functions can be accessed via dedicated buttons (see bottom of the screenshot). For a custom model, this means that the following two additional functions must be implemented:
+
+```python
+
+    class MyCustomModel:
+
+        # __init__, train, inference, etc., go here as explained above
+
+
+    @staticmethod
+    def getDefaultOptions():
+        """
+            Returns a string of options that contains default values and
+            is syntactically correct.
+            Tip: you can define them e.g. in your model's __init__.py file,
+            a dedicated .py file, or e.g. a .json file in your model folder.
+        """
+        defaultOptions = ...    # load accordingly
+        return defaultOptions
+
+    
+    @staticmethod
+    def verifyOptions(options):
+        """
+            Placeholder to verify whether a given dict of options are valid
+            or not. To be overridden by subclasses.
+            Args:
+                options: a dict object containing parameters for a model.
+            
+            Returns:
+                - None if the subclass does not support the method (for compa-
+                  tibility reasons with legacy implementations)
+                - True/False if the given options are valid/invalid (minimal format)
+                - A dict with the following entries:
+                    - 'valid': bool, True/False if the given options are valid/invalid.
+                    - 'warnings': list of strings containing warnings encountered during
+                                  parsing (optional).
+                    - 'errors': list of strings containing errors encountered during par-
+                                sing (optional).
+                    - 'options': dict of updated options that will be used instead of the
+                                 provided ones. This can be used to e.g. auto-complete mis-
+                                 sing parameters in the provided options, or auto-correct
+                                 simple mistakes. If provided, these values will be used in
+                                 the GUI in lieu of what the user specified (optional).
+        """
+        # perform your verification here
+
+        return {
+            'valid': False,
+            'warnings': [
+                'Example warning 1',
+                'Example warning 2',
+                # etc.
+            ],
+            'errors': [
+                'Example error 1',
+                'Example error 2',
+                # etc.
+            ],
+            'options': options
+        }
+```
+
+Notes for function `getDefaultOptions`:
+* If this function is not defined, AIDE won't be able to display default options for a given model; the text area in the screenshot will thus only be blank.
+* The return value here should simply be a string, formatted the right way for the custom model and containing correct values for all options.
+
+Notes for function `verifyOptions`:
+* If this function is not defined, all AIDE can do is to try and launch a model instance (constructor only) and check if it completes without errors or not. This is reported to the user as a warning:
+![model options verification](figures/modelOptions_verification.png)
+* As written, the minimal format is to just return `True` or `False`, depending on the validity of the options.
+* `warnings` appear as a list of orange text to the user (see screenshot above); `errors` appear in red. Use `errors` only when it is impossible to launch a model due to a serious misconfiguration; for minor mistakes you can use `warnings` to notify the user.
+* `options` is an updated version of the input variable `options`. The idea here is that these are a __fixed__ and __auto-completed__ variant of the inputs that are to be used instead. These will be shown back to the user in the interface. If the user-provided options (input variable) are correct, you can just as well return them without alterations here.
+
+
+
+#### 3. Pretty-printed configuration options
+
+By default, the model's settings (`options` parameter) can take any form you'd like, as long as they are in plain text. However, AIDE provides a means of rendering them in a nice graphical interface if implemented according to custom rules. See [here](prettyPrint_options.md) for instructions.
 
 
 ## Implement a custom AL criterion model
