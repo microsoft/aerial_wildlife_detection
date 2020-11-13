@@ -382,6 +382,62 @@ class ProjectStatisticsMiddleware:
             }
 
 
+    def getUserAnnotationSpeeds(self, project, users, goldenQuestionsOnly=False):
+        '''
+            Returns, for each username in "users" list,
+            the mean, median and lower and upper quartile
+            (25% and 75%) of the time required in a given project.
+        '''
+        # prepare output
+        response = {}
+        for u in users:
+            response[u] = {
+                'avg': float('nan'),
+                'median': float('nan'),
+                'perc_25': float('nan'),
+                'perc_75': float('nan')
+            }
+
+        if goldenQuestionsOnly:
+            gqStr = sql.SQL('''
+                JOIN {id_img} AS img
+                ON anno.image = img.id
+                WHERE img.isGoldenQuestion = true
+            ''').format(
+                id_img=sql.Identifier(project, 'image')
+            )
+        else:
+            gqStr = sql.SQL('')
+
+        queryStr = sql.SQL('''
+            SELECT username, avg(timeRequired) AS avg,
+            percentile_cont(0.50) WITHIN GROUP (ORDER BY timeRequired ASC) AS median,
+            percentile_cont(0.25) WITHIN GROUP (ORDER BY timeRequired ASC) AS perc_25,
+            percentile_cont(0.75) WITHIN GROUP (ORDER BY timeRequired ASC) AS perc_75
+            FROM (
+                SELECT username, timeRequired
+                FROM {id_anno} AS anno
+                {gqStr}
+            ) AS q
+            WHERE username IN %s
+            GROUP BY username
+        ''').format(
+            id_anno=sql.Identifier(project, 'annotation'),
+            gqStr=gqStr
+        )
+        result = self.dbConnector.execute(queryStr, (tuple(users),), 'all')
+        if result is not None:
+            for r in result:
+                user = r['username']
+                response[user] = {
+                    'avg': float(r['avg']),
+                    'median': float(r['median']),
+                    'perc_25': float(r['perc_25']),
+                    'perc_75': float(r['perc_75']),
+                }
+        return response
+
+
     def getUserFinished(self, project, username):
         '''
             Returns True if the user has viewed all images in the project,

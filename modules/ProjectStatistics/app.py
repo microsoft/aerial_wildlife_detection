@@ -78,6 +78,22 @@ class ProjectStatistics:
 
             return { 'result': stats }
 
+        
+        @self.app.post('/<project>/getUserAnnotationSpeeds')
+        def get_user_annotation_speeds(project):
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+            
+            userList = request.json['users']
+            if 'goldenQuestionsOnly' in request.json:
+                goldenQuestionsOnly = request.json['goldenQuestionsOnly']
+            else:
+                goldenQuestionsOnly = False
+            
+            stats = self.middleware.getUserAnnotationSpeeds(project, userList, goldenQuestionsOnly)
+            
+            return { 'result': stats }
+
 
         @self.app.get('/<project>/getUserFinished')
         def get_user_finished(project):

@@ -345,7 +345,8 @@ class SQLStringBuilder:
             goldenQuestionsString = sql.SQL('')
 
         queryStr = sql.SQL('''
-            SELECT id, image, cType, username, viewcount, EXTRACT(epoch FROM last_checked) as last_checked, filename, isGoldenQuestion, {annoCols} FROM (
+            SELECT id, image, cType, username, viewcount, EXTRACT(epoch FROM last_checked) as last_checked, filename, isGoldenQuestion,
+            COALESCE(bookmark, false) AS isBookmarked, {annoCols} FROM (
                 SELECT id AS image, filename, isGoldenQuestion FROM {id_image}
                 {goldenQuestionsString}
             ) AS img
@@ -358,12 +359,17 @@ class SQLStringBuilder:
             LEFT OUTER JOIN (
                 SELECT id, image AS imID, 'annotation' AS cType, {annoCols} FROM {id_anno} AS anno
                 {usernameString}
-            ) AS contents ON img.image = contents.imID;
+            ) AS contents ON img.image = contents.imID
+            LEFT OUTER JOIN (
+                SELECT image AS bmImg, true AS bookmark
+                FROM {id_bookmark}
+            ) AS bm ON img.image = bm.bmImg;
         ''').format(
             annoCols=sql.SQL(', ').join(fields_anno),
             id_image=sql.Identifier(project, 'image'),
             id_iu=sql.Identifier(project, 'image_user'),
             id_anno=sql.Identifier(project, 'annotation'),
+            id_bookmark=sql.Identifier(project, 'bookmark'),
             usernameString=sql.SQL(usernameString),
             timestampString=sql.SQL(timestampString),
             skipEmptyString=skipEmptyString,

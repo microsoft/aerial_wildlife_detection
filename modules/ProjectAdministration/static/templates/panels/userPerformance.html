@@ -46,6 +46,11 @@
         <h2>Performance</h2>
         <div id="performance-container"></div>
     </div>
+
+    <!-- <div style="margin-top:20px">
+        <h2>Annotation speed</h2>
+        <div id="speed-container"></div>
+    </div> -->
 </div>
 <link rel="stylesheet" href="/static/statistics/libs/chartjs/Chart.min.css?v={{ version }}" />
 <style>
@@ -379,6 +384,40 @@
         });
     }
 
+    function getUserAnnotationSpeeds() {
+        let evalUsers = [];
+        $('#eval-users').find('input[type=checkbox]:checked').each(function() {
+            evalUsers.push($(this).attr('id'));
+        });
+        let limitGoldenQuestions = $('#check-golden-question-only').prop('checked');
+        let params = {
+            users: evalUsers,
+            goldenQuestionsOnly: limitGoldenQuestions
+        };
+        return $.ajax({
+            url: 'getUserAnnotationSpeeds',
+            method: 'POST',
+            data: JSON.stringify(params),
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            success: function(data) {
+                //TODO
+                // '#speed-container'
+                console.log(data);
+            },
+            error: function(xhr, status, error) {
+
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return getUserAnnotationSpeeds();
+                    });
+                }
+            }
+        })
+    }
+
     function getUserNames(evalUsersTable, targetUsersTable) {
         return $.ajax({
             url: 'getUserNames',
@@ -456,7 +495,8 @@
 
         $('#calc-stats').click(calculateUserStats);
         promise = promise.then(function() {
-            return calculateUserStats();
+            calculateUserStats();
+            // getUserAnnotationSpeeds();   //TODO
         });
 
         promise.then(function() {
