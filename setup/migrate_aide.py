@@ -254,11 +254,7 @@ MODIFICATIONS_sql = [
         FOREIGN KEY (username) REFERENCES "aide_admin".user(name),
         FOREIGN KEY (image) REFERENCES "{schema}".image
     );
-  ''',
   '''
-    ALTER TABLE aide_admin.project
-    ADD COLUMN IF NOT EXISTS launch_default_workflow_after_upload
-    BOOLEAN NOT NULL DEFAULT FALSE;'
 ]
 
 

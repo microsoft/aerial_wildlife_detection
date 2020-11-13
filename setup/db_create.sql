@@ -39,7 +39,6 @@ CREATE TABLE IF NOT EXISTS aide_admin.project (
     maxNumImages_train BIGINT,
     maxNumImages_inference BIGINT,
     default_workflow UUID,
-    launch_default_workflow_after_upload BOOLEAN NOT NULL DEFAULT FALSE,
     ai_model_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     ai_model_library VARCHAR,
     ai_model_settings VARCHAR,

@@ -919,8 +919,7 @@ class DataWorker:
             changes.
         '''
         projects = self.dbConnector.execute('''
-                SELECT shortname, watch_folder_remove_missing_enabled,
-                launch_default_workflow_after_upload
+                SELECT shortname, watch_folder_remove_missing_enabled
                 FROM aide_admin.project
                 WHERE watch_folder_enabled IS TRUE;
             ''', None, 'all')
@@ -939,11 +938,6 @@ class DataWorker:
 
             elif len(imgs_added):
                 print(f'[Project {pName}] {len(imgs_added)} new images found and added.')
-            
-            #TODO: create Celery chain instead for this:
-            # if len(imgs_added and p['launch_default_workflow_after_upload']):
-            #     print(f'[Project {pName}] auto-running default workflow...')
-
 
 
     
