@@ -25,3 +25,19 @@ DEFAULT_WORKFLOW_ARGS = {
     },
     #TODO
 }
+
+
+# DEFAULT_WORKFLOW_INFERENCE_NEW = {
+#     # default workflow for performing inference on newly uploaded images
+#     "project": None,
+#     "tasks": [
+#         {
+#             "id": "inference",
+#             "type": "inference",
+#             "kwargs": {
+#                 "numEpochs": 1,
+#                 "forceUnpredicted": True    #TODO: implement
+#             }
+#         }
+#     ]
+# }

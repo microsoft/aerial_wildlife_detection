@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS {id_bookmark} (
     timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (username, image),
     FOREIGN KEY (username) REFERENCES "aide_admin".user(name),
-    FOREIGN KEY (image) REFERENCES "{schema}".image
+    FOREIGN KEY (image) REFERENCES {id_image}(id)
 );
 
 CREATE TABLE IF NOT EXISTS {id_labelclassGroup} (

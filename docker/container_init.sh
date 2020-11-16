@@ -42,13 +42,11 @@ sudo rabbitmqctl list_vhosts|grep -q 'aide_vhost' || sudo rabbitmqctl add_vhost 
 
 # set permissions
 sudo rabbitmqctl set_permissions -p aide_vhost $RMQ_username ".*" ".*" ".*"
-
 sudo systemctl enable rabbitmq-server.service
 echo "==========================="
 echo "RABBITMQ SETUP IS COMPLETED"
 echo "==========================="
 echo ""
-
 # If AIDE is run on MS Azure: TCP connections are dropped after 4 minutes of inactivity
 # (see https://docs.microsoft.com/en-us/azure/load-balancer/load-balancer-outbound-connections#idletimeout)
 # This is fatal for our database connection system, which keeps connections open.

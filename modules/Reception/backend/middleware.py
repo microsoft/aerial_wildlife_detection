@@ -51,34 +51,35 @@ class ReceptionMiddleware:
 
         result = self.dbConnector.execute(queryStr, queryVals, 'all')
         response = {}
-        for r in result:
-            projShort = r['shortname']
-            if not projShort in response:
-                userAdmitted = True
-                if r['admitted_until'] is not None and r['admitted_until'] < now:
-                    userAdmitted = False
-                if r['blocked_until'] is not None and r['blocked_until'] >= now:
-                    userAdmitted = False
-                response[projShort] = {
-                    'name': r['name'],
-                    'description': r['description'],
-                    'archived': r['archived'],
-                    'isOwner': r['is_owner'],
-                    'annotationType': r['annotationtype'],
-                    'predictionType': r['predictiontype'],
-                    'isPublic': r['ispublic'],
-                    'demoMode': r['demomode'],
-                    'interface_enabled': r['interface_enabled'] and not r['archived'],
-                    'aiModelEnabled': r['ai_model_enabled'],
-                    'userAdmitted': userAdmitted
-                }
-            if isSuperUser:
-                response[projShort]['role'] = 'super user'
-            elif username is not None and r['username'] == username:
-                if r['isadmin']:
-                    response[projShort]['role'] = 'admin'
-                else:
-                    response[projShort]['role'] = 'member'
+        if result is not None and len(result):
+            for r in result:
+                projShort = r['shortname']
+                if not projShort in response:
+                    userAdmitted = True
+                    if r['admitted_until'] is not None and r['admitted_until'] < now:
+                        userAdmitted = False
+                    if r['blocked_until'] is not None and r['blocked_until'] >= now:
+                        userAdmitted = False
+                    response[projShort] = {
+                        'name': r['name'],
+                        'description': r['description'],
+                        'archived': r['archived'],
+                        'isOwner': r['is_owner'],
+                        'annotationType': r['annotationtype'],
+                        'predictionType': r['predictiontype'],
+                        'isPublic': r['ispublic'],
+                        'demoMode': r['demomode'],
+                        'interface_enabled': r['interface_enabled'] and not r['archived'],
+                        'aiModelEnabled': r['ai_model_enabled'],
+                        'userAdmitted': userAdmitted
+                    }
+                if isSuperUser:
+                    response[projShort]['role'] = 'super user'
+                elif username is not None and r['username'] == username:
+                    if r['isadmin']:
+                        response[projShort]['role'] = 'admin'
+                    else:
+                        response[projShort]['role'] = 'member'
         
         return response
 
