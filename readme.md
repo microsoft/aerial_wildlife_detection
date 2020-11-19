@@ -9,6 +9,23 @@ AIDE is primarily developed by [Benjamin Kellenberger](https://bkellenb.github.i
 ![AIDE overview](https://github.com/microsoft/aerial_wildlife_detection/raw/master/doc/figures/AIde_animal_hero_1100.jpg)
 
 
+## Contents
+* [Highlights](#highlights)
+* [News](#news)
+* [Demos](#demos)
+* [Installation and launching AIDE](#installation-and-launching-aide)
+  * [Migration from AIDE v1](#migration-from-aide-v1)
+  * [New installation](#new-installation)
+    * [With Docker](#with-docker)
+    * [Manual installation](#manual-installation)
+* [AI models in AIDE](#ai-models-in-aide)
+  * [Using a built-in AI model](#using-a-built-in-ai-model)
+  * [Writing your own AI model](#writing-your-own-ai-model)
+* [Publications and References](#publications-and-references)
+* [Contributing](#contributing)
+
+
+
 ## Highlights
 
 * **Powerful:** AIDE explicitly integrates humans and AI models in an annotation loop.
@@ -26,6 +43,10 @@ AIDE is primarily developed by [Benjamin Kellenberger](https://bkellenb.github.i
 
 ## News
 
+* **November 19, 2020:** We now have an official publication on AIDE:
+Kellenberger, Benjamin, Devis Tuia, and Dan Morris. "AIDE: Accelerating image‐based ecological surveys with interactive machine learning." Methods in Ecology and Evolution, __in press__.
+DOI: [10.1111/2041-210X.13489](https://doi.org/10.1111/2041-210X.13489).
+Please cite this manuscript whenever you use AIDE in your work. Thank you very much!
 * **August 17, 2020:** AIDE v2 now officially replaces the old version as the new master! If you have a v1 project running, you may want to migrate it according to the instructions [below](https://github.com/microsoft/aerial_wildlife_detection#migration-from-aide-v1). For the legacy v1 code, see [here](https://github.com/microsoft/aerial_wildlife_detection/tree/v1).
 * **July 17, 2020:** AIDE now supports watching image folders for changes! Every project can be configured to automatically register newly added images and, optionally, remove all data for deleted images. See "Project Settings" > "General" and the new entry `watch_folder_interval` in the settings.ini file.
 * **June 11, 2020:** The built-in RetinaNet now adapts to the project's label classes by adding or removing neurons whenever classes change! Check out the new, GUI-enhanced options in the project configuration page under "AI model" &gt; "Settings".
@@ -43,33 +64,6 @@ You can try out the labeling frontend of AIDE (V1) in a couple of demo instances
 * **[Semantic segmentation](http://aerialannotationdemo.southcentralus.cloudapp.azure.com/landcover/interface)** on the [Chesapeake Land Cover satellite imagery](http://lila.science/datasets/chesapeakelandcover) _(early preview - stay tuned for official announcement of segmentation support!)_
 
 
-## Framework Overview
-
-AIDE consists of individual _modules_, organized as follows:
-
-![AIDE module diagram](https://github.com/microsoft/aerial_wildlife_detection/raw/master/doc/figures/AIde_diagram.png)
-
-* **LabelUI**: responsible for delivering and accepting predictions and annotations to and from the user/labeler
-* **AIWorker**: runs the AI model in the background to train and predict data
-* **AIController**: distributes and manages jobs to and from the individual _AIWorker_ instance(s)
-* **Database**: stores all metadata (image paths, viewcounts, user annotations, model predictions, user account data, etc.)
-* **FileServer**: provides image files to both the _LabelUI_ and _AIWorker_ instances
-* **Message Broker**: AIDE makes use of [Celery](http://www.celeryproject.org/), a distributed task queue leveraging message brokers like [RabbitMQ](https://www.rabbitmq.com/) or [Redis](https://redis.io/).
-
-
-The framework can be configured in two ways:
-1. As a static labeling tool (_i.e._, using only the modules in (a)). In this case there will be no AI assistance for labeling or prioritizing the relevant images.
-2. As a full suite with AI support, using all modules.
-
-The individual modules need not be run on separate instances; it is possible to combine the components in any way and launch multiple (or all) modules on one machine. For example, the diagram above shows three _AIWorker_ instances, but the number of workers can be chosen arbitrarily, and workers may be added or removed on-the-fly.
-
-
-## Using a built-in AI model
-AIDE ships with a set of built-in models that can be configured and customized for a number of tasks (image classification, object detection, etc.).  See [this page](doc/builtin_models.md) for instructions on how to use one of the built-in models.
-
-
-## Writing your own AI model
-AIDE is fully modular and supports custom AI models, as long as they provide a Python interface and can handle the different annotation and prediction types appropriately. See [here](doc/custom_model.md) for instructions on using custom models.
 
 
 ## Installation and launching AIDE
@@ -125,6 +119,35 @@ See [here](doc/install.md) for instructions on configuring an instance of AIDE.
 After that, see [here](doc/launch_aide.md) for instructions on launching an instance of AIDE.
 
 
+## AI models in AIDE
+
+### Using a built-in AI model
+AIDE ships with a set of built-in models that can be configured and customized:
+* Image labels: [ResNet](http://openaccess.thecvf.com/content_cvpr_2016/papers/He_Deep_Residual_Learning_CVPR_2016_paper.pdf)
+* Points: [weakly-supervised detector](http://openaccess.thecvf.com/content_CVPRW_2019/papers/EarthVision/Kellenberger_When_a_Few_Clicks_Make_All_the_Difference_Improving_Weakly-Supervised_CVPRW_2019_paper.pdf)
+* Bounding boxes: [RetinaNet](http://openaccess.thecvf.com/content_ICCV_2017/papers/Lin_Focal_Loss_for_ICCV_2017_paper.pdf)
+* Semantic segmentation: [U-Net](https://arxiv.org/pdf/1505.04597.pdf)%E5%92%8C[Tiramisu](https://arxiv.org/abs/1611.09326)
+
+See [this page](doc/builtin_models.md) for instructions on how to use one of the built-in models.
+
+
+### Writing your own AI model
+AIDE is fully modular and supports custom AI models, as long as they provide a Python interface and can handle the different annotation and prediction types appropriately.
+We greatly welcome contributions and are happy to help in the implementation of your custom models!
+For example, check out the [awesome TensorFlow implementation](https://github.com/ctorney/aerial_wildlife_detection/tree/tensorflow) of [YOLOv3](https://arxiv.org/pdf/1804.02767.pdf) by contributor Colin Torney!
+
+See [here](doc/custom_model.md) for instructions on using custom models.
+
+
+
+## Publications and References
+
+Please cite the following paper if you use AIDE in your work:
+
+Kellenberger, Benjamin, Devis Tuia, and Dan Morris. "AIDE: Accelerating image‐based ecological surveys with interactive machine learning." Methods in Ecology and Evolution, __in press__.
+DOI: [10.1111/2041-210X.13489](https://doi.org/10.1111/2041-210X.13489).
+
+Thank you.
 
 
 ## Contributing
