@@ -1,3 +1,9 @@
+# Work in Progress: Integration of Detectron2
+
+This is a development branch with the goal of implementing the [Detectron2](https://github.com/facebookresearch/detectron2) API into AIDE!
+At the moment, this branch is **not** stable. Please clone the [official version](https://github.com/microsoft/aerial_wildlife_detection) for stable models.
+
+
 # AIDE: Annotation Interface for Data-driven Ecology
 
 AIDE is two things in one: <i>a tool for manually annotating images</i> and <i>a tool for training and running machine (deep) learning models</i>. Those two things are coupled in an <i>active learning loop</i>: the human annotates a few images, the system trains a model, that model is used to make predictions and to select more images for the human to annotate, etc.
