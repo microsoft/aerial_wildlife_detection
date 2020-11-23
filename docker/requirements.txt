@@ -9,6 +9,7 @@ Pillow>=2.2.1
 numpy
 requests
 future
+celery[redis,auth,msgpack]==4.4.7
 
 # for the AI backend
-celery[redis,auth,msgpack]==4.4.7  #TODO
+opencv-python
