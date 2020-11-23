@@ -155,7 +155,7 @@ class AIWorker():
         # create new model instance
         modelInstance = self._init_model_instance(project, modelLibrary, modelSettings)
 
-        return modelInstance
+        return modelInstance, modelLibrary
 
 
     def _get_alCriterion_instance(self, project):
@@ -194,9 +194,9 @@ class AIWorker():
     def call_train(self, data, epoch, numEpochs, project, subset):
 
         # get project-specific model
-        modelInstance = self._get_model_instance(project)
+        modelInstance, modelLibrary = self._get_model_instance(project)
 
-        return functional._call_train(project, data, epoch, numEpochs, subset, getattr(modelInstance, 'train'),
+        return functional._call_train(project, data, epoch, numEpochs, subset, modelInstance, modelLibrary,
                 self.dbConnector, self.fileServer)
     
 
@@ -204,9 +204,9 @@ class AIWorker():
     def call_average_model_states(self, epoch, numEpochs, project):
 
         # get project-specific model
-        modelInstance = self._get_model_instance(project)
+        modelInstance, modelLibrary = self._get_model_instance(project)
         
-        return functional._call_average_model_states(project, epoch, numEpochs, getattr(modelInstance, 'average_model_states'),
+        return functional._call_average_model_states(project, epoch, numEpochs, modelInstance, modelLibrary,
                 self.dbConnector, self.fileServer)
 
 
@@ -214,12 +214,12 @@ class AIWorker():
     def call_inference(self, imageIDs, epoch, numEpochs, project):
         
         # get project-specific model and AL criterion
-        modelInstance = self._get_model_instance(project)
+        modelInstance, modelLibrary = self._get_model_instance(project)
         alCriterionInstance = self._get_alCriterion_instance(project)
 
         return functional._call_inference(project, imageIDs, epoch, numEpochs,
-                getattr(modelInstance, 'inference'),
-                getattr(alCriterionInstance, 'rank'),
+                modelInstance, modelLibrary,
+                alCriterionInstance,
                 self.dbConnector, self.fileServer,
                 self.config.getProperty('AIWorker', 'inference_batch_size_limit', type=int, fallback=-1))
 

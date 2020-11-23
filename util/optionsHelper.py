@@ -6,6 +6,7 @@
     2020 Benjamin Kellenberger
 '''
 
+import copy
 from collections.abc import Iterable
 
 
@@ -70,7 +71,8 @@ def _fill_globals(options, defs):
                         if not 'id' in defs[option['id']]:
                             defs[defs[option['id']]]['id'] = option['id']
 
-        for key in options.keys():
+        keys = list(options.keys())
+        for key in keys:
             if key in RESERVED_KEYWORDS and key != 'value':
                     continue
             elif isinstance(options[key], str):
@@ -185,6 +187,36 @@ def get_hierarchical_value(dictObject, keys, lookFor=('value', 'id'), fallback=N
 
 
 
+def _append_current_hierarchy(dictObject, current, hierarchy=[]):
+    # check current dictObject for children
+    if isinstance(dictObject, dict):
+        for key in dictObject.keys():
+            if key in RESERVED_KEYWORDS:
+                continue
+            
+    return hierarchy
+
+
+
+def get_hierarchy(dictObject, substitute_globals=True):
+    '''
+        Receives a Python dict (options) object and returns
+        a list of lists with IDs/names of each hierarchical
+        level for all entries. Ignores entries under reser-
+        ved keywords ('name', 'description', etc.).
+        If "substitute_globals" is True, global definitions
+        are parsed and added to the options prior to tra-
+        versal.
+    '''
+    options = copy.deepcopy(dictObject)
+    if substitute_globals:
+        options = substitute_definitions(options)
+    
+    # iterate
+    result = []
+    #TODO
+
+
 def set_hierarchical_value(dictObject, keys, value):
     '''
         Accepts a Python dict object and an iterable
@@ -217,3 +249,27 @@ def update_hierarchical_value(sourceOptions, targetOptions, sourceKeys, targetKe
     if sourceVal is None:
         return
     set_hierarchical_value(targetOptions, targetKeys, sourceVal)
+
+
+
+def filter_reserved_children(options, recursive=False):
+    '''
+        Receives an "options" dict (might also be just a part)
+        and returns a copy that only contains child entries whose
+        ID is non-standard (i.e., not of one of the reserved
+        keywords).
+        If "recursive" is set to True, it also traverses through
+        the tree and applies the same logic for all child elements,
+        keeping only the "value" entry.
+    '''
+    if not isinstance(options, dict):
+        return options
+    
+    response = {}
+    for key in options.keys():
+        if key == 'value' or key not in RESERVED_KEYWORDS:
+            response[key] = filter_reserved_children(options[key], recursive)
+        elif key in RESERVED_KEYWORDS:
+            continue
+        
+    return response

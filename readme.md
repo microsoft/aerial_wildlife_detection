@@ -3,6 +3,16 @@
 This is a development branch with the goal of implementing the [Detectron2](https://github.com/facebookresearch/detectron2) API into AIDE!
 At the moment, this branch is **not** stable. Please clone the [official version](https://github.com/microsoft/aerial_wildlife_detection) for stable models.
 
+Progress on tasks/implementations:
+- [x] Basic Detectron2 trainer implemented
+- [x] RetinaNet as demonstrator model partially works (not yet tested)
+- [ ] Options verification
+- [ ] Model state averaging
+- [ ] Advanced class addition heuristics
+- [ ] Need to implement other models (Faster R-CNN, custom backbone, semantic segmentation, etc.)
+- [ ] Test DistributedDataParallel functionality (might crash due to daemonic subprocess conflict with Celery)
+- [ ] General unit testing
+
 
 # AIDE: Annotation Interface for Data-driven Ecology
 

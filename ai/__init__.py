@@ -78,6 +78,19 @@
 PREDICTION_MODELS = {
 
     # built-ins
+
+    # Detectron2
+    'ai.models.detectron2.RetinaNet': {
+                                            'name': 'RetinaNet (beta)',
+                                            'author': '(built-in)',
+                                            'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of the <a href="http://openaccess.thecvf.com/content_ICCV_2017/papers/Lin_Focal_Loss_for_ICCV_2017_paper.pdf" target="_blank">RetinaNet</a> object detector.',
+                                            'annotationType': 'boundingBoxes',
+                                            'predictionType': 'boundingBoxes',
+                                            'canAddLabelclasses': True,
+                                            'canRemoveLabelclasses': False
+                                       },
+
+    # PyTorch
     'ai.models.pytorch.labels.ResNet': {
                                             'name': 'ResNet',
                                             'author': '(built-in)',
@@ -97,9 +110,9 @@ PREDICTION_MODELS = {
                                             'canRemoveLabelclasses': True
                                         },
     'ai.models.pytorch.boundingBoxes.RetinaNet': {
-                                            'name': 'RetinaNet',
+                                            'name': 'RetinaNet (legacy)',
                                             'author': '(built-in)',
-                                            'description': 'Implementation of the <a href="http://openaccess.thecvf.com/content_ICCV_2017/papers/Lin_Focal_Loss_for_ICCV_2017_paper.pdf" target="_blank">RetinaNet</a> object detector.',
+                                            'description': 'Implementation of the <a href="http://openaccess.thecvf.com/content_ICCV_2017/papers/Lin_Focal_Loss_for_ICCV_2017_paper.pdf" target="_blank">RetinaNet</a> object detector.<br /><span style="color:red">NOTE: this model is deprecated and will be removed in the future; use the Detectron2 alternative for new projects instead.</span>',
                                             'annotationType': 'boundingBoxes',
                                             'predictionType': 'boundingBoxes',
                                             'canAddLabelclasses': True,

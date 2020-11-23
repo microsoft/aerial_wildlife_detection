@@ -62,18 +62,19 @@ def __get_message_fun(project, cumulatedTotal=None, epoch=None, numEpochs=None):
     return __on_message
 
 
-def __load_model_state(project, dbConnector):
+def __load_model_state(project, modelLibrary, dbConnector):
     # load model state from database
     queryStr = sql.SQL('''
         SELECT query.statedict, query.id FROM (
             SELECT statedict, id, timecreated
             FROM {}
+            WHERE model_library = %s
             ORDER BY timecreated DESC NULLS LAST
             LIMIT 1
         ) AS query;
     ''').format(sql.Identifier(project, 'cnnstate'))
-    result = dbConnector.execute(queryStr, None, numReturn=1)     #TODO: issues Celery warning if no state dict found
-    if not len(result):
+    result = dbConnector.execute(queryStr, (modelLibrary,), numReturn=1)     #TODO: issues Celery warning if no state dict found
+    if result is None or not len(result):
         # force creation of new model
         stateDict = None
         stateDictID = None
@@ -157,7 +158,7 @@ def __get_ai_library_names(project, dbConnector):
         return model_library, alcriterion_library
 
 
-def _call_train(project, imageIDs, epoch, numEpochs, subset, trainingFun, dbConnector, fileServer):
+def _call_train(project, imageIDs, epoch, numEpochs, subset, modelInstance, modelLibrary, dbConnector, fileServer):
     '''
         Initiates model training and maintains workers, status and failure
         events.
@@ -183,7 +184,7 @@ def _call_train(project, imageIDs, epoch, numEpochs, subset, trainingFun, dbConn
     # load model state
     update_state(state='PREPARING', message=f'[Epoch {epoch}] loading model state')
     try:
-        stateDict, _ = __load_model_state(project, dbConnector)
+        stateDict, _ = __load_model_state(project, modelLibrary, dbConnector)
     except Exception as e:
         print(e)
         raise Exception(f'[Epoch {epoch}] error during model state loading (reason: {str(e)})')
@@ -200,7 +201,7 @@ def _call_train(project, imageIDs, epoch, numEpochs, subset, trainingFun, dbConn
     # call training function
     try:
         update_state(state='PREPARING', message=f'[Epoch {epoch}] initiating training')
-        stateDict = trainingFun(stateDict=stateDict, data=data, updateStateFun=update_state)
+        stateDict = modelInstance.train(stateDict=stateDict, data=data, updateStateFun=update_state)
     except Exception as e:
         print(e)
         raise Exception(f'[Epoch {epoch}] error during training (reason: {str(e)})')
@@ -226,7 +227,7 @@ def _call_train(project, imageIDs, epoch, numEpochs, subset, trainingFun, dbConn
 
 
 
-def _call_average_model_states(project, epoch, numEpochs, averageFun, dbConnector, fileServer):
+def _call_average_model_states(project, epoch, numEpochs, modelInstance, modelLibrary, dbConnector, fileServer):
     '''
         Receives a number of model states (coming from different AIWorker instances),
         averages them by calling the AI model's 'average_model_states' function and inserts
@@ -240,9 +241,11 @@ def _call_average_model_states(project, epoch, numEpochs, averageFun, dbConnecto
     update_state(state='PREPARING', message=f'[Epoch {epoch}] loading model states')
     try:
         queryStr = sql.SQL('''
-            SELECT stateDict, model_library, alcriterion_library FROM {} WHERE partial IS TRUE;
+            SELECT stateDict, model_library, alcriterion_library
+            FROM {}
+            WHERE partial IS TRUE AND model_library = %s;
         ''').format(sql.Identifier(project, 'cnnstate'))
-        queryResult = dbConnector.execute(queryStr, None, 'all')
+        queryResult = dbConnector.execute(queryStr, (modelLibrary,), 'all')
     except Exception as e:
         print(e)
         raise Exception(f'[Epoch {epoch}] error during model state loading (reason: {str(e)})')
@@ -257,7 +260,7 @@ def _call_average_model_states(project, epoch, numEpochs, averageFun, dbConnecto
     update_state(state='PREPARING', message=f'[Epoch {epoch}] averaging models')
     try:
         modelStates = [qr['statedict'] for qr in queryResult]
-        modelStates_avg = averageFun(stateDicts=modelStates, updateStateFun=update_state)
+        modelStates_avg = modelInstance.average_model_states(stateDicts=modelStates, updateStateFun=update_state)
     except Exception as e:
         print(e)
         raise Exception(f'[Epoch {epoch}] error during model state fusion (reason: {str(e)})')
@@ -299,7 +302,7 @@ def _call_average_model_states(project, epoch, numEpochs, averageFun, dbConnecto
 
 
 
-def _call_inference(project, imageIDs, epoch, numEpochs, inferenceFun, rankFun, dbConnector, fileServer, batchSizeLimit):
+def _call_inference(project, imageIDs, epoch, numEpochs, modelInstance, modelLibrary, rankerInstance, dbConnector, fileServer, batchSizeLimit):
     '''
 
     '''
@@ -319,7 +322,7 @@ def _call_inference(project, imageIDs, epoch, numEpochs, inferenceFun, rankFun, 
     # load model state
     update_state(state='PREPARING', message=f'[Epoch {epoch}] loading model state')
     try:
-        stateDict, stateDictID = __load_model_state(project, dbConnector)
+        stateDict, stateDictID = __load_model_state(project, modelLibrary, dbConnector)
     except Exception as e:
         print(e)
         raise Exception(f'[Epoch {epoch}] error during model state loading (reason: {str(e)})')
@@ -346,7 +349,7 @@ def _call_inference(project, imageIDs, epoch, numEpochs, inferenceFun, rankFun, 
         # call inference function
         update_state(state='PREPARING', message=f'[Epoch {epoch}] starting inference (chunk {chunkStr})')
         try:
-            result = inferenceFun(stateDict=stateDict, data=data, updateStateFun=update_state)
+            result = modelInstance.inference(stateDict=stateDict, data=data, updateStateFun=update_state)
         except Exception as e:
             print(e)
             raise Exception(f'[Epoch {epoch}] error during inference (chunk {chunkStr}; reason: {str(e)})')
@@ -355,7 +358,7 @@ def _call_inference(project, imageIDs, epoch, numEpochs, inferenceFun, rankFun, 
         if rankFun is not None:
             update_state(state='PREPARING', message=f'[Epoch {epoch}] calculating priorities (chunk {chunkStr})')
             try:
-                result = rankFun(data=result, updateStateFun=update_state, **{'stateDict':stateDict})
+                result = rankerInstance.rank(data=result, updateStateFun=update_state, **{'stateDict':stateDict})
             except Exception as e:
                 print(e)
                 raise Exception(f'[Epoch {epoch}] error during ranking (chunk {chunkStr}, reason: {str(e)})')

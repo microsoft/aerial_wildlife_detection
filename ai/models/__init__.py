@@ -29,6 +29,12 @@ class AIModel:
                 raise Exception('Model options appear to be invalid.')
             if 'options' in opts_verified and isinstance(opts_verified['options'], dict):
                 self.options = opts_verified['options']
+        else:
+            try:
+                self.options = self.getDefaultOptions()
+            except:
+                # not implemented or other error; leave it to the subclass
+                pass
 
         # query how to treat unlabeled areas
         unlabeled = dbConnector.execute('''
