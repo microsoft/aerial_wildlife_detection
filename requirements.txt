@@ -17,4 +17,4 @@ celery[redis,auth,msgpack]==4.4.7
 
 # pip install torch==1.7.0+cu110 torchvision==0.8.1+cu110 torchaudio===0.7.0 -f https://download.pytorch.org/whl/torch_stable.html
 # conda install -c conda-forge opencv
-# git+https://github.com/facebookresearch/detectron2.git
+# git+https://github.com/facebookresearch/detectron2.git        #TODO: has to be installed after torch

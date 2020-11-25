@@ -14,6 +14,15 @@ Progress on tasks/implementations:
 - [ ] General unit testing
 
 
+**NOTE:** Getting this branch to run additionally requires the installation of the Detectron2 library, which has to be done __after__ all other packages are already installed. Essentially, prepare a Python environment and install the requirements and then add Detectron2:
+```bash
+    conda create -y -n aide_detectron2 python=3.7
+    conda activate aide_detectron2
+    pip install -U -r requirements.txt
+    pip install git+https://github.com/facebookresearch/detectron2.git
+```
+
+
 # AIDE: Annotation Interface for Data-driven Ecology
 
 AIDE is two things in one: <i>a tool for manually annotating images</i> and <i>a tool for training and running machine (deep) learning models</i>. Those two things are coupled in an <i>active learning loop</i>: the human annotates a few images, the system trains a model, that model is used to make predictions and to select more images for the human to annotate, etc.

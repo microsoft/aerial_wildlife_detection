@@ -568,7 +568,21 @@ Note that `done` and `total` need to be present if the progress bar is to be fil
 
 ### Debugging your model
 
-To debug your model in the platform itself, you can make use of Celery's built-in debugger [rdb](https://docs.celeryproject.org/en/latest/userguide/debugging.html):
+#### Locally
+AIDE runs models via Celery, which makes them more difficult to debug (see below). To get your model to run correctly in the first place, you can therefore bypass Celery and launch them directly on the local machine:
+```bash
+    python debug/test_model_locally.py --project projectShortname --mode train --modelLibrary ai.models.contrib.myGreatModel.MyModel
+```
+Notes:
+* `--project` is the shortname of the project you want to test the model on.
+* `--mode`: either set to `train` or `inference` to test one of the two methods accordingly.
+* `--modelLibrary`: optional override for the model library to use. This corresponds to the model identifier (and also import path) under which you would [register](#registering-your-model) it.
+* To run this script, you must have AIDE installed and configured and a project available whose annotation and prediction types match the ones of your model. If you set the mode to `train`, that project also has to contain annotations.
+* You further must have a FileServer instance running of AIDE, on the machine where it is supposed to run in the first place.
+
+
+#### Through Celery
+Once you have verified that the model generally behaves correctly, you can test it within AIDE itself by making use of Celery's built-in debugger [rdb](https://docs.celeryproject.org/en/latest/userguide/debugging.html):
 ``` python
 
     from celery.contrib import rdb

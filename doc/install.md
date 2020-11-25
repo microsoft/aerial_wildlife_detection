@@ -55,7 +55,8 @@ It is strongly recommended to run AIDE in a self-contained Python environment, s
     sudo apt-get install -y libpq-dev python-dev
     pip install -U -r requirements.txt
 
-    # at this point you may want to install the additonal packages listed above, if required
+    # install the Detectron2 library now
+    pip install git+https://github.com/facebookresearch/detectron2.git
 ```
 
 
