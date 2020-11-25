@@ -8,7 +8,18 @@ python-dateutil
 Pillow>=2.2.1
 numpy
 requests
-future
+kombu==4.6.11
+celery[redis,auth,msgpack]==4.4.7
 
 # for the AI backend
-celery[redis,auth,msgpack]==4.4.7  #TODO
+opencv-python
+torch>=1.5.0
+torchvision>=0.6.0
+
+# for the built-in models (install via https://pytorch.org):
+# PyTorch>=1.1.0
+# torchvision>=0.3.0
+
+# pip install torch==1.7.0+cu110 torchvision==0.8.1+cu110 torchaudio===0.7.0 -f https://download.pytorch.org/whl/torch_stable.html
+# conda install -c conda-forge opencv
+# git+https://github.com/facebookresearch/detectron2.git        #TODO: has to be installed after torch

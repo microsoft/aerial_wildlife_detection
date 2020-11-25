@@ -46,11 +46,12 @@ WORKDIR /home/$USERNAME/app
 COPY docker/requirements.txt docker/requirements.txt
 # COPY docker/lib/librabbitmq-2.0.0-cp37-cp37m-linux_x86_64.whl lib/librabbitmq-2.0.0-cp37-cp37m-linux_x86_64.whl
 
-RUN pip install -r docker/requirements.txt 
+RUN pip install -r docker/requirements.txt
 # RUN pip install lib/librabbitmq-2.0.0-cp37-cp37m-linux_x86_64.whl
+RUN pip install git+https://github.com/facebookresearch/detectron2.git
 
 # ============================ DB SERVER ONLY BEGINS ======================================
-# Setup PostreSQL database
+# Setup PostgreSQL database
 ENV LOC_REGION=Europe
 ENV LOC_TIMEZONE=London
 RUN ln -fs /usr/share/zoneinfo/$LOC_REGION/$LOC_TIMEZONE /etc/localtime \

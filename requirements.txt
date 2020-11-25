@@ -11,6 +11,11 @@ requests
 kombu==4.6.11
 celery[redis,auth,msgpack]==4.4.7
 
+# for the AI backend
+opencv-python
+torch>=1.5.0
+torchvision>=0.6.0
+
 # for the built-in models (install via https://pytorch.org):
 # PyTorch>=1.1.0
 # torchvision>=0.3.0
