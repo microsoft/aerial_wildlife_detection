@@ -245,7 +245,7 @@ class GenericDetectron2Model(AIModel):
 
         datasetMapper = Detectron2DatasetMapper(self.project, self.fileServer, transforms, True)
         dataLoader = build_detection_train_loader(
-            dataset=getDetectron2Data(data, ignoreUnsure),
+            dataset=getDetectron2Data(data, ignoreUnsure, self.detectron2cfg.DATALOADER.FILTER_EMPTY_ANNOTATIONS),
             mapper=datasetMapper,
             total_batch_size=2,            #TODO!!! maybe batch size x world size, as in source code of Detectron2?
             aspect_ratio_grouping=True,
@@ -265,7 +265,8 @@ class GenericDetectron2Model(AIModel):
                 storage.iter = idx  #TODO: start_iter
                 loss_dict = model(batch)
                 losses = sum(loss_dict.values())
-                assert torch.isfinite(losses).all(), loss_dict
+                assert torch.isfinite(losses).all(), \
+                    'Model produced Inf and/or NaN values; training was aborted. Try reducing the learning rate.'
 
                 loss_dict_reduced = {k: v.item() for k, v in comm.reduce_dict(loss_dict).items()}
                 losses_reduced = sum(loss for loss in loss_dict_reduced.values())
@@ -289,6 +290,25 @@ class GenericDetectron2Model(AIModel):
 
 
 
+    def average_model_states(self, stateDicts, updateStateFun):
+        """
+            Averaging function. If AIDE is configured to distribute training to multiple
+            AIWorkers, and if multiple AIWorkers are attached, this function will be called
+            by exactly one AIWorker after the "train" function has finished.
+            Args:
+                stateDicts: a list of N bytes objects containing model states as trained by
+                            the N AIWorkers attached
+                updateStateFun: function handle for updating the progress to the
+                                AIController
+
+            Returns:
+                stateDict: a bytes object containing the combined model states
+        """
+        #TODO
+        raise NotImplementedError('not implemented for base class.')
+
+
+
     def inference(self, stateDict, data, updateStateFun):
         '''
             Main inference function.
@@ -304,11 +324,11 @@ class GenericDetectron2Model(AIModel):
         
         # wrap dataset for usage with Detectron2
         transforms = []
-        transforms = self.initializeTransforms(mode='test')
+        transforms = self.initializeTransforms(mode='inference')
 
         datasetMapper = Detectron2DatasetMapper(self.project, self.fileServer, transforms, False)
         dataLoader = build_detection_test_loader(
-            dataset=getDetectron2Data(data, False),
+            dataset=getDetectron2Data(data, False, False),
             mapper=datasetMapper,
             num_workers=stateDict['detectron2cfg'].DATALOADER.NUM_WORKERS
         )

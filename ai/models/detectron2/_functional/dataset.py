@@ -11,7 +11,7 @@
 from detectron2.structures import BoxMode
 
 
-def getDetectron2Data(aideData, ignoreUnsure=False):
+def getDetectron2Data(aideData, ignoreUnsure=False, filterEmpty=False):
     # create labelclassMap first
     labelclassMap = {}
     idx = 0
@@ -62,6 +62,11 @@ def getDetectron2Data(aideData, ignoreUnsure=False):
                     continue
                 obj['category_id'] = labelclassMap[anno['label']]
                 annotations.append(obj)
+        
+        if filterEmpty and not len(annotations):
+            # no annotations in image; skip
+            continue
+
         record['annotations'] = annotations
         dataset_dicts.append(record)
     

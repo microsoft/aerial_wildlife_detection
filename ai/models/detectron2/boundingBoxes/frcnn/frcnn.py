@@ -15,6 +15,14 @@ from util import optionsHelper
 
 class FasterRCNN(GenericDetectron2Model):
 
+    def __init__(self, project, config, dbConnector, fileServer, options):
+        super(FasterRCNN, self).__init__(project, config, dbConnector, fileServer, options)
+
+        #TODO: Faster R-CNN currently does not work with empty images
+        self.detectron2cfg.DATALOADER.FILTER_EMPTY_ANNOTATIONS = True
+
+
+
     @classmethod
     def getDefaultOptions(cls):
         jsonFile = 'config/ai/model/detectron2/boundingBoxes/frcnn.json'
@@ -69,12 +77,18 @@ class FasterRCNN(GenericDetectron2Model):
 
         # modify model weights to accept new label classes      #TODO: current implementation below causes loss to go to infinity...
         if len(newClasses):
+
+            # class predictor parameters
             weights = model.roi_heads.box_predictor.cls_score.weight
             biases = model.roi_heads.box_predictor.cls_score.bias
+
+            # box predictor parameters
+            bbox_weight = model.roi_heads.box_predictor.bbox_pred.weight
+            bbox_biases = model.roi_heads.box_predictor.bbox_pred.bias
             
             #TODO: suboptimal intermediate solution: find set of sum of weights and biases with minimal difference to zero
             massValues = []
-            for idx in range(0, weights.size(0)):
+            for idx in range(0, weights.size(0)-1):     # -1 because last index is background class
                 wbSum = torch.sum(torch.abs(weights[idx,...])) + \
                         torch.sum(torch.abs(biases[idx]))
                 massValues.append(wbSum.unsqueeze(0))
@@ -85,25 +99,23 @@ class FasterRCNN(GenericDetectron2Model):
             newWeights = weights[smallest,...].unsqueeze(0)
             newBiases = biases[smallest].unsqueeze(0)
 
+            bbox_idx = 4*smallest
+            newWeights_bbox = bbox_weight[bbox_idx:(bbox_idx+4),...]
+            newBiases_bbox = bbox_biases[bbox_idx:(bbox_idx+4),...]
+
             for cl in newClasses:
                 # add a tiny bit of noise for better specialization capabilities (TODO: assess long-term effect of that...)
                 noiseW = 0.01 * (0.5 - torch.rand_like(newWeights))
                 noiseB = 0.01 * (0.5 - torch.rand_like(newBiases))
                 weights = torch.cat((weights, newWeights.clone() + noiseW), 0)
                 biases = torch.cat((biases, newBiases.clone() + noiseB), 0)
+
+                bbox_weight = torch.cat((bbox_weight, newWeights_bbox.clone()), 0)
+                bbox_biases = torch.cat((bbox_biases, newBiases_bbox.clone()), 0)
             
             # apply updated weights and biases
             model.roi_heads.box_predictor.cls_score.weight = torch.nn.Parameter(weights)
             model.roi_heads.box_predictor.cls_score.bias = torch.nn.Parameter(biases)
-            
-            # modify box predictor
-            bbox_weight = model.roi_heads.box_predictor.bbox_pred.weight
-            bbox_biases = model.roi_heads.box_predictor.bbox_pred.bias
-
-            bbox_idx = 4*smallest - 1     # - 1 because first index is background class (TODO: verify; could also be last)
-
-            bbox_weight = torch.cat((bbox_weight, bbox_weight[bbox_idx:(bbox_idx+4),...]), 0)
-            bbox_biases = torch.cat((bbox_biases, bbox_biases[bbox_idx:(bbox_idx+4),...]), 0)
 
             model.roi_heads.box_predictor.bbox_pred.weight = torch.nn.Parameter(bbox_weight)
             model.roi_heads.box_predictor.bbox_pred.bias = torch.nn.Parameter(bbox_biases)
@@ -124,6 +136,8 @@ class FasterRCNN(GenericDetectron2Model):
 #TODO: just for debugging; remove at final revision
 
 if __name__ == '__main__':
+
+    from detectron2.modeling.meta_arch.rcnn import GeneralizedRCNN
 
     # meta data
     project = 'aerialelephants_wc'
@@ -155,4 +169,4 @@ if __name__ == '__main__':
 
     # launch model
     rn = FasterRCNN(project, config, database, fileServer, None)
-    rn.train(None, data, updateStateFun)
+    rn.inference(None, data, updateStateFun)
