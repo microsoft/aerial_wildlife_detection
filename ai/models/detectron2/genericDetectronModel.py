@@ -247,7 +247,7 @@ class GenericDetectron2Model(AIModel):
         dataLoader = build_detection_train_loader(
             dataset=getDetectron2Data(data, ignoreUnsure, self.detectron2cfg.DATALOADER.FILTER_EMPTY_ANNOTATIONS),
             mapper=datasetMapper,
-            total_batch_size=2,            #TODO!!! maybe batch size x world size, as in source code of Detectron2?
+            total_batch_size=self.detectron2cfg.SOLVER.IMS_PER_BATCH*comm.get_world_size(),      #TODO: verify
             aspect_ratio_grouping=True,
             num_workers=0
         )
@@ -291,21 +291,29 @@ class GenericDetectron2Model(AIModel):
 
 
     def average_model_states(self, stateDicts, updateStateFun):
-        """
-            Averaging function. If AIDE is configured to distribute training to multiple
-            AIWorkers, and if multiple AIWorkers are attached, this function will be called
-            by exactly one AIWorker after the "train" function has finished.
-            Args:
-                stateDicts: a list of N bytes objects containing model states as trained by
-                            the N AIWorkers attached
-                updateStateFun: function handle for updating the progress to the
-                                AIController
+        '''
+            Receives a list of model states (as bytes) and calls the model's
+            averaging function to return a single, unified model state.
+        '''
 
-            Returns:
-                stateDict: a bytes object containing the combined model states
-        """
-        #TODO
-        raise NotImplementedError('not implemented for base class.')
+        # read state dicts from bytes
+        loadedStates = []
+        for s in range(len(stateDicts)):
+            stateDict = io.BytesIO(stateDicts[s])
+            loadedStates.append(torch.load(stateDict, map_location=lambda storage, loc: storage))
+
+        averagedWeights = loadedStates[0]['model_state']
+        for key in averagedWeights.keys():
+            for s in range(1,len(stateDicts)):
+                averagedWeights[key] += loadedStates[s]['model_state'][key]
+            averagedWeights[key] /= len(loadedStates)
+        
+        loadedStates[0]['model_state'] = averagedWeights
+
+        # all done; return state dict as bytes
+        bio = io.BytesIO()
+        torch.save(loadedStates[0], bio)
+        return bio.getvalue()
 
 
 

@@ -278,7 +278,7 @@ DEFAULT_OPTIONS = {
 			"name": "Training options",
 			"dataLoader": {
 				"name": "Data loader options",
-				"batch_size": {
+				"DETECTRON2.SOLVER.IMS_PER_BATCH": {
 					"name": "Batch size",
 					"description": "Number of images to train on at a time (in chunks). Reduce number in case of out-of-memory issues.",
 					"min": 1,
