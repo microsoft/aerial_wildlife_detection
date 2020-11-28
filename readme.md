@@ -151,7 +151,7 @@ AIDE ships with a set of built-in models that can be configured and customized:
 * Image labels: [ResNet](http://openaccess.thecvf.com/content_cvpr_2016/papers/He_Deep_Residual_Learning_CVPR_2016_paper.pdf)
 * Points: [weakly-supervised detector](http://openaccess.thecvf.com/content_CVPRW_2019/papers/EarthVision/Kellenberger_When_a_Few_Clicks_Make_All_the_Difference_Improving_Weakly-Supervised_CVPRW_2019_paper.pdf)
 * Bounding boxes: [RetinaNet](http://openaccess.thecvf.com/content_ICCV_2017/papers/Lin_Focal_Loss_for_ICCV_2017_paper.pdf)
-* Semantic segmentation: [U-Net](https://arxiv.org/pdf/1505.04597.pdf)%E5%92%8C[Tiramisu](https://arxiv.org/abs/1611.09326)
+* Semantic segmentation: [U-Net](https://arxiv.org/pdf/1505.04597.pdf)
 
 See [this page](doc/builtin_models.md) for instructions on how to use one of the built-in models.
 
