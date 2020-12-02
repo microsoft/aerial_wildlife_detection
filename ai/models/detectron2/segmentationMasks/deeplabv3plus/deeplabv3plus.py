@@ -1,24 +1,23 @@
 '''
-    RetinaNet specifier for Detectron2 model trainer in AIDE.
+    DeepLabV3+ specifier for Detectron2 model trainer in AIDE.
 
     2020 Benjamin Kellenberger
 '''
 
-import json
-import torch
-from detectron2 import model_zoo
+from detectron2.config import get_cfg
+from detectron2.projects.deeplab import add_deeplab_config, build_lr_scheduler
 
 from ai.models.detectron2.genericDetectronModel import GenericDetectron2Model
-from ai.models.detectron2.boundingBoxes.retinanet import DEFAULT_OPTIONS
+from ai.models.detectron2.segmentationMasks.deeplabv3plus import DEFAULT_OPTIONS
 from util import optionsHelper
 
 
-class RetinaNet(GenericDetectron2Model):
+class DeepLabV3Plus(GenericDetectron2Model):
 
     @classmethod
     def getDefaultOptions(cls):
         return GenericDetectron2Model._load_default_options(
-            'config/ai/model/detectron2/boundingBoxes/retinanet.json',
+            'config/ai/model/detectron2/segmentationMasks/deeplabV3+.json',
             DEFAULT_OPTIONS
         )
 
@@ -63,6 +62,21 @@ class RetinaNet(GenericDetectron2Model):
 
 
 
+    def _get_config(self):
+        cfg = get_cfg()
+        add_deeplab_config(cfg)
+        defaultConfig = optionsHelper.get_hierarchical_value(self.options, ['options', 'model', 'config', 'value', 'id'])
+        configFile = os.path.join(os.getcwd(), 'ai/models/detectron2/_functional/configs', defaultConfig)
+        cfg.merge_from_file(configFile)
+        return cfg
+
+
+
+    def _build_lr_scheduler(self, cfg, optimizer):
+        return build_lr_scheduler(cfg, optimizer)
+
+
+
     def loadAndAdaptModel(self, stateDict, data):
         '''
             Loads a model and a labelclass map from a given "stateDict".
@@ -79,54 +93,9 @@ class RetinaNet(GenericDetectron2Model):
             and duplicated.
         '''
         model, stateDict, newClasses = self.initializeModel(stateDict, data)
-        assert self.detectron2cfg.MODEL.META_ARCHITECTURE == 'RetinaNet', \
-            f'ERROR: model meta-architecture "{self.detectron2cfg.MODEL.META_ARCHITECTURE}" is not a RetinaNet instance.'
-
-        # modify model weights to accept new label classes
-        if len(newClasses):
-            weights = model.head.cls_score.weight    # a anchors x n classes
-            biases = model.head.cls_score.bias
-            try:
-                numAnchors = stateDict['detectron2cfg'].MODEL.ANCHOR_GENERATOR
-                numAnchors = len(numAnchors.ANGLES[0]) * len(numAnchors.ASPECT_RATIOS[0])
-            except:
-                # could not determine number of anchors; try regressing via number of classes instead
-                numNeurons = len(biases)
-                numClasses_orig = len(stateDict['labelclassMap'].keys()) - len(newClasses)
-                numAnchors = numNeurons // numClasses_orig
-
-            #TODO: suboptimal intermediate solution: find set of sum of weights and biases with minimal difference to zero
-            massValues = []
-            for idx in range(0, weights.size(0), numAnchors):
-                wbSum = torch.sum(torch.abs(weights[idx:(idx+numAnchors),...])) + \
-                        torch.sum(torch.abs(biases[idx:(idx+numAnchors)]))
-                massValues.append(wbSum.unsqueeze(0))
-            massValues = torch.cat(massValues, 0)
-            
-            smallest = torch.argmin(massValues)
-
-            newWeights = weights[(smallest*numAnchors):(smallest+1)*numAnchors,...]
-            newBiases = biases[(smallest*numAnchors):(smallest+1)*numAnchors]
-
-            for cl in newClasses:
-                # add a tiny bit of noise for better specialization capabilities (TODO: assess long-term effect of that...)
-                noiseW = 0.01 * (0.5 - torch.rand_like(newWeights))
-                noiseB = 0.01 * (0.5 - torch.rand_like(newBiases))
-                weights = torch.cat((weights, newWeights.clone() + noiseW), 0)
-                biases = torch.cat((biases, newBiases.clone() + noiseB), 0)
-            
-            # apply updated weights and biases
-            model.head.cls_score.weight = torch.nn.Parameter(weights)
-            model.head.cls_score.bias = torch.nn.Parameter(biases)
-                
-            print(f'Neurons for {len(newClasses)} new label classes added to RetinaNet model.')
-        
-        #TODO: remove superfluous?
-
-        # finally, update model and config
-        stateDict['detectron2cfg'].MODEL.RETINANET.NUM_CLASSES = len(stateDict['labelclassMap'])
-        model.num_classes = len(stateDict['labelclassMap'])
+        #TODO
         return model, stateDict
+
 
 
 
@@ -136,7 +105,7 @@ class RetinaNet(GenericDetectron2Model):
 if __name__ == '__main__':
 
     # meta data
-    project = 'aerialelephants_wc'
+    project = 'test-segmentation'
 
     # set up parts of AIDE
     import os
@@ -164,5 +133,5 @@ if __name__ == '__main__':
     
 
     # launch model
-    rn = RetinaNet(project, config, database, fileServer, None)
+    rn = DeepLabV3Plus(project, config, database, fileServer, None)
     rn.train(None, data, updateStateFun)

@@ -5,8 +5,10 @@
     2020 Benjamin Kellenberger
 '''
 
+import os
 import io
 import copy
+import json
 from uuid import UUID
 from tqdm import trange
 import torch
@@ -42,13 +44,7 @@ class GenericDetectron2Model(AIModel):
                 pass
         
         # prepare Detectron2 configuration
-        self.detectron2cfg = get_cfg()
-
-        # augment and initialize Detectron2 cfg with selected model
-        defaultConfig = optionsHelper.get_hierarchical_value(self.options, ['options', 'model', 'config', 'value', 'id'])
-        if isinstance(defaultConfig, str):
-            self.detectron2cfg.merge_from_file(model_zoo.get_config_file(defaultConfig))
-            self.detectron2cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(defaultConfig)
+        self.detectron2cfg = self._get_config()
 
         # write AIDE configuration values into Detectron2 config
         def _parse_aide_config(config):
@@ -72,6 +68,43 @@ class GenericDetectron2Model(AIModel):
                         _parse_aide_config(config[key])
 
         _parse_aide_config(self.options)
+
+
+    
+
+    def _get_config(self):
+        cfg = get_cfg()
+
+        # augment and initialize Detectron2 cfg with selected model
+        defaultConfig = optionsHelper.get_hierarchical_value(self.options, ['options', 'model', 'config', 'value', 'id'])
+        if isinstance(defaultConfig, str):
+            # try to load from Detectron2's model zoo
+            try:
+                configFile = model_zoo.get_config_file(defaultConfig)
+            except:
+                # not available; try to load locally instead
+                configFile = os.path.join(os.getcwd(), 'ai/models/detectron2/_functional/configs', defaultConfig)
+                
+            cfg.merge_from_file(configFile)
+            cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(defaultConfig)
+        return cfg
+
+
+
+    @classmethod
+    def _load_default_options(cls, jsonFilePath, defaultOptions):
+        try:
+            # try to load defaults from JSON file first
+            options = json.load(open(jsonFilePath, 'r'))
+        except Exception as e:
+            # error; fall back to built-in defaults
+            print(f'Error reading default options file "{jsonFilePath}" (message: "{str(e)}"), falling back to built-in options.')
+            options = defaultOptions
+        
+        # expand options
+        options = optionsHelper.substitute_definitions(options)
+
+        return options
 
 
 
@@ -229,6 +262,16 @@ class GenericDetectron2Model(AIModel):
             transform = getattr(T, trClass)(**args)
             transforms.append(transform)
         return transforms
+
+
+    
+    def _build_optimizer(self, cfg, model):
+        return build_optimizer(cfg, model)
+
+
+
+    def _build_lr_scheduler(self, cfg, optimizer):
+        return build_lr_scheduler(cfg, model)
         
 
 
@@ -255,8 +298,8 @@ class GenericDetectron2Model(AIModel):
         
         # train
         model.train()
-        optimizer = build_optimizer(stateDict['detectron2cfg'], model)
-        scheduler = build_lr_scheduler(stateDict['detectron2cfg'], optimizer)
+        optimizer = self._build_optimizer(stateDict['detectron2cfg'], model)
+        scheduler = self._build_lr_scheduler(stateDict['detectron2cfg'], optimizer)
         imgCount = 0
         start_iter = 0      #TODO
         tbar = trange(numImg)

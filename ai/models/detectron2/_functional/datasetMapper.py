@@ -44,8 +44,9 @@ class Detectron2DatasetMapper(DatasetMapper):
         try:
             image = cv2.imdecode(np.frombuffer(self.fileServer.getFile(dataset_dict["file_name"]), np.uint8), -1)
         except:
+            #TODO: cannot handle corrupt data input here; needs to be done earlier
             print('WARNING: Image {} is corrupt and could not be loaded.'.format(dataset_dict["file_name"]))
-            img = None
+            image = None
         # ORIGINAL: image = utils.read_image(dataset_dict["file_name"], format=self.image_format)
 
         utils.check_image_size(dataset_dict, image)

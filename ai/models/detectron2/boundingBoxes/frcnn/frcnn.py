@@ -25,19 +25,10 @@ class FasterRCNN(GenericDetectron2Model):
 
     @classmethod
     def getDefaultOptions(cls):
-        jsonFile = 'config/ai/model/detectron2/boundingBoxes/frcnn.json'
-        try:
-            # try to load defaults from JSON file first
-            options = json.load(open(jsonFile, 'r'))
-        except Exception as e:
-            # error; fall back to built-in defaults
-            print(f'Error reading default Faster R-CNN options file "{jsonFile}" (message: "{str(e)}"), falling back to built-in options.')
-            options = DEFAULT_OPTIONS
-        
-        # expand options
-        options = optionsHelper.substitute_definitions(options)
-
-        return options
+        return GenericDetectron2Model._load_default_options(
+            'config/ai/model/detectron2/boundingBoxes/frcnn.json',
+            DEFAULT_OPTIONS
+        )
 
 
 

@@ -49,18 +49,19 @@ def getDetectron2Data(aideData, ignoreUnsure=False, filterEmpty=False):
                         anno['height']
                     ]
                     obj['bbox_mode'] = BoxMode.XYWH_REL     # not yet supported by Detectron2, but by Detectron2DatasetMapper
-                elif 'segmentationMask' in anno:
+                elif 'segmentationmask' in anno:
                     # pixel-wise segmentation mask
-                    obj['segmentationMask'] = anno['segmentationMask']
+                    obj['segmentationMask'] = anno['segmentationmask']
                 elif 'x' in anno and 'y' in anno:
                     # point (not yet supported by Detectron2)
                     continue
                 
-                if anno['label'] not in labelclassMap:
-                    # unknown label class; ignore for now
-                    unknownClasses.add(anno['label'])
-                    continue
-                obj['category_id'] = labelclassMap[anno['label']]
+                if 'label' in anno:
+                    if anno['label'] not in labelclassMap:
+                        # unknown label class; ignore for now
+                        unknownClasses.add(anno['label'])
+                        continue
+                    obj['category_id'] = labelclassMap[anno['label']]
                 annotations.append(obj)
         
         if filterEmpty and not len(annotations):
