@@ -24,45 +24,6 @@ class RetinaNet(GenericDetectron2Model):
 
 
 
-    @classmethod
-    def verifyOptions(cls, options):
-        defaultOptions = cls.getDefaultOptions()
-        if options is None:
-            return {
-                'valid': True,
-                'options': defaultOptions
-            }
-        try:
-            if isinstance(options, str):
-                options = json.loads(options)
-            options = optionsHelper.substitute_definitions(options)
-        except Exception as e:
-            return {
-                'valid': False,
-                'errors': [f'Options are not in a proper format (message: {str(e)}).']
-            }
-
-        try:
-            # options, warnings, errors = optionsHelper.compare_options(options, defaultOptions)  #TODO: implement
-            warnings, errors = [], []
-            return {
-                'valid': not len(errors),
-                'warnings': warnings,
-                'errors': errors,
-                'options': options
-            }
-        except Exception as e:
-            return {
-                'valid': False,
-                'errors': [str(e)]
-            }
-        #TODO: implement
-        return {
-            'valid': True  #TODO
-        }
-
-
-
     def loadAndAdaptModel(self, stateDict, data):
         '''
             Loads a model and a labelclass map from a given "stateDict".

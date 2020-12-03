@@ -46,6 +46,21 @@ class LogDecorator:
                 print(f'[{status}]'.ljust(30))
 
 
+
+def toNumber(value):
+    if isinstance(value, int) or isinstance(value, float):
+        return value
+    elif isinstance(value, str):
+        if value.isdigit():
+            return int(value)
+        else:
+            try:
+                return float(value)
+            except:
+                return None
+    return None
+
+
 def array_split(arr, size):
      arrs = []
      while len(arr) > size:

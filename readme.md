@@ -6,7 +6,7 @@ At the moment, this branch is **not** stable. Please clone the [official version
 Progress on tasks/implementations:
 - [x] Basic Detectron2 trainer implemented
 - [x] RetinaNet as demonstrator model partially works (not yet tested)
-- [ ] Options verification
+- [x] Options verification (still needs to be verified)
 - [x] Model state averaging
 - [ ] Advanced class addition heuristics
 - [ ] Need to implement other models (Faster R-CNN, custom backbone, semantic segmentation, etc.)

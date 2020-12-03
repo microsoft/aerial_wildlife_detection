@@ -108,6 +108,38 @@ class GenericDetectron2Model(AIModel):
 
 
 
+    @classmethod
+    def verifyOptions(cls, options):
+        defaultOptions = cls.getDefaultOptions()
+        if options is None:
+            return {
+                'valid': True,
+                'options': defaultOptions
+            }
+        try:
+            if isinstance(options, str):
+                options = json.loads(options)
+            options = optionsHelper.substitute_definitions(options)
+        except Exception as e:
+            return {
+                'valid': False,
+                'errors': [f'Options are not in a proper format (message: {str(e)}).']
+            }
+        try:
+            options, warnings, errors = optionsHelper.verify_options(options, autoCorrect=True)
+            return {
+                'valid': not len(errors),
+                'warnings': warnings,
+                'errors': errors,
+                'options': options
+            }
+        except Exception as e:
+            return {
+                'valid': False,
+                'errors': [f'An error occurred trying to verify options (message: {str(e)}).']
+            }
+    
+    
     def initializeModel(self, stateDict, data):
         '''
             Loads Bytes object "stateDict" through torch and looks for a Detectron2
@@ -271,7 +303,7 @@ class GenericDetectron2Model(AIModel):
 
 
     def _build_lr_scheduler(self, cfg, optimizer):
-        return build_lr_scheduler(cfg, model)
+        return build_lr_scheduler(cfg, optimizer)
         
 
 

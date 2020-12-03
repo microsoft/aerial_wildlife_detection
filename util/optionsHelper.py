@@ -9,6 +9,8 @@
 import copy
 from collections.abc import Iterable
 
+from util import helpers
+
 
 RESERVED_KEYWORDS = [
     'id', 'name', 'description', 'type', 'min', 'max', 'value', 'style', 'options'
@@ -273,3 +275,77 @@ def filter_reserved_children(options, recursive=False):
             continue
         
     return response
+
+
+
+def verify_options(options, autoCorrect=False):
+    '''
+        Receives an "options" dict (might also be just a part)
+        and verifies whether the values are correct w.r.t. the
+        indicated options type and value range. Skips verifica-
+        tion of values whose validity cannot be determined.
+        If "autoCorrect" is True, every value that can be cor-
+        rected will be accordingly. For example, if an option
+        is to be a numerical value and the value is beyond the
+        min-max range, it will be clipped accordingly; bool va-
+        lues will be parsed; etc.
+
+        Returns:
+            - "options": the input dict with values corrected
+                         (if specified)
+            - "warnings": a list of str describing any warnings
+                          that were encountered during parsing
+            - "errors": a list of str describing uncorrectable
+                        errors that were encountered. If there
+                        are any, the options can be considered
+                        as invalid.
+    '''
+    warnings, errors = [], []
+
+    if isinstance(options, dict):
+        valueType = (options['value'] if 'value' in options else None)
+        for key in options.keys():
+            if key == 'value':
+                if isinstance(options[key], dict):
+                    # get available options
+                    valid_IDs = set()
+                    if 'options' in options:
+                        for o in options['options']:
+                            valid_IDs.add(get_hierarchical_value(o, ['id']))
+
+                        thisID = get_hierarchical_value(options[key], ['id'])
+                        if thisID not in valid_IDs:
+                            errors.append(f'Selected option "{thisID}" for entry {key} could not be found in available options.')
+                else:
+                    value = helpers.toNumber(options[key])
+                    if value is not None:
+                        # numerical value
+                        if valueType is not None and valueType != 'number':
+                            errors.append(f'Expected {valueType} for entry {key}, got {type(options[key])}.') #TODO: key
+                        else:
+                            # check if there's a min-max range
+                            if 'min' in options:
+                                minVal = helpers.toNumber(options['min'])
+                                if minVal is not None and value < minVal:
+                                    warnings.append(f'Value "{value}" for entry {key} is smaller than specified minimum {minVal}.')
+                                    if autoCorrect:
+                                        value = minVal
+                            if 'max' in options:
+                                maxVal = helpers.toNumber(options['max'])
+                                if maxVal is not None and value > maxVal:
+                                    warnings.append(f'Value "{value}" for entry {key} is larger than specified maximum {maxVal}.')
+                                    if autoCorrect:
+                                        value = maxVal
+                        options[key] = value
+
+            elif key in RESERVED_KEYWORDS:
+                continue
+
+            else:
+                # verify child options
+                childOpts, childWarnings, childErrors = verify_options(options[key], autoCorrect)
+                options[key] = childOpts
+                warnings.extend(childWarnings)
+                errors.extend(childErrors)
+    
+    return options, warnings, errors

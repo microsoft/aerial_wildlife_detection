@@ -32,21 +32,6 @@ class FasterRCNN(GenericDetectron2Model):
 
 
 
-    @classmethod
-    def verifyOptions(cls, options):
-        if options is None:
-            return {
-                'valid': True,
-                'options': cls.getDefaultOptions()
-            }
-            
-        #TODO: implement
-        return {
-            'valid': False  #TODO
-        }
-
-
-
     def loadAndAdaptModel(self, stateDict, data):
         '''
             Loads a model and a labelclass map from a given "stateDict".
