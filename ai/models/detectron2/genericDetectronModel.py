@@ -126,7 +126,8 @@ class GenericDetectron2Model(AIModel):
                 'errors': [f'Options are not in a proper format (message: {str(e)}).']
             }
         try:
-            options, warnings, errors = optionsHelper.verify_options(options, autoCorrect=True)
+            opts, warnings, errors = optionsHelper.verify_options(options['options'], autoCorrect=True)
+            options['options'] = opts
             return {
                 'valid': not len(errors),
                 'warnings': warnings,

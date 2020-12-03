@@ -303,7 +303,7 @@ def verify_options(options, autoCorrect=False):
     warnings, errors = [], []
 
     if isinstance(options, dict):
-        valueType = (options['value'] if 'value' in options else None)
+        valueType = (options['type'] if 'type' in options else None)
         for key in options.keys():
             if key == 'value':
                 if isinstance(options[key], dict):
