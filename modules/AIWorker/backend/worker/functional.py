@@ -92,6 +92,8 @@ def __load_metadata(project, dbConnector, imageIDs, loadAnnotations):
 
     # prepare
     meta = {}
+    if imageIDs is None:
+        imageIDs = []
 
     # label names
     labels = {}
@@ -156,6 +158,86 @@ def __get_ai_library_names(project, dbConnector):
         alcriterion_library = result[0]['ai_alcriterion_library']
     finally:
         return model_library, alcriterion_library
+
+
+def _call_update_model(project, numEpochs, modelInstance, modelLibrary, dbConnector, fileServer):
+    '''
+        Checks first if any label classes have been added since the last model update.
+        If so, or if a new model has been selected, this calls the model update procedure
+        that is supposed to modify the model to incorporate newly added label classes.
+        Returns the updated model state dict.
+    '''
+    # abort if model does not support updating
+    if not hasattr(modelInstance, 'update_model'):
+        print(f'[{project} - model update] WARNING: model "{modelLibrary}" does not support modification to new label classes. Skipping...')
+        return
+    
+    # check if new label classes were added
+    queryStr = sql.SQL('''
+        SELECT COUNT(*) AS count
+        FROM {id_cnnstate}
+        WHERE model_library = %s
+        UNION ALL
+        SELECT COUNT(*) AS count
+        FROM {id_labelclass}
+        WHERE timeCreated >= (
+            SELECT MAX(timeCreated)
+            FROM {id_cnnstate}
+            WHERE model_library = %s
+        )
+    ''').format(
+        id_cnnstate=sql.Identifier(project, 'cnnstate'),
+        id_labelclass=sql.Identifier(project, 'labelclass')
+    )
+    result = dbConnector.execute(queryStr, (modelLibrary, modelLibrary), 2)
+    if result[0]['count'] > 0 and result[1]['count'] == 0:
+        # neither new model selected (first condition) nor new label classes added (second)
+        print(f'[{project} - model update] Model and class definitions have not changed; no need to update. Skipping...')
+
+    print(f'[{project}] Updating model to incorporate potentially new label classes...')
+    update_state = __get_message_fun(project, 0, 0, numEpochs)
+
+    # load model state
+    update_state(state='PREPARING', message=f'[{project} - model update] loading model state')
+    try:
+        stateDict, _ = __load_model_state(project, modelLibrary, dbConnector)
+    except Exception as e:
+        print(e)
+        raise Exception(f'[{project} - model update] error during model state loading (reason: {str(e)})')
+
+    # load labels and other metadata
+    update_state(state='PREPARING', message=f'[{project} - model update] loading metadata')
+    try:
+        data = __load_metadata(project, dbConnector, None, True)
+    except Exception as e:
+        print(e)
+        raise Exception(f'[{project} - model update] error during metadata loading (reason: {str(e)})')
+
+    # call update function
+    try:
+        update_state(state='PREPARING', message=f'[{project} - model update] initiating model update')
+        stateDict = modelInstance.update_model(stateDict=stateDict, data=data, updateStateFun=update_state)
+    except Exception as e:
+        print(e)
+        raise Exception(f'[{project} - model update] error during model update (reason: {str(e)})')
+
+
+    # commit state dict to database
+    try:
+        update_state(state='FINALIZING', message=f'[{project} - model update] saving model state')
+        model_library, alcriterion_library = __get_ai_library_names(project, dbConnector)
+        queryStr = sql.SQL('''
+            INSERT INTO {} (stateDict, partial, model_library, alcriterion_library)
+            VALUES( %s, %s, %s, %s )
+        ''').format(sql.Identifier(project, 'cnnstate'))
+        dbConnector.execute(queryStr, (psycopg2.Binary(stateDict), False, model_library, alcriterion_library), numReturn=None)
+    except Exception as e:
+        print(e)
+        raise Exception(f'[{project} - model update] error during data committing (reason: {str(e)})')
+
+    update_state(state=states.SUCCESS, message='model updated')
+    return
+
 
 
 def _call_train(project, imageIDs, epoch, numEpochs, subset, modelInstance, modelLibrary, dbConnector, fileServer):
@@ -355,7 +437,7 @@ def _call_inference(project, imageIDs, epoch, numEpochs, modelInstance, modelLib
             raise Exception(f'[Epoch {epoch}] error during inference (chunk {chunkStr}; reason: {str(e)})')
 
         # call ranking function (AL criterion)
-        if rankFun is not None:
+        if rankerInstance is not None and hasattr(rankerInstance, 'rank'):
             update_state(state='PREPARING', message=f'[Epoch {epoch}] calculating priorities (chunk {chunkStr})')
             try:
                 result = rankerInstance.rank(data=result, updateStateFun=update_state, **{'stateDict':stateDict})

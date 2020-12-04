@@ -185,7 +185,7 @@ class GenericDetectron2Model(AIModel):
         # construct model and load state
         model = detectron2.modeling.build_model(detectron2cfg)
         checkpointer = DetectionCheckpointerInMem(model)
-        if 'model_state' in stateDict and not forceNewModel:
+        if 'model' in stateDict and not forceNewModel:
             # trained weights available
             checkpointer.loadFromObject(stateDict)
         else:
@@ -257,7 +257,7 @@ class GenericDetectron2Model(AIModel):
         #     torch.cuda.empty_cache()
         model.cpu()
 
-        stateDict['model_state'] = model.state_dict()
+        stateDict['model'] = model.state_dict()
 
         bio = io.BytesIO()
         torch.save(stateDict, bio)
@@ -284,6 +284,9 @@ class GenericDetectron2Model(AIModel):
 
         # parse transforms
         transforms = []
+
+        #TODO: add a resize transform in any case
+
         transformOpts = optionsHelper.get_hierarchical_value(opt, ['options', mode, 'transform', 'value'])
         for tr in transformOpts:
             trClass = tr['id']
@@ -305,6 +308,20 @@ class GenericDetectron2Model(AIModel):
 
     def _build_lr_scheduler(self, cfg, optimizer):
         return build_lr_scheduler(cfg, optimizer)
+
+
+
+    def update_model(self, stateDict, data, updateStateFun):
+        '''
+            Updater function. Modifies the model to incorporate newly
+            added label classes.
+        '''
+        # initialize model
+        model, stateDict = self.loadAndAdaptModel(stateDict, data)
+
+        # all done; return state dict as bytes
+        return self.exportModelState(stateDict, model)
+
         
 
 
@@ -313,7 +330,8 @@ class GenericDetectron2Model(AIModel):
             Main training function.
         '''
         # initialize model
-        model, stateDict = self.loadAndAdaptModel(stateDict, data)
+        model, stateDict, _ = self.initializeModel(stateDict, data)
+        # model, stateDict = self.loadAndAdaptModel(stateDict, data)  #TODO: initialize without adaptation?
 
         # wrap dataset for usage with Detectron2
         ignoreUnsure = optionsHelper.get_hierarchical_value(self.options, ['options', 'train', 'ignore_unsure', 'value'], fallback=True)
@@ -378,13 +396,13 @@ class GenericDetectron2Model(AIModel):
             stateDict = io.BytesIO(stateDicts[s])
             loadedStates.append(torch.load(stateDict, map_location=lambda storage, loc: storage))
 
-        averagedWeights = loadedStates[0]['model_state']
+        averagedWeights = loadedStates[0]['model']
         for key in averagedWeights.keys():
             for s in range(1,len(stateDicts)):
-                averagedWeights[key] += loadedStates[s]['model_state'][key]
+                averagedWeights[key] += loadedStates[s]['model'][key]
             averagedWeights[key] /= len(loadedStates)
         
-        loadedStates[0]['model_state'] = averagedWeights
+        loadedStates[0]['model'] = averagedWeights
 
         # all done; return state dict as bytes
         bio = io.BytesIO()
@@ -398,7 +416,8 @@ class GenericDetectron2Model(AIModel):
             Main inference function.
         '''
         # initialize model
-        model, stateDict = self.loadAndAdaptModel(stateDict, data)
+        model, stateDict, _ = self.initializeModel(stateDict, data)
+        # model, stateDict = self.loadAndAdaptModel(stateDict, data)  #TODO: initialize without adaptation?
 
         # construct inverted labelclass map
         labelclassMap_inv = {}
@@ -414,7 +433,7 @@ class GenericDetectron2Model(AIModel):
         dataLoader = build_detection_test_loader(
             dataset=getDetectron2Data(data, False, False),
             mapper=datasetMapper,
-            num_workers=stateDict['detectron2cfg'].DATALOADER.NUM_WORKERS
+            num_workers=0
         )
         numImg = len(data['images'])
 

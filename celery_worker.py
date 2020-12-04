@@ -80,6 +80,10 @@ app.conf.update(
             'queue': 'AIController',
             'routing_key': 'get_inference_images'
         },
+        'AIWorker.call_update_model': {
+            'queue': 'AIWorker',
+            'routing_key': 'call_update_model'
+        },
         'AIWorker.call_train': {
             'queue': 'AIWorker',
             'routing_key': 'call_train'

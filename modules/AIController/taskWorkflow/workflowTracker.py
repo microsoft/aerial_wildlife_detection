@@ -32,10 +32,12 @@ class WorkflowTracker:
             def _get_task_id(result):
                 r = {'id': result.id}
                 if isinstance(result, GroupResult):
-                    r['children'] = {}
+                    r['children'] = []
+                    # r['children'] = {}
                     for child in result.children:
                         task, taskID = _get_task_id(child)
-                        r['children'][taskID] = task
+                        r['children'].append(task)
+                        # r['children'][taskID] = task
                 return r, result.id
             tasks = []
             r, _ = _get_task_id(result)
@@ -80,7 +82,7 @@ class WorkflowTracker:
                 tasks[t]['status'] = result.status
             if 'children' in tasks[t]:
                 numDone = 0
-                for key in tasks[t]['children']:
+                for key in range(len(tasks[t]['children'])):
                     cResult = AsyncResult(tasks[t]['children'][key]['id'])
                     if cResult.ready():
                         numDone += 1
@@ -188,11 +190,39 @@ class WorkflowTracker:
                         )
         
         # unravel subtasks with children and IDs
-        tasks = WorkflowTracker.getTaskIDs(taskResult)
+        taskdef = WorkflowTracker.getTaskIDs(taskResult)
         
         # add task names
-        for t in range(len(tasks)):
-            tasks[t]['name'] = task.tasks[t].name
+        tasknames_flat = []
+        def _flatten_names(task):
+            if hasattr(task, 'tasks'):
+                # chain or chord
+                for subtask in task.tasks:
+                    _flatten_names(subtask)
+                
+                tasknames_flat.append(task.name)
+
+                if hasattr(task, 'body'):
+                    # chord
+                    tasknames_flat.append(task.body.name)
+            else:
+                tasknames_flat.append(task.name)
+        _flatten_names(task)
+        
+        global tIdx
+        tIdx = 0
+        def _assign_names(taskdef):
+            global tIdx
+            if isinstance(taskdef, list):
+                for td in taskdef:
+                    _assign_names(td)
+            else:
+                if 'children' in taskdef:
+                    for child in taskdef['children']:
+                        _assign_names(child)
+                taskdef['name'] = tasknames_flat[tIdx]
+            tIdx += 1
+        _assign_names(taskdef)
 
         # commit to DB
         queryStr = sql.SQL('''
@@ -202,11 +232,11 @@ class WorkflowTracker:
         ''').format(
             id_wHistory=sql.Identifier(project, 'workflowhistory')
         )
-        self.dbConnector.execute(queryStr, (json.dumps(tasks), taskID,), None)
+        self.dbConnector.execute(queryStr, (json.dumps(taskdef), taskID,), None)
         taskID = str(taskID)
 
         # cache locally
-        self._cache_task(project, taskID, tasks)
+        self._cache_task(project, taskID, taskdef)
 
         return taskID
 
@@ -351,21 +381,13 @@ class WorkflowTracker:
             and returns their IDs, together with a status
             update for each.
         '''
-        activeTasks = self.getTasks(project, runningOrFinished='both')       #self.getActiveTaskIDs(project)
+        activeTasks = self.getTasks(project, runningOrFinished='both')
 
         for t in range(len(activeTasks)):
             taskID = activeTasks[t]['id']
             chainStatus = self.pollTaskStatus(project, taskID)
             if chainStatus is not None:
                 activeTasks[t]['children'] = chainStatus
-
-        # for taskID in activeTasks:
-        #     chainStatus = self.pollTaskStatus(project, str(taskID))
-        #     if chainStatus is not None:
-        #         response.append({
-        #             'id': str(taskID),
-        #             'children': chainStatus
-        #         })
         
         return activeTasks
 

@@ -123,7 +123,15 @@ if __name__ == '__main__':
     def updateStateFun(state, message, done, total):
         print(f'{message}: {done}/{total}')
     
+    # get model settings
+    queryStr = '''
+        SELECT ai_model_library, ai_model_settings FROM aide_admin.project
+        WHERE shortname = %s;
+    '''
+    result = database.execute(queryStr, (project,), 1)
+    modelLibrary = result[0]['ai_model_library']
+    modelSettings = result[0]['ai_model_settings']
 
     # launch model
-    rn = RetinaNet(project, config, database, fileServer, None)
-    rn.train(None, data, updateStateFun)
+    rn = RetinaNet(project, config, database, fileServer, modelSettings)
+    rn.inference(None, data, updateStateFun)

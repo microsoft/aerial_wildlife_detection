@@ -25,8 +25,17 @@ def aide_internal_notify(message):
     return worker.aide_internal_notify(message)
 
 
+@current_app.task(name='AIWorker.call_update_model', rate_limit=1)
+def call_update_model(blank, numEpochs, project):
+    return worker.call_update_model(numEpochs, project)
+
+
 @current_app.task(name='AIWorker.call_train', rate_limit=1)
 def call_train(data, index, epoch, numEpochs, project):
+    if len(data) == 2 and data[1] is None:
+        # model update call preceded training task; ignore empty output of it
+        data = data[0]
+
     is_subset = (len(data) > 1)
     if index < len(data):
         return worker.call_train(data[index], epoch, numEpochs, project, is_subset)
@@ -46,6 +55,10 @@ def call_average_model_states(blank, epoch, numEpochs, project, *args):
 
 @current_app.task(name='AIWorker.call_inference')
 def call_inference(data, index, epoch, numEpochs, project):
+    if len(data) == 2 and data[1] is None:
+        # model update call preceded inference task; ignore empty output of it
+        data = data[0]
+
     if index < len(data):
         return worker.call_inference(data[index], epoch, numEpochs, project)
     else:

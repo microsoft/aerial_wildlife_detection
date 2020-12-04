@@ -254,6 +254,17 @@ MODIFICATIONS_sql = [
         FOREIGN KEY (username) REFERENCES "aide_admin".user(name),
         FOREIGN KEY (image) REFERENCES "{schema}".image
     );
+  ''',
+
+#   # change in workflow definition #TODO: takes forever...
+#   '''
+#     DELETE FROM "{schema}".workflowhistory
+#     WHERE timecreated < TO_DATE('20201204','YYYYMMDD');
+#   ''',
+
+  '''
+    ALTER TABLE "{schema}".labelclass ADD COLUMN IF NOT EXISTS
+    timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW();
   '''
 ]
 

@@ -152,6 +152,9 @@ class AIWorker():
         modelLibrary = result[0]['ai_model_library']
         modelSettings = result[0]['ai_model_settings']
 
+        #TODO
+        modelSettings = None
+
         # create new model instance
         modelInstance = self._init_model_instance(project, modelLibrary, modelSettings)
 
@@ -189,6 +192,15 @@ class AIWorker():
             return
         # not required (yet)
 
+
+    
+    def call_update_model(self, numEpochs, project):
+
+        # get project-specific model
+        modelInstance, modelLibrary = self._get_model_instance(project)
+
+        return functional._call_update_model(project, numEpochs, modelInstance, modelLibrary,
+                self.dbConnector, self.fileServer)
 
 
     def call_train(self, data, epoch, numEpochs, project, subset):

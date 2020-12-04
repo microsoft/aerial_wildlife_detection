@@ -164,7 +164,10 @@ class WorkflowDesigner:
                 else:
                     maxNumImages = None
 
-            task_kwargs = {'project': project,
+            update_model_kwargs = {'project': project,
+                            'numEpochs': numEpochs}
+
+            img_task_kwargs = {'project': project,
                             'epoch': epoch,
                             'numEpochs': numEpochs,
                             'minTimestamp': taskArgs['min_timestamp'],
@@ -173,9 +176,16 @@ class WorkflowDesigner:
                             'maxNumImages': maxNumImages,
                             'numWorkers': numWorkers}
             if fill_blank:
-                task_kwargs['blank'] = None     # required for task chaining
+                # required for task chaining
+                img_task_kwargs['blank'] = None
+                update_model_kwargs['blank'] = None
+
             taskList.append(
-                aic_int.get_training_images.s(**task_kwargs).set(queue='AIController')
+                celery.group([
+                    aic_int.get_training_images.s(**img_task_kwargs).set(queue='AIController'),
+                    aiw_int.call_update_model.s(**update_model_kwargs).set(queue='AIWorker')
+                ])
+                # aic_int.get_training_images.s(**img_task_kwargs).set(queue='AIController')
             )
             trainArgs = {
                 'epoch': epoch,
@@ -228,18 +238,27 @@ class WorkflowDesigner:
         # initialize list for Celery chain tasks
         taskList = []
 
+        update_model_kwargs = {'project': project,
+                            'numEpochs': numEpochs}
+
         if not 'data' in taskArgs:
             # no list of images provided; prepend getting inference images
-            task_kwargs = {'project': project,
+            img_task_kwargs = {'project': project,
                             'epoch': epoch,
                             'numEpochs': numEpochs,
                             'goldenQuestionsOnly': taskArgs['golden_questions_only'],
                             'maxNumImages': maxNumImages,
                             'numWorkers': numWorkers}
             if fill_blank:
-                task_kwargs['blank'] = None     # required for task chaining
+                # required for task chaining
+                img_task_kwargs['blank'] = None
+                update_model_kwargs['blank'] = None
             taskList.append(
-                aic_int.get_inference_images.s(**task_kwargs).set(queue='AIController')
+                celery.group([
+                    aic_int.get_inference_images.s(**img_task_kwargs).set(queue='AIController'),
+                    aiw_int.call_update_model.s(**update_model_kwargs).set(queue='AIWorker')
+                ])
+                # aic_int.get_inference_images.s(**img_task_kwargs).set(queue='AIController')
             )
             inferenceArgs = {
                 'epoch': epoch,

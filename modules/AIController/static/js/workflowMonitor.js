@@ -17,9 +17,12 @@ $(document).ready(function() {
 var TASK_NAME_MAP = {
     'AIController.get_training_images': 'Collect training images',
     'AIController.get_inference_images': 'Collect inference images',
+    'AIWorker.call_update_model': 'Update model',
     'AIWorker.call_train': 'Train model',
     'AIWorker.call_average_model_states': 'Combine model states',
-    'AIWorker.call_inference': 'Inference'
+    'AIWorker.call_inference': 'Inference',
+    'celery.chord': 'Composite task',
+    'celery.chain': 'Task sequence'
 }
 
 
@@ -156,6 +159,7 @@ class Task {
                     }
                     this.hasFailed = true;
                     this.hasFinished = true;
+                    this.taskFailed();
                     break;
                 case 'PROGRESS':
                     statusText = 'working';
@@ -198,9 +202,11 @@ class Task {
         if(updates.hasOwnProperty('children') && Object.keys(updates['children']).length > 0) {
             for(var child in updates['children']) {
                 let childID = updates['children'][child]['id'];
-                this.childTasks[this.childTasksMap[childID]].updateStatus(updates['children'][child]);
-                if(this.childTasks[this.childTasksMap[childID]].taskFinished()) {
-                    numChildrenDone++;
+                if(this.childTasksMap[childID] !== undefined) {
+                    this.childTasks[this.childTasksMap[childID]].updateStatus(updates['children'][child]);
+                    if(this.childTasks[this.childTasksMap[childID]].taskFinished()) {
+                        numChildrenDone++;
+                    }
                 }
             }
         }
@@ -272,6 +278,11 @@ class Task {
                 }
             }
         }
+
+        // hide progress bar
+        if(this.hasFailed)
+            this.pBar.set(false);
+
         return this.hasFailed;
     }
 
@@ -286,6 +297,11 @@ class Task {
                 }
             }
         }
+
+        // hide progress bar
+        if(this.hasFinished)
+            this.pBar.set(false);
+
         return this.hasFinished;
     }
 
@@ -356,6 +372,7 @@ class WorkflowMonitor {
             success: function(data) {
                 let tasks = data['status']['tasks'];
                 if(tasks === undefined || tasks === null || (Array.isArray(tasks) && tasks.length === 0)) {
+                    tasks = [];
                     self.setQueryInterval(self.queryIntervals['idle'], false);
                 } else {
                     self.setQueryInterval(self.queryIntervals['active'], false);
