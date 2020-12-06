@@ -10,7 +10,7 @@ import argparse
 import json
 import secrets
 from urllib.parse import urlparse
-from constants.version import AIDE_VERSION
+from constants import version
 
 
 MODIFICATIONS_sql = [
@@ -265,12 +265,19 @@ MODIFICATIONS_sql = [
   '''
     ALTER TABLE "{schema}".labelclass ADD COLUMN IF NOT EXISTS
     timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW();
+  ''',
+
+  f'''
+    CREATE TABLE IF NOT EXISTS "aide_admin".version (
+        version VARCHAR UNIQUE NOT NULL,
+        PRIMARY KEY (version)
+    );
   '''
 ]
 
 
 
-def migrate_aide():
+def migrate_aide(forceMigrate=False):
     from modules import Database, UserHandling
     from util.configDef import Config
     
@@ -281,6 +288,33 @@ def migrate_aide():
     
     warnings = []
     errors = []
+
+    # skip if not forced and if database has same version
+    doMigrate = True
+    
+    # check if DB has version already implemented
+    hasVersion = dbConn.execute('''
+        SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE  table_schema = 'aide_admin'
+            AND    table_name   = 'version'
+        ) AS hasVersion;
+    ''', None, 1)
+    if hasVersion[0]['hasversion']:
+        # check DB version
+        dbVersion = dbConn.execute('SELECT version FROM aide_admin.version;', None, 1)
+        if dbVersion is not None and len(dbVersion):
+            dbVersion = dbVersion[0]['version']
+            needsUpdate = version.compare_versions(version.AIDE_VERSION, dbVersion)
+            if needsUpdate is not None:
+                if needsUpdate < 0:
+                    # running an older version of AIDE with a newer DB version
+                    warnings.append(f'WARNING: local AIDE version ({version.AIDE_VERSION}) is older than the one in the database ({dbVersion}); please update your installation.')
+                elif needsUpdate == 0:
+                    doMigrate = False
+
+    if not doMigrate and not forceMigrate:
+        return warnings, errors
 
     # bring all projects up-to-date (if registered within AIDE)
     projects = dbConn.execute('SELECT shortname FROM aide_admin.project;', None, 'all')
@@ -309,6 +343,13 @@ def migrate_aide():
             warnings.append('WARNING: no project schemata found within database.')
     else:
         warnings.append('WARNING: no project registered within AIDE.')
+
+    # update DB version accordingly
+    dbConn.execute('''
+        DELETE FROM aide_admin.version;
+        INSERT INTO aide_admin.version (version)
+        VALUES (%s);
+    ''', (version.AIDE_VERSION, version.AIDE_VERSION))
 
     return warnings, errors
     

@@ -140,7 +140,7 @@ class WorkflowDesigner:
         }
 
     
-    def _get_training_signature(self, project, taskArgs, fill_blank=True):
+    def _get_training_signature(self, project, taskArgs, isFirstNode=False):
         epoch = taskArgs['epoch']
         numEpochs = taskArgs['numEpochs']
         numWorkers = taskArgs['max_num_workers']
@@ -164,9 +164,6 @@ class WorkflowDesigner:
                 else:
                     maxNumImages = None
 
-            update_model_kwargs = {'project': project,
-                            'numEpochs': numEpochs}
-
             img_task_kwargs = {'project': project,
                             'epoch': epoch,
                             'numEpochs': numEpochs,
@@ -175,18 +172,23 @@ class WorkflowDesigner:
                             'minNumAnnoPerImage': minNumAnnoPerImage,
                             'maxNumImages': maxNumImages,
                             'numWorkers': numWorkers}
-            if fill_blank:
-                # required for task chaining
+            if isFirstNode:
+                # first node: prepend update model task and fill blank
                 img_task_kwargs['blank'] = None
-                update_model_kwargs['blank'] = None
+                update_model_kwargs = {'project': project,
+                                    'numEpochs': numEpochs,
+                                    'blank': None}
+                taskList.append(
+                    celery.group([
+                        aic_int.get_training_images.s(**img_task_kwargs).set(queue='AIController'),
+                        aiw_int.call_update_model.s(**update_model_kwargs).set(queue='AIWorker')
+                    ])
+                )
+            else:
+                taskList.append(
+                    aic_int.get_training_images.s(**img_task_kwargs).set(queue='AIController')
+                )
 
-            taskList.append(
-                celery.group([
-                    aic_int.get_training_images.s(**img_task_kwargs).set(queue='AIController'),
-                    aiw_int.call_update_model.s(**update_model_kwargs).set(queue='AIWorker')
-                ])
-                # aic_int.get_training_images.s(**img_task_kwargs).set(queue='AIController')
-            )
             trainArgs = {
                 'epoch': epoch,
                 'numEpochs': numEpochs,
@@ -224,7 +226,7 @@ class WorkflowDesigner:
         return celery.chain(taskList)
 
 
-    def _get_inference_signature(self, project, taskArgs, fill_blank=True):
+    def _get_inference_signature(self, project, taskArgs, isFirstNode=False):
         epoch = taskArgs['epoch']
         numEpochs = taskArgs['numEpochs']
         numWorkers = taskArgs['max_num_workers']
@@ -238,9 +240,6 @@ class WorkflowDesigner:
         # initialize list for Celery chain tasks
         taskList = []
 
-        update_model_kwargs = {'project': project,
-                            'numEpochs': numEpochs}
-
         if not 'data' in taskArgs:
             # no list of images provided; prepend getting inference images
             img_task_kwargs = {'project': project,
@@ -249,17 +248,23 @@ class WorkflowDesigner:
                             'goldenQuestionsOnly': taskArgs['golden_questions_only'],
                             'maxNumImages': maxNumImages,
                             'numWorkers': numWorkers}
-            if fill_blank:
-                # required for task chaining
+            if isFirstNode:
+                # first task to be executed; prepend model update and fill blanks
                 img_task_kwargs['blank'] = None
-                update_model_kwargs['blank'] = None
-            taskList.append(
-                celery.group([
-                    aic_int.get_inference_images.s(**img_task_kwargs).set(queue='AIController'),
-                    aiw_int.call_update_model.s(**update_model_kwargs).set(queue='AIWorker')
-                ])
-                # aic_int.get_inference_images.s(**img_task_kwargs).set(queue='AIController')
-            )
+                update_model_kwargs = {'project': project,
+                                    'numEpochs': numEpochs,
+                                    'blank': None}
+                taskList.append(
+                    celery.group([
+                        aic_int.get_inference_images.s(**img_task_kwargs).set(queue='AIController'),
+                        aiw_int.call_update_model.s(**update_model_kwargs).set(queue='AIWorker')
+                    ])
+                )
+            else:
+                taskList.append(
+                    aic_int.get_inference_images.s(**img_task_kwargs).set(queue='AIController')
+                )
+
             inferenceArgs = {
                 'epoch': epoch,
                 'numEpochs': numEpochs,
@@ -291,7 +296,7 @@ class WorkflowDesigner:
         return celery.chain(taskList)
 
 
-    def _create_celery_task(self, project, taskDesc, fill_blank, verifyOnly=False):
+    def _create_celery_task(self, project, taskDesc, isFirstTask, verifyOnly=False):
         '''
             Receives a task description (full dict with name and kwargs)
             and creates true Celery task routines from it.
@@ -312,9 +317,9 @@ class WorkflowDesigner:
         try:
             taskName = taskDesc['type'].lower()
             if taskName == 'train':
-                task = self._get_training_signature(project, taskDesc['kwargs'], fill_blank)
+                task = self._get_training_signature(project, taskDesc['kwargs'], isFirstTask)
             elif taskName == 'inference':
-                task = self._get_inference_signature(project, taskDesc['kwargs'], fill_blank)
+                task = self._get_inference_signature(project, taskDesc['kwargs'], isFirstTask)
             else:
                 task = None
         except:
@@ -453,16 +458,13 @@ class WorkflowDesigner:
                 epoch += 1
 
             taskDescriptions.append(taskDesc)
-            # construct celery task out of description
-            # task = self._create_celery_task(project, taskDesc, fill_blank=(True if index==0 else False), verifyOnly=verifyOnly)
-            # tasklist.append(task)
 
         # construct celery tasks out of descriptions
         tasklist = []
         for index, taskDesc in enumerate(taskDescriptions):
             # add number of epochs as argument
             taskDesc['kwargs']['numEpochs'] = epoch
-            task = self._create_celery_task(project, taskDesc, fill_blank=(True if index==0 else False), verifyOnly=verifyOnly)
+            task = self._create_celery_task(project, taskDesc, isFirstTask=(True if index==0 else False), verifyOnly=verifyOnly)
             tasklist.append(task)
 
         if verifyOnly:

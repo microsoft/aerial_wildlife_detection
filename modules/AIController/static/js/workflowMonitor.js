@@ -171,7 +171,7 @@ class Task {
                     statusText = statusID.toLowerCase();
             }
         }
-        if(updates.hasOwnProperty('info') && updates['info'] !== null && updates['info'] !== undefined) {
+        if(!this.hasFinished && !this.hasFailed && updates.hasOwnProperty('info') && updates['info'] !== null && updates['info'] !== undefined) {
             let info = updates['info'];
             let done = parseFloat(info['done']);
             let total = parseFloat(info['total']);
@@ -217,7 +217,7 @@ class Task {
             if(numChildrenDone === this.childTasks.length) {
                 this.hasFinished = true;
                 this.pBar.set(false);
-            } else {
+            } else if(!this.hasFinished && !this.hasFailed) {
                 this.pBar.set(true, numChildrenDone, this.childTasks.length, false);
             }
         }
