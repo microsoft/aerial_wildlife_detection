@@ -354,8 +354,10 @@ class GenericDetectron2Model(AIModel):
         imgCount = 0
         start_iter = 0      #TODO
         tbar = trange(numImg)
+        dataLoaderIter = iter(dataLoader)
         with EventStorage(start_iter) as storage:
-            for idx, batch in enumerate(dataLoader):
+            for idx in range(numImg):
+                batch = next(dataLoaderIter)
                 storage.iter = idx  #TODO: start_iter
                 loss_dict = model(batch)
                 losses = sum(loss_dict.values())
@@ -443,8 +445,10 @@ class GenericDetectron2Model(AIModel):
         imgCount = 0
 
         tbar = trange(numImg)
+        dataLoaderIter = iter(dataLoader)
         with torch.no_grad():
-            for idx, batch in enumerate(dataLoader):
+            for idx in range(numImg):
+                batch = next(dataLoaderIter)
                 outputs = model(batch)
                 outputs = outputs[0]['instances']
 

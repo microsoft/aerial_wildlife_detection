@@ -275,7 +275,7 @@ class DataAdministrator:
                 else:
                     return {'status': 2, 'message': 'Invalid parameters provided.'}
                 result = self.middleware.addExistingImages(project, imageNames)
-                return {'response': result}
+                return {'status': 0, 'response': result}
             except Exception as e:
                 return {'status': 1, 'message': str(e)}
 
