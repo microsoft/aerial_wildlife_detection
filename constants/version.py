@@ -10,7 +10,7 @@
     2020 Benjamin Kellenberger
 '''
 
-AIDE_VERSION = '1.11.201210'
+AIDE_VERSION = '1.11.201211'
 
 
 
