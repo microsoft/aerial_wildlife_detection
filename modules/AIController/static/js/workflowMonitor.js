@@ -246,6 +246,9 @@ class Task {
                         message += ' (message: "' + data['message'] + '")';
                     }
                     message += '.';
+                } else {
+                    self.hasFailed = true;
+                    self.taskFailed();
                 }
                 window.messager.addMessage(message, success, duration);
             },
@@ -287,22 +290,25 @@ class Task {
     }
 
     taskFinished() {
+        let taskFinished = this.hasFinished || this.taskFailed();
+
         // check children
-        if(this.hasFinished || this.taskFailed()) return true;
         if(this.isRootTask) {
             for(var c=0; c<this.childTasks.length; c++) {
                 if(this.childTasks[c].taskSuccessful() === false) {
                     // error: entire task aborted
-                    return true;
+                    this.taskFinished = true;
                 }
+                this.childTasks[c].taskFinished();
             }
         }
+        this.hasFinished = taskFinished;
 
         // hide progress bar
         if(this.hasFinished)
             this.pBar.set(false);
 
-        return this.hasFinished;
+        return taskFinished;
     }
 
     taskSuccessful() {

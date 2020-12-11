@@ -32,7 +32,7 @@ from constants.dbFieldNames import FieldNames_annotation, FieldNames_prediction
 
 
 
-def __get_message_fun(project, cumulatedTotal=None, epoch=None, numEpochs=None):
+def __get_message_fun(project, cumulatedTotal=None, offset=0, epoch=None, numEpochs=None):
     def __on_message(state, message, done=None, total=None):
         meta = {
             'project': project,
@@ -40,14 +40,14 @@ def __get_message_fun(project, cumulatedTotal=None, epoch=None, numEpochs=None):
         }
         if (isinstance(done, int) or isinstance(done, float)) and \
             (isinstance(total, int) or isinstance(total, float)):
-            trueTotal = total
+            trueTotal = total + offset
             if isinstance(cumulatedTotal, int) or isinstance(cumulatedTotal, float):
-                trueTotal = max(trueTotal, total)
-            meta['done'] = min(done, trueTotal)
-            meta['total'] = max(done, trueTotal)
+                trueTotal = max(trueTotal, cumulatedTotal)
+            meta['done'] = min(done + offset, trueTotal)
+            meta['total'] = max(meta['done'], trueTotal)    #max(done, trueTotal)
 
         message_combined = ''
-        if isinstance(epoch, int) and isinstance(numEpochs, int):
+        if isinstance(epoch, int) and isinstance(numEpochs, int) and numEpochs > 1:
             message_combined += f'[Epoch {epoch}/{numEpochs}] '
 
         if isinstance(message, str):
@@ -170,7 +170,10 @@ def _call_update_model(project, numEpochs, modelInstance, modelLibrary, dbConnec
     # abort if model does not support updating
     if not hasattr(modelInstance, 'update_model'):
         print(f'[{project} - model update] WARNING: model "{modelLibrary}" does not support modification to new label classes. Skipping...')
+        update_state(state=states.SUCCESS, message=f'[{project} - model update] WARNING: model does not support modification to new label classes and has not been updated.')
         return
+
+    update_state = __get_message_fun(project, numEpochs=numEpochs)
     
     # check if new label classes were added
     queryStr = sql.SQL('''
@@ -193,9 +196,10 @@ def _call_update_model(project, numEpochs, modelInstance, modelLibrary, dbConnec
     if result[0]['count'] > 0 and result[1]['count'] == 0:
         # neither new model selected (first condition) nor new label classes added (second)
         print(f'[{project} - model update] Model and class definitions have not changed; no need to update. Skipping...')
+        update_state(state=states.SUCCESS, message=f'[{project} - model update] class definition has not changed; model did not need to be updated.')
+        return
 
     print(f'[{project}] Updating model to incorporate potentially new label classes...')
-    update_state = __get_message_fun(project, 0, 0, numEpochs)
 
     # load model state
     update_state(state='PREPARING', message=f'[{project} - model update] loading model state')
@@ -260,7 +264,7 @@ def _call_train(project, imageIDs, epoch, numEpochs, subset, modelInstance, mode
     '''
 
     print(f'[{project}] Epoch {epoch}: Initiated training...')
-    update_state = __get_message_fun(project, len(imageIDs), epoch, numEpochs)
+    update_state = __get_message_fun(project, len(imageIDs), 0, epoch, numEpochs)
 
 
     # load model state
@@ -317,7 +321,7 @@ def _call_average_model_states(project, epoch, numEpochs, modelInstance, modelLi
     '''
 
     print(f'[{project}] Epoch {epoch}: Initiated model state averaging...')
-    update_state = update_state = __get_message_fun(project, None, epoch, numEpochs)
+    update_state = update_state = __get_message_fun(project, None, 0, epoch, numEpochs)
 
     # get all model states
     update_state(state='PREPARING', message=f'[Epoch {epoch}] loading model states')
@@ -389,7 +393,7 @@ def _call_inference(project, imageIDs, epoch, numEpochs, modelInstance, modelLib
 
     '''
     print(f'[{project}] Epoch {epoch}: Initiated inference on {len(imageIDs)} images...')
-    update_state = update_state = __get_message_fun(project, len(imageIDs), epoch, numEpochs)
+    update_state = __get_message_fun(project, len(imageIDs), 0, epoch, numEpochs)
 
     # get project's prediction type
     projectMeta = dbConnector.execute(sql.SQL('''
@@ -419,6 +423,8 @@ def _call_inference(project, imageIDs, epoch, numEpochs, modelInstance, modelLib
     for idx, imageID_batch in enumerate(imageID_chunks):
         chunkStr = f'{idx+1}/{len(imageID_chunks)}'
         print(f'Chunk {chunkStr}')
+
+        update_state = __get_message_fun(project, len(imageIDs), idx*batchSizeLimit, epoch, numEpochs)
 
         # load remaining data (image filenames, class definitions)
         update_state(state='PREPARING', message=f'[Epoch {epoch}] loading metadata (chunk {chunkStr})')
@@ -484,6 +490,12 @@ def _call_inference(project, imageIDs, epoch, numEpochs, modelInstance, modelLib
                                 nextResultValues.append(prediction[fn])
                             else:
                                 nextResultValues.append(None)
+                        elif fn == 'priority':
+                            if fn in prediction and prediction[fn] is None and 'confidence' in prediction:
+                                # ranker somehow didn't assign value; use confidence by default
+                                nextResultValues.append(prediction['confidence'])
+                            else:
+                                nextResultValues.append(prediction[fn])
                         else:
                             if fn in prediction:
                                 #TODO: might need to do typecasts (e.g. UUID?)

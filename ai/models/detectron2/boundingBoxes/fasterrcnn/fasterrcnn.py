@@ -9,11 +9,12 @@ import torch
 from detectron2 import model_zoo
 
 from ai.models.detectron2.genericDetectronModel import GenericDetectron2Model
-from ai.models.detectron2.boundingBoxes.frcnn import DEFAULT_OPTIONS
+from ai.models.detectron2.boundingBoxes.genericDetectronBBoxModel import GenericDetectron2BoundingBoxModel
+from ai.models.detectron2.boundingBoxes.fasterrcnn import DEFAULT_OPTIONS
 from util import optionsHelper
 
 
-class FasterRCNN(GenericDetectron2Model):
+class FasterRCNN(GenericDetectron2BoundingBoxModel):
 
     def __init__(self, project, config, dbConnector, fileServer, options):
         super(FasterRCNN, self).__init__(project, config, dbConnector, fileServer, options)
@@ -26,13 +27,13 @@ class FasterRCNN(GenericDetectron2Model):
     @classmethod
     def getDefaultOptions(cls):
         return GenericDetectron2Model._load_default_options(
-            'config/ai/model/detectron2/boundingBoxes/frcnn.json',
+            'config/ai/model/detectron2/boundingBoxes/fasterrcnn.json',
             DEFAULT_OPTIONS
         )
 
 
 
-    def loadAndAdaptModel(self, stateDict, data):
+    def loadAndAdaptModel(self, stateDict, data, updateStateFun):
         '''
             Loads a model and a labelclass map from a given "stateDict".
             First calls the parent implementation to obtain a default
@@ -96,7 +97,7 @@ class FasterRCNN(GenericDetectron2Model):
             model.roi_heads.box_predictor.bbox_pred.weight = torch.nn.Parameter(bbox_weight)
             model.roi_heads.box_predictor.bbox_pred.bias = torch.nn.Parameter(bbox_biases)
 
-            print(f'Neurons for {len(newClasses)} new label classes added to RetinaNet model.')
+            print(f'Neurons for {len(newClasses)} new label classes added to Faster R-CNN model.')
         
         #TODO: remove superfluous?
 

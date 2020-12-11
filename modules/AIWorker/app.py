@@ -152,9 +152,6 @@ class AIWorker():
         modelLibrary = result[0]['ai_model_library']
         modelSettings = result[0]['ai_model_settings']
 
-        #TODO
-        modelSettings = None
-
         # create new model instance
         modelInstance = self._init_model_instance(project, modelLibrary, modelSettings)
 

@@ -34,6 +34,13 @@ class GenericDetectron2Model(AIModel):
     def __init__(self, project, config, dbConnector, fileServer, options):
         super(GenericDetectron2Model, self).__init__(project, config, dbConnector, fileServer, options)
 
+        if isinstance(options, str):
+            try:
+                options = json.loads(options)
+            except:
+                # something went wrong; discard options #TODO
+                options = None
+
         # try to fill and substitute global definitions in JSON-enhanced options
         if isinstance(options, dict) and 'defs' in options:
             try:
@@ -71,7 +78,6 @@ class GenericDetectron2Model(AIModel):
 
 
     
-
     def _get_config(self):
         cfg = get_cfg()
 
@@ -141,6 +147,7 @@ class GenericDetectron2Model(AIModel):
             }
     
     
+
     def initializeModel(self, stateDict, data):
         '''
             Loads Bytes object "stateDict" through torch and looks for a Detectron2
@@ -172,11 +179,11 @@ class GenericDetectron2Model(AIModel):
             stateDict = {}
 
         # retrieve Detectron2 cfg
-        if 'detectron2cfg' in stateDict and not forceNewModel:
-            detectron2cfg = copy.deepcopy(stateDict['detectron2cfg'])
-        else:
-            detectron2cfg = copy.deepcopy(self.detectron2cfg)
-            stateDict['detectron2cfg'] = self.detectron2cfg
+        # if 'detectron2cfg' in stateDict and not forceNewModel:            #TODO: we rather give precedence over default config if user changed something
+        #     detectron2cfg = copy.deepcopy(stateDict['detectron2cfg'])
+        # else:
+        detectron2cfg = copy.deepcopy(self.detectron2cfg)
+        stateDict['detectron2cfg'] = self.detectron2cfg
         
         # check if CUDA is available; set to CPU temporarily if not
         if not torch.cuda.is_available():
@@ -232,9 +239,33 @@ class GenericDetectron2Model(AIModel):
 
         return model, stateDict, newClasses
 
+
+
+    def calculateClassCorrelations(self, model, modelClasses, targetClasses, maxNumImagesPerClass=None):
+        '''
+            Determines the correlation between label classes predicted by the
+            model and target annotations for a given set of "targetClasses".
+            Does so through the following steps:
+                1. Loads a number of images that contain at least one
+                   annotation with label class in "targetClasses".
+                2. Performs a forward pass with the existing model over
+                   all images.
+                3. Compares the predictions of the model with the target anno-
+                   tations and calculates normalized "correlation" weights
+                   between them. For bounding boxes, this is done through a
+                   combination of class confidence scores and intersection-over-
+                   union scores between the predicted and the ground truth box.
+
+            Returns:
+                - a list of torch.Tensors containing normalized weights for all
+                  of the model's existing classes compared to each of the target
+                  classes.
+        '''
+        raise NotImplementedError('Only implemented by sub-models.')
+
     
 
-    def loadAndAdaptModel(self, stateDict, data):
+    def loadAndAdaptModel(self, stateDict, data, updateStateFun):
         '''
             Loads a stateDict and initializes a model, just like the function
             "initializeModel". Unlike it, however, it also modifies the model
@@ -317,13 +348,12 @@ class GenericDetectron2Model(AIModel):
             added label classes.
         '''
         # initialize model
-        model, stateDict = self.loadAndAdaptModel(stateDict, data)
+        model, stateDict = self.loadAndAdaptModel(stateDict, data, updateStateFun)
 
         # all done; return state dict as bytes
         return self.exportModelState(stateDict, model)
 
         
-
 
     def train(self, stateDict, data, updateStateFun):
         '''
@@ -331,7 +361,7 @@ class GenericDetectron2Model(AIModel):
         '''
         # initialize model
         model, stateDict, _ = self.initializeModel(stateDict, data)
-        # model, stateDict = self.loadAndAdaptModel(stateDict, data)  #TODO: initialize without adaptation?
+        # model, stateDict = self.loadAndAdaptModel(stateDict, data, updateStateFun)  #TODO: initialize without adaptation?
 
         # wrap dataset for usage with Detectron2
         ignoreUnsure = optionsHelper.get_hierarchical_value(self.options, ['options', 'train', 'ignore_unsure', 'value'], fallback=True)
@@ -349,8 +379,8 @@ class GenericDetectron2Model(AIModel):
         
         # train
         model.train()
-        optimizer = self._build_optimizer(stateDict['detectron2cfg'], model)
-        scheduler = self._build_lr_scheduler(stateDict['detectron2cfg'], optimizer)
+        optimizer = self._build_optimizer(self.detectron2cfg, model)
+        scheduler = self._build_lr_scheduler(self.detectron2cfg, optimizer)
         imgCount = 0
         start_iter = 0      #TODO
         tbar = trange(numImg)
@@ -419,7 +449,7 @@ class GenericDetectron2Model(AIModel):
         '''
         # initialize model
         model, stateDict, _ = self.initializeModel(stateDict, data)
-        # model, stateDict = self.loadAndAdaptModel(stateDict, data)  #TODO: initialize without adaptation?
+        # model, stateDict = self.loadAndAdaptModel(stateDict, data, updateStateFun)  #TODO: initialize without adaptation?
 
         # construct inverted labelclass map
         labelclassMap_inv = {}
@@ -452,12 +482,12 @@ class GenericDetectron2Model(AIModel):
                 outputs = model(batch)
                 outputs = outputs[0]['instances']
 
-                labels = outputs.pred_classes
-                scores = outputs.scores
+                labels = outputs.pred_classes.cpu()
+                scores = outputs.scores.cpu()
 
                 # export bboxes if predicted
                 if hasattr(outputs, 'pred_boxes'):
-                    bboxes = outputs.pred_boxes.tensor
+                    bboxes = outputs.pred_boxes.tensor.cpu()
 
                     # convert bboxes to relative XYWH format
                     bboxes[:,2] -= bboxes[:,0]

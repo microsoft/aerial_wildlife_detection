@@ -1,30 +1,6 @@
-'''
-    Detectron2-compliant wrapper for Faster R-CNN.
-
-    2020 Benjamin Kellenberger
-'''
-
-# default options for the model, may be overridden in the custom configuration loaded at runtime
-DEFAULT_OPTIONS = {
+{
 	"defs": {
-		"interpolators": {
-			"0": {
-				"name": "Nearest neighbor"
-			},
-			"2": {
-				"name": "Bilinear interpolation"
-			},
-			"3": {
-				"name": "Bicubic"
-			},
-			"5": {
-				"name": "Hamming"
-			},
-			"6": {
-				"name": "Lanczos"
-			}
-		},
-		"transform": {
+		"transforms": {
 			"RandomBrightness": {
 				"name": "Random brightness",
 				"description": "Randomly transforms image brightness.<br />Brightness intensity is uniformly sampled in (intensity_min, intensity_max). - intensity < 1 will reduce brightness - intensity = 1 will preserve the input image - intensity > 1 will increase brightness.<br />See <a href=\"https://pillow.readthedocs.io/en/3.0.x/reference/ImageEnhance.html\" target=\"_blank\">https://pillow.readthedocs.io/en/3.0.x/reference/ImageEnhance.html</a>.",
@@ -95,11 +71,11 @@ DEFAULT_OPTIONS = {
 				},
 				"horizontal": {
 					"name": "Horizontal",
-					"value": True
+					"value": true
 				},
 				"vertical": {
 					"name": "Vertical",
-					"value": False
+					"value": false
 				}
 			},
 			"RandomRotation": {
@@ -129,7 +105,7 @@ DEFAULT_OPTIONS = {
 				"expand": {
 					"name": "Expand image",
 					"description": "Choose if the image should be resized to fit the whole rotated image (ticked; default), or simply cropped (unticked).",
-					"value": True
+					"value": true
 				}
 			},
 			"RandomCrop": {
@@ -198,8 +174,24 @@ DEFAULT_OPTIONS = {
 				"interp": {
 					"name": "Interpolation method",
 					"type": "select",
-					"options": "interpolators",
-					"value": 0
+					"options": {
+						"0": {
+							"name": "Nearest neighbor"
+						},
+						"2": {
+							"name": "Bilinear interpolation"
+						},
+						"3": {
+							"name": "Bicubic"
+						},
+						"5": {
+							"name": "Hamming"
+						},
+						"6": {
+							"name": "Lanczos"
+						}
+					},
+					"value": "0"
 				}
 			}
 		}
@@ -222,7 +214,7 @@ DEFAULT_OPTIONS = {
 				},
 				"value": "cuda",
 				"style": {
-					"inline": True
+					"inline": true
 				}
 			},
 			"DETECTRON2.SEED": {
@@ -237,12 +229,12 @@ DEFAULT_OPTIONS = {
 				"add_missing": {
 					"name": "Add new label classes",
 					"description": "If checked, neurons for newly added label classes will be added to the model.<br />Note that these new classes need extra training.",
-					"value": True
+					"value": true
 				},
 				"remove_obsolete": {
 					"name": "Remove obsolete label classes",
 					"description": "If checked, neurons from label classes not present in this project will be removed during next model training.",
-					"value": False
+					"value": false
 				}
 			}
 		},
@@ -253,25 +245,19 @@ DEFAULT_OPTIONS = {
 				"name": "Pre-made configuration",
 				"description": "Choose a pre-trained model state here or create your own model from scratch (\"manual\").",
 				"type": "select",
-				"value": "COCO-Detection/faster_rcnn_R_50_C4_1x.yaml",
+				"value": "COCO-Detection/retinanet_R_50_FPN_3x.yaml",
 				"options": {
-					"COCO-Detection/faster_rcnn_R_50_C4_1x.yaml": {
+					"COCO-Detection/retinanet_R_50_FPN_3x.yaml": {
 						"name": "ResNet-50, pre-trained on MS-COCO"
 					},
-					"COCO-Detection/faster_rcnn_X_101_32x8d_FPN_3x.yaml": {
-						"name": "ResNet-101 Feature Pyramid Network, pre-trained on MS-COCO"
-					},
-                    "PascalVOC-Detection/faster_rcnn_R_50_C4.yaml": {
-                        "name": "ResNet-50, pre-trained on Pascal VOC"
-                    },
-                    "PascalVOC-Detection/faster_rcnn_R_50_FPN.yaml": {
-                        "name": "ResNet-50 Feature Pyramid Network, pre-trained on Pascal VOC"
-                    }
+					"COCO-Detection/retinanet_R_101_FPN_3x.yaml": {
+						"name": "ResNet-101, pre-trained on MS-COCO"
+					}
 				}
 			},
 			"force": {
 				"name": "Force new model",
-				"value": False
+				"value": false
 			}
 		},
 		"train": {
@@ -292,7 +278,7 @@ DEFAULT_OPTIONS = {
 					"name": "Base learning rate",
 					"min": 0.0,
 					"max": 100.0,
-					"value": 0.01
+					"value": 0.0001
 				},
 				"DETECTRON2.SOLVER.BIAS_LR_FACTOR": {
 					"name": "Biasing factor for learning rate",
@@ -326,16 +312,16 @@ DEFAULT_OPTIONS = {
 				},
 				"DETECTRON2.SOLVER.MOMENTUM": {
 					"name": "Enable momentum",
-					"value": False	
+					"value": false	
 				},
 				"DETECTRON2.SOLVER.NESTEROV": {
 					"name": "Enable Nesterov momentum",
-					"value": False
+					"value": false
 				},
 				"clip_gradients": {
 					"DETECTRON2.SOLVER.CLIP_GRADIENTS.ENABLED": {
 						"name": "Enable gradient clipping",
-						"value": False
+						"value": false
 					},
 					"DETECTRON2.SOLVER.CLIP_GRADIENTS.CLIP_VALUE": {
 						"name": "Clip value",
@@ -355,7 +341,7 @@ DEFAULT_OPTIONS = {
 				"name": "Transforms",
 				"description": "Transforms are used to prepare images as inputs for the model, as well as to perform data augmentation.",
 				"type": "list",
-				"options": "transform",
+				"options": "transforms",
 				"value": [
 					"RandomFlip",
 					"RandomLighting",
@@ -393,12 +379,12 @@ DEFAULT_OPTIONS = {
 					"value": [
 						{
 							"name": "Max. IoU for negatives",
-							"description": "Maximally permitted IoU value between a target and prediction box for the latter to be treated as a False positive",
+							"description": "Maximally permitted IoU value between a target and prediction box for the latter to be treated as a false positive",
 							"min": 0.0,
 							"max": 1.0,
 							"value": 0.4,
 							"style": {
-								"slider": True
+								"slider": true
 							}
 						},
 						{
@@ -408,7 +394,7 @@ DEFAULT_OPTIONS = {
 							"max": 1.0,
 							"value": 0.5,
 							"style": {
-								"slider": True
+								"slider": true
 							}
 						}
 					]
@@ -416,7 +402,7 @@ DEFAULT_OPTIONS = {
 			},
 			"ignore_unsure": {
 				"name": "Ignore (discard) annotations marked as \"unsure\"",
-				"value": True
+				"value": true
 			}
 		},
 		"inference": {
@@ -425,7 +411,7 @@ DEFAULT_OPTIONS = {
 				"name": "Transforms",
 				"description": "Note that inference transforms exclude geometric data augmentation options.",
 				"type": "list",
-				"options": "transform_inference",
+				"options": "transforms",
 				"value": []
 			},
 			"DETECTRON2.TEST.DETECTIONS_PER_IMAGE": {
@@ -443,7 +429,7 @@ DEFAULT_OPTIONS = {
 					"max": 1.0,
 					"value": 0.05,
 					"style": {
-						"slider": True
+						"slider": true
 					}
 				},
 				"DETECTRON2.MODEL.RETINANET.NMS_THRESH_TEST": {
@@ -453,7 +439,7 @@ DEFAULT_OPTIONS = {
 					"max": 1.0,
 					"value": 0.5,
 					"style": {
-						"slider": True
+						"slider": true
 					}
 				}
 			}

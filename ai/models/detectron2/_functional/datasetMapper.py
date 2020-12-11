@@ -91,11 +91,11 @@ class Detectron2DatasetMapper(DatasetMapper):
         if sem_seg_gt is not None:
             dataset_dict["sem_seg"] = torch.as_tensor(sem_seg_gt.astype("long"))
 
-        if not self.is_train:
-            # USER: Modify this if you want to keep them for some reason.
-            dataset_dict.pop("annotations", None)
-            dataset_dict.pop("sem_seg_file_name", None)
-            return dataset_dict
+        # if not self.is_train:
+        #     # USER: Modify this if you want to keep them for some reason.
+        #     dataset_dict.pop("annotations", None)
+        #     dataset_dict.pop("sem_seg_file_name", None)
+        #     return dataset_dict
 
         if "annotations" in dataset_dict:
             # USER: Modify this if you want to keep them for some reason.

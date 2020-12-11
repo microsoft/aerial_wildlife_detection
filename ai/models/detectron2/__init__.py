@@ -3,6 +3,6 @@
 '''
 
 # models are listed here for convenience
-from .boundingBoxes.frcnn.frcnn import FasterRCNN
+from .boundingBoxes.fasterrcnn.fasterrcnn import FasterRCNN
 
 from .boundingBoxes.retinanet.retinanet import RetinaNet

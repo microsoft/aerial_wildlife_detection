@@ -1,5 +1,5 @@
 '''
-    Detectron2-compliant wrapper for RetinaNet.
+    Detectron2-compliant wrapper for Faster R-CNN.
 
     2020 Benjamin Kellenberger
 '''
@@ -7,7 +7,24 @@
 # default options for the model, may be overridden in the custom configuration loaded at runtime
 DEFAULT_OPTIONS = {
 	"defs": {
-		"transforms": {
+		"interpolators": {
+			"0": {
+				"name": "Nearest neighbor"
+			},
+			"2": {
+				"name": "Bilinear interpolation"
+			},
+			"3": {
+				"name": "Bicubic"
+			},
+			"5": {
+				"name": "Hamming"
+			},
+			"6": {
+				"name": "Lanczos"
+			}
+		},
+		"transform": {
 			"RandomBrightness": {
 				"name": "Random brightness",
 				"description": "Randomly transforms image brightness.<br />Brightness intensity is uniformly sampled in (intensity_min, intensity_max). - intensity < 1 will reduce brightness - intensity = 1 will preserve the input image - intensity > 1 will increase brightness.<br />See <a href=\"https://pillow.readthedocs.io/en/3.0.x/reference/ImageEnhance.html\" target=\"_blank\">https://pillow.readthedocs.io/en/3.0.x/reference/ImageEnhance.html</a>.",
@@ -181,24 +198,8 @@ DEFAULT_OPTIONS = {
 				"interp": {
 					"name": "Interpolation method",
 					"type": "select",
-					"options": {
-						"0": {
-							"name": "Nearest neighbor"
-						},
-						"2": {
-							"name": "Bilinear interpolation"
-						},
-						"3": {
-							"name": "Bicubic"
-						},
-						"5": {
-							"name": "Hamming"
-						},
-						"6": {
-							"name": "Lanczos"
-						}
-					},
-					"value": "0"
+					"options": "interpolators",
+					"value": 0
 				}
 			}
 		}
@@ -252,14 +253,20 @@ DEFAULT_OPTIONS = {
 				"name": "Pre-made configuration",
 				"description": "Choose a pre-trained model state here or create your own model from scratch (\"manual\").",
 				"type": "select",
-				"value": "COCO-Detection/retinanet_R_50_FPN_3x.yaml",
+				"value": "COCO-Detection/faster_rcnn_R_50_C4_1x.yaml",
 				"options": {
-					"COCO-Detection/retinanet_R_50_FPN_3x.yaml": {
+					"COCO-Detection/faster_rcnn_R_50_C4_1x.yaml": {
 						"name": "ResNet-50, pre-trained on MS-COCO"
 					},
-					"COCO-Detection/retinanet_R_101_FPN_3x.yaml": {
-						"name": "ResNet-101, pre-trained on MS-COCO"
-					}
+					"COCO-Detection/faster_rcnn_X_101_32x8d_FPN_3x.yaml": {
+						"name": "ResNet-101 Feature Pyramid Network, pre-trained on MS-COCO"
+					},
+                    "PascalVOC-Detection/faster_rcnn_R_50_C4.yaml": {
+                        "name": "ResNet-50, pre-trained on Pascal VOC"
+                    },
+                    "PascalVOC-Detection/faster_rcnn_R_50_FPN.yaml": {
+                        "name": "ResNet-50 Feature Pyramid Network, pre-trained on Pascal VOC"
+                    }
 				}
 			},
 			"force": {
@@ -348,7 +355,7 @@ DEFAULT_OPTIONS = {
 				"name": "Transforms",
 				"description": "Transforms are used to prepare images as inputs for the model, as well as to perform data augmentation.",
 				"type": "list",
-				"options": "transforms",
+				"options": "transform",
 				"value": [
 					"RandomFlip",
 					"RandomLighting",
@@ -418,7 +425,7 @@ DEFAULT_OPTIONS = {
 				"name": "Transforms",
 				"description": "Note that inference transforms exclude geometric data augmentation options.",
 				"type": "list",
-				"options": "transforms",
+				"options": "transform_inference",
 				"value": []
 			},
 			"DETECTRON2.TEST.DETECTIONS_PER_IMAGE": {

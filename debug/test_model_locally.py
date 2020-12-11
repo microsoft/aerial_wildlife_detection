@@ -132,8 +132,13 @@ def main():
     data = __load_metadata(args.project, dbConnector, data[0], (mode == 'train'))
 
     # helper functions
-    def updateStateFun(state, message, done, total):
-        print(f'{message}: {done}/{total}')
+    def updateStateFun(state, message, done=None, total=None):
+        print(message, end='')
+        if done is not None and total is not None:
+            print(f': {done}/{total}')
+        else:
+            print('')
+        
 
     # launch task
     if mode == 'train':
