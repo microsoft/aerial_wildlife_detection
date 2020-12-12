@@ -445,6 +445,8 @@ class ProjectConfigurator:
                 abort(401, 'forbidden')
             
             try:
+                username = html.escape(request.get_cookie('username'))
+
                 # verify user-provided project name
                 projNameUser = request.json['projName']
                 if projNameUser != project:
@@ -454,7 +456,7 @@ class ProjectConfigurator:
                     }
                 deleteFiles = request.json['deleteFiles']
 
-                result = self.middleware.deleteProject(project, deleteFiles)
+                result = self.middleware.deleteProject(project, username, deleteFiles)
                 return result
                 
             except:
