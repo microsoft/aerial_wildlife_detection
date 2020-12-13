@@ -349,7 +349,7 @@ def migrate_aide(forceMigrate=False):
         DELETE FROM aide_admin.version;
         INSERT INTO aide_admin.version (version)
         VALUES (%s);
-    ''', (version.AIDE_VERSION, version.AIDE_VERSION))
+    ''', (version.AIDE_VERSION, ))
 
     return warnings, errors
     
