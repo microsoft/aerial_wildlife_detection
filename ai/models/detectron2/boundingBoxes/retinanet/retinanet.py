@@ -56,75 +56,69 @@ class RetinaNet(GenericDetectron2BoundingBoxModel):
 
 
             # create weights and biases for new classes
-            if True:        #TODO: add flags in config file
+            if True:        #TODO: add flags in config file about strategy
                 weights_copy = weights.clone()
                 biases_copy = biases.clone()
 
                 modelClasses = range(model.num_classes)
                 correlations = self.calculateClassCorrelations(model, modelClasses, newClasses, updateStateFun, 128)    #TODO: num images
-
                 correlations_expanded = correlations.repeat(1,numAnchors).to(weights.device)
+
+                classMatches = (correlations.sum(1) > 0)            #TODO: calculate alternative strategies (e.g. class name similarities)
+
+                randomIdx = torch.randperm(int(len(biases_copy)/numAnchors))
 
                 for cl in range(len(newClasses)):
 
-                    #TODO: argmax test
-                    bestMatch = correlations.argmax(1)[cl]
+                    if classMatches[cl].item():
+                        newWeight = weights_copy * correlations_expanded[cl,:].view(-1,1,1,1)
+                        newBias = biases_copy * correlations_expanded[cl,:]
 
-                    newWeight = weights_copy[cl*numAnchors:((cl+1)*numAnchors),...]
-                    newBias = biases_copy[cl*numAnchors:((cl+1)*numAnchors)]
+                        _, C, W, H = newWeight.size()
+                        newWeight = newWeight.view(numAnchors, -1, C, W, H)
+                        newBias = newBias.view(numAnchors, -1)
+                        corr = correlations_expanded[cl,:].view(numAnchors, -1)
+                        valid = (corr > 0)
 
-                    # #TODO: faulty correlation test... produces rubbish predictions
-                    # newWeight = weights_copy * correlations_expanded[cl,:].view(-1,1,1,1)       #TODO: choose plan B for classes with no match
-                    # newBias = biases_copy * correlations_expanded[cl,:]
+                        # average
+                        newWeight = newWeight.sum(1) / valid.sum(1).view(-1, 1, 1, 1)
+                        newBias = newBias.sum(1) / valid.sum(1)
+                    
+                    else:
+                        # class has no match; use alternative solution
 
-                    # _, C, W, H = newWeight.size()
-                    # newWeight = newWeight.view(numAnchors, -1, C, W, H)
-                    # newBias = newBias.view(numAnchors, -1)
-                    # corr = correlations_expanded[cl,:].view(numAnchors, -1)
-                    # valid = torch.nonzero(corr, as_tuple=False)
+                        #TODO: suboptimal alternative solution: choose random class
+                        _, C, W, H = weights_copy.size()
+                        newWeight = weights_copy.clone().view(numAnchors, -1, C, W, H)
+                        newBias = biases_copy.clone().view(numAnchors, -1)
 
-                    # # average
-                    # newWeight = newWeight.sum(1) / (newWeight>0).sum(1)
-                    # newWeight[1 - torch.isfinite(newWeight).long()] = 0        #TODO
+                        newWeight = newWeight[:,randomIdx[cl],...]
+                        newBias = newBias[:,randomIdx[cl]]
 
-                    # newBias = newBias.sum(1) / (newBias>0).sum(1)
-                    # newBias[1 - torch.isfinite(newBias).long()] = 0     #TODO
-
-                    # prepend (last column is background class)
+                    # prepend
                     weights = torch.cat((newWeight, weights), 0)
                     biases = torch.cat((newBias, biases), 0)
-
-            else:
-                #TODO: suboptimal intermediate solution: find set of sum of weights and biases with minimal difference to zero
-                massValues = []
-                for idx in range(0, weights.size(0), numAnchors):
-                    wbSum = torch.sum(torch.abs(weights[idx:(idx+numAnchors),...])) + \
-                            torch.sum(torch.abs(biases[idx:(idx+numAnchors)]))
-                    massValues.append(wbSum.unsqueeze(0))
-                massValues = torch.cat(massValues, 0)
-                
-                smallest = torch.argmax(massValues)     #TODO
-
-                newWeights = weights[(smallest*numAnchors):(smallest+1)*numAnchors,...]
-                newBiases = biases[(smallest*numAnchors):(smallest+1)*numAnchors]
-
-                for cl in newClasses:
-                    # add a tiny bit of noise for better specialization capabilities (TODO: assess long-term effect of that...)
-                    noiseW = 0.01 * (0.5 - torch.rand_like(newWeights))
-                    noiseB = 0.01 * (0.5 - torch.rand_like(newBiases))
-                    weights = torch.cat((newWeights.clone() + noiseW, weights), 0)
-                    biases = torch.cat((newBiases.clone() + noiseB, biases), 0)
             
+            # remove old classes
+            classmap_updated = {}
+            valid = torch.ones(len(biases), dtype=torch.bool)
+            classmap_inv = {}
+            for key in stateDict['labelclassMap'].keys():
+                classmap_inv[stateDict['labelclassMap'][key]] = key
+            index_updated = 0
+            for clIdx in range(len(classmap_inv)):
+                clName = classmap_inv[clIdx]
+                if clName not in data['labelClasses']:
+                    index = clIdx + len(newClasses)   # we prepended new class weights; need to add offset
+                    valid[index*numAnchors:(index+1)*numAnchors] = False
+                else:
+                    classmap_updated[clName] = index_updated
+                    index_updated += 1
+            stateDict['labelclassMap'] = classmap_updated
+            weights = weights[valid,...]
+            biases = biases[valid,...]
+
             # apply updated weights and biases
-
-            #TODO: remove old
-            weights = weights[:(len(newClasses)*numAnchors),...]
-            biases = biases[:(len(newClasses)*numAnchors)]
-            lcMap = {}
-            for idx, lc in enumerate(newClasses):
-                lcMap[lc] = idx
-            stateDict['labelclassMap'] = lcMap
-
             model.head.cls_score.weight = torch.nn.Parameter(weights)
             model.head.cls_score.bias = torch.nn.Parameter(biases)
                 
@@ -181,6 +175,6 @@ if __name__ == '__main__':
 
     # launch model
     rn = RetinaNet(project, config, database, fileServer, modelSettings)
-    # rn.update_model(None, data, updateStateFun)
-    rn.train(None, data, updateStateFun)
-    rn.inference(None, data, updateStateFun)
+    stateDict = rn.update_model(None, data, updateStateFun)
+    # rn.train(stateDict, data, updateStateFun)
+    rn.inference(stateDict, data, updateStateFun)

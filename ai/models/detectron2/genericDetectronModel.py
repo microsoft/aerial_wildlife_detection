@@ -33,7 +33,6 @@ class GenericDetectron2Model(AIModel):
 
     def __init__(self, project, config, dbConnector, fileServer, options):
         super(GenericDetectron2Model, self).__init__(project, config, dbConnector, fileServer, options)
-
         if isinstance(options, str):
             try:
                 options = json.loads(options)
@@ -183,7 +182,17 @@ class GenericDetectron2Model(AIModel):
         #     detectron2cfg = copy.deepcopy(stateDict['detectron2cfg'])
         # else:
         detectron2cfg = copy.deepcopy(self.detectron2cfg)
-        stateDict['detectron2cfg'] = self.detectron2cfg
+        if 'detectron2cfg' in stateDict and not forceNewModel:
+            # copy over some important parameters
+            try:
+                detectron2cfg.MODEL.ROI_HEADS.NUM_CLASSES = stateDict['detectron2cfg'].MODEL.ROI_HEADS.NUM_CLASSES
+            except:
+                pass
+            try:
+                detectron2cfg.MODEL.RETINANET.NUM_CLASSES = stateDict['detectron2cfg'].MODEL.RETINANET.NUM_CLASSES
+            except:
+                pass
+        stateDict['detectron2cfg'] = detectron2cfg
         
         # check if CUDA is available; set to CPU temporarily if not
         if not torch.cuda.is_available():
@@ -198,7 +207,7 @@ class GenericDetectron2Model(AIModel):
         else:
             # fresh model; initialize from Detectron2 weights
             checkpointer.load(detectron2cfg.MODEL.WEIGHTS)
-        
+
         # load or create labelclass map
         if 'labelclassMap' in stateDict and not forceNewModel:
             labelclassMap = stateDict['labelclassMap']
@@ -211,9 +220,8 @@ class GenericDetectron2Model(AIModel):
                 if isinstance(pretrainedDataset, list) or isinstance(pretrainedDataset, tuple):
                     pretrainedDataset = pretrainedDataset[0]
                 pretrainedMeta = MetadataCatalog.get(pretrainedDataset)
-                for cID in pretrainedMeta.thing_dataset_id_to_contiguous_id.keys():
-                    className = pretrainedMeta.thing_classes[pretrainedMeta.thing_dataset_id_to_contiguous_id[cID]]
-                    labelclassMap[className] = cID - 1
+                for idx, cID in enumerate(pretrainedMeta.thing_classes):
+                    labelclassMap[cID] = idx
             except:
                 pass
 
@@ -488,7 +496,7 @@ class GenericDetectron2Model(AIModel):
                 # export bboxes if predicted
                 if hasattr(outputs, 'pred_boxes'):
                     bboxes = outputs.pred_boxes.tensor.cpu()
-
+                    
                     # convert bboxes to relative XYWH format
                     bboxes[:,2] -= bboxes[:,0]
                     bboxes[:,3] -= bboxes[:,1]

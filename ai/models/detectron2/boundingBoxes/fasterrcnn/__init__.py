@@ -213,7 +213,7 @@ DEFAULT_OPTIONS = {
 				"options": {
 					"cpu": {
 						"name": "CPU",
-						"description": "Run RetinaNet on the CPU and with system RAM."
+						"description": "Run Faster R-CNN on the CPU and with system RAM."
 					},
 					"cuda": {
 						"name": "GPU",
@@ -363,31 +363,9 @@ DEFAULT_OPTIONS = {
 					"RandomSaturation"
 				]
 			},
-			"criterion": {
-				"name": "Focal Loss options",
-				"description": "See the <a href=\"http://openaccess.thecvf.com/content_ICCV_2017/papers/Lin_Focal_Loss_for_ICCV_2017_paper.pdf\" target=\"_blank\">RetinaNet paper</a> for more information.",
-				"DETECTRON2.MODEL.RETINANET.FOCAL_LOSS_GAMMA": {
-					"name": "Gamma",
-					"min": 0.0,
-					"max": 8192,
-					"value": 2.0
-				},
-				"DETECTRON2.MODEL.RETINANET.FOCAL_LOSS_ALPHA": {
-					"name": "Alpha",
-					"min": 0.0,
-					"max": 8192,
-					"value": 0.25
-				},
-				"DETECTRON2.MODEL.RETINANET.SMOOTH_L1_LOSS_BETA": {
-					"name": "Smooth L1 loss Beta",
-					"min": 0.0,
-					"max": 100.0,
-					"value": 0.0
-				}
-			},
 			"encoding": {
-				"name": "Bounding box encoding",
-				"DETECTRON2.MODEL.RETINANET.IOU_THRESHOLDS": {
+				"name": "Region proposal network encoding",
+				"DETECTRON2.MODEL.RPN.IOU_THRESHOLDS": {
 					"name": "IoU thresholds",
 					"type": "list",
 					"value": [
@@ -396,7 +374,7 @@ DEFAULT_OPTIONS = {
 							"description": "Maximally permitted IoU value between a target and prediction box for the latter to be treated as a False positive",
 							"min": 0.0,
 							"max": 1.0,
-							"value": 0.4,
+							"value": 0.3,
 							"style": {
 								"slider": True
 							}
@@ -406,12 +384,21 @@ DEFAULT_OPTIONS = {
 							"description": "Minimum IoU value between a target and prediction box for the latter to be considered a correct prediction",
 							"min": 0.0,
 							"max": 1.0,
-							"value": 0.5,
+							"value": 0.7,
 							"style": {
 								"slider": True
 							}
 						}
 					]
+				},
+				"DETECTRON2.MODEL.RPN.NMS_THRESH": {
+					"name": "Non-maximum suppression threshold",
+					"min": 0.0,
+					"max": 1.0,
+					"value": 0.7,
+					"style": {
+						"slider": True
+					}
 				}
 			},
 			"ignore_unsure": {
@@ -425,7 +412,7 @@ DEFAULT_OPTIONS = {
 				"name": "Transforms",
 				"description": "Note that inference transforms exclude geometric data augmentation options.",
 				"type": "list",
-				"options": "transform_inference",
+				"options": "transform",
 				"value": []
 			},
 			"DETECTRON2.TEST.DETECTIONS_PER_IMAGE": {
@@ -436,7 +423,7 @@ DEFAULT_OPTIONS = {
 			},
 			"encoding": {
 				"name": "Bounding box encoding",
-				"DETECTRON2.MODEL.RETINANET.SCORE_THRESH_TEST": {
+				"DETECTRON2.MODEL.ROI_HEADS.SCORE_THRESH_TEST": {
 					"name": "Min. class confidence",
 					"description": "Minimum confidence value to be reached by any label class for a box to be kept as a prediction.<br />Higher values = more confident predictions; lower values = higher recall",
 					"min": 0.0,
@@ -446,7 +433,7 @@ DEFAULT_OPTIONS = {
 						"slider": True
 					}
 				},
-				"DETECTRON2.MODEL.RETINANET.NMS_THRESH_TEST": {
+				"DETECTRON2.MODEL.ROI_HEADS.NMS_THRESH_TEST": {
 					"name": "Non-maximum suppression threshold",
 					"description": "Maximally permitted IoU between predictions. If above, boxes with lower confidence scores will be discarded (non-maximum suppression).",
 					"min": 0.0,

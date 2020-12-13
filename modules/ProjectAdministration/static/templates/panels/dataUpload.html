@@ -343,20 +343,23 @@
                                     window.imageBrowser.set('message', this, msg);
                                     window.messager.addMessage('Warning(s) occurred while uploading image "'+fileName+'": "'+data['result']['imgs_warn'][this]+'".', 'warning', 0);
                                 }
+
+                                if(!(this in dat['result']['imgs_error'])) {
+                                    pBar.set(true, pBar.getValue()+1);
+                                    numComplete++;
+                                    infoBar.html('uploading... ('+numComplete+'/'+fileInput.files.length+' images uploaded)');
+                                    if(numComplete >= fileInput.files.length) {
+                                        pBar.set(false);
+                                    }
+                                    window.uploadedFiles[this] = 1;
+                                    window.messager.addMessage('Image "'+fileName+'" uploaded successfully.', 'success');
+                                }
                             } catch(error) {
                                 window.imageBrowser.set('imageURL', this, '/static/dataAdmin/img/error.png');
                                 window.imageBrowser.set('message', this, '<span style="color:red">an unknown error occurred</span>');
                                 window.messager.addMessage('Image "'+fileName+'" could not be uploaded.', 'error', 0);
                             }
                             window.imageBrowser.setProgressBar(this, false);
-                            pBar.set(true, pBar.getValue()+1);
-                            numComplete++;
-                            infoBar.html('uploading... ('+numComplete+'/'+fileInput.files.length+' images uploaded)');
-                            if(numComplete >= fileInput.files.length) {
-                                pBar.set(false);
-                            }
-                            window.uploadedFiles[this] = 1;
-                            window.messager.addMessage('Image "'+fileName+'" uploaded successfully.', 'success');
                         }.bind(key),
                         error: function(xhr, status, error) {
                             window.imageBrowser.set('imageURL', this, '/static/dataAdmin/img/error.png');

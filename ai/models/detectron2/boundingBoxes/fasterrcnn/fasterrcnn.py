@@ -7,6 +7,7 @@
 import json
 import torch
 from detectron2 import model_zoo
+from detectron2.config import get_cfg
 
 from ai.models.detectron2.genericDetectronModel import GenericDetectron2Model
 from ai.models.detectron2.boundingBoxes.genericDetectronBBoxModel import GenericDetectron2BoundingBoxModel
@@ -18,6 +19,14 @@ class FasterRCNN(GenericDetectron2BoundingBoxModel):
 
     def __init__(self, project, config, dbConnector, fileServer, options):
         super(FasterRCNN, self).__init__(project, config, dbConnector, fileServer, options)
+
+        try:
+            if self.detectron2cfg.MODEL.META_ARCHITECTURE != 'GeneralizedRCNN':
+                # invalid options provided
+                raise
+        except:
+            print('WARNING: provided options are not valid for Faster R-CNN; falling back to defaults.')
+            self.detectron2cfg = get_cfg()      #TODO: suboptimal solution
 
         #TODO: Faster R-CNN currently does not work with empty images
         self.detectron2cfg.DATALOADER.FILTER_EMPTY_ANNOTATIONS = True
@@ -56,45 +65,88 @@ class FasterRCNN(GenericDetectron2BoundingBoxModel):
         if len(newClasses):
 
             # class predictor parameters
-            weights = model.roi_heads.box_predictor.cls_score.weight
-            biases = model.roi_heads.box_predictor.cls_score.bias
+            class_weights = model.roi_heads.box_predictor.cls_score.weight
+            class_biases = model.roi_heads.box_predictor.cls_score.bias
 
             # box predictor parameters
-            bbox_weight = model.roi_heads.box_predictor.bbox_pred.weight
+            bbox_weights = model.roi_heads.box_predictor.bbox_pred.weight
             bbox_biases = model.roi_heads.box_predictor.bbox_pred.bias
-            
-            #TODO: suboptimal intermediate solution: find set of sum of weights and biases with minimal difference to zero
-            massValues = []
-            for idx in range(0, weights.size(0)-1):     # -1 because last index is background class
-                wbSum = torch.sum(torch.abs(weights[idx,...])) + \
-                        torch.sum(torch.abs(biases[idx]))
-                massValues.append(wbSum.unsqueeze(0))
-            massValues = torch.cat(massValues, 0)
-            
-            smallest = torch.argmin(massValues)
 
-            newWeights = weights[smallest,...].unsqueeze(0)
-            newBiases = biases[smallest].unsqueeze(0)
 
-            bbox_idx = 4*smallest
-            newWeights_bbox = bbox_weight[bbox_idx:(bbox_idx+4),...]
-            newBiases_bbox = bbox_biases[bbox_idx:(bbox_idx+4),...]
+            # create weights and biases for new classes
+            if True:        #TODO: add flags in config file about strategy
+                class_weights_copy = class_weights.clone()
+                class_biases_copy = class_biases.clone()
+                bbox_weights_copy = bbox_weights.clone()
+                bbox_biases_copy = bbox_biases.clone()
 
-            for cl in newClasses:
-                # add a tiny bit of noise for better specialization capabilities (TODO: assess long-term effect of that...)
-                noiseW = 0.01 * (0.5 - torch.rand_like(newWeights))
-                noiseB = 0.01 * (0.5 - torch.rand_like(newBiases))
-                weights = torch.cat((weights, newWeights.clone() + noiseW), 0)
-                biases = torch.cat((biases, newBiases.clone() + noiseB), 0)
+                modelClasses = range(len(class_biases))
+                correlations = self.calculateClassCorrelations(model, modelClasses, newClasses, updateStateFun, 128)    #TODO: num images
+                correlations = correlations[:,:-1].to(class_weights.device)      # exclude background class
 
-                bbox_weight = torch.cat((bbox_weight, newWeights_bbox.clone()), 0)
-                bbox_biases = torch.cat((bbox_biases, newBiases_bbox.clone()), 0)
-            
+                classMatches = (correlations.sum(1) > 0)            #TODO: calculate alternative strategies (e.g. class name similarities)
+
+                randomIdx = torch.randperm(len(class_biases)-1)
+
+                for cl in range(len(newClasses)):
+
+                    if classMatches[cl].item():
+                        newClassWeight = class_weights_copy.clone()[:-1,:] * correlations[cl,:].unsqueeze(-1)
+                        newClassBias = class_biases_copy.clone()[:-1] * correlations[cl,:]
+                        newBoxWeight = bbox_weights_copy.clone() * correlations[cl,:].unsqueeze(-1).repeat(4,1)
+                        newBoxBias = bbox_biases_copy.clone() * correlations[cl,:].repeat(4)
+
+                        valid = (correlations[cl,:] > 0)
+
+                        # average
+                        newClassWeight = (newClassWeight.sum(0) / valid.sum()).unsqueeze(0)
+                        newClassBias = newClassBias.sum() / valid.sum().unsqueeze(0)
+                        newBoxWeight = newBoxWeight.view(-1, 4, bbox_weights_copy.size(-1)).sum(0) / valid.sum()
+                        newBoxBias = newBoxBias.view(-1, 4).sum(0) / valid.sum()
+
+                    else:
+                        # class has no match; use alternative solution
+
+                        #TODO: suboptimal alternative solution: choose random class
+                        newClassWeight = class_weights_copy.clone()[randomIdx[cl],:].unsqueeze(0)
+                        newClassBias = class_biases_copy.clone()[randomIdx[cl]].unsqueeze(0)
+                        newBoxWeight = bbox_weights_copy.clone()[randomIdx[cl]*4:(randomIdx[cl]+1)*4,:]
+                        newBoxBias = bbox_biases_copy.clone()[randomIdx[cl]*4:(randomIdx[cl]+1)*4]
+
+                    # prepend (last column is background class)
+                    class_weights = torch.cat((newClassWeight, class_weights), 0)
+                    class_biases = torch.cat((newClassBias, class_biases), 0)
+                    bbox_weights = torch.cat((newBoxWeight, bbox_weights), 0)
+                    bbox_biases = torch.cat((newBoxBias, bbox_biases), 0)
+
+            # remove old classes
+            classmap_updated = {}
+            valid_cls = torch.ones(len(class_biases), dtype=torch.bool)
+            valid_box = torch.ones(len(bbox_biases), dtype=torch.bool)
+            classmap_inv = {}
+            for key in stateDict['labelclassMap'].keys():
+                classmap_inv[stateDict['labelclassMap'][key]] = key
+            index_updated = 0
+            for clIdx in range(len(classmap_inv)):
+                clName = classmap_inv[clIdx]
+                if clName not in data['labelClasses']:
+                    index = clIdx + len(newClasses)   # we prepended new class weights; need to add offset
+                    valid_cls[index] = False
+                    valid_box[(index*4):(index+1)*4] = False
+                else:
+                    classmap_updated[clName] = index_updated
+                    index_updated += 1
+            stateDict['labelclassMap'] = classmap_updated
+            class_weights = class_weights[valid_cls,:]
+            class_biases = class_biases[valid_cls]
+            bbox_weights = bbox_weights[valid_box,:]
+            bbox_biases = bbox_biases[valid_box]
+
             # apply updated weights and biases
-            model.roi_heads.box_predictor.cls_score.weight = torch.nn.Parameter(weights)
-            model.roi_heads.box_predictor.cls_score.bias = torch.nn.Parameter(biases)
+            model.roi_heads.box_predictor.cls_score.weight = torch.nn.Parameter(class_weights)
+            model.roi_heads.box_predictor.cls_score.bias = torch.nn.Parameter(class_biases)
 
-            model.roi_heads.box_predictor.bbox_pred.weight = torch.nn.Parameter(bbox_weight)
+            model.roi_heads.box_predictor.bbox_pred.weight = torch.nn.Parameter(bbox_weights)
             model.roi_heads.box_predictor.bbox_pred.bias = torch.nn.Parameter(bbox_biases)
 
             print(f'Neurons for {len(newClasses)} new label classes added to Faster R-CNN model.')
@@ -102,7 +154,7 @@ class FasterRCNN(GenericDetectron2BoundingBoxModel):
         #TODO: remove superfluous?
 
         # finally, update model and config
-        stateDict['detectron2cfg'].MODEL.RETINANET.NUM_CLASSES = len(stateDict['labelclassMap'])
+        stateDict['detectron2cfg'].MODEL.ROI_HEADS.NUM_CLASSES = len(stateDict['labelclassMap'])
         model.roi_heads.box_predictor.cls_score.out_features = len(stateDict['labelclassMap'])
         model.roi_heads.box_predictor.bbox_pred.out_features = len(stateDict['labelclassMap'])
         return model, stateDict
@@ -140,10 +192,11 @@ if __name__ == '__main__':
         maxNumImages=512)
     data = __load_metadata(project, database, data[0], True)
 
-    def updateStateFun(state, message, done, total):
+    def updateStateFun(state, message, done=None, total=None):
         print(f'{message}: {done}/{total}')
     
 
     # launch model
     rn = FasterRCNN(project, config, database, fileServer, None)
-    rn.inference(None, data, updateStateFun)
+    stateDict = rn.update_model(None, data, updateStateFun)
+    rn.inference(stateDict, data, updateStateFun)

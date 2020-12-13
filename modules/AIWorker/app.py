@@ -44,7 +44,6 @@ class AIWorker():
 
 
     def _init_model_instance(self, project, modelLibrary, modelSettings):
-
         # try to parse model settings
         if modelSettings is not None and len(modelSettings):
             try:

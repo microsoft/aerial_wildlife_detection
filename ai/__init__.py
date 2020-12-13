@@ -80,6 +80,15 @@ PREDICTION_MODELS = {
     # built-ins
 
     # Detectron2
+    'ai.models.detectron2.FasterRCNN': {
+                                            'name': 'Faster R-CNN (beta)',
+                                            'author': '(built-in)',
+                                            'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of the <a href="https://doi.org/10.1109/TPAMI.2016.2577031" target="_blank">Faster R-CNN</a> object detector.',
+                                            'annotationType': 'boundingBoxes',
+                                            'predictionType': 'boundingBoxes',
+                                            'canAddLabelclasses': True,
+                                            'canRemoveLabelclasses': False
+                                       },
     'ai.models.detectron2.RetinaNet': {
                                             'name': 'RetinaNet (beta)',
                                             'author': '(built-in)',
@@ -87,7 +96,7 @@ PREDICTION_MODELS = {
                                             'annotationType': 'boundingBoxes',
                                             'predictionType': 'boundingBoxes',
                                             'canAddLabelclasses': True,
-                                            'canRemoveLabelclasses': False
+                                            'canRemoveLabelclasses': True
                                        },
 
     # PyTorch
