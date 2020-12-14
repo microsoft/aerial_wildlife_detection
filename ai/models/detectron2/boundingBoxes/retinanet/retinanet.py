@@ -16,6 +16,21 @@ from util import optionsHelper
 
 class RetinaNet(GenericDetectron2BoundingBoxModel):
 
+    def __init__(self, project, config, dbConnector, fileServer, options):
+        super(RetinaNet, self).__init__(project, config, dbConnector, fileServer, options)
+
+        try:
+            if self.detectron2cfg.MODEL.META_ARCHITECTURE != 'RetinaNet':
+                # invalid options provided
+                raise
+        except:
+            print('WARNING: provided options are not valid for RetinaNet; falling back to defaults.')
+            self.options = self.getDefaultOptions()
+            self.detectron2cfg = self._get_config()
+            self.detectron2cfg = GenericDetectron2Model.parse_aide_config(self.options, self.detectron2cfg)
+
+
+
     @classmethod
     def getDefaultOptions(cls):
         return GenericDetectron2Model._load_default_options(
@@ -67,6 +82,9 @@ class RetinaNet(GenericDetectron2BoundingBoxModel):
                 classMatches = (correlations.sum(1) > 0)            #TODO: calculate alternative strategies (e.g. class name similarities)
 
                 randomIdx = torch.randperm(int(len(biases_copy)/numAnchors))
+                if len(randomIdx) < len(newClasses):
+                    # source model has fewer classes than target model; repeat
+                    randomIdx = randomIdx.repeat(int(len(newClasses)/len(class_biases)+1))
 
                 for cl in range(len(newClasses)):
 
@@ -94,6 +112,10 @@ class RetinaNet(GenericDetectron2BoundingBoxModel):
 
                         newWeight = newWeight[:,randomIdx[cl],...]
                         newBias = newBias[:,randomIdx[cl]]
+
+                        # add a bit of noise
+                        newWeight += (0.5 - torch.rand_like(newWeight)) * 0.5 * torch.std(weights_copy)
+                        newBias += (0.5 - torch.rand_like(newBias)) * 0.5 * torch.std(biases_copy)
 
                     # prepend
                     weights = torch.cat((newWeight, weights), 0)

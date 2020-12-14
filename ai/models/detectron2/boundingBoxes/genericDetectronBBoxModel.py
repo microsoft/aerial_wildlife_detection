@@ -17,7 +17,7 @@ from ai.models.detectron2._functional.dataset import getDetectron2Data
 class GenericDetectron2BoundingBoxModel(GenericDetectron2Model):
 
 
-    def calculateClassCorrelations(self, model, modelClasses, targetClasses, updateStateFun, maxNumImagesPerClass=None):
+    def calculateClassCorrelations(self, model, modelClasses, targetClasses, updateStateFun, maxNumImages=None):
         '''
             Implementation for bounding box models.
             Here, the correlation c between a predicted p and target t box
@@ -30,9 +30,9 @@ class GenericDetectron2BoundingBoxModel(GenericDetectron2Model):
 
         # query data
         queryArgs = [tuple((l,) for l in targetClasses)]
-        if isinstance(maxNumImagesPerClass, int):
-            limitStr = sql.SQL('LIMIT %s')      #TODO: overall limit, not per class...
-            queryArgs.append(maxNumImagesPerClass)
+        if isinstance(maxNumImages, int):
+            limitStr = sql.SQL('LIMIT %s')
+            queryArgs.append(maxNumImages)
         else:
             limitStr = sql.SQL('')
 
@@ -108,10 +108,13 @@ class GenericDetectron2BoundingBoxModel(GenericDetectron2Model):
                 updateStateFun(state='PROGRESS', message='predicting', done=(idx+1), total=numImgs)
 
             # average correlations
-            valid = (counts > 0)
-            correlations[valid] /= counts[valid]
+            counts = counts / counts.sum(1, keepdim=True)
+            correlations *= counts
+            # valid = (counts > 0)
+
+            # correlations[valid] /= counts[valid]
 
             # normalize
-            correlations /= correlations.sum(1).unsqueeze(1)
+            correlations /= correlations.sum(1, keepdim=True)
             
             return correlations

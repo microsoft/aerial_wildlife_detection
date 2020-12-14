@@ -53,27 +53,34 @@ class GenericDetectron2Model(AIModel):
         self.detectron2cfg = self._get_config()
 
         # write AIDE configuration values into Detectron2 config
-        def _parse_aide_config(config):
-            if isinstance(config, dict):
-                for key in config.keys():
-                    if key.startswith('DETECTRON2.'):
-                        value = optionsHelper.get_hierarchical_value(config[key], ['value', 'id'])
-                        if isinstance(value, list):
-                            for v in range(len(value)):
-                                value[v] = optionsHelper.get_hierarchical_value(value[v], ['value', 'id'])
-                        
-                        # copy over to Detectron2 configuration
-                        tokens = key.split('.')
-                        attr = self.detectron2cfg
-                        for t in range(1,len(tokens)):    # skip "DETECTRON2" marker
-                            if t == len(tokens) - 1:        # last element
-                                setattr(attr, tokens[t], value)
-                            else:
-                                attr = getattr(attr, tokens[t])
-                    else:
-                        _parse_aide_config(config[key])
+        self.detectron2cfg = self.parse_aide_config(self.options, self.detectron2cfg)
 
-        _parse_aide_config(self.options)
+
+
+    @classmethod
+    def parse_aide_config(cls, config, detectron2cfg=None):
+        if detectron2cfg is None:
+            detectron2cfg = get_cfg()
+        if isinstance(config, dict):
+            for key in config.keys():
+                if key.startswith('DETECTRON2.'):
+                    value = optionsHelper.get_hierarchical_value(config[key], ['value', 'id'])
+                    if isinstance(value, list):
+                        for v in range(len(value)):
+                            value[v] = optionsHelper.get_hierarchical_value(value[v], ['value', 'id'])
+                    
+                    # copy over to Detectron2 configuration
+                    tokens = key.split('.')
+                    attr = detectron2cfg
+                    for t in range(1,len(tokens)):    # skip "DETECTRON2" marker
+                        if t == len(tokens) - 1:        # last element
+                            setattr(attr, tokens[t], value)
+                        else:
+                            attr = getattr(attr, tokens[t])
+                else:
+                    GenericDetectron2Model.parse_aide_config(config[key], detectron2cfg)
+
+        return detectron2cfg
 
 
     

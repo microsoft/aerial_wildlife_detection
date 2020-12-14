@@ -26,7 +26,9 @@ class FasterRCNN(GenericDetectron2BoundingBoxModel):
                 raise
         except:
             print('WARNING: provided options are not valid for Faster R-CNN; falling back to defaults.')
-            self.detectron2cfg = get_cfg()      #TODO: suboptimal solution
+            self.options = self.getDefaultOptions()
+            self.detectron2cfg = self._get_config()
+            self.detectron2cfg = GenericDetectron2Model.parse_aide_config(self.options, self.detectron2cfg)
 
         #TODO: Faster R-CNN currently does not work with empty images
         self.detectron2cfg.DATALOADER.FILTER_EMPTY_ANNOTATIONS = True
@@ -87,6 +89,9 @@ class FasterRCNN(GenericDetectron2BoundingBoxModel):
                 classMatches = (correlations.sum(1) > 0)            #TODO: calculate alternative strategies (e.g. class name similarities)
 
                 randomIdx = torch.randperm(len(class_biases)-1)
+                if len(randomIdx) < len(newClasses):
+                    # source model has fewer classes than target model; repeat
+                    randomIdx = randomIdx.repeat(int(len(newClasses)/len(class_biases)+1))
 
                 for cl in range(len(newClasses)):
 
@@ -112,6 +117,12 @@ class FasterRCNN(GenericDetectron2BoundingBoxModel):
                         newClassBias = class_biases_copy.clone()[randomIdx[cl]].unsqueeze(0)
                         newBoxWeight = bbox_weights_copy.clone()[randomIdx[cl]*4:(randomIdx[cl]+1)*4,:]
                         newBoxBias = bbox_biases_copy.clone()[randomIdx[cl]*4:(randomIdx[cl]+1)*4]
+
+                        # add a bit of noise
+                        newClassWeight += (0.5 - torch.rand_like(newClassWeight)) * 0.5 * torch.std(class_weights_copy)
+                        newClassBias += (0.5 - torch.rand_like(newClassBias)) * 0.5 * torch.std(class_biases_copy)
+                        newBoxWeight += (0.5 - torch.rand_like(newBoxWeight)) * 0.5 * torch.std(bbox_weights_copy)
+                        newBoxBias += (0.5 - torch.rand_like(newBoxBias)) * 0.5 * torch.std(bbox_biases_copy)
 
                     # prepend (last column is background class)
                     class_weights = torch.cat((newClassWeight, class_weights), 0)
