@@ -5,6 +5,8 @@
     2020 Benjamin Kellenberger
 */
 
+if(window.baseURL === undefined) window.baseURL = '';
+
 
 function poll_status(taskID, successHandle, errorHandle, timeout) {
     /**
@@ -17,7 +19,7 @@ function poll_status(taskID, successHandle, errorHandle, timeout) {
     var tHandle = undefined;
     function __do_poll() {
         return $.ajax({
-            url: 'pollStatus',
+            url: window.baseURL + 'pollStatus',
             method: 'POST',
             contentType: 'application/json; charset=utf-8',
             dataType: 'json',

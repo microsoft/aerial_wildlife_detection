@@ -22,16 +22,19 @@
         <!-- /TODO -->
         <script src="/static/general/js/overlay.js?v={{ version }}"></script>
         <script type="text/javascript">
+
+            window.baseURL = '/{{ projectShortname }}/';
+
             function parseURLparameter(name) {
                 let url = new URL(window.location.href);
                 return url.searchParams.get(name);
             }
 
-            function setPanel(panelID) {
+            function setPanel(panelID, renameURL) {
                 window.showLoadingOverlay(true);
                 let contentPane = $('#contents');
                 $.ajax({
-                    url: 'config/panels/' + panelID,
+                    url: window.baseURL + 'config/panels/' + panelID,
                     success: function(data) {
                         contentPane.empty();
                         contentPane.append(data);
@@ -44,7 +47,8 @@
 
                         // update URL and page title
                         document.title = 'AIDE: ' + window.project + ' - ' + panelID;
-                        window.history.pushState('AIDE', 'AIDE: {{ projectShortname }}', '?t='+panelID);
+                        if(renameURL)
+                            window.history.pushState('AIDE', 'AIDE: {{ projectShortname }}', 'configuration/'+panelID);
                     },
                     statusCode: {
                         401: function(xhr) {
@@ -54,7 +58,7 @@
                         },
                         404: function(xhr) {
                             // invalid panel name; reset to default
-                            window.location.href = '?t=overview';
+                            window.location.href = window.baseURL + 'configuration/overview';
                         }
                     }
                 });
@@ -91,18 +95,26 @@
                 $('.navigation-entry').each(function() {
                     let id = $(this).attr('id');
                     $(this).click(function() {
-                        setPanel(id);
+                        //TODO
+                        window.location.href = window.baseURL + 'configuration/' + id;
+                        // setPanel(id);
                     });
                 });
 
                 // set active panel
-                var panel = parseURLparameter('t');
-                if(panel === null) panel = 'overview';  // default
-                setPanel(panel);
+                let panel = '{{ panel }}';
+                let renameURL = false;
+                if(panel.length === 0) {
+                    // fallback to legacy method
+                    renameURL = true;
+                    panel = parseURLparameter('t');
+                    if(panel === null) panel = 'overview';  // default
+                }
+                setPanel(panel, renameURL);
 
                 // add interface shortlink
                 $.ajax({
-                    url: 'getPermissions',
+                    url: window.baseURL + 'getPermissions',
                     method: 'GET',
                     success: function(data) {
                         try {
@@ -172,13 +184,14 @@
 
                     <div class="navigation-panel">
                         <div id="interface-shortlink-container">
-                            <a class="btn btn-lg btn-primary" id="start-labeling-button" href="interface" style="display:none">Start labeling</a>
+                            <a class="btn btn-lg btn-primary" id="start-labeling-button" href="/{{ projectShortname }}/interface" style="display:none">Start labeling</a>
                             <div class="btn btn-lg btn-secondary label-button" id="interface-disabled-placeholder" style="cursor:not-allowed;" disabled="disabled">(interface disabled)</div>
                         </div>
                         <div class="navigation-entry-container">
                             <div class="navigation-entry" id="overview">Overview</div>
                             <div class="navigation-entry" id="userPerformance">User performance</div>
                             <div class="navigation-entry" id="aiModel">AI model</div>
+                            <div class="navigation-entry navigation-sub-entry" id="modelMarketplace">Model marketplace <span style="color:#00ff3a">(new!)</span></div>
                             <div class="navigation-entry navigation-sub-entry" id="aiModelSettings">Settings</div>
                             <div class="navigation-entry navigation-sub-entry" id="modelPerformance">Model performance</div>
                             <div class="navigation-entry navigation-sub-entry" id="workflowDesigner">Workflow designer</div>

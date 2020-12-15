@@ -10,6 +10,10 @@ $(document).ready(function() {
     if(typeof(ProgressBar) === 'undefined') {
         $.getScript('/static/general/js/progressbar.js');
     }
+
+    if(window.baseURL === undefined) {
+        window.baseURL = '';
+    }
 });
 
 
@@ -227,7 +231,7 @@ class Task {
         //TODO
         var self = this;
         return $.ajax({
-            url: 'abortWorkflow',
+            url: window.baseURL + 'abortWorkflow',
             method: 'POST',
             contentType: 'application/json; charset=utf-8',
             dataType: 'json',
@@ -373,7 +377,7 @@ class WorkflowMonitor {
     _query_workflows() {
         var self = this;
         let promise = $.ajax({
-            url: 'status?tasks=true',
+            url: window.baseURL + 'status?tasks=true',
             method: 'GET',
             success: function(data) {
                 let tasks = data['status']['tasks'];

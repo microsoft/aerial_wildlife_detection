@@ -76,8 +76,15 @@ class ModelMarketplace:
                 # get data
                 username = html.escape(request.get_cookie('username'))
                 modelID = request.json['model_id']
-                result = self.middleware.importModel(project, username, modelID)
-                return result
+                try:
+                    modelID = uuid.UUID(modelID)
+
+                    # modelID is indeed a UUID; import from database
+                    return self.middleware.importModelDatabase(project, username, modelID)
+
+                except:
+                    # model comes from file or network
+                    return self.middleware.importModelURI(project, username, modelID)
 
             except Exception as e:
                 return {'status': 1, 'message': str(e)}

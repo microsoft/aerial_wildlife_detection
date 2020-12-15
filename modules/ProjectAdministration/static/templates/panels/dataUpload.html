@@ -77,7 +77,7 @@
             var imgs = [];
             for(var i=0; i<data.length; i++) {
                 imgs.push({
-                    url: data[i],
+                    url: window.baseURL + data[i],
                     imageURL: window.dataServerURI + window.project + '/files/' + data[i]
                 });
             }
@@ -103,7 +103,7 @@
         function scanUntracked() {
             window.imageBrowser.setLoadingOverlay(true, 'loading...');
             return $.ajax({
-                url: 'scanForImages',
+                url: window.baseURL + 'scanForImages',
                 method: 'GET',
                 success: function(data) {
                     // set interval for result polling
@@ -153,7 +153,7 @@
             let params = {};
             if(Array.isArray(imgList) && imgList.length === 0) return;
             return $.ajax({
-                url: 'addExistingImages',
+                url: window.baseURL + 'addExistingImages',
                 method: 'POST',
                 data: JSON.stringify({images:imgList}),
                 contentType: 'application/json; charset=utf-8',
@@ -278,7 +278,7 @@
                     window.imageBrowser.setProgressBar(key, true, 0);
 
                     var uploadRequest = $.ajax({
-                        url: 'uploadImages',
+                        url: window.baseURL + 'uploadImages',
                         method: 'POST',
                         data: formData,
                         cache: false,
@@ -344,7 +344,7 @@
                                     window.messager.addMessage('Warning(s) occurred while uploading image "'+fileName+'": "'+data['result']['imgs_warn'][this]+'".', 'warning', 0);
                                 }
 
-                                if(!(this in dat['result']['imgs_error'])) {
+                                if(!(this in data['result']['imgs_error'])) {
                                     pBar.set(true, pBar.getValue()+1);
                                     numComplete++;
                                     infoBar.html('uploading... ('+numComplete+'/'+fileInput.files.length+' images uploaded)');
@@ -355,6 +355,7 @@
                                     window.messager.addMessage('Image "'+fileName+'" uploaded successfully.', 'success');
                                 }
                             } catch(error) {
+                                console.log(error)
                                 window.imageBrowser.set('imageURL', this, '/static/dataAdmin/img/error.png');
                                 window.imageBrowser.set('message', this, '<span style="color:red">an unknown error occurred</span>');
                                 window.messager.addMessage('Image "'+fileName+'" could not be uploaded.', 'error', 0);
@@ -411,7 +412,7 @@
 
 
         // get data server URI
-        var promise = $.get('getProjectSettings', function(data) {
+        var promise = $.get(window.baseURL + 'getProjectSettings', function(data) {
             window.dataServerURI = data['settings']['dataServerURI'];
             if(!window.dataServerURI.endsWith('/')) {
                 window.dataServerURI += '/';
@@ -421,7 +422,7 @@
         // get valid image MIME types
         promise = promise.done(function() {
             return $.ajax({
-                url: 'getValidMIMEtypes',
+                url: window.baseURL + 'getValidMIMEtypes',
                 method: 'GET',
                 success: function(data) {
                     if(data.hasOwnProperty('MIME_types')) {
@@ -471,7 +472,7 @@
             var infoMessage = $('<div></div>');
             var serverFolderCell = $('<td style="font-family:monospace">(loading...)</td>');
             $.ajax({
-                url: 'getPlatformInfo',
+                url: window.baseURL + 'getPlatformInfo',
                 method: 'GET',
                 success: function(data) {
                     if(data.hasOwnProperty('settings')) {
@@ -533,7 +534,7 @@
                     '<tr><td>Stride:</td>' +
                     '<td><input type="number" id="patch-stride-width" min="16" max="4096" value="800" /></td>' +
                     '<td><input type="number" id="patch-stride-height" min="16" max="4096" value="600" /></td></tr></tbody></table>' +
-                    '<input type="checkbox" id="patch-tight-chck" /><label for="patch-tight-chck">Do not exceed image boundaries</label></div></div>');
+                    '<input type="checkbox" id="patch-tight-chck" checked="checked" /><label for="patch-tight-chck">Do not exceed image boundaries</label></div></div>');
                 optionsPanel.append(splitOptions);
             var startFileUpload = $('<button class="btn btn-sm btn-primary" id="upload-button">Upload</button>');
             startFileUpload.on('click', function() {

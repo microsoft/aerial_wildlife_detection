@@ -53,7 +53,7 @@
     function getProjectArchived() {
         let archiveBtn = $('#archive-project');
         return $.ajax({
-            url: 'isArchived',
+            url: window.baseURL + 'isArchived',
             method: 'GET',
             success: function(data) {
                 if(data.hasOwnProperty('archived')) {
@@ -102,7 +102,7 @@
 
     function toggleProjectArchived() {
         return $.ajax({
-            url: 'setArchived',
+            url: window.baseURL + 'setArchived',
             method: 'POST',
             contentType: 'application/json; charset=utf-8',
             dataType: 'json',
@@ -145,7 +145,7 @@
             let projName = projNameField.val();
             
             $.ajax({
-                url: 'deleteProject',
+                url: window.baseURL + 'deleteProject',
                 method: 'POST',
                 contentType: 'application/json; charset=utf-8',
                 dataType: 'json',

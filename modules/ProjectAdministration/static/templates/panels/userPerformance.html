@@ -119,7 +119,7 @@
 
     function getProjectSettings() {
         return $.ajax({
-            url: 'getProjectSettings',
+            url: window.baseURL + 'getProjectSettings',
             method: 'GET',
             success: function(data) {
                 window.annotationType = data['settings']['annotationType'];
@@ -172,7 +172,7 @@
         let resultsContainer = $('#performance-container');
         resultsContainer.empty();
         return $.ajax({
-            url: 'getPerformanceStatistics',
+            url: window.baseURL + 'getPerformanceStatistics',
             method: 'POST',
             data: JSON.stringify(params),
             contentType: 'application/json; charset=utf-8',
@@ -395,7 +395,7 @@
             goldenQuestionsOnly: limitGoldenQuestions
         };
         return $.ajax({
-            url: 'getUserAnnotationSpeeds',
+            url: window.baseURL + 'getUserAnnotationSpeeds',
             method: 'POST',
             data: JSON.stringify(params),
             contentType: 'application/json; charset=utf-8',
@@ -420,7 +420,7 @@
 
     function getUserNames(evalUsersTable, targetUsersTable) {
         return $.ajax({
-            url: 'getUserNames',
+            url: window.baseURL + 'getUserNames',
             method: 'POST',
             success: function(data) {
                 data = data['users'];

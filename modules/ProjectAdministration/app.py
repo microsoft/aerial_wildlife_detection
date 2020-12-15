@@ -69,9 +69,9 @@ class ProjectConfigurator:
                     self.panelTemplates[pnName] = SimpleTemplate(f.read())
 
 
-        @self.app.route('/<project>/config/static/<filename:re:.*>')
-        def send_static(project, filename):
-            return static_file(filename, root=self.staticDir)
+        # @self.app.route('/<project>/config/static/<filename:re:.*>')
+        # def send_static(project, filename):
+        #     return static_file(filename, root=self.staticDir)
 
         
         @self.app.route('/<project>/config/panels/<panel>')
@@ -150,8 +150,8 @@ class ProjectConfigurator:
                     username=username)
 
 
-        @self.app.route('/<project>/configuration')
-        def send_project_config_page(project):
+        @self.app.route('/<project>/configuration/<panel>')
+        def send_project_config_panel(project, panel=None):
             
             #TODO
             if not self.loginCheck():
@@ -174,11 +174,47 @@ class ProjectConfigurator:
             except:
                 username = ''
 
+            if panel is None:
+                panel = ''
+
             return self.projConf_template.render(
                     version=AIDE_VERSION,
+                    panel=panel,
                     projectShortname=project,
                     projectTitle=projectData['name'],
                     username=username)
+
+
+        @self.app.route('/<project>/configuration')
+        def send_project_config_page(project):
+            # compatibility for deprecated configuration panel access
+            return send_project_config_panel(project)
+            # #TODO
+            # if not self.loginCheck():
+            #     return self.__redirect(loginPage=True, redirect='/' + project + '/configuration')
+
+            # # get project data (and check if project exists)
+            # projectData = self.middleware.getProjectInfo(project, ['name', 'description', 'interface_enabled', 'demomode'])
+            # if projectData is None:
+            #     return self.__redirect()
+
+            # if not self.loginCheck(project=project, extend_session=True):
+            #     return redirect('/')
+
+            # if not self.loginCheck(project=project, admin=True, extend_session=True):
+            #     return redirect('/' + project + '/interface')
+
+            # # render configuration template
+            # try:
+            #     username = html.escape(request.get_cookie('username'))
+            # except:
+            #     username = ''
+
+            # return self.projConf_template.render(
+            #         version=AIDE_VERSION,
+            #         projectShortname=project,
+            #         projectTitle=projectData['name'],
+            #         username=username)
 
         
         @self.app.get('/<project>/getPlatformInfo')

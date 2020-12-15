@@ -358,10 +358,10 @@ class DataWorker:
                             # remove file
                             try:
                                 os.remove(absFilePath)
-                                imgs_warn[key] = 'Image "{}" already existed on disk and has been deleted.\n'.format(newFileName) + \
+                                imgs_warn[key] = 'Image "{}" already existed on disk and has been overwritten.\n'.format(newFileName) + \
                                                     'All metadata (views, annotations, predictions) have been removed from the database.'
                             except:
-                                imgs_warn[key] = 'Image "{}" already existed on disk but could not be deleted.\n'.format(newFileName) + \
+                                imgs_warn[key] = 'Image "{}" already existed on disk but could not be overwritten.\n'.format(newFileName) + \
                                                     'All metadata (views, annotations, predictions) have been removed from the database.'
                     
                     # write to disk

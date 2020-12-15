@@ -132,7 +132,7 @@
                 
                 // submit to server to check if model accepts it
                 return $.ajax({
-                    url: 'verifyAImodelOptions',
+                    url: window.baseURL + 'verifyAImodelOptions',
                     method: 'POST',
                     contentType: 'application/json; charset=utf-8',
                     dataType: 'json',
@@ -160,7 +160,7 @@
 
         //TODO: flag for case when AIController is not available...
         var promise = $.ajax({
-                url: 'getProjectImmutables',
+                url: window.baseURL + 'getProjectImmutables',
                 method: 'GET',
                 success: function(data) {
                     data = data['immutables'];
@@ -173,7 +173,7 @@
         });
         promise = promise.then(function() {
             return $.ajax({
-                url: 'getAvailableAImodels',
+                url: window.baseURL + 'getAvailableAImodels',
                 method: 'GET',
                 success: function(data) {
                     // populate selection fields, if suitable for selected annotation and prediction types
@@ -215,7 +215,7 @@
 
         function loadSettings() {
             return $.ajax({
-                url: 'getConfig',
+                url: window.baseURL + 'getConfig',
                 method: 'POST',
                 data: JSON.stringify({
                     'parameters': [
@@ -399,7 +399,7 @@
                 settings['segmentation_ignore_unlabeled'] = ($('#seg-unlabeled-select').val() === '1');
             }
             var p = $.ajax({
-                url: 'saveAImodelSettings',
+                url: window.baseURL + 'saveAImodelSettings',
                 method: 'POST',
                 contentType: 'application/json; charset=utf-8',
                 dataType: 'json',

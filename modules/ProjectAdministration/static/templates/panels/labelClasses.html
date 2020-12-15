@@ -74,7 +74,7 @@
         <button id="lc-save-button" class="btn btn-primary" style="float:right">Save</button>
     </div>
 </div>
-<link rel="stylesheet" href="config/static/libs/jqtree/jqtree_custom.css?v={{ version }}" />
+<link rel="stylesheet" href="/static/projectAdmin/libs/jqtree/jqtree_custom.css?v={{ version }}" />
 <style>
     #label-classes {
         border: 1px solid #aaa;
@@ -87,8 +87,8 @@
         border-radius: 5px;
     }
 </style>
-<script src="config/static/libs/jqtree/tree.jquery.js?v={{ version }}"></script>
-<script src="config/static/js/jscolor.js?v={{ version }}"></script>
+<script src="/static/projectAdmin/libs/jqtree/tree.jquery.js?v={{ version }}"></script>
+<script src="/static/projectAdmin/js/jscolor.js?v={{ version }}"></script>
 <script type="text/javascript">
     var DELIMITERS = [
         ',,', ',', ';;', ';', '::', ':', '\t', ' '  //TODO: multiple white spaces?
@@ -162,7 +162,7 @@
 
     function loadLabelClasses() {
         return $.ajax({
-            url: 'getClassDefinitions?show_hidden=false',    //TODO: handle potential removal of background class in segmentation map case
+            url: window.baseURL + 'getClassDefinitions?show_hidden=false',    //TODO: handle potential removal of background class in segmentation map case
             method: 'GET',
             success: function(data) {
                 // prepare data for tree
@@ -659,7 +659,7 @@
         var classdef = window.lcTree.tree('toJson');
         var removeMissing = $('#remove-missing-checkbox').prop('checked');
         var promise = $.ajax({
-            url: 'saveClassDefinitions',
+            url: window.baseURL + 'saveClassDefinitions',
             method: 'POST',
             data: JSON.stringify({
                 classes: classdef,

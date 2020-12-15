@@ -193,16 +193,18 @@ MODIFICATIONS_sql = [
         labelclasses VARCHAR NOT NULL,
         author VARCHAR NOT NULL,
         model_library VARCHAR NOT NULL,
-        statedict BYTEA NOT NULL,
+        statedict BYTEA,
         timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         alCriterion_library VARCHAR,
         origin_project VARCHAR,
         origin_uuid UUID,
+        origin_uri VARCHAR UNIQUE,
         public BOOLEAN NOT NULL DEFAULT TRUE,
         anonymous BOOLEAN NOT NULL DEFAULT FALSE,
         selectCount INTEGER NOT NULL DEFAULT 0,
-        PRIMARY KEY (id),
-        FOREIGN KEY (author) REFERENCES aide_admin.user(name)
+        shared BOOLEAN NOT NULL DEFAULT TRUE,
+        tags VARCHAR,
+        PRIMARY KEY (id)
     );''',
     'ALTER TABLE aide_admin.modelMarketplace ADD COLUMN IF NOT EXISTS shared BOOLEAN NOT NULL DEFAULT TRUE;',
     'ALTER TABLE "{schema}".cnnstate ADD COLUMN IF NOT EXISTS marketplace_origin_id UUID UNIQUE;',
@@ -272,7 +274,12 @@ MODIFICATIONS_sql = [
         version VARCHAR UNIQUE NOT NULL,
         PRIMARY KEY (version)
     );
-  '''
+  ''',
+  'ALTER TABLE aide_admin.modelMarketplace ADD COLUMN IF NOT EXISTS origin_uri VARCHAR UNIQUE;',
+
+  'ALTER TABLE aide_admin.modelMarketplace ALTER stateDict DROP NOT NULL;',  # due to pre-trained models we now allow empty state dicts)...
+  'ALTER TABLE aide_admin.modelMarketplace DROP CONSTRAINT IF EXISTS modelmarketplace_author_fkey;', # ...as well as foreign model authors
+  'ALTER TABLE "{schema}".cnnstate ALTER stateDict DROP NOT NULL;'
 ]
 
 

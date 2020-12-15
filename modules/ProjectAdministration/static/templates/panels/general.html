@@ -44,7 +44,7 @@
 
     function loadValues() {
         var promise = $.ajax({
-            url: 'getConfig',
+            url: window.baseURL + 'getConfig',
             method: 'GET',
             success: function(data) {
                 data = data['settings'];
@@ -85,7 +85,7 @@
             'watch_folder_remove_missing_enabled': $('#remove-missing-images-check').prop('checked')
         }
         return $.ajax({
-            url: 'saveProjectConfiguration',
+            url: window.baseURL + 'saveProjectConfiguration',
             method: 'POST',
             contentType: 'application/json; charset=utf-8',
             dataType: 'json',
@@ -121,7 +121,7 @@
 
     function loadDataManagementSettings() {
         return $.ajax({
-            url: 'getPlatformInfo',
+            url: window.baseURL + 'getPlatformInfo',
             method: 'GET',
             success: function(data) {
                 if(data.hasOwnProperty('settings')) {

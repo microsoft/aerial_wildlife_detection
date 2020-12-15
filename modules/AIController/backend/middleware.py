@@ -1172,12 +1172,12 @@ class AIMiddleware():
             author, anonymous, public,
             shared, tags, name, description
             FROM aide_admin.modelMarketplace
-            WHERE origin_project = %s;
+            WHERE origin_project = %s OR origin_project IS NULL;
         ''', (project,), 'all')
         if result is not None and len(result):
             modelMarketplaceMeta = {}
             for r in result:
-                mmID = r['origin_uuid']
+                mmID = r['id']
                 values = {}
                 for key in r.keys():
                     if isinstance(r[key], uuid.UUID):
@@ -1190,7 +1190,7 @@ class AIMiddleware():
 
         # get project-specific model states
         queryStr = sql.SQL('''
-            SELECT id, EXTRACT(epoch FROM timeCreated) AS time_created, model_library, alCriterion_library, num_pred
+            SELECT id, marketplace_origin_id, EXTRACT(epoch FROM timeCreated) AS time_created, model_library, alCriterion_library, num_pred
             FROM {id_cnnstate} AS cnnstate
             LEFT OUTER JOIN (
                 SELECT cnnstate, COUNT(cnnstate) AS num_pred
@@ -1222,8 +1222,8 @@ class AIMiddleware():
                     }
                 alCriterionLibrary['id'] = r['alcriterion_library']
 
-                if r['id'] in modelMarketplaceMeta:
-                    marketplaceInfo = modelMarketplaceMeta[r['id']]
+                if r['marketplace_origin_id'] in modelMarketplaceMeta:
+                    marketplaceInfo = modelMarketplaceMeta[r['marketplace_origin_id']]
                 else:
                     marketplaceInfo = {}
 

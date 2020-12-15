@@ -170,8 +170,9 @@
             var msgCell = $($('#'+taskID).find('.file-message')[0]);
             if(typeof(data) === 'string') {
                 // download link sent
+                let href = window.baseURL + 'downloadData/' + data;
                 msgCell.empty();
-                msgCell.append($('<a href="downloadData/'+data+'" target="_blank">'+data+'</a>'));
+                msgCell.append($('<a href="' + href + '" target="_blank">'+data+'</a>'));
                 window.messager.addMessage('Download is ready.', 'success');
 
             } else if(data.hasOwnProperty('status') && data['status'] === 'FAILURE') {
@@ -230,7 +231,7 @@
 
             // make request
             return $.ajax({
-                url: 'requestDownload',
+                url: window.baseURL + 'requestDownload',
                 method: 'POST',
                 data: JSON.stringify(params),
                 contentType: 'application/json; charset=utf-8',
@@ -279,7 +280,7 @@
 
         
         // get data server URI
-        var promise = $.get('getProjectSettings', function(data) {
+        var promise = $.get(window.baseURL + 'getProjectSettings', function(data) {
             window.dataServerURI = data['settings']['dataServerURI'];
             if(!window.dataServerURI.endsWith('/')) {
                 window.dataServerURI += '/';
@@ -290,7 +291,7 @@
         function _loadUsers() {
             let uList = $('#users-list');
             return $.ajax({
-                url: 'getUsers',
+                url: window.baseURL + 'getUsers',
                 method: 'GET',
                 success: function(data) {
                     if(data.hasOwnProperty('users')) {
@@ -357,7 +358,7 @@
 
         // enable extra settings for certain annotation types
         var promise = $.ajax({
-            url: 'getProjectImmutables',
+            url: window.baseURL + 'getProjectImmutables',
             method: 'GET',
             success: function(data) {
                 data = data['immutables'];

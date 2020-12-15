@@ -128,16 +128,16 @@ CREATE TABLE IF NOT EXISTS aide_admin.modelMarketplace (
     model_library VARCHAR NOT NULL,
     annotationType labelType NOT NULL,
     predictionType labelType NOT NULL,
-    statedict BYTEA NOT NULL,
+    statedict BYTEA,
     timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     alCriterion_library VARCHAR,
     origin_project VARCHAR,
     origin_uuid UUID,
+    origin_uri VARCHAR UNIQUE,
     public BOOLEAN NOT NULL DEFAULT TRUE,
     anonymous BOOLEAN NOT NULL DEFAULT FALSE,
     selectCount INTEGER NOT NULL DEFAULT 0,
     shared BOOLEAN NOT NULL DEFAULT TRUE,
     tags VARCHAR,
-    PRIMARY KEY (id),
-    FOREIGN KEY (author) REFERENCES aide_admin.user(name)
+    PRIMARY KEY (id)
 );

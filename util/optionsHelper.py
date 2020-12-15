@@ -320,7 +320,7 @@ def verify_options(options, autoCorrect=False):
                     value = helpers.toNumber(options[key])
                     if value is not None:
                         # numerical value
-                        if valueType is not None and valueType != 'number':
+                        if valueType is not None and valueType not in  ('number', 'int', 'float'):
                             errors.append(f'Expected {valueType} for entry {key}, got {type(options[key])}.') #TODO: key
                         else:
                             # check if there's a min-max range

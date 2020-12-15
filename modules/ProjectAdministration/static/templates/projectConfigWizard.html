@@ -45,6 +45,7 @@
         <script type="text/javascript" src="/static/interface/js/util.js?v={{ version }}"></script>
         <script type="text/javascript">
 
+            window.baseURL = '/{{ projectShortname }}/';
             window.projectShortname = '{{ projectShortname }}';
             selectedPanel = null;
 
@@ -86,7 +87,7 @@
                         },
                         404: function(xhr) {
                             // invalid panel name; reset to default
-                            window.location.href = '?t=overview';
+                            window.location.href = window.baseURL + 'configuration/overview';
                         }
                     }
                 });

@@ -84,7 +84,7 @@
     <div class="grad-border-h"></div>
     <div id="task-status-div" style="margin-top:30px;max-height:800px;overflow-y:auto;"></div>
 </div>
-<link rel="stylesheet" href="config/static/css/workflowDesigner.css?v={{ version }}" />
+<link rel="stylesheet" href="/static/projectAdmin/css/workflowDesigner.css?v={{ version }}" />
 <link rel="stylesheet" href="/static/aiController/css/workflowMonitor.css?v={{ version }}" />
 <style>
     #workflow-preset-panel {
@@ -116,7 +116,7 @@
     }
 </style>
 <script src="/static/aiController/js/workflowMonitor.js?v={{ version }}"></script>
-<script src="config/static/js/workflowDesigner.js?v={{ version }}"></script>
+<script src="/static/projectAdmin/js/workflowDesigner.js?v={{ version }}"></script>
 <script type="text/javascript">
     $(document).ready(function() {
 
@@ -133,7 +133,7 @@
             $('#saved-workflows-tbody').empty();
             window.savedWorkflows = {};
             return $.ajax({
-                url: 'getSavedWorkflows',
+                url: window.baseURL + 'getSavedWorkflows',
                 method: 'GET',
                 success: function(data) {
                     if(data.hasOwnProperty('workflows')) {
@@ -223,7 +223,7 @@
             data['workflow'] = window.workflowDesigner.toJSON();
             data['workflow_name'] = wName;
             return $.ajax({
-                url: 'saveWorkflow',
+                url: window.baseURL + 'saveWorkflow',
                 method: 'POST',
                 contentType: 'application/json; charset=utf-8',
                 dataType: 'json',
@@ -269,7 +269,7 @@
             if(selectedWorkflowID === null) return;
 
             return $.ajax({
-                url: 'setDefaultWorkflow',
+                url: window.baseURL + 'setDefaultWorkflow',
                 method: 'POST',
                 contentType: 'application/json; charset=utf-8',
                 dataType: 'json',
@@ -312,7 +312,7 @@
 
             function _do_delete() {
                 return $.ajax({
-                    url: 'deleteWorkflow',
+                    url: window.baseURL + 'deleteWorkflow',
                     method: 'POST',
                     contentType: 'application/json; charset=utf-8',
                     dataType: 'json',
@@ -347,7 +347,7 @@
         function runWorkflow() {
             var workflow = window.workflowDesigner.toJSON();
             return $.ajax({
-                url: 'launchWorkflow',
+                url: window.baseURL + 'launchWorkflow',
                 method: 'POST',
                 contentType: 'application/json; charset=utf-8',
                 dataType: 'json',

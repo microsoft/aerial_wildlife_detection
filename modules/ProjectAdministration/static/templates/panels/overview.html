@@ -34,7 +34,7 @@
 <script type="text/javascript">
     function getConfig() {
         return $.ajax({
-            url: 'getConfig',
+            url: window.baseURL + 'getConfig',
             method: 'GET',
             success: function(response) {
                 try {
@@ -73,7 +73,7 @@
 
     function getProjectStatistics(statsContainer) {
         return $.ajax({
-            url: 'getProjectStatistics',
+            url: window.baseURL + 'getProjectStatistics',
             method: 'GET',
             success: function(response) {
                 response = response['statistics'];
@@ -196,7 +196,7 @@
 
     function getTimeActivity(statsContainer) {
         return $.ajax({
-            url: 'getTimeActivity',
+            url: window.baseURL + 'getTimeActivity',
             method: 'GET',
             data: {
                 type: 'image',
@@ -265,7 +265,7 @@
     function getLabelclassStatistics(statsContainer) {
         if(window.annotationType !== 'segmentationMasks') {
             return $.ajax({
-                url: 'getLabelclassStatistics',
+                url: window.baseURL + 'getLabelclassStatistics',
                 method: 'GET',
                 success: function(response) {
                     response = response['statistics'];
@@ -350,7 +350,7 @@
 
         // project metadata
         var promise = $.ajax({
-            url: 'getProjectSettings',
+            url: window.baseURL + 'getProjectSettings',
             method: 'GET',
             success: function(data) {
                 window.annotationType = data['settings']['annotationType'];

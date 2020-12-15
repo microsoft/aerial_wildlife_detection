@@ -49,6 +49,12 @@ class GenericDetectron2Model(AIModel):
                 # something went wrong; ignore
                 pass
         
+        # verify options
+        result = self.verifyOptions(self.options)
+        if not result['valid']:
+            print(f'[{self.project}] WARNING: provided options are invalid; replacing with defaults...')
+            self.options = self.getDefaultOptions()
+
         # prepare Detectron2 configuration
         self.detectron2cfg = self._get_config()
 
@@ -96,8 +102,11 @@ class GenericDetectron2Model(AIModel):
             except:
                 # not available; try to load locally instead
                 configFile = os.path.join(os.getcwd(), 'ai/models/detectron2/_functional/configs', defaultConfig)
-                
-            cfg.merge_from_file(configFile)
+                if not os.path.exists(configFile):
+                    configFile = None
+            
+            if configFile is not None:
+                cfg.merge_from_file(configFile)
             cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(defaultConfig)
         return cfg
 
@@ -138,6 +147,11 @@ class GenericDetectron2Model(AIModel):
                 'errors': [f'Options are not in a proper format (message: {str(e)}).']
             }
         try:
+            # mandatory field: model config
+            modelConfig = options['options']['model']['config']['value']['id']
+            if modelConfig is None:
+                raise Exception('missing model type field in options.')
+
             opts, warnings, errors = optionsHelper.verify_options(options['options'], autoCorrect=True)
             options['options'] = opts
             return {

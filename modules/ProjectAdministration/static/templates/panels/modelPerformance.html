@@ -155,7 +155,7 @@
         let resultsContainer = $('#performance-container');
         resultsContainer.empty();
         return $.ajax({
-            url: 'getPerformanceStatistics',
+            url: window.baseURL + 'getPerformanceStatistics',
             method: 'POST',
             data: JSON.stringify(params),
             contentType: 'application/json; charset=utf-8',
@@ -400,7 +400,7 @@
 
     function getProjectSettings() {
         return $.ajax({
-            url: 'getProjectSettings',
+            url: window.baseURL + 'getProjectSettings',
             method: 'GET',
             success: function(data) {
                 window.annotationType = data['settings']['annotationType'];
@@ -430,7 +430,7 @@
     function listModelStates() {
         let modelStateTable = $('#cnn-states-tbody');
         return $.ajax({
-            url: 'listModelStates',
+            url: window.baseURL + 'listModelStates',
             method: 'GET',
             success: function(data) {
                 if(data.hasOwnProperty('modelStates')) {
@@ -468,7 +468,7 @@
     function getUserNames() {
         let targetUsersTable = $('#target-users');
         return $.ajax({
-            url: 'getUserNames',
+            url: window.baseURL + 'getUserNames',
             method: 'POST',
             success: function(data) {
                 data = data['users'];

@@ -91,7 +91,7 @@
         let uList = $('#users-list');
         uList.empty();
         return $.ajax({
-            url: 'getUsers',
+            url: window.baseURL + 'getUsers',
             method: 'GET',
             success: function(data) {
                 if(data.hasOwnProperty('users')) {
@@ -183,7 +183,7 @@
 
     function saveProjectSettings() {
         return $.ajax({
-            url: 'saveProjectConfiguration',
+            url: window.baseURL + 'saveProjectConfiguration',
             method: 'POST',
             contentType: 'application/json; charset=utf-8',
             dataType: 'json',
@@ -255,7 +255,7 @@
         }
 
         return $.ajax({
-            url: 'setPermissions',
+            url: window.baseURL + 'setPermissions',
             method: 'POST',
             contentType: 'application/json; charset=utf-8',
             dataType: 'json',
@@ -287,7 +287,7 @@
     $(document).ready(function() {
         // general settings
         var promise = $.ajax({
-            url: 'getConfig',
+            url: window.baseURL + 'getConfig',
             method: 'POST',
             data: JSON.stringify({
                 'parameters': [
@@ -333,7 +333,7 @@
         // misc.
         $('#renew-secret-token').click(function() {
             $.ajax({
-                url: 'renewSecretToken',
+                url: window.baseURL + 'renewSecretToken',
                 method: 'POST',
                 success: function(data) {
                     if(data.hasOwnProperty('secret_token')) {

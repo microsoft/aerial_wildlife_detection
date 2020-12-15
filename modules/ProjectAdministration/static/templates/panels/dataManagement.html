@@ -157,7 +157,7 @@
         function initializeDirectoryBrowser() {
             let treeBrowserDiv = $('#file-directory-browser');
             $.ajax({
-                url: 'getImageFolders',
+                url: window.baseURL + 'getImageFolders',
                 method: 'GET',
                 success: function(data) {
                     window.directoryBrowser = new DirectoryBrowser(treeBrowserDiv, data['tree'], window.project);
@@ -307,7 +307,7 @@
                         'golden_question': (data[idx]['isgoldenquestion'] ? 
                                 '<img src="/static/interface/img/controls/flag_active.svg" height="16px" />' :
                                 '<img src="/static/interface/img/controls/flag.svg" height="16px" />'),
-                        'link': '<a class="btn btn-sm btn-primary" href="interface?imgs=' + data[idx]['id'] + '" target="_blank">view</a>'
+                        'link': '<a class="btn btn-sm btn-primary" href="'+window.baseURL+'interface?imgs=' + data[idx]['id'] + '" target="_blank">view</a>'
                     });
                 }
 
@@ -326,7 +326,7 @@
             }
 
             return $.ajax({
-                url: 'listImages',
+                url: window.baseURL + 'listImages',
                 method: 'POST',
                 data: JSON.stringify(params),
                 contentType: 'application/json; charset=utf-8',
@@ -394,13 +394,19 @@
             // execute
             function _doExecuteAction() {
                 return $.ajax({
-                    url: url,
+                    url: window.baseURL + url,
                     method: 'POST',
                     data: JSON.stringify(data),
                     contentType: 'application/json; charset=utf-8',
                     dataType: 'json',
                     success: function(response) {
                         console.log(response);  //TODO: show pane, then reload image browser
+
+                        if(action === 'delete_images') {
+                            // images deleted; refresh folders in parallel
+                            initializeDirectoryBrowser();
+                        }
+
                         return updateImageBrowser(true, false).done(function() {
                             window.messager.addMessage(actionText, 'success');
                         });
@@ -434,7 +440,7 @@
         }
 
         // get data server URI
-        var promise = $.get('getProjectSettings', function(data) {
+        var promise = $.get(window.baseURL + 'getProjectSettings', function(data) {
             window.dataServerURI = data['settings']['dataServerURI'];
             if(!window.dataServerURI.endsWith('/')) {
                 window.dataServerURI += '/';

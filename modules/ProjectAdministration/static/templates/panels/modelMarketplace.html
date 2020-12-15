@@ -30,6 +30,7 @@
                             <th>Author</th>
                             <th>Shared</th>
                             <th>Source project</th>
+                            <th>Source URI</th>
                             <th>Model</th>
                             <th>Time created</th>
                             <th>No. classes</th>
@@ -95,16 +96,18 @@
                 </div>
                 <div id="selected-model-info-project" style="display:none">
                     <h3>Selected model</h3>
+                    <div id="project-model-share-notice" style="font-style:italic"></div>
+
                     <div>Name:</div>
-                    <input type="text" id="project-info-name"></input>
+                    <input type="text" id="project-info-name" class="select-field"></input>
                     <div>Description:</div>
-                    <textarea id="project-info-description"></textarea>
+                    <textarea id="project-info-description" class="select-field" style="height:200px"></textarea>
                     <br />
                     <div>Tags:</div>
                     <p style="font-style:italic">Tags allow users to find your model more easily on the Marketplace.</p>
                     <input type="text" id="project-info-add-tag"></input>
                     <button id="project-info-add-tag-button" class="btn btn-sm btn-primary">+ add</button>
-                    <div class="info-field" id="project-info-tags" style="min-height:54px"></div>
+                    <div class="info-field select-field" id="project-info-tags" style="min-height:54px"></div>
                     <br />
                     <label for="project-model-share-public">Share with:</label>
                     <select id="project-model-share-public">
@@ -128,8 +131,8 @@
     </div>
 </div>
 <link rel="stylesheet" href="/static/statistics/libs/chartjs/Chart.min.css?v={{ version }}" />
-<link rel="stylesheet" href="config/static/libs/jqtree/jqtree_custom.css?v={{ version }}" />
-<script src="config/static/libs/jqtree/tree.jquery.js?v={{ version }}"></script>
+<link rel="stylesheet" href="/static/projectAdmin/libs/jqtree/jqtree_custom.css?v={{ version }}" />
+<script src="/static/projectAdmin/libs/jqtree/tree.jquery.js?v={{ version }}"></script>
 <style>
     #options-container {
         margin-bottom: 5px;
@@ -149,6 +152,10 @@
         padding: 10px;
         background: #aaaaaa;
         font-weight: bold;
+    }
+
+    .select-field {
+        width: 100%;
     }
 
     .flex-container {
@@ -201,6 +208,11 @@
         width: 400px;
     }
 
+    #marketplace-info-labelclasses, #marketplace-info-tags, #project-info-tags {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
     .tag {
         display: inline;
         background: #5a5a5a;
@@ -226,10 +238,20 @@
     let selectedModel_id_marketplace = null;
     let selectedModel_id_project = null;
 
+    function escapeHtml(unsafe) {   // required to sanitize potentially harmful model IDs/names
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;")
+            .replace(/:/g, "_")
+            .replace(/\//g, '_');
+    }
 
     function getAvailableAImodels() {
         return $.ajax({
-            url: 'getAvailableAImodels',
+            url: window.baseURL + 'getAvailableAImodels',
             method: 'GET',
             success: function(data) {
                 availableAImodels = data['models']['prediction'];
@@ -263,27 +285,45 @@
     function getModelsMarketplace() {
         let marketplaceTbody = $('#marketplace-models-tbody');
         return $.ajax({
-            url: 'getModelsMarketplace',
+            url: window.baseURL + 'getModelsMarketplace',
             method: 'GET',
             success: function(data) {
-                modelsMarketplace = data['modelStates'];
+                modelsMarketplace = {};
+
+                // sanitize model IDs
+                for(var modelID in data['modelStates']) {
+                    modelsMarketplace[escapeHtml(modelID)] = data['modelStates'][modelID];
+                }
 
                 // populate table
                 marketplaceTbody.empty();
                 modelsMarketplaceMarkups = [];
                 for(var mID in modelsMarketplace) {
                     let model = modelsMarketplace[mID];
-                    let author = (typeof(model['author']) === 'string' ? model['author'] : '(anonymous)');
-                    let originProject = (typeof(model['projectname']) === 'string' ? model['projectname'] : '(anonymous)');
                     if(!availableAImodels.hasOwnProperty(model['model_library'])) {
                         continue;
                     }
+                    let author = (typeof(model['author']) === 'string' ? model['author'] : '(anonymous)');
+                    let originProject = (typeof(model['projectname']) === 'string' ? model['projectname'] : '(anonymous)');
+                    let originURI = model['origin_uri'];
+                    if(typeof(originURI) === 'string') {
+                        if(originURI.toLowerCase().startsWith('aide://')) {
+                            originURI = 'built-in';
+                        }
+                    } else {
+                        originURI = '';
+                    }
+                    
                     let modelLibrary = availableAImodels[model['model_library']]['name'];
                     let timeCreated = new Date(model['time_created'] * 1000).toLocaleString();
                     let no_classes = '(unknown)';
                     try {
                         let classdef = JSON.parse(model['labelclasses']);
-                        no_classes = classdef['numClasses'];
+                        if(Array.isArray(classdef)) {
+                            no_classes = classdef.length;
+                        } else if(classdef.hasOwnProperty('numClasses')) {
+                            no_classes = classdef['numClasses'];
+                        }
                     } catch {}
                     let shared = (model['shared'] ? '<img src="/static/general/img/success.svg" />' : '<img src="/static/general/img/error.svg" />');
                     let markup = $('<tr id="modelMarketplace_' + mID + '">' +
@@ -291,6 +331,7 @@
                         '<td>' + author + '</td>' +
                         '<td>' + shared + '</td>' +
                         '<td>' + originProject + '</td>' +
+                        '<td>' + originURI + '</td>' +
                         '<td>' + modelLibrary + '</td>' +
                         '<td>' + timeCreated + '</td>' +
                         '<td>' + no_classes + '</td>' +
@@ -301,7 +342,7 @@
                         for(var i=0; i<modelsMarketplaceMarkups.length; i++) {
                             modelsMarketplaceMarkups[i].removeClass('tr-highlighted');
                         }
-                        let selID = $(this).attr('id').split('_')[1];
+                        let selID = $(this).attr('id').replace(/(^)modelMarketplace_/g, '');
                         if(selID === selectedModel_id_marketplace) {
                             // deselect
                             selectedModel_id_marketplace = null;
@@ -317,6 +358,9 @@
                         markup.addClass('tr-highlighted');
 
                         // populate info panel
+                        let timeImported = selectedModel['time_imported'];
+                        let alreadyImported = (typeof(timeImported) === 'number');
+
                         $('#marketplace-info-name').html(selectedModel['name']);
                         $('#marketplace-info-description').html(selectedModel['description']);
                         $('#marketplace-info-author').html(author);
@@ -327,6 +371,8 @@
                         let tags = selectedModel['tags'];
                         if(typeof(tags) === 'string' && tags.length > 0) {
                             tags = tags.split(';;');
+                        }
+                        if(Array.isArray(tags)) {
                             for(var t=0; t<tags.length; t++) {
                                 tagsDiv.append($('<span class="tag" id="tag__'+tags[t]+'">'+tags[t]+'</span>'));
                             }
@@ -345,6 +391,12 @@
                                 $('#marketplace-model-reshare').show();
                             }
                             
+                        } else if(alreadyImported) {
+                            $('#marketplace-model-type-disclaimer').html('You have imported this model into your project on ' + new Date(timeImported*1000).toLocaleString() + '.');
+                            $('#marketplace-model-select').hide();
+                            $('#marketplace-model-remove').hide();
+                            $('#marketplace-model-reshare').hide();
+
                         } else {
                             $('#marketplace-model-type-disclaimer').html('You can import this model to your project.');
                             $('#marketplace-model-select').show();
@@ -376,7 +428,7 @@
     function getModelsProject() {
         let modelsProjectTbody = $('#project-models-tbody');
         return $.ajax({
-            url: 'listModelStates',
+            url: window.baseURL + 'listModelStates',
             method: 'GET',
             success: function(data) {
                 modelsProject = data['modelStates'];
@@ -405,7 +457,7 @@
                         '<td>' + shared + '</td>' +
                         '</tr>');
                     markup.on('click', function() {
-                        let selID = $(this).attr('id').split('_')[1];
+                        let selID = $(this).attr('id').replace(/(^)project_/g, '');
                         for(var m=0; m<modelsProjectMarkups.length; m++) {
                             modelsProjectMarkups[m].removeClass('tr-highlighted');
                         }
@@ -421,6 +473,8 @@
                         selectedModel_id_project = selID;
                         markup.addClass('tr-highlighted');
 
+                        let readonly = (selectedModel['marketplace_info']['origin_uuid'] === null && selectedModel['marketplace_info']['author'] !== window.user);
+
                         // populate info panel
                         $('#project-info-name').val(null);
                         $('#project-info-description').html(null);
@@ -432,6 +486,11 @@
                         $('#project-model-share-public').val(selectedModel['marketplace_info']['shared'] ? 'everyone' : 'projects');
                         $('#project-model-share-anonymous').prop('checked', !selectedModel['marketplace_info']['public']);
 
+                        $('#project-info-name').prop('disabled', readonly);
+                        $('#project-info-description').prop('disabled', readonly);
+                        $('#project-model-share-public').prop('disabled', readonly);
+                        $('#project-model-share-anonymous').prop('disabled', readonly);
+
                         // tags
                         let tagsDiv = $('#project-info-tags');
                         tagsDiv.empty();
@@ -440,43 +499,67 @@
                             tags = tags.split(';;');
                             for(var t=0; t<tags.length; t++) {
                                 tagDiv = $('<span class="tag" id="tag__'+tags[t]+'">'+tags[t]+'</span>');
-                                let removeBtn = $('<button class="btn btn-sm btn-secondary">X</button>');
-                                removeBtn.on('click', function() {
-                                    $(this).parent().remove();
-                                });
-                                tagDiv.append(removeBtn);
+                                if(!readonly) {
+                                    let removeBtn = $('<button class="btn btn-sm btn-secondary">X</button>');
+                                    removeBtn.on('click', function() {
+                                        $(this).parent().remove();
+                                    });
+                                    tagDiv.append(removeBtn);
+                                }
                                 tagsDiv.append(tagDiv);
                             }
                         }
+                        $('#project-info-add-tag').prop('disabled', readonly);
+                        $('#project-info-add-tag-button').prop('disabled', readonly);
 
                         $('#no-model-selected-project').hide();
                         $('#selected-model-info-project').show();
 
                         // modify sharing controls
-                        try {
-                            let modelShared = selectedModel['marketplace_info']['shared'];
-                            if(modelShared) {
-                                $('#project-model-share').html('Update shared model');
-                                $('#project-model-share').show();
-                                $('#project-model-unshare').show();
-                                $('#project-model-reshare').hide();
-                            } else if(modelShared === false) {
-                                $('#project-model-share').html('Update and re-share');
-                                $('#project-model-share').show();
-                                $('#project-model-unshare').hide();
-                                $('#project-model-reshare').show();
-                            } else {
+                        if(readonly) {
+                            $('#project-model-share').hide();
+                            $('#project-model-unshare').hide();
+                            $('#project-model-reshare').hide();
+                        } else {
+                            try {
+                                let modelShared = selectedModel['marketplace_info']['shared'];
+                                if(modelShared) {
+                                    $('#project-model-share').html('Update shared model');
+                                    $('#project-model-share').show();
+                                    $('#project-model-unshare').show();
+                                    $('#project-model-reshare').hide();
+                                } else if(modelShared === false) {
+                                    $('#project-model-share').html('Update and re-share');
+                                    $('#project-model-share').show();
+                                    $('#project-model-unshare').hide();
+                                    $('#project-model-reshare').show();
+                                } else {
+                                    $('#project-model-share').html('Share model');
+                                    $('#project-model-share').show();
+                                    $('#project-model-unshare').hide();
+                                    $('#project-model-reshare').hide();
+                                }
+                            } catch {
                                 $('#project-model-share').html('Share model');
                                 $('#project-model-share').show();
                                 $('#project-model-unshare').hide();
                                 $('#project-model-reshare').hide();
                             }
-                        } catch {
-                            $('#project-model-share').html('Share model');
-                            $('#project-model-share').show();
-                            $('#project-model-unshare').hide();
-                            $('#project-model-reshare').hide();
                         }
+
+                        // notice about model import/sharing possibilities
+                        if(readonly) {
+                            let importNotice = 'You have imported this model from the Model Marketplace';
+                            if(typeof(selectedModel['time_created']) === 'number') {
+                                importNotice += ' on ' + new Date(selectedModel['time_created']*1000).toLocaleString() + '.';
+                            } else {
+                                importNotice += '.';
+                            }
+                            $('#project-model-share-notice').html(importNotice);
+                        } else {
+                            $('#project-model-share-notice').html('You can share this model with others or other projects on the Model Marketplace.');
+                        }
+
                     });
                     modelsProjectTbody.append(markup);
                     modelsProjectMarkups.push(markup);
@@ -526,7 +609,7 @@
 
         let doShareModel = function() {
             return $.ajax({
-                url: 'shareModel',
+                url: window.baseURL + 'shareModel',
                 method: 'POST',
                 contentType: 'application/json; charset=utf-8',
                 dataType: 'json',
@@ -589,7 +672,7 @@
             };
 
             return $.ajax({
-                url: 'reshareModel',
+                url: window.baseURL + 'reshareModel',
                 method: 'POST',
                 contentType: 'application/json; charset=utf-8',
                 dataType: 'json',
@@ -646,7 +729,7 @@
 
         let doUnshareModel = function() {
             return $.ajax({
-                url: 'unshareModel',
+                url: window.baseURL + 'unshareModel',
                 method: 'POST',
                 contentType: 'application/json; charset=utf-8',
                 dataType: 'json',
@@ -699,14 +782,18 @@
         }
 
         let modelName = modelsMarketplace[selectedModel_id_marketplace]['name'];
+        let modelID = modelsMarketplace[selectedModel_id_marketplace]['id'];
 
         let doImportModel = function() {
+            let modelID = modelsMarketplace[selectedModel_id_marketplace]['id'];
+            if(modelID === undefined) return $.Deferred().promise();
+
             return $.ajax({
-                url: 'importModel',
+                url: window.baseURL + 'importModel',
                 method: 'POST',
                 contentType: 'application/json; charset=utf-8',
                 dataType: 'json',
-                data: JSON.stringify({model_id: selectedModel_id_marketplace}),
+                data: JSON.stringify({model_id: modelID}),
                 success: function(data) {
                     let success = 'success';
                     let message = 'Model "'+modelName+'" imported successfully.';
@@ -768,16 +855,22 @@
     function parseLabelclassDefinition(labelclassInfo) {
         let targetDiv = $('#marketplace-info-labelclasses');
         targetDiv.empty();
+        let tree = [];
         if(typeof(labelclassInfo) === 'string') {
             labelclassInfo = JSON.parse(labelclassInfo);
         }
+        if(Array.isArray(labelclassInfo)) {
+            tree = labelclassInfo;
 
-        if(labelclassInfo.hasOwnProperty('entries')) {
-            let tree = [];
-            for(var child in labelclassInfo['entries']) {
-                tree.push(parseClassEntry(labelclassInfo['entries'][child], child));
+        } else {
+            if(labelclassInfo.hasOwnProperty('entries')) {
+                for(var child in labelclassInfo['entries']) {
+                    tree.push(parseClassEntry(labelclassInfo['entries'][child], child));
+                }
             }
+        }
 
+        if(tree.length > 0) {
             let lcTree = $('<div id="lc-tree"></div>');
             lcTree.tree({
                 data: tree,
@@ -881,7 +974,7 @@
         if(tagDivs.length === 0) return {};
         let tags = {};
         for(var c=0; c<tagDivs.length; c++) {
-            let tag = $(tagDivs[c]).prop('id').replace('tag__','');
+            let tag = $(tagDivs[c]).prop('id').replace(/(^)tag__/g,'');
             if(!preserveCase) {
                 tag = tag.toLowerCase();
             }
@@ -961,13 +1054,17 @@
             if(type === 'modelMarketplace') {
                 $('#modelmarketplace-container').show();
                 $('#projectmodels-container').hide();
-                $('#marketplace-button').addClass('active');
-                $('#projectmodels-button').removeClass('active');
+                $('#marketplace-button').addClass('btn-primary');
+                $('#projectmodels-button').removeClass('btn-primary');
+                $('#marketplace-button').removeClass('btn-secondary');
+                $('#projectmodels-button').addClass('btn-secondary');
             } else {
                 $('#modelmarketplace-container').hide();
                 $('#projectmodels-container').show();
-                $('#marketplace-button').removeClass('active');
-                $('#projectmodels-button').addClass('active');
+                $('#marketplace-button').removeClass('btn-primary');
+                $('#projectmodels-button').addClass('btn-primary');
+                $('#marketplace-button').addClass('btn-secondary');
+                $('#projectmodels-button').removeClass('btn-secondary');
             }
         }
         $('#marketplace-button').click(function(e) {

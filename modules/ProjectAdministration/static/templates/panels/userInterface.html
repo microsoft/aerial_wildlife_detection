@@ -311,7 +311,7 @@
 
     function reloadUIsettings() {
         return $.ajax({
-            url: 'getProjectSettings',
+            url: window.baseURL + 'getProjectSettings',
             method: 'GET',
             success: function(data) {
                 // populate fields
@@ -425,7 +425,7 @@
 
         // post to server
         return $.ajax({
-            url: 'saveProjectConfiguration',
+            url: window.baseURL + 'saveProjectConfiguration',
             method: 'POST',
             contentType: 'application/json; charset=utf-8',
             dataType: 'json',
@@ -493,7 +493,7 @@
 
         // load data
         return $.ajax({
-            url: 'getSampleData',
+            url: window.baseURL + 'getSampleData',
             method: 'GET',
             success: function(data) {
                 let key = Object.keys(data)[0];
@@ -551,7 +551,7 @@
 
     function getProjectImmutables() {
         return $.ajax({
-            url: 'getProjectImmutables',
+            url: window.baseURL + 'getProjectImmutables',
             method: 'GET',
             success: function(data) {
                 window.projectImmutables = data['immutables'];

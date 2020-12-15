@@ -91,7 +91,7 @@ CREATE TABLE IF NOT EXISTS {id_cnnstate} (
     model_library VARCHAR,
     alCriterion_library VARCHAR,
     timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    stateDict bytea NOT NULL,
+    stateDict bytea,
     partial boolean NOT NULL,
     marketplace_origin_id UUID UNIQUE,
     PRIMARY KEY (id),
