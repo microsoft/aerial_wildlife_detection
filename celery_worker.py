@@ -40,6 +40,8 @@ for m in aideModules:
         queues.append(Queue('FileServer'))
     elif module == 'aiworker':
         queues.append(Queue('AIWorker'))
+    elif module == 'labelui':
+        queues.append(Queue('ModelMarketplace'))        #TODO: allow outsourcing? Move to FileServer?
 
 queues.extend([
     Broadcast('aide_broadcast'),
@@ -119,6 +121,22 @@ app.conf.update(
         'DataAdministration.watch_image_folders': {
             'queue': 'FileServer',
             'routing_key': 'watch_image_folders'
+        },
+        'ModelMarketplace.shareModel': {
+            'queue': 'ModelMarketplace',
+            'routing_key': 'shareModel'
+        },
+        'ModelMarketplace.importModelDatabase': {
+            'queue': 'ModelMarketplace',
+            'routing_key': 'importModelDatabase'
+        },
+        'ModelMarketplace.importModelURI': {
+            'queue': 'ModelMarketplace',
+            'routing_key': 'importModelURI'
+        },
+        'ModelMarketplace.requestModelDownload': {
+            'queue': 'ModelMarketplace',
+            'routing_key': 'requestModelDownload'
         }
     }
     #task_default_queue = Broadcast('aide_admin')
@@ -137,6 +155,9 @@ if 'aiworker' in aideModules:
     num_modules += 1
 if 'fileserver' in aideModules:
     from modules.DataAdministration.backend import celery_interface as da_int
+    num_modules += 1
+if 'labelui' in aideModules:
+    from modules.ModelMarketplace.backend import celery_interface as mm_int
     num_modules += 1
 
     # scanning project folders for new images: set up periodic task

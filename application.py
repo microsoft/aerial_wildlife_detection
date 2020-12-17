@@ -128,6 +128,10 @@ instances = {}
 # create user handler
 userHandler = REGISTERED_MODULES['UserHandler'](config, app)
 
+# "singleton" Task Coordinator instance
+taskCoordinator = REGISTERED_MODULES['TaskCoordinator'](config, app, verbose_start=True)
+taskCoordinator.addLoginCheckFun(userHandler.checkAuthenticated)
+
 for i in instance_args:
 
     moduleName = i.strip()
@@ -166,7 +170,7 @@ for i in instance_args:
         from modules.AIController.backend import celery_interface as aic_int
 
         # launch model marketplace with AIController
-        modelMarketplace = REGISTERED_MODULES['ModelMarketplace'](config, app)
+        modelMarketplace = REGISTERED_MODULES['ModelMarketplace'](config, app, taskCoordinator)
         modelMarketplace.addLoginCheckFun(userHandler.checkAuthenticated)
 
     elif moduleName == 'AIWorker':
@@ -174,7 +178,7 @@ for i in instance_args:
 
 
     # launch globally required modules
-    dataAdmin = REGISTERED_MODULES['DataAdministrator'](config, app)
+    dataAdmin = REGISTERED_MODULES['DataAdministrator'](config, app, taskCoordinator)
     dataAdmin.addLoginCheckFun(userHandler.checkAuthenticated)
 
     staticFiles = REGISTERED_MODULES['StaticFileServer'](config, app)

@@ -25,7 +25,8 @@ class AIDEAdmin:
         self.middleware = AdminMiddleware(config)
 
         # ping connected AIController, FileServer, etc. servers and check version
-        Thread(target=self._queryServiceDetails).start()
+        self._queryServiceDetails()
+        # Thread(target=self._queryServiceDetails).start()
 
         self._initBottle()
     

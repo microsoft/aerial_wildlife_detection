@@ -25,25 +25,13 @@ from PIL import Image
 from psycopg2 import sql
 from modules.Database.app import Database
 from modules.LabelUI.backend.annotation_sql_tokens import QueryStrings_annotation, QueryStrings_prediction
-from util.helpers import valid_image_extensions, listDirectory, base64ToImage
+from util.helpers import VALID_IMAGE_EXTENSIONS, FILENAMES_PROHIBITED_CHARS, listDirectory, base64ToImage
 from util.imageSharding import split_image
 
 
 class DataWorker:
 
-    FILENAMES_PROHIBITED_CHARS = (
-        '&lt;',
-        '<',
-        '>',
-        '&gt;',
-        '..',
-        '/',
-        '\\',
-        '|',
-        '?',
-        '*',
-        ':'    # for macOS
-    )
+    
 
     NUM_IMAGES_LIMIT = 4096         # maximum number of images that can be queried at once (to avoid bottlenecks)
 
@@ -256,7 +244,7 @@ class DataWorker:
 
                 # check if correct file suffix
                 _, ext = os.path.splitext(nextFileName)
-                if not ext.lower() in valid_image_extensions:
+                if not ext.lower() in VALID_IMAGE_EXTENSIONS:
                     raise Exception(f'Invalid file type (*{ext})')
 
                 # check if loadable as image
@@ -696,7 +684,7 @@ class DataWorker:
             except:
                 segmaskFilenameOptions['suffix'] = ''
 
-            for char in self.FILENAMES_PROHIBITED_CHARS:
+            for char in FILENAMES_PROHIBITED_CHARS:
                 segmaskFilenameOptions['prefix'] = segmaskFilenameOptions['prefix'].replace(char, '_')
                 segmaskFilenameOptions['suffix'] = segmaskFilenameOptions['suffix'].replace(char, '_')
 

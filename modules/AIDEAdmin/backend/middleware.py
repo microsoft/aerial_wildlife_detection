@@ -10,7 +10,7 @@ import datetime
 import requests
 from psycopg2 import sql
 from celery import current_app
-from constants.version import AIDE_VERSION
+from constants.version import AIDE_VERSION, MIN_FILESERVER_VERSION, compare_versions
 from modules.Database.app import Database
 from util import celeryWorkerCommons
 from util.helpers import LogDecorator, is_localhost
@@ -77,6 +77,17 @@ class AdminMiddleware:
             try:
                 fs_response = requests.get(os.path.join(fs_uri, 'version'))
                 fs_version = fs_response.text
+
+                # check if version if recent enough
+                if compare_versions(fs_version, MIN_FILESERVER_VERSION) < 0:
+                    # FileServer version is too old
+                    LogDecorator.print_status('fail')
+                    print('ERROR: AIDE version of connected FileServer is too old.')
+                    print(f'\tMinimum required version:    {MIN_FILESERVER_VERSION}')
+                    print(f'\tCurrent FileServer version:  {fs_version}')
+                    import sys
+                    sys.exit(1)     #TODO: doesn't terminate properly
+
                 if warn_error and fs_version != AIDE_VERSION:
                     LogDecorator.print_status('warn')
                     print('WARNING: AIDE version of connected FileServer differs from main host.')

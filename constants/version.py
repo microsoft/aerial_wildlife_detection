@@ -10,8 +10,10 @@
     2020 Benjamin Kellenberger
 '''
 
-AIDE_VERSION = '2.0.201215c'
+AIDE_VERSION = '2.0.201217'
 
+
+MIN_FILESERVER_VERSION = '2.0.201217'       # minimum required version for FileServer, due to recent changes
 
 
 import datetime
@@ -22,11 +24,14 @@ def get_version_components(version=AIDE_VERSION):
         suffix = tokens[-1][-1]
         if suffix.isnumeric():
             suffix = None
-        
+            nightly = tokens[-1]
+        else:
+            nightly = tokens[-1][:-1]
+
         return {
             'major': int(tokens[0]),
             'minor': int(tokens[1]),
-            'nightly': datetime.datetime.strptime(tokens[2], '%y%m%d'),
+            'nightly': datetime.datetime.strptime(nightly, '%y%m%d'),
             'suffix': suffix
         }
     except:
@@ -74,3 +79,8 @@ def compare_versions(version_a, version_b):
         return None
     except:
         return None
+
+
+
+# model marketplace format version exported by the current AIDE implementation
+MODEL_MARKETPLACE_VERSION = 1.0

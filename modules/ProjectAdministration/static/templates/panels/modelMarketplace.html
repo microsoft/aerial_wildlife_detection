@@ -2,11 +2,11 @@
     <h2>Model Marketplace</h2>
     
     <div id="marketplace-container" style="height:100%">
-        <div class="selection-buttons" class="btn-group btn-group-toggle" role="group" aria-label="Model source" data-toggle="buttons">
-            <button id="marketplace-button" class="btn btn-sm btn-secondary">Marketplace</button>
+        <div class="selection-buttons btn-group btn-group-toggle" role="group" aria-label="Model source" data-toggle="buttons">
+            <button id="modelmarketplace-button" class="btn btn-sm btn-secondary">Marketplace</button>
             <button id="projectmodels-button" class="btn btn-sm btn-secondary">Project models</button>
-            <!-- <button id="upload-button" class="btn btn-sm btn-secondary">Upload from disk</button>
-            <button id="webimport-button" class="btn btn-sm btn-secondary">Web import</button> -->
+            <button id="webimport-button" class="btn btn-sm btn-secondary">Web import</button>
+            <button id="uploaddisk-button" class="btn btn-sm btn-secondary">Upload from disk</button>
         </div>
 
         <!-- marketplace models table -->
@@ -66,7 +66,8 @@
                             <button class="btn btn-danger" id="marketplace-model-remove" style="display:none">Remove from Marketplace</button>
                             <button class="btn btn-warning" id="marketplace-model-reshare" style="display:none">Re-share on Marketplace</button>
                             <button class="btn btn-primary" id="marketplace-model-select" style="display:none">Add to Project</button>
-                            <!-- <button class="btn btn-primary" id="marketplace-model-share">Download</button> -->
+                            <button class="btn btn-primary" id="marketplace-model-download">Download</button>
+                            <a id="marketplace-download-link" style="display:none">download model</a>
                         </div>
                     </div>
                 </div>
@@ -123,16 +124,31 @@
                         <button class="btn btn-primary" id="project-model-share">Share on Marketplace</button>
                         <button class="btn btn-danger" id="project-model-unshare" style="display:none">Remove from Marketplace</button>
                         <button class="btn btn-warning" id="project-model-reshare" style="display:none">Re-share on Marketplace</button>
-                        <!-- <button class="btn btn-primary" id="project-model-download">Download</button> -->
+                        <button class="btn btn-primary" id="project-model-download">Download</button>
+                        <a id="project-download-link" style="display:none">download model</a>
                     </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Controls for model Web import -->
+        <div class="table-container flex-container option-box" id="webimport-container" style="display:none">
+            <label for="web-import-url-field">URL:</label>
+            <input type="url" id="web-import-url-field" style="width:800px" />
+            <button class="btn btn-sm btn-primary" id="start-web-import">Import</button>
+        </div>
+
+        <!-- Controls to upload models from disk -->
+        <div class="table-container flex-container option-box" id="uploaddisk-container" style="display:none">
+            <input type="file" id="file-upload-field" name="AIDE model file (.json, .zip)" accept=".json,.zip" />
+            <button class="btn btn-sm btn-primary" id="start-disk-import">Import</button>
         </div>
     </div>
 </div>
 <link rel="stylesheet" href="/static/statistics/libs/chartjs/Chart.min.css?v={{ version }}" />
 <link rel="stylesheet" href="/static/projectAdmin/libs/jqtree/jqtree_custom.css?v={{ version }}" />
 <script src="/static/projectAdmin/libs/jqtree/tree.jquery.js?v={{ version }}"></script>
+<script src="/static/dataAdmin/js/taskPolling.js?v={{ version }}"></script>
 <style>
     #options-container {
         margin-bottom: 5px;
@@ -152,6 +168,10 @@
         padding: 10px;
         background: #aaaaaa;
         font-weight: bold;
+    }
+
+    .selection-buttons {
+        margin-bottom: 10px;
     }
 
     .select-field {
@@ -229,6 +249,13 @@
 </style>
 <script src="/static/statistics/libs/chartjs/Chart.min.js?v={{ version }}"></script>
 <script type="text/javascript">
+
+    const PANEL_NAMES = [
+        'modelmarketplace',
+        'projectmodels',
+        'webimport',
+        'uploaddisk'
+    ];
 
     let availableAImodels = {};
     let modelsMarketplace = {};
@@ -317,14 +344,18 @@
                     let modelLibrary = availableAImodels[model['model_library']]['name'];
                     let timeCreated = new Date(model['time_created'] * 1000).toLocaleString();
                     let no_classes = '(unknown)';
-                    try {
-                        let classdef = JSON.parse(model['labelclasses']);
-                        if(Array.isArray(classdef)) {
-                            no_classes = classdef.length;
-                        } else if(classdef.hasOwnProperty('numClasses')) {
-                            no_classes = classdef['numClasses'];
-                        }
-                    } catch {}
+                    let classdef = model['labelclasses'];
+                    if(typeof(classdef) === 'string') {
+                        try {
+                            classdef = JSON.parse(classdef);
+                        } catch {}
+                    }
+                    if(Array.isArray(classdef)) {
+                        no_classes = classdef.length;
+                    } else if(classdef.hasOwnProperty('numClasses')) {
+                        no_classes = classdef['numClasses'];
+                    }
+                    
                     let shared = (model['shared'] ? '<img src="/static/general/img/success.svg" />' : '<img src="/static/general/img/error.svg" />');
                     let markup = $('<tr id="modelMarketplace_' + mID + '">' +
                         '<td>' + model['name'] + '</td>' +
@@ -376,6 +407,14 @@
                             for(var t=0; t<tags.length; t++) {
                                 tagsDiv.append($('<span class="tag" id="tag__'+tags[t]+'">'+tags[t]+'</span>'));
                             }
+                        }
+
+                        // download link
+                        if(typeof(selectedModel['download_link']) === 'string') {
+                            $('#marketplace-download-link').attr('href', selectedModel['download_link']);
+                            $('#marketplace-download-link').show();
+                        } else {
+                            $('#marketplace-download-link').hide();
                         }
 
                         // buttons for actions
@@ -547,6 +586,14 @@
                             }
                         }
 
+                        // download link
+                        if(typeof(selectedModel['download_link']) === 'string') {
+                            $('#project-download-link').attr('href', selectedModel['download_link']);
+                            $('#project-download-link').show();
+                        } else {
+                            $('#project-download-link').hide();
+                        }
+
                         // notice about model import/sharing possibilities
                         if(readonly) {
                             let importNotice = 'You have imported this model from the Model Marketplace';
@@ -607,6 +654,22 @@
             };
         }
 
+        function _pollShare(data) {
+            console.log(data);
+            let success = 'success';
+            let message = 'Model "'+modelName+'" shared successfully.';
+            if(data['status'] !== 0) {
+                success = 'error';
+                message = 'An error occurred while trying to share model "'+modelName+'" to project';
+                if(data['message'] !== undefined) {
+                    message += ' (message: "'+data['message'] + '")';
+                }
+                message += '.';
+            }
+            window.messager.addMessage(message, success, (success === 'success' ? undefined : 0));
+            loadData();
+        }
+
         let doShareModel = function() {
             return $.ajax({
                 url: window.baseURL + 'shareModel',
@@ -615,18 +678,15 @@
                 dataType: 'json',
                 data: JSON.stringify(params),
                 success: function(data) {
-                    let success = 'success';
-                    let message = 'Model "'+modelName+'" shared successfully.';
-                    if(data['status'] !== 0) {
-                        success = 'error';
-                        message = 'An error occurred trying to share model "'+modelName+'"';
-                        if(data['message'] !== undefined) {
-                            message += ' (message: "'+data['message'] + '")';
-                        }
-                        message += '.';
+                    let taskID = data['task_id'];
+                    if(typeof(taskID) === 'string') {
+                        poll_status(taskID, function(data) {
+                            _pollShare(data);
+                        },
+                        function(data) {
+                            _pollShare(data);
+                        }, 1000);
                     }
-                    window.messager.addMessage(message, success, (success === 'success' ? undefined : 0));
-                    loadData();
                 },
                 error: function(xhr, status, error) {
                     console.error(error);
@@ -671,6 +731,22 @@
                 model_id: modelID
             };
 
+            function _pollReshare(data) {
+                console.log(data);
+                let success = 'success';
+                let message = 'Model "'+modelName+'" re-shared successfully.';
+                if(data['status'] !== 0) {
+                    success = 'error';
+                    message = 'An error occurred while trying to re-share model "'+modelName+'" to project';
+                    if(data['message'] !== undefined) {
+                        message += ' (message: "'+data['message'] + '")';
+                    }
+                    message += '.';
+                }
+                window.messager.addMessage(message, success, (success === 'success' ? undefined : 0));
+                loadData();
+            }
+
             return $.ajax({
                 url: window.baseURL + 'reshareModel',
                 method: 'POST',
@@ -678,18 +754,15 @@
                 dataType: 'json',
                 data: JSON.stringify(params),
                 success: function(data) {
-                    let success = 'success';
-                    let message = 'Model "'+modelName+'" re-shared successfully.';
-                    if(data['status'] !== 0) {
-                        success = 'error';
-                        message = 'An error occurred trying to re-share model "'+modelName+'"';
-                        if(data['message'] !== undefined) {
-                            message += ' (message: "'+data['message'] + '")';
-                        }
-                        message += '.';
+                    let taskID = data['task_id'];
+                    if(typeof(taskID) === 'string') {
+                        poll_status(taskID, function(data) {
+                            _pollReshare(data);
+                        },
+                        function(data) {
+                            _pollReshare(data);
+                        }, 1000);
                     }
-                    window.messager.addMessage(message, success, (success === 'success' ? undefined : 0));
-                    loadData();
                 },
                 error: function(xhr, status, error) {
                     console.error(error);
@@ -727,6 +800,22 @@
             modelID = selectedModel_id_marketplace;
         }
 
+        function _pollUnshare(data) {
+                console.log(data);
+                let success = 'success';
+                let message = 'Model successfully hidden from Model Marketplace.';
+                if(data['status'] !== 0) {
+                    success = 'error';
+                    message = 'An error occurred while trying to hide the selected model from the Model Marketplace.';
+                    if(data['message'] !== undefined) {
+                        message += ' (message: "'+data['message'] + '")';
+                    }
+                    message += '.';
+                }
+                window.messager.addMessage(message, success, (success === 'success' ? undefined : 0));
+                loadData();
+            }
+
         let doUnshareModel = function() {
             return $.ajax({
                 url: window.baseURL + 'unshareModel',
@@ -735,26 +824,19 @@
                 dataType: 'json',
                 data: JSON.stringify({model_id: modelID}),
                 success: function(data) {
-                    let message = '';
-                    let success = 'success';
-                    let timeout = undefined;
-                    switch(data['status']) {
-                        case 0:
-                            message = 'Model successfully hidden from marketplace';
-                            break;
-                        default:
-                            message = 'An error occurred while hiding the selected model from the marketplace';
-                            success = 'error';
-                            timeout = 0;
-                            break;
-                    }
-                    if(typeof(data['message']) === 'string') {
-                        message += ' (message: "' + data['message'] + '")".'
+                    let taskID = data['task_id'];
+                    if(typeof(taskID) === 'string') {
+                        poll_status(taskID, function(data) {
+                            _pollUnshare(data);
+                        },
+                        function(data) {
+                            _pollUnshare(data);
+                        }, 1000);
                     } else {
-                        message += '.';
+                        //TODO: error message
+                        console.error(error);
+                        window.messager.addMessage('An error occurred while trying to import model "'+modelName+'" to project', 'error', 0);
                     }
-                    window.messager.addMessage(message, success, timeout);
-                    loadData();
                 },
                 error: function(xhr, status, error) {
                     console.error(error);
@@ -776,17 +858,47 @@
             doUnshareModel, null, 'Remove', 'Cancel', 'btn-danger', 'btn-secondary', false, false);
     }
 
-    function importModelToProject() {
-        if(selectedModel_id_marketplace === null || selectedModel_id_marketplace === undefined) {
-            return $.Deferred().promise();
+    function importModelToProject(source) {
+        let modelID = null;
+        let modelName = null;
+        if(source === 'url') {
+            // import from URL
+            let modelURL = $('#web-import-url-field').val();
+            try {
+                new URL(modelURL);
+            } catch {
+                //TODO: show red highlight around URL field instead?
+                window.messager.addMessage('"' + modelURL + '" is not a valid URL.', 'error');
+                return $.Deferred().promise();
+            }
+            modelID = modelURL;
+
+        } else {
+            if(selectedModel_id_marketplace === null || selectedModel_id_marketplace === undefined) {
+                return $.Deferred().promise();
+            }
+            modelName = modelsMarketplace[selectedModel_id_marketplace]['name'];
+            modelID = modelsMarketplace[selectedModel_id_marketplace]['id'];
         }
 
-        let modelName = modelsMarketplace[selectedModel_id_marketplace]['name'];
-        let modelID = modelsMarketplace[selectedModel_id_marketplace]['id'];
-
         let doImportModel = function() {
-            let modelID = modelsMarketplace[selectedModel_id_marketplace]['id'];
             if(modelID === undefined) return $.Deferred().promise();
+
+            function _pollImport(data) {
+                console.log(data);
+                let success = 'success';
+                let message = 'Model "'+modelName+'" imported successfully.';
+                if(data['status'] !== 0) {
+                    success = 'error';
+                    message = 'An error occurred while trying to import model "'+modelName+'" to project';
+                    if(data['message'] !== undefined) {
+                        message += ' (message: "'+data['message'] + '")';
+                    }
+                    message += '.';
+                }
+                window.messager.addMessage(message, success, (success === 'success' ? undefined : 0));
+                loadData();
+            }
 
             return $.ajax({
                 url: window.baseURL + 'importModel',
@@ -795,11 +907,62 @@
                 dataType: 'json',
                 data: JSON.stringify({model_id: modelID}),
                 success: function(data) {
+                    let taskID = data['task_id'];
+                    if(typeof(taskID) === 'string') {
+                        poll_status(taskID, function(data) {
+                            _pollImport(data);
+                        },
+                        function(data) {
+                            _pollImport(data);
+                        }, 1000);
+                    } else {
+                        //TODO: error message
+                        console.error(error);
+                        window.messager.addMessage('An error occurred while trying to import model "'+modelName+'" to project', 'error', 0);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error(error);
+                    if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                        window.messager.addMessage('An error occurred while trying to import model to project (message: "' + error + '").', 'error', 0);
+                    }
+                },
+                statusCode: {
+                    401: function(xhr) {
+                        return window.renewSessionRequest(xhr, function() {
+                            return doImportModel();
+                        });
+                    }
+                }
+            });
+        }
+
+        window.showYesNoOverlay($('<div>Proceeding will import the selected model to the project and make it the starting point for future workflows in that project.<br />Are you sure?</div>'),
+            doImportModel, null, 'Import', 'Cancel', 'btn-primary', 'btn-secondary', false, false);
+    }
+
+    function startWebImport() {
+        let modelURL = $('#web-import-url-field').val();
+        try {
+            new URL(modelURL);
+        } catch {
+            //TODO: show red highlight around URL field instead?
+            window.messager.addMessage('"' + modelURL + '" is not a valid URL.', 'error');
+            return $.Deferred().promise();
+        }
+
+        return $.ajax({
+                url: window.baseURL + 'importModel',
+                method: 'POST',
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+                data: JSON.stringify({model_id: modelURL}),
+                success: function(data) {
                     let success = 'success';
-                    let message = 'Model "'+modelName+'" imported successfully.';
+                    let message = 'Model from URL "'+modelURL+'" imported successfully.';
                     if(data['status'] !== 0) {
                         success = 'error';
-                        message = 'An error occurred trying to import model "'+modelName+'" to project';
+                        message = 'An error occurred trying to import model from URL "'+modelURL+'" to project';
                         if(data['message'] !== undefined) {
                             message += ' (message: "'+data['message'] + '")';
                         }
@@ -817,15 +980,100 @@
                 statusCode: {
                     401: function(xhr) {
                         return window.renewSessionRequest(xhr, function() {
-                            return doImportModel();
+                            return startWebImport();
                         });
                     }
                 }
-            })
+            });
+    }
+
+    function requestModelDownload(source) {
+        let modelID = undefined;
+        let params = {
+            source: source
+        }
+        if(source === 'marketplace') {
+            modelID = modelsMarketplace[selectedModel_id_marketplace]['id'];
+        } else if(source === 'project') {
+            modelID = modelsProject[selectedModel_id_project]['id'];
+
+            // extra parameters for (potentially unshared) project model
+            params['model_name'] = $('#project-info-name').val();
+            params['model_description'] = $('#project-info-description').val();
+            params['model_tags'] = Object.keys(getTags('project', true));
+        }
+        if(typeof(modelID) !== 'string') {
+            return $.Deferred().promise();
+        }
+        params['model_id'] = modelID;
+
+        function _pollForDownloadLink(data, taskID, success) {
+            if(!success) {
+                let msg = 'An error occurred while preparing model state for export';
+                if(data.hasOwnProperty('message') && typeof(data['message']) === 'string') {
+                    msg += ' (message: "' + data['message'] + '")';
+                }
+                msg += '.';
+                window.messager.addMessage(msg, 'error', 0);
+                return;
+            }
+            let result = null;
+            if(typeof(data) === 'string') {
+                result = data;
+            } else if(data.hasOwnProperty('result') && typeof(data['result']) === 'string') {
+                result = data['result'];
+            }
+            if(result !== null) {
+                let href = window.baseURL + 'download/models/' + result;
+                if(source === 'marketplace') {
+                    modelsMarketplace[selectedModel_id_marketplace]['download_link'] = href;
+                    $('#marketplace-download-link').attr('href', modelsMarketplace[selectedModel_id_marketplace]['download_link']);
+                    $('#marketplace-download-link').show();
+                } else {
+                    modelsProject[selectedModel_id_project]['download_link'] = href;
+                    $('#project-download-link').attr('href', modelsProject[selectedModel_id_project]['download_link']);
+                    $('#project-download-link').show();
+                }
+                window.messager.addMessage('Your download is ready (<a href="'+href+'">link</a>)', 'success');
+            }
         }
 
-        window.showYesNoOverlay($('<div>Proceeding will import the selected model to the project and make it the starting point for future workflows in that project.<br />Are you sure?</div>'),
-            doImportModel, null, 'Import', 'Cancel', 'btn-primary', 'btn-secondary', false, false);
+        return $.ajax({
+            url: window.baseURL + 'requestModelDownload',
+            method: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            data: JSON.stringify(params),
+            success: function(data) {
+                let taskID = data['task_id'];
+                if(typeof(taskID) === 'string') {
+                    poll_status(taskID, function(data) {
+                        _pollForDownloadLink(data, taskID, true);
+                    },
+                    function(data) {
+                        _pollForDownloadLink(data, taskID, false);
+                    }, 1000);
+                } else {
+                    //TODO: error message
+                    console.error(error);
+                    window.messager.addMessage('An error occurred while trying to request model download.', 'error', 0);
+                }
+                
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+                if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                    window.messager.addMessage('An error occurred while trying to request model download (message: "' + error + '").', 'error', 0);
+                }
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return requestModelDownload(source);
+                    });
+                }
+            }
+        });
     }
 
     function parseClassEntry(entry, entryID) {
@@ -1008,7 +1256,17 @@
             unshareModel(false);
         });
         $('#marketplace-model-select').on('click', function() {
-            importModelToProject();
+            importModelToProject('marketplace');
+        });
+        $('#marketplace-model-download').on('click', function() {
+            requestModelDownload('marketplace');
+        });
+        $('#project-model-download').on('click', function() {
+            requestModelDownload('project');
+        });
+
+        $('#start-web-import').on('click', function() {
+            importModelToProject('url');
         });
 
         // search and filter
@@ -1051,31 +1309,26 @@
         });
 
         function showPanel(type) {
-            if(type === 'modelMarketplace') {
-                $('#modelmarketplace-container').show();
-                $('#projectmodels-container').hide();
-                $('#marketplace-button').addClass('btn-primary');
-                $('#projectmodels-button').removeClass('btn-primary');
-                $('#marketplace-button').removeClass('btn-secondary');
-                $('#projectmodels-button').addClass('btn-secondary');
-            } else {
-                $('#modelmarketplace-container').hide();
-                $('#projectmodels-container').show();
-                $('#marketplace-button').removeClass('btn-primary');
-                $('#projectmodels-button').addClass('btn-primary');
-                $('#marketplace-button').addClass('btn-secondary');
-                $('#projectmodels-button').removeClass('btn-secondary');
+            for(var p in PANEL_NAMES) {
+                let pn = PANEL_NAMES[p];
+                if(pn === type) {
+                    $('#'+pn+'-container').show();
+                    $('#'+pn+'-button').addClass('btn-primary');
+                    $('#'+pn+'-button').removeClass('btn-secondary');
+                } else {
+                    $('#'+pn+'-container').hide();
+                    $('#'+pn+'-button').addClass('btn-secondary');
+                    $('#'+pn+'-button').removeClass('btn-primary');
+                }
             }
         }
-        $('#marketplace-button').click(function(e) {
-            e.preventDefault();
-            showPanel('modelMarketplace');
-        });
-        $('#projectmodels-button').click(function(e) {
-            e.preventDefault();
-            showPanel('projectModels');
-        });
-        showPanel('modelMarketplace');
+        for(var p in PANEL_NAMES) {
+            $('#'+PANEL_NAMES[p]+'-button').on('click', function(e) {
+                e.preventDefault();
+                showPanel($(this).attr('id').replace('-button', ''));
+            });
+        }
+        showPanel('modelmarketplace');
     }
 
     $(document).ready(function() {

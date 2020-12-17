@@ -31,7 +31,7 @@ function loadProjectInfo() {
                             let unarchiveBtn = $('<button class="btn btn-sm btn-primary unarchive-button">Unarchive</button>');
                             unarchiveBtn.on('click', function() {
                                 //TODO
-                                window.messager.addMessage('Button not yet implemented. Please unarchive project <a href="' + key + '/configuration?t=dangerZone">here</a>.', 'error', 0);
+                                window.messager.addMessage('Button not yet implemented. Please unarchive project <a href="' + key + '/configuration/dangerZone">here</a>.', 'error', 0);
                             });
                             unarchive.append(unarchiveBtn);
                             markup.append(unarchive);
@@ -49,10 +49,10 @@ function loadProjectInfo() {
                         let adminButtons = '';
                         if(role === 'admin' || role === 'super user') {
                             // show button to project configuration page
-                            adminButtons = '<span class="project-buttons"><a href="' + key + '/configuration?t=overview" class="btn btn-sm btn-success">Statistics</a>' +
-                                        '<a href="' + key + '/configuration?t=general" class="btn btn-sm btn-secondary">Configure</a>';
+                            adminButtons = '<span class="project-buttons"><a href="' + key + '/configuration/verview" class="btn btn-sm btn-success">Statistics</a>' +
+                                        '<a href="' + key + '/configuration/general" class="btn btn-sm btn-secondary">Configure</a>';
                             if(data['projects'][key]['aiModelEnabled']) {
-                                adminButtons += '<a href="' + key + '/configuration?t=aiModel" class="btn btn-sm btn-info">AI model</a>';
+                                adminButtons += '<a href="' + key + '/configuration/aiModel" class="btn btn-sm btn-info">AI model</a>';
                             }
                             //TODO: implement correctly:
                             // if(isOwner) {

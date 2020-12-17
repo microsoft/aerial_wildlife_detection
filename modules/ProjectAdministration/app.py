@@ -155,7 +155,9 @@ class ProjectConfigurator:
             
             #TODO
             if not self.loginCheck():
-                return self.__redirect(loginPage=True, redirect='/' + project + '/configuration')
+                if panel is None:
+                    panel = 'overview'
+                return self.__redirect(loginPage=True, redirect=f'/{project}/configuration/{panel}')
 
             # get project data (and check if project exists)
             projectData = self.middleware.getProjectInfo(project, ['name', 'description', 'interface_enabled', 'demomode'])

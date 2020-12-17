@@ -19,6 +19,7 @@ from .DataAdministration.app import DataAdministrator
 from .StaticFiles.app import StaticFileServer
 from .AIDEAdmin.app import AIDEAdmin
 from .ModelMarketplace.app import ModelMarketplace
+from .TaskCoordinator.app import TaskCoordinator
 
 
 #TODO
@@ -39,15 +40,6 @@ REGISTERED_MODULES = {
     'DataAdministrator': DataAdministrator,
     'StaticFileServer': StaticFileServer,
     'AIDEAdmin': AIDEAdmin,
-    'ModelMarketplace': ModelMarketplace
+    'ModelMarketplace': ModelMarketplace,
+    'TaskCoordinator': TaskCoordinator
 }
-
-
-# #TODO: dirty hack...
-# try:
-#     from .AIController.app import AIController
-#     from .AIWorker.app import AIWorker
-#     REGISTERED_MODULES['AIController'] = AIController
-#     REGISTERED_MODULES['AIWorker'] = AIWorker
-# except:
-#     pass

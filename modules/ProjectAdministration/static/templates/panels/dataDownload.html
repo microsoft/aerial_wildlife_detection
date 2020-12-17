@@ -259,7 +259,7 @@
                 error: function(xhr, status, error) {
                     console.error(error);
                     // append error row
-                    var markup = $('<tr id="' + taskID + '"></tr>');
+                    var markup = $('<tr></tr>');
                     markup.append($('<td>' + new Date().toLocaleString() + '</td>'));
                     var msgCell = $('<td class="file-message"><span style="color:red">failed (an unknown error occurred)</span></td>');
                     var pb = new ProgressBar(true, 100, 100, true);

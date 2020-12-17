@@ -19,16 +19,19 @@ import html
 from bottle import static_file, request, response, abort
 import requests
 from .backend.middleware import ModelMarketplaceMiddleware
+from .backend.marketplaceWorker import ModelMarketplaceWorker
+from util.cors import enable_cors
 from util import helpers
 
 
 class ModelMarketplace:
 
-    def __init__(self, config, app, verbose_start=False):
+    def __init__(self, config, app, taskCoordinator, verbose_start=False):
         self.config = config
         self.app = app
 
-        self.middleware = ModelMarketplaceMiddleware(config)
+        self.middleware = ModelMarketplaceMiddleware(config, taskCoordinator)
+        self.tempDir = ModelMarketplaceWorker(self.config).tempDir
 
         self.login_check = None
         self._initBottle()
@@ -90,6 +93,32 @@ class ModelMarketplace:
                 return {'status': 1, 'message': str(e)}
 
 
+        @self.app.post('/<project>/requestModelDownload')
+        def request_model_download(project):
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+            
+            try:
+                # get data
+                username = html.escape(request.get_cookie('username'))
+                modelID = request.json['model_id']
+                source = request.json['source']
+                assert source in ('marketplace', 'project'), 'invalid download source provided'
+
+                # optional values (for project-specific model download)
+                modelName = (request.json['model_name'] if 'model_name' in request.json else None)
+                modelDescription = (request.json['model_description'] if 'model_description' in request.json else '')
+                modelTags = (request.json['model_tags'] if 'model_tags' in request.json else [])
+
+                result = self.middleware.requestModelDownload(project, username,
+                                                            modelID, source,
+                                                            modelName, modelDescription, modelTags)
+                return result
+
+            except Exception as e:
+                return {'status': 1, 'message': str(e)}
+
+
         @self.app.post('/<project>/shareModel')
         def share_model(project):
             if not self.loginCheck(project=project, admin=True):
@@ -142,3 +171,14 @@ class ModelMarketplace:
                 return result
             except Exception as e:
                 return {'status': 1, 'message': str(e)}
+
+
+        @enable_cors
+        @self.app.route('/<project>/download/models/<filename:re:.*>')
+        def download_model(project, filename):
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+            if '..' in filename or filename.startswith('/') or filename.startswith('\\'):
+                abort(401, 'forbidden')
+
+            return static_file(filename, root=self.tempDir, download=True)

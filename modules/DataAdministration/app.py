@@ -22,12 +22,12 @@ from util import helpers
 
 class DataAdministrator:
 
-    def __init__(self, config, app, verbose_start=False):
+    def __init__(self, config, app, taskCoordinator, verbose_start=False):
         self.config = config
         self.app = app
 
         self.is_fileServer = helpers.is_fileServer(config)  # set up either direct methods or relaying
-        self.middleware = DataAdministrationMiddleware(config)
+        self.middleware = DataAdministrationMiddleware(config, taskCoordinator)
 
         self.tempDir = self.config.getProperty('FileServer', 'tempfiles_dir', type=str, fallback=tempfile.gettempdir())
 
@@ -97,27 +97,27 @@ class DataAdministrator:
 
     def _initBottle(self):
 
-        ''' Status polling '''
-        @self.app.post('/<project>/pollStatus')
-        def pollStatus(project):
-            '''
-                Receives a task ID and polls the middleware
-                for an ongoing data administration task.
-                Returns a dict with (meta-) data, including
-                the Celery status type, result (if completed),
-                error message (if failed), etc.
-            '''
-            if not self.loginCheck(project=project, admin=True):
-                abort(401, 'forbidden')
+        # ''' Status polling '''
+        # @self.app.post('/<project>/pollStatus')
+        # def pollStatus(project):
+        #     '''
+        #         Receives a task ID and polls the middleware
+        #         for an ongoing data administration task.
+        #         Returns a dict with (meta-) data, including
+        #         the Celery status type, result (if completed),
+        #         error message (if failed), etc.
+        #     '''
+        #     if not self.loginCheck(project=project, admin=True):
+        #         abort(401, 'forbidden')
 
-            try:
-                taskID = request.json['taskID']
-                status = self.middleware.pollStatus(project, taskID)
+        #     try:
+        #         taskID = request.json['taskID']
+        #         status = self.middleware.pollStatus(project, taskID)
 
-                return {'response': status}
+        #         return {'response': status}
 
-            except Exception as e:
-                abort(400, str(e))
+        #     except Exception as e:
+        #         abort(400, str(e))
 
 
         ''' Image management functionalities '''
@@ -322,7 +322,7 @@ class DataAdministrator:
                 Returns the file extensions for images currently
                 supported by AIDE.
             '''
-            return {'extensions': helpers.valid_image_extensions}
+            return {'extensions': helpers.VALID_IMAGE_EXTENSIONS}
 
         
         @enable_cors
@@ -332,7 +332,7 @@ class DataAdministrator:
                 Returns the MIME types for images currently
                 supported by AIDE.
             '''
-            return {'MIME_types': helpers.valid_image_mime_types}
+            return {'MIME_types': helpers.VALID_IMAGE_MIME_TYPES}
 
         
         # data download

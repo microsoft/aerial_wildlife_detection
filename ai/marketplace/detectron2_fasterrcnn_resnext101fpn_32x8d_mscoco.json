@@ -1,12 +1,13 @@
 {
 	"aide_model_version": 1.0,
-	"name": "Faster R-CNN (ResNet-50, pre-trained on MS-COCO)",
-	"description": "Faster R-CNN object detector with ResNet-50 as feature extractor, trained on <a href=\"https://cocodataset.org\" target=\"_blank\">MS-COCO</a>.<br />See <a href=\"https://github.com/facebookresearch/detectron2/blob/master/MODEL_ZOO.md\" target=\"_blank\">here</a> for more information.",
+	"name": "Faster R-CNN (ResNeXt-101 FPN, pre-trained on MS-COCO)",
+	"description": "Faster R-CNN object detector with ResNeXt-101 Feature Pyramid as feature extractor, trained on <a href=\"https://cocodataset.org\" target=\"_blank\">MS-COCO</a>.<br />See <a href=\"https://github.com/facebookresearch/detectron2/blob/master/MODEL_ZOO.md\" target=\"_blank\">here</a> for more information.",
 	"author": "facebook, inc.",
 	"time_created": 1607964812,
 	"tags": [
 		"Faster R-CNN",
 		"ResNet-50",
+		"Feature Pyramid Network",
 		"MS-COCO",
 		"detectron2"
 	],
@@ -338,7 +339,7 @@
 					"name": "Pre-made configuration",
 					"description": "Choose a pre-trained model state here or create your own model from scratch (\"manual\").",
 					"type": "select",
-					"value": "COCO-Detection/faster_rcnn_R_50_C4_1x.yaml",
+					"value": "COCO-Detection/faster_rcnn_X_101_32x8d_FPN_3x.yaml",
 					"options": {
 						"COCO-Detection/faster_rcnn_R_50_C4_1x.yaml": {
 							"name": "ResNet-50, pre-trained on MS-COCO"

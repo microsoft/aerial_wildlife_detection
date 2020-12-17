@@ -51,7 +51,7 @@
 import os
 import argparse
 from psycopg2 import sql
-from util.helpers import valid_image_extensions
+from util.helpers import VALID_IMAGE_EXTENSIONS
 
 
 if __name__ == '__main__':
@@ -206,7 +206,7 @@ if __name__ == '__main__':
         
         basePath, ext = os.path.splitext(i)
 
-        if ext.lower() not in valid_image_extensions:
+        if ext.lower() not in VALID_IMAGE_EXTENSIONS:
             continue
 
         baseName = basePath.replace(imgBaseDir, '')

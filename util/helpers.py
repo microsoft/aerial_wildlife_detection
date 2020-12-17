@@ -253,7 +253,7 @@ def listDirectory(baseDir, recursive=False):
         files = os.listdir(fileDir)
         for f in files:
             path = os.path.join(fileDir, f)
-            if os.path.isfile(path) and os.path.splitext(f)[1].lower() in valid_image_extensions:
+            if os.path.isfile(path) and os.path.splitext(f)[1].lower() in VALID_IMAGE_EXTENSIONS:
                 imgs.add(path)
             elif os.path.islink(path):
                 if os.readlink(path) in baseDir:
@@ -362,7 +362,7 @@ def getPILimage(input, imageID, project, dbConnector, convertRGB=False):
 
 
 
-valid_image_extensions = (
+VALID_IMAGE_EXTENSIONS = (
     '.jpg',
     '.jpeg',
     '.png',
@@ -377,11 +377,26 @@ valid_image_extensions = (
 )
 
 
-valid_image_mime_types = (
+VALID_IMAGE_MIME_TYPES = (
     'image/jpeg',
     'image/bmp',
     'image/x-windows-bmp',
     'image/gif',
     'image/x-icon',
     'image/png'
+)
+
+
+FILENAMES_PROHIBITED_CHARS = (
+    '&lt;',
+    '<',
+    '>',
+    '&gt;',
+    '..',
+    '/',
+    '\\',
+    '|',
+    '?',
+    '*',
+    ':'    # for macOS
 )

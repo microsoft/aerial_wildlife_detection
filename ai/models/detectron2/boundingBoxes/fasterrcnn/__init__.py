@@ -259,7 +259,7 @@ DEFAULT_OPTIONS = {
 						"name": "ResNet-50, pre-trained on MS-COCO"
 					},
 					"COCO-Detection/faster_rcnn_X_101_32x8d_FPN_3x.yaml": {
-						"name": "ResNet-101 Feature Pyramid Network, pre-trained on MS-COCO"
+						"name": "ResNeXt-101 Feature Pyramid Network, pre-trained on MS-COCO"
 					},
                     "PascalVOC-Detection/faster_rcnn_R_50_C4.yaml": {
                         "name": "ResNet-50, pre-trained on Pascal VOC"

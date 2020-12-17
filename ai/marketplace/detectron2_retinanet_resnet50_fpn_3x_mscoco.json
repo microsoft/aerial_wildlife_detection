@@ -1,12 +1,14 @@
 {
 	"aide_model_version": 1.0,
-	"name": "Faster R-CNN (ResNet-50, pre-trained on MS-COCO)",
-	"description": "Faster R-CNN object detector with ResNet-50 as feature extractor, trained on <a href=\"https://cocodataset.org\" target=\"_blank\">MS-COCO</a>.<br />See <a href=\"https://github.com/facebookresearch/detectron2/blob/master/MODEL_ZOO.md\" target=\"_blank\">here</a> for more information.",
+	"name": "RetinaNet (ResNet-50 FPN, pre-trained on MS-COCO)",
+	"description": "RetinaNet object detector with ResNet-50 Feature Pyramid Network as feature extractor, trained on <a href=\"https://cocodataset.org\" target=\"_blank\">MS-COCO</a>.<br />See <a href=\"https://github.com/facebookresearch/detectron2/blob/master/MODEL_ZOO.md\" target=\"_blank\">here</a> for more information.",
 	"author": "facebook, inc.",
 	"time_created": 1607964812,
 	"tags": [
-		"Faster R-CNN",
+		"RetinaNet",
 		"ResNet-50",
+		"Feature Pyramid Network",
+		"focal loss",
 		"MS-COCO",
 		"detectron2"
 	],
@@ -94,27 +96,10 @@
 	],
 	"annotation_type": "boundingBoxes",
 	"prediction_type": "boundingBoxes",
-	"ai_model_library": "ai.models.detectron2.FasterRCNN",
+	"ai_model_library": "ai.models.detectron2.RetinaNet",
 	"ai_model_settings": {
 		"defs": {
-			"interpolators": {
-				"0": {
-					"name": "Nearest neighbor"
-				},
-				"2": {
-					"name": "Bilinear interpolation"
-				},
-				"3": {
-					"name": "Bicubic"
-				},
-				"5": {
-					"name": "Hamming"
-				},
-				"6": {
-					"name": "Lanczos"
-				}
-			},
-			"transform": {
+			"transforms": {
 				"RandomBrightness": {
 					"name": "Random brightness",
 					"description": "Randomly transforms image brightness.<br />Brightness intensity is uniformly sampled in (intensity_min, intensity_max). - intensity < 1 will reduce brightness - intensity = 1 will preserve the input image - intensity > 1 will increase brightness.<br />See <a href=\"https://pillow.readthedocs.io/en/3.0.x/reference/ImageEnhance.html\" target=\"_blank\">https://pillow.readthedocs.io/en/3.0.x/reference/ImageEnhance.html</a>.",
@@ -199,13 +184,16 @@
 						"name": "Angles",
 						"description": "A list of angles to randomly choose from, if \"Sample style\" is 'choice'. If it is 'range', the smallest and largest values of the list will be chosen as [min, max] accordingly.",
 						"type": "list",
-						"options": [{
-							"name": "Value",
-							"min": -360,
-							"max": 360,
-							"value": 0
-						}],
-						"value": [{
+						"options": [
+							{
+								"name": "Value",
+								"min": -360,
+								"max": 360,
+								"value": 0
+							}
+						],
+						"value": [
+							{
 								"value": -270
 							},
 							{
@@ -232,7 +220,7 @@
 							"relative": {
 								"name": "relative"
 							},
-							"absolute": {
+							"absolute" : {
 								"name": "absolute"
 							},
 							"absolute_range": {
@@ -245,7 +233,8 @@
 						"name": "Cropping size",
 						"description": "Enter relative values [0, 1] if a \"relative\" cropping type has been chosen, or absolute pixel values otherwise.",
 						"type": "list",
-						"value": [{
+						"value": [
+							{
 								"name": "height",
 								"min": 0,
 								"max": 1e9,
@@ -266,7 +255,8 @@
 					"shape": {
 						"name": "Output size",
 						"type": "list",
-						"value": [{
+						"value": [
+							{
 								"name": "Height",
 								"min": 0,
 								"max": 1e9,
@@ -283,8 +273,24 @@
 					"interp": {
 						"name": "Interpolation method",
 						"type": "select",
-						"options": "interpolators",
-						"value": 0
+						"options": {
+							"0": {
+								"name": "Nearest neighbor"
+							},
+							"2": {
+								"name": "Bilinear interpolation"
+							},
+							"3": {
+								"name": "Bicubic"
+							},
+							"5": {
+								"name": "Hamming"
+							},
+							"6": {
+								"name": "Lanczos"
+							}
+						},
+						"value": "0"
 					}
 				}
 			}
@@ -298,7 +304,7 @@
 					"options": {
 						"cpu": {
 							"name": "CPU",
-							"description": "Run Faster R-CNN on the CPU and with system RAM."
+							"description": "Run RetinaNet on the CPU and with system RAM."
 						},
 						"cuda": {
 							"name": "GPU",
@@ -338,19 +344,13 @@
 					"name": "Pre-made configuration",
 					"description": "Choose a pre-trained model state here or create your own model from scratch (\"manual\").",
 					"type": "select",
-					"value": "COCO-Detection/faster_rcnn_R_50_C4_1x.yaml",
+					"value": "COCO-Detection/retinanet_R_50_FPN_3x.yaml",
 					"options": {
-						"COCO-Detection/faster_rcnn_R_50_C4_1x.yaml": {
+						"COCO-Detection/retinanet_R_50_FPN_3x.yaml": {
 							"name": "ResNet-50, pre-trained on MS-COCO"
 						},
-						"COCO-Detection/faster_rcnn_X_101_32x8d_FPN_3x.yaml": {
-							"name": "ResNeXt-101 Feature Pyramid Network, pre-trained on MS-COCO"
-						},
-						"PascalVOC-Detection/faster_rcnn_R_50_C4.yaml": {
-							"name": "ResNet-50, pre-trained on Pascal VOC"
-						},
-						"PascalVOC-Detection/faster_rcnn_R_50_FPN.yaml": {
-							"name": "ResNet-50 Feature Pyramid Network, pre-trained on Pascal VOC"
+						"COCO-Detection/retinanet_R_101_FPN_3x.yaml": {
+							"name": "ResNet-101, pre-trained on MS-COCO"
 						}
 					}
 				},
@@ -411,7 +411,7 @@
 					},
 					"DETECTRON2.SOLVER.MOMENTUM": {
 						"name": "Enable momentum",
-						"value": false
+						"value": false	
 					},
 					"DETECTRON2.SOLVER.NESTEROV": {
 						"name": "Enable Nesterov momentum",
@@ -440,7 +440,7 @@
 					"name": "Transforms",
 					"description": "Transforms are used to prepare images as inputs for the model, as well as to perform data augmentation.",
 					"type": "list",
-					"options": "transform",
+					"options": "transforms",
 					"value": [
 						"RandomFlip",
 						"RandomLighting",
@@ -448,17 +448,40 @@
 						"RandomSaturation"
 					]
 				},
+				"criterion": {
+					"name": "Focal Loss options",
+					"description": "See the <a href=\"http://openaccess.thecvf.com/content_ICCV_2017/papers/Lin_Focal_Loss_for_ICCV_2017_paper.pdf\" target=\"_blank\">RetinaNet paper</a> for more information.",
+					"DETECTRON2.MODEL.RETINANET.FOCAL_LOSS_GAMMA": {
+						"name": "Gamma",
+						"min": 0.0,
+						"max": 8192,
+						"value": 2.0
+					},
+					"DETECTRON2.MODEL.RETINANET.FOCAL_LOSS_ALPHA": {
+						"name": "Alpha",
+						"min": 0.0,
+						"max": 8192,
+						"value": 0.25
+					},
+					"DETECTRON2.MODEL.RETINANET.SMOOTH_L1_LOSS_BETA": {
+						"name": "Smooth L1 loss Beta",
+						"min": 0.0,
+						"max": 100.0,
+						"value": 0.0
+					}
+				},
 				"encoding": {
-					"name": "Region proposal network encoding",
-					"DETECTRON2.MODEL.RPN.IOU_THRESHOLDS": {
+					"name": "Bounding box encoding",
+					"DETECTRON2.MODEL.RETINANET.IOU_THRESHOLDS": {
 						"name": "IoU thresholds",
 						"type": "list",
-						"value": [{
+						"value": [
+							{
 								"name": "Max. IoU for negatives",
 								"description": "Maximally permitted IoU value between a target and prediction box for the latter to be treated as a false positive",
 								"min": 0.0,
 								"max": 1.0,
-								"value": 0.3,
+								"value": 0.4,
 								"style": {
 									"slider": true
 								}
@@ -468,21 +491,12 @@
 								"description": "Minimum IoU value between a target and prediction box for the latter to be considered a correct prediction",
 								"min": 0.0,
 								"max": 1.0,
-								"value": 0.7,
+								"value": 0.5,
 								"style": {
 									"slider": true
 								}
 							}
 						]
-					},
-					"DETECTRON2.MODEL.RPN.NMS_THRESH": {
-						"name": "Non-maximum suppression threshold",
-						"min": 0.0,
-						"max": 1.0,
-						"value": 0.7,
-						"style": {
-							"slider": true
-						}
 					}
 				},
 				"ignore_unsure": {
@@ -496,7 +510,7 @@
 					"name": "Transforms",
 					"description": "Note that inference transforms exclude geometric data augmentation options.",
 					"type": "list",
-					"options": "transform",
+					"options": "transforms",
 					"value": []
 				},
 				"DETECTRON2.TEST.DETECTIONS_PER_IMAGE": {
@@ -507,7 +521,7 @@
 				},
 				"encoding": {
 					"name": "Bounding box encoding",
-					"DETECTRON2.MODEL.ROI_HEADS.SCORE_THRESH_TEST": {
+					"DETECTRON2.MODEL.RETINANET.SCORE_THRESH_TEST": {
 						"name": "Min. class confidence",
 						"description": "Minimum confidence value to be reached by any label class for a box to be kept as a prediction.<br />Higher values = more confident predictions; lower values = higher recall",
 						"min": 0.0,
@@ -517,7 +531,7 @@
 							"slider": true
 						}
 					},
-					"DETECTRON2.MODEL.ROI_HEADS.NMS_THRESH_TEST": {
+					"DETECTRON2.MODEL.RETINANET.NMS_THRESH_TEST": {
 						"name": "Non-maximum suppression threshold",
 						"description": "Maximally permitted IoU between predictions. If above, boxes with lower confidence scores will be discarded (non-maximum suppression).",
 						"min": 0.0,
