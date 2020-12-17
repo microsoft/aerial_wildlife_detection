@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS {id_labelclass} (
     id uuid DEFAULT uuid_generate_v4(),
     name VARCHAR UNIQUE NOT NULL,
     idx SERIAL UNIQUE NOT NULL,
+    timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     color VARCHAR,
     labelclassgroup uuid,
     keystroke SMALLINT UNIQUE,
