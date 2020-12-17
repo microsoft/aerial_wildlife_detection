@@ -136,3 +136,11 @@ CREATE TABLE IF NOT EXISTS {id_workflowHistory} (
     FOREIGN KEY (launchedBy) REFERENCES aide_admin.user (name),
     FOREIGN KEY (abortedBy) REFERENCES aide_admin.user (name)
 );
+
+CREATE OR REPLACE VIEW {id_filehierarchy} AS (
+    SELECT DISTINCT
+    CASE WHEN position('/' IN filename) = 0 THEN null
+    ELSE left(filename, strposrev(filename, '/')-1) END
+    AS folder
+    FROM {id_image}
+);

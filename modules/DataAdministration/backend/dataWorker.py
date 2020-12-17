@@ -948,7 +948,7 @@ class DataWorker:
         ''', (project, project,), None)     # already done by DataAdministration.middleware, but we do it again to be sure
 
         self.dbConnector.execute('''
-            DROP SCHEMA IF EXISTS {} CASCADE;
+            DROP SCHEMA IF EXISTS "{}" CASCADE;
         '''.format(project), None, None)        #TODO: Identifier?
 
         if deleteFiles:
