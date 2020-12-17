@@ -925,7 +925,7 @@ class ProjectConfigMiddleware:
         
         # dispatch Celery task to remove DB schema and files (if requested)
         process = fileServer_interface.deleteProject.si(project, deleteFiles)
-        process.apply_async()       #TODO: task ID? Progress monitoring?
+        process.apply_async(queue='FileServer')       #TODO: task ID? Progress monitoring?
 
         #TODO: return Celery task ID?
         return {

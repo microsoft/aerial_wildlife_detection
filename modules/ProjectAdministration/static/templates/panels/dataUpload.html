@@ -77,7 +77,7 @@
             var imgs = [];
             for(var i=0; i<data.length; i++) {
                 imgs.push({
-                    url: window.baseURL + data[i],
+                    url: data[i],
                     imageURL: window.dataServerURI + window.project + '/files/' + data[i]
                 });
             }
@@ -154,9 +154,10 @@
             if(Array.isArray(imgList) && imgList.length === 0) return;
 
             function _poll_add_untracked(data) {
+                //TODO: temporary buggy solution:
                 if(Array.isArray(data) && data.length > 1 && data[1].length > 0) {
                     window.messager.addMessage(imgList.length + ' images added successfully.', 'success');
-                    return _update_browser_scanUntracked(data);
+                    updateUntrackedCount();
                 }
             }
 
@@ -194,7 +195,11 @@
             var checked = window.imageBrowser.getChecked();
             var imgList = [];
             for(var key in checked) {
-                imgList.push(checked[key].data['url']);
+                let url = checked[key].data['url'];
+                if(url.startsWith('/')) {
+                    url = url.slice(1);
+                }
+                imgList.push(url);
             }
             return _do_add_untracked(imgList);
         }

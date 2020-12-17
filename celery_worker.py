@@ -122,6 +122,10 @@ app.conf.update(
             'queue': 'FileServer',
             'routing_key': 'watch_image_folders'
         },
+        'DataAdministration.delete_project': {
+            'queue': 'FileServer',
+            'routing_key': 'delete_project'
+        },
         'ModelMarketplace.shareModel': {
             'queue': 'ModelMarketplace',
             'routing_key': 'shareModel'
