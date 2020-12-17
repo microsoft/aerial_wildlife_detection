@@ -414,7 +414,7 @@ class DataWorker:
         # filter
         imgs_candidates = imgs_disk.difference(imgs_database)
         imgs_candidates = list(imgs_candidates)
-        for i in range(imgs_candidates):
+        for i in range(len(imgs_candidates)):
             if imgs_candidates[i].startswith('/'):
                 imgs_candidates[i] = imgs_candidates[i][1:]
         return imgs_candidates

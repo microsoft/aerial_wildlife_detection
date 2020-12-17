@@ -3,6 +3,7 @@
 '''
 
 import uuid
+import html
 import celery
 from celery import current_app
 from celery.result import AsyncResult
