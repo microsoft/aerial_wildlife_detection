@@ -413,7 +413,11 @@ class DataWorker:
 
         # filter
         imgs_candidates = imgs_disk.difference(imgs_database)
-        return list(imgs_candidates)
+        imgs_candidates = list(imgs_candidates)
+        for img in imgs_candidates:
+            if img.startswith('/'):
+                img = img[1:]
+        return imgs_candidates
 
 
     def addExistingImages(self, project, imageList=None):

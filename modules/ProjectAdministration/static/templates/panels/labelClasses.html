@@ -628,7 +628,7 @@
 
     function addElement() {
         // remove keystroke of current node (as it becomes a group now)
-        if(window.selectedNode !== undefined && window.selectedNode.keystroke !== undefined && typeof(window.selectedNode.keystroke) === 'number') {
+        if(window.selectedNode !== undefined && window.selectedNode !== null && window.selectedNode.keystroke !== undefined && typeof(window.selectedNode.keystroke) === 'number') {
             delete window.keystrokeMap[window.selectedNode.keystroke];
             $($('#sel-node-shortcut').find('option[value="'+window.selectedNode.keystroke.toString()+'"]')).prop('disabled', false);
             window.selectedNode.keystroke = undefined;

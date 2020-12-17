@@ -152,6 +152,14 @@
         function _do_add_untracked(imgList) {
             let params = {};
             if(Array.isArray(imgList) && imgList.length === 0) return;
+
+            function _poll_add_untracked(data) {
+                if(Array.isArray(data) && data.length > 1 && data[1].length > 0) {
+                    window.messager.addMessage(imgList.length + ' images added successfully.', 'success');
+                    return _update_browser_scanUntracked(data);
+                }
+            }
+
             return $.ajax({
                 url: window.baseURL + 'addExistingImages',
                 method: 'POST',
@@ -161,9 +169,9 @@
                 success: function(response) {
                     if(response['status'] === 0 && response['response'] !== undefined) {
                         let taskID = response['response'];
-                        poll_status(taskID, _update_browser_scanUntracked, undefined, 1000);
-                        //TODO
-                        window.messager.addMessage(imgList.length + ' images added successfully.', 'success');
+                        poll_status(taskID, _poll_add_untracked, _poll_add_untracked, 1000);
+                        // //TODO
+                        // window.messager.addMessage(imgList.length + ' images added successfully.', 'success');
                     } else {
                         let message = 'An error occurred while adding untracked images to project';
                         if(typeof(response['message']) === 'string') {
@@ -261,6 +269,9 @@
                 if(window.validImageMIMEtypes.includes(nextItem.type)) {
                     // upload
                     var fileName = (nextItem.hasOwnProperty('webkitRelativePath')? nextItem['webkitRelativePath'] : nextItem['name']);
+                    if(fileName.startsWith('/')) {
+                        fileName = fileName.slice(1)
+                    }
                     var key = fileName+'_'+i;
                     var formData = new FormData();
                     formData.append('existingFiles', existingFiles);
