@@ -414,9 +414,9 @@ class DataWorker:
         # filter
         imgs_candidates = imgs_disk.difference(imgs_database)
         imgs_candidates = list(imgs_candidates)
-        for img in imgs_candidates:
-            if img.startswith('/'):
-                img = img[1:]
+        for i in range(imgs_candidates):
+            if imgs_candidates[i].startswith('/'):
+                imgs_candidates[i] = imgs_candidates[i][1:]
         return imgs_candidates
 
 
@@ -444,6 +444,9 @@ class DataWorker:
         else:
             if isinstance(imageList, dict):
                 imageList = list(imageList.keys())
+            for i in range(len(imageList)):
+                if imageList[i].startswith('/'):
+                    imageList[i] = imageList[i][1:]
             imgs_add = list(set(imgs_candidates).intersection(set(imageList)))
 
         if not len(imgs_add):
