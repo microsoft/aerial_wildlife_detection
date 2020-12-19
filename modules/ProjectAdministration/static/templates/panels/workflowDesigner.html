@@ -1,7 +1,5 @@
 <div>
     <h2>Model Workflow Designer</h2>
-
-    <p style="font-weight:bold;color:red">Work in progress, not functional yet.</p>
     <div style="display:flex;flex-direction:row;margin-bottom:30px;">
         <!-- Quick workflow & saved workflows -->
         <div style="flex-grow:1">
@@ -23,15 +21,14 @@
                                 <label for="do-inference">Inference</label>
                             </div>
                         </div>
-                        <div>
+                        <!-- <div>
                             Number of workers:
                             <select id="num-workers">
                                 <option value="-1">(all available)</option>
                                 <option value="1">1</option>
                                 <option value="2">2</option>
-                                <!-- TODO -->
                             </select>
-                        </div>
+                        </div> -->
                     </div>
                     <button id="create-workflow" class="btn btn-sm btn-primary" style="position:absolute;right:0;bottom:0;">Create</button>
                 </div>
@@ -86,6 +83,7 @@
 </div>
 <link rel="stylesheet" href="/static/projectAdmin/css/workflowDesigner.css?v={{ version }}" />
 <link rel="stylesheet" href="/static/aiController/css/workflowMonitor.css?v={{ version }}" />
+<link rel="stylesheet" href="/static/general/css/optionsEngine.css?v={{ version }}" />
 <style>
     #workflow-preset-panel {
         border: 1px solid white;
@@ -114,19 +112,68 @@
     #saved-workflows-tbody > tr {
         cursor: pointer;
     }
+
+    .options-engine-container {
+        color: white;
+        background: #737373;
+        padding: 20px;
+        overflow: auto;
+        height: calc(75vh - 180px);
+        margin-bottom: 10px;
+        border-radius: 5px;
+    }
 </style>
 <script src="/static/aiController/js/workflowMonitor.js?v={{ version }}"></script>
 <script src="/static/projectAdmin/js/workflowDesigner.js?v={{ version }}"></script>
+<script src="/static/general/js/optionsEngine.js?v={{ version }}"></script>
 <script type="text/javascript">
+    let getAImodelSettings = $.ajax({
+        url: window.baseURL + 'getAvailableAImodels',
+        method: 'GET',
+        error: function(xhr, status, error) {
+            //TODO
+            console.error(error);
+        },
+        statusCode: {
+            401: function(xhr) {
+                return window.renewSessionRequest(xhr, function() {
+                    return getAImodelSettings();
+                });
+            }
+        }
+    });
+
+
+    let getProjectModelSettings = $.ajax({
+        url: window.baseURL + 'getConfig',
+        method: 'POST',
+        data: JSON.stringify({
+            'parameters': [
+                'ai_model_library',
+                'ai_model_settings',
+                'ai_alcriterion_library',
+                'ai_alcriterion_settings',
+            ]
+        }),
+        contentType: 'application/json; charset=utf-8',
+        dataType: 'json',
+        error: function(xhr, status, error) {
+            console.error(error);       //TODO
+        },
+        statusCode: {
+            401: function(xhr) {
+                return window.renewSessionRequest(xhr, function() {
+                    return getProjectModelSettings();
+                });
+            }
+        }
+    });
+
+
     $(document).ready(function() {
 
-        //TODO
-        // if(typeof(ProgressBar) === 'undefined') {
-        //     $.getScript('/static/general/js/progressbar.js');
-        // }
-
+        window.aiModelMeta = null;
         let canvasWrapper = document.getElementById('canvas-wrapper');
-        window.workflowDesigner = new WorkflowDesigner(canvasWrapper);
 
         // load saved workflows
         function loadSavedWorkflows() {
@@ -174,7 +221,6 @@
                 }
             });
         }
-        loadSavedWorkflows();
 
         function getSelectedWorkflowID() {
             let workflows = $('#saved-workflows-tbody').children();
@@ -512,6 +558,27 @@
         });
         showQuickPanel('quick-workflow-panel');
 
-        window.showLoadingOverlay(false);
+
+        $.when(getAImodelSettings, getProjectModelSettings).done(function(data1, data2) {
+            aiModels = data1[0]['models'];
+
+            // limit to project model
+            projectSettings = data2[0]['settings'];
+            aiModels['prediction'] = aiModels['prediction'][projectSettings['ai_model_library']];
+            aiModels['ranking'] = aiModels['ranking'][projectSettings['ai_alcriterion_library']];
+
+            // append current model settings of project
+            if(typeof(aiModels['prediction']) === 'object') {
+                aiModels['prediction']['projectOptions'] = projectSettings['ai_model_settings'];
+            }
+            if(typeof(aiModels['ranking']) === 'object') {
+                aiModels['ranking']['projectOptions'] = projectSettings['ai_alcriterion_settings'];
+            }
+
+            // finalize remaining components
+            window.workflowDesigner = new WorkflowDesigner(canvasWrapper, null, aiModels['prediction'], aiModels['ranking']);
+            loadSavedWorkflows();
+            window.showLoadingOverlay(false);
+        });
     });
 </script>

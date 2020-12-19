@@ -11,6 +11,10 @@ $(document).ready(function() {
     window.overlay = $('#overlay-card');
     window.overlayAvailable = (window.overlay.length > 0);
     window.uiBlockAvailable = window.hasOwnProperty('setUIblocked');
+
+    if(window.baseURL === undefined) {
+        window.baseURL = '';
+    }
 });
 
 window.showOverlay = function(contents, large, uiBlocked_after) {
@@ -111,7 +115,7 @@ window.renewSessionRequest = function(xhr, callback) {
 
 window.verifyLogin = function(callback) {
     return $.ajax({
-        url: 'loginCheck',
+        url: window.baseURL + 'loginCheck',
         method: 'post',
         success: function() {
             window.showOverlay(null);
@@ -131,7 +135,7 @@ window.showVerificationOverlay = function(callback) {
         var username = $('#navbar-user-dropdown').html();       // cannot use cookie since it has already been deleted by the server
         var password = $('#password').val();
         return $.ajax({
-            url: 'doLogin',
+            url: window.baseURL + 'doLogin',
             method: 'post',
             data: {username: username, password: password},
             success: function(response) {

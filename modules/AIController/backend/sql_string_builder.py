@@ -60,12 +60,17 @@ class SQLStringBuilder:
 
     
 
-    def getInferenceQueryString(self, project, forceUnlabeled=True, limit=None):
+    def getInferenceQueryString(self, project, forceUnlabeled=True, goldenQuestionsOnly=False, limit=None):
+
+        if goldenQuestionsOnly:
+            gqString = sql.SQL('AND goldenQuestion IS NOT NULL')
+        else:
+            gqString = sql.SQL('')
 
         if forceUnlabeled:
-            conditionString = sql.SQL('WHERE viewcount IS NULL AND (corrupt IS NULL OR corrupt = FALSE)')
+            conditionString = sql.SQL('WHERE viewcount IS NULL AND (corrupt IS NULL OR corrupt = FALSE) {}').format(gqString)
         else:
-            conditionString = sql.SQL('WHERE corrupt IS NULL OR corrupt = FALSE')
+            conditionString = sql.SQL('WHERE corrupt IS NULL OR corrupt = FALSE {}').format(gqString)
         
         if limit is None or limit == -1:
             limitString = sql.SQL('')

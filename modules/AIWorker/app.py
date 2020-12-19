@@ -46,13 +46,14 @@ class AIWorker():
     def _init_model_instance(self, project, modelLibrary, modelSettings):
         # try to parse model settings
         if modelSettings is not None and len(modelSettings):
-            try:
-                modelSettings = json.loads(modelSettings)
-            except Exception as err:
-                print('WARNING: could not read model options. Error message: {message}.'.format(
-                    message=str(err)
-                ))
-                modelSettings = None
+            if isinstance(modelSettings, str):
+                try:
+                    modelSettings = json.loads(modelSettings)
+                except Exception as err:
+                    print('WARNING: could not read model options. Error message: {message}.'.format(
+                        message=str(err)
+                    ))
+                    modelSettings = None
         else:
             modelSettings = None
 
@@ -93,6 +94,10 @@ class AIWorker():
         '''
             Creates the Active Learning (AL) criterion provider instance.
         '''
+        if alLibrary is None:
+            # no AL criterion; AIDE tries to use model confidences by default
+            return None
+
         # try to parse settings
         if alSettings is not None and len(alSettings):
             try:
@@ -136,7 +141,7 @@ class AIWorker():
                             options=alSettings)
 
 
-    def _get_model_instance(self, project):
+    def _get_model_instance(self, project, overrideModelSettings=None):
         '''
             Returns the class instance of the model specified in the given
             project.
@@ -149,7 +154,7 @@ class AIWorker():
         '''
         result = self.dbConnector.execute(queryStr, (project,), 1)
         modelLibrary = result[0]['ai_model_library']
-        modelSettings = result[0]['ai_model_settings']
+        modelSettings = (result[0]['ai_model_settings'] if overrideModelSettings is None else overrideModelSettings)
 
         # create new model instance
         modelInstance = self._init_model_instance(project, modelLibrary, modelSettings)
@@ -157,7 +162,7 @@ class AIWorker():
         return modelInstance, modelLibrary
 
 
-    def _get_alCriterion_instance(self, project):
+    def _get_alCriterion_instance(self, project, overrideModelSettings=None):
         '''
             Returns the class instance of the Active Learning model
             specified in the project.
@@ -170,7 +175,7 @@ class AIWorker():
         '''
         result = self.dbConnector.execute(queryStr, (project,), 1)
         modelLibrary = result[0]['ai_alcriterion_library']
-        modelSettings = result[0]['ai_alcriterion_settings']
+        modelSettings = (result[0]['ai_alcriterion_settings'] if overrideModelSettings is None else overrideModelSettings)
 
         # create new model instance
         modelInstance = self._init_alCriterion_instance(project, modelLibrary, modelSettings)
@@ -190,40 +195,40 @@ class AIWorker():
 
 
     
-    def call_update_model(self, numEpochs, project):
+    def call_update_model(self, numEpochs, project, aiModelSettings=None):
 
         # get project-specific model
-        modelInstance, modelLibrary = self._get_model_instance(project)
+        modelInstance, modelLibrary = self._get_model_instance(project, aiModelSettings)
 
         return functional._call_update_model(project, numEpochs, modelInstance, modelLibrary,
                 self.dbConnector, self.fileServer)
 
 
-    def call_train(self, data, epoch, numEpochs, project, subset):
+    def call_train(self, data, epoch, numEpochs, project, subset, aiModelSettings=None):
 
         # get project-specific model
-        modelInstance, modelLibrary = self._get_model_instance(project)
+        modelInstance, modelLibrary = self._get_model_instance(project, aiModelSettings)
 
         return functional._call_train(project, data, epoch, numEpochs, subset, modelInstance, modelLibrary,
                 self.dbConnector, self.fileServer)
     
 
 
-    def call_average_model_states(self, epoch, numEpochs, project):
+    def call_average_model_states(self, epoch, numEpochs, project, aiModelSettings=None):
 
         # get project-specific model
-        modelInstance, modelLibrary = self._get_model_instance(project)
+        modelInstance, modelLibrary = self._get_model_instance(project, aiModelSettings)
         
         return functional._call_average_model_states(project, epoch, numEpochs, modelInstance, modelLibrary,
                 self.dbConnector, self.fileServer)
 
 
 
-    def call_inference(self, imageIDs, epoch, numEpochs, project):
+    def call_inference(self, imageIDs, epoch, numEpochs, project, aiModelSettings=None, alCriterionSettings=None):
         
         # get project-specific model and AL criterion
-        modelInstance, modelLibrary = self._get_model_instance(project)
-        alCriterionInstance = self._get_alCriterion_instance(project)
+        modelInstance, modelLibrary = self._get_model_instance(project, aiModelSettings)
+        alCriterionInstance = self._get_alCriterion_instance(project, alCriterionSettings)
 
         return functional._call_inference(project, imageIDs, epoch, numEpochs,
                 modelInstance, modelLibrary,

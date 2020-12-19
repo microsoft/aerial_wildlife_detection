@@ -31,14 +31,14 @@ def call_update_model(blank, numEpochs, project):
 
 
 @current_app.task(name='AIWorker.call_train', rate_limit=1)
-def call_train(data, index, epoch, numEpochs, project):
+def call_train(data, index, epoch, numEpochs, project, aiModelSettings):
     if len(data) == 2 and data[1] is None:
         # model update call preceded training task; ignore empty output of it
         data = data[0]
 
     is_subset = (len(data) > 1)
     if index < len(data):
-        return worker.call_train(data[index], epoch, numEpochs, project, is_subset)
+        return worker.call_train(data[index], epoch, numEpochs, project, is_subset, aiModelSettings)
     else:
         # worker not needed
         print("[{}] Subset {} requested, but only {} chunk(s) provided. Skipping...".format(
@@ -49,18 +49,18 @@ def call_train(data, index, epoch, numEpochs, project):
 
 
 @current_app.task(name='AIWorker.call_average_model_states', rate_limit=1)
-def call_average_model_states(blank, epoch, numEpochs, project, *args):
-    return worker.call_average_model_states(epoch, numEpochs, project)
+def call_average_model_states(blank, epoch, numEpochs, project, aiModelSettings):
+    return worker.call_average_model_states(epoch, numEpochs, project, aiModelSettings)
 
 
 @current_app.task(name='AIWorker.call_inference')
-def call_inference(data, index, epoch, numEpochs, project):
+def call_inference(data, index, epoch, numEpochs, project, aiModelSettings=None, alCriterionSettings=None):
     if len(data) == 2 and data[1] is None:
         # model update call preceded inference task; ignore empty output of it
         data = data[0]
 
     if index < len(data):
-        return worker.call_inference(data[index], epoch, numEpochs, project)
+        return worker.call_inference(data[index], epoch, numEpochs, project, aiModelSettings, alCriterionSettings)
     else:
         # worker not needed
         print("[{}] Subset {} requested, but only {} chunk(s) provided. Skipping...".format(

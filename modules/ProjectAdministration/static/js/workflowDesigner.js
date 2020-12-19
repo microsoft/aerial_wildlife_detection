@@ -10,6 +10,59 @@ const NODE_NAMES = {
     'connector': 'Connect'
 }
 
+
+$(document).ready(function() {
+    // options engine in overlay (if enabled)
+    if(typeof(OptionsEngine) === 'function') {
+        let overlayMarkup = $('<div></div>');
+        overlayMarkup.append($('<h2>Default options override for single node</h2>'));
+        window.oeDiv = $('<div class="options-engine-container"></div>');
+        overlayMarkup.append(window.oeDiv);
+        let buttonDiv = $('<div style="margin-bottom:10px"></div>');
+        let showModelDefaults = $('<button class="btn btn-sm btn-secondary">load model defaults</button>');
+        let showProjectDefaults = $('<button class="btn btn-sm btn-secondary" style="margin-left:10px">load project defaults</button>');
+        //TODO: verify button?
+        buttonDiv.append(showModelDefaults);
+        buttonDiv.append(showProjectDefaults);
+        overlayMarkup.append(buttonDiv);
+        let saveButton = $('<button class="btn btn-sm btn-primary" style="float:right">save</button>');
+        overlayMarkup.append(saveButton);
+        let abortButton = $('<button class="btn btn-sm btn-primary">cancel</button>');
+        overlayMarkup.append(abortButton);
+
+        window.optionsEngine = new OptionsEngine(window.oeDiv);
+
+        window.showOptionsOverlay = function(currentOptions, modelDefaults, projectDefaults, onCloseCallback) {
+            let options = currentOptions;
+            if(options === null || options === undefined) {
+                // no current options; fall back to project options
+                options = projectDefaults;
+                if(options === null || options === undefined) {
+                    // no project defaults; fall back to model defaults
+                    options = modelDefaults;
+                }
+            }
+            window.optionsEngine.setOptions(options);
+            showModelDefaults.on('click', function() {
+                window.optionsEngine.setOptions(modelDefaults);
+            });
+            showProjectDefaults.on('click', function() {
+                window.optionsEngine.setOptions(projectDefaults);
+            });
+            saveButton.on('click', function() {
+                window.showOverlay(null);
+                onCloseCallback(window.optionsEngine.getOptions());
+            });
+            abortButton.on('click', function() {
+                window.showOverlay(null);
+            });
+            window.showOverlay(overlayMarkup, true, false);
+        }
+    }
+});
+
+
+
 class AbstractNode {
     constructor(parent, params, nodeType) {
         if(params === undefined || params === null) {
@@ -356,12 +409,20 @@ class TrainNode extends DefaultNode {
         'min_anno_per_image': 0,
         'include_golden_questions': false,
         'max_num_images': 0,
-        'max_num_workers': 0
+        'max_num_workers': 0,
+        'ai_model_settings': null
     }
 
-    constructor(parent, params, position) {
+    constructor(parent, params, position, aiModelMeta) {
         super(parent, params, 'train');
         super._check_params(params['kwargs'], this.DEFAULT_PARAMS);
+        this.aiModelMeta = aiModelMeta;
+        try {
+            this.aiModelOptions = this.aiModelMeta['projectOptions'];
+        } catch {
+            this.aiModelOptions = null;
+            this.aiModelMeta = {};
+        }
         this._setup_markup(position);
     }
 
@@ -431,6 +492,17 @@ class TrainNode extends DefaultNode {
         tdNumWorkers.append(this.maxNumWorkers);
         maxNumWorkersMarkup.append(tdNumWorkers);
         optionsTable.append(maxNumWorkersMarkup);
+
+        // model options override
+        if(typeof(window.showOptionsOverlay) === 'function' && this.aiModelMeta.hasOwnProperty('defaultOptions')) {
+            let showModelOptionsOverride = $('<button class="btn btn-sm btn-primary">Model Options</button>');
+            showModelOptionsOverride.on('click', function() {
+                window.showOptionsOverlay(self.aiModelOptions, self.aiModelMeta['defaultOptions'], self.aiModelMeta['projectOptions'], function(options) {
+                    self.aiModelOptions = options;
+                });
+            });
+            this.propertiesMarkup.append(showModelOptionsOverride);
+        }
     }
 
     toJSON() {
@@ -445,6 +517,7 @@ class TrainNode extends DefaultNode {
         this.params['include_golden_questions'] = this.gqchck.prop('checked');
         this.params['max_num_images'] = this.maxNumImgs.val();
         this.params['max_num_workers'] = this.maxNumWorkers.val();
+        this.params['ai_model_settings'] = this.aiModelOptions;
         return super.toJSON();
     }
 }
@@ -455,12 +528,28 @@ class InferenceNode extends DefaultNode {
         'force_unlabeled': false,       //TODO
         'golden_questions_only': false, //TODO
         'max_num_images': 0,
-        'max_num_workers': 0
+        'max_num_workers': 0,
+        'ai_model_settings': null,
+        'alcriterion_settings': null
     }
 
-    constructor(parent, params, position) {
+    constructor(parent, params, position, aiModelMeta, alCriterionMeta) {
         super(parent, params, 'inference');
         super._check_params(params['kwargs'], this.DEFAULT_PARAMS);
+        this.aiModelMeta = aiModelMeta;
+        try {
+            this.aiModelOptions = this.aiModelMeta['projectOptions'];
+        } catch {
+            this.aiModelOptions = null;
+            this.aiModelMeta = {};
+        }
+        this.alCriterionMeta = alCriterionMeta;
+        try {
+            this.alCriterionOptions = this.alCriterionMeta['projectOptions'];
+        } catch {
+            this.alCriterionOptions = null;
+            this.alCriterionMeta = {};
+        }
         this._setup_markup(position);
     }
 
@@ -500,16 +589,31 @@ class InferenceNode extends DefaultNode {
         // maximum number of images
         var maxNumImgsMarkup = $('<tr></tr>');
         maxNumImgsMarkup.append($('<td>Number of images (0 = unlimited):</td>'));
-        this.maxNumImgs = $('<td><input type="number" value="0" min="0" max="1000000000" style="width:65px" /></td>');
-        maxNumImgsMarkup.append(this.maxNumImgs);
+        let maxNumImgsCell = $('<td></td>');
+        this.maxNumImgs = $('<input type="number" value="0" min="0" max="1000000000" style="width:65px" />');
+        maxNumImgsCell.append(this.maxNumImgs);
+        maxNumImgsMarkup.append(maxNumImgsCell);
         optionsTable.append(maxNumImgsMarkup);
 
         // number of workers (TODO: query available number from server first)
         var maxNumWorkersMarkup = $('<tr></tr>');
         maxNumWorkersMarkup.append($('<td>Number of workers (0 = unlimited):</td>'));
-        this.maxNumWorkers = $('<td><input type="number" value="0" min="0" max="1000000000" style="width:65px" /></td>');
-        maxNumWorkersMarkup.append(this.maxNumWorkers);
+        let maxNumWorkersCell = $('<td></td>');
+        this.maxNumWorkers = $('<input type="number" value="0" min="0" max="1000000000" style="width:65px" />');
+        maxNumWorkersCell.append(this.maxNumWorkers);
+        maxNumWorkersMarkup.append(maxNumWorkersCell);
         optionsTable.append(maxNumWorkersMarkup);
+
+        // model options override
+        if(typeof(window.showOptionsOverlay) === 'function' && this.aiModelMeta.hasOwnProperty('defaultOptions')) {
+            let showModelOptionsOverride = $('<button class="btn btn-sm btn-primary">Model Options</button>');
+            showModelOptionsOverride.on('click', function() {
+                window.showOptionsOverlay(self.aiModelOptions, self.aiModelMeta['defaultOptions'], self.aiModelMeta['projectOptions'], function(options) {
+                    self.aiModelOptions = options;
+                });
+            });
+            this.propertiesMarkup.append(showModelOptionsOverride);
+        }
     }
 
     toJSON() {
@@ -518,6 +622,8 @@ class InferenceNode extends DefaultNode {
         this.params['golden_questions_only'] = this.gqchck.prop('checked');
         this.params['max_num_images'] = this.maxNumImgs.val();
         this.params['max_num_workers'] = this.maxNumWorkers.val();
+        this.params['ai_model_settings'] = this.aiModelOptions;
+        this.params['alcriterion_settings'] = this.alCriterionOptions;
         return super.toJSON();
     }
 }
@@ -835,8 +941,10 @@ class Canvas {
 
 
 class WorkflowDesigner {
-    constructor(domElement, workflow) {
+    constructor(domElement, workflow, aiModelMeta, alCriterionMeta) {
         this.domElement = domElement;
+        this.aiModelMeta = aiModelMeta;
+        this.alCriterionMeta = alCriterionMeta;
         this._setup_canvas(domElement);
         this._setup_callbacks(domElement);
 
@@ -1042,14 +1150,15 @@ class WorkflowDesigner {
     }
 
     __handle_keyup(e) {
-        if(e.keyCode === 8 || e.keyCode === 46) {
-            // backspace or delete; remove active elements
-            for(var key in this.activeElements) {
-                if(key === this.startingNode.id) continue;
-                this.activeElements[key].remove();
-                delete this.activeElements[key];
-            }
-        }
+        //TODO: this also deletes node when only a field is highlighted... need to stop propagation
+        // if(e.keyCode === 8 || e.keyCode === 46) {
+        //     // backspace or delete; remove active elements
+        //     for(var key in this.activeElements) {
+        //         if(key === this.startingNode.id) continue;
+        //         this.activeElements[key].remove();
+        //         delete this.activeElements[key];
+        //     }
+        // }
     }
 
     _setup_callbacks(domElement) {
@@ -1138,9 +1247,9 @@ class WorkflowDesigner {
             var positionSpecified = false;
         }
         if(type === 'train') {
-            var node = new TrainNode(this, nodeParams, position);
+            var node = new TrainNode(this, nodeParams, position, this.aiModelMeta);
         } else if(type === 'inference') {
-            var node = new InferenceNode(this, nodeParams, position);
+            var node = new InferenceNode(this, nodeParams, position, this.aiModelMeta, this.alCriterionMeta);
         } else if(type === 'repeater') {
             var node = new RepeaterNode(this, nodeParams, position);
         } else if(type === 'connector') {

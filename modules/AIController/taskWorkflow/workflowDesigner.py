@@ -144,6 +144,7 @@ class WorkflowDesigner:
         epoch = taskArgs['epoch']
         numEpochs = taskArgs['numEpochs']
         numWorkers = taskArgs['max_num_workers']
+        aiModelSettings = (taskArgs['ai_model_settings'] if 'ai_model_settings' in taskArgs else None)
 
         # initialize list for Celery chain tasks
         taskList = []
@@ -192,7 +193,8 @@ class WorkflowDesigner:
             trainArgs = {
                 'epoch': epoch,
                 'numEpochs': numEpochs,
-                'project': project
+                'project': project,
+                'aiModelSettings': aiModelSettings
             }
         
         else:
@@ -200,7 +202,8 @@ class WorkflowDesigner:
                 'data': taskArgs['data'],
                 'epoch': epoch,
                 'numEpochs': numEpochs,
-                'project': project
+                'project': project,
+                'aiModelSettings': aiModelSettings
             }
         
 
@@ -213,7 +216,7 @@ class WorkflowDesigner:
             taskList.append(
                 celery.chord(
                     trainTasks,
-                    aiw_int.call_average_model_states.si(**{'epoch':epoch, 'numEpochs':numEpochs, 'project':project}).set(queue='AIWorker')
+                    aiw_int.call_average_model_states.si(**{'epoch':epoch, 'numEpochs':numEpochs, 'project':project, 'aiModelSettings':aiModelSettings}).set(queue='AIWorker')
                 )
             )
         
@@ -236,6 +239,8 @@ class WorkflowDesigner:
                 maxNumImages = int(maxNumImages)
             else:
                 maxNumImages = None
+        aiModelSettings = (taskArgs['ai_model_settings'] if 'ai_model_settings' in taskArgs else None)
+        alCriterionSettings = (taskArgs['alcriterion_settings'] if 'alcriterion_settings' in taskArgs else None)
 
         # initialize list for Celery chain tasks
         taskList = []
@@ -268,7 +273,9 @@ class WorkflowDesigner:
             inferenceArgs = {
                 'epoch': epoch,
                 'numEpochs': numEpochs,
-                'project': project
+                'project': project,
+                'aiModelSettings': aiModelSettings,
+                'alCriterionSettings': alCriterionSettings
             }
         
         else:
@@ -276,7 +283,9 @@ class WorkflowDesigner:
                 'data': taskArgs['data'],
                 'epoch': epoch,
                 'numEpochs': numEpochs,
-                'project': project
+                'project': project,
+                'aiModelSettings': aiModelSettings,
+                'alCriterionSettings': alCriterionSettings
             }
 
         if numWorkers > 1:
