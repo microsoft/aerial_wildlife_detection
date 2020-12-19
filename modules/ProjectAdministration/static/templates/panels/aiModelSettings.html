@@ -5,7 +5,17 @@
 
     <div class="settings-group">
         <input type="checkbox" id="ai-model-enabled-checkbox" />
-        <label for="ai-model-enabled-checkbox">AI model enabled</label><br />
+        <label for="ai-model-enabled-checkbox">Automatic AI model training enabled</label><br />
+
+        <div style="margin-left:20px">
+            <label for="ai-model-num-images-autotrain">Number of labeled images to wait every training step:</label>
+            <input type="number" min="1" value="128" id="ai-model-num-images-autotrain" /><br />
+            <!-- TODO: replace obsolete parameters with workflow -->
+            <label for="ai-model-num-labels-image-autotrain">Only consider images with the following number (or more) of annotations:</label>
+            <input type="number" min="0" value="0" id="ai-model-num-labels-image-autotrain" /><br />
+            <label for="ai-model-max-num-images-autotrain">Maximum number of images to train on at a time (0 = unlimited):</label>
+            <input type="number" min="0" value="0" id="ai-model-max-num-images-autotrain" /><br />
+        </div>
     </div>
     
     <h3>Prediction model</h3>
@@ -68,6 +78,21 @@
 </style>
 <script src="/static/general/js/optionsEngine.js?v={{ version }}"></script>
 <script type="text/javascript">
+    // helper function
+    function getInt(value, fallback, min, max) {
+        let response = fallback;
+        if(typeof(value) === 'number') {
+            response = parseInt(value);
+            if(typeof(min) === 'number') {
+                response = Math.max(response, min);
+            }
+            if(typeof(max) === 'number') {
+                response = Math.min(response, max);
+            }
+        }
+        return response;
+    }
+
     $(document).ready(function() {
 
         // AI model metadata
@@ -75,6 +100,7 @@
         var alModelSelect = $('#al-model-class');
 
         function showModelOptionsPanel(data, onlyShowIfWarnings) {
+            if(typeof(data) !== 'object') return;
             let showPanel = false;
             var message = $('<div style="overflow-y:auto"></div>');
             if(data['valid']) {
@@ -238,6 +264,11 @@
                     // checkbox
                     $('#ai-model-enabled-checkbox').prop('checked', data['ai_model_enabled']);
 
+                    // auto-train metadata
+                    $('#ai-model-num-images-autotrain').val(getInt(data['numimages_autotrain'], 128));
+                    $('#ai-model-num-labels-image-autotrain').val(getInt(data['minnumannoperimage'], 0));
+                    $('#ai-model-max-num-images-autotrain').val(getInt(data['maxnumimages_train'], 0));
+
                     // set selected AI and AL models
                     let aiLib = data['ai_model_library'];
                     let rankerLib = data['ai_alcriterion_library'];
@@ -337,8 +368,13 @@
         });
 
         $('#ai-model-enabled-checkbox').change(function() {
-            aiModelSelect.prop('disabled', !$(this).prop('checked'));
-            alModelSelect.prop('disabled', !$(this).prop('checked'));
+            let disabled = !$(this).prop('checked');
+            aiModelSelect.prop('disabled', disabled);
+            alModelSelect.prop('disabled', disabled);
+
+            $('#ai-model-num-images-autotrain').prop('disabled', disabled);
+            $('#ai-model-num-labels-image-autotrain').prop('disabled', disabled);
+            $('#ai-model-max-num-images-autotrain').prop('disabled', disabled);
         });
 
         $('#seg-unlabeled-select').change(function() {
@@ -354,23 +390,14 @@
             let selectedModel = aiModelSelect.val();
             if(selectedModel === window.currentAImodel) {
                 window.optionsEngine.setOptions(window.currentAImodelOptions);
-                // $('#default-ai-model-options').val(JSON.stringify(window.currentAImodelOptions, null, 2));
-                // $('#default-ai-model-options').prop('placeholder', 'provide default model options here');
-                // $('#default-ai-model-options').prop('disabled', false);
             }
         });
         $('#load-ai-model-options').click(function() {
             let defaultOptions = window.availableModels['prediction'][window.currentAImodel]['defaultOptions'];
             if(defaultOptions === undefined || defaultOptions === null) {
                 window.optionsEngine.setOptions(undefined);
-                // $('#default-ai-model-options').val('');
-                // $('#default-ai-model-options').prop('placeholder', 'no options to configure');
-                // $('#default-ai-model-options').prop('disabled', true);
             } else {
                 window.optionsEngine.setOptions(defaultOptions);
-                // $('#default-ai-model-options').val(JSON.stringify(defaultOptions, null, 2));
-                // $('#default-ai-model-options').prop('placeholder', 'provide default model options here');
-                // $('#default-ai-model-options').prop('disabled', false);
             }
         });
         $('#verify-ai-model-options').click(function() {
@@ -393,7 +420,10 @@
                 'ai_model_library': modelLib,
                 'ai_alcriterion_library': rankerLib,
                 'ai_alcriterion_library': alModelSelect.val(),
-                'ai_model_settings': aiModelOptions
+                'ai_model_settings': aiModelOptions,
+                'numimages_autotrain': getInt($('#ai-model-num-images-autotrain').val(), null, 1),
+                'minnumannoperimage': getInt($('#ai-model-num-labels-image-autotrain').val(), 0, 0),
+                'maxnumimages_train': getInt($('#ai-model-max-num-images-autotrain').val(), 0, 0)
             };
             if(window.annotationType === 'segmentationMasks') {
                 settings['segmentation_ignore_unlabeled'] = ($('#seg-unlabeled-select').val() === '1');

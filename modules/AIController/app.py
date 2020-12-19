@@ -230,9 +230,10 @@ class AIController:
                     queryProject = 'project' in request.query
                     queryTasks = 'tasks' in request.query
                     queryWorkers = 'workers' in request.query
+                    forceInitWatchdog = 'force_init_watchdog' in request.query
                     status = self.middleware.check_status(
                         project,
-                        queryProject, queryTasks, queryWorkers)
+                        queryProject, queryTasks, queryWorkers, forceInitWatchdog)
                 except Exception as e:
                     status = str(e)
                 return { 'status' : status }
@@ -241,17 +242,6 @@ class AIController:
                 abort(401, 'unauthorized')
 
 
-        #TODO: REPLACED WITH GENERIC FN OF ProjectAdministration
-        # @self.app.get('/<project>/getAImodelSettings')
-        # def get_ai_model_info(project):
-        #     '''
-        #         Returns the model class and settings for the AI model
-        #         and the AL criterion.
-        #     '''
-        #     if not self.login_check(project=project, admin=True):
-        #         abort(401, 'unauthorized')
-            
-        #     return { 'settings': self.middleware.getProjectModelSettings(project) }
 
         @self.app.get('/<project>/getSavedWorkflows')
         def get_saved_workflows(project):

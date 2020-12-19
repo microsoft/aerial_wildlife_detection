@@ -338,9 +338,10 @@ class Task {
 
 class WorkflowMonitor {
 
-    constructor(domElement, showAdminFunctionalities, queryInterval_active, queryInterval_idle, queryInterval_error) {
+    constructor(domElement, showAdminFunctionalities, queryProject, queryInterval_active, queryInterval_idle, queryInterval_error) {
         this.domElement = domElement;
         this.showAdminFunctionalities = showAdminFunctionalities;
+        this.queryProject = queryProject;       // tasks are always queried
         this.queryIntervals = {
             'idle': (!isNaN(parseFloat(queryInterval_idle)) ? parseFloat(queryInterval_idle) : 10000),
             'active': (!isNaN(parseFloat(queryInterval_active)) ? parseFloat(queryInterval_active) : 1000),
@@ -376,8 +377,10 @@ class WorkflowMonitor {
 
     _query_workflows() {
         var self = this;
+        let queryURL = window.baseURL + 'status?tasks=true';
+        if(this.queryProject) queryURL += '&project=true';
         let promise = $.ajax({
-            url: window.baseURL + 'status?tasks=true',
+            url: queryURL,
             method: 'GET',
             success: function(data) {
                 let tasks = data['status']['tasks'];

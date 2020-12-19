@@ -55,7 +55,7 @@ class AIMiddleware():
 
 
     def _init_available_ai_models(self):
-        #TODO: 1. using regex to remove scripts is not failsave; 2. ugly code...
+        #TODO: 1. using regex to remove scripts is not failsafe; 2. ugly code...
         models = {
             'prediction': PREDICTION_MODELS,
             'ranking': ALCRITERION_MODELS
@@ -151,7 +151,7 @@ class AIMiddleware():
         self.aiModels = models
 
 
-    def _init_watchdog(self, project, nudge=False):
+    def _init_watchdog(self, project, nudge=False, forceInit=False):
         '''
             Launches a thread that periodically polls the database for new
             annotations. Once the required number of new annotations is reached,
@@ -174,9 +174,10 @@ class AIMiddleware():
                 WHERE shortname = %s
                 ''', (project,), 1)
 
-            if projSettings is None or not len(projSettings) or \
+            if not forceInit and \
+                (projSettings is None or not len(projSettings) or \
                 not (projSettings[0]['ai_model_enabled']) or \
-                    projSettings[0]['numimages_autotrain'] is None or projSettings[0]['numimages_autotrain'] <= 0:
+                    projSettings[0]['numimages_autotrain'] is None or projSettings[0]['numimages_autotrain'] <= 0):      #TODO: doesn't 
                 # no watchdog to be configured; set flag to avoid excessive DB queries
                 #TODO: enable on-the-fly project settings updates to this end
                 self.watchdogs[project] = False
@@ -891,7 +892,7 @@ class AIMiddleware():
 
 
 
-    def check_status(self, project, checkProject, checkTasks, checkWorkers):
+    def check_status(self, project, checkProject, checkTasks, checkWorkers, forceInitWatchdog=False):
         '''
             Queries the Celery worker results depending on the parameters specified.
             Returns their status accordingly if they exist.
@@ -906,7 +907,7 @@ class AIMiddleware():
                 # notify watchdog that users are active
                 if not project in self.watchdogs or \
                     (self.watchdogs[project] != False and self.watchdogs[project].stopped()):
-                    self._init_watchdog(project, True)
+                    self._init_watchdog(project, True, forceInitWatchdog)
                 if self.watchdogs[project] != False:
                     status['project'] = {
                         'num_annotated': self.watchdogs[project].lastCount,
