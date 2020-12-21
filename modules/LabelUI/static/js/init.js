@@ -437,7 +437,7 @@ $(document).ready(function() {
         if(window.aiModelAvailable && window.aiControllerURI != null && ! window.demoMode) {
             // window.aiWorkerHandler = new AIWorkerHandler($('.ai-worker-entries'));
             //TODO: new workflow monitor
-            window.wfMonitor = new WorkflowMonitor($('#ai-task-monitor'), window.isAdmin, window.aiModelAvailable, 1000, 10000, 10000);    //TODO: query intervals
+            window.wfMonitor = new WorkflowMonitor($('#ai-task-monitor'), $('#ai-minipanel-status'), window.isAdmin, window.aiModelAvailable, 1000, 10000, 10000);    //TODO: query intervals
             $('#ai-worker-minipanel').click(function() {
                 $('#ai-worker-panel').slideToggle();
             });

@@ -424,6 +424,13 @@ class DataHandler {
                         alert('Error: ' + response['message']);
                         return $.Deferred();
                     }
+                } else {
+                    // submitted; nudge annotation watchdog if possible
+                    try {
+                        if(window.wfMonitor instanceof WorkflowMonitor) {
+                            window.wfMonitor.queryNow(true);
+                        }
+                    } catch {}
                 }
             },
             error: function(xhr, status, error) {

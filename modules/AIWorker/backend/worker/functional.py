@@ -167,13 +167,13 @@ def _call_update_model(project, numEpochs, modelInstance, modelLibrary, dbConnec
         that is supposed to modify the model to incorporate newly added label classes.
         Returns the updated model state dict.
     '''
+    update_state = __get_message_fun(project, numEpochs=numEpochs)
+
     # abort if model does not support updating
     if not hasattr(modelInstance, 'update_model'):
         print(f'[{project} - model update] WARNING: model "{modelLibrary}" does not support modification to new label classes. Skipping...')
         update_state(state=states.SUCCESS, message=f'[{project} - model update] WARNING: model does not support modification to new label classes and has not been updated.')
         return
-
-    update_state = __get_message_fun(project, numEpochs=numEpochs)
     
     # check if new label classes were added
     queryStr = sql.SQL('''

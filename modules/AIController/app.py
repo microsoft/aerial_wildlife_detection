@@ -211,7 +211,7 @@ class AIController:
                 taskID = params['taskID']
                 self.middleware.revoke_task(project, taskID, username)
 
-                return { 'status': 0}
+                return { 'status': 0 }
 
             except Exception as e:
                 return { 'status': 1,
@@ -230,10 +230,11 @@ class AIController:
                     queryProject = 'project' in request.query
                     queryTasks = 'tasks' in request.query
                     queryWorkers = 'workers' in request.query
+                    nudgeWatchdog = 'nudge_watchdog' in request.query
                     forceInitWatchdog = 'force_init_watchdog' in request.query
                     status = self.middleware.check_status(
                         project,
-                        queryProject, queryTasks, queryWorkers, forceInitWatchdog)
+                        queryProject, queryTasks, queryWorkers, nudgeWatchdog, forceInitWatchdog)
                 except Exception as e:
                     status = str(e)
                 return { 'status' : status }

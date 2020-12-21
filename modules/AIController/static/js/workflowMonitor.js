@@ -338,8 +338,11 @@ class Task {
 
 class WorkflowMonitor {
 
-    constructor(domElement, showAdminFunctionalities, queryProject, queryInterval_active, queryInterval_idle, queryInterval_error) {
-        this.domElement = domElement;
+    constructor(domElement_main, domElement_footer, showAdminFunctionalities, queryProject,
+        queryInterval_active, queryInterval_idle, queryInterval_error) {
+            
+        this.domElement_main = domElement_main;
+        this.domElement_footer = domElement_footer;
         this.showAdminFunctionalities = showAdminFunctionalities;
         this.queryProject = queryProject;       // tasks are always queried
         this.queryIntervals = {
@@ -357,32 +360,69 @@ class WorkflowMonitor {
 
     _setup_markup() {
         var self = this;
-        this.domElement.empty();
+        this.domElement_main.empty();
         //TODO: make prettier; add triangles
         this.runningTasksContainer = $('<div class="task-list" id="running-tasks-list"></div>');
         let rwHead = $('<h3 class="task-list-header">Running workflows</h3>');
         rwHead.click(function() {
             self.runningTasksContainer.slideToggle();
         })
-        this.domElement.append(rwHead);
-        this.domElement.append(this.runningTasksContainer);
+        this.domElement_main.append(rwHead);
+        this.domElement_main.append(this.runningTasksContainer);
         this.finishedTasksContainer = $('<div class="task-list" id="finished-tasks-list"></div>');
         let fwHead = $('<h3 class="task-list-header">Finished workflows</h3>');
         fwHead.click(function() {
             self.finishedTasksContainer.slideToggle();
         })
-        this.domElement.append(fwHead);
-        this.domElement.append(this.finishedTasksContainer);
+        this.domElement_main.append(fwHead);
+        this.domElement_main.append(this.finishedTasksContainer);
+
+        // footer
+        if(typeof(this.domElement_footer) === 'object') {
+            this.domElement_footer = $(this.domElement_footer);
+            let footerContainer = $('<table class="footer-container"></table>');
+
+            // progress bar for running tasks
+            this.runningTasksPbar = new ProgressBar(true, 0, 0, false);
+            let rtDiv = $('<tr class="footer-pbar-inline"></tr>');
+            rtDiv.append($('<td class="footer-span">running tasks:</td>'));
+            let rtCell = $('<td class="footer-pbar-cell"></td>');
+            rtCell.append(this.runningTasksPbar.getMarkup());
+            this.runningTasksPlaceholder = $('<span>(none)</span>');
+            rtCell.append(this.runningTasksPlaceholder);
+            rtDiv.append(rtCell);
+            this.runningTasksCounter = $('<td></td>');
+            rtDiv.append(this.runningTasksCounter);
+            footerContainer.append(rtDiv);
+
+            // progress bar for # annotated images until auto re-training
+            this.autoTrainPbar = new ProgressBar(true, 0, 0, false);
+            let atDiv = $('<tr class="footer-pbar-inline"></tr>');
+            atDiv.append($('<td class="footer-span">images until re-train:</td>'));
+            let atCell = $('<td class="footer-pbar-cell"></td>');
+            atCell.append(this.autoTrainPbar.getMarkup());
+            this.autoTrainPlaceholder = $('<span>(auto-training disabled)</span>');
+            atCell.append(this.autoTrainPlaceholder);
+            atDiv.append(atCell);
+            this.autoTrainCounter = $('<td></td>');
+            atDiv.append(this.autoTrainCounter);
+            footerContainer.append(atDiv);
+
+            this.domElement_footer.append(footerContainer);
+        }
     }
 
-    _query_workflows() {
-        var self = this;
+    _do_query(nudgeWatchdog) {
+        let self = this;
         let queryURL = window.baseURL + 'status?tasks=true';
         if(this.queryProject) queryURL += '&project=true';
-        let promise = $.ajax({
+        if(nudgeWatchdog) queryURL += '&nudge_watchdog=true';
+        return $.ajax({
             url: queryURL,
             method: 'GET',
             success: function(data) {
+
+                // running tasks
                 let tasks = data['status']['tasks'];
                 if(tasks === undefined || tasks === null || (Array.isArray(tasks) && tasks.length === 0)) {
                     tasks = [];
@@ -421,24 +461,66 @@ class WorkflowMonitor {
                 } else {
                     self.setQueryInterval(self.queryIntervals['idle'], false);
                 }
+
+                // auto-train
+                try {
+                    if(data['status'].hasOwnProperty('project')) {
+                        let numAnnotated = data['status']['project']['num_annotated'];
+                        let numNext = data['status']['project']['num_next_training'];
+                        self._set_footer_progress('autotrain', numAnnotated, numNext, false);
+                    }
+                } catch {
+                    self._set_footer_progress('autotrain', null);
+                }
             },
             error: function(xhr, status, error) {
                 //TODO
                 console.error(error);
                 self.setQueryInterval(self.queryIntervals['error'], false);
                 return window.renewSessionRequest(xhr, function() {
-                    self._query_workflows();
+                    self._query_workflows(nudgeWatchdog);
                 });
             }
         });
+    }
 
+    _query_workflows(nudgeWatchdog) {
+        let self = this;
+        let promise = this._do_query(nudgeWatchdog);
         promise.done(function() {
             if(self.queryInterval > 0) {
                 setTimeout(function() {
-                    self._query_workflows();
+                    self._query_workflows(nudgeWatchdog);
                 }, self.queryInterval);
             }
         });
+    }
+
+    _set_footer_progress(target, current, max, indefinite) {
+        let pBar = null;
+        let placeholder = null;
+        let counterElement = null;
+        if(target === 'tasks') {
+            pBar = this.runningTasksPbar;
+            placeholder = this.runningTasksPlaceholder;
+            counterElement = this.runningTasksCounter;
+        } else {
+            pBar = this.autoTrainPbar;
+            placeholder = this.autoTrainPlaceholder;
+            counterElement = this.autoTrainPlaceholder;
+        }
+        if(typeof(pBar) !== 'object') return;
+        
+        if(typeof(current) !== 'number' && !indefinite) {
+            pBar.set(true, 0, 0, false);
+            placeholder.show();
+            counterElement.hide();
+        } else {
+            pBar.set(true, current, max, indefinite);
+            placeholder.hide();
+            counterElement.html(current + '/' + max);
+            counterElement.show();
+        }
     }
 
     setQueryInterval(interval, startQuerying) {
@@ -454,5 +536,9 @@ class WorkflowMonitor {
 
     startQuerying() {
         this.setQueryInterval('active', true);
+    }
+
+    queryNow(nudgeWatchdog) {
+        return this._do_query(nudgeWatchdog);
     }
 }

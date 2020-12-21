@@ -892,7 +892,7 @@ class AIMiddleware():
 
 
 
-    def check_status(self, project, checkProject, checkTasks, checkWorkers, forceInitWatchdog=False):
+    def check_status(self, project, checkProject, checkTasks, checkWorkers, nudgeWatchdog=False, forceInitWatchdog=False):
         '''
             Queries the Celery worker results depending on the parameters specified.
             Returns their status accordingly if they exist.
@@ -901,20 +901,23 @@ class AIMiddleware():
 
         # project status
         if checkProject:
-            if self.training:
-                status['project'] = {}
+            #TODO
+            # if project in self.training and self.training['project']:
+            #     status['project'] = {}
+            # else:
+            # notify watchdog that users are active
+            if not project in self.watchdogs or \
+                (self.watchdogs[project] != False and self.watchdogs[project].stopped()):
+                self._init_watchdog(project, True, forceInitWatchdog)
+            if self.watchdogs[project] != False:
+                if nudgeWatchdog:
+                    self.watchdogs[project].nudge()
+                status['project'] = {
+                    'num_annotated': self.watchdogs[project].lastCount,
+                    'num_next_training': self.watchdogs[project].getThreshold()
+                }
             else:
-                # notify watchdog that users are active
-                if not project in self.watchdogs or \
-                    (self.watchdogs[project] != False and self.watchdogs[project].stopped()):
-                    self._init_watchdog(project, True, forceInitWatchdog)
-                if self.watchdogs[project] != False:
-                    status['project'] = {
-                        'num_annotated': self.watchdogs[project].lastCount,
-                        'num_next_training': self.watchdogs[project].getThreshold()
-                    }
-                else:
-                    status['project'] = {}
+                status['project'] = {}
 
 
         # running tasks status
@@ -1060,7 +1063,7 @@ class AIMiddleware():
             ('maxnumimages_inference', int),
             ('segmentation_ignore_unlabeled', bool)
         ]
-        settings_new, settingsKeys_new = parse_parameters(settings, fieldNames, absent_ok=True, escape=True)
+        settings_new, settingsKeys_new = parse_parameters(settings, fieldNames, absent_ok=True, escape=True, none_ok=True)
 
         # verify settings
         addBackgroundClass = False

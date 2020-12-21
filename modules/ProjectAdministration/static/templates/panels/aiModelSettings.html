@@ -81,7 +81,7 @@
     // helper function
     function getInt(value, fallback, min, max) {
         let response = fallback;
-        if(typeof(value) === 'number') {
+        if(typeof(value) === 'number' || typeof(value) === 'string') {
             response = parseInt(value);
             if(typeof(min) === 'number') {
                 response = Math.max(response, min);
@@ -415,13 +415,15 @@
             if(typeof(aiModelOptions) === 'object') {
                 aiModelOptions = JSON.stringify(aiModelOptions);
             }
+            let numImages_autoTrain = getInt($('#ai-model-num-images-autotrain').val(), 0, 1);
+            let aiModelEnabled = ($('#ai-model-enabled-checkbox').prop('checked') && (numImages_autoTrain > 0));
             var settings = {
-                'ai_model_enabled': $('#ai-model-enabled-checkbox').prop('checked'),
+                'ai_model_enabled': aiModelEnabled,
                 'ai_model_library': modelLib,
                 'ai_alcriterion_library': rankerLib,
                 'ai_alcriterion_library': alModelSelect.val(),
                 'ai_model_settings': aiModelOptions,
-                'numimages_autotrain': getInt($('#ai-model-num-images-autotrain').val(), null, 1),
+                'numimages_autotrain': numImages_autoTrain,
                 'minnumannoperimage': getInt($('#ai-model-num-labels-image-autotrain').val(), 0, 0),
                 'maxnumimages_train': getInt($('#ai-model-max-num-images-autotrain').val(), 0, 0)
             };

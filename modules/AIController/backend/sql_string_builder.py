@@ -63,7 +63,7 @@ class SQLStringBuilder:
     def getInferenceQueryString(self, project, forceUnlabeled=True, goldenQuestionsOnly=False, limit=None):
 
         if goldenQuestionsOnly:
-            gqString = sql.SQL('AND goldenQuestion IS NOT NULL')
+            gqString = sql.SQL('AND isGoldenQuestion IS TRUE')
         else:
             gqString = sql.SQL('')
 

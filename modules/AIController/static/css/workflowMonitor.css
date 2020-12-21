@@ -65,3 +65,27 @@
     /* max-height: 300px; */
     overflow-y: auto;
 }
+
+.footer-span {
+    width: 130px;
+    text-align: right;
+    margin-right: 10px;
+}
+
+.footer-pbar-inline {
+    height: 20px;
+    display: flex;
+    flex-direction: row;
+}
+
+.footer-pbar-inline > * {
+    margin-top: auto;
+    margin-bottom: auto;
+    margin-right: 10px;
+}
+
+.footer-pbar-cell > div {
+    width: 120px;
+    display: inline-flex;
+    margin-right: 10px;
+}

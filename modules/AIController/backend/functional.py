@@ -79,7 +79,7 @@ class AIControllerWorker:
         if includeGoldenQuestions:
             gqStr = sql.SQL('')
         else:
-            gqStr = sql.SQL('AND goldenQuestion IS NULL')
+            gqStr = sql.SQL('AND isGoldenQuestion IS NOT TRUE')
 
         if minNumAnnoPerImage <= 0:
             queryStr = sql.SQL('''

@@ -18,6 +18,7 @@ class Watchdog(Thread):
 
     def __init__(self, project, config, dbConnector, middleware):
         super(Watchdog, self).__init__()
+        self.project = project
         self._stop_event = Event()
 
         self.config = config
@@ -100,6 +101,7 @@ class Watchdog(Thread):
         while True:
 
             # check if training process has already been started or auto-training is disabled
+            #TODO: replace "training" flag with project-specific one
             if self.middleware.training or self._stop_event.is_set() or self.properties['numimages_autotrain'] == -1:
                 break
 
@@ -109,7 +111,9 @@ class Watchdog(Thread):
 
             if count >= self.properties['numimages_autotrain']:
                 # threshold exceeded; initiate training process followed by inference and return
-                self.middleware.start_train_and_inference(minTimestamp='lastState',
+                #TODO: 1. replace with default workflow; 2. check beforehand whether default workflow is already running
+                self.middleware.start_train_and_inference(project=self.project,
+                    minTimestamp='lastState',
                     maxNumImages_train=self.properties['maxnumimages_train'],
                     maxNumWorkers_train=self.config.getProperty('AIController', 'maxNumWorkers_train', type=int, fallback=1),           #TODO: replace by project-specific argument
                     forceUnlabeled_inference=True,

@@ -131,7 +131,7 @@ def parse_boolean(boolean):
             return False
 
 
-def parse_parameters(data, params, absent_ok=True, escape=True):
+def parse_parameters(data, params, absent_ok=True, escape=True, none_ok=True):
     '''
         Accepts a dict (data) and list (params) and assembles
         an output list of the entries in data under keys of params, in order of
@@ -141,6 +141,7 @@ def parse_parameters(data, params, absent_ok=True, escape=True):
         Raises an Exception if typecasting fails.
         If absent_ok is True, missing keys will be skipped.
         If escape is True, sensitive characters will be escaped from strings.
+        If none_ok is True, values may be None instead of the given data type.
 
         Also returns a list of the keys that were eventually added.
     '''
@@ -160,7 +161,8 @@ def parse_parameters(data, params, absent_ok=True, escape=True):
         value = data[nextKey]
         if escape and isinstance(value, str):
             value = html.escape(value)
-        value = dataType(value)
+        if not none_ok and value is not None:
+            value = dataType(value)
         outputVals.append(value)
         outputKeys.append(nextKey)
     return outputVals, outputKeys

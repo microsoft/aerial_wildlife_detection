@@ -462,7 +462,7 @@
 
         //TODO: show summary, running processes, etc.
         let aiModelActive = true;   //TODO: flag if AI model auto-training is activated
-        window.wfMonitor = new WorkflowMonitor($('#task-status-div'), aiModelActive, true, 1000, 10000, 10000);    //TODO: query intervals
+        window.wfMonitor = new WorkflowMonitor($('#task-status-div'), null, aiModelActive, true, 1000, 10000, 10000);    //TODO: query intervals
 
 
         $('#create-workflow').on('click', function() {
