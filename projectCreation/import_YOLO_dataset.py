@@ -179,7 +179,7 @@ if __name__ == '__main__':
                 id_img=sql.Identifier(args.project, 'image')
             )
         elif args.annotation_type == 'prediction':
-            queryStr = sql.Identifier('''
+            queryStr = sql.SQL('''
             INSERT INTO {id_pred} (image, timeCreated, label, confidence, x, y, width, height, priority)
             VALUES(
                 (SELECT id FROM {id_img} WHERE filename = %s),
