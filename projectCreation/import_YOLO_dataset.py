@@ -294,6 +294,12 @@ if __name__ == '__main__':
                                 breakingTies = 1 - (confidences[-1] - confidences[-2])
                                 priority = max(maxConf, breakingTies)
                         finally:
-                            # no values provided
+                            # no values provided; replace with defaults
+                            if not isinstance(maxConf, float):
+                                maxConf = args.confidence_fallback
+                            if not isinstance(priority, float):
+                                priority = args.priority_fallback
+                                
+                            # import
                             dbConn.execute(queryStr,
                                 (imgs[baseName], currentDT, classdef[label], maxConf, bbox[0], bbox[1], bbox[2], bbox[3], priority))
