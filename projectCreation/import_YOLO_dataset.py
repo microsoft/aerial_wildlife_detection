@@ -51,7 +51,7 @@
 import os
 import argparse
 from psycopg2 import sql
-from util.helpers import VALID_IMAGE_EXTENSIONS
+from util.helpers import valid_image_extensions
 
 
 if __name__ == '__main__':
@@ -69,6 +69,10 @@ if __name__ == '__main__':
                     help='Kind of the provided annotations. One of {"annotation", "prediction"} (default: annotation)')
     parser.add_argument('--al_criterion', type=str, default='TryAll', const=1, nargs='?',
                     help='Criterion for the priority field. One of {"BreakingTies", "MaxConfidence", "TryAll"} (default: TryAll)')
+    parser.add_argument('--confidence_fallback', type=float, default=0.5, const=1, nargs='?',
+                    help='Fallback value for prediction confidence if none is provided (default: 0.5)')
+    parser.add_argument('--priority_fallback', type=float, default=0.5, const=1, nargs='?',
+                    help='Fallback value for prediction priority if none is provided (default: 0.5)')
     args = parser.parse_args()
     
 
@@ -206,7 +210,7 @@ if __name__ == '__main__':
         
         basePath, ext = os.path.splitext(i)
 
-        if ext.lower() not in VALID_IMAGE_EXTENSIONS:
+        if ext.lower() not in valid_image_extensions:
             continue
 
         baseName = basePath.replace(imgBaseDir, '')
@@ -274,8 +278,8 @@ if __name__ == '__main__':
                             
                     elif args.annotation_type == 'prediction':
                         # calculate additional properties
-                        maxConf = None
-                        priority = None
+                        maxConf = args.confidence_fallback
+                        priority = args.priority_fallback
                         try:
                             confidences = [float(t) for t in tokens[5:]]
                             confidences.sort()
