@@ -151,7 +151,7 @@ class AIMiddleware():
         self.aiModels = models
 
 
-    def _init_watchdog(self, project, nudge=False, forceInit=False):
+    def _init_watchdog(self, project, nudge=False):
         '''
             Launches a thread that periodically polls the database for new
             annotations. Once the required number of new annotations is reached,
@@ -161,34 +161,18 @@ class AIMiddleware():
         '''
         if self.passiveMode:
             return
-        if project in self.watchdogs and self.watchdogs[project] == False:
-                # project does not need a watchdog
-                #TODO: implement force re-check after e.g. settings update
-                return
-        
-        else:
-            # check if auto-training enabled
-            projSettings = self.dbConn.execute('''
-                SELECT ai_model_enabled, numImages_autoTrain
-                FROM aide_admin.project
-                WHERE shortname = %s
-                ''', (project,), 1)
 
-            if not forceInit and \
-                (projSettings is None or not len(projSettings) or \
-                not (projSettings[0]['ai_model_enabled']) or \
-                    projSettings[0]['numimages_autotrain'] is None or projSettings[0]['numimages_autotrain'] <= 0):      #TODO: doesn't 
-                # no watchdog to be configured; set flag to avoid excessive DB queries
-                #TODO: enable on-the-fly project settings updates to this end
-                self.watchdogs[project] = False
-                return
-
-        # init watchdog            
-        self.watchdogs[project] = Watchdog(project, self.config, self.dbConn, self)
-        self.watchdogs[project].start()
-
-        if nudge:
+        if project in self.watchdogs:
+            # watchdog already present
             self.watchdogs[project].nudge()
+
+        else:
+            # init watchdog            
+            self.watchdogs[project] = Watchdog(project, self.config, self.dbConn, self)
+            self.watchdogs[project].start()
+
+            if nudge:
+                self.watchdogs[project].nudge()
 
 
     def _get_num_available_workers(self):
@@ -723,7 +707,8 @@ class AIMiddleware():
     #TODO: deprecated; replace with workflow
     def start_train_and_inference(self, project, minTimestamp='lastState', minNumAnnoPerImage=0, maxNumImages_train=-1, 
                                     maxNumWorkers_train=1,
-                                    forceUnlabeled_inference=True, maxNumImages_inference=-1, maxNumWorkers_inference=1):
+                                    forceUnlabeled_inference=True, maxNumImages_inference=-1, maxNumWorkers_inference=1,
+                                    author=None):
         '''
             Submits a model training job, followed by inference.
             This is the default behavior for the automated model update, since the newly trained model should directly
@@ -758,49 +743,59 @@ class AIMiddleware():
         }
         process = self.workflowDesigner.parseWorkflow(project, workflow)
 
-        # # get training job signature
-        # process, numWorkers_train = self._get_training_job_signature(
-        #                                 project=project,
-        #                                 minTimestamp=minTimestamp,
-        #                                 minNumAnnoPerImage=minNumAnnoPerImage,
-        #                                 maxNumImages=maxNumImages_train,
-        #                                 maxNumWorkers=maxNumWorkers_train)
-
-        # submit job
-        task_id = self.messageProcessor.task_id(project)
-        job = process.apply_async(task_id=task_id,
-                            queue='AIWorker',
-                            ignore_result=False,
-                            # result_extended=True,
-                            headers={'headers':{'project':project,'submitted': str(current_time())}})
         
-        self.messageProcessor.register_job(project, job, 'workflow')    #TODO: task type; task ID for polling...
+        # launch workflow
+        task_id = self.workflowTracker.launchWorkflow(project, process, workflow, author)
 
+        return {
+            'status': 0,
+            'task_id': task_id
+        }
+
+
+        # # # get training job signature
+        # # process, numWorkers_train = self._get_training_job_signature(
+        # #                                 project=project,
+        # #                                 minTimestamp=minTimestamp,
+        # #                                 minNumAnnoPerImage=minNumAnnoPerImage,
+        # #                                 maxNumImages=maxNumImages_train,
+        # #                                 maxNumWorkers=maxNumWorkers_train)
+
+        # # submit job
         # task_id = self.messageProcessor.task_id(project)
-        # if numWorkers_train > 1:
-        #     # also append average model states job
-        #     job = process.apply_async(task_id=task_id,
+        # job = process.apply_async(task_id=task_id,
         #                     queue='AIWorker',
-        #                     # ignore_result=False,
+        #                     ignore_result=False,
         #                     # result_extended=True,
-        #                     headers={'headers':{'project':project,'type':'train','submitted': str(current_time())}},
-        #                     link=aiw_int.call_average_model_states.s(1, project))      #TODO: epoch
-        # else:
-        #     job = process.apply_async(task_id=task_id,
-        #                     queue='AIWorker',
-        #                     # ignore_result=False,
-        #                     # result_extended=True,
-        #                     headers={'headers':{'project':project,'type':'train','submitted': str(current_time())}})
+        #                     headers={'headers':{'project':project,'submitted': str(current_time())}})
+        
+        # self.messageProcessor.register_job(project, job, 'workflow')    #TODO: task type; task ID for polling...
+
+        # # task_id = self.messageProcessor.task_id(project)
+        # # if numWorkers_train > 1:
+        # #     # also append average model states job
+        # #     job = process.apply_async(task_id=task_id,
+        # #                     queue='AIWorker',
+        # #                     # ignore_result=False,
+        # #                     # result_extended=True,
+        # #                     headers={'headers':{'project':project,'type':'train','submitted': str(current_time())}},
+        # #                     link=aiw_int.call_average_model_states.s(1, project))      #TODO: epoch
+        # # else:
+        # #     job = process.apply_async(task_id=task_id,
+        # #                     queue='AIWorker',
+        # #                     # ignore_result=False,
+        # #                     # result_extended=True,
+        # #                     headers={'headers':{'project':project,'type':'train','submitted': str(current_time())}})
         
 
-        # start listener thread
-        # def chain_inference(*args):
-        #     self.training = self.messageProcessor.task_ongoing(project, 'train')
-        #     return self.start_inference(project, forceUnlabeled_inference, maxNumImages_inference, maxNumWorkers_inference)
+        # # start listener thread
+        # # def chain_inference(*args):
+        # #     self.training = self.messageProcessor.task_ongoing(project, 'train')
+        # #     return self.start_inference(project, forceUnlabeled_inference, maxNumImages_inference, maxNumWorkers_inference)
 
-        # self.messageProcessor.register_job(project, job, 'train')
+        # # self.messageProcessor.register_job(project, job, 'train')
 
-        return 'ok'
+        # return 'ok'
 
 
     
@@ -892,7 +887,7 @@ class AIMiddleware():
 
 
 
-    def check_status(self, project, checkProject, checkTasks, checkWorkers, nudgeWatchdog=False, forceInitWatchdog=False):
+    def check_status(self, project, checkProject, checkTasks, checkWorkers, nudgeWatchdog=False):
         '''
             Queries the Celery worker results depending on the parameters specified.
             Returns their status accordingly if they exist.
@@ -906,19 +901,14 @@ class AIMiddleware():
             #     status['project'] = {}
             # else:
             # notify watchdog that users are active
-            if not project in self.watchdogs or \
-                (self.watchdogs[project] != False and self.watchdogs[project].stopped()):
-                self._init_watchdog(project, True, forceInitWatchdog)
-            if self.watchdogs[project] != False:
-                if nudgeWatchdog:
-                    self.watchdogs[project].nudge()
-                status['project'] = {
-                    'num_annotated': self.watchdogs[project].lastCount,
-                    'num_next_training': self.watchdogs[project].getThreshold()
-                }
-            else:
-                status['project'] = {}
-
+            if not project in self.watchdogs:
+                self._init_watchdog(project, True)
+            if nudgeWatchdog:
+                self.watchdogs[project].nudge()
+            status['project'] = {
+                'num_annotated': self.watchdogs[project].lastCount,
+                'num_next_training': self.watchdogs[project].getThreshold()
+            }
 
         # running tasks status
         if checkTasks:

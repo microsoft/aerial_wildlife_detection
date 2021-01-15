@@ -5,14 +5,17 @@
     Launched workflows are also added to the workflow history
     table in the RDB.
 
-    2020 Benjamin Kellenberger
+    2020-21 Benjamin Kellenberger
 '''
 
 from collections.abc import Iterable
+from uuid import UUID
 import json
 from psycopg2 import sql
+from celery import current_app
 from celery.result import AsyncResult, GroupResult
 from celery.task.control import revoke
+from . import task_ids_match
 
 
 
@@ -167,7 +170,63 @@ class WorkflowTracker:
                                 from the history, if required.
                 - author:       Name of the workflow initiator. May be
                                 None if the workflow was auto-launched.
+
+            If the author is None (i.e., workflow was automatically initi-
+            ated), the function first checks whether another auto-launched
+            workflow is still running for this project. Since only one such
+            workflow is permitted to run at a time per project, it then
+            refuses to launch another one. Currently running workflows are
+            identified through the database and Celery running status, if
+            needed.
         '''
+
+        if author is None:
+            # check if workflow is already running
+            alWFrunning = {}
+            runningAutoWFs = self.dbConnector.execute(
+                sql.SQL('''
+                    SELECT id, tasks, timeFinished, succeeded, abortedBy
+                    FROM {}
+                    WHERE launchedBy IS NULL;
+                ''').format(sql.Identifier(project, 'workflowhistory')),
+                None, 'all'
+            )
+            if runningAutoWFs is not None:
+                for wf in runningAutoWFs:
+                    #TODO: fields to choose?
+                    if wf['timefinished'] is None and \
+                        wf['abortedby'] is None:
+                        alWFrunning[wf['id']] = json.loads(wf['tasks'])
+            
+            alTaskRunning = False
+            alTasks_orphaned = set()
+            activeTasks = current_app.control.inspect().active()
+            for alKey in alWFrunning.keys():
+                # auto-launched workflow running according to database; check Celery for completeness
+                for key in activeTasks:
+                    for task in activeTasks[key]:
+                        if task_ids_match(alWFrunning[alKey], task['id']):
+                            # confirmed task running
+                            alTaskRunning = True
+                            
+                        else:
+                            # task not running; flag as such in database
+                            alTasks_orphaned.add(alKey)
+
+            # clean up orphaned tasks
+            if len(alTasks_orphaned):
+                self.dbConnector.execute(sql.SQL('''
+                    UPDATE {}
+                    SET timeFinished = NOW(), succeeded = FALSE,
+                        messages = '[\'Auto-launched task did not finish\']'
+                    WHERE id IN %s;
+                ''').format(sql.Identifier(project, 'workflowhistory')),
+                tuple([UUID(i) for i in alTasks_orphaned]), None)
+
+            # abort if auto-launched task running
+            if alTaskRunning:
+                raise Exception('Auto-launched workflow already running.')
+
 
         # create entry in database
         queryStr = sql.SQL('''

@@ -1,7 +1,7 @@
 '''
     Main Bottle and routings for the AIController instance.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 import html
@@ -231,10 +231,9 @@ class AIController:
                     queryTasks = 'tasks' in request.query
                     queryWorkers = 'workers' in request.query
                     nudgeWatchdog = 'nudge_watchdog' in request.query
-                    forceInitWatchdog = 'force_init_watchdog' in request.query
                     status = self.middleware.check_status(
                         project,
-                        queryProject, queryTasks, queryWorkers, nudgeWatchdog, forceInitWatchdog)
+                        queryProject, queryTasks, queryWorkers, nudgeWatchdog)
                 except Exception as e:
                     status = str(e)
                 return { 'status' : status }
