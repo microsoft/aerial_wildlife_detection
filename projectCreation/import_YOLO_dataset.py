@@ -156,13 +156,12 @@ if __name__ == '__main__':
                 'all'
             )
             usernames = [u['username'] for u in usernames]
+            username = usernames[0]
             if args.username is not None:
-                username = usernames[0]
                 if args.username not in usernames:
                     print(f'WARNING: username "{args.username}" not found, using "{username}" instead.')
-            
-            else:
-                username = usernames[0]
+                else:
+                    username = args.username
             
             print(f'Inserting annotations under username "{username}".')
 
