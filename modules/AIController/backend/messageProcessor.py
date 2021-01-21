@@ -17,7 +17,7 @@
     If another task prematurely finishes, the "forget" method will be called
     on it. (TODO)
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 from threading import Thread
@@ -43,6 +43,9 @@ class MessageProcessor(Thread):
 
         # message store
         self.messages = {}      # dict of dicts (one dict for each project)
+
+        # worker status store
+        self.worker_status = {}
 
 
     @staticmethod
@@ -73,44 +76,15 @@ class MessageProcessor(Thread):
 
         #TODO: needed?
         if result.ready():
-            result.forget()       
+            result.forget()
 
 
-    def poll_worker_status(self, project):
-        workerStatus = {}
-        i = self.celery_app.control.inspect()
-        stats = i.stats()
-        if stats is not None and len(stats):
-            active_tasks = i.active()
-            scheduled_tasks = i.scheduled()
-            for key in stats:
-                workerName = key.replace('celery@', '')
 
-                activeTasks = []
-                if key in active_tasks:
-                    for task in active_tasks[key]:
+    def poll_worker_status(self, pollNow=False):
+        if pollNow or not len(self.worker_status):
+            self.pollNow()
+        return self.worker_status
 
-                        # append task if of correct project
-                        taskProject = task['kwargs']['project']
-                        if taskProject == project:
-                            activeTasks.append(task['id'])
-
-                        # also add active tasks to current set if not already there
-                        self.__add_worker_task(task)
-
-                workerStatus[workerName] = {
-                    'active_tasks': activeTasks,
-                    'scheduled_tasks': scheduled_tasks[key]
-                }
-            
-            #TODO
-            # # also update local cache for completed tasks
-            # if project in self.messages:    #TODO
-            #     for key in self.messages[project].keys():
-            #         if not key in active_tasks and not key in scheduled_tasks:
-            #             # task completed
-            #             self.messages[project][key]['status'] = celery.states.SUCCESS    #TODO: what if failed?
-        return workerStatus
 
 
     def __poll_tasks(self, project):
@@ -182,6 +156,7 @@ class MessageProcessor(Thread):
         return status, task_ongoing
 
 
+
     def poll_status(self, project):
         status, task_ongoing = self.__poll_tasks(project)
 
@@ -217,46 +192,9 @@ class MessageProcessor(Thread):
         if hasattr(job, 'parent'):
             subjobs = list(self.unpack_chain(job))
             subjobs.reverse()
-            # for subjob in subjobs:
-            #     if isinstance(subjob, GroupResult):
-            #         entry = {
-            #             'id': subjob.id
-            #         }
-            #         subEntries = []
-            #         for res in subjob.results:
-            #             subEntry = {
-            #                 'id': res.id,
-            #                 'status': res.status,
-            #                 'meta': ('complete' if res.status == 'SUCCESS' else res.result)       #TODO
-            #             }
-            #             subEntries.append(subEntry)
-            #         entry['subjobs'] = subEntries
-            #     else:
-            #         entry = {
-            #             'id': subjob.id,
-            #             'status': subjob.status,
-            #             'meta': ('complete' if subjob.status == 'SUCCESS' else subjob.result)       #TODO
-            #         }
             message['subjobs'] = subjobs
         self.messages[project][job.id] = message
 
-        # # look out for children (if group result)
-        # if hasattr(job, 'children') and job.children is not None:
-        #     for child in job.children:
-        #         self.messages[project][child.task_id] = {
-        #         'type': taskType,
-        #         'submitted': str(current_time()),
-        #         'status': celery.states.PENDING,
-        #         'meta': {'message':'sending job to worker'}
-        #     }
-        # elif not job.id in self.messages[project]:
-        #     # no children; add job itself
-        #     self.messages[project][job.id] = {
-        #     'type': taskType,
-        #     'submitted': str(current_time()),
-        #     'status': celery.states.PENDING,
-        #     'meta': {'message':'sending job to worker'}
-        # }
 
     
     def task_id(self, project):
@@ -294,12 +232,35 @@ class MessageProcessor(Thread):
 
 
     def pollNow(self):
+        self.worker_status = {}
+
         i = self.celery_app.control.inspect()
         stats = i.stats()
         if stats is not None and len(stats):
             active_tasks = i.active()
             if active_tasks is None:
                 return
+
+            # worker status
+            for key in stats:
+                workerName = key.replace('celery@', '')
+                activeTasks = []
+                if key in active_tasks:
+                    for task in active_tasks[key]:
+                        # append task if of correct project
+                        if 'project' in task['kwargs']:
+                            activeTasks.append({
+                                'id': task['id'],
+                                'project': task['kwargs']['project']
+                            })
+                            # # also add active tasks to current set if not already there
+                            # self.__add_worker_task(task)
+                self.worker_status[workerName] = {
+                    'active_tasks': activeTasks,
+                    # 'scheduled_tasks': scheduled_tasks[key]
+                }
+
+            # active tasks
             for key in active_tasks.keys():
                 taskList = active_tasks[key]
                 for t in taskList:
@@ -339,12 +300,6 @@ class MessageProcessor(Thread):
             if not len(self.jobs):
                 # no jobs in current queue; ping workers for other running tasks
                 self.pollNow()
-
-            if not len(self.jobs):
-                # still no jobs in queue; wait and then try again
-                while True:
-                    # check if anything in list
-                    if len(self.jobs):
-                        break
-                    else:
-                        time.sleep(10)
+            
+            else:
+                time.sleep(10)

@@ -53,7 +53,7 @@ class Watchdog(Thread):
             sql.SQL('''
                 SELECT id, tasks, timeFinished, succeeded, abortedBy
                 FROM {}
-                WHERE launchedBy IS NULL;
+                WHERE launchedBy IS NULL AND timeFinished IS NULL;
             ''').format(sql.Identifier(self.project, 'workflowhistory')),
             None, 'all'
         )
@@ -64,33 +64,36 @@ class Watchdog(Thread):
                     task['abortedby'] is None:
                     tasksRunning_db[task['id']] = json.loads(task['tasks'])
         
-        taskRunning = False
+        self.taskOngoing = False
         tasks_orphaned = set()
         activeTasks = current_app.control.inspect().active()
         for dbKey in tasksRunning_db.keys():
             # auto-launched workflow running according to database; check Celery for completeness
-            for key in activeTasks:
-                for task in activeTasks[key]:
-                    if task_ids_match(tasksRunning_db[dbKey], task['id']):
-                        # confirmed task running
-                        taskRunning = True
-                    else:
-                        # task not running; flag as such in database
-                        tasks_orphaned.add(alKey)
-        
-        self.taskOngoing = taskRunning
-        
+            if not len(activeTasks):
+                # no task is running; flag all in DB as "orphaned"
+                tasks_orphaned.add(dbKey)
+            
+            else:
+                for key in activeTasks:
+                    for task in activeTasks[key]:
+                        if task_ids_match(tasksRunning_db[dbKey], task['id']):
+                            # confirmed task running
+                            self.taskOngoing = True
+                        else:
+                            # task not running; flag as such in database
+                            tasks_orphaned.add(dbKey)
+                
         # clean up orphaned tasks
         if len(tasks_orphaned):
             self.dbConnector.execute(sql.SQL('''
                 UPDATE {}
                 SET timeFinished = NOW(), succeeded = FALSE,
-                    messages = '[\'Auto-launched task did not finish\']'
+                    messages = 'Auto-launched task did not finish'
                 WHERE id IN %s;
             ''').format(sql.Identifier(self.project, 'workflowhistory')),
-            tuple([UUID(i) for i in tasks_orphaned]), None)
+                (tuple((t,) for t in tasks_orphaned),), None)
 
-        return taskRunning
+        return self.taskOngoing
 
 
     

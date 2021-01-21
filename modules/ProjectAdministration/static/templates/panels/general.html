@@ -36,9 +36,9 @@
     </div>
 
     <!-- Save button -->
-    <div>
+    <!-- <div>
         <button id="save-button" class="btn btn-primary" style="float:right">Save</button>
-    </div>
+    </div> -->
 </div>
 <script type="text/javascript">
 
@@ -119,6 +119,10 @@
         });
     }
 
+    window.save = function() {
+        return saveValues();
+    }
+
     function loadDataManagementSettings() {
         return $.ajax({
             url: window.baseURL + 'getPlatformInfo',
@@ -172,13 +176,13 @@
                 }
             });
 
-            $('#save-button').on('click', function() {
-                window.showLoadingOverlay(true);
-                var promise = saveValues();
-                promise = promise.done(function() {
-                    window.showLoadingOverlay(false);
-                });
-            });
+            // $('#save-button').on('click', function() {
+            //     window.showLoadingOverlay(true);
+            //     var promise = saveValues();
+            //     promise = promise.done(function() {
+            //         window.showLoadingOverlay(false);
+            //     });
+            // });
             
             window.showLoadingOverlay(false);
         });

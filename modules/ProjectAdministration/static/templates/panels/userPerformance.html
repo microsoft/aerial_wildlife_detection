@@ -117,6 +117,8 @@
 <script src="/static/statistics/libs/chartjs/Chart.min.js?v={{ version }}"></script>
 <script type="text/javascript">
 
+    window.save = undefined;
+
     function getProjectSettings() {
         return $.ajax({
             url: window.baseURL + 'getProjectSettings',

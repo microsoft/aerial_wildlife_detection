@@ -129,6 +129,8 @@
 <script src="/static/dataAdmin/js/taskPolling.js?v={{ version }}"></script>
 <script type="text/javascript">
 
+    window.save = undefined;
+
     $(document).ready(function() {
         if(typeof(ProgressBar) === 'undefined') {
             $.getScript('/static/general/js/progressbar.js');

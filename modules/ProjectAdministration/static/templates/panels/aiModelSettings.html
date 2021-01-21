@@ -64,9 +64,9 @@
         <p id="seg-unlabeled-info-text" style="font-style:italic;font-size:10pt;margin-left:20px;"></p>
     </div>
 
-    <div>
+    <!-- <div>
         <button id="save-button" class="btn btn-primary" style="float:right">Save</button>
-    </div>
+    </div> -->
 </div>
 <link rel="stylesheet" href="/static/general/css/optionsEngine.css?v={{ version }}" />
 <style>
@@ -93,96 +93,234 @@
         return response;
     }
 
-    $(document).ready(function() {
+    // AI model metadata
+    let aiModelSelect = $('#ai-model-class');
+    let alModelSelect = $('#al-model-class');
 
-        // AI model metadata
-        var aiModelSelect = $('#ai-model-class');
-        var alModelSelect = $('#al-model-class');
 
-        function showModelOptionsPanel(data, onlyShowIfWarnings) {
-            if(typeof(data) !== 'object') return;
-            let showPanel = false;
-            var message = $('<div style="overflow-y:auto"></div>');
-            if(data['valid']) {
-                message.append($('<div>The provided options appear to be valid.</div>'));
-            } else {
-                message.append($('<div>Errors occurred during options verification. Options will not be saved.</div>'));
-            }
-            if(data.hasOwnProperty('options') && data['options'] !== undefined && data['options'] !== null) {
-                // updated options provided, replace in textarea and notify user
-                window.optionsEngine.setOptions(data['options']);
-
-                // $('#default-ai-model-options').val(data['options']);
-                message.append($('<div style="font-style:italic">' +
-                    'Provided options have been auto-completed or updated by the AI model; see updated contents in text area.' +
-                    'New options will not be saved until you click the "Save" button.</div>'));
-            }
-            if(data.hasOwnProperty('warnings') && data['warnings'].length>0) {
-                showPanel = true;
-                var warnings = $('<ul style="color:orange;margin:10px"></ul>');
-                for(var w=0; w<data['warnings'].length; w++) {
-                    warnings.append($('<li>'+data['warnings'][w]+'</li>'));
-                }
-                message.append($('<div>Warnings:</div>'));
-                message.append(warnings);
-            }
-            if(data.hasOwnProperty('errors') && data['errors'].length>0) {
-                showPanel = true;
-                var errors = $('<ul style="color:red;margin:10px"></ul>');
-                for(var e=0; e<data['errors'].length; e++) {
-                    errors.append($('<li>'+data['errors'][e]+'</li>'));
-                }
-                message.append($('<div>Errors:</div>'));
-                message.append(errors);
-            }
-            let closeButton = $('<button class="btn btn-primary">Close</button>');
-            closeButton.click(function() {
-                window.showOverlay(null);
-            });
-            message.append(closeButton);
-            
-            if(!onlyShowIfWarnings || showPanel) {
-                window.showOverlay(message, true, false);
-            }
+    function showModelOptionsPanel(data, onlyShowIfWarnings) {
+        if(typeof(data) !== 'object') return;
+        let showPanel = false;
+        var message = $('<div style="overflow-y:auto"></div>');
+        if(data['valid']) {
+            message.append($('<div>The provided options appear to be valid.</div>'));
+        } else {
+            message.append($('<div>Errors occurred during options verification. Options will not be saved.</div>'));
         }
+        if(data.hasOwnProperty('options') && data['options'] !== undefined && data['options'] !== null) {
+            // updated options provided, replace in textarea and notify user
+            window.optionsEngine.setOptions(data['options']);
 
+            // $('#default-ai-model-options').val(data['options']);
+            message.append($('<div style="font-style:italic">' +
+                'Provided options have been auto-completed or updated by the AI model; see updated contents in text area.' +
+                'New options will not be saved until you click the "Save" button.</div>'));
+        }
+        if(data.hasOwnProperty('warnings') && data['warnings'].length>0) {
+            showPanel = true;
+            var warnings = $('<ul style="color:orange;margin:10px"></ul>');
+            for(var w=0; w<data['warnings'].length; w++) {
+                warnings.append($('<li>'+data['warnings'][w]+'</li>'));
+            }
+            message.append($('<div>Warnings:</div>'));
+            message.append(warnings);
+        }
+        if(data.hasOwnProperty('errors') && data['errors'].length>0) {
+            showPanel = true;
+            var errors = $('<ul style="color:red;margin:10px"></ul>');
+            for(var e=0; e<data['errors'].length; e++) {
+                errors.append($('<li>'+data['errors'][e]+'</li>'));
+            }
+            message.append($('<div>Errors:</div>'));
+            message.append(errors);
+        }
+        let closeButton = $('<button class="btn btn-primary">Close</button>');
+        closeButton.click(function() {
+            window.showOverlay(null);
+        });
+        message.append(closeButton);
         
-        function verifyModelOptions(type) {
-            if(type === 'model') {
-                // var options = $('#default-ai-model-options').val();
+        if(!onlyShowIfWarnings || showPanel) {
+            window.showOverlay(message, true, false);
+        }
+    }
 
-                let options = window.optionsEngine.getOptions();
-                if(typeof(options) === 'object') {
-                    options = JSON.stringify(options);
+    
+    function verifyModelOptions(type) {
+        if(type === 'model') {
+            // var options = $('#default-ai-model-options').val();
+
+            let options = window.optionsEngine.getOptions();
+            if(typeof(options) === 'object') {
+                options = JSON.stringify(options);
+            }
+            
+            // submit to server to check if model accepts it
+            return $.ajax({
+                url: window.baseURL + 'verifyAImodelOptions',
+                method: 'POST',
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+                data: JSON.stringify({
+                    ai_model_library: aiModelSelect.val(),
+                    options: options
+                }),
+                success: function(data) {
+                    data = data['status'];
+                    showModelOptionsPanel(data);
+                },
+                error: function(xhr, status, error) {
+                    //TODO
+                    alert('Options could not be verified (message: "'+error+'").');
+                    return false;
+                }
+            });
+
+        } else if(type === 'ranker') {
+            //TODO: not yet implemented
+            return false;
+        }
+    }
+
+    function loadSettings() {
+        return $.ajax({
+            url: window.baseURL + 'getConfig',
+            method: 'POST',
+            data: JSON.stringify({
+                'parameters': [
+                    'ai_model_enabled',
+                    'ai_model_library',
+                    'ai_model_settings',
+                    'ai_alcriterion_library',
+                    'ai_alcriterion_settings',
+                    'numimages_autotrain',
+                    'minnumannoperimage',
+                    'maxnumimages_train',
+                    'segmentation_ignore_unlabeled'
+                ]
+            }),
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            success: function(data) {
+                data = data['settings'];
+
+                // checkbox
+                $('#ai-model-enabled-checkbox').prop('checked', data['ai_model_enabled']);
+
+                // auto-train metadata
+                $('#ai-model-num-images-autotrain').val(getInt(data['numimages_autotrain'], 128));
+                $('#ai-model-num-labels-image-autotrain').val(getInt(data['minnumannoperimage'], 0));
+                $('#ai-model-max-num-images-autotrain').val(getInt(data['maxnumimages_train'], 0));
+
+                // set selected AI and AL models
+                let aiLib = data['ai_model_library'];
+                let rankerLib = data['ai_alcriterion_library'];
+                if(aiLib === null || aiLib === undefined || !(window.availableModels['prediction'].hasOwnProperty(aiLib))) {
+                    window.currentAImodel = undefined;
+                    aiModelSelect.val('unset');
+                    $('#ai-model-class-author').html('');
+                    $('#ai-model-class-descr').html('');
+                } else {
+                    window.currentAImodel = data['ai_model_library'];
+                    aiModelSelect.val(data['ai_model_library']);
+                    $('#ai-model-class-author').html(window.availableModels['prediction'][data['ai_model_library']]['author']);
+                    $('#ai-model-class-descr').html(window.availableModels['prediction'][data['ai_model_library']]['description']);
+                }
+                if(rankerLib === null || rankerLib === undefined || !(window.availableModels['ranking'].hasOwnProperty(rankerLib))) {
+                    window.currentRankerModel = undefined;
+                    alModelSelect.val('unset');
+                    $('#al-model-class-author').html('');
+                    $('#al-model-class-descr').html('');
+                } else {
+                    window.currentRankerModel = data['ai_alcriterion_library'];
+                    alModelSelect.val(data['ai_alcriterion_library']);
+                    $('#al-model-class-author').html(window.availableModels['ranking'][data['ai_alcriterion_library']]['author']);
+                    $('#al-model-class-descr').html(window.availableModels['ranking'][data['ai_alcriterion_library']]['description']);
                 }
                 
-                // submit to server to check if model accepts it
-                return $.ajax({
-                    url: window.baseURL + 'verifyAImodelOptions',
-                    method: 'POST',
-                    contentType: 'application/json; charset=utf-8',
-                    dataType: 'json',
-                    data: JSON.stringify({
-                        ai_model_library: aiModelSelect.val(),
-                        options: options
-                    }),
-                    success: function(data) {
-                        data = data['status'];
-                        showModelOptionsPanel(data);
-                    },
-                    error: function(xhr, status, error) {
-                        //TODO
-                        alert('Options could not be verified (message: "'+error+'").');
-                        return false;
+                // store selected AI and AL model options
+                window.currentAImodelOptions = data['ai_model_settings'];
+                if(window.currentAImodelOptions === undefined || window.currentAImodelOptions === null) {
+                    // nothing saved; load defaults instead
+                    try {
+                        window.currentAImodelOptions = window.availableModels['prediction'][window.currentAImodel]['defaultOptions'];
+                    } catch {
+                        window.currentAImodelOptions = null;
                     }
-                });
+                }
+                window.currentALmodelOptions = data['ai_alcriterion_settings'];
+                if(window.currentALmodelOptions === undefined || window.currentALmodelOptions === null) {
+                    // nothing saved; load defaults instead
+                    try {
+                        window.currentALmodelOptions = window.availableModels['ranking'][window.currentRrankerModel]['defaultOptions'];
+                    } catch {
+                        window.currentALmodelOptions = null;
+                    }
+                }
 
-            } else if(type === 'ranker') {
-                //TODO: not yet implemented
-                return false;
+                // for segmentation masks only: how to treat unlabeled areas
+                if(window.annotationType === 'segmentationMasks') {
+                    let selectedOption = (data['segmentation_ignore_unlabeled'] ? '1' : '0');
+                    $('#seg-unlabeled-select').val(selectedOption);
+                    $('#seg-unlabeled-select').trigger('change');
+                    $('#seg-unlabeled-box').show();
+                }
+
+                aiModelSelect.trigger('change');
             }
-        }
+        });
+    }
 
+    window.save = function() {
+
+        // assemble config parameters and submit
+        let modelLib = (aiModelSelect.val() === 'unset'? null : aiModelSelect.val());
+        let rankerLib = (alModelSelect.val() === 'unset'? null : alModelSelect.val());
+        let aiModelOptions = window.optionsEngine.getOptions();
+        if(typeof(aiModelOptions) === 'object') {
+            aiModelOptions = JSON.stringify(aiModelOptions);
+        }
+        let numImages_autoTrain = getInt($('#ai-model-num-images-autotrain').val(), 0, 1);
+        let aiModelEnabled = ($('#ai-model-enabled-checkbox').prop('checked') && (numImages_autoTrain > 0));
+        var settings = {
+            'ai_model_enabled': aiModelEnabled,
+            'ai_model_library': modelLib,
+            'ai_alcriterion_library': rankerLib,
+            'ai_alcriterion_library': alModelSelect.val(),
+            'ai_model_settings': aiModelOptions,
+            'numimages_autotrain': numImages_autoTrain,
+            'minnumannoperimage': getInt($('#ai-model-num-labels-image-autotrain').val(), 0, 0),
+            'maxnumimages_train': getInt($('#ai-model-max-num-images-autotrain').val(), 0, 0)
+        };
+        if(window.annotationType === 'segmentationMasks') {
+            settings['segmentation_ignore_unlabeled'] = ($('#seg-unlabeled-select').val() === '1');
+        }
+        var p = $.ajax({
+            url: window.baseURL + 'saveAImodelSettings',
+            method: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            data: JSON.stringify({'settings': settings}),
+            success: function(data) {
+                // display errors and warnings about options
+                try {
+                    showModelOptionsPanel(data['message']['ai_model_settings_status'], true);
+                } catch(err) {
+                    console.error(err)
+                }
+            },
+            error: function(data) {
+                console.error(data);
+            }
+        });
+        return p.then(function() {
+            return loadSettings();
+        });
+    }
+
+
+
+    $(document).ready(function() {
 
         //TODO: flag for case when AIController is not available...
         var promise = $.ajax({
@@ -238,95 +376,6 @@
                 }
             });
         });
-
-        function loadSettings() {
-            return $.ajax({
-                url: window.baseURL + 'getConfig',
-                method: 'POST',
-                data: JSON.stringify({
-                    'parameters': [
-                        'ai_model_enabled',
-                        'ai_model_library',
-                        'ai_model_settings',
-                        'ai_alcriterion_library',
-                        'ai_alcriterion_settings',
-                        'numimages_autotrain',
-                        'minnumannoperimage',
-                        'maxnumimages_train',
-                        'segmentation_ignore_unlabeled'
-                    ]
-                }),
-                contentType: 'application/json; charset=utf-8',
-                dataType: 'json',
-                success: function(data) {
-                    data = data['settings'];
-
-                    // checkbox
-                    $('#ai-model-enabled-checkbox').prop('checked', data['ai_model_enabled']);
-
-                    // auto-train metadata
-                    $('#ai-model-num-images-autotrain').val(getInt(data['numimages_autotrain'], 128));
-                    $('#ai-model-num-labels-image-autotrain').val(getInt(data['minnumannoperimage'], 0));
-                    $('#ai-model-max-num-images-autotrain').val(getInt(data['maxnumimages_train'], 0));
-
-                    // set selected AI and AL models
-                    let aiLib = data['ai_model_library'];
-                    let rankerLib = data['ai_alcriterion_library'];
-                    if(aiLib === null || aiLib === undefined || !(window.availableModels['prediction'].hasOwnProperty(aiLib))) {
-                        window.currentAImodel = undefined;
-                        aiModelSelect.val('unset');
-                        $('#ai-model-class-author').html('');
-                        $('#ai-model-class-descr').html('');
-                    } else {
-                        window.currentAImodel = data['ai_model_library'];
-                        aiModelSelect.val(data['ai_model_library']);
-                        $('#ai-model-class-author').html(window.availableModels['prediction'][data['ai_model_library']]['author']);
-                        $('#ai-model-class-descr').html(window.availableModels['prediction'][data['ai_model_library']]['description']);
-                    }
-                    if(rankerLib === null || rankerLib === undefined || !(window.availableModels['ranking'].hasOwnProperty(rankerLib))) {
-                        window.currentRankerModel = undefined;
-                        alModelSelect.val('unset');
-                        $('#al-model-class-author').html('');
-                        $('#al-model-class-descr').html('');
-                    } else {
-                        window.currentRankerModel = data['ai_alcriterion_library'];
-                        alModelSelect.val(data['ai_alcriterion_library']);
-                        $('#al-model-class-author').html(window.availableModels['ranking'][data['ai_alcriterion_library']]['author']);
-                        $('#al-model-class-descr').html(window.availableModels['ranking'][data['ai_alcriterion_library']]['description']);
-                    }
-                    
-                    // store selected AI and AL model options
-                    window.currentAImodelOptions = data['ai_model_settings'];
-                    if(window.currentAImodelOptions === undefined || window.currentAImodelOptions === null) {
-                        // nothing saved; load defaults instead
-                        try {
-                            window.currentAImodelOptions = window.availableModels['prediction'][window.currentAImodel]['defaultOptions'];
-                        } catch {
-                            window.currentAImodelOptions = null;
-                        }
-                    }
-                    window.currentALmodelOptions = data['ai_alcriterion_settings'];
-                    if(window.currentALmodelOptions === undefined || window.currentALmodelOptions === null) {
-                        // nothing saved; load defaults instead
-                        try {
-                            window.currentALmodelOptions = window.availableModels['ranking'][window.currentRrankerModel]['defaultOptions'];
-                        } catch {
-                            window.currentALmodelOptions = null;
-                        }
-                    }
-
-                    // for segmentation masks only: how to treat unlabeled areas
-                    if(window.annotationType === 'segmentationMasks') {
-                        let selectedOption = (data['segmentation_ignore_unlabeled'] ? '1' : '0');
-                        $('#seg-unlabeled-select').val(selectedOption);
-                        $('#seg-unlabeled-select').trigger('change');
-                        $('#seg-unlabeled-box').show();
-                    }
-
-                    aiModelSelect.trigger('change');
-                }
-            });
-        }
 
         promise = promise.then(function() {
             return loadSettings();
@@ -402,58 +451,6 @@
         });
         $('#verify-ai-model-options').click(function() {
             verifyModelOptions('model');
-        });
-
-
-        $('#save-button').click(function() {
-            window.showLoadingOverlay(true);
-
-            // assemble config parameters and submit
-            let modelLib = (aiModelSelect.val() === 'unset'? null : aiModelSelect.val());
-            let rankerLib = (alModelSelect.val() === 'unset'? null : alModelSelect.val());
-            let aiModelOptions = window.optionsEngine.getOptions();
-            if(typeof(aiModelOptions) === 'object') {
-                aiModelOptions = JSON.stringify(aiModelOptions);
-            }
-            let numImages_autoTrain = getInt($('#ai-model-num-images-autotrain').val(), 0, 1);
-            let aiModelEnabled = ($('#ai-model-enabled-checkbox').prop('checked') && (numImages_autoTrain > 0));
-            var settings = {
-                'ai_model_enabled': aiModelEnabled,
-                'ai_model_library': modelLib,
-                'ai_alcriterion_library': rankerLib,
-                'ai_alcriterion_library': alModelSelect.val(),
-                'ai_model_settings': aiModelOptions,
-                'numimages_autotrain': numImages_autoTrain,
-                'minnumannoperimage': getInt($('#ai-model-num-labels-image-autotrain').val(), 0, 0),
-                'maxnumimages_train': getInt($('#ai-model-max-num-images-autotrain').val(), 0, 0)
-            };
-            if(window.annotationType === 'segmentationMasks') {
-                settings['segmentation_ignore_unlabeled'] = ($('#seg-unlabeled-select').val() === '1');
-            }
-            var p = $.ajax({
-                url: window.baseURL + 'saveAImodelSettings',
-                method: 'POST',
-                contentType: 'application/json; charset=utf-8',
-                dataType: 'json',
-                data: JSON.stringify({'settings': settings}),
-                success: function(data) {
-                    // display errors and warnings about options
-                    try {
-                        showModelOptionsPanel(data['message']['ai_model_settings_status'], true);
-                    } catch(err) {
-                        console.error(err)
-                    }
-                },
-                error: function(data) {
-                    console.error(data);
-                }
-            });
-            p = p.then(function() {
-                return loadSettings();
-            });
-            p.then(function() {
-                window.showLoadingOverlay(false);
-            });
         });
 
         promise.then(function() {

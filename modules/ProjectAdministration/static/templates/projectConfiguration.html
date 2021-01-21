@@ -45,6 +45,20 @@
                         $('#'+panelID).toggleClass('active', true);
                         $('#panel-name').html($('#'+panelID).html());
 
+                        // show or hide save button
+                        if(typeof(window.save) !== 'undefined') {
+                            $('#save-button').on('click', function() {
+                                window.showLoadingOverlay(true);
+                                window.save().then(function() {
+                                    window.showLoadingOverlay(false);
+                                });
+                            });
+                            $('#save-button').show();
+                        } else {
+                            $('#save-button').hide();
+                            $('#save-button').off();
+                        }
+
                         // update URL and page title
                         document.title = 'AIDE: ' + window.project + ' - ' + panelID;
                         if(renameURL)
@@ -210,7 +224,12 @@
                     <div class="grad-border-v" style="order:2;flex-shrink:0;"></div>
 
                     <div class="content-panel">
-                        <div id="contents" style="height:100%"></div>
+                        <div id="contents"></div>
+
+                        <!-- general save button for settings -->
+                        <div>
+                            <button id="save-button" class="btn btn-primary" style="display:none;float:right">Save</button>
+                        </div>
                     </div>
                 </div>
             </div>

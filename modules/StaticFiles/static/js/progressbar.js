@@ -1,5 +1,5 @@
 /*
- *  2020 Benjamin Kellenberger
+ *  2020-21 Benjamin Kellenberger
  */
 class ProgressBar {
     constructor(visible, value, max, indefinite) {
@@ -15,7 +15,17 @@ class ProgressBar {
 
     set(visible, value, max, indefinite) {
         if(visible !== undefined) {
-            this.markup.css('visibility', (visible? 'visible' : 'hidden'));
+            if(!visible) {
+                this.displayProp = this.markup.css('display');
+                this.markup.css('display', 'none');
+            } else {
+                if(typeof(this.displayProp) === 'string') {
+                    this.markup.css('display', this.displayProp);
+                } else {
+                    this.markup.show();
+                }
+            }
+            // this.markup.css('visibility', (visible? 'visible' : 'hidden'));
         }
         if(max !== undefined) {
             this.max = max;

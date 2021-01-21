@@ -70,9 +70,9 @@
         </p>
     </div>
 
-    <div>
+    <!-- <div>
         <button id="lc-save-button" class="btn btn-primary" style="float:right">Save</button>
-    </div>
+    </div> -->
 </div>
 <link rel="stylesheet" href="/static/projectAdmin/libs/jqtree/jqtree_custom.css?v={{ version }}" />
 <style>
@@ -654,8 +654,7 @@
         onNodeSelect(window.lcTree.tree('getSelectedNode'));
     }
 
-    function save() {
-        window.showLoadingOverlay(true);
+    window.save = function() {
         var classdef = window.lcTree.tree('toJson');
         var removeMissing = $('#remove-missing-checkbox').prop('checked');
         var promise = $.ajax({
@@ -688,23 +687,29 @@
             statusCode: {
                 401: function(xhr) {
                     return window.renewSessionRequest(xhr, function() {
-                        return save();
+                        return window.save();
                     });
                 }
             }
         });
 
         // reload class definition (TODO: not executed if error; check promise)
-        promise.done(function() {
-            loadLabelClasses().done(function() {
-                window.showLoadingOverlay(false);
-            });
-        }).fail(function() {
-            //TODO
-            window.showLoadingOverlay(false);
-        });
-        return $.Deferred().promise();
+        return promise.done(function() {
+            loadLabelClasses()
+            // .done(function() {
+            //     window.showLoadingOverlay(false);
+            // });
+        })
+        // .fail(function() {
+        //     //TODO
+        //     window.showLoadingOverlay(false);
+        // });
+        // return $.Deferred().promise();
     }
+
+    // window.save = function() {
+    //     return save();
+    // }
 
     $(document).ready(function() {
         var promise = loadLabelClasses();
@@ -726,9 +731,9 @@
             $('#classdef-file-select').change(function() {
                 parseLocalTextFile();
             });
-            $('#lc-save-button').click(function() {
-                save();
-            });
+            // $('#lc-save-button').click(function() {
+            //     save();
+            // });
 
             window.showLoadingOverlay(false);
         });

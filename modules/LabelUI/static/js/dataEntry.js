@@ -1,7 +1,7 @@
 /*
     Definition of a data entry, as shown on a grid on the screen.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
  */
 
 class AbstractDataEntry {
@@ -1458,10 +1458,12 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
     }
 
     removeAllAnnotations() {
-        this.segMap.clearAll();
-        this.render();
+        if(typeof(this.segMap) === 'object') {
+            this.segMap.clearAll();
+            this.render();
 
-        window.dataHandler.updatePresentClasses();
+            window.dataHandler.updatePresentClasses();
+        }
     }
 
     setLabel(label) {

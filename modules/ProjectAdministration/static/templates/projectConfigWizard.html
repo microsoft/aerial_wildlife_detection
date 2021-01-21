@@ -29,13 +29,16 @@
             }
 
             #prev-next-navigation-controls {
-                width: 90vh;
+                margin: 0 auto;
+                width: 90vw;
                 text-align: center;
             }
         </style>
         <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
         <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+        <script type="text/javascript" src="/static/general/js/messaging.js?v={{ version }}"></script>
+        <script src="/static/general/js/overlay.js?v={{ version }}"></script>
         <!-- TODO: ugly solution; these are only needed in "userInterface.html", but should not be loaded twice: -->
         <script type="text/javascript" src="/static/interface/js/labelClassHandler.js?v={{ version }}"></script>
         <script type="text/javascript" src="/static/interface/js/dataEntry.js?v={{ version }}"></script>
@@ -47,7 +50,24 @@
 
             window.baseURL = '/{{ projectShortname }}/';
             window.projectShortname = '{{ projectShortname }}';
-            selectedPanel = null;
+
+            $.get(window.baseURL + 'getProjectSettings', function(data) {        //TODO: promise?
+                window.dataServerURI = data['settings']['dataServerURI'];
+            });
+
+            const PANEL_IDS = {
+                'labelClasses':0,
+                'dataUpload':1,
+                'modelMarketplace':2,
+                'userInterface':3
+            }
+            const PANEL_IDS_INV = {
+                0:'labelClasses',
+                1:'dataUpload',
+                2:'modelMarketplace',
+                3:'userInterface'
+            }
+            selectedPanelNumber = null;
 
             function parseURLparameter(name) {
                 let url = new URL(window.location.href);
@@ -61,7 +81,7 @@
                     url: 'config/panels/' + panelID,
                     success: function(data) {
 
-                        selectedPanel = panelID;
+                        selectedPanelNumber = PANEL_IDS[panelID];
                         contentPane.empty();
                         contentPane.append(data);
 
@@ -93,21 +113,54 @@
                 });
             }
 
+            function saveCurrentPanelSettings() {
+                if(typeof(window.save) === 'function') {
+                    window.showLoadingOverlay(true);
+                    return window.save().then(function() {
+                        window.showLoadingOverlay(false);
+                        return $.Deferred().resolve().promise();
+                    });
+                } else {
+                    return $.Deferred().resolve().promise();
+                }
+            }
+
             $(document).ready(function() {
 
-                if(selectedPanel === null) {
-                    selectedPanel = parseURLparameter('t');
-                    if(selectedPanel === null) selectedPanel = 'labelClasses';  // default
-                    setPanel(selectedPanel);
+                if(selectedPanelNumber === null) {
+                    let selectedPanelID = parseURLparameter('t');
+                    if(selectedPanelID === null) selectedPanelID = 'labelClasses';  // default
+                    setPanel(selectedPanelID);
                 }
 
                 $('#setup-navigation-controls').find('button').each(function() {
                     $(this).on('click', function() {
                         let id = $(this).attr('id');
                         if(typeof(id) === 'string') {
-                            setPanel(id);
+                            saveCurrentPanelSettings().then(function() {
+                                setPanel(id);
+                            });
                         }
                     });
+                });
+
+                $('#previous-field').on('click', function() {
+                    if(selectedPanelNumber > 0) {
+                        saveCurrentPanelSettings().then(function() {
+                            setPanel(PANEL_IDS_INV[selectedPanelNumber-1]);
+                        });
+                    }
+                });
+                $('#next-field').on('click', function() {
+                    if(selectedPanelNumber < Object.keys(PANEL_IDS).length) {
+                        saveCurrentPanelSettings().then(function() {
+                            setPanel(PANEL_IDS_INV[selectedPanelNumber+1]);
+                        });
+                    } else {
+                        saveCurrentPanelSettings().then(function() {
+                            window.location.href = 'configuration';
+                        });
+                    }
                 });
 
                 window.showLoadingOverlay(false);
@@ -139,8 +192,8 @@
                 <nav class="navbar navbar-expand-lg navbar-light bg-dark border-bottom">
                     <ul class="nav navbar-nav">
                         <li class="nav-item header-text">
-                            <div class="project-path"><a href="/">Projects</a> / <a href="/{{ projectShortname }}">{{ projectTitle }}</a> / <a href="/{{ projectShortname }}/setup">setup</a></div>
-                            <h1>Setup</h1>
+                            <div class="project-path"><a href="/">Projects</a> / <a href="/{{ projectShortname }}">{{ projectShortname }}</a> / <a href="/{{ projectShortname }}/setup">setup</a></div>
+                            <h1>{{ projectTitle }}: Setup</h1>
                         </li>
                     </ul>
                     <ul class="nav navbar-nav ml-auto">
@@ -158,7 +211,7 @@
 
                 <!-- setup navigation -->
                 <div id="setup-navigation-controls">
-                    <button class="setup-navigation-step btn btn-outline-secondary" disabled>
+                    <button class="setup-navigation-step btn btn-outline-secondary" disabled="disabled">
                         1 – New Project
                     </button>
                     <button id="labelClasses" class="setup-navigation-step btn btn-outline-secondary">

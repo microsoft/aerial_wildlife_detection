@@ -55,11 +55,17 @@
 .content-panel {
     order: 3;
     flex-grow: 1;
-    overflow-y: auto;
+    /* overflow-y: auto; */
     height: calc(100vh - 150px);
     color: white;
     padding-top: 30px;
     padding-right: 30px;
+}
+
+#contents {
+    height: calc(100% - 50px);
+    margin-bottom: 10px;
+    overflow-y: auto;
 }
 
 .settings-container {

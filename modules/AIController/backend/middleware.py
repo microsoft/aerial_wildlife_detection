@@ -1,7 +1,7 @@
 '''
     Middleware for AIController: handles requests and updates to and from the database.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 from datetime import datetime
@@ -657,24 +657,6 @@ class AIMiddleware():
         print("Completed.")
         return 'ok'
 
-        # # setup
-        # if maxNumImages is None or maxNumImages == -1:
-        #     queryResult = self.dbConn.execute('''
-        #         SELECT maxNumImages_inference
-        #         FROM aide_admin.project
-        #         WHERE shortname = %s;''', (project,), 1)
-        #     maxNumImages = queryResult[0]['maxnumimages_inference']            
-        # queryVals = (maxNumImages,)
-
-        # # load the IDs of the images that are being subjected to inference
-        # sql = self.sqlBuilder.getInferenceQueryString(project, forceUnlabeled, maxNumImages)
-        # imageIDs = self.dbConn.execute(sql, queryVals, 'all')
-        # imageIDs = [i['image'] for i in imageIDs]
-
-        # process = self._get_inference_job_signature(project, imageIDs, maxNumWorkers)
-        # self._do_inference(project, process)
-        # return 'ok'
-
 
     
     def inference_fixed(self, project, imageIDs, maxNumWorkers=-1):
@@ -751,51 +733,6 @@ class AIMiddleware():
             'status': 0,
             'task_id': task_id
         }
-
-
-        # # # get training job signature
-        # # process, numWorkers_train = self._get_training_job_signature(
-        # #                                 project=project,
-        # #                                 minTimestamp=minTimestamp,
-        # #                                 minNumAnnoPerImage=minNumAnnoPerImage,
-        # #                                 maxNumImages=maxNumImages_train,
-        # #                                 maxNumWorkers=maxNumWorkers_train)
-
-        # # submit job
-        # task_id = self.messageProcessor.task_id(project)
-        # job = process.apply_async(task_id=task_id,
-        #                     queue='AIWorker',
-        #                     ignore_result=False,
-        #                     # result_extended=True,
-        #                     headers={'headers':{'project':project,'submitted': str(current_time())}})
-        
-        # self.messageProcessor.register_job(project, job, 'workflow')    #TODO: task type; task ID for polling...
-
-        # # task_id = self.messageProcessor.task_id(project)
-        # # if numWorkers_train > 1:
-        # #     # also append average model states job
-        # #     job = process.apply_async(task_id=task_id,
-        # #                     queue='AIWorker',
-        # #                     # ignore_result=False,
-        # #                     # result_extended=True,
-        # #                     headers={'headers':{'project':project,'type':'train','submitted': str(current_time())}},
-        # #                     link=aiw_int.call_average_model_states.s(1, project))      #TODO: epoch
-        # # else:
-        # #     job = process.apply_async(task_id=task_id,
-        # #                     queue='AIWorker',
-        # #                     # ignore_result=False,
-        # #                     # result_extended=True,
-        # #                     headers={'headers':{'project':project,'type':'train','submitted': str(current_time())}})
-        
-
-        # # start listener thread
-        # # def chain_inference(*args):
-        # #     self.training = self.messageProcessor.task_ongoing(project, 'train')
-        # #     return self.start_inference(project, forceUnlabeled_inference, maxNumImages_inference, maxNumWorkers_inference)
-
-        # # self.messageProcessor.register_job(project, job, 'train')
-
-        # return 'ok'
 
 
     
@@ -916,7 +853,7 @@ class AIMiddleware():
 
         # get worker status (this is very expensive, as each worker needs to be pinged)
         if checkWorkers:
-            status['workers'] = self.messageProcessor.poll_worker_status(project)
+            status['workers'] = self.messageProcessor.poll_worker_status()
         
         return status
 

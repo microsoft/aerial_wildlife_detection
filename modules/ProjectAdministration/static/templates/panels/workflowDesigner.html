@@ -123,10 +123,14 @@
         border-radius: 5px;
     }
 </style>
+<script src="/static/general/js/progressbar.js?v={{ version }}"></script>
 <script src="/static/aiController/js/workflowMonitor.js?v={{ version }}"></script>
 <script src="/static/projectAdmin/js/workflowDesigner.js?v={{ version }}"></script>
 <script src="/static/general/js/optionsEngine.js?v={{ version }}"></script>
 <script type="text/javascript">
+
+    window.save = undefined;
+
     let getAImodelSettings = $.ajax({
         url: window.baseURL + 'getAvailableAImodels',
         method: 'GET',

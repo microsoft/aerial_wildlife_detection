@@ -176,7 +176,7 @@
                                 }),
                                 success: function(response) {
                                     if(response.hasOwnProperty('success') && response['success']) {
-                                        window.location.href = '/' + shortname;
+                                        window.location.href = '/' + shortname + '/setup';
                                     } else {
                                         console.error('An unknown error occurred.');
                                         window.messager.addMessage('An unknown error occurred while trying to create project.', 'error', 0);

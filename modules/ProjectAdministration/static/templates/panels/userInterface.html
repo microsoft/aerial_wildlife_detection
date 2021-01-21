@@ -201,9 +201,9 @@
         </div>
     </div>
 
-    <div>
+    <!-- <div>
         <button id="proj-settings-save-button" class="btn btn-primary" style="float:right">Save</button>
-    </div>
+    </div> -->
 </div>
 <style>
     h3 {
@@ -586,6 +586,13 @@
             }
         });
     }
+    
+    window.save = function() {
+        window.showLoadingOverlay(true);
+        return saveUIsettings().then(function() {
+            window.showLoadingOverlay(false);
+        });
+    }
 
     $(document).ready(function() {
 
@@ -601,12 +608,9 @@
             $('#show-image-uris-checkbox').prop('disabled', !$(this).prop('checked'));
         });
 
-        $('#proj-settings-save-button').on('click', function() {
-            window.showLoadingOverlay(true);
-            saveUIsettings().then(function() {
-                window.showLoadingOverlay(false);
-            });
-        });
+        // $('#proj-settings-save-button').on('click', function() {
+        //     window.save();
+        // });
 
         // load sample data
         promise = promise.then(function() {

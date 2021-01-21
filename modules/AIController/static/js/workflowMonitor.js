@@ -8,7 +8,7 @@
 
 $(document).ready(function() {
     if(typeof(ProgressBar) === 'undefined') {
-        $.getScript('/static/general/js/progressbar.js');
+        $.getScript('/static/general/js/progressbar.js', function() {console.log('fuck jacascript')});
     }
 
     if(window.baseURL === undefined) {
@@ -177,15 +177,15 @@ class Task {
         }
         if(!this.hasFinished && !this.hasFailed && updates.hasOwnProperty('info') && updates['info'] !== null && updates['info'] !== undefined) {
             let info = updates['info'];
-            let done = parseFloat(info['done']);
-            let total = parseFloat(info['total']);
-            let indefinite = (isNaN(done) || isNaN(total));
-            this.pBar.set(true, done, total, indefinite);
+            this.done = parseFloat(info['done']);
+            this.total = parseFloat(info['total']);
+            let indefinite = (isNaN(this.done) || isNaN(this.total));
+            this.pBar.set(true, this.done, this.total, indefinite);
             if(typeof(info['message']) === 'string') {
                 statusText += ': ' + info['message'];
             }
             if(!indefinite) {
-                statusText += ' ('+done+'/'+total+')';
+                statusText += ' ('+this.done+'/'+this.total+')';
             }
         }
         if(updates.hasOwnProperty('succeeded')) {
@@ -215,7 +215,7 @@ class Task {
             }
         }
         this.statusIndicator.html(statusText);
-        if(this.hasFinished || this.taskFailed()) {
+        if(this.taskFinished() || this.taskFailed()) {
             this.pBar.set(false);
         } else if(this.childTasks.length > 0) {
             if(numChildrenDone === this.childTasks.length) {
@@ -270,54 +270,78 @@ class Task {
         })
     }
 
+    _set(successful) {
+        /* 
+            Forcefully sets task and all children to finished,
+            and also to successful or failed, depending on
+            attribute.
+            Also hides progress bar of task and all children.
+         */
+        if(successful === true) {
+            this.successful = true;
+        } else if(successful === false) {
+            this.hasFailed = true;
+        }
+        this.pBar.set(false);
+        for(var c=0; c<this.childTasks.length; c++) {
+            this.childTasks[c]._set(successful);
+            // if(successful === true) {
+            //     this.childTasks[c].successful = true;
+            // } else if(successful === false) {
+            //     this.childTasks[c].hasFailed = true;
+            // }
+            // this.childTasks[c].hasFinished = true;
+        }
+    }
+
     taskFailed() {
-        if(this.hasFailed) {
-            // assign all children to failed as well
-            for(var c=0; c<this.childTasks.length; c++) {
-                this.childTasks[c].hasFailed = true;
-            }
-        } else {
-            // also assign failed if any of the children have failed
-            for(var c=0; c<this.childTasks.length; c++) {
-                if(this.childTasks[c].taskFailed()) {
-                    this.hasFailed = true;
-                    return true;
-                }
+        // check children first
+        for(var c=0; c<this.childTasks.length; c++) {
+            if(this.childTasks[c].taskFailed()) {
+                this.hasFailed = true;
+                break;
             }
         }
 
-        // hide progress bar
-        if(this.hasFailed)
+        // set children if task has failed and hide progress bar
+        if(this.hasFailed) {
+            this._set(false);
             this.pBar.set(false);
+        }
 
         return this.hasFailed;
     }
 
     taskFinished() {
-        let taskFinished = this.hasFinished || this.taskFailed();
-
-        // check children
         if(this.isRootTask) {
-            for(var c=0; c<this.childTasks.length; c++) {
-                if(this.childTasks[c].taskSuccessful() === false) {
-                    // error: entire task aborted
-                    this.taskFinished = true;
+            if(this.hasFinished) {
+                // force children to show finished flag too
+                this._set();
+
+            } else {
+                // check children
+                for(var c=0; c<this.childTasks.length; c++) {
+                    if(!this.childTasks[c].taskFinished()) {
+                        return false;
+                    }
+                    // if(this.childTasks[c].taskSuccessful() === false) {
+                    //     // error: entire task aborted
+                    //     this.hasFinished = true;
+                    // }
+                    // this.childTasks[c].taskFinished();
                 }
-                this.childTasks[c].taskFinished();
             }
         }
-        this.hasFinished = taskFinished;
 
         // hide progress bar
         if(this.hasFinished)
             this.pBar.set(false);
 
-        return taskFinished;
+        return this.hasFinished;
     }
 
     taskSuccessful() {
         let successful = true;
-        
         if(this.isRootTask) {
             // the root task has finished if all its children have done so
             for(var c=0; c<this.childTasks.length; c++) {
@@ -332,6 +356,22 @@ class Task {
         } else {
             return this.successful && successful;
         }
+    }
+
+    getProgress() {
+        if(this.taskFinished()) return 1.0;
+        let progress = this.done / this.total;
+        for(var c=0; c<this.childTasks.length; c++) {
+            let childProgress = this.childTasks[c].getProgress();
+            if(!isNaN(childProgress)) {
+                if(!isNaN(progress)) {
+                    progress = Math.min(progress, childProgress);
+                } else {
+                    progress = childProgress;
+                }
+            }
+        }
+        return progress;
     }
 }
 
@@ -391,8 +431,6 @@ class WorkflowMonitor {
             this.runningTasksPlaceholder = $('<span>(none)</span>');
             rtCell.append(this.runningTasksPlaceholder);
             rtDiv.append(rtCell);
-            this.runningTasksCounter = $('<td></td>');
-            rtDiv.append(this.runningTasksCounter);
             footerContainer.append(rtDiv);
 
             // progress bar for # annotated images until auto re-training
@@ -404,8 +442,6 @@ class WorkflowMonitor {
             this.autoTrainPlaceholder = $('<span>(auto-training disabled)</span>');
             atCell.append(this.autoTrainPlaceholder);
             atDiv.append(atCell);
-            this.autoTrainCounter = $('<td></td>');
-            atDiv.append(this.autoTrainCounter);
             footerContainer.append(atDiv);
 
             this.domElement_footer.append(footerContainer);
@@ -423,6 +459,8 @@ class WorkflowMonitor {
             success: function(data) {
 
                 // running tasks
+                let totalProgress = 0;
+                let targetProgress = 0;
                 let tasks = data['status']['tasks'];
                 if(tasks === undefined || tasks === null || (Array.isArray(tasks) && tasks.length === 0)) {
                     tasks = [];
@@ -455,22 +493,36 @@ class WorkflowMonitor {
                             numActiveTasks++;
                         }
                     }
+
+                    let taskProgress = task.getProgress();
+                    if(taskProgress > 0) {
+                        targetProgress += 1;
+                        totalProgress += task.getProgress();
+                    }
                 }
                 if(numActiveTasks > 0) {
                     self.setQueryInterval(self.queryIntervals['active'], false);
                 } else {
                     self.setQueryInterval(self.queryIntervals['idle'], false);
+                    totalProgress = 0;
+                    targetProgress = 0;
                 }
+                self._set_footer_progress('tasks', true, totalProgress, targetProgress, (targetProgress<=0 && numActiveTasks>0), numActiveTasks + ' task(s)');
 
+                
                 // auto-train
                 try {
                     if(data['status'].hasOwnProperty('project')) {
+                        let placeholderText = '(auto-training disabled)';
                         let numAnnotated = data['status']['project']['num_annotated'];
                         let numNext = data['status']['project']['num_next_training'];
-                        self._set_footer_progress('autotrain', numAnnotated, numNext, false);
+                        if(numNext > 0) {
+                            placeholderText = numAnnotated+'/'+numNext;
+                        }
+                        self._set_footer_progress('autotrain', (numNext>0), numAnnotated, numNext, false, placeholderText);
                     }
                 } catch {
-                    self._set_footer_progress('autotrain', null);
+                    self._set_footer_progress('autotrain', false);
                 }
             },
             error: function(xhr, status, error) {
@@ -496,30 +548,29 @@ class WorkflowMonitor {
         });
     }
 
-    _set_footer_progress(target, current, max, indefinite) {
+    _set_footer_progress(target, visible, current, max, indefinite, placeholderText) {
         let pBar = null;
         let placeholder = null;
-        let counterElement = null;
         if(target === 'tasks') {
             pBar = this.runningTasksPbar;
             placeholder = this.runningTasksPlaceholder;
-            counterElement = this.runningTasksCounter;
         } else {
             pBar = this.autoTrainPbar;
             placeholder = this.autoTrainPlaceholder;
-            counterElement = this.autoTrainPlaceholder;
         }
         if(typeof(pBar) !== 'object') return;
         
         if(typeof(current) !== 'number' && !indefinite) {
-            pBar.set(true, 0, 0, false);
-            placeholder.show();
-            counterElement.hide();
+            pBar.set(visible, 0, 0, false);
         } else {
-            pBar.set(true, current, max, indefinite);
+            pBar.set(visible, current, max, indefinite);
+        }
+
+        if(typeof(placeholderText) === 'string') {
+            placeholder.html(placeholderText);
+            placeholder.show();
+        } else {
             placeholder.hide();
-            counterElement.html(current + '/' + max);
-            counterElement.show();
         }
     }
 

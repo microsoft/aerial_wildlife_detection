@@ -19,9 +19,9 @@
         and disables saving annotations and the AI model, if configured.
         Existing annotations will be retained as they are.</p>
 
-        <div>
+        <!-- <div>
             <button id="proj-settings-save-button" class="btn btn-primary" style="float:right">Save</button>
-        </div>
+        </div> -->
     </div>
 
 
@@ -181,7 +181,7 @@
         });
     }
 
-    function saveProjectSettings() {
+    window.save = function() {
         return $.ajax({
             url: window.baseURL + 'saveProjectConfiguration',
             method: 'POST',
@@ -201,7 +201,7 @@
             statusCode: {
                 401: function(xhr) {
                     return window.renewSessionRequest(xhr, function() {
-                        saveProjectSettings();
+                        window.save();
                     });
                 }
             }
@@ -372,9 +372,9 @@
             setUserAuthentication();
         });
 
-        $('#proj-settings-save-button').click(function() {
-            saveProjectSettings();
-        });
+        // $('#proj-settings-save-button').click(function() {
+        //     window.save();      //TODO
+        // });
         
         promise.done(function() {
             window.showLoadingOverlay(false);

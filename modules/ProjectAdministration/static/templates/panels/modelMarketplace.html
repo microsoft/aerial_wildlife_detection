@@ -250,7 +250,9 @@
 <script src="/static/statistics/libs/chartjs/Chart.min.js?v={{ version }}"></script>
 <script type="text/javascript">
 
-    const PANEL_NAMES = [
+    window.save = undefined;
+
+    let PANEL_NAMES = [
         'modelmarketplace',
         'projectmodels',
         'webimport',

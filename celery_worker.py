@@ -7,7 +7,7 @@
     depending on the "AIDE_MODULES" environment
     variable.
 
-    2020 Benjamin Kellenberger
+    2020-21 Benjamin Kellenberger
 '''
 
 import os
@@ -157,11 +157,11 @@ if 'aicontroller' in aideModules:
 if 'aiworker' in aideModules:
     from modules.AIWorker.backend import celery_interface as aiw_int
     num_modules += 1
-if 'fileserver' in aideModules:
-    from modules.DataAdministration.backend import celery_interface as da_int
-    num_modules += 1
 if 'labelui' in aideModules:
     from modules.ModelMarketplace.backend import celery_interface as mm_int
+    num_modules += 1
+if 'fileserver' in aideModules:
+    from modules.DataAdministration.backend import celery_interface as da_int
     num_modules += 1
 
     # scanning project folders for new images: set up periodic task
@@ -170,7 +170,6 @@ if 'labelui' in aideModules:
         @app.on_after_configure.connect
         def setup_periodic_tasks(sender, **kwargs):
             sender.add_periodic_task(scanInterval, da_int.watchImageFolders.s())
-
 
 
 if __name__ == '__main__':
