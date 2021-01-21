@@ -49,7 +49,7 @@ It is strongly recommended to run AIDE in a self-contained Python environment, s
     # download AIDE source code
     sudo apt-get update && sudo apt-get install -y git
     cd $targetDir
-    git clone -b multiProject https://github.com/microsoft/aerial_wildlife_detection.git
+    git clone https://github.com/microsoft/aerial_wildlife_detection.git
 
     # install basic requirements
     sudo apt-get install -y libpq-dev python-dev

@@ -69,6 +69,10 @@ if __name__ == '__main__':
                     help='Kind of the provided annotations. One of {"annotation", "prediction"} (default: annotation)')
     parser.add_argument('--al_criterion', type=str, default='TryAll', const=1, nargs='?',
                     help='Criterion for the priority field. One of {"BreakingTies", "MaxConfidence", "TryAll"} (default: TryAll)')
+    parser.add_argument('--confidence_fallback', type=float, default=0.5, const=1, nargs='?',
+                    help='Fallback value for prediction confidence if none is provided (default: 0.5)')
+    parser.add_argument('--priority_fallback', type=float, default=0.5, const=1, nargs='?',
+                    help='Fallback value for prediction priority if none is provided (default: 0.5)')
     args = parser.parse_args()
     
 
@@ -152,13 +156,12 @@ if __name__ == '__main__':
                 'all'
             )
             usernames = [u['username'] for u in usernames]
+            username = usernames[0]
             if args.username is not None:
-                username = usernames[0]
                 if args.username not in usernames:
                     print(f'WARNING: username "{args.username}" not found, using "{username}" instead.')
-            
-            else:
-                username = usernames[0]
+                else:
+                    username = args.username
             
             print(f'Inserting annotations under username "{username}".')
 
@@ -179,7 +182,7 @@ if __name__ == '__main__':
                 id_img=sql.Identifier(args.project, 'image')
             )
         elif args.annotation_type == 'prediction':
-            queryStr = sql.Identifier('''
+            queryStr = sql.SQL('''
             INSERT INTO {id_pred} (image, timeCreated, label, confidence, x, y, width, height, priority)
             VALUES(
                 (SELECT id FROM {id_img} WHERE filename = %s),
@@ -274,8 +277,8 @@ if __name__ == '__main__':
                             
                     elif args.annotation_type == 'prediction':
                         # calculate additional properties
-                        maxConf = None
-                        priority = None
+                        maxConf = args.confidence_fallback
+                        priority = args.priority_fallback
                         try:
                             confidences = [float(t) for t in tokens[5:]]
                             confidences.sort()
@@ -290,6 +293,12 @@ if __name__ == '__main__':
                                 breakingTies = 1 - (confidences[-1] - confidences[-2])
                                 priority = max(maxConf, breakingTies)
                         finally:
-                            # no values provided
+                            # no values provided; replace with defaults
+                            if not isinstance(maxConf, float):
+                                maxConf = args.confidence_fallback
+                            if not isinstance(priority, float):
+                                priority = args.priority_fallback
+                                
+                            # import
                             dbConn.execute(queryStr,
                                 (imgs[baseName], currentDT, classdef[label], maxConf, bbox[0], bbox[1], bbox[2], bbox[3], priority))
