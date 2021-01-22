@@ -69,7 +69,7 @@ class GenericDetectron2Model(AIModel):
             detectron2cfg = get_cfg()
         if isinstance(config, dict):
             for key in config.keys():
-                if key.startswith('DETECTRON2.'):
+                if isinstance(key, str) and key.startswith('DETECTRON2.'):
                     value = optionsHelper.get_hierarchical_value(config[key], ['value', 'id'])
                     if isinstance(value, list):
                         for v in range(len(value)):
@@ -353,7 +353,10 @@ class GenericDetectron2Model(AIModel):
             args = optionsHelper.filter_reserved_children(tr, True)
             for a in args.keys():
                 args[a] = optionsHelper.get_hierarchical_value(args[a], ['value'])
-            
+                if a == 'interp':
+                    #TODO: ugly solution to convert interpolation methods
+                    args[a] = int(args[a])
+
             # initialize
             transform = getattr(T, trClass)(**args)
             transforms.append(transform)

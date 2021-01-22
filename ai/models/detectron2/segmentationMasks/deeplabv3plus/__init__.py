@@ -169,13 +169,13 @@ DEFAULT_OPTIONS = {
 							"name": "Height",
 							"min": 0,
 							"max": 1e9,
-							"value": 600
+							"value": 512
 						},
 						{
 							"name": "Width",
 							"min": 0,
 							"max": 1e9,
-							"value": 800
+							"value": 1024
 						}
 					]
 				},
@@ -199,7 +199,7 @@ DEFAULT_OPTIONS = {
 							"name": "Lanczos"
 						}
 					},
-					"value": "0"
+					"value": 0
 				}
 			}
 		}
@@ -213,7 +213,7 @@ DEFAULT_OPTIONS = {
 				"options": {
 					"cpu": {
 						"name": "CPU",
-						"description": "Run RetinaNet on the CPU and with system RAM."
+						"description": "Run DeepLab models on the CPU and with system RAM."
 					},
 					"cuda": {
 						"name": "GPU",
@@ -348,62 +348,12 @@ DEFAULT_OPTIONS = {
 				"type": "list",
 				"options": "transforms",
 				"value": [
+					"Resize",
 					"RandomFlip",
 					"RandomLighting",
 					"RandomContrast",
 					"RandomSaturation"
 				]
-			},
-			"criterion": {
-				"name": "Focal Loss options",
-				"description": "See the <a href=\"http://openaccess.thecvf.com/content_ICCV_2017/papers/Lin_Focal_Loss_for_ICCV_2017_paper.pdf\" target=\"_blank\">RetinaNet paper</a> for more information.",
-				"DETECTRON2.MODEL.RETINANET.FOCAL_LOSS_GAMMA": {
-					"name": "Gamma",
-					"min": 0.0,
-					"max": 8192,
-					"value": 2.0
-				},
-				"DETECTRON2.MODEL.RETINANET.FOCAL_LOSS_ALPHA": {
-					"name": "Alpha",
-					"min": 0.0,
-					"max": 8192,
-					"value": 0.25
-				},
-				"DETECTRON2.MODEL.RETINANET.SMOOTH_L1_LOSS_BETA": {
-					"name": "Smooth L1 loss Beta",
-					"min": 0.0,
-					"max": 100.0,
-					"value": 0.0
-				}
-			},
-			"encoding": {
-				"name": "Bounding box encoding",
-				"DETECTRON2.MODEL.RETINANET.IOU_THRESHOLDS": {
-					"name": "IoU thresholds",
-					"type": "list",
-					"value": [
-						{
-							"name": "Max. IoU for negatives",
-							"description": "Maximally permitted IoU value between a target and prediction box for the latter to be treated as a False positive",
-							"min": 0.0,
-							"max": 1.0,
-							"value": 0.4,
-							"style": {
-								"slider": True
-							}
-						},
-						{
-							"name": "Min. IoU for positives",
-							"description": "Minimum IoU value between a target and prediction box for the latter to be considered a correct prediction",
-							"min": 0.0,
-							"max": 1.0,
-							"value": 0.5,
-							"style": {
-								"slider": True
-							}
-						}
-					]
-				}
 			},
 			"ignore_unsure": {
 				"name": "Ignore (discard) annotations marked as \"unsure\"",
@@ -414,39 +364,10 @@ DEFAULT_OPTIONS = {
 			"name": "Inference (prediction) options",
 			"transform": {
 				"name": "Transforms",
-				"description": "Note that inference transforms exclude geometric data augmentation options.",
+				"description": "Transforms to apply during inference time.",
 				"type": "list",
 				"options": "transforms",
 				"value": []
-			},
-			"DETECTRON2.TEST.DETECTIONS_PER_IMAGE": {
-				"name": "Maximum number of detections per image",
-				"min": 1,
-				"max": 1e9,
-				"value": 100
-			},
-			"encoding": {
-				"name": "Bounding box encoding",
-				"DETECTRON2.MODEL.RETINANET.SCORE_THRESH_TEST": {
-					"name": "Min. class confidence",
-					"description": "Minimum confidence value to be reached by any label class for a box to be kept as a prediction.<br />Higher values = more confident predictions; lower values = higher recall",
-					"min": 0.0,
-					"max": 1.0,
-					"value": 0.05,
-					"style": {
-						"slider": True
-					}
-				},
-				"DETECTRON2.MODEL.RETINANET.NMS_THRESH_TEST": {
-					"name": "Non-maximum suppression threshold",
-					"description": "Maximally permitted IoU between predictions. If above, boxes with lower confidence scores will be discarded (non-maximum suppression).",
-					"min": 0.0,
-					"max": 1.0,
-					"value": 0.5,
-					"style": {
-						"slider": True
-					}
-				}
 			}
 		}
 	}

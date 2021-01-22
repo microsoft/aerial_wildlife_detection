@@ -3,7 +3,7 @@
     JSON-formatted AI and AL model options.
     Some of these functions are analogous to the "optionsEngine.js".
 
-    2020 Benjamin Kellenberger
+    2020-21 Benjamin Kellenberger
 '''
 
 import copy
@@ -264,15 +264,28 @@ def filter_reserved_children(options, recursive=False):
         the tree and applies the same logic for all child elements,
         keeping only the "value" entry.
     '''
-    if not isinstance(options, dict):
-        return options
+    if isinstance(options, dict):
+        response = {}
+        for key in options.keys():
+            if key not in RESERVED_KEYWORDS:
+                response[key] = filter_reserved_children(options[key], recursive)
+            else:
+                continue
     
-    response = {}
-    for key in options.keys():
-        if key == 'value' or key not in RESERVED_KEYWORDS:
-            response[key] = filter_reserved_children(options[key], recursive)
-        elif key in RESERVED_KEYWORDS:
-            continue
+        # return value under 'value', then 'id', if nothing could be found
+        if not len(response):
+            if 'value' in options:
+                return filter_reserved_children(options['value'], recursive)
+            elif 'id' in options:
+                return filter_reserved_children(options['id'], recursive)
+    
+    elif isinstance(options, list) or isinstance(options, tuple):
+        response = []
+        for option in options:
+            response.append(filter_reserved_children(option, recursive))
+
+    else:
+        return options
         
     return response
 

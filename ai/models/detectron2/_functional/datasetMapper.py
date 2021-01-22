@@ -6,7 +6,7 @@
     if present (relative coordinates are currently not supported in
     Detectron2).
 
-    2020 Benjamin Kellenberger
+    2020-21 Benjamin Kellenberger
 '''
 
 import copy
@@ -52,25 +52,27 @@ class Detectron2DatasetMapper(DatasetMapper):
         utils.check_image_size(dataset_dict, image)
 
         # convert annotations from relative to XYXY absolute format if needed
-        image_shape = image.shape[:2] 
-        for anno in dataset_dict['annotations']:
-            if 'bbox_mode' in anno and anno['bbox_mode'] in [
-                BoxMode.XYWH_REL, BoxMode.XYXY_REL
-            ]:
-                if anno['bbox_mode'] == BoxMode.XYWH_REL:
-                    anno['bbox'][0] -= anno['bbox'][2]/2
-                    anno['bbox'][1] -= anno['bbox'][3]/2
-                    anno['bbox'][2] += anno['bbox'][0]
-                    anno['bbox'][3] += anno['bbox'][1]
-                anno['bbox'][0] *= image_shape[0]   #TODO: check order
-                anno['bbox'][1] *= image_shape[1]   #TODO: check order
-                anno['bbox'][2] *= image_shape[0]   #TODO: check order
-                anno['bbox'][3] *= image_shape[1]   #TODO: check order
-                anno['bbox_mode'] = BoxMode.XYXY_ABS
+        image_shape = image.shape[:2]
+
+        if 'annotations' in dataset_dict:
+            for anno in dataset_dict['annotations']:
+                if 'bbox_mode' in anno and anno['bbox_mode'] in [
+                    BoxMode.XYWH_REL, BoxMode.XYXY_REL
+                ]:
+                    if anno['bbox_mode'] == BoxMode.XYWH_REL:
+                        anno['bbox'][0] -= anno['bbox'][2]/2
+                        anno['bbox'][1] -= anno['bbox'][3]/2
+                        anno['bbox'][2] += anno['bbox'][0]
+                        anno['bbox'][3] += anno['bbox'][1]
+                    anno['bbox'][0] *= image_shape[0]   #TODO: check order
+                    anno['bbox'][1] *= image_shape[1]   #TODO: check order
+                    anno['bbox'][2] *= image_shape[0]   #TODO: check order
+                    anno['bbox'][3] *= image_shape[1]   #TODO: check order
+                    anno['bbox_mode'] = BoxMode.XYXY_ABS
 
         if "segmentationMask" in dataset_dict:
             try:
-                raster = np.frombuffer(base64.b64decode(annotation['segmentationMask']), dtype=np.uint8)
+                raster = np.frombuffer(base64.b64decode(dataset_dict['segmentationMask']), dtype=np.uint8)
                 sem_seg_gt = np.reshape(raster, image_shape)    #TODO: check format
             except:
                 print('WARNING: Segmentation mask for image "{}" could not be loaded or decoded.'.format(dataset_dict["file_name"]))

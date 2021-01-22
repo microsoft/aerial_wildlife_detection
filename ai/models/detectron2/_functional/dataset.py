@@ -5,7 +5,7 @@
     if they are corrupt; this is done at runtime by the
     Detectron2DatasetMapper.
 
-    2020 Benjamin Kellenberger
+    2020-21 Benjamin Kellenberger
 '''
 
 from detectron2.structures import BoxMode
@@ -51,7 +51,7 @@ def getDetectron2Data(aideData, ignoreUnsure=False, filterEmpty=False):
                     obj['bbox_mode'] = BoxMode.XYWH_REL     # not yet supported by Detectron2, but by Detectron2DatasetMapper
                 elif 'segmentationmask' in anno:
                     # pixel-wise segmentation mask
-                    obj['segmentationMask'] = anno['segmentationmask']
+                    record['segmentationMask'] = anno['segmentationmask']
                 elif 'x' in anno and 'y' in anno:
                     # point (not yet supported by Detectron2)
                     continue
@@ -62,13 +62,15 @@ def getDetectron2Data(aideData, ignoreUnsure=False, filterEmpty=False):
                         unknownClasses.add(anno['label'])
                         continue
                     obj['category_id'] = labelclassMap[anno['label']]
-                annotations.append(obj)
+                if len(obj):
+                    annotations.append(obj)
         
-        if filterEmpty and not len(annotations):
+        if filterEmpty and not len(annotations) and 'segmentationMask' not in record:
             # no annotations in image; skip
             continue
-
-        record['annotations'] = annotations
+        
+        if len(annotations):
+            record['annotations'] = annotations
         dataset_dicts.append(record)
     
     if len(unknownClasses):

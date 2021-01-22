@@ -70,7 +70,7 @@
         }
 
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 
@@ -98,6 +98,15 @@ PREDICTION_MODELS = {
                                             'canAddLabelclasses': True,
                                             'canRemoveLabelclasses': True
                                        },
+    # 'ai.models.detectron2.DeepLabV3Plus': {
+    #                                         'name': 'DeepLabV3+ (beta)',
+    #                                         'author': '(built-in)',
+    #                                         'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of the <a href="https://openaccess.thecvf.com/content_ECCV_2018/papers/Liang-Chieh_Chen_Encoder-Decoder_with_Atrous_ECCV_2018_paper.pdf" target="_blank">DeepLabV3+</a> semantic segmentation network.',
+    #                                         'annotationType': 'segmentationMasks',
+    #                                         'predictionType': 'segmentationMasks',
+    #                                         'canAddLabelclasses': True,
+    #                                         'canRemoveLabelclasses': True
+    #                                    },
 
     # PyTorch
     'ai.models.pytorch.labels.ResNet': {

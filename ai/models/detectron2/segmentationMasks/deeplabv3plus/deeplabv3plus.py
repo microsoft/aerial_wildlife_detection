@@ -1,18 +1,22 @@
 '''
     DeepLabV3+ specifier for Detectron2 model trainer in AIDE.
 
-    2020 Benjamin Kellenberger
+    2020-21 Benjamin Kellenberger
 '''
 
+import os
+
 from detectron2.config import get_cfg
+import detectron2.utils.comm as comm
 from detectron2.projects.deeplab import add_deeplab_config, build_lr_scheduler
 
 from ai.models.detectron2.genericDetectronModel import GenericDetectron2Model
+from ai.models.detectron2.segmentationMasks.genericDetectronSegmentationModel import GenericDetectron2SegmentationModel
 from ai.models.detectron2.segmentationMasks.deeplabv3plus import DEFAULT_OPTIONS
 from util import optionsHelper
 
 
-class DeepLabV3Plus(GenericDetectron2Model):
+class DeepLabV3Plus(GenericDetectron2SegmentationModel):
 
     @classmethod
     def getDefaultOptions(cls):
@@ -29,6 +33,12 @@ class DeepLabV3Plus(GenericDetectron2Model):
         defaultConfig = optionsHelper.get_hierarchical_value(self.options, ['options', 'model', 'config', 'value', 'id'])
         configFile = os.path.join(os.getcwd(), 'ai/models/detectron2/_functional/configs', defaultConfig)
         cfg.merge_from_file(configFile)
+
+        # disable SyncBatchNorm if not running on distributed system
+        if comm.get_world_size() <= 1:
+            cfg.MODEL.RESNETS.NORM = 'BN'
+            cfg.MODEL.SEM_SEG_HEAD.NORM = 'BN'
+
         return cfg
 
 
@@ -38,7 +48,7 @@ class DeepLabV3Plus(GenericDetectron2Model):
 
 
 
-    def loadAndAdaptModel(self, stateDict, data):
+    def loadAndAdaptModel(self, stateDict, data, updateStateFun):
         '''
             Loads a model and a labelclass map from a given "stateDict".
             First calls the parent implementation to obtain a default
@@ -54,7 +64,22 @@ class DeepLabV3Plus(GenericDetectron2Model):
             and duplicated.
         '''
         model, stateDict, newClasses = self.initializeModel(stateDict, data)
-        #TODO
+        
+        # modify model weights to accept new label classes
+        if len(newClasses):
+
+            weights = model.sem_seg_head.predictor.weight
+            biases = model.sem_seg_head.predictor.bias
+            numClasses_orig = len(biases)
+
+            # create weights and biases for new classes
+            if True:        #TODO: add flags in config file about strategy
+                weights_copy = weights.clone()
+                biases_copy = biases.clone()
+
+                correlations = self.calculateClassCorrelations(model, range(numClasses_orig), newClasses, updateStateFun, 128)    #TODO: num images
+                print('debug')
+
         return model, stateDict
 
 
@@ -89,10 +114,11 @@ if __name__ == '__main__':
         maxNumImages=512)
     data = __load_metadata(project, database, data[0], True)
 
-    def updateStateFun(state, message, done, total):
+    def updateStateFun(state, message, done=None, total=None):
         print(f'{message}: {done}/{total}')
     
 
     # launch model
     rn = DeepLabV3Plus(project, config, database, fileServer, None)
-    rn.train(None, data, updateStateFun)
+    _, stateDict = rn.loadAndAdaptModel(None, data, updateStateFun)
+    rn.train(stateDict, data, updateStateFun)
