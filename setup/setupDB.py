@@ -5,7 +5,7 @@
     This task is achieved through the GUI.
     See modules.ProjectAdministration.backend.middleware.py for details.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 import os
@@ -14,6 +14,7 @@ if not 'AIDE_MODULES' in os.environ:
     os.environ['AIDE_MODULES'] = 'FileServer'     # for compatibility with Celery worker import
 
 import argparse
+from constants.version import AIDE_VERSION
 from util.configDef import Config
 from modules import Database, UserHandling
 
@@ -31,6 +32,12 @@ def setupDB():
 
     # run SQL
     dbConn.execute(sql, None, None)
+
+    # add AIDE version
+    dbConn.execute('''
+        INSERT INTO aide_admin.version (version)
+        VALUES (%s);
+    ''', (AIDE_VERSION,), None)
 
     # add admin user
     sql = '''

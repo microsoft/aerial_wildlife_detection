@@ -4,7 +4,7 @@
     schemata, but only the administrative environment of the Postgres database.
     For project creation, see modules.ProjectAdministration.static.sql.create_schema.sql.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 */
 
 
@@ -19,6 +19,11 @@ BEGIN
     END IF;
 END
 $$;
+
+CREATE TABLE IF NOT EXISTS aide_admin.version (
+    version VARCHAR UNIQUE NOT NULL,
+    PRIMARY KEY (version)
+);
 
 CREATE TABLE IF NOT EXISTS aide_admin.project (
     shortname VARCHAR UNIQUE NOT NULL,
@@ -44,6 +49,8 @@ CREATE TABLE IF NOT EXISTS aide_admin.project (
     ai_model_settings VARCHAR,
     ai_alCriterion_library VARCHAR,
     ai_alCriterion_settings VARCHAR,
+    watch_folder_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    watch_folder_remove_missing_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     PRIMARY KEY(shortname)
 );
 
@@ -116,6 +123,30 @@ RETURNS real AS $iou$
 	END;
 $iou$ LANGUAGE plpgsql;
 
+/*
+    Last occurrence of substring. Function obtained from here:
+    https://wiki.postgresql.org/wiki/Strposrev
+*/
+CREATE OR REPLACE FUNCTION strposrev(instring text, insubstring text)
+RETURNS integer AS
+$BODY$
+DECLARE result INTEGER;
+BEGIN
+    IF strpos(instring, insubstring) = 0 THEN
+    -- no match
+    result:=0;
+    ELSEIF length(insubstring)=1 THEN
+    -- add one to get the correct position from the left.
+    result:= 1 + length(instring) - strpos(reverse(instring), insubstring);
+    ELSE 
+    -- add two minus the legth of the search string
+    result:= 2 + length(instring)- length(insubstring) - strpos(reverse(instring), reverse(insubstring));
+    END IF;
+    RETURN result;
+END;
+$BODY$
+LANGUAGE plpgsql IMMUTABLE STRICT
+COST 4;
 
 
 -- Model marketplace

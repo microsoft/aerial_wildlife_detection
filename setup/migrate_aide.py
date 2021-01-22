@@ -366,6 +366,8 @@ def migrate_aide(forceMigrate=False):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Update AIDE database structure.')
+    parser.add_argument('--force', type=int, default=0,
+                    help='Set to 1 to force migration, even if AIDE versions already match.')
     parser.add_argument('--settings_filepath', type=str, default='config/settings.ini', const=1, nargs='?',
                     help='Manual specification of the directory of the settings.ini file; only considered if environment variable unset (default: "config/settings.ini").')
     args = parser.parse_args()
@@ -376,16 +378,18 @@ if __name__ == '__main__':
         os.environ['AIDE_MODULES'] = ''     # for compatibility with Celery worker import
 
     
-    warnings, errors = migrate_aide()
+    warnings, errors = migrate_aide(args.force)
 
     if not len(warnings) and not len(errors):
-        print(f'AIDE is now up-to-date with the latest version ({AIDE_VERSION})')
+        print(f'AIDE is now up-to-date with the latest version ({version.AIDE_VERSION})')
     else:
-        print(f'Warnings and/or errors occurred while updating AIDE to the latest version ({AIDE_VERSION}):')
-        print('\nWarnings:')
-        for w in warnings:
-            print(f'\t"{w}"')
-        
-        print('\nErrors:')
-        for e in errors:
-            print(f'\t"{e}"')
+        print(f'Warnings and/or errors occurred while updating AIDE to the latest version ({version.AIDE_VERSION}):')
+        if len(warnings):
+            print('\nWarnings:')
+            for w in warnings:
+                print(f'\t"{w}"')
+            
+        if len(errors):
+            print('\nErrors:')
+            for e in errors:
+                print(f'\t"{e}"')

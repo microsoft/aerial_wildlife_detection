@@ -333,7 +333,7 @@
                                     window.messager.addMessage('Image "'+fileName+'" could not be uploaded.', 'error', 0);
                                 } else {
                                     var url = window.dataServerURI + window.project + '/files/' +
-                                    data['result']['imgPaths_valid'][0];
+                                        data['result']['imgPaths_valid'][0];
                                     window.imageBrowser.set('imageURL', this, url);
                                     window.imageBrowser.set('url', this, data['result']['imgPaths_valid'][0]);
                                     window.imageBrowser.set('message', this, '<span style="color:green">upload successful</span>');

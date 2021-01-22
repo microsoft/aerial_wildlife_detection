@@ -49,7 +49,9 @@
         <script type="text/javascript">
 
             window.baseURL = '/{{ projectShortname }}/';
+            window.project = '{{ projectShortname }}';
             window.projectShortname = '{{ projectShortname }}';
+            window.user = '{{ username }}';
 
             $.get(window.baseURL + 'getProjectSettings', function(data) {        //TODO: promise?
                 window.dataServerURI = data['settings']['dataServerURI'];

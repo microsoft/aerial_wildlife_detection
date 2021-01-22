@@ -33,7 +33,7 @@ class TaskCoordinator:
 
         ''' Status polling '''
         @self.app.post('/<project>/pollStatus')
-        def pollStatus(project):
+        def poll_status_project(project):
             '''
                 Receives a task ID and polls the middleware
                 for an ongoing data administration task.
@@ -51,7 +51,25 @@ class TaskCoordinator:
 
             except Exception as e:
                 abort(400, str(e))
+
+
+        #TODO:
+        # @self.app.post('/allTaskStatuses')
+        # def poll_status_tasks():
+        #     '''
+        #         Returns the status of all running tasks.
+        #         Only accessible to super users.
+        #     '''
+        #     if not self.loginCheck(superuser=True):
+        #         abort(401, 'forbidden')
     
+        #     try:
+        #         status = self.middleware.pollStatus(None, None)
+        #         return {'response': status}
+        #     except Exception as e:
+        #         abort(400, str(e))
+
+
 
     def submitJob(self, project, process, queue):
         return self.middleware.submitJob(project, process, queue)

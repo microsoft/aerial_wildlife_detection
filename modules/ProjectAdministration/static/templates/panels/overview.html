@@ -47,7 +47,8 @@
                 }
                 try {
                     if(response['settings']['interface_enabled']) {
-                        var btn = $('<a class="btn btn-lg btn-primary" id="start-labeling-button" href="interface">Start labeling</a>');
+                        let interfaceLink = window.baseURL + 'interface';
+                        var btn = $('<a class="btn btn-lg btn-primary" id="start-labeling-button" href="'+interfaceLink+'">Start labeling</a>');
                         $('#interface-link-container').append(btn);
                     } else {
                         var btn_placeholder = $('<div class="btn btn-secondary label-button" style="cursor:not-allowed;" disabled="disabled">(interface disabled)</div>');
