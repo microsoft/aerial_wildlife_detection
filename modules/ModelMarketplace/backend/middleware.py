@@ -192,9 +192,9 @@ class ModelMarketplaceMiddleware:
             (username, project, annotationType, predictionType, project),
             'all'
         )
+        builtinStates = set()       # built-ins that have already been added to database; no need to add them again
         if result is not None and len(result):
             matchingStates = {}
-            builtinStates = set()       # built-ins that have already been added to database; no need to add them again
             for r in result:
                 stateID = str(r['id'])
                 values = {}
