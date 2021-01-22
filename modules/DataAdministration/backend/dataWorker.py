@@ -963,19 +963,18 @@ class DataWorker:
 
             messages = []
 
-            def _onError(function, path, excinfo):
-                #TODO
-                from celery.contrib import rdb
-                rdb.set_trace()
-                messages.append({
-                    'function': function,
-                    'path': path,
-                    'excinfo': excinfo
-                })
-            try:
-                shutil.rmtree(os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), project), onerror=_onError)
-            except Exception as e:
-                messages.append(str(e))
+            projectPath = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), project)
+
+            if os.path.isdir(projectPath) or os.path.islink(projectPath):
+                def _onError(function, path, excinfo):
+                    #TODO
+                    from celery.contrib import rdb
+                    rdb.set_trace()
+                    messages.append(str(excinfo))
+                try:
+                    shutil.rmtree(os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), project), onerror=_onError)
+                except Exception as e:
+                    messages.append(str(e))
 
             return messages
         
