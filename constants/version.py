@@ -7,7 +7,7 @@
     An optional suffix like "b" might be provided in
     case of multiple builds per day.
 
-    2020 Benjamin Kellenberger
+    2020-21 Benjamin Kellenberger
 '''
 
-AIDE_VERSION = '1.9.201116b'
+AIDE_VERSION = '1.9.201116c'

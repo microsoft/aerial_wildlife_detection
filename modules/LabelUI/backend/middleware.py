@@ -279,22 +279,23 @@ class DBMiddleware():
         # assemble entries first
         allEntries = {}
         numClasses = 0
-        for cl in classData:
-            id = str(cl['id'])
-            entry = {
-                'id': id,
-                'name': cl['name'],
-                'color': cl['color'],
-                'parent': str(cl['parent']) if cl['parent'] is not None else None,
-                'hidden': cl['hidden']
-            }
-            if cl['type'] == 'group':
-                entry['entries'] = {}
-            else:
-                entry['index'] = cl['idx']
-                entry['keystroke'] = cl['keystroke']
-                numClasses += 1
-            allEntries[id] = entry
+        if classData is not None:
+            for cl in classData:
+                id = str(cl['id'])
+                entry = {
+                    'id': id,
+                    'name': cl['name'],
+                    'color': cl['color'],
+                    'parent': str(cl['parent']) if cl['parent'] is not None else None,
+                    'hidden': cl['hidden']
+                }
+                if cl['type'] == 'group':
+                    entry['entries'] = {}
+                else:
+                    entry['index'] = cl['idx']
+                    entry['keystroke'] = cl['keystroke']
+                    numClasses += 1
+                allEntries[id] = entry
         
 
         # transform into tree
