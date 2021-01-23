@@ -190,6 +190,10 @@ class Watchdog(Thread):
         return self.properties['numimages_autotrain']
 
 
+    def getAImodelAutoTrainingEnabled(self):
+        return self.properties['ai_model_enabled']
+
+
 
     def run(self):
 
@@ -197,7 +201,7 @@ class Watchdog(Thread):
             
             self.taskOngoing = self._check_task_ongoing()
 
-            if self.properties['numimages_autotrain'] > 0:
+            if self.getAImodelAutoTrainingEnabled() and self.getThreshold() > 0:
 
                 # poll for user progress
                 count = self.dbConnector.execute(self.queryStr, self.queryVals, 1)

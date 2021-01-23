@@ -16,7 +16,12 @@ class ProgressBar {
     set(visible, value, max, indefinite) {
         if(visible !== undefined) {
             if(!visible) {
-                this.displayProp = this.markup.css('display');
+                let displayProp = this.markup.css('display');
+                if(displayProp.trim().toLowerCase() !== 'none') {
+                    this.displayProp = this.markup.css('display');
+                } else {
+                    this.displayProp = undefined;
+                }
                 this.markup.css('display', 'none');
             } else {
                 if(typeof(this.displayProp) === 'string') {
@@ -25,7 +30,6 @@ class ProgressBar {
                     this.markup.show();
                 }
             }
-            // this.markup.css('visibility', (visible? 'visible' : 'hidden'));
         }
         if(max !== undefined) {
             this.max = max;

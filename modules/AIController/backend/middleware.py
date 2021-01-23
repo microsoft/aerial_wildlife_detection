@@ -832,12 +832,12 @@ class AIMiddleware():
         status = {}
 
         # watchdog
-        if not project in self.watchdogs:
-            self._init_watchdog(project, nudgeWatchdog, recheckAutotrainSettings)
+        self._init_watchdog(project, nudgeWatchdog, recheckAutotrainSettings)
 
         # project status
         if checkProject:
             status['project'] = {
+                'ai_auto_training_enabled': self.watchdogs[project].getAImodelAutoTrainingEnabled(),
                 'num_annotated': self.watchdogs[project].lastCount,
                 'num_next_training': self.watchdogs[project].getThreshold()
             }

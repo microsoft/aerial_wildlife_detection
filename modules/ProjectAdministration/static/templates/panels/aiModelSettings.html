@@ -8,13 +8,26 @@
         <label for="ai-model-enabled-checkbox">Automatic AI model training enabled</label><br />
 
         <div style="margin-left:20px">
-            <label for="ai-model-num-images-autotrain">Number of labeled images to wait every training step:</label>
-            <input type="number" min="1" value="128" id="ai-model-num-images-autotrain" /><br />
-            <!-- TODO: replace obsolete parameters with workflow -->
-            <label for="ai-model-num-labels-image-autotrain">Only consider images with the following number (or more) of annotations:</label>
-            <input type="number" min="0" value="0" id="ai-model-num-labels-image-autotrain" /><br />
-            <label for="ai-model-max-num-images-autotrain">Maximum number of images to train on at a time (0 = unlimited):</label>
-            <input type="number" min="0" value="0" id="ai-model-max-num-images-autotrain" /><br />
+            <table>
+                <tr>
+                    <td><label for="ai-model-num-images-autotrain">Number of labeled images to wait every training step:</label></td>
+                    <td><input type="number" min="1" value="128" id="ai-model-num-images-autotrain" /></td>
+                </tr>
+                
+                <!-- TODO: replace default parameters with workflow possibilities -->
+                <tr>
+                    <td><label for="ai-model-num-labels-image-autotrain">Only consider images with the following number (or more) of annotations:</label></td>
+                    <td><input type="number" min="0" value="0" id="ai-model-num-labels-image-autotrain" /></td>
+                </tr>
+                <tr>
+                    <td><label for="ai-model-max-num-images-autotrain">Maximum number of images to train on at a time (0 = unlimited):</label></td>
+                    <td><input type="number" min="0" value="0" id="ai-model-max-num-images-autotrain" /></td>
+                </tr>
+                <tr>
+                    <td><label for="ai-model-max-num-images-inference">Maximum number of images to predict on at a time (0 = unlimited):</label></td>
+                    <td><input type="number" min="0" value="0" id="ai-model-max-num-images-inference" /></td>
+                </tr>
+            </table>
         </div>
     </div>
     
@@ -196,6 +209,7 @@
                     'numimages_autotrain',
                     'minnumannoperimage',
                     'maxnumimages_train',
+                    'maxnumimages_inference',
                     'segmentation_ignore_unlabeled'
                 ]
             }),
@@ -211,6 +225,7 @@
                 $('#ai-model-num-images-autotrain').val(getInt(data['numimages_autotrain'], 128));
                 $('#ai-model-num-labels-image-autotrain').val(getInt(data['minnumannoperimage'], 0));
                 $('#ai-model-max-num-images-autotrain').val(getInt(data['maxnumimages_train'], 0));
+                $('#ai-model-max-num-images-inference').val(getInt(data['maxnumimages_inference'], 0));
 
                 // set selected AI and AL models
                 let aiLib = data['ai_model_library'];
@@ -290,7 +305,8 @@
             'ai_model_settings': aiModelOptions,
             'numimages_autotrain': numImages_autoTrain,
             'minnumannoperimage': getInt($('#ai-model-num-labels-image-autotrain').val(), 0, 0),
-            'maxnumimages_train': getInt($('#ai-model-max-num-images-autotrain').val(), 0, 0)
+            'maxnumimages_train': getInt($('#ai-model-max-num-images-autotrain').val(), 0, 0),
+            'maxnumimages_inference': getInt($('#ai-model-max-num-images-inference').val(), 0, 0)
         };
         if(window.annotationType === 'segmentationMasks') {
             settings['segmentation_ignore_unlabeled'] = ($('#seg-unlabeled-select').val() === '1');
@@ -428,6 +444,7 @@
             $('#ai-model-num-images-autotrain').prop('disabled', disabled);
             $('#ai-model-num-labels-image-autotrain').prop('disabled', disabled);
             $('#ai-model-max-num-images-autotrain').prop('disabled', disabled);
+            $('#ai-model-max-num-images-inference').prop('disabled', disabled);
         });
 
         $('#seg-unlabeled-select').change(function() {

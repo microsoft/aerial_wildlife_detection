@@ -537,16 +537,17 @@ class WorkflowMonitor {
                 try {
                     if(data['status'].hasOwnProperty('project')) {
                         let placeholderText = '(auto-training disabled)';
+                        let autoTrainingEnabled = data['status']['project']['ai_auto_training_enabled'];
                         let numAnnotated = data['status']['project']['num_annotated'];
                         let numNext = data['status']['project']['num_next_training'];
-                        if(numNext > 0) {
+                        if(autoTrainingEnabled && numNext > 0) {
                             if(numAnnotated >= numNext) {
                                 placeholderText = 'in queue...';
                             } else {
                                 placeholderText = numAnnotated+'/'+numNext;
                             }
                         }
-                        self._set_footer_progress('autotrain', (numNext>0), numAnnotated, numNext, false, placeholderText);
+                        self._set_footer_progress('autotrain', (autoTrainingEnabled && numNext>0), numAnnotated, numNext, false, placeholderText);
                     }
                 } catch {
                     self._set_footer_progress('autotrain', false);

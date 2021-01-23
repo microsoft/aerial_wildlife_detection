@@ -1,7 +1,7 @@
 '''
     Definition of the layer between the UI frontend and the database.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 import os
@@ -237,10 +237,10 @@ class DBMiddleware():
 
         # provide flag if AI model is available
         aiModelAvailable = all([
-            result['ai_model_enabled'],
             result['ai_model_library'] is not None and len(result['ai_model_library']),
             result['ai_alcriterion_library'] is not None and len(result['ai_alcriterion_library'])
         ])
+        aiModelAutotrainingEnabled = (aiModelAvailable and result['ai_model_enabled'])
 
         return {
             'projectShortname': result['shortname'],
@@ -249,6 +249,7 @@ class DBMiddleware():
             'demoMode': result['demomode'],
             'interface_enabled': result['interface_enabled'] and not result['archived'],
             'ai_model_available': aiModelAvailable,
+            'ai_model_autotraining_enabled': aiModelAutotrainingEnabled,
             'segmentation_ignore_unlabeled': result['segmentation_ignore_unlabeled']
         }
 

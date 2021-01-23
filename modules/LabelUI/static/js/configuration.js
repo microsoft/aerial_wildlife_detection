@@ -58,6 +58,7 @@ window.getProjectSettings = function() {
         window.styles = data['settings']['styles'];
         window.welcomeMessage = data['settings']['welcomeMessage'];
         window.aiModelAvailable = data['settings']['ai_model_available'];
+        window.aiModelAutotrainingEnabled = data['settings']['ai_model_autotraining_enabled'];
         if(window.annotationType === 'segmentationMasks' && window.predictionType === 'segmentationMasks') {
             window.segmentation_ignoreUnlabeled = data['settings']['segmentation_ignore_unlabeled'];
         }
