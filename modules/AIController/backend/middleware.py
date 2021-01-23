@@ -151,7 +151,7 @@ class AIMiddleware():
         self.aiModels = models
 
 
-    def _init_watchdog(self, project, nudge=False):
+    def _init_watchdog(self, project, nudge=False, recheckAutotrainSettings=False):
         '''
             Launches a thread that periodically polls the database for new
             annotations. Once the required number of new annotations is reached,
@@ -162,17 +162,17 @@ class AIMiddleware():
         if self.passiveMode:
             return
 
-        if project in self.watchdogs:
-            # watchdog already present
+        if project not in self.watchdogs:
+            self.watchdogs[project] = Watchdog(project, self.config, self.dbConn, self)
+            self.watchdogs[project].start()   
+        
+        if recheckAutotrainSettings:
+            # also nudges the watchdog
+            self.watchdogs[project].recheckAutotrainSettings()
+        
+        elif nudge:
             self.watchdogs[project].nudge()
 
-        else:
-            # init watchdog            
-            self.watchdogs[project] = Watchdog(project, self.config, self.dbConn, self)
-            self.watchdogs[project].start()
-
-            if nudge:
-                self.watchdogs[project].nudge()
 
 
     def _get_num_available_workers(self):
@@ -824,24 +824,19 @@ class AIMiddleware():
 
 
 
-    def check_status(self, project, checkProject, checkTasks, checkWorkers, nudgeWatchdog=False):
+    def check_status(self, project, checkProject, checkTasks, checkWorkers, nudgeWatchdog=False, recheckAutotrainSettings=False):
         '''
             Queries the Celery worker results depending on the parameters specified.
             Returns their status accordingly if they exist.
         '''
         status = {}
 
+        # watchdog
+        if not project in self.watchdogs:
+            self._init_watchdog(project, nudgeWatchdog, recheckAutotrainSettings)
+
         # project status
         if checkProject:
-            #TODO
-            # if project in self.training and self.training['project']:
-            #     status['project'] = {}
-            # else:
-            # notify watchdog that users are active
-            if not project in self.watchdogs:
-                self._init_watchdog(project, True)
-            if nudgeWatchdog:
-                self.watchdogs[project].nudge()
             status['project'] = {
                 'num_annotated': self.watchdogs[project].lastCount,
                 'num_next_training': self.watchdogs[project].getThreshold()

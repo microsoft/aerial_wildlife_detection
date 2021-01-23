@@ -313,6 +313,13 @@
                 console.error(data);
             }
         });
+        p = p.then(function() {
+            // nudge annotation watchdog to update auto-training info
+            return $.ajax({
+                url: window.baseURL + 'status?recheck_autotrain_settings=true'
+            });
+        });
+
         return p.then(function() {
             return loadSettings();
         });
@@ -418,9 +425,6 @@
 
         $('#ai-model-enabled-checkbox').change(function() {
             let disabled = !$(this).prop('checked');
-            aiModelSelect.prop('disabled', disabled);
-            alModelSelect.prop('disabled', disabled);
-
             $('#ai-model-num-images-autotrain').prop('disabled', disabled);
             $('#ai-model-num-labels-image-autotrain').prop('disabled', disabled);
             $('#ai-model-max-num-images-autotrain').prop('disabled', disabled);

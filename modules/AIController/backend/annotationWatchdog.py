@@ -12,6 +12,7 @@
 import json
 from threading import Thread, Event
 import math
+import uuid
 from psycopg2 import sql
 from celery import current_app
 
@@ -82,6 +83,17 @@ class Watchdog(Thread):
                         else:
                             # task not running; flag as such in database
                             tasks_orphaned.add(dbKey)
+        
+        # vice-versa: check running tasks and re-enable them if flagged as orphaned in DB
+        tasks_resurrected = set()
+        for key in activeTasks:
+            for task in activeTasks[key]:
+                taskID = uuid.UUID(task['id'])
+                if taskID not in tasksRunning_db:
+                    tasks_resurrected.add(taskID)
+                    self.taskOngoing = True
+        
+        tasks_orphaned = tasks_orphaned.difference(tasks_resurrected)
                 
         # clean up orphaned tasks
         if len(tasks_orphaned):
@@ -92,6 +104,15 @@ class Watchdog(Thread):
                 WHERE id IN %s;
             ''').format(sql.Identifier(self.project, 'workflowhistory')),
                 (tuple((t,) for t in tasks_orphaned),), None)
+
+        # resurrect running tasks if needed
+        if len(tasks_resurrected):
+            self.dbConnector.execute(sql.SQL('''
+                UPDATE {}
+                SET timeFinished = NULL, succeeded = NULL, messages = NULL
+                WHERE id IN %s;
+            ''').format(sql.Identifier(self.project, 'workflowhistory')),
+                (tuple((t,) for t in tasks_resurrected),), None)
 
         return self.taskOngoing
 
@@ -153,6 +174,16 @@ class Watchdog(Thread):
         '''
         self.currentWaitingTime = self.minWaitingTime
 
+    
+
+    def recheckAutotrainSettings(self):
+        '''
+            Force re-check of auto-train mode of project. To be called whenever
+            auto-training is changed through the configuration page.
+        '''
+        self._load_properties()
+        self.nudge()
+
 
 
     def getThreshold(self):
@@ -166,11 +197,8 @@ class Watchdog(Thread):
             
             self.taskOngoing = self._check_task_ongoing()
 
-            if self.properties['numimages_autotrain'] <= 0:
-                # auto-training disabled; re-query database, then wait again
-                self._load_properties()
+            if self.properties['numimages_autotrain'] > 0:
 
-            else:
                 # poll for user progress
                 count = self.dbConnector.execute(self.queryStr, self.queryVals, 1)
                 count = count[0]['count']

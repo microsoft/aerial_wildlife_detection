@@ -231,9 +231,10 @@ class AIController:
                     queryTasks = 'tasks' in request.query
                     queryWorkers = 'workers' in request.query
                     nudgeWatchdog = 'nudge_watchdog' in request.query
+                    recheckAutotrainSettings = 'recheck_autotrain_settings' in request.query
                     status = self.middleware.check_status(
                         project,
-                        queryProject, queryTasks, queryWorkers, nudgeWatchdog)
+                        queryProject, queryTasks, queryWorkers, nudgeWatchdog, recheckAutotrainSettings)
                 except Exception as e:
                     status = str(e)
                 return { 'status' : status }

@@ -85,7 +85,8 @@ class WorkflowTracker:
                 tasks[t]['status'] = result.status
             if 'children' in tasks[t]:
                 numDone = 0
-                for key in range(len(tasks[t]['children'])):
+                numChildren = len(tasks[t]['children'])
+                for key in range(numChildren):
                     cResult = AsyncResult(tasks[t]['children'][key]['id'])
                     if cResult.ready():
                         numDone += 1
@@ -108,6 +109,8 @@ class WorkflowTracker:
                     if cResult.status is not None:
                         tasks[t]['children'][key]['status'] = cResult.status
                 tasks[t]['num_done'] = numDone
+                if numDone == numChildren:
+                    tasks[t]['status'] = 'SUCCESSFUL'
 
         lastResult = AsyncResult(tasks[-1]['id'])
         hasFinished = lastResult.ready()
