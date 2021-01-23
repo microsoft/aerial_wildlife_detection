@@ -367,7 +367,9 @@ DEFAULT_OPTIONS = {
 				"description": "Transforms to apply during inference time.",
 				"type": "list",
 				"options": "transforms",
-				"value": []
+				"value": [
+					"Resize"
+				]
 			}
 		}
 	}

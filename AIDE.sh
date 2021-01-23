@@ -4,10 +4,8 @@
 # from the following two environment variables:
 # * AIDE_CONFIG_PATH
 # * AIDE_MODULES
-#
-# Depending on the argume
 # 
-# 2020 Benjamin Kellenberger
+# 2020-21 Benjamin Kellenberger
 
 function start {
 

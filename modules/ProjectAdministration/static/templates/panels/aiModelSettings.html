@@ -442,11 +442,14 @@
             }
         });
         $('#load-ai-model-options').click(function() {
-            let defaultOptions = window.availableModels['prediction'][window.currentAImodel]['defaultOptions'];
-            if(defaultOptions === undefined || defaultOptions === null) {
-                window.optionsEngine.setOptions(undefined);
-            } else {
-                window.optionsEngine.setOptions(defaultOptions);
+            let selectedModel = aiModelSelect.val();
+            if(typeof(selectedModel) === 'string' && window.availableModels['prediction'].hasOwnProperty(selectedModel)) {
+                let defaultOptions = window.availableModels['prediction'][selectedModel]['defaultOptions'];
+                if(defaultOptions === undefined || defaultOptions === null) {
+                    window.optionsEngine.setOptions(undefined);
+                } else {
+                    window.optionsEngine.setOptions(defaultOptions);
+                }
             }
         });
         $('#verify-ai-model-options').click(function() {

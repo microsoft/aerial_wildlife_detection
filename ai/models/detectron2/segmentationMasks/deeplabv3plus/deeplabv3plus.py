@@ -5,7 +5,7 @@
 '''
 
 import os
-
+import torch
 from detectron2.config import get_cfg
 import detectron2.utils.comm as comm
 from detectron2.projects.deeplab import add_deeplab_config, build_lr_scheduler
@@ -77,9 +77,51 @@ class DeepLabV3Plus(GenericDetectron2SegmentationModel):
                 weights_copy = weights.clone()
                 biases_copy = biases.clone()
 
-                correlations = self.calculateClassCorrelations(model, range(numClasses_orig), newClasses, updateStateFun, 128)    #TODO: num images
-                print('debug')
+                #TODO: we currently have no indexing possibilities to retrieve images with correct labels...
+                # correlations = self.calculateClassCorrelations(model, range(numClasses_orig), newClasses, updateStateFun, 128)    #TODO: num images
+                
+                # use alternative solution: choose random class
+                randomOrder = torch.randperm(numClasses_orig)
+                for cl in range(len(newClasses)):
+                    newWeight = weights_copy[randomOrder[cl],...]
+                    newBias = biases_copy[randomOrder[cl]]
 
+                    # add a bit of noise
+                    newWeight += (0.5 - torch.rand_like(newWeight)) * 0.5 * torch.std(weights_copy)
+                    newBias += (0.5 - torch.rand_like(newBias)) * 0.5 * torch.std(biases_copy)
+
+                    # prepend
+                    weights = torch.cat((newWeight.unsqueeze(0), weights), 0)
+                    biases = torch.cat((newBias.unsqueeze(0), biases), 0)
+                
+            # remove old classes
+            classmap_updated = {}
+            valid = torch.ones(len(biases), dtype=torch.bool)
+            classmap_inv = {}
+            for key in stateDict['labelclassMap'].keys():
+                classmap_inv[stateDict['labelclassMap'][key]] = key
+            index_updated = 0
+            for clIdx in range(len(classmap_inv)):
+                clName = classmap_inv[clIdx]
+                if clName not in data['labelClasses']:
+                    index = clIdx + len(newClasses)   # we prepended new class weights; need to add offset
+                    valid[index] = False
+                else:
+                    classmap_updated[clName] = index_updated
+                    index_updated += 1
+            stateDict['labelclassMap'] = classmap_updated
+            weights = weights[valid,...]
+            biases = biases[valid,...]
+
+            # apply updated weights and biases
+            model.sem_seg_head.predictor.weight = torch.nn.Parameter(weights)
+            model.sem_seg_head.predictor.bias = torch.nn.Parameter(biases)
+                
+            print(f'Neurons for {len(newClasses)} new label classes added to DeepLabV3+ model.')
+
+        # finally, update model and config
+        stateDict['detectron2cfg'].MODEL.SEM_SEG_HEAD.NUM_CLASSES = len(stateDict['labelclassMap'])
+        model.num_classes = len(stateDict['labelclassMap'])
         return model, stateDict
 
 
@@ -121,4 +163,5 @@ if __name__ == '__main__':
     # launch model
     rn = DeepLabV3Plus(project, config, database, fileServer, None)
     _, stateDict = rn.loadAndAdaptModel(None, data, updateStateFun)
-    rn.train(stateDict, data, updateStateFun)
+    # stateDict = rn.train(stateDict, data, updateStateFun)
+    rn.inference(stateDict, data, updateStateFun)

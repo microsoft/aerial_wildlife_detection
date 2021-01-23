@@ -2,7 +2,7 @@
     Base model trainer for models implemented towards the Detectron2 library
     (https://github.com/facebookresearch/detectron2).
 
-    2020 Benjamin Kellenberger
+    2020-21 Benjamin Kellenberger
 '''
 
 import os
@@ -194,7 +194,8 @@ class GenericDetectron2Model(AIModel):
 
         # load state dict
         if stateDict is not None and not forceNewModel:
-            stateDict = torch.load(io.BytesIO(stateDict), map_location=lambda storage, loc: storage)
+            if not isinstance(stateDict, dict):
+                stateDict = torch.load(io.BytesIO(stateDict), map_location=lambda storage, loc: storage)
         else:
             stateDict = {}
 
@@ -211,6 +212,10 @@ class GenericDetectron2Model(AIModel):
                 pass
             try:
                 detectron2cfg.MODEL.RETINANET.NUM_CLASSES = stateDict['detectron2cfg'].MODEL.RETINANET.NUM_CLASSES
+            except:
+                pass
+            try:
+                detectron2cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES = stateDict['detectron2cfg'].MODEL.SEM_SEG_HEAD.NUM_CLASSES
             except:
                 pass
         stateDict['detectron2cfg'] = detectron2cfg
@@ -512,44 +517,56 @@ class GenericDetectron2Model(AIModel):
             for idx in range(numImg):
                 batch = next(dataLoaderIter)
                 outputs = model(batch)
-                outputs = outputs[0]['instances']
-
-                labels = outputs.pred_classes.cpu()
-                scores = outputs.scores.cpu()
-
-                # export bboxes if predicted
-                if hasattr(outputs, 'pred_boxes'):
-                    bboxes = outputs.pred_boxes.tensor.cpu()
-                    
-                    # convert bboxes to relative XYWH format
-                    bboxes[:,2] -= bboxes[:,0]
-                    bboxes[:,3] -= bboxes[:,1]
-                    bboxes[:,0] += bboxes[:,2]/2
-                    bboxes[:,1] += bboxes[:,3]/2
-                    bboxes[:,0] /= batch[0]['width']
-                    bboxes[:,1] /= batch[0]['height']
-                    bboxes[:,2] /= batch[0]['width']
-                    bboxes[:,3] /= batch[0]['height']
-
-                    predictions = []
-                    for b in range(len(scores)):
-                        label = labels[b].item()
-
-                        if label not in labelclassMap_inv or not isinstance(labelclassMap_inv[label], UUID):
-                            # prediction with invalid label (e.g. from pretrained model state)
-                            continue
-
-                        predictions.append({
-                            'x': bboxes[b,0].item(),
-                            'y': bboxes[b,1].item(),
-                            'width': bboxes[b,2].item(),
-                            'height': bboxes[b,3].item(),
-                            'label': labelclassMap_inv[label],
-                            'confidence': scores[b].item(),
-                            #TODO: logits...
-                        })
+                outputs = outputs[0]
                 
-                #TODO: segmentation masks, image labels
+                predictions = []
+
+                if 'instances' in outputs:
+                    outputs = outputs['instances']
+
+                    labels = outputs.pred_classes.cpu()
+                    scores = outputs.scores.cpu()
+
+                    # export bboxes if predicted
+                    if hasattr(outputs, 'pred_boxes'):
+                        bboxes = outputs.pred_boxes.tensor.cpu()
+                        
+                        # convert bboxes to relative XYWH format
+                        bboxes[:,2] -= bboxes[:,0]
+                        bboxes[:,3] -= bboxes[:,1]
+                        bboxes[:,0] += bboxes[:,2]/2
+                        bboxes[:,1] += bboxes[:,3]/2
+                        bboxes[:,0] /= batch[0]['width']
+                        bboxes[:,1] /= batch[0]['height']
+                        bboxes[:,2] /= batch[0]['width']
+                        bboxes[:,3] /= batch[0]['height']
+                        
+                        for b in range(len(scores)):
+                            label = labels[b].item()
+                            if label not in labelclassMap_inv or not isinstance(labelclassMap_inv[label], UUID):
+                                # prediction with invalid label (e.g. from pretrained model state)
+                                continue
+
+                            predictions.append({
+                                'x': bboxes[b,0].item(),
+                                'y': bboxes[b,1].item(),
+                                'width': bboxes[b,2].item(),
+                                'height': bboxes[b,3].item(),
+                                'label': labelclassMap_inv[label],
+                                'confidence': scores[b].item(),
+                                #TODO: logits...
+                            })
+                
+                elif 'sem_seg' in outputs:
+                    outputs = outputs['sem_seg']
+                    confidence, label = torch.max(outputs, 0)
+                    predictions.append({
+                        'label': label.cpu().numpy(),
+                        'logits': outputs.cpu().numpy().tolist(),
+                        'confidence': confidence.cpu().numpy()
+                    })
+                
+                #TODO: image labels, instance segmentation, etc.
 
                 response[batch[0]['image_uuid']] = {
                     'predictions': predictions

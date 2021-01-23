@@ -3,12 +3,12 @@
  * of AI model training and inference workflows for a specific
  * project.
  * 
- * 2020 Benjamin Kellenberger
+ * 2020-21 Benjamin Kellenberger
  */
 
 $(document).ready(function() {
     if(typeof(ProgressBar) === 'undefined') {
-        $.getScript('/static/general/js/progressbar.js', function() {console.log('fuck jacascript')});
+        $.getScript('/static/general/js/progressbar.js');
     }
 
     if(window.baseURL === undefined) {
@@ -141,10 +141,6 @@ class Task {
         this.abortedBy = updates['aborted_by'];
         if(typeof(this.abortedBy) !== 'string') this.abortedBy = ''
         else this.hasFinished = true;
-        this.timeFinished = parseFloat(updates['time_finished']);      //TODO: show time required
-        if(!isNaN(this.timeFinished)) {
-            this.hasFinished = true;
-        }
         this.messages = updates['messages'];
         if(typeof(this.messages) !== 'string') this.messages = '';
 
@@ -169,7 +165,20 @@ class Task {
                     statusText = 'working';
                     break;
                 case 'PENDING':
-                    statusText = '';    //TODO
+                    statusText = '';
+                    if(updates['name'].toLowerCase() === 'celery.chord') {
+                        // special case for Chords that don't seem to finish even if children did
+                        let successful = true;
+                        for(var child in updates['children']) {
+                            if(updates['children'][child]['successful'] !== true) {
+                                successful = false;
+                                break;
+                            }
+                        }
+                        if(successful) {
+                            this.hasFinished = true;
+                        }
+                    }
                     break;
                 default:
                     statusText = statusID.toLowerCase();
@@ -225,6 +234,15 @@ class Task {
                 this.pBar.set(true, numChildrenDone, this.childTasks.length, false);
             }
         }
+
+        // // time finished variable has precedence over all others
+        // this.timeFinished = parseFloat(updates['time_finished']);      //TODO: show time required
+        // if(!isNaN(this.timeFinished)) {
+        //     this.hasFinished = true;
+        // }
+        if(this.hasFinished) {
+            this._set(this.timeFinished, !this.hasFailed);
+        }
     }
 
     revokeTask() {
@@ -270,13 +288,16 @@ class Task {
         })
     }
 
-    _set(successful) {
+    _set(timeFinished, successful) {
         /* 
             Forcefully sets task and all children to finished,
             and also to successful or failed, depending on
             attribute.
             Also hides progress bar of task and all children.
          */
+        if(!isNaN(timeFinished)) {
+            this.timeFinished = timeFinished;
+        }
         if(successful === true) {
             this.successful = true;
         } else if(successful === false) {
@@ -284,7 +305,7 @@ class Task {
         }
         this.pBar.set(false);
         for(var c=0; c<this.childTasks.length; c++) {
-            this.childTasks[c]._set(successful);
+            this.childTasks[c]._set(timeFinished, successful);
             // if(successful === true) {
             //     this.childTasks[c].successful = true;
             // } else if(successful === false) {
@@ -299,13 +320,14 @@ class Task {
         for(var c=0; c<this.childTasks.length; c++) {
             if(this.childTasks[c].taskFailed()) {
                 this.hasFailed = true;
+                this.pBar.set(false);
                 break;
             }
         }
 
         // set children if task has failed and hide progress bar
         if(this.hasFailed) {
-            this._set(false);
+            this._set(this.timeFinished, false);
             this.pBar.set(false);
         }
 
@@ -316,7 +338,8 @@ class Task {
         if(this.isRootTask) {
             if(this.hasFinished) {
                 // force children to show finished flag too
-                this._set();
+                this._set(this.timeFinished);
+                this.pBar.set(false);
 
             } else {
                 // check children
@@ -517,7 +540,11 @@ class WorkflowMonitor {
                         let numAnnotated = data['status']['project']['num_annotated'];
                         let numNext = data['status']['project']['num_next_training'];
                         if(numNext > 0) {
-                            placeholderText = numAnnotated+'/'+numNext;
+                            if(numAnnotated >= numNext) {
+                                placeholderText = 'in queue...';
+                            } else {
+                                placeholderText = numAnnotated+'/'+numNext;
+                            }
                         }
                         self._set_footer_progress('autotrain', (numNext>0), numAnnotated, numNext, false, placeholderText);
                     }
