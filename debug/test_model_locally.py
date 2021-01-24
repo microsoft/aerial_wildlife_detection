@@ -13,7 +13,7 @@
           testing
         - "mode": one of {'train', 'inference', 'TODO'}
 
-    2020 Benjamin Kellenberger
+    2020-21 Benjamin Kellenberger
 '''
 
 import os
@@ -69,7 +69,7 @@ def main():
 
     # check if AIDE file server is reachable
     admin = AdminMiddleware(config)
-    connDetails = admin.getServiceDetails(False)
+    connDetails = admin.getServiceDetails(True, False)
     fsVersion = connDetails['FileServer']['aide_version']
     if not isinstance(fsVersion, str):
         # no file server running

@@ -17,7 +17,7 @@ class FileServer():
         self.app = app
 
         if verbose_start:
-            print('FileServer'.ljust(20), end='')
+            print('FileServer'.ljust(helpers.LogDecorator.get_ljust_offset()), end='')
 
         if not helpers.is_fileServer(config):
             if verbose_start:

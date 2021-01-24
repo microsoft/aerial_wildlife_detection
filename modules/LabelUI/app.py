@@ -25,7 +25,7 @@ class LabelUI():
         self.staticDir = 'modules/LabelUI/static'
 
         if verbose_start:
-            print('LabelUI'.ljust(23), end='')
+            print('LabelUI'.ljust(LogDecorator.get_ljust_offset()), end='')
         
         try:
             self.middleware = DBMiddleware(config)

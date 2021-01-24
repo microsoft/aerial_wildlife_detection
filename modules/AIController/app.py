@@ -15,15 +15,15 @@ class AIController:
 
     #TODO: relay routings if AIController is on a different machine
 
-    def __init__(self, config, app, verbose_start=False):
+    def __init__(self, config, app, verbose_start=False, passive_mode=False):
         self.config = config
         self.app = app
 
         if verbose_start:
-            print('AIController'.ljust(18), end='')
+            print('AIController'.ljust(LogDecorator.get_ljust_offset()), end='')
 
         try:
-            self.middleware = AIMiddleware(config)
+            self.middleware = AIMiddleware(config, passive_mode)
             self.login_check = None
             self._initBottle()
         except Exception as e:

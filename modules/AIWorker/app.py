@@ -19,7 +19,7 @@ class AIWorker():
         self.config = config
 
         if verbose_start:
-            print('AIWorker'.ljust(22), end='')
+            print('AIWorker'.ljust(LogDecorator.get_ljust_offset()), end='')
 
         try:
             self.dbConnector = Database(config)

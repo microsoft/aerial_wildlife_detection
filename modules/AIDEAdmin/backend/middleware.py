@@ -2,7 +2,7 @@
     Middleware for administrative functionalities
     of AIDE.
 
-    2020 Benjamin Kellenberger
+    2020-21 Benjamin Kellenberger
 '''
 
 import os
@@ -23,19 +23,21 @@ class AdminMiddleware:
         self.dbConnector = Database(config)
 
 
-    def getServiceDetails(self, warn_error=False):
+    def getServiceDetails(self, verbose=False, raise_error=False):
         '''
             Queries the indicated AIController and FileServer
             modules for availability and their version. Returns
             metadata about the setup of AIDE accordingly.
             Raises an Exception if not running on the main host.
-            If "warn_error" is True, a warning statement is printed
+            If "verbose" is True, a warning statement is printed
             to the command line if the version of AIDE on the attached
             AIController and/or FileServer is not the same as on the
             host, or if the servers cannot be contacted.
+            If "raise_error" is True, an Exception is being thrown at
+            the first error occurrence.
         '''
-        if warn_error:
-            print('Contacting AIController...', end='')
+        if verbose:
+            print('Contacting AIController...'.ljust(LogDecorator.get_ljust_offset()), end='')
 
         # check if running on the main host
         modules = os.environ['AIDE_MODULES'].strip().split(',')
@@ -52,28 +54,32 @@ class AdminMiddleware:
             try:
                 aic_response = requests.get(os.path.join(aic_uri, 'version'))
                 aic_version = aic_response.text
-                if warn_error and aic_version != AIDE_VERSION:
+                if verbose and aic_version != AIDE_VERSION:
+                    LogDecorator.print_status('warn')
                     print('WARNING: AIDE version of connected AIController differs from main host.')
                     print(f'\tAIController URI: {aic_uri}')
                     print(f'\tAIController AIDE version:    {aic_version}')
                     print(f'\tAIDE version on this machine: {AIDE_VERSION}')
                 
-                elif warn_error:
+                elif verbose:
                     LogDecorator.print_status('ok')
             except Exception as e:
-                if warn_error:
+                message = f'ERROR: could not connect to AIController (message: "{str(e)}").'
+                if verbose:
                     LogDecorator.print_status('fail')
-                    print(f'WARNING: error connecting to AIController (message: "{str(e)}").')
+                    print(message)
+                if raise_error:
+                    raise Exception(message)
                 aic_version = None
         else:
             aic_version = AIDE_VERSION
-            if warn_error:
+            if verbose:
                 LogDecorator.print_status('ok')
 
+        if verbose:
+            print('Contacting FileServer...'.ljust(LogDecorator.get_ljust_offset()), end='')
         if not is_localhost(fs_uri):
             # same for the file server
-            if warn_error:
-                print('Contacting FileServer...', end='')
             try:
                 fs_response = requests.get(os.path.join(fs_uri, 'version'))
                 fs_version = fs_response.text
@@ -85,34 +91,47 @@ class AdminMiddleware:
                     print('ERROR: AIDE version of connected FileServer is too old.')
                     print(f'\tMinimum required version:    {MIN_FILESERVER_VERSION}')
                     print(f'\tCurrent FileServer version:  {fs_version}')
-                    import sys
-                    sys.exit(1)     #TODO: doesn't terminate properly
 
-                if warn_error and fs_version != AIDE_VERSION:
+                if verbose and fs_version != AIDE_VERSION:
                     LogDecorator.print_status('warn')
                     print('WARNING: AIDE version of connected FileServer differs from main host.')
                     print(f'\tFileServer URI: {fs_uri}')
                     print(f'\tFileServer AIDE version:       {fs_version}')
                     print(f'\tAIDE version on this machine: {AIDE_VERSION}')
-                elif warn_error:
+                elif verbose:
                     LogDecorator.print_status('ok')
             except Exception as e:
-                if warn_error:
+                message = f'ERROR: could not connect to FileServer (message: "{str(e)}").'
+                if verbose:
                     LogDecorator.print_status('fail')
-                    print(f'WARNING: error connecting to FileServer (message: "{str(e)}").')
+                    print(message)
+                if raise_error:
+                    raise Exception(message)
                 fs_version = None
         else:
             fs_version = AIDE_VERSION
-            if warn_error:
+            if verbose:
                 LogDecorator.print_status('ok')
 
         # query database
-        dbVersion = self.dbConnector.execute('SHOW server_version;', None, 1)[0]['server_version']
+        if verbose:
+            print('Contacting Database...'.ljust(LogDecorator.get_ljust_offset()), end='')
+        dbVersion = None
+        dbInfo = None
         try:
+            dbVersion = self.dbConnector.execute('SHOW server_version;', None, 1)[0]['server_version']
             dbVersion = dbVersion.split(' ')[0].strip()
-        except:
-            pass
-        dbInfo = self.dbConnector.execute('SELECT version() AS version;', None, 1)[0]['version']
+            dbInfo = self.dbConnector.execute('SELECT version() AS version;', None, 1)[0]['version']
+            if verbose:
+                LogDecorator.print_status('ok')
+        except Exception as e:
+            message = f'ERROR: database version ("{str(dbVersion)}") could not be parsed properly.'
+            if verbose:
+                LogDecorator.print_status('warn')
+                print(message)
+            if raise_error:
+                raise Exception(message)
+
         return {
                 'aide_version': AIDE_VERSION,
                 'AIController': {

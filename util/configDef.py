@@ -13,7 +13,7 @@ class Config():
 
     def __init__(self, override_config_path=None, verbose_start=False):
         if verbose_start:
-            print('Reading configuration...'.ljust(6), end='')
+            print('Reading configuration...'.ljust(LogDecorator.get_ljust_offset()), end='')
         if isinstance(override_config_path, str) and len(override_config_path):
             configPath = override_config_path
         elif 'AIDE_CONFIG_PATH' in os.environ:

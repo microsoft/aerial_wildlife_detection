@@ -36,7 +36,8 @@ def setupDB():
     # add AIDE version
     dbConn.execute('''
         INSERT INTO aide_admin.version (version)
-        VALUES (%s);
+        VALUES (%s)
+        ON CONFLICT (version) DO NOTHING;
     ''', (AIDE_VERSION,), None)
 
     # add admin user

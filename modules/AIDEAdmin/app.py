@@ -3,7 +3,7 @@
     setup and monitoring of AIDE (i.e., super
     user functionality).
 
-    2020 Benjamin Kellenberger
+    2020-21 Benjamin Kellenberger
 '''
 
 import os
@@ -25,9 +25,7 @@ class AIDEAdmin:
         self.middleware = AdminMiddleware(config)
 
         # ping connected AIController, FileServer, etc. servers and check version
-        self._queryServiceDetails()
-        # Thread(target=self._queryServiceDetails).start()
-
+        self.middleware.getServiceDetails(verbose_start, verbose_start)
         self._initBottle()
     
 
@@ -38,14 +36,6 @@ class AIDEAdmin:
     def addLoginCheckFun(self, loginCheckFun):
         self.login_check = loginCheckFun
 
-    
-    def _queryServiceDetails(self):
-        try:
-            self.middleware.getServiceDetails(True)
-        except:
-            # not running on main host; ignore error
-            pass
-    
 
     def _initBottle(self):
 

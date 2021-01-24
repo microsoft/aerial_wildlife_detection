@@ -21,8 +21,6 @@ function start {
     done
     if [ $numCeleryModules -gt 0 ]; then
         celery -A celery_worker worker -Q aide_broadcast,$AIDE_MODULES &
-    else
-        echo "Machine does not need a Celery consumer to be launched; skipping..."
     fi
 
     # AIDE
@@ -35,11 +33,18 @@ function start {
     done
 
     if [ $numHTTPmodules -gt 0 ]; then
-        # get host and port from configuration file
-        host=$(python util/configDef.py --section=Server --parameter=host)
-        port=$(python util/configDef.py --section=Server --parameter=port)
-        numWorkers=$(python util/configDef.py --section=Server --parameter=numWorkers --fallback=6)
-        gunicorn application:app --bind=$host:$port --workers=$numWorkers
+        # perform verbose pre-flight checks
+        python setup/assemble_server.py
+
+        if [ $? -eq 0 ]; then
+            # pre-flight checks succeeded; get host and port from configuration file
+            host=$(python util/configDef.py --section=Server --parameter=host)
+            port=$(python util/configDef.py --section=Server --parameter=port)
+            numWorkers=$(python util/configDef.py --section=Server --parameter=numWorkers --fallback=6)
+            gunicorn application:app --bind=$host:$port --workers=$numWorkers
+        else
+            echo -e "\033[0;31mPre-flight checks failed; aborting launch of AIDE.\033[0m"
+        fi
     else
         echo "Machine only runs as an AIWorker; skipping set up of HTTP web server..."
     fi

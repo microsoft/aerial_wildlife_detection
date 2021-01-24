@@ -21,7 +21,7 @@ class DeepLabV3Plus(GenericDetectron2SegmentationModel):
     @classmethod
     def getDefaultOptions(cls):
         return GenericDetectron2Model._load_default_options(
-            'config/ai/model/detectron2/segmentationMasks/deeplabV3+.json',
+            'config/ai/model/detectron2/segmentationMasks/deeplabv3plus.json',
             DEFAULT_OPTIONS
         )
 

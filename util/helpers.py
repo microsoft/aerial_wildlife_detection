@@ -1,7 +1,7 @@
 '''
     Miscellaneous helper functions.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 import os
@@ -32,18 +32,25 @@ class LogDecorator:
     UNDERLINE = '\033[4m'
 
     @staticmethod
+    def get_ljust_offset():
+        try:
+            return os.get_terminal_size().columns - 6
+        except:
+            return 74
+
+    @staticmethod
     def print_status(status, color=None):
         if status.lower() == 'ok':
-            print(f'{LogDecorator.OKGREEN}[ OK ]{LogDecorator.ENDC}'.ljust(30))
+            print(f'{LogDecorator.OKGREEN}[ OK ]{LogDecorator.ENDC}')
         elif status.lower() == 'warn':
-            print(f'{LogDecorator.WARNING}[WARN]{LogDecorator.ENDC}'.ljust(30))
+            print(f'{LogDecorator.WARNING}[WARN]{LogDecorator.ENDC}')
         elif status.lower() == 'fail':
-            print(f'{LogDecorator.FAIL}[FAIL]{LogDecorator.ENDC}'.ljust(30))
+            print(f'{LogDecorator.FAIL}[FAIL]{LogDecorator.ENDC}')
         else:
             if color is not None:
-                print(f'{getattr(LogDecorator, color)}[{status}]{LogDecorator.ENDC}'.ljust(30))
+                print(f'{getattr(LogDecorator, color)}[{status}]{LogDecorator.ENDC}')
             else:
-                print(f'[{status}]'.ljust(30))
+                print(f'[{status}]')
 
 
 

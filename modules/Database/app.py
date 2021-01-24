@@ -18,7 +18,7 @@ class Database():
         self.config = config
 
         if verbose_start:
-            print('Connecting to database...'.ljust(5), end='')
+            print('Connecting to database...'.ljust(LogDecorator.get_ljust_offset()), end='')
 
         # get DB parameters
         try:

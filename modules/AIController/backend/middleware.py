@@ -44,10 +44,9 @@ class AIMiddleware():
         self.celery_app = current_app
         self.celery_app.set_current()
         self.celery_app.set_default()
-
-        #TODO: messageProcessor is now deprecated, in favor of workflowTracker
-        self.messageProcessor = MessageProcessor(self.celery_app)
+        
         if not self.passiveMode:
+            self.messageProcessor = MessageProcessor(self.celery_app)
             self.watchdogs = {}    # one watchdog per project. Note: watchdog only created if users poll status (i.e., if there's activity)
             self.workflowDesigner = WorkflowDesigner(self.dbConn, self.celery_app)
             self.workflowTracker = WorkflowTracker(self.dbConn, self.celery_app)
