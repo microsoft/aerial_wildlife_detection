@@ -198,8 +198,7 @@ class ModelMarketplaceWorker:
         ''', (modelURI,), 1)
         if modelExists is not None and len(modelExists):
             # model already exists; import to project
-            modelID = modelExists[0]['id']
-            return self.importModelDatabase(project, username, modelID)
+            return modelExists[0]['id']
 
         # check import type
         if modelURI.lower().startswith('aide://'):
@@ -334,8 +333,7 @@ class ModelMarketplaceWorker:
             raise Exception('Model could not be imported into Model Marketplace.')
         
         # model import to Marketplace successful; now import to projet
-        modelID = success[0]['id']
-        return self.importModelDatabase(project, username, modelID)
+        return success[0]['id']
 
 
 

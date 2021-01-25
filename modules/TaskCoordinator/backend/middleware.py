@@ -1,12 +1,15 @@
 '''
-    2020 Benjamin Kellenberger
+    2020-21 Benjamin Kellenberger
 '''
 
 import uuid
 import html
+from psycopg2 import sql
 import celery
 from celery import current_app
 from celery.result import AsyncResult
+
+from modules.Database.app import Database
 
 
 class TaskCoordinatorMiddleware:
@@ -17,18 +20,45 @@ class TaskCoordinatorMiddleware:
         self.celery_app.set_current()
         self.celery_app.set_default()
 
+        self.dbConnector = Database(config)
+
         self.jobs = {}      # dict per project of jobs
 
 
 
-    def _register_job(self, project, job, jobID):
+    def _register_job(self, project, username, jobID, jobDescription):
         '''
-            Adds a job with its respective ID to the dict
-            of running jobs.
+            Adds a job with its respective ID to the database and
+            local dict of running jobs.
         '''
-        if not project in self.jobs:
-            self.jobs[project] = {}
-        self.jobs[project][jobID] = job
+        # add to database
+        self.dbConnector.execute(sql.SQL('''
+                INSERT INTO {} (task_id, launchedBy, processDescription)
+                VALUES (%s, %s, %s);
+            ''').format(sql.Identifier(project, 'taskhistory')),
+            (jobID, username, jobDescription)
+        )
+
+        # cache locally
+        if project not in self.jobs:
+            self.jobs[project] = set()
+        self.jobs[project].add(jobID)
+
+
+    
+    def _update_job(self, project, jobID, abortedBy=None, result=None):
+        self.dbConnector.execute(sql.SQL('''
+            UPDATE {id_taskhistory}
+            SET abortedBy = %s, result = %s, timeFinished = NOW()
+            WHERE task_id = (
+                SELECT task_id FROM {id_taskhistory}
+                WHERE task_id = %s
+                ORDER BY timeCreated DESC
+                LIMIT 1
+            );
+            ''').format(id_taskhistory=sql.Identifier(project, 'taskhistory')),
+            (abortedBy, str(result), jobID)
+        )
 
 
 
@@ -42,28 +72,54 @@ class TaskCoordinatorMiddleware:
                 return id
 
 
-
-    def _poll_broker(self):
-        '''
-            Function to poll message broker for missing jobs.
-            This is a rather expensive operation and is thus only called
-            if a job is missing locally.
-        '''
-        i = self.celery_app.control.inspect()
-        stats = i.stats()
-        if stats is not None and len(stats):
-            active_tasks = i.active()
-            for key in stats:
-                for task in active_tasks[key]:
-                    # append task if of correct project
-                    taskProject = task['delivery_info']['routing_key']
-                    if taskProject == project:
-                        if not task['id'] in self.jobs[project]:
-                            self._register_job(project, task, task['id'])       #TODO: not sure if this works...
+        
+    def _poll_database(self, project):
+        jobIDs = self.dbConnector.execute(
+            sql.SQL('''
+                SELECT task_id FROM {};
+            ''').format(sql.Identifier(project, 'taskhistory')),
+            None,
+            'all'
+        )
+        if jobIDs is not None:
+            jobIDs = set([j['task_id'] for j in jobIDs])
+            
+            # cache locally
+            if not project in self.jobs:
+                self.jobs[project] = set()
+            self.jobs[project] = self.jobs[project].union(jobIDs)
 
 
 
-    def submitJob(self, project, process, queue):
+    # def _poll_broker(self):
+    #     '''
+    #         Function to poll message broker for missing jobs.
+    #         This is a rather expensive operation and is thus only called
+    #         if a job is missing locally.
+    #     '''
+    #     #TODO: function is obsolete since every task is being registered in database before submission
+    #     i = self.celery_app.control.inspect()
+    #     stats = i.stats()
+    #     if stats is not None and len(stats):
+    #         active_tasks = i.active()
+    #         for key in stats:
+    #             for task in active_tasks[key]:
+    #                 # append task if of correct project
+    #                 taskProject = task['delivery_info']['routing_key']      #TODO
+    #                 if taskProject == project:
+    #                     if not task['id'] in self.jobs[project]:
+    #                         self._register_job(project, None, task['id'])
+
+
+    
+    def pollJobs(self, project=None):
+        # self._poll_broker()
+        if project is not None:
+            self._poll_database(project)
+
+
+
+    def submitJob(self, project, username, process, queue):
         '''
             Assembles all Celery garnish to dispatch a job
             and registers it for status and result querying.
@@ -76,7 +132,7 @@ class TaskCoordinatorMiddleware:
                                     result_extended=True,
                                     headers={'headers':{}}) #TODO
         
-        self._register_job(project, job, task_id)
+        self._register_job(project, username, task_id, str(process))
         return task_id
 
 
@@ -97,18 +153,15 @@ class TaskCoordinatorMiddleware:
         '''
         status = {}
 
-        if not project in self.jobs:
-            self._poll_broker()
-            if not project in self.jobs:
-                raise Exception('Project {} not found.'.format(project))
+        if project not in self.jobs or jobID not in self.jobs[project]:
+            self.pollJobs(project)
         
-        if not jobID in self.jobs[project]:
-            self._poll_broker()
-            if not jobID in self.jobs[project]:
-                raise Exception('Job with ID {} does not exist.'.format(jobID))
+        if project not in self.jobs:
+            raise Exception(f'Project {project} not found.')
+        if jobID not in self.jobs[project]:
+            raise Exception('Job with ID {} does not exist.'.format(jobID))
 
         # poll status
-        #TODO
         msg = self.celery_app.backend.get_task_meta(jobID)
         if msg['status'] == celery.states.FAILURE:
             # append failure message
@@ -118,6 +171,8 @@ class TaskCoordinatorMiddleware:
                 info = { 'message': html.escape(str(msg['result']))}
             else:
                 info = { 'message': 'an unknown error occurred'}
+            self._update_job(project, jobID, abortedBy=None, result=info)
+
         else:
             info = msg['result']
 
@@ -126,6 +181,7 @@ class TaskCoordinatorMiddleware:
             if result.ready():
                 status['result'] = result.get()
                 result.forget()
+                self._update_job(project, jobID, abortedBy=None, result=status['result'])
 
         status['status'] = msg['status']
         status['meta'] = info

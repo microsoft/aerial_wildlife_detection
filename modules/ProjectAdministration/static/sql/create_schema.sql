@@ -4,7 +4,7 @@
     Requires substitutions for identifiers and annotation/prediction
     type fields.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 */
 
 
@@ -144,4 +144,19 @@ CREATE OR REPLACE VIEW {id_filehierarchy} AS (
     ELSE left(filename, strposrev(filename, '/')-1) END
     AS folder
     FROM {id_image}
+);
+
+/* task history */
+CREATE TABLE IF NOT EXISTS {id_taskHistory} (
+    id uuid NOT NULL DEFAULT uuid_generate_v4(),
+    task_id uuid NOT NULL,
+    launchedBy VARCHAR,
+    abortedBy VARCHAR,
+    processDescription VARCHAR,
+    timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    timeFinished TIMESTAMPTZ,
+    result VARCHAR,
+    PRIMARY KEY (id),
+    FOREIGN KEY (launchedBy) REFERENCES aide_admin.user (name),
+    FOREIGN KEY (abortedBy) REFERENCES aide_admin.user (name)
 );

@@ -2,7 +2,7 @@
     Run this file whenever you update AIDE to bring your existing project setup up-to-date
     with respect to changes due to newer versions.
     
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 import os
@@ -279,7 +279,22 @@ MODIFICATIONS_sql = [
 
   'ALTER TABLE aide_admin.modelMarketplace ALTER stateDict DROP NOT NULL;',  # due to pre-trained models we now allow empty state dicts)...
   'ALTER TABLE aide_admin.modelMarketplace DROP CONSTRAINT IF EXISTS modelmarketplace_author_fkey;', # ...as well as foreign model authors
-  'ALTER TABLE "{schema}".cnnstate ALTER stateDict DROP NOT NULL;'
+  'ALTER TABLE "{schema}".cnnstate ALTER stateDict DROP NOT NULL;',
+  '''
+    CREATE TABLE IF NOT EXISTS "{schema}".taskhistory (
+        id uuid NOT NULL DEFAULT uuid_generate_v4(),
+        task_id VARCHAR NOT NULL,
+        launchedBy VARCHAR,
+        abortedBy VARCHAR,
+        processDescription VARCHAR,
+        timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        timeFinished TIMESTAMPTZ,
+        result VARCHAR,
+        PRIMARY KEY (id),
+        FOREIGN KEY (launchedBy) REFERENCES aide_admin.user (name),
+        FOREIGN KEY (abortedBy) REFERENCES aide_admin.user (name)
+    );
+  '''
 ]
 
 
@@ -319,6 +334,8 @@ def migrate_aide(forceMigrate=False):
                     warnings.append(f'WARNING: local AIDE version ({version.AIDE_VERSION}) is older than the one in the database ({dbVersion}); please update your installation.')
                 elif needsUpdate == 0:
                     doMigrate = False
+                else:
+                    doMigrate = True
 
     if not doMigrate and not forceMigrate:
         return warnings, errors

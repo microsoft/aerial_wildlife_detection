@@ -2,7 +2,7 @@
     Middleware layer between the project configuration front-end
     and the database.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 import os
@@ -395,6 +395,7 @@ class ProjectConfigMiddleware:
                 id_workflow=sql.Identifier(shortname, 'workflow'),
                 id_workflowHistory=sql.Identifier(shortname, 'workflowhistory'),
                 id_filehierarchy=sql.Identifier(shortname, 'filehierarchy'),
+                id_taskHistory=sql.Identifier(shortname, 'taskhistory'),
                 annotation_fields=sql.SQL(', ').join([sql.SQL(field) for field in annotationFields]),
                 prediction_fields=sql.SQL(', ').join([sql.SQL(field) for field in predictionFields])
             ),

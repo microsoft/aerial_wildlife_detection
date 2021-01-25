@@ -659,7 +659,7 @@
         function _pollShare(data) {
             console.log(data);
             let success = 'success';
-            let message = 'Model "'+modelName+'" shared successfully.';
+            let message = '';
             if(data['status'] !== 0) {
                 success = 'error';
                 message = 'An error occurred while trying to share model "'+modelName+'" to project';
@@ -667,8 +667,13 @@
                     message += ' (message: "'+data['message'] + '")';
                 }
                 message += '.';
+            } else {
+                message = 'Model "'+modelName+'" shared successfully.';
             }
-            window.messager.addMessage(message, success, (success === 'success' ? undefined : 0));
+            if(message.length > 0)
+                window.messager.addMessage(message, success, (success === 'success' ? undefined : 0));
+            else
+                window.messager.addMessage('An unknown error occurred while trying to share model "'+modelName+'" to project', 'error', 0);
             loadData();
         }
 
@@ -736,7 +741,7 @@
             function _pollReshare(data) {
                 console.log(data);
                 let success = 'success';
-                let message = 'Model "'+modelName+'" re-shared successfully.';
+                let message = '';
                 if(data['status'] !== 0) {
                     success = 'error';
                     message = 'An error occurred while trying to re-share model "'+modelName+'" to project';
@@ -744,8 +749,13 @@
                         message += ' (message: "'+data['message'] + '")';
                     }
                     message += '.';
+                } else {
+                    message = 'Model "'+modelName+'" re-shared successfully.';
                 }
-                window.messager.addMessage(message, success, (success === 'success' ? undefined : 0));
+                if(message.length > 0)
+                    window.messager.addMessage(message, success, (success === 'success' ? undefined : 0));
+                else
+                    window.messager.addMessage('An unknown error occurred while trying to re-share model "'+modelName+'" to project', 'error', 0);
                 loadData();
             }
 
@@ -805,7 +815,7 @@
         function _pollUnshare(data) {
                 console.log(data);
                 let success = 'success';
-                let message = 'Model successfully hidden from Model Marketplace.';
+                let message = '';
                 if(data['status'] !== 0) {
                     success = 'error';
                     message = 'An error occurred while trying to hide the selected model from the Model Marketplace.';
@@ -813,8 +823,13 @@
                         message += ' (message: "'+data['message'] + '")';
                     }
                     message += '.';
+                } else {
+                    message = 'Model successfully hidden from Model Marketplace.';
                 }
-                window.messager.addMessage(message, success, (success === 'success' ? undefined : 0));
+                if(message.length > 0)
+                    window.messager.addMessage(message, success, (success === 'success' ? undefined : 0));
+                else
+                    window.messager.addMessage('An unknown error occurred while trying to hide the selected model from the Model Marketplace.', 'error', 0);
                 loadData();
             }
 
@@ -889,7 +904,7 @@
             function _pollImport(data) {
                 console.log(data);
                 let success = 'success';
-                let message = 'Model "'+modelName+'" imported successfully.';
+                let message = '';
                 if(data['status'] !== 0) {
                     success = 'error';
                     message = 'An error occurred while trying to import model "'+modelName+'" to project';
@@ -897,8 +912,13 @@
                         message += ' (message: "'+data['message'] + '")';
                     }
                     message += '.';
+                } else {
+                    message = 'Model "'+modelName+'" imported successfully.';
                 }
-                window.messager.addMessage(message, success, (success === 'success' ? undefined : 0));
+                if(message.length > 0)
+                    window.messager.addMessage(message, success, (success === 'success' ? undefined : 0));
+                else
+                    window.messager.addMessage('An unknown error occurred while trying to import model "'+modelName+'" to project.', 'error', 0);
                 loadData();
             }
 
@@ -961,7 +981,7 @@
                 data: JSON.stringify({model_id: modelURL}),
                 success: function(data) {
                     let success = 'success';
-                    let message = 'Model from URL "'+modelURL+'" imported successfully.';
+                    let message = '';
                     if(data['status'] !== 0) {
                         success = 'error';
                         message = 'An error occurred trying to import model from URL "'+modelURL+'" to project';
@@ -969,8 +989,13 @@
                             message += ' (message: "'+data['message'] + '")';
                         }
                         message += '.';
+                    } else {
+                        message = 'Model from URL "'+modelURL+'" imported successfully.';
                     }
-                    window.messager.addMessage(message, success, (success === 'success' ? undefined : 0));
+                    if(message.length > 0)
+                        window.messager.addMessage(message, success, (success === 'success' ? undefined : 0));
+                    else
+                        window.messager.addMessage('An unknown error occurred trying to import model from URL "'+modelURL+'" to project', 'error', 0);
                     loadData();
                 },
                 error: function(xhr, status, error) {

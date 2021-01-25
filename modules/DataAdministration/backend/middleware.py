@@ -28,8 +28,8 @@ class DataAdministrationMiddleware:
 
 
 
-    def _submit_job(self, project, process):
-        return self.taskCoordinator.submitJob(project, process, 'FileServer')
+    def _submit_job(self, project, username, process):
+        return self.taskCoordinator.submitJob(project, username, process, 'FileServer')
 
 
     
@@ -72,7 +72,7 @@ class DataAdministrationMiddleware:
 
 
 
-    def listImages(self, project, folder=None, imageAddedRange=None, lastViewedRange=None,
+    def listImages(self, project, username, folder=None, imageAddedRange=None, lastViewedRange=None,
             viewcountRange=None, numAnnoRange=None, numPredRange=None,
             orderBy=None, order='desc', startFrom=None, limit=None):
         '''
@@ -93,7 +93,7 @@ class DataAdministrationMiddleware:
                                                 numAnnoRange, numPredRange,
                                                 orderBy, order, startFrom, limit)
         
-        task_id = self._submit_job(project, process)
+        task_id = self._submit_job(project, username, process)
         return task_id
     
 
@@ -109,7 +109,7 @@ class DataAdministrationMiddleware:
 
 
 
-    def scanForImages(self, project):
+    def scanForImages(self, project, username):
         '''
             #TODO: update description
             Searches the project image folder on disk for
@@ -121,12 +121,12 @@ class DataAdministrationMiddleware:
         # submit job
         process = celery_interface.scanForImages.si(project)
 
-        task_id = self._submit_job(project, process)
+        task_id = self._submit_job(project, username, process)
         return task_id
 
 
 
-    def addExistingImages(self, project, imageList=None):
+    def addExistingImages(self, project, username, imageList=None):
         '''
             #TODO: update description
             Scans the project folder on the file system
@@ -146,12 +146,12 @@ class DataAdministrationMiddleware:
         # submit job
         process = celery_interface.addExistingImages.si(project, imageList)
 
-        task_id = self._submit_job(project, process)
+        task_id = self._submit_job(project, username, process)
         return task_id
 
 
     
-    def removeImages(self, project, imageList, forceRemove=False, deleteFromDisk=False):
+    def removeImages(self, project, username, imageList, forceRemove=False, deleteFromDisk=False):
         '''
             #TODO: update description
             Receives an iterable of image IDs and removes them
@@ -171,12 +171,12 @@ class DataAdministrationMiddleware:
                                                     forceRemove,
                                                     deleteFromDisk)
 
-        task_id = self._submit_job(project, process)
+        task_id = self._submit_job(project, username, process)
         return task_id
 
 
 
-    def prepareDataDownload(self, project, dataType='annotation', userList=None, dateRange=None, extraFields=None, segmaskFilenameOptions=None, segmaskEncoding='rgb'):
+    def prepareDataDownload(self, project, username, dataType='annotation', userList=None, dateRange=None, extraFields=None, segmaskFilenameOptions=None, segmaskEncoding='rgb'):
         '''
             #TODO: update description
             Polls the database for project data according to the
@@ -214,5 +214,5 @@ class DataAdministrationMiddleware:
                                                     segmaskFilenameOptions,
                                                     segmaskEncoding)
 
-        task_id = self._submit_job(project, process)
+        task_id = self._submit_job(project, username, process)
         return task_id

@@ -2,7 +2,7 @@
     Handles administration (sharing, uploading, selecting, etc.)
     of model states through the model marketplace.
 
-    2020 Benjamin Kellenberger
+    2020-21 Benjamin Kellenberger
 '''
 
 import os
@@ -234,124 +234,12 @@ class ModelMarketplaceMiddleware:
             to the current project.
         '''
         process = celery_interface.import_model_database.si(modelID, project, username)
-        taskID = self.taskCoordinator.submitJob(project, process, 'ModelMarketplace')
+        taskID = self.taskCoordinator.submitJob(project, username, process, 'ModelMarketplace')
 
         return {
             'status': 0,
             'task_id': taskID
         }
-
-        # if not isinstance(modelID, UUID):
-        #     modelID = UUID(modelID)
-
-        # # get model meta data
-        # meta = self.dbConnector.execute('''
-        #     SELECT id, name, description, labelclasses, model_library,
-        #     annotationType, predictionType, timeCreated, alcriterion_library,
-        #     public, anonymous, selectCount,
-        #     CASE WHEN anonymous THEN NULL ELSE author END AS author,
-        #     CASE WHEN anonymous THEN NULL ELSE origin_project END AS origin_project,
-        #     CASE WHEN anonymous THEN NULL ELSE origin_uuid END AS origin_uuid
-        #     FROM aide_admin.modelMarketplace
-        #     WHERE id = %s;
-        # ''', (modelID,), 1)
-
-        # if meta is None or not len(meta):
-        #     return {
-        #         'status': 2,
-        #         'message': f'Model state with id "{str(modelID)}" could not be found in the model marketplace.'
-        #     }
-        # meta = meta[0]
-
-        # # check if model type is registered with AIDE
-        # modelLib = meta['model_library']
-        # if modelLib not in self.availableModels:
-        #     return {
-        #         'status': 3,
-        #         'message': f'Model type with identifier "{modelLib}" does not support sharing across project, or else is not registered with this installation of AIDE.'
-        #     }
-
-        # # check if model hasn't already been imported to current project
-        # modelExists = self.dbConnector.execute(sql.SQL('''
-        #     SELECT id
-        #     FROM {id_cnnstate}
-        #     WHERE marketplace_origin_id = %s;
-        # ''').format(
-        #     id_cnnstate=sql.Identifier(project, 'cnnstate')
-        # ), (modelID,), 1)
-        # if modelExists is not None and len(modelExists):
-        #     # model already exists in project; update timestamp to make it current (TODO: find a better solution)
-        #     self.dbConnector.execute(sql.SQL('''
-        #         UPDATE {id_cnnstate}
-        #         SET timeCreated = NOW()
-        #         WHERE marketplace_origin_id = %s;
-        #     ''').format(
-        #         id_cnnstate=sql.Identifier(project, 'cnnstate')
-        #     ), (modelID))
-        #     return {
-        #         'status': 0,
-        #         'message': 'Model had already been imported to project and was elevated to be the most current.'
-        #     }
-
-        # # check if model is suitable for current project
-        # immutables = self.labelUImiddleware.get_project_immutables(project)
-        # errors = ''
-        # if immutables['annotationType'] != meta['annotationtype']:
-        #     meta_at = meta['annotationtype']
-        #     proj_at = immutables['annotationType']
-        #     errors = f'Annotation type of model ({meta_at}) is not compatible with project\'s annotation type ({proj_at}).'
-        # if immutables['predictionType'] != meta['predictiontype']:
-        #     meta_pt = meta['predictiontype']
-        #     proj_pt = immutables['predictionType']
-        #     errors += f'\nPrediction type of model ({meta_pt}) is not compatible with project\'s prediction type ({proj_pt}).'
-        # if len(errors):
-        #     return {
-        #         'status': 4,
-        #         'message': errors
-        #     }
-
-        # # set project's selected model and options (if different)
-        # currentLibrary = self.dbConnector.execute('''
-        #     SELECT ai_model_library
-        #     FROM aide_admin.project
-        #     WHERE shortname = %s;
-        # ''', (project,), 1)
-        # currentLibrary = currentLibrary[0]['ai_model_library']
-        # if currentLibrary != meta['model_library']:
-        #     # model library differs; replace existing options with new ones
-        #     try:
-        #         modelClass = get_class_executable(meta['model_library'])
-        #         defaultOptions = modelClass.getDefaultOptions()
-        #     except:
-        #         defaultOptions = None
-        #     self.dbConnector.execute('''
-        #         UPDATE aide_admin.project
-        #         SET ai_model_library = %s,
-        #         ai_model_settings = %s
-        #         WHERE shortname = %s;
-        #     ''', (meta['model_library'], defaultOptions, project))
-
-        # # finally, increase selection counter and import model state
-        # #TODO: - retain existing alCriterion library
-        # insertedModelID = self.dbConnector.execute(sql.SQL('''
-        #     UPDATE aide_admin.modelMarketplace
-        #     SET selectCount = selectCount + 1
-        #     WHERE id = %s;
-        #     INSERT INTO {id_cnnstate} (marketplace_origin_id, stateDict, timeCreated, partial, model_library, alCriterion_library)
-        #     SELECT id, stateDict, timeCreated, FALSE, model_library, alCriterion_library
-        #     FROM aide_admin.modelMarketplace
-        #     WHERE id = %s
-        #     RETURNING id;
-        # ''').format(
-        #     id_cnnstate=sql.Identifier(project, 'cnnstate')
-        #     ),
-        #     (modelID, modelID),
-        #     1
-        # )
-        # return {
-        #     'status': 0,
-        #     'id': str(insertedModelID)
-        # }
 
 
 
@@ -370,164 +258,12 @@ class ModelMarketplaceMiddleware:
             celery_interface.import_model_uri.si(project, username, modelURI),  # first import to Model Marketplace...
             celery_interface.import_model_database.s(project, username)         # ...and then to the project
         )
-        taskID = self.taskCoordinator.submitJob(project, process, 'ModelMarketplace')
+        taskID = self.taskCoordinator.submitJob(project, username, process, 'ModelMarketplace')
 
         return {
             'status': 0,
             'task_id': taskID
         }
-
-        # assert isinstance(modelURI, str), 'Incorrect model URI provided.'
-        # warnings = []
-
-        # # check if model has already been imported into model marketplace
-        # modelExists = self.dbConnector.execute('''
-        #     SELECT id
-        #     FROM aide_admin.modelMarketplace
-        #     WHERE origin_uri = %s;
-        # ''', (modelURI,), 1)
-        # if modelExists is not None and len(modelExists):
-        #     # model already exists
-        #     result = self.importModelDatabase(project, username, modelExists[0]['id'])
-        #     result['warnings'] = ['Model with identical origin URI found in Model Marketplace and has been imported from there instead.']
-        #     return result
-
-        # # check import type
-        # if modelURI.lower().startswith('aide://'):
-        #     # local import
-        #     localPath = modelURI.replace('aide://', '').strip('/')
-        #     if not os.path.exists(localPath):
-        #         raise Exception(f'Local file could not be found ("{localPath}").')
-        #     with open(localPath, 'r') as f:
-        #         modelState = f.read()      #TODO: raise if not text file
-
-        # else:
-        #     # network import
-        #     try:
-        #         with request.urlopen(modelURI) as f:
-        #             modelState = f.read().decode('utf-8')   #TODO: handle composed AIDE models (.zip)
-        #     except Exception as e:
-        #         raise Exception(f'Error retrieving model state from URL ("{modelURI}"). Message: "{str(e)}".')
-
-        # try:
-        #     modelState = json.loads(modelState)
-        # except Exception as e:
-        #     raise Exception(f'Model state is not a valid AIDE JSON file (message: "{str(e)}").')
-
-        # # project metadata
-        # projectMeta = self.dbConnector.execute('''
-        #     SELECT annotationType, predictionType
-        #     FROM aide_admin.project
-        #     WHERE shortname = %s;
-        # ''', (project,), 1)
-        # if projectMeta is None or not len(projectMeta):
-        #     raise Exception(f'Project with shortname "{project}" not found in database.')
-        # projectMeta = projectMeta[0]
-
-        # # check fields
-        # for field in self.MODEL_STATE_REQUIRED_FIELDS:
-        #     if field not in modelState:
-        #         raise Exception(f'Missing field "{field}" in AIDE JSON file.')
-        #     if field == 'ai_model_library':
-        #         # check if model library is installed
-        #         modelLibrary = modelState[field]
-        #         if modelLibrary not in PREDICTION_MODELS:
-        #             raise Exception(f'Model library "{modelLibrary}" is not installed in this instance of AIDE.')
-        #         # check if annotation and prediction types match
-        #         if projectMeta['annotationtype'] not in PREDICTION_MODELS[modelLibrary]['annotationType']:
-        #             raise Exception('Project\'s annotation type is not compatible with this model state.')
-        #         if projectMeta['predictiontype'] not in PREDICTION_MODELS[modelLibrary]['predictionType']:
-        #             raise Exception('Project\'s prediction type is not compatible with this model state.')
-        
-        # # check if model state URI provided
-        # if hasattr(modelState, 'ai_model_state_uri'):
-        #     stateDictURI = modelState['ai_model_state_uri']
-        #     try:
-        #         if stateDictURI.lower().startswith('aide://'):
-        #             # load from disk
-        #             stateDictPath = stateDictURI.replace('aide://', '').strip('/')
-        #             if not os.path.isfile(stateDictPath):
-        #                 raise Exception(f'Model state file path provided ("{stateDictPath}"), but file could not be found.')
-        #             with open(stateDictPath, 'rb') as f:
-        #                 stateDict = f.read()        #TODO: BytesIO instead
-                
-        #         else:
-        #             # network import
-        #             with request.urlopen(stateDictURI) as f:
-        #                 stateDict = f.read()        #TODO: progress bar; load in chunks; etc.
-
-        #     except Exception as e:
-        #         raise Exception(f'Model state URI provided ("{stateDictURI}"), but could not be loaded (message: "{str(e)}").')
-        # else:
-        #     stateDict = None
-        
-        # # remaining parameters
-        # modelName = modelState['name']
-        # modelAuthor = modelState['author']
-        # modelDescription = (modelState['description'] if 'description' in modelState else None)
-        # modelTags = (';;'.join(modelState['tags']) if 'tags' in modelState else None)
-        # labelClasses = modelState['labelclasses']       #TODO: parse?
-        # if not isinstance(labelClasses, str):
-        #     labelClasses = json.dumps(labelClasses)
-        # modelOptions = (modelState['ai_model_settings'] if 'ai_model_settings' in modelState else None)
-        # modelLibrary = modelState['ai_model_library']
-        # alCriterion_library = (modelState['alcriterion_library'] if 'alcriterion_library' in modelState else None)
-        # annotationType = PREDICTION_MODELS[modelLibrary]['annotationType']      #TODO
-        # predictionType = PREDICTION_MODELS[modelLibrary]['predictionType']      #TODO
-        # if not isinstance(annotationType, str):
-        #     annotationType = ','.join(annotationType)
-        # if not isinstance(predictionType, str):
-        #     predictionType = ','.join(predictionType)
-        # timeCreated = (modelState['time_created'] if 'time_created' in modelState else None)
-        # try:
-        #     timeCreated = datetime.fromtimestamp(timeCreated)
-        # except:
-        #     timeCreated = current_time()
-
-        # # try to launch model with data
-        # try:
-        #     modelClass = get_class_executable(modelLibrary)
-        #     modelClass(project=project,
-        #                 config=self.config,
-        #                 dbConnector=self.dbConnector,
-        #                 fileServer=FileServer(self.config).get_secure_instance(project),
-        #                 options=modelOptions)
-            
-        #     # verify options
-        #     if modelOptions is not None:
-        #         optionMeta = modelClass.verifyOptions(modelOptions)
-        #         #TODO: parse warnings and errors
-
-        # except Exception as e:
-        #     raise Exception(f'Model from imported state could not be launched (message: "{str(e)}").')
-
-
-        # # import model state into Model Marketplace
-        # success = self.dbConnector.execute('''
-        #     INSERT INTO aide_admin.modelMarketplace
-        #         (name, description, tags, labelclasses, author, statedict,
-        #         model_library, alCriterion_library,
-        #         annotationType, predictionType,
-        #         timeCreated,
-        #         origin_project, origin_uuid, origin_uri, public, anonymous)
-        #     VALUES %s
-        #     ON CONFLICT(origin_uri) DO NOTHING
-        #     RETURNING id;
-        # ''',
-        # [(
-        #     modelName, modelDescription, modelTags, labelClasses, modelAuthor,
-        #     stateDict, modelLibrary, alCriterion_library, annotationType, predictionType,
-        #     timeCreated,
-        #     None, None, modelURI, True, False
-        # )],
-        # 1)
-        # if success is None or not len(success):
-        #     raise Exception('Model could not be imported into Model Marketplace.')
-        
-        # # also import into project
-        # result = self.importModelDatabase(project, username, success[0]['id'])
-        # result['warnings'] = warnings
-        # return result
     
 
 
@@ -539,128 +275,13 @@ class ModelMarketplaceMiddleware:
         process = celery_interface.share_model.si(project, username, modelID, modelName,
                     modelDescription, tags,
                     public, anonymous)
-        taskID = self.taskCoordinator.submitJob(project, process, 'ModelMarketplace')
+        taskID = self.taskCoordinator.submitJob(project, username, process, 'ModelMarketplace')
 
         return {
             'status': 0,
             'task_id': taskID
         }
 
-        # if not isinstance(modelID, UUID):
-        #     modelID = UUID(modelID)
-        
-        # if tags is None:
-        #     tags = ''
-        # elif isinstance(tags, list) or isinstance(tags, tuple):
-        #     tags = ';;'.join(tags)
-        
-        # # check if model class supports sharing
-        # isShareable = self.dbConnector.execute('''
-        #     SELECT ai_model_library
-        #     FROM aide_admin.project
-        #     WHERE shortname = %s;
-        # ''', (project,), 1)
-        # if isShareable is None or not len(isShareable):
-        #     return {
-        #         'status': 1,
-        #         'message': f'Project {project} could not be found in database.'
-        #     }
-        # modelLib = isShareable[0]['ai_model_library']
-        # if modelLib not in self.availableModels:
-        #     return {
-        #         'status': 2,
-        #         'message': f'The model with id "{modelLib}" does not support sharing, or else is not installed in this instance of AIDE.'
-        #     }
-
-        # # check if model hasn't already been shared
-        # isShared = self.dbConnector.execute('''
-        #     SELECT id, author, shared
-        #     FROM aide_admin.modelMarketplace
-        #     WHERE origin_project = %s AND origin_uuid = %s;
-        # ''', (project, modelID), 'all')
-        # if isShared is not None and len(isShared):
-        #     if not isShared[0]['shared']:
-        #         # model had been shared in the past but then hidden; unhide
-        #         self.dbConnector.execute('''
-        #             UPDATE aide_admin.modelMarketplace
-        #             SET shared = True
-        #             WHERE origin_project = %s AND origin_uuid = %s;
-        #         ''', (project, modelID))
-            
-        #     # update shared model meta data
-        #     self.dbConnector.execute('''
-        #         UPDATE aide_admin.modelMarketplace
-        #         SET name = %s,
-        #         description = %s,
-        #         public = %s,
-        #         anonymous = %s,
-        #         tags = %s
-        #         WHERE id = %s AND author = %s;
-        #     ''', (modelName, modelDescription, public, anonymous, tags,
-        #         isShared[0]['id'], username), None)
-        #     return {'status': 0}
-
-        # # check if model hasn't been imported from the marketplace
-        # isImported = self.dbConnector.execute(sql.SQL('''
-        #     SELECT marketplace_origin_id
-        #     FROM {id_cnnstate}
-        #     WHERE id = %s;
-        # ''').format(
-        #     id_cnnstate=sql.Identifier(project, 'cnnstate')
-        # ),
-        # (modelID,),
-        # 1)
-        # if isImported is not None and len(isImported):
-        #     marketplaceID = isImported[0]['marketplace_origin_id']
-        #     if marketplaceID is not None:
-        #         return {
-        #             'status': 4,
-        #             'message': f'The selected model is already shared through the marketplace (id "{str(marketplaceID)}").'
-        #         }
-
-        # # get project immutables
-        # immutables = self.labelUImiddleware.get_project_immutables(project)
-
-        # # get label class info
-        # labelclasses = json.dumps(self.labelUImiddleware.getClassDefinitions(project, False))
-
-        # # check if name is unique (TODO: required?)
-        # nameTaken = self.dbConnector.execute('''
-        #     SELECT COUNT(*) AS cnt
-        #     FROM aide_admin.modelMarketplace
-        #     WHERE name = %s;
-        # ''', (modelName,), 'all')
-        # if nameTaken is not None and len(nameTaken) and nameTaken[0]['cnt']:
-        #     return {
-        #         'status': 5,
-        #         'message': f'A model state with name "{modelName}" already exists in the Model Marketplace.'
-        #     }
-
-        # # share model state
-        # sharedModelID = self.dbConnector.execute(sql.SQL('''
-        #     INSERT INTO aide_admin.modelMarketplace
-        #     (name, description, tags, labelclasses, author, statedict,
-        #     model_library, alCriterion_library,
-        #     annotationType, predictionType,
-        #     origin_project, origin_uuid, public, anonymous)
-
-        #     SELECT %s, %s, %s, %s, %s, statedict,
-        #     model_library, alCriterion_library,
-        #     %s, %s,
-        #     %s, id, %s, %s
-        #     FROM {id_cnnstate} AS cnnS
-        #     WHERE id = %s
-        #     RETURNING id;
-        # ''').format(
-        #     id_cnnstate=sql.Identifier(project, 'cnnstate')
-        # ), (modelName, modelDescription, tags, labelclasses, username,
-        #     immutables['annotationType'], immutables['predictionType'],
-        #     project, public, anonymous, modelID))
-
-        # return {
-        #     'status': 0,
-        #     'shared_model_id': str(sharedModelID)
-        # }
 
 
     def reshareModel(self, project, username, modelID):
@@ -735,7 +356,7 @@ class ModelMarketplaceMiddleware:
         process = celery_interface.request_model_download.si(project, username, modelID,
                                                         source, modelName,
                                                         modelDescription, modelTags)
-        taskID = self.taskCoordinator.submitJob(project, process, 'ModelMarketplace')
+        taskID = self.taskCoordinator.submitJob(project, username, process, 'ModelMarketplace')
 
         return {
             'status': 0,

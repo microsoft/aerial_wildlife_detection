@@ -3,7 +3,7 @@
     of various other modules that make use of the message
     queue system.
 
-    2020 Benjamin Kellenberger
+    2020-21 Benjamin Kellenberger
 '''
 
 from bottle import request, abort
@@ -71,5 +71,5 @@ class TaskCoordinator:
 
 
 
-    def submitJob(self, project, process, queue):
-        return self.middleware.submitJob(project, process, queue)
+    def submitJob(self, project, username, process, queue):
+        return self.middleware.submitJob(project, username, process, queue)

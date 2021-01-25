@@ -5,7 +5,7 @@
     Needs to be run from instance responsible
     for serving files (i.e., FileServer module).
 
-    2020 Benjamin Kellenberger
+    2020-21 Benjamin Kellenberger
 '''
 
 import os
@@ -13,6 +13,7 @@ import datetime
 import tempfile
 import uuid
 import json
+import html
 from bottle import static_file, request, response, abort
 import requests
 from .backend.middleware import DataAdministrationMiddleware
@@ -160,6 +161,7 @@ class DataAdministrator:
             
             # parse parameters
             now = helpers.current_time()
+            username = html.escape(request.get_cookie('username'))
             params = request.json
 
             folder = (params['folder'] if 'folder' in params else None)
@@ -192,6 +194,7 @@ class DataAdministrator:
 
             # get images
             result = self.middleware.listImages(project,
+                                            username,
                                             folder,
                                             imageAddedRange,
                                             lastViewedRange,
@@ -252,7 +255,8 @@ class DataAdministrator:
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
 
-            result = self.middleware.scanForImages(project)
+            username = html.escape(request.get_cookie('username'))
+            result = self.middleware.scanForImages(project, username)
             return {'response': result}
 
 
@@ -267,6 +271,7 @@ class DataAdministrator:
                 abort(401, 'forbidden')
 
             try:
+                username = html.escape(request.get_cookie('username'))
                 imageNames = request.json
                 if isinstance(imageNames, dict) and 'images' in imageNames:
                     imageNames = imageNames['images']
@@ -274,7 +279,7 @@ class DataAdministrator:
                     pass
                 else:
                     return {'status': 2, 'message': 'Invalid parameters provided.'}
-                result = self.middleware.addExistingImages(project, imageNames)
+                result = self.middleware.addExistingImages(project, username, imageNames)
                 return {'status': 0, 'response': result}
             except Exception as e:
                 return {'status': 1, 'message': str(e)}
@@ -292,6 +297,7 @@ class DataAdministrator:
                 abort(401, 'forbidden')
 
             try:
+                username = html.escape(request.get_cookie('username'))
                 data = request.json
                 imageIDs = data['images']
                 if 'forceRemove' in data:
@@ -304,6 +310,7 @@ class DataAdministrator:
                     deleteFromDisk = False
                 
                 images_deleted = self.middleware.removeImages(project,
+                                                            username,
                                                             imageIDs,
                                                             forceRemove,
                                                             deleteFromDisk)
@@ -352,6 +359,7 @@ class DataAdministrator:
             
             # parse parameters
             try:
+                username = html.escape(request.get_cookie('username'))
                 params = request.json
                 dataType = params['dataType']
                 if 'dateRange' in params:
@@ -394,6 +402,7 @@ class DataAdministrator:
                     segmaskEncoding = 'rgb'
 
                 taskID = self.middleware.prepareDataDownload(project,
+                                                            username,
                                                             dataType,
                                                             userList,
                                                             dateRange,

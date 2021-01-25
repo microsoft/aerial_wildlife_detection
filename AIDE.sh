@@ -13,14 +13,18 @@ function start {
 
     # Celery
     numCeleryModules=0;
+    appendMarketplace='';
     for i in "${ADDR[@]}"; do
         module="$(echo "$i" | tr '[:upper:]' '[:lower:]')";
-        if [ "$module" == "aiworker" ] || [ "$module" == "fileserver" ]; then
+        if [ "$module" == "labelui" ]; then
+            ((numCeleryModules++));
+            appendMarketplace='ModelMarketplace';
+        elif [ "$module" == "aiworker" ] || [ "$module" == "fileserver" ]; then
             ((numCeleryModules++));
         fi
     done
     if [ $numCeleryModules -gt 0 ]; then
-        celery -A celery_worker worker -Q aide_broadcast,$AIDE_MODULES &
+        celery -A celery_worker worker -Q aide_broadcast,$AIDE_MODULES,$appendMarketplace &
     fi
 
     # AIDE
@@ -41,7 +45,14 @@ function start {
             host=$(python util/configDef.py --section=Server --parameter=host)
             port=$(python util/configDef.py --section=Server --parameter=port)
             numWorkers=$(python util/configDef.py --section=Server --parameter=numWorkers --fallback=6)
-            gunicorn application:app --bind=$host:$port --workers=$numWorkers
+
+            debug="$(echo "$2" | tr '[:upper:]' '[:lower:]')";
+            if [ "$debug" == "debug" ]; then
+                debug="--log-level debug";
+            else
+                debug="";
+            fi
+            gunicorn application:app --bind=$host:$port --workers=$numWorkers $debug
         else
             echo -e "\033[0;31mPre-flight checks failed; aborting launch of AIDE.\033[0m"
         fi
@@ -68,4 +79,6 @@ elif [ "$mode" == "restart" ]; then
     restart;
 elif [ "$mode" == "stop" ]; then
     stop;
+else
+    echo "Usage: AIDE.sh {start|restart|stop} [debug]"
 fi
