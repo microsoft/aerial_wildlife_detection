@@ -35,7 +35,7 @@
           WARE ON A PROJECT THAT HAS BEEN MIGRATED.
 
     
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 import os
@@ -121,7 +121,7 @@ if __name__ == '__main__':
     if adminName is not None:
         adminEmail = v1Config.getProperty('Project', 'adminEmail')
         adminPass = v1Config.getProperty('Project', 'adminPassword')
-        uHandler = UserHandling.backend.middleware.UserMiddleware(config)
+        uHandler = UserHandling.backend.middleware.UserMiddleware(config, dbConn)
         adminPass = uHandler._create_hash(adminPass.encode('utf8'))
         dbConn.execute('''
                 INSERT INTO aide_admin.user (name, email, hash, issuperuser)

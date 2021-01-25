@@ -1,3 +1,7 @@
+/**
+ * 2020-21 Benjamin Kellenberger
+ */
+
 let projects = {};      // general info about projects
 let selectedFolder = 'all-projects';
 
@@ -51,7 +55,7 @@ function loadProjectInfo() {
                             // show button to project configuration page
                             adminButtons = '<span class="project-buttons"><a href="' + key + '/configuration/verview" class="btn btn-sm btn-success">Statistics</a>' +
                                         '<a href="' + key + '/configuration/general" class="btn btn-sm btn-secondary">Configure</a>';
-                            if(data['projects'][key]['aiModelEnabled']) {
+                            if(data['projects'][key]['aiModelSelected'] && !demoMode) {
                                 adminButtons += '<a href="' + key + '/configuration/aiModel" class="btn btn-sm btn-info">AI model</a>';
                             }
                             //TODO: implement correctly:
@@ -66,7 +70,7 @@ function loadProjectInfo() {
                             adminButtons += '</span>';
                             userAdmitted = true;
                             var authDescr = $('<p style="display:inline">You are <b>' + role + '</b> in this project.</p>');
-                        } else if(data['projects'][key]['demoMode']) {
+                        } else if(demoMode) {
                             var authDescr = $('<p style="display:inline">You are allowed to view (but not label) the images in this project.</p>');
                         }
                         

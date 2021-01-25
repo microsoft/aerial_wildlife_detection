@@ -33,11 +33,11 @@ class ModelMarketplaceMiddleware:
         'ai_model_library'
     )
 
-    def __init__(self, config, taskCoordinator):
+    def __init__(self, config, dbConnector, taskCoordinator):
         self.config = config
-        self.dbConnector = Database(config)
+        self.dbConnector = dbConnector      #Database(config)
         self.taskCoordinator = taskCoordinator
-        self.labelUImiddleware = DBMiddleware(config)
+        self.labelUImiddleware = DBMiddleware(config, dbConnector)
         self._init_available_ai_models()
         self._load_builtin_model_states()
 

@@ -2,18 +2,20 @@
     Wrapper for the Celery message broker concerning
     the Model Marketplace module.
 
-    2020 Benjamin Kellenberger
+    2020-21 Benjamin Kellenberger
 '''
 
 import os
 from celery import current_app
 from .marketplaceWorker import ModelMarketplaceWorker
+from modules.Database.app import Database
 from util.configDef import Config
 
 
 # initialize Model Marketplace worker
 modules = os.environ['AIDE_MODULES']
-worker = ModelMarketplaceWorker(Config())
+config = Config()
+worker = ModelMarketplaceWorker(config, Database(config))
 
 
 @current_app.task(name='ModelMarketplace.shareModel')

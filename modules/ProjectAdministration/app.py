@@ -3,7 +3,7 @@
     handling project setup, data import requests, etc.
     Also handles creation of new projects.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 import os
@@ -18,11 +18,11 @@ from .backend.middleware import ProjectConfigMiddleware
 
 class ProjectConfigurator:
 
-    def __init__(self, config, app, verbose_start=False):
+    def __init__(self, config, app, dbConnector, verbose_start=False):
         self.config = config
         self.app = app
         self.staticDir = 'modules/ProjectAdministration/static'
-        self.middleware = ProjectConfigMiddleware(config)
+        self.middleware = ProjectConfigMiddleware(config, dbConnector)
 
         self.login_check = None
 

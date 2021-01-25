@@ -2,7 +2,7 @@
     The Reception module handles project overviews
     and the like.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 import os
@@ -15,11 +15,11 @@ from .backend.middleware import ReceptionMiddleware
 
 class Reception:
 
-    def __init__(self, config, app, verbose_start=False):
+    def __init__(self, config, app, dbConnector, verbose_start=False):
         self.config = config
         self.app = app
         self.staticDir = 'modules/Reception/static'
-        self.middleware = ReceptionMiddleware(config)
+        self.middleware = ReceptionMiddleware(config, dbConnector)
         self.login_check = None
 
         self._initBottle()

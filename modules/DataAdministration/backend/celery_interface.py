@@ -8,18 +8,20 @@
     Function "init_celery_dispatcher" is to be initia-
     lized at launch time with a Celery app instance.
 
-    2020 Benjamin Kellenberger
+    2020-21 Benjamin Kellenberger
 '''
 
 import os
 from celery import current_app
 from .dataWorker import DataWorker
+from modules.Database.app import Database
 from util.configDef import Config
 
 
 # initialize dataWorker
 modules = os.environ['AIDE_MODULES']
-worker = DataWorker(Config())
+config = Config()
+worker = DataWorker(config, Database(config))
 
 @current_app.task()
 def aide_internal_notify(message):

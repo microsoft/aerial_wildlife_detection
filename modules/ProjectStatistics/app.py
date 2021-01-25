@@ -2,7 +2,7 @@
     Bottle routings for labeling statistics of project,
     including per-user analyses and progress.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 import html
@@ -13,11 +13,11 @@ from util.helpers import parse_boolean
 
 class ProjectStatistics:
 
-    def __init__(self, config, app, verbose_start=False):
+    def __init__(self, config, app, dbConnector, verbose_start=False):
         self.config = config
         self.app = app
         self.staticDir = 'modules/ProjectStatistics/static'
-        self.middleware = ProjectStatisticsMiddleware(config)
+        self.middleware = ProjectStatisticsMiddleware(config, dbConnector)
 
         self.login_check = None
         self._initBottle()

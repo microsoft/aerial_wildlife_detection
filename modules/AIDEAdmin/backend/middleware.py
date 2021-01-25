@@ -18,9 +18,9 @@ from util.helpers import LogDecorator, is_localhost
 
 class AdminMiddleware:
 
-    def __init__(self, config):
+    def __init__(self, config, dbConnector):
         self.config = config
-        self.dbConnector = Database(config)
+        self.dbConnector = dbConnector      #Database(config)
 
 
     def getServiceDetails(self, verbose=False, raise_error=False):

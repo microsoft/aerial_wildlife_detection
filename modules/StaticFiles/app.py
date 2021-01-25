@@ -3,7 +3,7 @@
     Also contains a number of static files that are general
     to AIDE as a whole.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 import os
@@ -26,7 +26,7 @@ class StaticFileServer:
         'aiController': 'modules/AIController/static'
     }
 
-    def __init__(self, config, app, verbose_start=False):
+    def __init__(self, config, app, dbConnector, verbose_start=False):
         self.config = config
         self.app = app
 

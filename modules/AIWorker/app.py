@@ -15,14 +15,14 @@ from util.helpers import LogDecorator, get_class_executable
 
 class AIWorker():
 
-    def __init__(self, config, passiveMode=False, verbose_start=False):
+    def __init__(self, config, dbConnector, passiveMode=False, verbose_start=False):
         self.config = config
 
         if verbose_start:
             print('AIWorker'.ljust(LogDecorator.get_ljust_offset()), end='')
 
         try:
-            self.dbConnector = Database(config)
+            self.dbConnector = dbConnector  #Database(config)
             self.passiveMode = passiveMode
             self._init_fileserver()
         except Exception as e:

@@ -21,9 +21,9 @@ from util import helpers
 
 class DBMiddleware():
 
-    def __init__(self, config):
+    def __init__(self, config, dbConnector):
         self.config = config
-        self.dbConnector = Database(config)
+        self.dbConnector = dbConnector      #Database(config)
 
         self.project_immutables = {}       # project settings that cannot be changed (project shorthand -> {settings})
 

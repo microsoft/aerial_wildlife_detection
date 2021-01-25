@@ -11,6 +11,7 @@ import os
 import sys
 import platform
 import argparse
+import bottle
 from bottle import Bottle
 from util.helpers import LogDecorator
 from util.configDef import Config
@@ -62,6 +63,7 @@ def assemble_server(verbose_start=True, check_v1_config=True, migrate_database=T
 
     # load configuration
     config = Config(None, verbose_start)
+    bottle.BaseRequest.MEMFILE_MAX = 1024**3    #TODO: make hyperparameter in config?
 
     # connect to database
     dbConnector = Database(config, verbose_start)
@@ -158,10 +160,9 @@ def assemble_server(verbose_start=True, check_v1_config=True, migrate_database=T
     # parse requested instances
     instances = {}
 
-    # create user handler
-    userHandler = REGISTERED_MODULES['UserHandler'](config, app)
-
-    # "singleton" Task Coordinator instance
+    # "singletons"
+    dbConnector = REGISTERED_MODULES['Database'](config, verbose_start)
+    userHandler = REGISTERED_MODULES['UserHandler'](config, app, dbConnector)
     taskCoordinator = REGISTERED_MODULES['TaskCoordinator'](config, app, verbose_start)
     taskCoordinator.addLoginCheckFun(userHandler.checkAuthenticated)
 
@@ -178,9 +179,9 @@ def assemble_server(verbose_start=True, check_v1_config=True, migrate_database=T
 
         # create instance
         if moduleName == 'AIController':
-            instance = moduleClass(config, app, verbose_start, passive_mode)
+            instance = moduleClass(config, app, dbConnector, verbose_start, passive_mode)
         else:
-            instance = moduleClass(config, app, verbose_start)
+            instance = moduleClass(config, app, dbConnector, verbose_start)
         instances[moduleName] = instance
 
         # add authentication functionality
@@ -190,13 +191,13 @@ def assemble_server(verbose_start=True, check_v1_config=True, migrate_database=T
         
         # launch project meta modules
         if moduleName == 'LabelUI':
-            aideAdmin = REGISTERED_MODULES['AIDEAdmin'](config, app, verbose_start)
+            aideAdmin = REGISTERED_MODULES['AIDEAdmin'](config, app, dbConnector, verbose_start)
             aideAdmin.addLoginCheckFun(userHandler.checkAuthenticated)
-            reception = REGISTERED_MODULES['Reception'](config, app)
+            reception = REGISTERED_MODULES['Reception'](config, app, dbConnector)
             reception.addLoginCheckFun(userHandler.checkAuthenticated)
-            configurator = REGISTERED_MODULES['ProjectConfigurator'](config, app)
+            configurator = REGISTERED_MODULES['ProjectConfigurator'](config, app, dbConnector)
             configurator.addLoginCheckFun(userHandler.checkAuthenticated)
-            statistics = REGISTERED_MODULES['ProjectStatistics'](config, app)
+            statistics = REGISTERED_MODULES['ProjectStatistics'](config, app, dbConnector)
             statistics.addLoginCheckFun(userHandler.checkAuthenticated)
 
         elif moduleName == 'FileServer':
@@ -206,7 +207,7 @@ def assemble_server(verbose_start=True, check_v1_config=True, migrate_database=T
             from modules.AIController.backend import celery_interface as aic_int
 
             # launch model marketplace with AIController
-            modelMarketplace = REGISTERED_MODULES['ModelMarketplace'](config, app, taskCoordinator)
+            modelMarketplace = REGISTERED_MODULES['ModelMarketplace'](config, app, dbConnector, taskCoordinator)
             modelMarketplace.addLoginCheckFun(userHandler.checkAuthenticated)
 
         elif moduleName == 'AIWorker':
@@ -214,10 +215,10 @@ def assemble_server(verbose_start=True, check_v1_config=True, migrate_database=T
 
 
         # launch globally required modules
-        dataAdmin = REGISTERED_MODULES['DataAdministrator'](config, app, taskCoordinator)
+        dataAdmin = REGISTERED_MODULES['DataAdministrator'](config, app, dbConnector, taskCoordinator)
         dataAdmin.addLoginCheckFun(userHandler.checkAuthenticated)
 
-        staticFiles = REGISTERED_MODULES['StaticFileServer'](config, app)
+        staticFiles = REGISTERED_MODULES['StaticFileServer'](config, app, dbConnector)
         staticFiles.addLoginCheckFun(userHandler.checkAuthenticated)
     
     if verbose_start:

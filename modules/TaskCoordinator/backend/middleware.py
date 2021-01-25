@@ -14,13 +14,13 @@ from modules.Database.app import Database
 
 class TaskCoordinatorMiddleware:
 
-    def __init__(self, config):
+    def __init__(self, config, dbConnector):
         self.config = config
         self.celery_app = current_app
         self.celery_app.set_current()
         self.celery_app.set_default()
 
-        self.dbConnector = Database(config)
+        self.dbConnector = dbConnector      #Database(config)
 
         self.jobs = {}      # dict per project of jobs
 

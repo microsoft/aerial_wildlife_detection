@@ -47,7 +47,7 @@ def setupDB():
         ON CONFLICT (name) DO NOTHING;
     '''
     adminPass = config.getProperty('Project', 'adminPassword')
-    uHandler = UserHandling.backend.middleware.UserMiddleware(config)
+    uHandler = UserHandling.backend.middleware.UserMiddleware(config, dbConn)
     adminPass = uHandler._create_hash(adminPass.encode('utf8'))
 
     values = (config.getProperty('Project', 'adminName'), config.getProperty('Project', 'adminEmail'), adminPass, True,)

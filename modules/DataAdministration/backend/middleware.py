@@ -18,11 +18,11 @@ from modules.Database.app import Database
 
 class DataAdministrationMiddleware:
 
-    def __init__(self, config, taskCoordinator):
+    def __init__(self, config, dbConnector, taskCoordinator):
         self.config = config
-        self.dbConnector = Database(config)
+        self.dbConnector = dbConnector  #Database(config)
         self.taskCoordinator = taskCoordinator
-        self.dataWorker = DataWorker(config)
+        self.dataWorker = DataWorker(config, dbConnector)
 
         self.jobs = {}      # dict per project of jobs
 

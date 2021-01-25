@@ -64,11 +64,11 @@ def main():
     config = Config()
     dbConnector = Database(config)
     fileServer = FileServer(config).get_secure_instance(args.project)
-    aiw = AIWorker(config, True)
+    aiw = AIWorker(config, dbConnector, True)
     aicw = AIControllerWorker(config, None)
 
     # check if AIDE file server is reachable
-    admin = AdminMiddleware(config)
+    admin = AdminMiddleware(config, dbConnector)
     connDetails = admin.getServiceDetails(True, False)
     fsVersion = connDetails['FileServer']['aide_version']
     if not isinstance(fsVersion, str):

@@ -108,9 +108,9 @@ class ProjectConfigMiddleware:
     ]
 
     
-    def __init__(self, config):
+    def __init__(self, config, dbConnector):
         self.config = config
-        self.dbConnector = Database(config)
+        self.dbConnector = dbConnector      #Database(config)
 
         # load default UI settings
         try:

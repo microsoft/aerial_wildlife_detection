@@ -1,7 +1,7 @@
 '''
     Main Bottle and routings for the UserHandling module.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 import os
@@ -14,11 +14,11 @@ from util import helpers
 
 class UserHandler():
 
-    def __init__(self, config, app, verbose_start=False):
+    def __init__(self, config, app, dbConnector, verbose_start=False):
         self.config = config
         self.app = app
         self.staticDir = 'modules/UserHandling/static'
-        self.middleware = UserMiddleware(config)
+        self.middleware = UserMiddleware(config, dbConnector)
 
         self.indexURI = self.config.getProperty('Server', 'index_uri', type=str, fallback='/')
 

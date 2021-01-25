@@ -2,7 +2,7 @@
     Provides functionality for checking login details,
     session validity, and the like.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 from threading import Thread
@@ -23,9 +23,9 @@ class UserMiddleware():
     SALT_NUM_ROUNDS = 12
 
 
-    def __init__(self, config):
+    def __init__(self, config, dbConnector):
         self.config = config
-        self.dbConnector = Database(config)
+        self.dbConnector = dbConnector      #Database(config)
 
         self.usersLoggedIn = {}    # username -> {timestamp, sessionToken}
     

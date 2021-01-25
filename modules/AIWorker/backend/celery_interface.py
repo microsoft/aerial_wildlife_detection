@@ -2,7 +2,7 @@
     Wrapper for the Celery message broker concerning
     the AIWorker(s).
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 import os
@@ -10,13 +10,15 @@ from celery import current_app
 from kombu.common import Broadcast
 from constants.version import AIDE_VERSION
 from modules.AIWorker.app import AIWorker
+from modules.Database.app import Database
 from util.configDef import Config
 
 
 # init AIWorker
 modules = os.environ['AIDE_MODULES']
 passiveMode = (os.environ['PASSIVE_MODE']=='1' if 'PASSIVE_MODE' in os.environ else False) or not('aiworker' in modules.lower())
-worker = AIWorker(Config(), passiveMode)
+config = Config()
+worker = AIWorker(config, Database(config), passiveMode)
 
 
 

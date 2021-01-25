@@ -16,13 +16,13 @@ from .backend.middleware import AdminMiddleware
 
 class AIDEAdmin:
 
-    def __init__(self, config, app, verbose_start=False):
+    def __init__(self, config, app, dbConnector, verbose_start=False):
         self.config = config
         self.app = app
         self.staticDir = 'modules/AIDEAdmin/static'
         self.login_check = None
 
-        self.middleware = AdminMiddleware(config)
+        self.middleware = AdminMiddleware(config, dbConnector)
 
         # ping connected AIController, FileServer, etc. servers and check version
         self.middleware.getServiceDetails(verbose_start, verbose_start)

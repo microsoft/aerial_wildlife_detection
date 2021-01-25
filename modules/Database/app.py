@@ -1,7 +1,7 @@
 '''
     Database connection functionality.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 from contextlib import contextmanager
@@ -41,6 +41,13 @@ class Database():
 
         if verbose_start:
             LogDecorator.print_status('ok')
+
+
+    def __del__(self):
+        try:
+            self.connectionPool.closeall()
+        except:
+            pass
 
 
     def _createConnectionPool(self):

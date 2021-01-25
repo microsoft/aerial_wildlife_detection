@@ -7,7 +7,7 @@
     Also supports model state import and export
     to and from the disk, as well as the web.
 
-    2020 Benjamin Kellenberger
+    2020-21 Benjamin Kellenberger
 '''
 
 import os
@@ -26,12 +26,12 @@ from util import helpers
 
 class ModelMarketplace:
 
-    def __init__(self, config, app, taskCoordinator, verbose_start=False):
+    def __init__(self, config, app, dbConnector, taskCoordinator, verbose_start=False):
         self.config = config
         self.app = app
 
-        self.middleware = ModelMarketplaceMiddleware(config, taskCoordinator)
-        self.tempDir = ModelMarketplaceWorker(self.config).tempDir
+        self.middleware = ModelMarketplaceMiddleware(config, dbConnector, taskCoordinator)
+        self.tempDir = ModelMarketplaceWorker(self.config, dbConnector).tempDir
 
         self.login_check = None
         self._initBottle()

@@ -1,7 +1,7 @@
 '''
     Main Bottle and routings for the LabelUI web frontend.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 import os
@@ -14,12 +14,10 @@ from .backend.middleware import DBMiddleware
 from util.helpers import LogDecorator, parse_boolean
 
 
-#TODO
-bottle.BaseRequest.MEMFILE_MAX = 1024**3
 
 class LabelUI():
 
-    def __init__(self, config, app, verbose_start=False):
+    def __init__(self, config, app, dbConnector, verbose_start=False):
         self.config = config
         self.app = app
         self.staticDir = 'modules/LabelUI/static'
@@ -28,7 +26,7 @@ class LabelUI():
             print('LabelUI'.ljust(LogDecorator.get_ljust_offset()), end='')
         
         try:
-            self.middleware = DBMiddleware(config)
+            self.middleware = DBMiddleware(config, dbConnector)
             self.login_check = None
 
             self._initBottle()

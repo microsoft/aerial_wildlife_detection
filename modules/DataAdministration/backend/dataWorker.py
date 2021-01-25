@@ -4,7 +4,7 @@
     for downloading, or scanning directories for
     untracked images.
 
-    2020 Benjamin Kellenberger
+    2020-21 Benjamin Kellenberger
 '''
 
 import os
@@ -35,9 +35,9 @@ class DataWorker:
 
     NUM_IMAGES_LIMIT = 4096         # maximum number of images that can be queried at once (to avoid bottlenecks)
 
-    def __init__(self, config, passiveMode=False):
+    def __init__(self, config, dbConnector, passiveMode=False):
         self.config = config
-        self.dbConnector = Database(config)
+        self.dbConnector = dbConnector      #Database(config)
         self.countPattern = re.compile('\_[0-9]+$')
         self.passiveMode = passiveMode
 

@@ -1,7 +1,7 @@
 '''
     Handles data flow about projects in general.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 from psycopg2 import sql
@@ -11,9 +11,9 @@ from util.helpers import current_time
 
 class ReceptionMiddleware:
 
-    def __init__(self, config):
+    def __init__(self, config, dbConnector):
         self.config = config
-        self.dbConnector = Database(config)
+        self.dbConnector = dbConnector      #Database(config)
 
 
     def get_project_info(self, username=None, isSuperUser=False):
@@ -42,6 +42,7 @@ class ReceptionMiddleware:
             username, isAdmin,
             admitted_until, blocked_until,
             annotationType, predictionType, isPublic, demoMode, interface_enabled, archived, ai_model_enabled,
+            ai_model_library,
             CASE WHEN username = owner THEN TRUE ELSE FALSE END AS is_owner
             FROM aide_admin.project AS proj
             FULL OUTER JOIN (SELECT * FROM aide_admin.authentication
@@ -71,6 +72,7 @@ class ReceptionMiddleware:
                         'demoMode': r['demomode'],
                         'interface_enabled': r['interface_enabled'] and not r['archived'],
                         'aiModelEnabled': r['ai_model_enabled'],
+                        'aiModelSelected': (isinstance(r['ai_model_library'], str) and len(r['ai_model_library'])>0),
                         'userAdmitted': userAdmitted
                     }
                 if isSuperUser:

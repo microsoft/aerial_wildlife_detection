@@ -37,10 +37,10 @@ class ModelMarketplaceWorker:
     )
 
 
-    def __init__(self, config):
+    def __init__(self, config, dbConnector):
         self.config = config
-        self.dbConnector = Database(config)
-        self.labelUImiddleware = DBMiddleware(config)
+        self.dbConnector = dbConnector  #Database(config)
+        self.labelUImiddleware = DBMiddleware(config, dbConnector)
         self.tempDir = self.config.getProperty('LabelUI', 'tempfiles_dir', type=str, fallback=tempfile.gettempdir())   #TODO
         self.tempDir = os.path.join(self.tempDir, 'aide/modelDownloads')
         os.makedirs(self.tempDir, exist_ok=True)

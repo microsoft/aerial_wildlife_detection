@@ -1,7 +1,7 @@
 '''
     Serves files, such as images, from a local directory.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 import os
@@ -12,7 +12,7 @@ from util import helpers
 
 class FileServer():
 
-    def __init__(self, config, app, verbose_start=False):
+    def __init__(self, config, app, dbConnector, verbose_start=False):
         self.config = config
         self.app = app
 

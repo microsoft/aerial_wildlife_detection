@@ -30,9 +30,9 @@ from .sql_string_builder import SQLStringBuilder
 
 class AIMiddleware():
 
-    def __init__(self, config, passiveMode=False):
+    def __init__(self, config, dbConnector, passiveMode=False):
         self.config = config
-        self.dbConn = Database(config)
+        self.dbConn = dbConnector   #Database(config)
         self.sqlBuilder = SQLStringBuilder(config)
         self.passiveMode = passiveMode
         self.scriptPattern = re.compile(r'<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script\.?>')

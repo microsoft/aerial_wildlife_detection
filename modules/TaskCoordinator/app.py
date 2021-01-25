@@ -12,10 +12,10 @@ from .backend.middleware import TaskCoordinatorMiddleware
 
 class TaskCoordinator:
 
-    def __init__(self, config, app, verbose_start=False):
+    def __init__(self, config, app, dbConnector, verbose_start=False):
         self.config = config
         self.app = app
-        self.middleware = TaskCoordinatorMiddleware(self.config)
+        self.middleware = TaskCoordinatorMiddleware(self.config, dbConnector)
         
         self.login_check = None
         self._initBottle()

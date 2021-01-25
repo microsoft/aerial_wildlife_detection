@@ -1,7 +1,7 @@
 '''
     Middleware layer for project statistics calculations.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 from psycopg2 import sql
@@ -13,9 +13,9 @@ from util.helpers import base64ToImage
 
 class ProjectStatisticsMiddleware:
 
-    def __init__(self, config):
+    def __init__(self, config, dbConnector):
         self.config = config
-        self.dbConnector = Database(config)
+        self.dbConnector = dbConnector      #Database(config)
     
 
     def getProjectStatistics(self, project):

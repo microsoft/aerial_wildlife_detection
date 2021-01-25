@@ -2,12 +2,12 @@
     Wrapper for the Celery message broker concerning
     the AIController.
 
-    2020 Benjamin Kellenberger
+    2020-21 Benjamin Kellenberger
 '''
 
 import os
 from celery import current_app
-# from modules.AIController.backend.middleware import AIMiddleware
+
 from modules.AIController.backend.functional import AIControllerWorker
 from util.configDef import Config
 
@@ -16,14 +16,7 @@ from util.configDef import Config
 modules = os.environ['AIDE_MODULES']
 passiveMode = (os.environ['PASSIVE_MODE']=='1' if 'PASSIVE_MODE' in os.environ else False) or not('aicontroller' in modules.lower())
 aim = AIControllerWorker(Config(), current_app)
-# aim = AIMiddleware(Config(), passiveMode)
 
-
-
-
-# @current_app.task(name='AIController.aide_internal_notify')
-# def aide_internal_notify(message):
-#     return aim.aide_internal_notify(message)
 
 
 @current_app.task(name='AIController.get_training_images')

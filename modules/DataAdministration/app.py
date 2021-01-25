@@ -23,12 +23,12 @@ from util import helpers
 
 class DataAdministrator:
 
-    def __init__(self, config, app, taskCoordinator, verbose_start=False):
+    def __init__(self, config, app, dbConnector, taskCoordinator, verbose_start=False):
         self.config = config
         self.app = app
 
         self.is_fileServer = helpers.is_fileServer(config)  # set up either direct methods or relaying
-        self.middleware = DataAdministrationMiddleware(config, taskCoordinator)
+        self.middleware = DataAdministrationMiddleware(config, dbConnector, taskCoordinator)
 
         self.tempDir = self.config.getProperty('FileServer', 'tempfiles_dir', type=str, fallback=tempfile.gettempdir())
 
