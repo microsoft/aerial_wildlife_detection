@@ -2,7 +2,7 @@
     This class deals with all tasks related to the Model Marketplace,
     including model sharing, im-/export, download preparation, etc.
 
-    2020 Benjamin Kellenberger
+    2020-21 Benjamin Kellenberger
 '''
 
 import os
@@ -190,15 +190,16 @@ class ModelMarketplaceWorker:
         assert isinstance(modelURI, str), 'Incorrect model URI provided.'
         warnings = []
 
-        # check if model has already been imported into model marketplace
+       # check if model has already been imported into model marketplace
         modelExists = self.dbConnector.execute('''
             SELECT id
             FROM aide_admin.modelMarketplace
             WHERE origin_uri = %s;
         ''', (modelURI,), 1)
         if modelExists is not None and len(modelExists):
-            # model already exists
-            return modelExists[0]['id']
+            # model already exists; import to project
+            modelID = modelExists[0]['id']
+            return self.importModelDatabase(project, username, modelID)
 
         # check import type
         if modelURI.lower().startswith('aide://'):
@@ -332,7 +333,9 @@ class ModelMarketplaceWorker:
         if success is None or not len(success):
             raise Exception('Model could not be imported into Model Marketplace.')
         
-        return success[0]['id']
+        # model import to Marketplace successful; now import to projet
+        modelID = success[0]['id']
+        return self.importModelDatabase(project, username, modelID)
 
 
 

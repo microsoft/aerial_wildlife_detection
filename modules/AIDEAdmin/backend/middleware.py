@@ -167,6 +167,8 @@ class AdminMiddleware:
             try:
                 res = aiwV.apply_async(queue=w)
                 res = res.get(timeout=20)                   #TODO: timeout (in seconds)
+                if res is None:
+                    raise Exception('connection timeout')
                 result[w] = res
                 result[w]['online'] = True
             except Exception as e:

@@ -1,7 +1,7 @@
 '''
     SQL string builder for AIController.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 from psycopg2 import sql
@@ -19,7 +19,7 @@ class SQLStringBuilder:
 
     
     def getLatestQueryString(self, project, minNumAnnoPerImage=0, limit=None):
-        if limit is None or limit == -1:
+        if limit is None or limit <= 0:
             limitStr = sql.SQL('')
         else:
             limitStr = sql.SQL('LIMIT %s')
@@ -72,7 +72,7 @@ class SQLStringBuilder:
         else:
             conditionString = sql.SQL('WHERE corrupt IS NULL OR corrupt = FALSE {}').format(gqString)
         
-        if limit is None or limit == -1:
+        if limit is None or limit <= 0:
             limitString = sql.SQL('')
         else:
             try:

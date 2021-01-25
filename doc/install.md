@@ -52,7 +52,7 @@ It is strongly recommended to run AIDE in a self-contained Python environment, s
     git clone -b multiProject https://github.com/microsoft/aerial_wildlife_detection.git
 
     # install basic requirements
-    sudo apt-get install -y libpq-dev python-dev
+    sudo apt-get install -y libpq-dev python-dev ffmpeg libsm6 libxext6
     pip install -U -r requirements.txt
 
     # install the Detectron2 library now

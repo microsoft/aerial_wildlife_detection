@@ -69,7 +69,7 @@ AIDE is primarily developed by [Benjamin Kellenberger](https://bkellenb.github.i
 ## News
 
 * **November 19, 2020:** We now have an official publication on AIDE:
-Kellenberger, Benjamin, Devis Tuia, and Dan Morris. "AIDE: Accelerating image‐based ecological surveys with interactive machine learning." Methods in Ecology and Evolution, __in press__.
+Kellenberger, Benjamin, Devis Tuia, and Dan Morris. "AIDE: Accelerating image‐based ecological surveys with interactive machine learning." Methods in Ecology and Evolution 11(12), 1716-1727.
 DOI: [10.1111/2041-210X.13489](https://doi.org/10.1111/2041-210X.13489).
 Please cite this manuscript whenever you use AIDE in your work. Thank you very much!
 * **August 17, 2020:** AIDE v2 now officially replaces the old version as the new master! If you have a v1 project running, you may want to migrate it according to the instructions [below](https://github.com/microsoft/aerial_wildlife_detection#migration-from-aide-v1). For the legacy v1 code, see [here](https://github.com/microsoft/aerial_wildlife_detection/tree/v1).
@@ -106,7 +106,7 @@ The current scripts are not 100% tested yet, but they make installation a breeze
 
 Here's how to install and launch AIDE with Docker on the current machine:
 
-1. Download and install [Docker](https://www.docker.com/get-started) as well as [Docker Compose](https://docs.docker.com/compose)
+1. Download and install [Docker](https://docs.docker.com/engine/install) as well as [Docker Compose](https://docs.docker.com/compose/install)
 2. If you want to use a GPU (and only then), you have to install the NVIDIA container toolkit:
 ```bash
     distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
@@ -169,7 +169,7 @@ See [here](doc/custom_model.md) for instructions on using custom models.
 
 Please cite the following paper if you use AIDE in your work:
 
-Kellenberger, Benjamin, Devis Tuia, and Dan Morris. "AIDE: Accelerating image‐based ecological surveys with interactive machine learning." Methods in Ecology and Evolution, __in press__.
+Kellenberger, Benjamin, Devis Tuia, and Dan Morris. "AIDE: Accelerating image‐based ecological surveys with interactive machine learning." Methods in Ecology and Evolution 11(12), 1716-1727.
 DOI: [10.1111/2041-210X.13489](https://doi.org/10.1111/2041-210X.13489).
 
 Thank you.
