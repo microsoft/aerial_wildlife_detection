@@ -44,7 +44,7 @@ function start {
             # pre-flight checks succeeded; get host and port from configuration file
             host=$(python util/configDef.py --section=Server --parameter=host)
             port=$(python util/configDef.py --section=Server --parameter=port)
-            numWorkers=$(python util/configDef.py --section=Server --parameter=numWorkers --fallback=6)
+            numWorkers=$(python util/configDef.py --section=Server --parameter=numWorkers --type=int --fallback=6)
 
             debug="$(echo "$2" | tr '[:upper:]' '[:lower:]')";
             if [ "$debug" == "debug" ]; then
