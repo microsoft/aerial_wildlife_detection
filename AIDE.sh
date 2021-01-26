@@ -7,7 +7,7 @@
 #
 # Depending on the argume
 # 
-# 2020 Benjamin Kellenberger
+# 2020-21 Benjamin Kellenberger
 
 function start {
 
@@ -40,7 +40,7 @@ function start {
         # get host and port from configuration file
         host=$(python util/configDef.py --section=Server --parameter=host)
         port=$(python util/configDef.py --section=Server --parameter=port)
-        numWorkers=$(python util/configDef.py --section=Server --parameter=numWorkers --fallback=6)
+        numWorkers=$(python util/configDef.py --section=Server --parameter=numWorkers --type=int --fallback=6)
         gunicorn application:app --bind=$host:$port --workers=$numWorkers
     else
         echo "Machine only runs as an AIWorker; skipping set up of HTTP web server..."

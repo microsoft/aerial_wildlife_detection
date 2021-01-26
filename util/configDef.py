@@ -1,7 +1,7 @@
 '''
     Interface to the config.ini file.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 import os
@@ -37,16 +37,21 @@ class Config():
 
 
     def getProperty(self, module, propertyName, type=str, fallback=None):
-        m = module
-
-        if type==bool:
-            return self.config.getboolean(m, propertyName, fallback=fallback)
-        elif type==float:
-            return self.config.getfloat(m, propertyName, fallback=fallback)
-        elif type==int:
-            return self.config.getint(m, propertyName, fallback=fallback)
-        else:
-            return self.config.get(m, propertyName, fallback=fallback)
+        try:
+            if type==bool:
+                value = self.config.getboolean(module, propertyName, fallback=fallback)
+            elif type==float:
+                value = self.config.getfloat(module, propertyName, fallback=fallback)
+            elif type==int:
+                value = self.config.getint(module, propertyName, fallback=fallback)
+            else:
+                value = self.config.get(module, propertyName, fallback=fallback)
+            if type is not None and not isinstance(value, type):
+                return fallback
+            else:
+                return value
+        except:
+            return fallback
 
 
 
@@ -61,6 +66,7 @@ if __name__ == '__main__':
                     help='Directory of the settings.ini file used for this machine (default: "config/settings.ini").')
     parser.add_argument('--section', type=str, help='Configuration file section')
     parser.add_argument('--parameter', type=str, help='Parameter within the section')
+    parser.add_argument('--type', type=str, help='Parameter type. One of {"str" (default), "bool", "int", "float", None (everything else)}')
     parser.add_argument('--fallback', type=str, help='Fallback value, if parameter does not exist (optional)')
     args = parser.parse_args()
 
@@ -71,4 +77,19 @@ if __name__ == '__main__':
         print('Usage: python configDef.py --section=<.ini file section> --parameter=<section parameter name> [--fallback=<default value>]')
 
     else:
-        print(Config().getProperty(args.section, args.parameter, fallback=args.fallback))
+        try:
+            type = args.type.lower()
+            if type=='str':
+                type=str
+            elif type=='bool':
+                type=bool
+            elif type=='int':
+                type=int
+            elif type=='float':
+                type=float
+            else:
+                type=None
+        except:
+            type=None
+
+        print(Config().getProperty(args.section, args.parameter, type=type, fallback=args.fallback))
