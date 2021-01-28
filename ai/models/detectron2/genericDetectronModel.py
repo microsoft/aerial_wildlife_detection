@@ -107,7 +107,10 @@ class GenericDetectron2Model(AIModel):
             
             if configFile is not None:
                 cfg.merge_from_file(configFile)
-            cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(defaultConfig)
+            try:
+                cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(defaultConfig)
+            except:
+                pass
         return cfg
 
 
@@ -216,6 +219,10 @@ class GenericDetectron2Model(AIModel):
                 pass
             try:
                 detectron2cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES = stateDict['detectron2cfg'].MODEL.SEM_SEG_HEAD.NUM_CLASSES
+            except:
+                pass
+            try:
+                detectron2cfg.MODEL.RESNET.NUM_CLASSES = stateDict['detectron2cfg'].MODEL.RESNET.NUM_CLASSES
             except:
                 pass
         stateDict['detectron2cfg'] = detectron2cfg
@@ -446,10 +453,15 @@ class GenericDetectron2Model(AIModel):
                 imgCount += len(batch)
                 updateStateFun(state='PROGRESS', message='training', done=imgCount, total=numImg)
 
+            stats = storage.latest()
+            for key in stats:
+                if isinstance(stats[key], tuple):
+                    stats[key] = stats[key][0]
+            stats['No. Images'] = numImg
             tbar.close()
 
-        # all done; return state dict as bytes
-        return self.exportModelState(stateDict, model)
+        # all done; return state dict as bytes and stats
+        return self.exportModelState(stateDict, model), stats
 
 
 
@@ -566,7 +578,14 @@ class GenericDetectron2Model(AIModel):
                         'confidence': confidence.cpu().numpy()
                     })
                 
-                #TODO: image labels, instance segmentation, etc.
+                elif 'pred_label' in outputs:
+                    predictions.append({
+                        'label': labelclassMap_inv[outputs['pred_label'].item()],
+                        'logits': outputs['pred_logits'].cpu().numpy().tolist(),
+                        'confidence': outputs['pred_conf'].item()
+                    })
+
+                #TODO: instance segmentation, etc.
 
                 response[batch[0]['image_uuid']] = {
                     'predictions': predictions

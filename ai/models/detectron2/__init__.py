@@ -3,6 +3,8 @@
 '''
 
 # models are listed here for convenience
+from .labels.resnet.resnet import ResNet
+
 from .boundingBoxes.fasterrcnn.fasterrcnn import FasterRCNN
 
 from .boundingBoxes.retinanet.retinanet import RetinaNet

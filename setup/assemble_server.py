@@ -163,7 +163,7 @@ def assemble_server(verbose_start=True, check_v1_config=True, migrate_database=T
     # "singletons"
     dbConnector = REGISTERED_MODULES['Database'](config, verbose_start)
     userHandler = REGISTERED_MODULES['UserHandler'](config, app, dbConnector)
-    taskCoordinator = REGISTERED_MODULES['TaskCoordinator'](config, app, verbose_start)
+    taskCoordinator = REGISTERED_MODULES['TaskCoordinator'](config, app, dbConnector, verbose_start)
     taskCoordinator.addLoginCheckFun(userHandler.checkAuthenticated)
 
     for i in instance_args:
@@ -179,7 +179,7 @@ def assemble_server(verbose_start=True, check_v1_config=True, migrate_database=T
 
         # create instance
         if moduleName == 'AIController':
-            instance = moduleClass(config, app, dbConnector, verbose_start, passive_mode)
+            instance = moduleClass(config, app, dbConnector, taskCoordinator, verbose_start, passive_mode)
         else:
             instance = moduleClass(config, app, dbConnector, verbose_start)
         instances[moduleName] = instance

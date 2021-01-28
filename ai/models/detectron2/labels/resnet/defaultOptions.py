@@ -1,10 +1,7 @@
 '''
-    Detectron2-compliant wrapper for DeepLabV3+.
-
-    2020 Benjamin Kellenberger
+    2021 Benjamin Kellenberger
 '''
 
-#TODO: modify below:
 # default options for the model, may be overridden in the custom configuration loaded at runtime
 DEFAULT_OPTIONS = {
 	"defs": {
@@ -169,13 +166,13 @@ DEFAULT_OPTIONS = {
 							"name": "Height",
 							"min": 0,
 							"max": 1e9,
-							"value": 512
+							"value": 600
 						},
 						{
 							"name": "Width",
 							"min": 0,
 							"max": 1e9,
-							"value": 1024
+							"value": 800
 						}
 					]
 				},
@@ -199,7 +196,7 @@ DEFAULT_OPTIONS = {
 							"name": "Lanczos"
 						}
 					},
-					"value": 0
+					"value": "0"
 				}
 			}
 		}
@@ -213,7 +210,7 @@ DEFAULT_OPTIONS = {
 				"options": {
 					"cpu": {
 						"name": "CPU",
-						"description": "Run DeepLab models on the CPU and with system RAM."
+						"description": "Run ResNet on the CPU and with system RAM."
 					},
 					"cuda": {
 						"name": "GPU",
@@ -251,12 +248,12 @@ DEFAULT_OPTIONS = {
 			"description": "Choose a pre-trained starting point.<br />If your project already contains at least one model state, this choice is ignored unless \"Force new model\" is ticked, in which case a completely new model is being built.",
 			"config": {
 				"name": "Pre-made configuration",
-				"description": "Choose a pre-trained model state here or create your own model from scratch (\"manual\").",
+				"description": "Choose a pre-trained model state here.",
 				"type": "select",
-				"value": "segmentationMasks/Cityscapes-SemanticSegmentation/deeplab_v3_plus_R_103_os16_mg124_poly_90k_bs16.yaml",
+				"value": "labels/resnet_R_50_ImageNet.yaml",
 				"options": {
-					"segmentationMasks/Cityscapes-SemanticSegmentation/deeplab_v3_plus_R_103_os16_mg124_poly_90k_bs16.yaml": {
-						"name": "Modified ResNet-101 backbone with diilated convolutions, pre-trained on ImageNet"
+					"labels/resnet_R_50_ImageNet.yaml": {
+						"name": "ResNet-50, pre-trained on ImageNet"
 					}
 				}
 			},
@@ -283,7 +280,7 @@ DEFAULT_OPTIONS = {
 					"name": "Base learning rate",
 					"min": 0.0,
 					"max": 100.0,
-					"value": 0.01
+					"value": 0.0001
 				},
 				"DETECTRON2.SOLVER.BIAS_LR_FACTOR": {
 					"name": "Biasing factor for learning rate",
@@ -348,7 +345,6 @@ DEFAULT_OPTIONS = {
 				"type": "list",
 				"options": "transforms",
 				"value": [
-					"Resize",
 					"RandomFlip",
 					"RandomLighting",
 					"RandomContrast",
@@ -364,12 +360,10 @@ DEFAULT_OPTIONS = {
 			"name": "Inference (prediction) options",
 			"transform": {
 				"name": "Transforms",
-				"description": "Transforms to apply during inference time.",
+				"description": "Note that inference transforms exclude geometric data augmentation options.",
 				"type": "list",
 				"options": "transforms",
-				"value": [
-					"Resize"
-				]
+				"value": []
 			}
 		}
 	}

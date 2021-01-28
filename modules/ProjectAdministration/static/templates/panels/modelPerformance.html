@@ -5,7 +5,7 @@
     </div>
     <div id="options-container">
         <div class="tables-container">
-            <div class="entity-table" style="width:70%;order:1;">
+            <div class="entity-table" style="display:table;width:70%;order:1;">
                 <div>AI models to be evaluated:</div>
                 <table>
                     <thead>
@@ -21,6 +21,8 @@
                     </thead>
                     <tbody id="cnn-states-tbody"></tbody>
                 </table>
+
+                <button class="btn btn-sm btn-danger" id="delete-selected-models-button">Delete selected</button>
             </div>
             <div class="entity-table" style="width:20%;order:2;">
                 <div>Target user:</div>
@@ -33,15 +35,17 @@
             </div>
         </div>
 
-        <div id="threshold-control" style="display:none;margin-top:5px;">
-            <span>Distance/IoU threshold:</span>
-            <input type="range" id="threshold-range" min="0.0" max="1.0" step="0.01" value="0.5" />
-            <input type="number" id="threshold-number" min="0.0" max="1.0" step="0.01" value="0.5" style="width:60px" />
-        </div>
+        <div>
+            <div id="threshold-control" style="display:none;margin-top:5px;">
+                <span>Distance/IoU threshold:</span>
+                <input type="range" id="threshold-range" min="0.0" max="1.0" step="0.01" value="0.5" />
+                <input type="number" id="threshold-number" min="0.0" max="1.0" step="0.01" value="0.5" style="width:60px" />
+            </div>
 
-        <div style="margin-top:5px;margin-bottom:5px;">
-            <input type="checkbox" id="check-golden-question-only" value="goldenQuestionsOnly" />
-            <label for="check-golden-question-only">Limit to golden questions only</label>
+            <div style="margin-top:5px;margin-bottom:5px;">
+                <input type="checkbox" id="check-golden-question-only" value="goldenQuestionsOnly" />
+                <label for="check-golden-question-only">Limit to golden questions only</label>
+            </div>
         </div>
 
         <button id="calc-stats" class="btn btn-sm btn-primary">Update</button>
@@ -114,6 +118,7 @@
         overflow-x: scroll;
     }
 </style>
+<script src="/static/dataAdmin/js/taskPolling.js?v={{ version }}"></script>
 <script src="/static/statistics/libs/chartjs/Chart.min.js?v={{ version }}"></script>
 <script type="text/javascript">
 
@@ -126,12 +131,17 @@
         console.log(stats); //TODO
     }
 
-    function calculateModelStats() {
-        // get control values
-        var modelStates = [];
+    function getSelectedModelIDs() {
+        let modelStates = [];
         $('#cnn-states-tbody').find('input[type=checkbox]:checked').each(function() {
             modelStates.push($(this).attr('id'));
         });
+        return modelStates
+    }
+
+    function calculateModelStats() {
+        // get control values
+        let modelStates = getSelectedModelIDs();
         var targetUser = $('#target-users').find('input[type=radio]:checked').attr('id');
         if(targetUser === undefined || modelStates.length === 0) return;
 
@@ -500,6 +510,64 @@
         });
     }
 
+    function deleteSelectedModels() {
+        let selModels = getSelectedModelIDs();
+        if(selModels.length === 0) return;
+
+        let _on_message = function(numModels, message) {
+            if(data.hasOwnProperty('status') && data['status'] === 'FAILURE') {
+                // error
+                let message = '(an unknown error occurred)';
+                if(data.hasOwnProperty('meta') && data['meta'].hasOwnProperty('message')) {
+                    message = 'an error occurred trying to delete model states (' + data['meta']['message'] + ').';
+                }
+                window.messager.addMessage(message, 'error', 0);
+            } else {
+                window.messager.addMessage('Successfully deleted ' + numModels + ' model states.', 'success');
+            }
+        }
+
+        let _do_delete = function() {
+            return $.ajax({
+                url: window.baseURL + 'deleteModelStates',
+                method: 'POST',
+                data: JSON.stringify({model_ids: selModels}),
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+                success: function(data) {
+                    let taskID = data['task_id'];
+                    if(typeof(taskID) === 'string') {
+                        poll_status(taskID, function(data) {
+                            _on_message(selModels.length, data);
+                        },
+                        function(data) {
+                            _on_message(selModels.length, data);
+                        }, 1000);
+                    } else {
+                        if(data.hasOwnProperty('message')) {
+                            window.messager.addMessage('An error occurred while trying to delete model states (message: "'+data['message']+'").', 'error', 0);
+                        } else {
+                            window.messager.addMessage('An unknown error occurred while trying to delete model states', 'error', 0);
+                        }
+                    }
+                },
+                error: function(xhr, status, error) {
+                    window.messager.addMessage('An error occurred while deleting model states (message: "'+error+'").', 'error', 0);
+                },
+                statusCode: {
+                    401: function(xhr) {
+                        return window.renewSessionRequest(xhr, function() {
+                            return _do_delete();
+                        });
+                    }
+                }
+            });
+        }
+
+        window.showYesNoOverlay($('<div>Are you sure you would like to delete ' + selModels.length + ' model states?<br />This action cannot be undone.</div>'),
+            _do_delete, null, 'Delete', 'Cancel', 'btn-danger', 'btn-secondary', false, false);
+    }
+
     $(document).ready(function() {
 
         // get project annotation and prediction types
@@ -545,6 +613,10 @@
             $('#calc-stats').click(calculateModelStats);
             promise = promise.then(function() {
                 return calculateModelStats();
+            });
+
+            $('#delete-selected-models-button').on('click', function() {
+                return deleteSelectedModels(); 
             });
 
             window.showLoadingOverlay(false);

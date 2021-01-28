@@ -80,6 +80,15 @@ PREDICTION_MODELS = {
     # built-ins
 
     # Detectron2
+    'ai.models.detectron2.ResNet': {
+                                            'name': 'ResNet (beta)',
+                                            'author': '(built-in)',
+                                            'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of the <a href="http://openaccess.thecvf.com/content_cvpr_2016/papers/He_Deep_Residual_Learning_CVPR_2016_paper.pdf" target="_blank">ResNet</a> image classification model.',
+                                            'annotationType': 'labels',
+                                            'predictionType': 'labels',
+                                            'canAddLabelclasses': True,
+                                            'canRemoveLabelclasses': True
+                                       },
     'ai.models.detectron2.FasterRCNN': {
                                             'name': 'Faster R-CNN (beta)',
                                             'author': '(built-in)',
@@ -110,7 +119,7 @@ PREDICTION_MODELS = {
 
     # PyTorch
     'ai.models.pytorch.labels.ResNet': {
-                                            'name': 'ResNet',
+                                            'name': 'ResNet (legacy)',
                                             'author': '(built-in)',
                                             'description': 'Deep classification model based on <a href="http://openaccess.thecvf.com/content_cvpr_2016/papers/He_Deep_Residual_Learning_CVPR_2016_paper.pdf" target="_blank">ResNet</a>.',
                                             'annotationType': 'labels',

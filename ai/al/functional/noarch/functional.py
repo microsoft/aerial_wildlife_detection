@@ -1,7 +1,7 @@
 '''
     Helper snippets for built-in AL heuristics on computing the priority score.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 import numpy as np
@@ -25,6 +25,8 @@ def _breaking_ties(prediction):
         else:
             logits = np.sort(logits)
             btVal = 1 - (logits[-1] - logits[-2])
+    if isinstance(btVal, np.ndarray):
+        btVal = btVal.tolist()
     return btVal
 
 
@@ -33,5 +35,12 @@ def _max_confidence(prediction):
         Returns the maximum value of the logits as a priority value.
     '''
     if 'logits' in prediction:
-        return max(prediction['logits'])
-    return None
+        maxVal = max(prediction['logits'])
+    elif 'confidence' in prediction:
+        maxVal = max(prediction['confidence'])
+    else:
+        maxVal = None
+    
+    if isinstance(maxVal, np.ndarray):
+        maxVal = maxVal.tolist()
+    return maxVal

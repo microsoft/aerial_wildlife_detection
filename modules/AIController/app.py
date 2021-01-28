@@ -15,7 +15,7 @@ class AIController:
 
     #TODO: relay routings if AIController is on a different machine
 
-    def __init__(self, config, app, dbConnector, verbose_start=False, passive_mode=False):
+    def __init__(self, config, app, dbConnector, taskCoordinator, verbose_start=False, passive_mode=False):
         self.config = config
         self.app = app
 
@@ -23,7 +23,7 @@ class AIController:
             print('AIController'.ljust(LogDecorator.get_ljust_offset()), end='')
 
         try:
-            self.middleware = AIMiddleware(config, dbConnector, passive_mode)
+            self.middleware = AIMiddleware(config, dbConnector, taskCoordinator, passive_mode)
             self.login_check = None
             self._initBottle()
         except Exception as e:
@@ -57,6 +57,31 @@ class AIController:
                 abort(401, 'forbidden')
             
             return {'modelStates': self.middleware.listModelStates(project) }
+        
+
+        @self.app.post('/<project>/deleteModelStates')
+        def delete_model_states(project):
+            '''
+                Receives a list of model IDs and launches a background
+                task to delete them.
+            '''
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+            
+            try:
+                username = html.escape(request.get_cookie('username'))
+                modelStateIDs = request.json['model_ids']
+                taskID = self.middleware.deleteModelStates(project, username, modelStateIDs)
+                return {
+                    'status': 0,
+                    'task_id': taskID
+                }
+
+            except Exception as e:
+                return {
+                    'status': 1,
+                    'message': str(e)
+                }
 
         
         #TODO: deprecated; replace with workflow:

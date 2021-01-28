@@ -82,6 +82,10 @@ app.conf.update(
             'queue': 'AIController',
             'routing_key': 'get_inference_images'
         },
+        'AIController.delete_model_states': {
+            'queue': 'AIController',
+            'routing_key': 'delete_model_states'
+        },
         'AIWorker.call_update_model': {
             'queue': 'AIWorker',
             'routing_key': 'call_update_model'

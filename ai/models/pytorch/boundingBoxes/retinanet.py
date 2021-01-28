@@ -1,7 +1,7 @@
 '''
     RetinaNet trainer for PyTorch.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 import io
@@ -11,7 +11,6 @@ import torch
 from torch.utils.data import DataLoader
 
 from ..genericPyTorchModel import GenericPyTorchModel
-from .. import parse_transforms
 
 from ..functional._retinanet import DEFAULT_OPTIONS, collation, encoder, loss
 from ..functional._retinanet.model import RetinaNet as Model

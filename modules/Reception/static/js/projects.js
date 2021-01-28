@@ -5,6 +5,14 @@
 let projects = {};      // general info about projects
 let selectedFolder = 'all-projects';
 
+let labelTypeConversion = {
+    'labels': 'labels',
+    'points': 'points',
+    'polygons': 'polygons',
+    'boundingBoxes': 'bounding boxes',
+    'segmentationMasks': 'semantic segmentation',
+    'instanceSegmentation': 'instance segmentation'
+}
 
 function loadProjectInfo() {
     let projDiv = $('#projects');
@@ -18,6 +26,12 @@ function loadProjectInfo() {
                 for(var key in data['projects']) {
                     let projName = data['projects'][key]['name'];
                     let projDescr = data['projects'][key]['description'];
+                    let annoType = labelTypeConversion[data['projects'][key]['annotationType']];
+                    let predType = labelTypeConversion[data['projects'][key]['predictionType']];
+                    let labelTypes = annoType;
+                    if(predType !== annoType) {
+                        labelTypes += '; ' + predType;
+                    }
                     let archived = data['projects'][key]['archived'];
                     let demoMode = data['projects'][key]['demoMode'];
                     let isOwner = data['projects'][key]['isOwner'];
@@ -87,6 +101,7 @@ function loadProjectInfo() {
 
                         var markup = $('<div class="project-entry" id="projectEntry_' + key + '"></div>');
                         markup.append($('<h2><a href="' + key + '">' + projName + '</a></h2>'));
+                        markup.append($('<span class="label-type">'+ labelTypes +'</span>'));
                         markup.append($('<p>' + projDescr + '</p>'));
                         markup.append(authDescr);
                         if(demoMode) {

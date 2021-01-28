@@ -81,6 +81,9 @@ class Detectron2DatasetMapper(DatasetMapper):
         else:
             sem_seg_gt = None
 
+        if "gt_label" in dataset_dict:
+            dataset_dict["gt_label"] = torch.LongTensor([dataset_dict["gt_label"]])
+
         aug_input = T.AugInput(image, sem_seg=sem_seg_gt)
         transforms = self.augmentations(aug_input)
         image, sem_seg_gt = aug_input.image, aug_input.sem_seg

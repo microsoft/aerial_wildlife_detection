@@ -3,9 +3,11 @@
     via Celery (e.g. assembling and splitting the lists of
     training and testing images).
 
-    2020 Benjamin Kellenberger
+    2020-21 Benjamin Kellenberger
 '''
 
+from collections.abc import Iterable
+from uuid import UUID
 from datetime import datetime
 from psycopg2 import sql
 from modules.Database.app import Database
@@ -171,3 +173,30 @@ class AIControllerWorker:
             else:
                 imageIDs = [imageIDs]
             return imageIDs
+
+
+    
+    def delete_model_states(self, project, modelStateIDs):
+        '''
+            Deletes model states with provided IDs from the database
+            for a given project.
+        '''
+        from celery.contrib import rdb
+        rdb.set_trace()
+        # verify IDs
+        if not isinstance(modelStateIDs, Iterable):
+            modelStateIDs = [modelStateIDs]
+        uuids = []
+        modelIDs_invalid = []
+        for m in modelStateIDs:
+            try:
+                uuids.append((UUID(m),))
+            except:
+                modelIDs_invalid.append(str(m))
+        self.dbConn.execute(sql.SQL('''
+            DELETE FROM {id_cnnstate}
+            WHERE id IN %s;
+        ''').format(id_cnnstate=sql.Identifier(project, 'cnnstate')),
+            tuple(uuids)
+        )
+        return modelIDs_invalid

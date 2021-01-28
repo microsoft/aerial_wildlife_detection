@@ -4,6 +4,7 @@
     2019-21 Benjamin Kellenberger
 '''
 
+from collections.abc import Iterable
 from datetime import datetime
 import uuid
 import re
@@ -30,9 +31,10 @@ from .sql_string_builder import SQLStringBuilder
 
 class AIMiddleware():
 
-    def __init__(self, config, dbConnector, passiveMode=False):
+    def __init__(self, config, dbConnector, taskCoordinator, passiveMode=False):
         self.config = config
         self.dbConn = dbConnector   #Database(config)
+        self.taskCoordinator = taskCoordinator
         self.sqlBuilder = SQLStringBuilder(config)
         self.passiveMode = passiveMode
         self.scriptPattern = re.compile(r'<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script\.?>')
@@ -1161,6 +1163,23 @@ class AIMiddleware():
                     'marketplace_info': marketplaceInfo
                 })
         return response
+
+
+
+    def deleteModelStates(self, project, username, modelStateIDs):
+        '''
+            Receives a list of model state IDs (either str or UUID)
+            and launches a task to delete them from the database.
+            Unlike training and inference tasks, this one is routed
+            through the default taskCoordinator.
+        '''
+        # verify IDs
+        if not isinstance(modelStateIDs, Iterable):
+            modelStateIDs = [modelStateIDs]
+        modelStateIDs = [str(m) for m in modelStateIDs]
+        process = aic_int.delete_model_states.s(project, modelStateIDs)
+        taskID = self.taskCoordinator.submitJob(project, username, process, 'AIController')
+        return taskID
 
 
 

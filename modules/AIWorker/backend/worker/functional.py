@@ -19,10 +19,11 @@
        it calls the very same function the AIController instance delegated and
        processes it (functions below).
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 import base64
+import json
 import numpy as np
 from celery import current_task, states
 import psycopg2
@@ -287,21 +288,32 @@ def _call_train(project, imageIDs, epoch, numEpochs, subset, modelInstance, mode
     # call training function
     try:
         update_state(state='PREPARING', message=f'[Epoch {epoch}] initiating training')
-        stateDict = modelInstance.train(stateDict=stateDict, data=data, updateStateFun=update_state)
+        result = modelInstance.train(stateDict=stateDict, data=data, updateStateFun=update_state)
     except Exception as e:
         print(e)
         raise Exception(f'[Epoch {epoch}] error during training (reason: {str(e)})')
 
+    # separate model state and statistics (if provided)
+    if isinstance(result, tuple):
+        stateDict = result[0]
+        stats = result[1]
+        if isinstance(stats, dict):
+            stats = json.dumps(stats)
+        else:
+            stats = None
+    else:
+        stateDict = result
+        stats = None
 
     # commit state dict to database
     try:
         update_state(state='FINALIZING', message=f'[Epoch {epoch}] saving model state')
         model_library, alcriterion_library = __get_ai_library_names(project, dbConnector)
         queryStr = sql.SQL('''
-            INSERT INTO {} (stateDict, partial, model_library, alcriterion_library)
-            VALUES( %s, %s, %s, %s )
+            INSERT INTO {} (stateDict, stats, partial, model_library, alcriterion_library)
+            VALUES( %s, %s, %s, %s, %s )
         ''').format(sql.Identifier(project, 'cnnstate'))
-        dbConnector.execute(queryStr, (psycopg2.Binary(stateDict), subset, model_library, alcriterion_library), numReturn=None)
+        dbConnector.execute(queryStr, (psycopg2.Binary(stateDict), stats, subset, model_library, alcriterion_library), numReturn=None)
     except Exception as e:
         print(e)
         raise Exception(f'[Epoch {epoch}] error during data committing (reason: {str(e)})')
@@ -327,7 +339,7 @@ def _call_average_model_states(project, epoch, numEpochs, modelInstance, modelLi
     update_state(state='PREPARING', message=f'[Epoch {epoch}] loading model states')
     try:
         queryStr = sql.SQL('''
-            SELECT stateDict, model_library, alcriterion_library
+            SELECT stateDict, statistics, model_library, alcriterion_library
             FROM {}
             WHERE partial IS TRUE AND model_library = %s;
         ''').format(sql.Identifier(project, 'cnnstate'))
@@ -350,6 +362,16 @@ def _call_average_model_states(project, epoch, numEpochs, modelInstance, modelLi
     except Exception as e:
         print(e)
         raise Exception(f'[Epoch {epoch}] error during model state fusion (reason: {str(e)})')
+    
+    # average statistics values (if present)
+    stats_avg = {}
+    dicts = [json.loads(qr['stats']) for qr in queryResult if qr['stats'] is not None]
+    keys = [list(d.keys()) for d in dicts]
+    keys = set([key for stats in keys for key in stats])
+    for key in keys:
+        stats_avg[key] = np.nanmean([d[key] for d in dicts if key in d])
+    if not len(stats_avg):
+        stats_avg = None
 
     # push to database
     update_state(state='FINALIZING', message=f'[Epoch {epoch}] saving model state')
@@ -361,10 +383,10 @@ def _call_average_model_states(project, epoch, numEpochs, modelInstance, modelLi
         model_library, alcriterion_library = __get_ai_library_names(project, dbConnector)
     try:
         queryStr = sql.SQL('''
-            INSERT INTO {} (stateDict, partial, model_library, alcriterion_library)
+            INSERT INTO {} (stateDict, stats, partial, model_library, alcriterion_library)
             VALUES ( %s )
         ''').format(sql.Identifier(project, 'cnnstate'))
-        dbConnector.insert(queryStr, (modelStates_avg, False, model_library, alcriterion_library))
+        dbConnector.insert(queryStr, (modelStates_avg, stats_avg, False, model_library, alcriterion_library))
     except Exception as e:
         print(e)
         raise Exception(f'[Epoch {epoch}] error during data committing (reason: {str(e)})')

@@ -52,10 +52,14 @@ def getDetectron2Data(aideData, ignoreUnsure=False, filterEmpty=False):
                 elif 'segmentationmask' in anno:
                     # pixel-wise segmentation mask
                     record['segmentationMask'] = anno['segmentationmask']
+                    break
                 elif 'x' in anno and 'y' in anno:
                     # point (not yet supported by Detectron2)
                     continue
-                
+                elif 'label' in anno:
+                    # image labels; skip instances and append to base dict
+                    record['gt_label'] = labelclassMap[anno['label']]
+                    break
                 if 'label' in anno:
                     if anno['label'] not in labelclassMap:
                         # unknown label class; ignore for now
@@ -65,7 +69,8 @@ def getDetectron2Data(aideData, ignoreUnsure=False, filterEmpty=False):
                 if len(obj):
                     annotations.append(obj)
         
-        if filterEmpty and not len(annotations) and 'segmentationMask' not in record:
+        if filterEmpty and not len(annotations) and not \
+            ('segmentationMask' in record or 'gt_label' in record):
             # no annotations in image; skip
             continue
         

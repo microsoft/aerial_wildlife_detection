@@ -1,0 +1,5 @@
+_BASE_: "Base-ResNet.yaml"
+MODEL:
+  RESNET:
+    FLAVOR: "resnet50"
+    PRETRAINED: True

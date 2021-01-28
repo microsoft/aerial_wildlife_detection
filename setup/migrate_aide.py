@@ -294,7 +294,8 @@ MODIFICATIONS_sql = [
         FOREIGN KEY (launchedBy) REFERENCES aide_admin.user (name),
         FOREIGN KEY (abortedBy) REFERENCES aide_admin.user (name)
     );
-  '''
+  ''',
+  'ALTER TABLE "{schema}".cnnstate ADD COLUMN IF NOT EXISTS stats VARCHAR;'
 ]
 
 

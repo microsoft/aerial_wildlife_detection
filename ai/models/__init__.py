@@ -1,7 +1,7 @@
 '''
     Abstract model class, providing code shells for the AIWorker.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 class AIModel:
@@ -121,6 +121,28 @@ class AIModel:
                 stateDict: a bytes object containing the combined model states
         """
         raise NotImplementedError('not implemented for base class.')
+
+
+    # #TODO: this is commented out temporarily to not break compatibility with unoptimized models
+    # def update_model(self, stateDict, data, updateStateFun):
+    #     """
+    #         Updater function. Modifies the model to incorporate newly
+    #         added label classes.
+    #         Implementers are advised to employ advanced heuristics, such as weight
+    #         combinations of a model's classification part.
+    #         Note that it may be that the model is already adapted for all the label classes
+    #         present in "data", in which case no modifications are required.
+    #         Args:
+    #             stateDict: a bytes object containing the latest model state
+    #             data: a dict object containing the metadata of the images to
+    #                   be used for subsequent processes (train or inference)
+    #             updateStateFun: function handle for updating the progress to the
+    #                             AIController
+
+    #         Returns:
+    #             stateDict: a bytes object containing the updated model states    
+    #     """
+    #     raise NotImplementedError('not implemented for base class.')
 
 
     def inference(self, stateDict, data, updateStateFun):

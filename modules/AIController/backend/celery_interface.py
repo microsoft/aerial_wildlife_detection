@@ -27,3 +27,8 @@ def get_training_images(blank, project, epoch, numEpochs, minTimestamp='lastStat
 @current_app.task(name='AIController.get_inference_images')
 def get_inference_images(blank, project, epoch, numEpochs, goldenQuestionsOnly=False, forceUnlabeled=False, maxNumImages=None, numWorkers=1):
     return aim.get_inference_images(project, epoch, numEpochs, goldenQuestionsOnly, forceUnlabeled, maxNumImages, numWorkers)
+
+
+@current_app.task(name='AIController.delete_model_states')
+def delete_model_states(project, modelStateIDs):
+    return aim.delete_model_states(project, modelStateIDs)

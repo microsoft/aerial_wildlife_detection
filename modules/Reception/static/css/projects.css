@@ -92,6 +92,13 @@
     float: right;
 }
 
+.label-type {
+    font-size: 9pt;
+    background: #333;
+    padding: 3px;
+    border-radius: 7px;
+}
+
 #projects-placeholder {
     display: none;
     text-align: center;
