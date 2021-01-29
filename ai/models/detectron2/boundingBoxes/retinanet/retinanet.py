@@ -1,7 +1,7 @@
 '''
     RetinaNet specifier for Detectron2 model trainer in AIDE.
 
-    2020 Benjamin Kellenberger
+    2020-21 Benjamin Kellenberger
 '''
 
 import json
@@ -62,6 +62,11 @@ class RetinaNet(GenericDetectron2BoundingBoxModel):
         # modify model weights to accept new label classes
         if len(newClasses):
 
+            # create vector of label classes
+            classVector = len(stateDict['labelclassMap']) * [None]
+            for (key, index) in zip(stateDict['labelclassMap'].keys(), stateDict['labelclassMap'].values()):
+                classVector[index] = key
+
             weights = model.head.cls_score.weight    # a anchors x n classes
             biases = model.head.cls_score.bias
 
@@ -120,30 +125,28 @@ class RetinaNet(GenericDetectron2BoundingBoxModel):
                     # prepend
                     weights = torch.cat((newWeight, weights), 0)
                     biases = torch.cat((newBias, biases), 0)
+                    classVector.insert(0, newClasses[cl])
             
             # remove old classes
-            classmap_updated = {}
             valid = torch.ones(len(biases), dtype=torch.bool)
-            classmap_inv = {}
-            for key in stateDict['labelclassMap'].keys():
-                classmap_inv[stateDict['labelclassMap'][key]] = key
+            classMap_updated = {}
             index_updated = 0
-            for clIdx in range(len(classmap_inv)):
-                clName = classmap_inv[clIdx]
+            for idx, clName in enumerate(classVector):
                 if clName not in data['labelClasses']:
-                    index = clIdx + len(newClasses)   # we prepended new class weights; need to add offset
-                    valid[index*numAnchors:(index+1)*numAnchors] = False
+                    valid[idx*numAnchors:(idx+1)*numAnchors] = 0
                 else:
-                    classmap_updated[clName] = index_updated
+                    classMap_updated[clName] = index_updated
                     index_updated += 1
-            stateDict['labelclassMap'] = classmap_updated
+
             weights = weights[valid,...]
             biases = biases[valid,...]
 
             # apply updated weights and biases
             model.head.cls_score.weight = torch.nn.Parameter(weights)
             model.head.cls_score.bias = torch.nn.Parameter(biases)
-                
+            
+            stateDict['labelclassMap'] = classMap_updated
+
             print(f'Neurons for {len(newClasses)} new label classes added to RetinaNet model.')
 
 

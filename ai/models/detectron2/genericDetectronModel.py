@@ -261,15 +261,9 @@ class GenericDetectron2Model(AIModel):
 
         # check data for new label classes
         newClasses = []
-        if len(labelclassMap):
-            idx = max(labelclassMap.values()) + 1
-        else:
-            idx = 0
         for lcID in data['labelClasses']:
             if lcID not in labelclassMap:
-                labelclassMap[lcID] = idx       #NOTE: we do not use the labelclass' serial 'idx', since this might contain gaps
                 newClasses.append(lcID)
-                idx += 1
         stateDict['labelclassMap'] = labelclassMap
 
         # parallelize model (if architecture supports it)   #TODO: try out whether/how well this works
@@ -579,8 +573,12 @@ class GenericDetectron2Model(AIModel):
                     })
                 
                 elif 'pred_label' in outputs:
+                    labelIndex = outputs['pred_label'].item()
+                    if labelIndex not in labelclassMap_inv:
+                        continue
+                    
                     predictions.append({
-                        'label': labelclassMap_inv[outputs['pred_label'].item()],
+                        'label': labelclassMap_inv[labelIndex],
                         'logits': outputs['pred_logits'].cpu().numpy().tolist(),
                         'confidence': outputs['pred_conf'].item()
                     })

@@ -1,7 +1,7 @@
 '''
     Faster R-CNN specifier for Detectron2 model trainer in AIDE.
 
-    2020 Benjamin Kellenberger
+    2020-21 Benjamin Kellenberger
 '''
 
 import json
@@ -25,7 +25,7 @@ class FasterRCNN(GenericDetectron2BoundingBoxModel):
                 # invalid options provided
                 raise
         except:
-            print('WARNING: provided options are not valid for Faster R-CNN; falling back to defaults.')
+            print(f'[{self.project}] WARNING: provided options are not valid for Faster R-CNN; falling back to defaults.')
             self.options = self.getDefaultOptions()
             self.detectron2cfg = self._get_config()
             self.detectron2cfg = GenericDetectron2Model.parse_aide_config(self.options, self.detectron2cfg)
@@ -65,6 +65,11 @@ class FasterRCNN(GenericDetectron2BoundingBoxModel):
 
         # modify model weights to accept new label classes      #TODO: current implementation below causes loss to go to infinity...
         if len(newClasses):
+
+            # create vector of label classes
+            classVector = len(stateDict['labelclassMap']) * [None]
+            for (key, index) in zip(stateDict['labelclassMap'].keys(), stateDict['labelclassMap'].values()):
+                classVector[index] = key
 
             # class predictor parameters
             class_weights = model.roi_heads.box_predictor.cls_score.weight
@@ -129,25 +134,22 @@ class FasterRCNN(GenericDetectron2BoundingBoxModel):
                     class_biases = torch.cat((newClassBias, class_biases), 0)
                     bbox_weights = torch.cat((newBoxWeight, bbox_weights), 0)
                     bbox_biases = torch.cat((newBoxBias, bbox_biases), 0)
+                    classVector.insert(0, newClasses[cl])
 
             # remove old classes
             classmap_updated = {}
             valid_cls = torch.ones(len(class_biases), dtype=torch.bool)
             valid_box = torch.ones(len(bbox_biases), dtype=torch.bool)
-            classmap_inv = {}
-            for key in stateDict['labelclassMap'].keys():
-                classmap_inv[stateDict['labelclassMap'][key]] = key
+            classMap_updated = {}
             index_updated = 0
-            for clIdx in range(len(classmap_inv)):
-                clName = classmap_inv[clIdx]
+            for idx, clName in enumerate(classVector):
                 if clName not in data['labelClasses']:
-                    index = clIdx + len(newClasses)   # we prepended new class weights; need to add offset
-                    valid_cls[index] = False
-                    valid_box[(index*4):(index+1)*4] = False
+                    valid_cls[idx] = 0
+                    valid_box[(idx*4):(idx+1)*4] = 0
                 else:
-                    classmap_updated[clName] = index_updated
+                    classMap_updated[clName] = index_updated
                     index_updated += 1
-            stateDict['labelclassMap'] = classmap_updated
+            
             class_weights = class_weights[valid_cls,:]
             class_biases = class_biases[valid_cls]
             bbox_weights = bbox_weights[valid_box,:]
@@ -160,7 +162,9 @@ class FasterRCNN(GenericDetectron2BoundingBoxModel):
             model.roi_heads.box_predictor.bbox_pred.weight = torch.nn.Parameter(bbox_weights)
             model.roi_heads.box_predictor.bbox_pred.bias = torch.nn.Parameter(bbox_biases)
 
-            print(f'Neurons for {len(newClasses)} new label classes added to Faster R-CNN model.')
+            stateDict['labelclassMap'] = classMap_updated
+
+            print(f'[{self.project}] Neurons for {len(newClasses)} new label classes added to Faster R-CNN model.')
         
         #TODO: remove superfluous?
 
