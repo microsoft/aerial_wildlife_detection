@@ -1,5 +1,6 @@
 {
 	"defs": {
+		"model": "labels/vgg16_ImageNet.yaml",
 		"transforms": {
 			"RandomBrightness": {
 				"name": "Random brightness",
@@ -236,86 +237,6 @@
 					"description": "If checked, neurons from label classes not present in this project will be removed during next model training.",
 					"value": false
 				}
-			}
-		},
-		"model": {
-			"name": "Model options",
-			"description": "Choose a pre-trained starting point.<br />If your project already contains at least one model state, this choice is ignored unless \"Force new model\" is ticked, in which case a completely new model is being built.",
-			"config": {
-				"name": "Pre-made configuration",
-				"description": "Choose a pre-trained model state here.",
-				"type": "select",
-				"value": "labels/resnet_R_50_ImageNet.yaml",
-				"options": {
-					"labels/alexnet_ImageNet.yaml": {
-						"name": "AlexNet, pre-trained on ImageNet",
-						"description": "<a href=\"https://arxiv.org/abs/1404.5997\" target=\"_blank\">AlexNet</a> implementation."
-					},
-					"labels/densenet161_ImageNet.yaml": {
-						"name": "DenseNet-161, pre-trained on ImageNet",
-						"description": "<a href=\"https://arxiv.org/abs/1608.06993\" target=\"_blank\">DenseNet</a>-161 implementation."
-					},
-					"labels/mnasnet1_0_ImageNet.yaml": {
-						"name": "MnasNet, pre-trained on ImageNet",
-						"description": "<a href=\"https://arxiv.org/abs/1807.11626\" target=\"_blank\">MnasNet</a> implementation."
-					},
-					"labels/mobilenet_v2_imagenet.yaml": {
-						"name": "MobileNetV2, pre-trained on ImageNet",
-						"description": "<a href=\"https://arxiv.org/abs/1801.04381\" target=\"_blank\">MobileNetV2</a> implementation."
-					},
-					"labels/resnet_R_18_ImageNet.yaml": {
-						"name": "ResNet-18, pre-trained on ImageNet",
-						"description": "<a href=\"https://arxiv.org/abs/1512.03385\" target=\"_blank\">ResNet</a>-18 implementation."
-					},
-					"labels/resnet_R_34_ImageNet.yaml": {
-						"name": "ResNet-34, pre-trained on ImageNet",
-						"description": "<a href=\"https://arxiv.org/abs/1512.03385\" target=\"_blank\">ResNet</a>-34 implementation."
-					},
-					"labels/resnet_R_50_ImageNet.yaml": {
-						"name": "ResNet-50, pre-trained on ImageNet",
-						"description": "<a href=\"https://arxiv.org/abs/1512.03385\" target=\"_blank\">ResNet</a>-50 implementation."
-					},
-					"labels/resnet_R_101_ImageNet.yaml": {
-						"name": "ResNet-101, pre-trained on ImageNet",
-						"description": "<a href=\"https://arxiv.org/abs/1512.03385\" target=\"_blank\">ResNet</a>-101 implementation."
-					},
-					"labels/resnet_R_152_ImageNet.yaml": {
-						"name": "ResNet-152, pre-trained on ImageNet",
-						"description": "<a href=\"https://arxiv.org/abs/1512.03385\" target=\"_blank\">ResNet</a>-152 implementation."
-					},
-					"labels/resnext50_32x4d_ImageNet.yaml": {
-						"name": "ResNeXt-50, pre-trained on ImageNet",
-						"description": "<a href=\"https://arxiv.org/abs/1611.05431\" target=\"_blank\">ResNeXt</a> implementation."
-					},
-					"labels/resnext101_32x8d_ImageNet.yaml": {
-						"name": "ResNeXt-101, pre-trained on ImageNet",
-						"description": "<a href=\"https://arxiv.org/abs/1611.05431\" target=\"_blank\">ResNeXt</a> implementation."
-					},
-					"labels/shufflenet_v2_x1_0_ImageNet.yaml": {
-						"name": "ShuffleNet V2, pre-trained on ImageNet",
-						"description": "<a href=\"https://arxiv.org/abs/1807.11164\" target=\"_blank\">ShuffleNet V2</a> implementation."
-					},
-					"labels/squeezenet1_0_ImageNet.yaml": {
-						"name": "SqueezeNet, pre-trained on ImageNet",
-						"description": "<a href=\"https://arxiv.org/abs/1602.07360\" target=\"_blank\">SqueezeNet</a> implementation."
-					},
-					"labels/vgg16_ImageNet.yaml": {
-						"name": "VGG16, pre-trained on ImageNet",
-						"description": "<a href=\"https://arxiv.org/abs/1409.1556\" target=\"_blank\">VGG</a>-16 implementation."
-					},
-					"labels/wide_resnet50_2_ImageNet.yaml": {
-						"name": "Wide ResNet-50, pre-trained on ImageNet",
-						"description": "<a href=\"https://arxiv.org/pdf/1605.07146.pdf\" target=\"_blank\">Wide ResNet</a> implementation."
-					},
-					"labels/wide_resnet101_2_ImageNet.yaml": {
-						"name": "Wide ResNet-101, pre-trained on ImageNet",
-						"description": "<a href=\"https://arxiv.org/pdf/1605.07146.pdf\" target=\"_blank\">Wide ResNet</a> implementation."
-					}
-				}
-			},
-			"force": {
-				"name": "Force new model",
-				"value": false
 			}
 		},
 		"train": {

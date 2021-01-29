@@ -1014,7 +1014,7 @@
     ],
     "annotation_type": "labels",
     "prediction_type": "labels",
-    "ai_model_library": "ai.models.detectron2.TorchvisionClassifier",
+    "ai_model_library": "ai.models.detectron2.ResNet101",
     "ai_model_settings": {
         "options": {
             "model": {

@@ -6,12 +6,13 @@
     An instance of this FileServer class may be provided to the AIModel instead,
     and serves as a gateway to the project's actual file server.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 import os
 import requests
 from urllib import request
+import urllib.parse
 from urllib.error import HTTPError
 from util.helpers import is_localhost
 
@@ -77,6 +78,8 @@ class FileServer:
         '''
         try:
             #TODO: make generator that yields bytes?
+            if not self.isLocal:
+                filename = urllib.parse.quote(filename)
             localSpec = ('files' if not self.isLocal else '')
             if project is not None:
                 queryPath = os.path.join(self.baseURI, project, localSpec, filename)

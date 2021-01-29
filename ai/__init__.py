@@ -80,15 +80,151 @@ PREDICTION_MODELS = {
     # built-ins
 
     # Detectron2
-    'ai.models.detectron2.TorchvisionClassifier': {
-                                            'name': 'Torchvision classifier (beta)',
+    'ai.models.detectron2.AlexNet': {
+                                            'name': 'AlexNet',
                                             'author': '(built-in)',
-                                            'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of various <a href=\"https://pytorch.org/docs/stable/torchvision/models.html\" target=\"_blank\">Torchvision image classification models</a>.',
+                                            'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of <a href="https://arxiv.org/abs/1404.5997" target="_blank">AlexNet</a>.',
                                             'annotationType': 'labels',
                                             'predictionType': 'labels',
                                             'canAddLabelclasses': True,
                                             'canRemoveLabelclasses': True
                                        },
+    'ai.models.detectron2.DenseNet161': {
+                                            'name': 'DenseNet-161',
+                                            'author': '(built-in)',
+                                            'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of <a href="https://arxiv.org/abs/1608.06993" target="_blank">DenseNet</a>-161.',
+                                            'annotationType': 'labels',
+                                            'predictionType': 'labels',
+                                            'canAddLabelclasses': True,
+                                            'canRemoveLabelclasses': True
+                                       },
+    'ai.models.detectron2.MnasNet': {
+                                            'name': 'MobileNetV2',
+                                            'author': '(built-in)',
+                                            'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of <a href="https://arxiv.org/abs/1807.11626" target="_blank">MnasNet</a>.',
+                                            'annotationType': 'labels',
+                                            'predictionType': 'labels',
+                                            'canAddLabelclasses': True,
+                                            'canRemoveLabelclasses': True
+                                       },
+    'ai.models.detectron2.MobileNetV2': {
+                                            'name': 'MobileNetV2',
+                                            'author': '(built-in)',
+                                            'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of <a href="https://arxiv.org/abs/1801.04381" target="_blank">MobileNetV2</a>.',
+                                            'annotationType': 'labels',
+                                            'predictionType': 'labels',
+                                            'canAddLabelclasses': True,
+                                            'canRemoveLabelclasses': True
+                                       },
+    'ai.models.detectron2.ResNet18': {
+                                            'name': 'ResNet-18',
+                                            'author': '(built-in)',
+                                            'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of <a href="http://openaccess.thecvf.com/content_cvpr_2016/papers/He_Deep_Residual_Learning_CVPR_2016_paper.pdf" target="_blank">ResNet</a>-18.',
+                                            'annotationType': 'labels',
+                                            'predictionType': 'labels',
+                                            'canAddLabelclasses': True,
+                                            'canRemoveLabelclasses': True
+                                       },
+    'ai.models.detectron2.ResNet34': {
+                                            'name': 'ResNet-34',
+                                            'author': '(built-in)',
+                                            'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of <a href="http://openaccess.thecvf.com/content_cvpr_2016/papers/He_Deep_Residual_Learning_CVPR_2016_paper.pdf" target="_blank">ResNet</a>-34.',
+                                            'annotationType': 'labels',
+                                            'predictionType': 'labels',
+                                            'canAddLabelclasses': True,
+                                            'canRemoveLabelclasses': True
+                                       },
+    'ai.models.detectron2.ResNet50': {
+                                            'name': 'ResNet-50',
+                                            'author': '(built-in)',
+                                            'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of <a href="http://openaccess.thecvf.com/content_cvpr_2016/papers/He_Deep_Residual_Learning_CVPR_2016_paper.pdf" target="_blank">ResNet</a>-50.',
+                                            'annotationType': 'labels',
+                                            'predictionType': 'labels',
+                                            'canAddLabelclasses': True,
+                                            'canRemoveLabelclasses': True
+                                       },
+    'ai.models.detectron2.ResNet101': {
+                                            'name': 'ResNet-101',
+                                            'author': '(built-in)',
+                                            'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of <a href="http://openaccess.thecvf.com/content_cvpr_2016/papers/He_Deep_Residual_Learning_CVPR_2016_paper.pdf" target="_blank">ResNet</a>-101.',
+                                            'annotationType': 'labels',
+                                            'predictionType': 'labels',
+                                            'canAddLabelclasses': True,
+                                            'canRemoveLabelclasses': True
+                                       },
+    'ai.models.detectron2.ResNet152': {
+                                            'name': 'ResNet-152',
+                                            'author': '(built-in)',
+                                            'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of <a href="http://openaccess.thecvf.com/content_cvpr_2016/papers/He_Deep_Residual_Learning_CVPR_2016_paper.pdf" target="_blank">ResNet</a>-152.',
+                                            'annotationType': 'labels',
+                                            'predictionType': 'labels',
+                                            'canAddLabelclasses': True,
+                                            'canRemoveLabelclasses': True
+                                       },
+    'ai.models.detectron2.ResNeXt50': {
+                                            'name': 'ResNeXt-50',
+                                            'author': '(built-in)',
+                                            'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of <a href="https://arxiv.org/abs/1611.05431" target="_blank">ResNeXt</a>-50.',
+                                            'annotationType': 'labels',
+                                            'predictionType': 'labels',
+                                            'canAddLabelclasses': True,
+                                            'canRemoveLabelclasses': True
+                                       },
+    'ai.models.detectron2.ResNeXt101': {
+                                            'name': 'ResNeXt-101',
+                                            'author': '(built-in)',
+                                            'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of <a href="https://arxiv.org/abs/1611.05431" target="_blank">ResNeXt</a>-101.',
+                                            'annotationType': 'labels',
+                                            'predictionType': 'labels',
+                                            'canAddLabelclasses': True,
+                                            'canRemoveLabelclasses': True
+                                       },
+    'ai.models.detectron2.ShuffleNetV2': {
+                                            'name': 'ShuffleNet V2',
+                                            'author': '(built-in)',
+                                            'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of <a href="https://arxiv.org/abs/1807.11164" target="_blank">ShuffleNet V2</a>.',
+                                            'annotationType': 'labels',
+                                            'predictionType': 'labels',
+                                            'canAddLabelclasses': True,
+                                            'canRemoveLabelclasses': True
+                                       },
+    'ai.models.detectron2.SqueezeNet': {
+                                            'name': 'SqueezeNet',
+                                            'author': '(built-in)',
+                                            'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of <a href="https://arxiv.org/abs/1602.07360" target="_blank">SqueezeNet</a>.',
+                                            'annotationType': 'labels',
+                                            'predictionType': 'labels',
+                                            'canAddLabelclasses': True,
+                                            'canRemoveLabelclasses': True
+                                       },
+    'ai.models.detectron2.VGG16': {
+                                            'name': 'VGG16',
+                                            'author': '(built-in)',
+                                            'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of <a href="https://arxiv.org/abs/1409.1556" target="_blank">VGG</a>-16.',
+                                            'annotationType': 'labels',
+                                            'predictionType': 'labels',
+                                            'canAddLabelclasses': True,
+                                            'canRemoveLabelclasses': True
+                                       },
+    'ai.models.detectron2.WideResNet50': {
+                                            'name': 'Wide ResNet-50',
+                                            'author': '(built-in)',
+                                            'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of <a href="https://arxiv.org/pdf/1605.07146.pdf" target="_blank">Wide ResNet</a>-50.',
+                                            'annotationType': 'labels',
+                                            'predictionType': 'labels',
+                                            'canAddLabelclasses': True,
+                                            'canRemoveLabelclasses': True
+                                       },
+    'ai.models.detectron2.WideResNet101': {
+                                            'name': 'Wide ResNet-101',
+                                            'author': '(built-in)',
+                                            'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of <a href="https://arxiv.org/pdf/1605.07146.pdf" target="_blank">Wide ResNet</a>-101.',
+                                            'annotationType': 'labels',
+                                            'predictionType': 'labels',
+                                            'canAddLabelclasses': True,
+                                            'canRemoveLabelclasses': True
+                                       },
+
     'ai.models.detectron2.FasterRCNN': {
                                             'name': 'Faster R-CNN (beta)',
                                             'author': '(built-in)',

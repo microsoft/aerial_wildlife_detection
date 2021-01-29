@@ -4,5 +4,5 @@
 
 from .defaultOptions import DEFAULT_OPTIONS
 from . import meta
-from .model import TorchvisionClassifier
+from .torchvisionClassifier import GeneralizedTorchvisionClassifier
 from .config import add_torchvision_classifier_config

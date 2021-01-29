@@ -8,14 +8,16 @@ from detectron2.config import get_cfg
 
 from ai.models.detectron2.genericDetectronModel import GenericDetectron2Model
 from ai.models.detectron2.labels.genericDetectronLabelModel import GenericDetectron2LabelModel
-from ai.models.detectron2.labels.torchvisionClassifier import TorchvisionClassifier as Model, DEFAULT_OPTIONS, add_torchvision_classifier_config
+from ai.models.detectron2.labels.torchvisionClassifier.model import TorchvisionClassifier as Model
+from ai.models.detectron2.labels.torchvisionClassifier.defaultOptions import DEFAULT_OPTIONS
+from ai.models.detectron2.labels.torchvisionClassifier.config import add_torchvision_classifier_config
 from util import optionsHelper
 
 
-class TorchvisionClassifier(GenericDetectron2LabelModel):
+class GeneralizedTorchvisionClassifier(GenericDetectron2LabelModel):
 
     def __init__(self, project, config, dbConnector, fileServer, options):
-        super(TorchvisionClassifier, self).__init__(project, config, dbConnector, fileServer, options)
+        super(GeneralizedTorchvisionClassifier, self).__init__(project, config, dbConnector, fileServer, options)
 
         try:
             if self.detectron2cfg.MODEL.META_ARCHITECTURE != 'TorchvisionClassifier':
@@ -28,20 +30,11 @@ class TorchvisionClassifier(GenericDetectron2LabelModel):
             self.detectron2cfg = GenericDetectron2Model.parse_aide_config(self.options, self.detectron2cfg)
 
 
-
-    @classmethod
-    def getDefaultOptions(cls):
-        return GenericDetectron2Model._load_default_options(
-            'config/ai/model/detectron2/labels/torchvisionclassifier.json',
-            DEFAULT_OPTIONS
-        )
-
-
     
     def _get_config(self):
         cfg = get_cfg()
         add_torchvision_classifier_config(cfg)
-        defaultConfig = optionsHelper.get_hierarchical_value(self.options, ['options', 'model', 'config', 'value'])
+        defaultConfig = optionsHelper.get_hierarchical_value(self.options, ['defs', 'model'])
         if isinstance(defaultConfig, dict):
             defaultConfig = defaultConfig['id']
         configFile = os.path.join(os.getcwd(), 'ai/models/detectron2/_functional/configs', defaultConfig)
@@ -150,62 +143,3 @@ class TorchvisionClassifier(GenericDetectron2LabelModel):
         # finally, update model and config
         stateDict['detectron2cfg'].MODEL.TVCLASSIFIER.NUM_CLASSES = len(stateDict['labelclassMap'])
         return model, stateDict
-
-
-#%%
-#TODO: just for debugging; remove at final revision
-
-if __name__ == '__main__':
-
-    # meta data
-    project = 'abcde'
-
-    # set up parts of AIDE
-    import os
-    os.environ['AIDE_CONFIG_PATH'] = 'settings_multiProject.ini'
-    os.environ['AIDE_MODULES'] = ''
-
-    from util.configDef import Config
-    from modules.AIController.backend.functional import AIControllerWorker
-    from modules.AIWorker.backend.fileserver import FileServer
-    from modules.AIWorker.backend.worker.functional import __load_metadata
-    from modules.Database.app import Database
-
-    config = Config()
-    fileServer = FileServer(config).get_secure_instance(project)
-    database = Database(config)
-
-    aicw = AIControllerWorker(config, None)
-    data = aicw.get_training_images(
-        project=project,
-        maxNumImages=512)
-    data = __load_metadata(project, database, data[0], True)
-
-    def updateStateFun(state, message, done=None, total=None):
-        print(f'{message}: {done}/{total}')
-    
-    # get model settings
-    queryStr = '''
-        SELECT ai_model_library, ai_model_settings FROM aide_admin.project
-        WHERE shortname = %s;
-    '''
-    result = database.execute(queryStr, (project,), 1)
-    modelLibrary = result[0]['ai_model_library']
-    modelSettings = result[0]['ai_model_settings']
-
-    #TODO
-    modelSettings = {
-        'options': {
-            'model': {
-                'config': {
-                    'value': 'labels/vgg16_ImageNet.yaml'
-                }
-            }
-        }
-    }
-
-    # launch model
-    rn = TorchvisionClassifier(project, config, database, fileServer, modelSettings)
-    stateDict = rn.update_model(None, data, updateStateFun)
-    stateDict, stats = rn.train(stateDict, data, updateStateFun)
-    rn.inference(stateDict, data, updateStateFun)
