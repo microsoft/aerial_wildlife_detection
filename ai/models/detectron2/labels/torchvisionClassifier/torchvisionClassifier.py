@@ -22,7 +22,7 @@ class TorchvisionClassifier(GenericDetectron2LabelModel):
                 # invalid options provided
                 raise
         except:
-            print('WARNING: provided options are not valid for the Torchvision classifier model; falling back to defaults.')
+            print(f'[{self.project}] WARNING: provided options are not valid for the Torchvision classifier model; falling back to defaults.')
             self.options = self.getDefaultOptions()
             self.detectron2cfg = self._get_config()
             self.detectron2cfg = GenericDetectron2Model.parse_aide_config(self.options, self.detectron2cfg)
@@ -68,6 +68,12 @@ class TorchvisionClassifier(GenericDetectron2LabelModel):
         
         # modify model weights to accept new label classes
         if len(newClasses):
+
+            # create vector of label classes
+            classVector = len(stateDict['labelclassMap']) * [None]
+            for (key, index) in zip(stateDict['labelclassMap'].keys(), stateDict['labelclassMap'].values()):
+                classVector[index] = key
+
             classificationLayer = Model.get_classification_layer(model, self.detectron2cfg.MODEL.TVCLASSIFIER.FLAVOR)
 
             weights = classificationLayer.weight
@@ -115,24 +121,20 @@ class TorchvisionClassifier(GenericDetectron2LabelModel):
                     # prepend
                     weights = torch.cat((newWeight, weights), 0)
                     biases = torch.cat((newBias, biases), 0)
+                    classVector.insert(0, newClasses[cl])
 
             # remove old classes
-            classmap_updated = {}
             valid = torch.ones(len(biases), dtype=torch.bool)
-            classmap_inv = {}
-            for key in stateDict['labelclassMap'].keys():
-                classmap_inv[stateDict['labelclassMap'][key]] = key
+            classMap_updated = {}
             index_updated = 0
-            for clIdx in range(len(classmap_inv)):
-                clName = classmap_inv[clIdx]
+            for idx, clName in enumerate(classVector):
                 if clName not in data['labelClasses']:
-                    index = clIdx + len(newClasses)   # we prepended new class weights; need to add offset
-                    valid[index] = False
+                    valid[idx] = 0
                 else:
-                    classmap_updated[clName] = index_updated
+                    classMap_updated[clName] = index_updated
                     index_updated += 1
-            stateDict['labelclassMap'] = classmap_updated
-            weights = weights[valid,:]
+
+            weights = weights[valid,...]
             biases = biases[valid]
 
             # apply updated weights and biases
@@ -141,8 +143,9 @@ class TorchvisionClassifier(GenericDetectron2LabelModel):
             if hasattr(classificationLayer, 'out_features'):
                 classificationLayer.out_features = len(biases)
             Model.set_classification_layer(model, classificationLayer, self.detectron2cfg.MODEL.TVCLASSIFIER.FLAVOR)
+            stateDict['labelclassMap'] = classMap_updated
 
-            print(f'Neurons for {len(newClasses)} new label classes added to Torchvision classifier model.')
+            print(f'[{self.project}] Neurons for {len(newClasses)} new label classes added to Torchvision classifier model.')
 
         # finally, update model and config
         stateDict['detectron2cfg'].MODEL.TVCLASSIFIER.NUM_CLASSES = len(stateDict['labelclassMap'])
