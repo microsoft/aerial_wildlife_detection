@@ -157,6 +157,7 @@ CREATE TABLE IF NOT EXISTS aide_admin.modelMarketplace (
     labelclasses VARCHAR NOT NULL,
     author VARCHAR NOT NULL,
     model_library VARCHAR NOT NULL,
+    model_settings VARCHAR,
     annotationType labelType NOT NULL,
     predictionType labelType NOT NULL,
     statedict BYTEA,

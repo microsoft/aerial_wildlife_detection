@@ -74,7 +74,7 @@ class ModelMarketplaceWorker:
 
         # get model meta data
         meta = self.dbConnector.execute('''
-            SELECT id, name, description, labelclasses, model_library,
+            SELECT id, name, description, labelclasses, model_library, model_settings,
             annotationType, predictionType, timeCreated, alcriterion_library,
             public, anonymous, selectCount,
             CASE WHEN anonymous THEN NULL ELSE author END AS author,
@@ -129,28 +129,24 @@ class ModelMarketplaceWorker:
         if len(errors):
             raise Exception(errors)
 
-        # set project's selected model and options (if different)
+        # set project's selected model and options
         currentLibrary = self.dbConnector.execute('''
             SELECT ai_model_library
             FROM aide_admin.project
             WHERE shortname = %s;
         ''', (project,), 1)
         currentLibrary = currentLibrary[0]['ai_model_library']
-        if currentLibrary != meta['model_library']:
-            # model library differs; replace existing options with new ones
-            try:
-                modelClass = get_class_executable(meta['model_library'])
-                defaultOptions = modelClass.getDefaultOptions()
-                if isinstance(defaultOptions, dict):
-                    defaultOptions = json.dumps(defaultOptions)
-            except:
-                defaultOptions = None
+        if True:        #TODO: currentLibrary != meta['model_library']:
+            # we now replace model options in any case
+            modelOptions = meta['model_settings']
+            if isinstance(modelOptions, dict):
+                modelOptions = json.dumps(modelOptions)
             self.dbConnector.execute('''
                 UPDATE aide_admin.project
                 SET ai_model_library = %s,
                 ai_model_settings = %s
                 WHERE shortname = %s;
-            ''', (meta['model_library'], defaultOptions, project))
+            ''', (meta['model_library'], modelOptions, project))
 
         # finally, increase selection counter and import model state
         #TODO: - retain existing alCriterion library
@@ -317,8 +313,16 @@ class ModelMarketplaceWorker:
             
             # verify options
             if modelOptions is not None:
-                optionMeta = modelClass.verifyOptions(modelOptions)
-                #TODO: parse warnings and errors
+                try:
+                    optionMeta = modelClass.verifyOptions(modelOptions)
+                    if 'options' in optionMeta:
+                        modelOptions = optionMeta['options']
+                    #TODO: parse warnings and errors
+                except:
+                    # model library does not support option verification
+                    pass      
+                if isinstance(modelOptions, dict):
+                    modelOptions = json.dumps(modelOptions)
 
         except Exception as e:
             raise Exception(f'Model from imported state could not be launched (message: "{str(e)}").')
@@ -328,7 +332,7 @@ class ModelMarketplaceWorker:
         success = self.dbConnector.execute('''
             INSERT INTO aide_admin.modelMarketplace
                 (name, description, tags, labelclasses, author, statedict,
-                model_library, alCriterion_library,
+                model_library, model_settings, alCriterion_library,
                 annotationType, predictionType,
                 timeCreated,
                 origin_project, origin_uuid, origin_uri, public, anonymous)
@@ -338,7 +342,7 @@ class ModelMarketplaceWorker:
         ''',
         [(
             modelName, modelDescription, modelTags, labelClasses, modelAuthor,
-            stateDict, modelLibrary, alCriterion_library, annotationType, predictionType,
+            stateDict, modelLibrary, modelOptions, alCriterion_library, annotationType, predictionType,
             timeCreated,
             None, None, modelURI, True, False
         )],

@@ -295,7 +295,8 @@ MODIFICATIONS_sql = [
         FOREIGN KEY (abortedBy) REFERENCES aide_admin.user (name)
     );
   ''',
-  'ALTER TABLE "{schema}".cnnstate ADD COLUMN IF NOT EXISTS stats VARCHAR;'
+  'ALTER TABLE "{schema}".cnnstate ADD COLUMN IF NOT EXISTS stats VARCHAR;',
+  'ALTER TABLE "{schema}".modelMarketplace ADD COLUMN IF NOT EXISTS model_settings VARCHAR;'
 ]
 
 
