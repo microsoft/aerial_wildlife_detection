@@ -136,10 +136,11 @@ class GeneralizedTorchvisionClassifier(GenericDetectron2LabelModel):
             if hasattr(classificationLayer, 'out_features'):
                 classificationLayer.out_features = len(biases)
             Model.set_classification_layer(model, classificationLayer, self.detectron2cfg.MODEL.TVCLASSIFIER.FLAVOR)
+
+            # update config
             stateDict['labelclassMap'] = classMap_updated
+            stateDict['detectron2cfg'].MODEL.TVCLASSIFIER.NUM_CLASSES = len(stateDict['labelclassMap'])
 
             print(f'[{self.project}] Neurons for {len(newClasses)} new label classes added to Torchvision classifier model.')
-
-        # finally, update model and config
-        stateDict['detectron2cfg'].MODEL.TVCLASSIFIER.NUM_CLASSES = len(stateDict['labelclassMap'])
+        
         return model, stateDict

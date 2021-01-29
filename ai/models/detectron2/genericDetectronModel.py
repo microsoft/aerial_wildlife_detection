@@ -195,6 +195,8 @@ class GenericDetectron2Model(AIModel):
             # print warning and reset flag
             print(f'[{self.project}] User has selected to force recreating a brand-new model.')
             optionsHelper.set_hierarchical_value(self.options, ['options', 'model', 'force', 'value'], False)
+        else:
+            forceNewModel = False
 
         # load state dict
         if stateDict is not None and not forceNewModel:
