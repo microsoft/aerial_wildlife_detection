@@ -296,7 +296,7 @@ MODIFICATIONS_sql = [
     );
   ''',
   'ALTER TABLE "{schema}".cnnstate ADD COLUMN IF NOT EXISTS stats VARCHAR;',
-  'ALTER TABLE "{schema}".modelMarketplace ADD COLUMN IF NOT EXISTS model_settings VARCHAR;'
+  'ALTER TABLE aide_admin.modelMarketplace ADD COLUMN IF NOT EXISTS model_settings VARCHAR;'
 ]
 
 

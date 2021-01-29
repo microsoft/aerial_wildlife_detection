@@ -176,29 +176,31 @@ def _call_update_model(project, numEpochs, modelInstance, modelLibrary, dbConnec
         update_state(state=states.SUCCESS, message=f'[{project} - model update] WARNING: model does not support modification to new label classes and has not been updated.')
         return
     
-    # check if new label classes were added
-    queryStr = sql.SQL('''
-        SELECT COUNT(*) AS count
-        FROM {id_cnnstate}
-        WHERE model_library = %s
-        UNION ALL
-        SELECT COUNT(*) AS count
-        FROM {id_labelclass}
-        WHERE timeCreated >= (
-            SELECT MAX(timeCreated)
-            FROM {id_cnnstate}
-            WHERE model_library = %s
-        )
-    ''').format(
-        id_cnnstate=sql.Identifier(project, 'cnnstate'),
-        id_labelclass=sql.Identifier(project, 'labelclass')
-    )
-    result = dbConnector.execute(queryStr, (modelLibrary, modelLibrary), 2)
-    if result[0]['count'] > 0 and result[1]['count'] == 0:
-        # neither new model selected (first condition) nor new label classes added (second)
-        print(f'[{project} - model update] Model and class definitions have not changed; no need to update. Skipping...')
-        update_state(state=states.SUCCESS, message=f'[{project} - model update] class definition has not changed; model did not need to be updated.')
-        return
+    #TODO: we now update the model in any case; e.g. also if a new one has been imported from the Model Marketplace but label classes have not changed.
+    # It is up to the model implementation to detect whether anything needs to be done.
+    # # check if new label classes were added
+    # queryStr = sql.SQL('''
+    #     SELECT COUNT(*) AS count
+    #     FROM {id_cnnstate}
+    #     WHERE model_library = %s
+    #     UNION ALL
+    #     SELECT COUNT(*) AS count
+    #     FROM {id_labelclass}
+    #     WHERE timeCreated >= (
+    #         SELECT MAX(timeCreated)
+    #         FROM {id_cnnstate}
+    #         WHERE model_library = %s
+    #     )
+    # ''').format(
+    #     id_cnnstate=sql.Identifier(project, 'cnnstate'),
+    #     id_labelclass=sql.Identifier(project, 'labelclass')
+    # )
+    # result = dbConnector.execute(queryStr, (modelLibrary, modelLibrary), 2)
+    # if result[0]['count'] > 0 and result[1]['count'] == 0:
+    #     # neither new model selected (first condition) nor new label classes added (second)
+    #     print(f'[{project} - model update] Model and class definitions have not changed; no need to update. Skipping...')
+    #     update_state(state=states.SUCCESS, message=f'[{project} - model update] class definition has not changed; model did not need to be updated.')
+    #     return
 
     print(f'[{project}] Updating model to incorporate potentially new label classes...')
 
