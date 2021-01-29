@@ -223,7 +223,7 @@ class GenericDetectron2Model(AIModel):
             except:
                 pass
             try:
-                detectron2cfg.MODEL.RESNET.NUM_CLASSES = stateDict['detectron2cfg'].MODEL.RESNET.NUM_CLASSES
+                detectron2cfg.MODEL.TVCLASSIFIER.NUM_CLASSES = stateDict['detectron2cfg'].MODEL.TVCLASSIFIER.NUM_CLASSES
             except:
                 pass
         stateDict['detectron2cfg'] = detectron2cfg
