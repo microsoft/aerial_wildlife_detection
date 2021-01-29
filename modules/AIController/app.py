@@ -83,6 +83,32 @@ class AIController:
                     'message': str(e)
                 }
 
+
+        @self.app.get('/<project>/getModelTrainingStatistics')
+        def get_model_training_statistics(project):
+            '''
+                Launches a background task to assemble training
+                stats as (optionally) returned by the model across
+                all saved model states.
+            '''
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+            
+            try:
+                username = html.escape(request.get_cookie('username'))
+                #TODO: permit filtering for model state IDs (change to POST?)
+                taskID = self.middleware.getModelTrainingStatistics(project, username, modelStateIDs=None)
+                return {
+                    'status': 0,
+                    'task_id': taskID
+                }
+
+            except Exception as e:
+                return {
+                    'status': 1,
+                    'message': str(e)
+                }
+
         
         #TODO: deprecated; replace with workflow:
         @self.app.post('/<project>/startTraining')

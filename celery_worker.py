@@ -86,6 +86,10 @@ app.conf.update(
             'queue': 'AIController',
             'routing_key': 'delete_model_states'
         },
+        'AIController.get_model_training_statistics': {
+            'queue': 'AIController',
+            'routing_key': 'get_model_training_statistics'
+        },
         'AIWorker.call_update_model': {
             'queue': 'AIWorker',
             'routing_key': 'call_update_model'

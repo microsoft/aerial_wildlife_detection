@@ -1182,6 +1182,28 @@ class AIMiddleware():
         return taskID
 
 
+    
+    def getModelTrainingStatistics(self, project, username, modelStateIDs=None):
+        '''
+            Launches a task to assemble model-provided statistics
+            into uniform series.
+            Unlike training and inference tasks, this one is routed
+            through the default taskCoordinator.
+        '''
+        # verify IDs
+        if modelStateIDs is not None:
+            try:
+                if not isinstance(modelStateIDs, Iterable):
+                    modelStateIDs = [modelStateIDs]
+                modelStateIDs = [str(m) for m in modelStateIDs]
+            except:
+                modelStateIDs = None
+        
+        process = aic_int.get_model_training_statistics.s(project, modelStateIDs)
+        taskID = self.taskCoordinator.submitJob(project, username, process, 'AIController')
+        return taskID
+
+
 
     def getProjectModelSettings(self, project):
         '''

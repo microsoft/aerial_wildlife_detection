@@ -6,7 +6,9 @@
     2020-21 Benjamin Kellenberger
 '''
 
+from collections import defaultdict
 from collections.abc import Iterable
+import json
 from uuid import UUID
 from datetime import datetime
 from psycopg2 import sql
@@ -181,8 +183,6 @@ class AIControllerWorker:
             Deletes model states with provided IDs from the database
             for a given project.
         '''
-        from celery.contrib import rdb
-        rdb.set_trace()
         # verify IDs
         if not isinstance(modelStateIDs, Iterable):
             modelStateIDs = [modelStateIDs]
@@ -194,9 +194,107 @@ class AIControllerWorker:
             except:
                 modelIDs_invalid.append(str(m))
         self.dbConn.execute(sql.SQL('''
+            DELETE FROM {id_pred}
+            WHERE cnnstate IN %s;
             DELETE FROM {id_cnnstate}
             WHERE id IN %s;
-        ''').format(id_cnnstate=sql.Identifier(project, 'cnnstate')),
-            tuple(uuids)
+        ''').format(
+                id_pred=sql.Identifier(project, 'prediction'),
+                id_cnnstate=sql.Identifier(project, 'cnnstate')
+            ),
+            (tuple(uuids),tuple(uuids))
         )
         return modelIDs_invalid
+
+
+    
+    def get_model_training_statistics(self, project, modelStateIDs=None, modelLibraries=None):
+        '''
+            Assembles statistics as returned by the model (if done so). Returned
+            statistics may be dicts with keys for variable names and values for
+            each model state. None is appended for each model state and variable
+            that does not exist.
+            The optional input "modelStateIDs" may be a str, UUID, or list of str
+            or UUID, and indicates a filter for model state IDs to be included
+            in the assembly.
+            Optional input "modelLibraries" may be a str or list of str and filters
+            model libraries that were used in the project over time.
+        '''
+        # verify IDs
+        if modelStateIDs is not None:
+            if not isinstance(modelStateIDs, Iterable):
+                modelStateIDs = [modelStateIDs]
+            uuids = []
+            for m in modelStateIDs:
+                try:
+                    uuids.append((UUID(m),))
+                except:
+                    pass
+            modelStateIDs = uuids
+            if not len(modelStateIDs):
+                modelStateIDs = None
+        
+        sqlFilter = ''
+        queryArgs = []
+
+        # verify libraries
+        if modelLibraries is not None:
+            if not isinstance(modelLibraries, Iterable):
+                modelLibraries = [modelLibraries]
+            if len(modelLibraries):
+                modelLibraries = tuple([(str(m),) for m in modelLibraries])
+                queryArgs.append((modelLibraries,))
+                sqlFilter = 'WHERE model_library IN %s'
+        
+        # get all statistics
+        if modelStateIDs is not None and len(modelStateIDs):
+            if len(sqlFilter):
+                sqlFilter += ' AND id IN %s'
+            else:
+                sqlFilter = 'WHERE id IN %s'
+            queryArgs.append((tuple([(m,) for m in modelStateIDs]),))
+
+        queryResult = self.dbConn.execute(sql.SQL('''
+            SELECT id, model_library, EXTRACT(epoch FROM timeCreated) AS timeCreated, stats FROM {id_cnnstate}
+            {sql_filter}
+            ORDER BY timeCreated ASC;
+        ''').format(
+            id_cnnstate=sql.Identifier(project, 'cnnstate'),
+            sql_filter=sql.SQL(sqlFilter)
+        ), (queryArgs if len(queryArgs) else None), 'all')
+
+        # assemble output stats
+        if queryResult is None or not len(queryResult):
+            return {}
+        else:
+            # separate outputs for each model library used
+            modelLibs = set([q['model_library'] for q in queryResult])
+            ids, dates, stats_raw = dict((m, []) for m in modelLibs), dict((m, []) for m in modelLibs), dict((m, []) for m in modelLibs)
+            keys = dict((m, set()) for m in modelLibs)
+
+            for q in queryResult:
+                modelLib = q['model_library']
+                ids[modelLib].append(str(q['id']))
+                dates[modelLib].append(q['timecreated'])
+                try:
+                    qDict = json.loads(q['stats'])
+                    stats_raw[modelLib].append(qDict)
+                    keys[modelLib] = keys[modelLib].union(set(qDict.keys()))
+                except:
+                    stats_raw[modelLib].append({})
+                    
+            # assemble into series
+            series = {}
+            for m in modelLibs:
+                series[m] = dict((k, len(stats_raw[m])*[None]) for k in keys[m])
+
+                for idx, stat in enumerate(stats_raw[m]):
+                    for key in keys[m]:
+                        if key in stat:
+                            series[m][key][idx] = stat[key]
+
+            return {
+                'ids': ids,
+                'timestamps': dates,
+                'series': series
+            }

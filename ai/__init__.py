@@ -80,10 +80,10 @@ PREDICTION_MODELS = {
     # built-ins
 
     # Detectron2
-    'ai.models.detectron2.ResNet': {
-                                            'name': 'ResNet (beta)',
+    'ai.models.detectron2.TorchvisionClassifier': {
+                                            'name': 'Torchvision classifier (beta)',
                                             'author': '(built-in)',
-                                            'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of the <a href="http://openaccess.thecvf.com/content_cvpr_2016/papers/He_Deep_Residual_Learning_CVPR_2016_paper.pdf" target="_blank">ResNet</a> image classification model.',
+                                            'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of various <a href=\"https://pytorch.org/docs/stable/torchvision/models.html\" target=\"_blank\">Torchvision image classification models</a>.',
                                             'annotationType': 'labels',
                                             'predictionType': 'labels',
                                             'canAddLabelclasses': True,

@@ -362,3 +362,57 @@ def verify_options(options, autoCorrect=False):
                 errors.extend(childErrors)
     
     return options, warnings, errors
+
+
+def _update_values(baseOptions, updates, allow_new_keys=True):
+    if isinstance(baseOptions, dict) and isinstance(updates, dict):
+        keys = set(baseOptions.keys())
+        if allow_new_keys:
+            keys = keys.union(updates.keys())
+        for key in keys:
+            if key not in baseOptions:
+                baseOptions[key] = updates[key]
+            elif key in updates:
+                baseOptions[key] = _update_values(baseOptions[key], updates[key], allow_new_keys)
+    elif updates != baseOptions:
+        baseOptions = updates
+    return baseOptions
+
+
+def merge_options(baseOptions, updates, allow_new_keys=True):
+    '''
+        Receives two options dicts and updates one with values
+        from the other.
+        Returns an expanded set of updated/merged options.
+    '''
+    assert isinstance(baseOptions, dict) and isinstance(updates, dict), 'Both baseOptions and updates must be dicts.'
+
+    # expand individual definitions
+    base_ = copy.deepcopy(baseOptions)
+    updates_ = copy.deepcopy(updates)
+    base_ = substitute_definitions(base_)
+    try:
+        updates_ = substitute_definitions(updates_)
+    except:
+        # updates do not need to be complete
+        pass
+
+    # merge definitions first and substitute again
+    defs = {}
+    if 'defs' in base_:
+        defs = base_['defs']
+    if 'defs' in updates_:
+        defs = _update_values(defs, updates_['defs'], True)
+    if len(defs):
+        base_['defs'] = defs
+        base_ = substitute_definitions(base_)
+        updates_['defs'] = defs
+        updates_ = substitute_definitions(updates_)
+
+    # do the actual update
+    base_ = _update_values(base_, updates_, allow_new_keys)
+
+    # final substitution
+    base_ = substitute_definitions(base_)
+
+    return base_

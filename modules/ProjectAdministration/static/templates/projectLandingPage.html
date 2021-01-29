@@ -132,6 +132,8 @@
         <script src="/static/dataAdmin/js/imageBrowser.js?v={{ version }}"></script>
         <script type="text/javascript" src="/static/general/js/messaging.js?v={{ version }}"></script>
         <script type="text/javascript">
+
+            window.baseURL = '/{{ projectShortname }}/';
             window.isAdmin = false;
             window.demoMode = false;
 
@@ -152,7 +154,7 @@
             function checkDemoMode() {
                 // check if demo mode
                 return $.ajax({
-                    url: '{{ projectShortname }}/getProjectInfo',
+                    url: window.baseURL + 'getProjectInfo',
                     success: function(data) {
                         data = data['info'];
                         window.demoMode = data['demoMode'];
@@ -167,7 +169,7 @@
             function checkAuthentication() {
                 // check authentication and put interface buttons accordingly
                 return $.ajax({
-                    url: '{{ projectShortname }}/getPermissions',
+                    url: window.baseURL + 'getPermissions',
                     method: 'GET',
                     success: function(data) {
                         try {
@@ -178,13 +180,13 @@
                             // project configuration button
                             window.isAdmin = data['permissions']['is_admin'];
                             if(window.isAdmin) {
-                                var btn = $('<a class="btn btn-lg btn-secondary" id="configure-project-button" href="{{ projectShortname }}/configuration">Configure</a>');
+                                var btn = $('<a class="btn btn-lg btn-secondary" id="configure-project-button" href="'+window.baseURL+'configuration">Configure</a>');
                                 $('#project-buttons-container').append(btn);
                             }
 
                             // labeling interface button
                             if(data['permissions']['can_label']) {
-                                var btn = $('<a class="btn btn-lg btn-primary" id="start-labeling-button" href="{{ projectShortname }}/interface">Start labeling</a>');
+                                var btn = $('<a class="btn btn-lg btn-primary" id="start-labeling-button" href="'+window.baseURL+'interface">Start labeling</a>');
                                 $('#project-buttons-container').append(btn);
                             } else {
                                 var btn_placeholder = $('<div class="btn btn-lg btn-secondary label-button" style="cursor:not-allowed;" disabled="disabled">(interface disabled)</div>');
@@ -204,7 +206,7 @@
             function getServerURI() {
                 // get server URI
                 return $.ajax({
-                    url: '{{ projectShortname }}/getProjectSettings',
+                    url: window.baseURL + 'getProjectSettings',
                     success: function(data) {
                         window.dataServerURI = data['settings']['dataServerURI'];
                         if(!window.dataServerURI.endsWith('/')) {
@@ -236,11 +238,11 @@
                 });
                 ib_bookmarks.setTrailingButton(false);
                 ib_bookmarks.on('imageClick', function(event) {
-                    window.open('{{ projectShortname }}/interface?imgs=' + event[0].id);
+                    window.open(window.baseURL + 'interface?imgs=' + event[0].id);
                 });
 
                 return $.ajax({
-                    url: '{{ projectShortname }}/getBookmarks',
+                    url: window.baseURL + 'getBookmarks',
                     method: 'GET',
                     success: function(data) {
                         if(data.hasOwnProperty('bookmarks')) {
@@ -285,10 +287,10 @@
                 });
                 ib_goldenQuestions.setTrailingButton(false);
                 ib_goldenQuestions.on('imageClick', function(event) {
-                    window.open('{{ projectShortname }}/interface?imgs=' + event[0].id);
+                    window.open(window.baseURL + 'interface?imgs=' + event[0].id);
                 })
                 return $.ajax({
-                    url: '{{ projectShortname }}/getGoldenQuestions',
+                    url: window.baseURL + 'getGoldenQuestions',
                     method: 'GET',
                     success: function(data) {
                         if(data.hasOwnProperty('images')) {
@@ -320,7 +322,7 @@
                         picWall.append($('<img id="picwall_'+i+'" />'));
                     }
                     return $.ajax({
-                        url: '{{ projectShortname }}/getSampleImages',
+                        url: window.baseURL + 'getSampleImages',
                         method: 'GET',
                         data: {limit: numImgs},
                         success: function(data) {

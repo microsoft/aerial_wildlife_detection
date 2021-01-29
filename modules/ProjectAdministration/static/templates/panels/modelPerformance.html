@@ -447,6 +447,7 @@
             success: function(data) {
                 if(data.hasOwnProperty('modelStates')) {
                     data = data['modelStates'];
+                    modelStateTable.empty();
                     for(var i=0; i<data.length; i++) {
                         // construct model state markup
                         var markup = $('<tr></tr>');
@@ -514,7 +515,7 @@
         let selModels = getSelectedModelIDs();
         if(selModels.length === 0) return;
 
-        let _on_message = function(numModels, message) {
+        let _on_message = function(numModels, data) {
             if(data.hasOwnProperty('status') && data['status'] === 'FAILURE') {
                 // error
                 let message = '(an unknown error occurred)';
@@ -523,7 +524,9 @@
                 }
                 window.messager.addMessage(message, 'error', 0);
             } else {
-                window.messager.addMessage('Successfully deleted ' + numModels + ' model states.', 'success');
+                listModelStates().then(function() {
+                    window.messager.addMessage('Successfully deleted ' + numModels + ' model states.', 'success');
+                });
             }
         }
 

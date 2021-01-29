@@ -3,7 +3,7 @@
 '''
 
 # models are listed here for convenience
-from .labels.resnet.resnet import ResNet
+from .labels.torchvisionClassifier.torchvisionClassifier import TorchvisionClassifier
 
 from .boundingBoxes.fasterrcnn.fasterrcnn import FasterRCNN
 

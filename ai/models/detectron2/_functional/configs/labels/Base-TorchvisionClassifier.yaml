@@ -1,7 +1,7 @@
 MODEL:
-  META_ARCHITECTURE: "GeneralizedResNet"
-  RESNET:
-    NUM_CLASSES: 1024
+  META_ARCHITECTURE: "TorchvisionClassifier"
+  TVCLASSIFIER:
+    NUM_CLASSES: 1000
     FLAVOR: "resnet50"
     PRETRAINED: True
   PIXEL_MEAN: (0.485, 0.456, 0.406)

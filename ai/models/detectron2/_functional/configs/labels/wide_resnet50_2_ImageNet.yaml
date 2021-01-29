@@ -1,5 +1,5 @@
 _BASE_: "Base-TorchvisionClassifier.yaml"
 MODEL:
   TVCLASSIFIER:
-    FLAVOR: "resnet50"
+    FLAVOR: "wide_resnet50_2"
     PRETRAINED: True

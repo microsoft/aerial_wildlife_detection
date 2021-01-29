@@ -126,11 +126,11 @@ class TaskCoordinatorMiddleware:
             Returns the respective job ID.
         '''
         task_id = self._task_id(project)
-        job = process.apply_async(task_id=task_id,
+        job = process.set(queue=queue).apply_async(task_id=task_id,
                                     queue=queue,
                                     ignore_result=False,
                                     result_extended=True,
-                                    headers={'headers':{}}) #TODO
+                                    headers={'headers':{}})
         
         self._register_job(project, username, task_id, str(process))
         return task_id

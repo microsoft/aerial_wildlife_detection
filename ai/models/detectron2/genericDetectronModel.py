@@ -41,9 +41,10 @@ class GenericDetectron2Model(AIModel):
                 options = None
 
         # try to fill and substitute global definitions in JSON-enhanced options
-        if isinstance(options, dict) and 'defs' in options:
+        if isinstance(options, dict):
             try:
-                updatedOptions = optionsHelper.substitute_definitions(options.copy())
+                updatedOptions = optionsHelper.merge_options(self.getDefaultOptions(), options.copy())
+                updatedOptions = optionsHelper.substitute_definitions(updatedOptions)
                 self.options = updatedOptions
             except:
                 # something went wrong; ignore
@@ -151,7 +152,7 @@ class GenericDetectron2Model(AIModel):
             }
         try:
             # mandatory field: model config
-            modelConfig = options['options']['model']['config']['value']['id']
+            modelConfig = optionsHelper.get_hierarchical_value(options, ['options', 'model', 'config', 'value'])
             if modelConfig is None:
                 raise Exception('missing model type field in options.')
 
@@ -457,7 +458,6 @@ class GenericDetectron2Model(AIModel):
             for key in stats:
                 if isinstance(stats[key], tuple):
                     stats[key] = stats[key][0]
-            stats['No. Images'] = numImg
             tbar.close()
 
         # all done; return state dict as bytes and stats

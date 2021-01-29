@@ -8,21 +8,21 @@ from detectron2.config import get_cfg
 
 from ai.models.detectron2.genericDetectronModel import GenericDetectron2Model
 from ai.models.detectron2.labels.genericDetectronLabelModel import GenericDetectron2LabelModel
-from ai.models.detectron2.labels.resnet import DEFAULT_OPTIONS, add_resnet_config
+from ai.models.detectron2.labels.torchvisionClassifier import TorchvisionClassifier as Model, DEFAULT_OPTIONS, add_torchvision_classifier_config
 from util import optionsHelper
 
 
-class ResNet(GenericDetectron2LabelModel):
+class TorchvisionClassifier(GenericDetectron2LabelModel):
 
     def __init__(self, project, config, dbConnector, fileServer, options):
-        super(ResNet, self).__init__(project, config, dbConnector, fileServer, options)
+        super(TorchvisionClassifier, self).__init__(project, config, dbConnector, fileServer, options)
 
         try:
-            if self.detectron2cfg.MODEL.META_ARCHITECTURE != 'GeneralizedResNet':
+            if self.detectron2cfg.MODEL.META_ARCHITECTURE != 'TorchvisionClassifier':
                 # invalid options provided
                 raise
         except:
-            print('WARNING: provided options are not valid for ResNet; falling back to defaults.')
+            print('WARNING: provided options are not valid for the Torchvision classifier model; falling back to defaults.')
             self.options = self.getDefaultOptions()
             self.detectron2cfg = self._get_config()
             self.detectron2cfg = GenericDetectron2Model.parse_aide_config(self.options, self.detectron2cfg)
@@ -32,7 +32,7 @@ class ResNet(GenericDetectron2LabelModel):
     @classmethod
     def getDefaultOptions(cls):
         return GenericDetectron2Model._load_default_options(
-            'config/ai/model/detectron2/labels/resnet.json',
+            'config/ai/model/detectron2/labels/torchvisionclassifier.json',
             DEFAULT_OPTIONS
         )
 
@@ -40,8 +40,10 @@ class ResNet(GenericDetectron2LabelModel):
     
     def _get_config(self):
         cfg = get_cfg()
-        add_resnet_config(cfg)
-        defaultConfig = optionsHelper.get_hierarchical_value(self.options, ['options', 'model', 'config', 'value', 'id'])
+        add_torchvision_classifier_config(cfg)
+        defaultConfig = optionsHelper.get_hierarchical_value(self.options, ['options', 'model', 'config', 'value'])
+        if isinstance(defaultConfig, dict):
+            defaultConfig = defaultConfig['id']
         configFile = os.path.join(os.getcwd(), 'ai/models/detectron2/_functional/configs', defaultConfig)
         cfg.merge_from_file(configFile)
         return cfg
@@ -61,13 +63,15 @@ class ResNet(GenericDetectron2LabelModel):
                of new classes w.r.t. existing ones (e.g. using Word2Vec)
         '''
         model, stateDict, newClasses = self.initializeModel(stateDict, data)
-        assert self.detectron2cfg.MODEL.META_ARCHITECTURE == 'GeneralizedResNet', \
-            f'ERROR: model meta-architecture "{self.detectron2cfg.MODEL.META_ARCHITECTURE}" is not a ResNet instance.'
+        assert self.detectron2cfg.MODEL.META_ARCHITECTURE == 'TorchvisionClassifier', \
+            f'ERROR: model meta-architecture "{self.detectron2cfg.MODEL.META_ARCHITECTURE}" is not a Torchvision classifier instance.'
         
         # modify model weights to accept new label classes
         if len(newClasses):
-            weights = model.model.fc.weight
-            biases = model.model.fc.bias
+            classificationLayer = Model.get_classification_layer(model, self.detectron2cfg.MODEL.TVCLASSIFIER.FLAVOR)
+
+            weights = classificationLayer.weight
+            biases = classificationLayer.bias
 
             # create weights and biases for new classes
             if True:        #TODO: add flags in config file about strategy
@@ -132,13 +136,16 @@ class ResNet(GenericDetectron2LabelModel):
             biases = biases[valid]
 
             # apply updated weights and biases
-            model.model.fc.weight = torch.nn.Parameter(weights)
-            model.model.fc.bias = torch.nn.Parameter(biases)
+            classificationLayer.weight = torch.nn.Parameter(weights)
+            classificationLayer.bias = torch.nn.Parameter(biases)
+            if hasattr(classificationLayer, 'out_features'):
+                classificationLayer.out_features = len(biases)
+            Model.set_classification_layer(model, classificationLayer, self.detectron2cfg.MODEL.TVCLASSIFIER.FLAVOR)
 
-            print(f'Neurons for {len(newClasses)} new label classes added to ResNet classification model.')
+            print(f'Neurons for {len(newClasses)} new label classes added to Torchvision classifier model.')
 
         # finally, update model and config
-        stateDict['detectron2cfg'].MODEL.RESNET.NUM_CLASSES = len(stateDict['labelclassMap'])
+        stateDict['detectron2cfg'].MODEL.TVCLASSIFIER.NUM_CLASSES = len(stateDict['labelclassMap'])
         return model, stateDict
 
 
@@ -183,8 +190,19 @@ if __name__ == '__main__':
     modelLibrary = result[0]['ai_model_library']
     modelSettings = result[0]['ai_model_settings']
 
+    #TODO
+    modelSettings = {
+        'options': {
+            'model': {
+                'config': {
+                    'value': 'labels/vgg16_ImageNet.yaml'
+                }
+            }
+        }
+    }
+
     # launch model
-    rn = ResNet(project, config, database, fileServer, modelSettings)
+    rn = TorchvisionClassifier(project, config, database, fileServer, modelSettings)
     stateDict = rn.update_model(None, data, updateStateFun)
     stateDict, stats = rn.train(stateDict, data, updateStateFun)
     rn.inference(stateDict, data, updateStateFun)

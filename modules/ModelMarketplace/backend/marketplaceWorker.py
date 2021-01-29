@@ -26,6 +26,8 @@ from util.helpers import current_time, get_class_executable, FILENAMES_PROHIBITE
 
 class ModelMarketplaceWorker:
 
+    MAX_AIDE_MODEL_VERSION = 1.0        # maximum Model Marketplace file definition version supported by this installation of AIDE
+
     BUILTIN_MODELS_DIR = 'ai/marketplace'
 
     MODEL_STATE_REQUIRED_FIELDS = (
@@ -236,6 +238,18 @@ class ModelMarketplaceWorker:
         for field in self.MODEL_STATE_REQUIRED_FIELDS:
             if field not in modelState:
                 raise Exception(f'Missing field "{field}" in AIDE JSON file.')
+            if field == 'aide_model_version':
+                # check model definition version
+                modelVersion = modelState['aide_model_version']
+                if isinstance(modelVersion, str):
+                    if not modelVersion.isnumeric():
+                        raise Exception(f'Invalid AIDE model version "{modelVersion}" in JSON file.')
+                    else:
+                        modelVersion = float(modelVersion)
+                modelVersion = float(modelVersion)
+                if modelVersion > self.MAX_AIDE_MODEL_VERSION:
+                    raise Exception(f'Model state contains a newer model version than supported by this installation of AIDE ({modelVersion} > {self.MAX_AIDE_MODEL_VERSION}).\nPlease update AIDE to the latest version.')
+
             if field == 'ai_model_library':
                 # check if model library is installed
                 modelLibrary = modelState[field]
