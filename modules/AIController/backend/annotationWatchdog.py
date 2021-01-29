@@ -88,7 +88,7 @@ class Watchdog(Thread):
         tasks_resurrected = set()
         for key in activeTasks:
             for task in activeTasks[key]:
-                taskID = uuid.UUID(task['id'])
+                taskID = task['id']
                 if taskID not in tasksRunning_db:
                     tasks_resurrected.add(taskID)
                     self.taskOngoing = True
