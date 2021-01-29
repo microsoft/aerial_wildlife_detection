@@ -1018,7 +1018,7 @@
         "options": {
             "model": {
                 "config": {
-                    "value": "labels/shufflenet_v2_x1_0.yaml"
+                    "value": "labels/shufflenet_v2_x1_0_ImageNet.yaml"
                 }
             }
         }

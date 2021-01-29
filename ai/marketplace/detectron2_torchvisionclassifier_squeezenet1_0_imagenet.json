@@ -1019,7 +1019,7 @@
         "options": {
             "model": {
                 "config": {
-                    "value": "labels/squeezenet1_0.yaml"
+                    "value": "labels/squeezenet1_0_ImageNet.yaml"
                 }
             }
         }

@@ -1019,7 +1019,7 @@
         "options": {
             "model": {
                 "config": {
-                    "value": "labels/mobilenet_v2.yaml"
+                    "value": "labels/mobilenet_v2_ImageNet.yaml"
                 }
             }
         }

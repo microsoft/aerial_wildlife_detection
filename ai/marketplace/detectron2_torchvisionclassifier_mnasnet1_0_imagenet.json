@@ -1019,7 +1019,7 @@
         "options": {
             "model": {
                 "config": {
-                    "value": "labels/mnasnet1_0.yaml"
+                    "value": "labels/mnasnet1_0_ImageNet.yaml"
                 }
             }
         }

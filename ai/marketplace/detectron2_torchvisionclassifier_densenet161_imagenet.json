@@ -1019,7 +1019,7 @@
         "options": {
             "model": {
                 "config": {
-                    "value": "labels/densenet161.yaml"
+                    "value": "labels/densenet161_ImageNet.yaml"
                 }
             }
         }

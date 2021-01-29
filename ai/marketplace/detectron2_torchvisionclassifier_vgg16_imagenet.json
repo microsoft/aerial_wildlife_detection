@@ -1019,7 +1019,7 @@
         "options": {
             "model": {
                 "config": {
-                    "value": "labels/vgg16.yaml"
+                    "value": "labels/vgg16_ImageNet.yaml"
                 }
             }
         }
