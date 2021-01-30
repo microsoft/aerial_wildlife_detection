@@ -1,11 +1,13 @@
 <div>
     <h2>AI Model Settings</h2>
-
-    <p style="font-weight:bold;color:red">Work in progress, not stable yet.</p>
-
-    <div class="settings-group">
-        <input type="checkbox" id="ai-model-enabled-checkbox" />
-        <label for="ai-model-enabled-checkbox">Automatic AI model training enabled</label><br />
+    <div class="settings-group" id="auto-ai-training">
+        <div class="custom-control custom-switch">
+            <input type="checkbox" class="custom-control-input" id="ai-model-enabled-checkbox">
+            <label class="custom-control-label" for="ai-model-enabled-checkbox">Automatic AI model training</label>
+        </div>
+        <br />
+        <!-- <input type="checkbox" id="ai-model-enabled-checkbox" />
+        <label for="ai-model-enabled-checkbox">Automatic AI model training enabled</label><br /> -->
 
         <div style="margin-left:20px">
             <table>
@@ -26,6 +28,17 @@
                 <tr>
                     <td><label for="ai-model-max-num-images-inference">Maximum number of images to predict on at a time (0 = unlimited):</label></td>
                     <td><input type="number" min="0" value="0" id="ai-model-max-num-images-inference" /></td>
+                </tr>
+                <tr>
+                    <td>
+                        <label for="ai-model-inference-chunk-size">Number of images to group prediction runs into (&leq;0 = maximum):</label>
+                        <div style="margin-left:20px;font-style:italic;font-size:10pt">
+                            Prediction runs can be split into chunks for memory usage reasons.<br />
+                            Reduce in case of large images and/or annotations like segmentation masks.<br />
+                            The maximum allowed chunk size on this instance of AIDE is: <span id="inference-chunk-size-limit">(querying...)</span>.
+                        </div>
+                    </td>
+                    <td style="position:relative"><input type="number" min="0" value="0" id="ai-model-inference-chunk-size" style="position:absolute;top:2px" /></td>
                 </tr>
             </table>
         </div>
@@ -87,6 +100,44 @@
         width: 100%;
         height: 400px;
         font-family: monospace;
+    }
+
+    #auto-ai-training {
+        background: #606060;
+        padding: 20px;
+        border-radius: 10px;
+    }
+
+    .custom-control-input {
+        position: relative;
+    }
+
+    .custom-control-label {
+        font-size: 14pt;
+        left: 10px;
+    }
+
+    .custom-switch .custom-control-label::before {
+        left: -2.8rem;
+        width: 2.5rem;
+        height: 1.5rem;
+        border-radius: .8rem;
+    }
+
+    .custom-switch .custom-control-label::after {
+        left: calc(-2.8rem + 2px);
+        top: calc(.3rem + 2px);
+        width: calc(1.3rem - 4px);
+        height: calc(1.3rem - 4px);
+    }
+
+    .custom-switch .custom-control-input:checked~.custom-control-label::after {
+        -webkit-transform: translateX(1rem);
+        transform: translateX(1rem);
+    }
+
+    td:first-child {
+        width: 600px;
     }
 </style>
 <script src="/static/general/js/optionsEngine.js?v={{ version }}"></script>
@@ -195,6 +246,26 @@
         }
     }
 
+    function loadPlatformInfo() {
+        return $.ajax({
+            url: window.baseURL + 'getPlatformInfo',
+            method: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            data: JSON.stringify({params: ['inference_batch_size_limit']}),
+            success: function(data) {
+                try {
+                    window.inferenceChunkSizeLimit = parseInt(data['settings']['inference_batch_size_limit']);
+                } catch {
+                    window.inferenceChunkSizeLimit = -1;
+                }
+                $('#inference-chunk-size-limit').html(
+                    (window.inferenceChunkSizeLimit <= 0 ? 'unlimited' : window.inferenceChunkSizeLimit)
+                );
+            }
+        });
+    }
+
     function loadSettings() {
         return $.ajax({
             url: window.baseURL + 'getConfig',
@@ -210,6 +281,7 @@
                     'minnumannoperimage',
                     'maxnumimages_train',
                     'maxnumimages_inference',
+                    'inference_chunk_size',
                     'segmentation_ignore_unlabeled'
                 ]
             }),
@@ -226,6 +298,11 @@
                 $('#ai-model-num-labels-image-autotrain').val(getInt(data['minnumannoperimage'], 0));
                 $('#ai-model-max-num-images-autotrain').val(getInt(data['maxnumimages_train'], 0));
                 $('#ai-model-max-num-images-inference').val(getInt(data['maxnumimages_inference'], 0));
+                let inferenceChunkSize = getInt(data['inference_chunk_size'], 0);
+                if(window.inferenceChunkSizeLimit > 0) {
+                    inferenceChunkSize = Math.min(inferenceChunkSize, window.inferenceChunkSizeLimit);
+                }
+                $('#ai-model-inference-chunk-size').val(inferenceChunkSize);
 
                 // set selected AI and AL models
                 let aiLib = data['ai_model_library'];
@@ -286,6 +363,48 @@
         });
     }
 
+    function loadAvailableAImodels() {
+        return $.ajax({
+            url: window.baseURL + 'getAvailableAImodels',
+            method: 'GET',
+            success: function(data) {
+                // populate selection fields, if suitable for selected annotation and prediction types
+                window.availableModels = data['models'];
+                let numAvailableAImodels = 0;
+                let numAvailableALmodels = 0;
+                for(var key in data['models']['prediction']) {
+                    var annoTypes = data['models']['prediction'][key]['annotationType'];
+                    var predTypes = data['models']['prediction'][key]['predictionType'];
+                    if(!Array.isArray(annoTypes)) annoTypes = [annoTypes];
+                    if(!Array.isArray(predTypes)) predTypes = [predTypes];
+                    if(annoTypes.includes(window.annotationType) && predTypes.includes(window.predictionType)) {
+                        var entry = $('<option value="' + key + '">' + data['models']['prediction'][key]['name'] + '</option>');
+                        aiModelSelect.append(entry);
+                        numAvailableAImodels++;
+                    }
+                }
+                for(var key in data['models']['ranking']) {
+                    var predTypes = data['models']['ranking'][key]['predictionType'];
+                    if(predTypes.includes(window.predictionType)) {
+                        var entry = $('<option value="' + key + '">' + data['models']['ranking'][key]['name'] + '</option>');
+                        alModelSelect.append(entry);
+                        numAvailableALmodels++;
+                    }
+                }
+                if(numAvailableAImodels === 0) {
+                    $('#no-ai-models-available').show();
+                }
+                if(numAvailableALmodels === 0) {
+                    $('#no-al-models-available').show();
+                }
+            },
+            error: function(data) {
+                //TODO
+                console.error(data)
+            }
+        });
+    }
+
     window.save = function() {
 
         // assemble config parameters and submit
@@ -297,6 +416,10 @@
         }
         let numImages_autoTrain = getInt($('#ai-model-num-images-autotrain').val(), 0, 1);
         let aiModelEnabled = ($('#ai-model-enabled-checkbox').prop('checked') && (numImages_autoTrain > 0));
+        let inferenceChunkSize = getInt($('#ai-model-inference-chunk-size').val(), 0, 0);
+        if(window.inferenceChunkSizeLimit > 0) {
+            inferenceChunkSize = Math.min(inferenceChunkSize, window.inferenceChunkSizeLimit);
+        }
         var settings = {
             'ai_model_enabled': aiModelEnabled,
             'ai_model_library': modelLib,
@@ -306,7 +429,8 @@
             'numimages_autotrain': numImages_autoTrain,
             'minnumannoperimage': getInt($('#ai-model-num-labels-image-autotrain').val(), 0, 0),
             'maxnumimages_train': getInt($('#ai-model-max-num-images-autotrain').val(), 0, 0),
-            'maxnumimages_inference': getInt($('#ai-model-max-num-images-inference').val(), 0, 0)
+            'maxnumimages_inference': getInt($('#ai-model-max-num-images-inference').val(), 0, 0),
+            'inference_chunk_size': inferenceChunkSize
         };
         if(window.annotationType === 'segmentationMasks') {
             settings['segmentation_ignore_unlabeled'] = ($('#seg-unlabeled-select').val() === '1');
@@ -359,45 +483,7 @@
                 }
         });
         promise = promise.then(function() {
-            return $.ajax({
-                url: window.baseURL + 'getAvailableAImodels',
-                method: 'GET',
-                success: function(data) {
-                    // populate selection fields, if suitable for selected annotation and prediction types
-                    window.availableModels = data['models'];
-                    let numAvailableAImodels = 0;
-                    let numAvailableALmodels = 0;
-                    for(var key in data['models']['prediction']) {
-                        var annoTypes = data['models']['prediction'][key]['annotationType'];
-                        var predTypes = data['models']['prediction'][key]['predictionType'];
-                        if(!Array.isArray(annoTypes)) annoTypes = [annoTypes];
-                        if(!Array.isArray(predTypes)) predTypes = [predTypes];
-                        if(annoTypes.includes(window.annotationType) && predTypes.includes(window.predictionType)) {
-                            var entry = $('<option value="' + key + '">' + data['models']['prediction'][key]['name'] + '</option>');
-                            aiModelSelect.append(entry);
-                            numAvailableAImodels++;
-                        }
-                    }
-                    for(var key in data['models']['ranking']) {
-                        var predTypes = data['models']['ranking'][key]['predictionType'];
-                        if(predTypes.includes(window.predictionType)) {
-                            var entry = $('<option value="' + key + '">' + data['models']['ranking'][key]['name'] + '</option>');
-                            alModelSelect.append(entry);
-                            numAvailableALmodels++;
-                        }
-                    }
-                    if(numAvailableAImodels === 0) {
-                        $('#no-ai-models-available').show();
-                    }
-                    if(numAvailableALmodels === 0) {
-                        $('#no-al-models-available').show();
-                    }
-                },
-                error: function(data) {
-                    //TODO
-                    console.error(data)
-                }
-            });
+            return $.when(loadPlatformInfo(), loadAvailableAImodels());
         });
 
         promise = promise.then(function() {
@@ -445,6 +531,7 @@
             $('#ai-model-num-labels-image-autotrain').prop('disabled', disabled);
             $('#ai-model-max-num-images-autotrain').prop('disabled', disabled);
             $('#ai-model-max-num-images-inference').prop('disabled', disabled);
+            $('#ai-model-inference-chunk-size').prop('disabled', disabled);
         });
 
         $('#seg-unlabeled-select').change(function() {

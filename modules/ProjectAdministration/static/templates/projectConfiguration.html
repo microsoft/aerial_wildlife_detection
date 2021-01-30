@@ -49,8 +49,12 @@
                         if(typeof(window.save) !== 'undefined') {
                             $('#save-button').on('click', function() {
                                 window.showLoadingOverlay(true);
-                                window.save().then(function() {
+                                window.save().done(function() {
                                     window.showLoadingOverlay(false);
+                                    window.messager.addMessage('Settings saved successfully.', 'success');
+                                }).fail(function() {
+                                    window.showLoadingOverlay(false);
+                                    window.messager.addMessage('An error occurred while trying to save settings.', 'error', 0);
                                 });
                             });
                             $('#save-button').show();

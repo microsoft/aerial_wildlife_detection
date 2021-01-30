@@ -22,7 +22,11 @@
     </div>
 
     <h2 style="margin-top:20px">Training statistics</h2>
+    <div id="loading-placeholder">loading...</div>
     <div id="training-statistics-container"></div>
+    <div id="no-data-placeholder" style="display:none">
+        <div>no data to show</div>
+    </div>
 </div>
 <link rel="stylesheet" href="/static/statistics/libs/chartjs/Chart.min.css?v={{ version }}" />
 <style>
@@ -143,72 +147,97 @@
     }
 
 
-    function getTrainingStats() {
+    function getTrainingStats(showMessageOnSuccess) {
         let containerDiv = $('#training-statistics-container');
         containerDiv.empty();
-        let _poll_stats = function(data) {
-            if(typeof(data) === 'object' && data.hasOwnProperty('series')) {
-                // assemble line charts for each model library
-                let modelLibs = Object.keys(data['series']);
-
-                for(var m=0; m<modelLibs.length; m++) {
-                    let modelLib = modelLibs[m];
-                    let timestamps = [];
-                    for(var t=0; t<data['timestamps'][modelLib].length; t++) {
-                        let timestamp = data['timestamps'][modelLib][t] * 1000;
-                        timestamps.push(new Date(timestamp));
-                    }
-                    let seriesNames = Object.keys(data['series'][modelLib]);
-                    let datasets = [];
-                    for(var s=0; s<seriesNames.length; s++) {
-                        let seriesName = seriesNames[s];
-                        datasets.push({
-                            label: seriesName,
-                            data: data['series'][modelLib][seriesName],
-                            borderColor: COLORS[(COLORS.length-1) % (s+1)],
-                            fill: false
-                        });
-                    }
-
-                    // create chart
-                    let modelName = window.availableAImodels[modelLib]['name'];
-                    let header = $('<h3 class="header-toggle">'+modelName+'</h3>');
-                    containerDiv.append(header);
-                    let canvas = $('<canvas height=300></canvas>');
-                    containerDiv.append(canvas);
-                    header.on('click', function() {
-                        canvas.slideToggle();
-                    });
-                    new Chart(canvas[0].getContext('2d'), {
-                        type: 'line',
-                        data: {
-                            labels: timestamps,
-                            datasets: datasets
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                xAxes: [{
-                                    type: 'time',
-                                    time: {
-                                        displayFormats: {
-                                            'millisecond': 'MMM DD YYYY, hh:mm:ss',
-                                            'second': 'MMM DD YYYY, hh:mm:ss',
-                                            'minute': 'MMM DD YYYY, hh:mm:ss',
-                                            'hour': 'MMM DD YYYY, hh:mm:ss',
-                                            'day': 'MMM DD YYYY, hh:mm:ss',
-                                            'week': 'MMM DD YYYY, hh:mm:ss',
-                                            'month': 'MMM DD YYYY, hh:mm:ss',
-                                            'quarter': 'MMM DD YYYY, hh:mm:ss',
-                                            'year': 'MMM DD YYYY, hh:mm:ss'
-                                        }
-                                    }
-                                }]
-                            }
+        $('#loading-placeholder').show();
+        $('#no-data-placeholder').hide();
+        let _poll_stats = function(data, success) {
+            if(typeof(data) !== 'object') {
+                data = {};
+                success = false;
+            }
+            if(success) {
+                let hasChart = false;
+                if(data.hasOwnProperty('series')) {
+                    // assemble line charts for each model library
+                    let modelLibs = Object.keys(data['series']);
+                    for(var m=0; m<modelLibs.length; m++) {
+                        let modelLib = modelLibs[m];
+                        let timestamps = [];
+                        for(var t=0; t<data['timestamps'][modelLib].length; t++) {
+                            let timestamp = data['timestamps'][modelLib][t] * 1000;
+                            timestamps.push(new Date(timestamp));
                         }
-                    });
+                        let seriesNames = Object.keys(data['series'][modelLib]);
+                        let datasets = [];
+                        for(var s=0; s<seriesNames.length; s++) {
+                            let seriesName = seriesNames[s];
+                            datasets.push({
+                                label: seriesName,
+                                data: data['series'][modelLib][seriesName],
+                                borderColor: COLORS[(COLORS.length-1) % (s+1)],
+                                fill: false
+                            });
+                        }
+
+                        // create chart
+                        let modelName = window.availableAImodels[modelLib]['name'];
+                        let header = $('<h3 class="header-toggle">'+modelName+'</h3>');
+                        containerDiv.append(header);
+                        let canvas = $('<canvas height=300></canvas>');
+                        containerDiv.append(canvas);
+                        header.on('click', function() {
+                            canvas.slideToggle();
+                        });
+                        new Chart(canvas[0].getContext('2d'), {
+                            type: 'line',
+                            data: {
+                                labels: timestamps,
+                                datasets: datasets
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    xAxes: [{
+                                        type: 'time',
+                                        time: {
+                                            displayFormats: {
+                                                'millisecond': 'MMM DD YYYY, hh:mm:ss',
+                                                'second': 'MMM DD YYYY, hh:mm:ss',
+                                                'minute': 'MMM DD YYYY, hh:mm:ss',
+                                                'hour': 'MMM DD YYYY, hh:mm:ss',
+                                                'day': 'MMM DD YYYY, hh:mm:ss',
+                                                'week': 'MMM DD YYYY, hh:mm:ss',
+                                                'month': 'MMM DD YYYY, hh:mm:ss',
+                                                'quarter': 'MMM DD YYYY, hh:mm:ss',
+                                                'year': 'MMM DD YYYY, hh:mm:ss'
+                                            }
+                                        }
+                                    }]
+                                }
+                            }
+                        });
+                        hasChart = true;
+                    }
                 }
+                $('#loading-placeholder').hide();
+                if(!hasChart) {
+                    $('#no-data-placeholder').show();
+                }
+                if(showMessageOnSuccess) {
+                    window.messager.addMessage('Successfully loaded model training statistics.', 'success');
+                }
+            } else {
+                // failure
+                $('#loading-placeholder').hide();
+                $('#no-data-placeholder').hide();
+                let message = 'An unknown error occurred trying to load model training statistics.';
+                if(typeof(data['message']) === 'string' && data['message'].length > 0) {
+                    message = 'An error occurred trying to load model training statistics (message: "' + data['message'] + '").';
+                }
+                window.messager.addMessage(mesage, 'error', 0);
             }
         }
 
@@ -219,10 +248,10 @@
                 let taskID = data['task_id'];
                 if(typeof(taskID) === 'string') {
                     poll_status(taskID, function(data) {
-                        _poll_stats(data);
+                        _poll_stats(data, true);
                     },
                     function(data) {
-                        _poll_stats(data);
+                        _poll_stats(data, false);
                     }, 1000);
                 }
             },
@@ -257,7 +286,7 @@
             } else {
                 let promise = listModelStates()
                 promise = promise.then(function() {
-                    return getTrainingStats();
+                    return getTrainingStats(false);
                 });
                 promise.then(function() {
                     window.messager.addMessage('Successfully deleted ' + numModels + ' model states.', 'success');
@@ -306,17 +335,11 @@
             _do_delete, null, 'Delete', 'Cancel', 'btn-danger', 'btn-secondary', false, false);
     }
 
-    function reloadAll(showMessage) {
+    function reloadAll(showMessageOnSuccess) {
         let promise = listModelStates();
         promise = promise.then(function() {
-            return getTrainingStats();
+            return getTrainingStats(showMessageOnSuccess);
         });
-        if(showMessage) {
-            return promise.then(function() {
-                window.messager.addMessage('Successfully reloaded model states and performance statistics.', 'success');
-                return $.Deferred().resolve().promise();
-            });
-        }
         return promise;
     }
 
@@ -328,7 +351,7 @@
         let promise = $.when(getAvailableAImodels(), listModelStates());
 
         promise = promise.then(function() {
-            return getTrainingStats();
+            return getTrainingStats(false);
         });
 
         promise.then(function() {

@@ -984,6 +984,7 @@ class AIMiddleware():
             ('minnumannoperimage', int),
             ('maxnumimages_train', int),
             ('maxnumimages_inference', int),
+            ('inference_chunk_size', int),
             ('segmentation_ignore_unlabeled', bool)
         ]
         settings_new, settingsKeys_new = parse_parameters(settings, fieldNames, absent_ok=True, escape=True, none_ok=True)

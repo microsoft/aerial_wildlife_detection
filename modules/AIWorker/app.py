@@ -1,5 +1,5 @@
 '''
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 import inspect
@@ -149,7 +149,7 @@ class AIWorker():
         '''
         # get model settings for project
         queryStr = '''
-            SELECT ai_model_library, ai_model_settings FROM aide_admin.project
+            SELECT ai_model_library, ai_model_settings, inference_chunk_size FROM aide_admin.project
             WHERE shortname = %s;
         '''
         result = self.dbConnector.execute(queryStr, (project,), 1)
@@ -159,7 +159,15 @@ class AIWorker():
         # create new model instance
         modelInstance = self._init_model_instance(project, modelLibrary, modelSettings)
 
-        return modelInstance, modelLibrary
+        # inference chunk size
+        inferenceChunkSize = result[0]['inference_chunk_size']
+        chunkSizeLimit = self.config.getProperty('AIWorker', 'inference_batch_size_limit', type=int, fallback=-1)
+        if inferenceChunkSize is None:
+            inferenceChunkSize = chunkSizeLimit
+        elif chunkSizeLimit > 0:
+            inferenceChunkSize = min(inferenceChunkSize, chunkSizeLimit)
+
+        return modelInstance, modelLibrary, inferenceChunkSize
 
 
     def _get_alCriterion_instance(self, project, overrideModelSettings=None):
@@ -198,7 +206,7 @@ class AIWorker():
     def call_update_model(self, numEpochs, project, aiModelSettings=None):
 
         # get project-specific model
-        modelInstance, modelLibrary = self._get_model_instance(project, aiModelSettings)
+        modelInstance, modelLibrary, _ = self._get_model_instance(project, aiModelSettings)
 
         return functional._call_update_model(project, numEpochs, modelInstance, modelLibrary,
                 self.dbConnector, self.fileServer)
@@ -207,7 +215,7 @@ class AIWorker():
     def call_train(self, data, epoch, numEpochs, project, subset, aiModelSettings=None):
 
         # get project-specific model
-        modelInstance, modelLibrary = self._get_model_instance(project, aiModelSettings)
+        modelInstance, modelLibrary, _ = self._get_model_instance(project, aiModelSettings)
 
         return functional._call_train(project, data, epoch, numEpochs, subset, modelInstance, modelLibrary,
                 self.dbConnector, self.fileServer)
@@ -217,7 +225,7 @@ class AIWorker():
     def call_average_model_states(self, epoch, numEpochs, project, aiModelSettings=None):
 
         # get project-specific model
-        modelInstance, modelLibrary = self._get_model_instance(project, aiModelSettings)
+        modelInstance, modelLibrary, _ = self._get_model_instance(project, aiModelSettings)
         
         return functional._call_average_model_states(project, epoch, numEpochs, modelInstance, modelLibrary,
                 self.dbConnector, self.fileServer)
@@ -227,14 +235,14 @@ class AIWorker():
     def call_inference(self, imageIDs, epoch, numEpochs, project, aiModelSettings=None, alCriterionSettings=None):
         
         # get project-specific model and AL criterion
-        modelInstance, modelLibrary = self._get_model_instance(project, aiModelSettings)
+        modelInstance, modelLibrary, inferenceChunkSize = self._get_model_instance(project, aiModelSettings)
         alCriterionInstance = self._get_alCriterion_instance(project, alCriterionSettings)
 
         return functional._call_inference(project, imageIDs, epoch, numEpochs,
                 modelInstance, modelLibrary,
                 alCriterionInstance,
                 self.dbConnector, self.fileServer,
-                self.config.getProperty('AIWorker', 'inference_batch_size_limit', type=int, fallback=-1))
+                inferenceChunkSize)
 
 
 

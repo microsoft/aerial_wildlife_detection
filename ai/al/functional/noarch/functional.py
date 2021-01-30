@@ -4,6 +4,7 @@
     2019-21 Benjamin Kellenberger
 '''
 
+from collections.abc import Iterable
 import numpy as np
 
 
@@ -35,9 +36,21 @@ def _max_confidence(prediction):
         Returns the maximum value of the logits as a priority value.
     '''
     if 'logits' in prediction:
-        maxVal = max(prediction['logits'])
+        if isinstance(prediction['logits'], Iterable):
+            maxVal = max(prediction['logits'])
+        else:
+            try:
+                maxVal = float(prediction['logits'])
+            except:
+                maxVal = None
     elif 'confidence' in prediction:
-        maxVal = max(prediction['confidence'])
+        if isinstance(prediction['confidence'], Iterable):
+            maxVal = max(prediction['confidence'])
+        else:
+            try:
+                maxVal = float(prediction['confidence'])
+            except:
+                maxVal = None
     else:
         maxVal = None
     

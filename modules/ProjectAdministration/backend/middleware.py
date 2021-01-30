@@ -144,7 +144,8 @@ class ProjectConfigMiddleware:
         allParams = set([
             'server_uri',
             'server_dir',
-            'watch_folder_interval'
+            'watch_folder_interval',
+            'inference_batch_size_limit'
         ])
         if parameters is not None and parameters != '*':
             if isinstance(parameters, str):
@@ -166,7 +167,10 @@ class ProjectConfigMiddleware:
             elif param.lower() == 'watch_folder_interval':
                 interval = self.config.getProperty('FileServer', 'watch_folder_interval', type=float, fallback=60)
                 response[param] = interval
-        
+            elif param.lower() == 'inference_batch_size_limit':
+                inferenceBsLimit = self.config.getProperty('AIWorker', 'inference_batch_size_limit', type=int, fallback=-1)
+                response[param] = inferenceBsLimit
+
         return response
 
     
@@ -203,6 +207,7 @@ class ProjectConfigMiddleware:
             'numimages_autotrain',
             'minnumannoperimage',
             'maxnumimages_train',
+            'inference_chunk_size',
             'watch_folder_enabled',
             'watch_folder_remove_missing_enabled'
         ])

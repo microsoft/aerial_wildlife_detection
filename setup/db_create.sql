@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS aide_admin.project (
     minNumAnnoPerImage INTEGER,
     maxNumImages_train BIGINT,
     maxNumImages_inference BIGINT,
+    inference_chunk_size BIGINT,
     default_workflow UUID,
     ai_model_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     ai_model_library VARCHAR,
