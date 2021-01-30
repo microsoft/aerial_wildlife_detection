@@ -164,18 +164,25 @@
                     let modelLibs = Object.keys(data['series']);
                     for(var m=0; m<modelLibs.length; m++) {
                         let modelLib = modelLibs[m];
-                        let timestamps = [];
-                        for(var t=0; t<data['timestamps'][modelLib].length; t++) {
-                            let timestamp = data['timestamps'][modelLib][t] * 1000;
-                            timestamps.push(new Date(timestamp));
-                        }
+                        let timestamps = data['timestamps'][modelLib];
+                        // for(var t=0; t<data['timestamps'][modelLib].length; t++) {
+                        //     let timestamp = data['timestamps'][modelLib][t] * 1000;
+                        //     timestamps.push(new Date(timestamp));
+                        // }
                         let seriesNames = Object.keys(data['series'][modelLib]);
                         let datasets = [];
                         for(var s=0; s<seriesNames.length; s++) {
                             let seriesName = seriesNames[s];
+                            let series = [];
+                            for(var t=0; t<timestamps.length; t++) {
+                                series.push({
+                                    'x': timestamps[t],
+                                    'y': data['series'][modelLib][seriesName][t]
+                                });
+                            }
                             datasets.push({
                                 label: seriesName,
-                                data: data['series'][modelLib][seriesName],
+                                data: series, //data['series'][modelLib][seriesName],
                                 borderColor: COLORS[(COLORS.length-1) % (s+1)],
                                 fill: false
                             });
@@ -199,23 +206,27 @@
                             options: {
                                 responsive: true,
                                 maintainAspectRatio: false,
+                                tooltips: {
+                                    callbacks: {
+                                        title(datasets) {
+                                        var time = new Date(datasets[0].xLabel * 1000);
+                                            return time.toLocaleString('default', { month: 'short' }) + ' ' + time.getDate() + ' ' + time.getUTCFullYear() + ', ' + time.getHours()+':'+time.getMinutes();
+                                        }
+                                    }
+                                },
                                 scales: {
-                                    xAxes: [{
-                                        type: 'time',
-                                        time: {
-                                            displayFormats: {
-                                                'millisecond': 'MMM DD YYYY, hh:mm:ss',
-                                                'second': 'MMM DD YYYY, hh:mm:ss',
-                                                'minute': 'MMM DD YYYY, hh:mm:ss',
-                                                'hour': 'MMM DD YYYY, hh:mm:ss',
-                                                'day': 'MMM DD YYYY, hh:mm:ss',
-                                                'week': 'MMM DD YYYY, hh:mm:ss',
-                                                'month': 'MMM DD YYYY, hh:mm:ss',
-                                                'quarter': 'MMM DD YYYY, hh:mm:ss',
-                                                'year': 'MMM DD YYYY, hh:mm:ss'
+                                    xAxes: [
+                                        {
+                                            type: 'linear',
+                                            position: 'bottom',
+                                            ticks: {
+                                                callback(value) {
+                                                    var time = new Date(value * 1000);
+                                                    return time.toLocaleString('default', { month: 'short' }) + ' ' + time.getDate() + ' ' + time.getUTCFullYear() + ', ' + time.getHours()+':'+time.getMinutes();
+                                                }
                                             }
                                         }
-                                    }]
+                                    ]
                                 }
                             }
                         });

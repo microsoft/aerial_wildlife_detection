@@ -208,7 +208,7 @@ class AIControllerWorker:
 
 
     
-    def get_model_training_statistics(self, project, modelStateIDs=None, modelLibraries=None):
+    def get_model_training_statistics(self, project, modelStateIDs=None, modelLibraries=None, skipImportedModels=True):
         '''
             Assembles statistics as returned by the model (if done so). Returned
             statistics may be dicts with keys for variable names and values for
@@ -219,6 +219,10 @@ class AIControllerWorker:
             in the assembly.
             Optional input "modelLibraries" may be a str or list of str and filters
             model libraries that were used in the project over time.
+            If "skipImportedModels" is True, model states that were directly imported
+            from the Model Marketplace are ignored. This is True by default, since these
+            model states usually don't contain statistics, let alone values that are re-
+            lated to the current project.
         '''
         # verify IDs
         if modelStateIDs is not None:
@@ -253,6 +257,14 @@ class AIControllerWorker:
             else:
                 sqlFilter = 'WHERE id IN %s'
             queryArgs.append((tuple([(m,) for m in modelStateIDs]),))
+        
+        # skip imported model states
+        if skipImportedModels:
+            if len(sqlFilter):
+                sqlFilter += ' AND marketplace_origin_id IS NULL'
+            else:
+                sqlFilter = 'WHERE marketplace_origin_id IS NULL'
+
 
         queryResult = self.dbConn.execute(sql.SQL('''
             SELECT id, model_library, EXTRACT(epoch FROM timeCreated) AS timeCreated, stats FROM {id_cnnstate}
