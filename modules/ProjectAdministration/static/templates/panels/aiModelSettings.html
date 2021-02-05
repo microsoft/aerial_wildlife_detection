@@ -6,8 +6,6 @@
             <label class="custom-control-label" for="ai-model-enabled-checkbox">Automatic AI model training</label>
         </div>
         <br />
-        <!-- <input type="checkbox" id="ai-model-enabled-checkbox" />
-        <label for="ai-model-enabled-checkbox">Automatic AI model training enabled</label><br /> -->
 
         <div style="margin-left:20px">
             <table>
@@ -40,6 +38,17 @@
                     </td>
                     <td style="position:relative"><input type="number" min="0" value="0" id="ai-model-inference-chunk-size" style="position:absolute;top:2px" /></td>
                 </tr>
+                <tr>
+                    <td>
+                        <label for="ai-model-max-num-concurrent-tasks">Maximum number of concurrent tasks (&leq;0 = maximum):</label>
+                        <div style="margin-left:20px;font-style:italic;font-size:10pt">
+                            Limit the maximum number of AI model workflows to be executed in parallel here.<br />
+                            Automatic AI model training only launches one workflow at a time, even if the required number of annotated images has been reached early.<br />
+                            The maximum number of concurrent workflows per project on this instance of AIDE is: <span id="concurrent-tasks-limit">(querying...)</span>.
+                        </div>
+                    </td>
+                    <td style="position:relative"><input type="number" min="0" value="2" id="ai-model-max-num-concurrent-tasks" style="position:absolute;top:2px" /></td>
+                </tr>
             </table>
         </div>
     </div>
@@ -59,7 +68,6 @@
 
         <div>Default model options:</div>
         <div id="default-ai-model-options-engine"></div>
-        <!-- <textarea id="default-ai-model-options" rows="100" cols="100"></textarea> -->
         <div>
             <button id="load-ai-project-options" class="btn btn-sm btn-secondary">Load current</button>
             <button id="load-ai-model-options" class="btn btn-sm btn-dark">Load model defaults</button>
@@ -89,10 +97,6 @@
         </select>
         <p id="seg-unlabeled-info-text" style="font-style:italic;font-size:10pt;margin-left:20px;"></p>
     </div>
-
-    <!-- <div>
-        <button id="save-button" class="btn btn-primary" style="float:right">Save</button>
-    </div> -->
 </div>
 <link rel="stylesheet" href="/static/general/css/optionsEngine.css?v={{ version }}" />
 <style>
@@ -259,9 +263,17 @@
                 } catch {
                     window.inferenceChunkSizeLimit = -1;
                 }
+                try {
+                    window.maxNumConcurrentTasks = parseInt(data['settings']['max_num_concurrent_tasks']);
+                } catch {
+                    window.maxNumConcurrentTasks = 2;
+                }
                 $('#inference-chunk-size-limit').html(
                     (window.inferenceChunkSizeLimit <= 0 ? 'unlimited' : window.inferenceChunkSizeLimit)
                 );
+                $('#concurrent-tasks-limit').html(
+                    (window.maxNumConcurrentTasks <= 0 ? 'unlimited' : window.maxNumConcurrentTasks)
+                )
             }
         });
     }
@@ -282,7 +294,8 @@
                     'maxnumimages_train',
                     'maxnumimages_inference',
                     'inference_chunk_size',
-                    'segmentation_ignore_unlabeled'
+                    'segmentation_ignore_unlabeled',
+                    'max_num_concurrent_tasks'
                 ]
             }),
             contentType: 'application/json; charset=utf-8',
@@ -292,6 +305,7 @@
 
                 // checkbox
                 $('#ai-model-enabled-checkbox').prop('checked', data['ai_model_enabled']);
+                $('#ai-model-enabled-checkbox').trigger('change');
 
                 // auto-train metadata
                 $('#ai-model-num-images-autotrain').val(getInt(data['numimages_autotrain'], 128));
@@ -303,6 +317,11 @@
                     inferenceChunkSize = Math.min(inferenceChunkSize, window.inferenceChunkSizeLimit);
                 }
                 $('#ai-model-inference-chunk-size').val(inferenceChunkSize);
+                let maxNumConcurrentTasks = getInt(data['max_num_concurrent_tasks'], 0);
+                if(window.maxNumConcurrentTasks > 0) {
+                    maxNumConcurrentTasks = Math.min(maxNumConcurrentTasks, window.maxNumConcurrentTasks);
+                }
+                $('#ai-model-max-num-concurrent-tasks').val(maxNumConcurrentTasks);
 
                 // set selected AI and AL models
                 let aiLib = data['ai_model_library'];
@@ -420,6 +439,10 @@
         if(window.inferenceChunkSizeLimit > 0) {
             inferenceChunkSize = Math.min(inferenceChunkSize, window.inferenceChunkSizeLimit);
         }
+        let maxNumConcurrentTasks = getInt($('#ai-model-max-num-concurrent-tasks').val(), 0, 0);
+        if(window.maxNumConcurrentTasks > 0) {
+            maxNumConcurrentTasks = Math.min(maxNumConcurrentTasks, window.maxNumConcurrentTasks);
+        }
         var settings = {
             'ai_model_enabled': aiModelEnabled,
             'ai_model_library': modelLib,
@@ -430,7 +453,8 @@
             'minnumannoperimage': getInt($('#ai-model-num-labels-image-autotrain').val(), 0, 0),
             'maxnumimages_train': getInt($('#ai-model-max-num-images-autotrain').val(), 0, 0),
             'maxnumimages_inference': getInt($('#ai-model-max-num-images-inference').val(), 0, 0),
-            'inference_chunk_size': inferenceChunkSize
+            'inference_chunk_size': inferenceChunkSize,
+            'max_num_concurrent_tasks': maxNumConcurrentTasks
         };
         if(window.annotationType === 'segmentationMasks') {
             settings['segmentation_ignore_unlabeled'] = ($('#seg-unlabeled-select').val() === '1');

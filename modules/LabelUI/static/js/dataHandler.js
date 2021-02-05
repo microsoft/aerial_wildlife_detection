@@ -1,7 +1,7 @@
 /*
     Maintains the data entries currently on display.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 */
 
 class DataHandler {
@@ -33,6 +33,8 @@ class DataHandler {
     }
 
     _check_user_finished() {
+        let footerPanel = $('#footer-message-panel');
+        if(footerPanel.length === 0) return;
         var self = this;
         $.ajax({
             url: 'getUserFinished',
@@ -40,9 +42,9 @@ class DataHandler {
             success: function(response) {
                 if(response.hasOwnProperty('finished') && response['finished']) {
                     // show message
-                    $('#footer-message-panel').html('Congratulations, you have finished labeling this dataset!')
-                    $('#footer-message-panel').css('color', 'green');
-                    $('#footer-message-panel').show();
+                    footerPanel.html('Congratulations, you have finished labeling this dataset!')
+                    footerPanel.css('color', 'green');
+                    footerPanel.show();
 
                     // disable querying
                     self.numBatchesSeen = -1;

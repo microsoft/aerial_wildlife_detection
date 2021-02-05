@@ -110,125 +110,125 @@ class AIController:
                 }
 
         
-        #TODO: deprecated; replace with workflow:
-        @self.app.post('/<project>/startTraining')
-        def start_training(project):
-            '''
-                Manually requests the AIController to train the model.
-                This still only works if there is no training process ongoing.
-                Otherwise the request is aborted.
-            '''
-            if self.loginCheck(project=project, admin=True):
-                try:
-                    params = request.json
-                    if 'minNumAnnoPerImage' in params:
-                        minNumAnnoPerImage = int(params['minNumAnnoPerImage'])
-                    else:
-                        minNumAnnoPerImage = 0      #TODO
-                    if 'maxNum_train' in params:
-                        maxNumImages_train = int(params['maxNum_train'])
-                    else:
-                        maxNumImages_train = -1     #TODO
+        # #TODO: deprecated; replace with workflow:
+        # @self.app.post('/<project>/startTraining')
+        # def start_training(project):
+        #     '''
+        #         Manually requests the AIController to train the model.
+        #         This still only works if there is no training process ongoing.
+        #         Otherwise the request is aborted.
+        #     '''
+        #     if self.loginCheck(project=project, admin=True):
+        #         try:
+        #             params = request.json
+        #             if 'minNumAnnoPerImage' in params:
+        #                 minNumAnnoPerImage = int(params['minNumAnnoPerImage'])
+        #             else:
+        #                 minNumAnnoPerImage = 0      #TODO
+        #             if 'maxNum_train' in params:
+        #                 maxNumImages_train = int(params['maxNum_train'])
+        #             else:
+        #                 maxNumImages_train = -1     #TODO
 
-                    status = self.middleware.start_training(project=project,
-                                        minTimestamp='lastState', 
-                                        minNumAnnoPerImage=minNumAnnoPerImage,
-                                        maxNumImages=maxNumImages_train,
-                                        maxNumWorkers=1)
-                except Exception as e:
-                    status = str(e)
-                return { 'status' : status }
+        #             status = self.middleware.start_training(project=project,
+        #                                 minTimestamp='lastState', 
+        #                                 minNumAnnoPerImage=minNumAnnoPerImage,
+        #                                 maxNumImages=maxNumImages_train,
+        #                                 maxNumWorkers=1)
+        #         except Exception as e:
+        #             status = str(e)
+        #         return { 'status' : status }
 
-            else:
-                abort(401, 'unauthorized')
+        #     else:
+        #         abort(401, 'unauthorized')
 
         
-        #TODO: deprecated; replace with workflow:
-        @self.app.post('/<project>/startInference')
-        def start_inference(project):
-            '''
-                Manually requests the AIController to issue an inference job.
-            '''
-            if self.loginCheck(project=project, admin=True):
-                try:
-                    params = request.json
-                    if 'maxNum_inference' in params:
-                        maxNumImages_inference = int(params['maxNum_inference'])
-                    else:
-                        maxNumImages_inference = -1                                 #TODO
-                    status = self.middleware.start_inference(
-                                            project=project,
-                                            forceUnlabeled=False,      #TODO 
-                                            maxNumImages=maxNumImages_inference,
-                                            maxNumWorkers=-1)           #TODO
-                except Exception as e:
-                    status = str(e)
-                return { 'status' : status }
+        # #TODO: deprecated; replace with workflow:
+        # @self.app.post('/<project>/startInference')
+        # def start_inference(project):
+        #     '''
+        #         Manually requests the AIController to issue an inference job.
+        #     '''
+        #     if self.loginCheck(project=project, admin=True):
+        #         try:
+        #             params = request.json
+        #             if 'maxNum_inference' in params:
+        #                 maxNumImages_inference = int(params['maxNum_inference'])
+        #             else:
+        #                 maxNumImages_inference = -1                                 #TODO
+        #             status = self.middleware.start_inference(
+        #                                     project=project,
+        #                                     forceUnlabeled=False,      #TODO 
+        #                                     maxNumImages=maxNumImages_inference,
+        #                                     maxNumWorkers=-1)           #TODO
+        #         except Exception as e:
+        #             status = str(e)
+        #         return { 'status' : status }
             
-            else:
-                abort(401, 'unauthorized')
+        #     else:
+        #         abort(401, 'unauthorized')
 
 
-        #TODO: deprecated; replace with workflow:
-        @self.app.post('/<project>/start')
-        def start_model(project):
-            '''
-                Manually launches one of the model processes (train, inference, both, etc.),
-                depending on the provided flags.
-            '''
-            if not self.loginCheck(project=project, admin=True):
-                abort(401, 'forbidden')
-            try:
-                params = request.json
-                doTrain = 'train' in params and params['train'] is True
-                doInference = 'inference' in params and params['inference'] is True
+        # #TODO: deprecated; replace with workflow:
+        # @self.app.post('/<project>/start')
+        # def start_model(project):
+        #     '''
+        #         Manually launches one of the model processes (train, inference, both, etc.),
+        #         depending on the provided flags.
+        #     '''
+        #     if not self.loginCheck(project=project, admin=True):
+        #         abort(401, 'forbidden')
+        #     try:
+        #         params = request.json
+        #         doTrain = 'train' in params and params['train'] is True
+        #         doInference = 'inference' in params and params['inference'] is True
 
-                if 'minNumAnnoPerImage' in params:
-                    minNumAnnoPerImage = int(params['minNumAnnoPerImage'])
-                else:
-                    minNumAnnoPerImage = 0    #TODO
-                if 'maxNum_train' in params:
-                    maxNumImages_train = int(params['maxNum_train'])
-                else:
-                    maxNumImages_train = -1    #TODO
-                if 'maxNum_inference' in params:
-                    maxNumImages_inference = int(params['maxNum_inference'])
-                else:
-                    maxNumImages_inference = -1    #TODO
+        #         if 'minNumAnnoPerImage' in params:
+        #             minNumAnnoPerImage = int(params['minNumAnnoPerImage'])
+        #         else:
+        #             minNumAnnoPerImage = 0    #TODO
+        #         if 'maxNum_train' in params:
+        #             maxNumImages_train = int(params['maxNum_train'])
+        #         else:
+        #             maxNumImages_train = -1    #TODO
+        #         if 'maxNum_inference' in params:
+        #             maxNumImages_inference = int(params['maxNum_inference'])
+        #         else:
+        #             maxNumImages_inference = -1    #TODO
 
-                if doTrain:
-                    if doInference:
-                        status = self.middleware.start_train_and_inference(
-                                project=project,
-                                minTimestamp='lastState',
-                                minNumAnnoPerImage=minNumAnnoPerImage,
-                                maxNumWorkers_train=1,          #TODO
-                                forceUnlabeled_inference=False,
-                                maxNumImages_inference=maxNumImages_inference,
-                                maxNumWorkers_inference=-1)     #TODO
-                    else:
-                        #TODO: expand to other tasks and requests
-                        if self.middleware.task_ongoing(project, ('AIController.start_training',
-                                                                'AIWorker.call_train', 'AIWorker.call_average_model_states')):
-                            raise Exception('A training process is already ongoing for project "{}".'.format(project))
+        #         if doTrain:
+        #             if doInference:
+        #                 status = self.middleware.start_train_and_inference(
+        #                         project=project,
+        #                         minTimestamp='lastState',
+        #                         minNumAnnoPerImage=minNumAnnoPerImage,
+        #                         maxNumWorkers_train=1,          #TODO
+        #                         forceUnlabeled_inference=False,
+        #                         maxNumImages_inference=maxNumImages_inference,
+        #                         maxNumWorkers_inference=-1)     #TODO
+        #             else:
+        #                 #TODO: expand to other tasks and requests
+        #                 if self.middleware.task_ongoing(project, ('AIController.start_training',
+        #                                                         'AIWorker.call_train', 'AIWorker.call_average_model_states')):
+        #                     raise Exception('A training process is already ongoing for project "{}".'.format(project))
                         
-                        status = self.middleware.start_training(
-                                project=project,
-                                numEpochs=1,
-                                minTimestamp='lastState',
-                                minNumAnnoPerImage=minNumAnnoPerImage,
-                                maxNumImages=maxNumImages_train,
-                                maxNumWorkers=1)                #TODO
-                else:
-                    status = self.middleware.start_inference(
-                                project=project,
-                                forceUnlabeled=False, 
-                                maxNumImages=maxNumImages_inference, 
-                                maxNumWorkers=-1)               #TODO
+        #                 status = self.middleware.start_training(
+        #                         project=project,
+        #                         numEpochs=1,
+        #                         minTimestamp='lastState',
+        #                         minNumAnnoPerImage=minNumAnnoPerImage,
+        #                         maxNumImages=maxNumImages_train,
+        #                         maxNumWorkers=1)                #TODO
+        #         else:
+        #             status = self.middleware.start_inference(
+        #                         project=project,
+        #                         forceUnlabeled=False, 
+        #                         maxNumImages=maxNumImages_inference, 
+        #                         maxNumWorkers=-1)               #TODO
 
-                return { 'status' : status }
-            except Exception as e:
-                abort(400, 'bad request')
+        #         return { 'status' : status }
+        #     except Exception as e:
+        #         abort(400, 'bad request')
 
 
 

@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS aide_admin.project (
     maxNumImages_train BIGINT,
     maxNumImages_inference BIGINT,
     inference_chunk_size BIGINT,
+    max_num_concurrent_tasks INTEGER,
     default_workflow UUID,
     ai_model_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     ai_model_library VARCHAR,

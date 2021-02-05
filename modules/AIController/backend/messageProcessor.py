@@ -31,6 +31,7 @@ import kombu.five
 from util.helpers import current_time
 
 
+#TODO: class is in principle deprecated; only functionality that needs to be moved is the polling of the workers
 class MessageProcessor(Thread):
 
     def __init__(self, celery_app):
@@ -56,27 +57,27 @@ class MessageProcessor(Thread):
         yield nodes
 
 
-    def __add_worker_task(self, task):
-        project = task['kwargs']['project']
-        if not project in self.messages:
-            self.messages[project] = {}
+    # def __add_worker_task(self, task):
+    #     project = task['kwargs']['project']
+    #     if not project in self.messages:
+    #         self.messages[project] = {}
 
-        result = AsyncResult(task['id'])
-        if not task['id'] in self.messages[project]:
-            try:
-                timeSubmitted = datetime.fromtimestamp(time.time() - (kombu.five.monotonic() - task['time_start']))
-            except:
-                timeSubmitted = current_time() #TODO: dirty hack to make failsafe with UI
-            self.messages[project][task['id']] = {
-                'type': ('train' if 'train' in task['name'] else 'inference'),        #TODO
-                'submitted': str(timeSubmitted),
-                'status': celery.states.PENDING,
-                'meta': {'message':'job at worker'}
-            }
+    #     result = AsyncResult(task['id'])
+    #     if not task['id'] in self.messages[project]:
+    #         try:
+    #             timeSubmitted = datetime.fromtimestamp(time.time() - (kombu.five.monotonic() - task['time_start']))
+    #         except:
+    #             timeSubmitted = current_time() #TODO: dirty hack to make failsafe with UI
+    #         self.messages[project][task['id']] = {
+    #             'type': ('train' if 'train' in task['name'] else 'inference'),        #TODO
+    #             'submitted': str(timeSubmitted),
+    #             'status': celery.states.PENDING,
+    #             'meta': {'message':'job at worker'}
+    #         }
 
-        #TODO: needed?
-        if result.ready():
-            result.forget()
+    #     #TODO: needed?
+    #     if result.ready():
+    #         result.forget()
 
 
 
@@ -87,148 +88,148 @@ class MessageProcessor(Thread):
 
 
 
-    def __poll_tasks(self, project):
-        status = {}
-        task_ongoing = False
+    # def __poll_tasks(self, project):
+    #     status = {}
+    #     task_ongoing = False
         
-        if not project in self.messages:
-            return status, task_ongoing
+    #     if not project in self.messages:
+    #         return status, task_ongoing
 
-        for key in self.messages[project].keys():
-            job = self.messages[project][key]
-            msg = self.celery_app.backend.get_task_meta(key)
-            if not len(msg):
-                continue
+    #     for key in self.messages[project].keys():
+    #         job = self.messages[project][key]
+    #         msg = self.celery_app.backend.get_task_meta(key)
+    #         if not len(msg):
+    #             continue
 
-            # check for worker failures
-            if msg['status'] == celery.states.FAILURE:
-                # append failure message
-                if 'meta' in msg:       #TODO: and isinstance(msg['meta'], BaseException):
-                    info = { 'message': html.escape(str(msg['meta']))}
-                else:
-                    info = { 'message': 'an unknown error occurred'}
-            else:
-                info = msg['result']
+    #         # check for worker failures
+    #         if msg['status'] == celery.states.FAILURE:
+    #             # append failure message
+    #             if 'meta' in msg:       #TODO: and isinstance(msg['meta'], BaseException):
+    #                 info = { 'message': html.escape(str(msg['meta']))}
+    #             else:
+    #                 info = { 'message': 'an unknown error occurred'}
+    #         else:
+    #             info = msg['result']
             
-            status[key] = {
-                'type': job['type'],
-                'submitted': job['submitted'],      #TODO: not broadcast across AIController threads...
-                'status': msg['status'],
-                'meta': info
-            }
-            if 'subjobs' in job:
-                subjobEntries = []
-                for subjob in job['subjobs']:
-                    if isinstance(subjob, GroupResult):
-                        entry = {
-                            'id': subjob.id
-                        }
-                        subEntries = []
-                        for res in subjob.results:
-                            subEntry = {
-                                'id': res.id,
-                                'status': res.status,
-                                'meta': ('complete' if res.status == 'SUCCESS' else str(res.result))       #TODO
-                            }
-                            subEntries.append(subEntry)
-                        entry['subjobs'] = subEntries
-                    else:
-                        entry = {
-                            'id': subjob.id,
-                            'status': subjob.status,
-                            'meta': ('complete' if subjob.status == 'SUCCESS' else str(subjob.result))       #TODO
-                        }
-                    subjobEntries.append(entry)
-                status[key]['subjobs'] = subjobEntries
+    #         status[key] = {
+    #             'type': job['type'],
+    #             'submitted': job['submitted'],      #TODO: not broadcast across AIController threads...
+    #             'status': msg['status'],
+    #             'meta': info
+    #         }
+    #         if 'subjobs' in job:
+    #             subjobEntries = []
+    #             for subjob in job['subjobs']:
+    #                 if isinstance(subjob, GroupResult):
+    #                     entry = {
+    #                         'id': subjob.id
+    #                     }
+    #                     subEntries = []
+    #                     for res in subjob.results:
+    #                         subEntry = {
+    #                             'id': res.id,
+    #                             'status': res.status,
+    #                             'meta': ('complete' if res.status == 'SUCCESS' else str(res.result))       #TODO
+    #                         }
+    #                         subEntries.append(subEntry)
+    #                     entry['subjobs'] = subEntries
+    #                 else:
+    #                     entry = {
+    #                         'id': subjob.id,
+    #                         'status': subjob.status,
+    #                         'meta': ('complete' if subjob.status == 'SUCCESS' else str(subjob.result))       #TODO
+    #                     }
+    #                 subjobEntries.append(entry)
+    #             status[key]['subjobs'] = subjobEntries
             
-            # check if ongoing
-            result = AsyncResult(key)
-            if result.ready():                  #TODO: chains somehow get stuck in 'PENDING'...
-                # done; remove from queue
-                result.forget()
-                status[key]['status'] = 'SUCCESS'
-            elif result.failed():
-                # failed
-                result.forget()
-                status[key]['status'] = 'FAILURE'
-            else:
-                task_ongoing = True
-        return status, task_ongoing
+    #         # check if ongoing
+    #         result = AsyncResult(key)
+    #         if result.ready():                  #TODO: chains somehow get stuck in 'PENDING'...
+    #             # done; remove from queue
+    #             result.forget()
+    #             status[key]['status'] = 'SUCCESS'
+    #         elif result.failed():
+    #             # failed
+    #             result.forget()
+    #             status[key]['status'] = 'FAILURE'
+    #         else:
+    #             task_ongoing = True
+    #     return status, task_ongoing
 
 
 
-    def poll_status(self, project):
-        status, task_ongoing = self.__poll_tasks(project)
+    # def poll_status(self, project):
+    #     status, task_ongoing = self.__poll_tasks(project)
 
-        # make sure to locally poll for jobs not in current AIController thread's stack
-        #TODO: could be a bit too expensive...
-        if not task_ongoing:
-            self.poll_worker_status(project)
-            status, _ = self.__poll_tasks(project)
-        return status
+    #     # make sure to locally poll for jobs not in current AIController thread's stack
+    #     #TODO: could be a bit too expensive...
+    #     if not task_ongoing:
+    #         self.poll_worker_status(project)
+    #         status, _ = self.__poll_tasks(project)
+    #     return status
 
 
-    def register_job(self, project, job, taskType):
+    # def register_job(self, project, job, taskType):
 
-        if not project in self.jobs:
-            self.jobs[project] = []
+    #     if not project in self.jobs:
+    #         self.jobs[project] = []
 
-        self.jobs[project].append(job)
+    #     self.jobs[project].append(job)
 
-        if not project in self.messages:
-            self.messages[project] = {}
+    #     if not project in self.messages:
+    #         self.messages[project] = {}
 
-        #TODO: incomplete & probably buggy
-        # add job with its children
-        message = {
-            'id': job.id,
-            'type': taskType,
-            'submitted': str(current_time()),
-            'meta': {'message':'sending job to worker'},
-            'subjobs': {}
-        }
-        if hasattr(job, 'status'):
-            message['status'] = job.status
-        if hasattr(job, 'parent'):
-            subjobs = list(self.unpack_chain(job))
-            subjobs.reverse()
-            message['subjobs'] = subjobs
-        self.messages[project][job.id] = message
+    #     #TODO: incomplete & probably buggy
+    #     # add job with its children
+    #     message = {
+    #         'id': job.id,
+    #         'type': taskType,
+    #         'submitted': str(current_time()),
+    #         'meta': {'message':'sending job to worker'},
+    #         'subjobs': {}
+    #     }
+    #     if hasattr(job, 'status'):
+    #         message['status'] = job.status
+    #     if hasattr(job, 'parent'):
+    #         subjobs = list(self.unpack_chain(job))
+    #         subjobs.reverse()
+    #         message['subjobs'] = subjobs
+    #     self.messages[project][job.id] = message
 
 
     
-    def task_id(self, project):
-        '''
-            Returns a UUID that is not already in use.
-        '''
-        while True:
-            id = project + '__' + str(uuid.uuid1())
-            if project not in self.jobs or id not in self.jobs[project]:
-                return id
+    # def task_id(self, project):
+    #     '''
+    #         Returns a UUID that is not already in use.
+    #     '''
+    #     while True:
+    #         id = project + '__' + str(uuid.uuid1())
+    #         if project not in self.jobs or id not in self.jobs[project]:
+    #             return id
 
 
-    def task_ongoing(self, project, taskTypes):
-        '''
-            Polls the workers for tasks and returns True if at least
-            one of the tasks of given type (train, inference, etc.) is
-            running.
-        '''
+    # def task_ongoing(self, project, taskTypes):
+    #     '''
+    #         Polls the workers for tasks and returns True if at least
+    #         one of the tasks of given type (train, inference, etc.) is
+    #         running.
+    #     '''
 
-        # poll for status
-        self.pollNow()
+    #     # poll for status
+    #     self.pollNow()
 
-        # identify types
-        if isinstance(taskTypes, str):
-            taskTypes = (taskTypes,)
+    #     # identify types
+    #     if isinstance(taskTypes, str):
+    #         taskTypes = (taskTypes,)
 
-        if not project in self.messages:
-            return False
-        for key in self.messages[project].keys():
-            if self.messages[project][key]['type'] in taskTypes and \
-                self.messages[project][key]['status'] not in (celery.states.SUCCESS, celery.states.FAILURE,):
-                print('training ongoing')
-                return True
-        return False
+    #     if not project in self.messages:
+    #         return False
+    #     for key in self.messages[project].keys():
+    #         if self.messages[project][key]['type'] in taskTypes and \
+    #             self.messages[project][key]['status'] not in (celery.states.SUCCESS, celery.states.FAILURE,):
+    #             print('training ongoing')
+    #             return True
+    #     return False
 
 
     def pollNow(self):

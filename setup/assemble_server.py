@@ -53,7 +53,7 @@ def assemble_server(verbose_start=True, check_v1_config=True, migrate_database=T
 ##     ##  ##  ##     ## ######         [config]
 #########  ##  ##     ## ##             .> {configPath}
 ##     ##  ##  ##     ## ##             
-##     ## #### ########  ########       [modules]]
+##     ## #### ########  ########       [modules]
                                         .> {aideModules}
 #################################\033[0m
 ''')

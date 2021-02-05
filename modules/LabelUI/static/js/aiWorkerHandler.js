@@ -442,41 +442,41 @@ class AIWorkerHandler {
     }
 
     
-    startInference() {
-        var self = this;
-        $.ajax({
-            url: 'startInference',
-            method: 'POST',
-            success: function(data) {
-                // console.log(data);
-                window.messager.addMessage('Inference started.');
-            },
-            error: function(xhr, status, error) {
-                if(error == 'Unauthorized') {
-                    // ask user to provide password again
-                    window.verifyLogin((self.startInference).bind(self));
-                }
-            }
-        })
-    }
+    // startInference() {
+    //     var self = this;
+    //     $.ajax({
+    //         url: 'startInference',
+    //         method: 'POST',
+    //         success: function(data) {
+    //             // console.log(data);
+    //             window.messager.addMessage('Inference started.');
+    //         },
+    //         error: function(xhr, status, error) {
+    //             if(error == 'Unauthorized') {
+    //                 // ask user to provide password again
+    //                 window.verifyLogin((self.startInference).bind(self));
+    //             }
+    //         }
+    //     })
+    // }
 
-    startTraining() {
-        var self = this;
-        $.ajax({
-            url: 'startTraining',
-            method: 'POST',
-            success: function(data) {
-                // console.log(data);
-                window.messager.addMessage('Training started.');
-            },
-            error: function(xhr, status, error) {
-                if(error == 'Unauthorized') {
-                    // ask user to provide password again
-                    window.verifyLogin((self.startTraining).bind(self));
-                }
-            }
-        })
-    }
+    // startTraining() {
+    //     var self = this;
+    //     $.ajax({
+    //         url: 'startTraining',
+    //         method: 'POST',
+    //         success: function(data) {
+    //             // console.log(data);
+    //             window.messager.addMessage('Training started.');
+    //         },
+    //         error: function(xhr, status, error) {
+    //             if(error == 'Unauthorized') {
+    //                 // ask user to provide password again
+    //                 window.verifyLogin((self.startTraining).bind(self));
+    //             }
+    //         }
+    //     })
+    // }
 
     manualTrigger() {
         /*

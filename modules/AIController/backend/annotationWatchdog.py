@@ -43,12 +43,13 @@ class Watchdog(Thread):
         self.lastCount = 0                              # for difference tracking
 
         self._load_properties()
-        self.taskOngoing = self._check_task_ongoing()
+        self._check_ongoing_tasks()
 
     
 
-    def _check_task_ongoing(self):
-        #TODO: WorkflowTracker contains the same code...
+    def _check_ongoing_tasks(self):
+        #TODO: limit to AIModel tasks
+        self.runningTasks = []
         tasksRunning_db = {}
         queryResult = self.dbConnector.execute(
             sql.SQL('''
@@ -65,7 +66,6 @@ class Watchdog(Thread):
                     task['abortedby'] is None:
                     tasksRunning_db[task['id']] = json.loads(task['tasks'])
         
-        self.taskOngoing = False
         tasks_orphaned = set()
         activeTasks = current_app.control.inspect().active()
         for dbKey in tasksRunning_db.keys():
@@ -79,7 +79,7 @@ class Watchdog(Thread):
                     for task in activeTasks[key]:
                         if task_ids_match(tasksRunning_db[dbKey], task['id']):
                             # confirmed task running
-                            self.taskOngoing = True
+                            self.runningTasks.append(task['id'])
                         else:
                             # task not running; flag as such in database
                             tasks_orphaned.add(dbKey)
@@ -91,7 +91,7 @@ class Watchdog(Thread):
                 taskID = task['id']
                 if taskID not in tasksRunning_db:
                     tasks_resurrected.add(taskID)
-                    self.taskOngoing = True
+                    self.runningTasks.append(taskID)
         
         tasks_orphaned = tasks_orphaned.difference(tasks_resurrected)
                 
@@ -113,8 +113,6 @@ class Watchdog(Thread):
                 WHERE id IN %s;
             ''').format(sql.Identifier(self.project, 'workflowhistory')),
                 (tuple((t,) for t in tasks_resurrected),), None)
-
-        return self.taskOngoing
 
 
     
@@ -193,13 +191,19 @@ class Watchdog(Thread):
     def getAImodelAutoTrainingEnabled(self):
         return self.properties['ai_model_enabled']
 
+    
+    
+    def getOngoingTasks(self):
+        self._check_ongoing_tasks()
+        return self.runningTasks
+
 
 
     def run(self):
 
         while True:
             
-            self.taskOngoing = self._check_task_ongoing()
+            taskOngoing = (len(self.getOngoingTasks()) > 0)
 
             if self.getAImodelAutoTrainingEnabled() and self.getThreshold() > 0:
 
@@ -207,7 +211,7 @@ class Watchdog(Thread):
                 count = self.dbConnector.execute(self.queryStr, self.queryVals, 1)
                 count = count[0]['count']
 
-                if not self.taskOngoing and count >= self.properties['numimages_autotrain']:
+                if not taskOngoing and count >= self.properties['numimages_autotrain']:
                     # threshold exceeded; initiate training process followed by inference and return
                     try:
                         self.middleware.start_train_and_inference(project=self.project,

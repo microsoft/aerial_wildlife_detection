@@ -145,7 +145,8 @@ class ProjectConfigMiddleware:
             'server_uri',
             'server_dir',
             'watch_folder_interval',
-            'inference_batch_size_limit'
+            'inference_batch_size_limit',
+            'max_num_concurrent_tasks'
         ])
         if parameters is not None and parameters != '*':
             if isinstance(parameters, str):
@@ -170,6 +171,9 @@ class ProjectConfigMiddleware:
             elif param.lower() == 'inference_batch_size_limit':
                 inferenceBsLimit = self.config.getProperty('AIWorker', 'inference_batch_size_limit', type=int, fallback=-1)
                 response[param] = inferenceBsLimit
+            elif param.lower() == 'max_num_concurrent_tasks':
+                maxNumConcurrentTasksLimit = self.config.getProperty('AIWorker', 'max_num_concurrent_tasks', type=int, fallback=2)
+                response[param] = maxNumConcurrentTasksLimit
 
         return response
 
@@ -208,6 +212,7 @@ class ProjectConfigMiddleware:
             'minnumannoperimage',
             'maxnumimages_train',
             'inference_chunk_size',
+            'max_num_concurrent_tasks',
             'watch_folder_enabled',
             'watch_folder_remove_missing_enabled'
         ])

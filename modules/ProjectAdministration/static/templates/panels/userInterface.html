@@ -200,10 +200,6 @@
             </div>
         </div>
     </div>
-
-    <!-- <div>
-        <button id="proj-settings-save-button" class="btn btn-primary" style="float:right">Save</button>
-    </div> -->
 </div>
 <style>
     h3 {
@@ -231,6 +227,7 @@
         width: 500px;
     }
 </style>
+<script type="text/javascript" src="/static/interface/js/dataHandler.js?v={{ version }}"></script>
 <script type="text/javascript">
 
     // field-to-token mapping
@@ -595,6 +592,9 @@
     }
 
     $(document).ready(function() {
+
+        // initiate dummy data handler for preview
+        window.dataHandler = new DataHandler(null);
 
         // get project immutables
         var promise = getProjectImmutables();
