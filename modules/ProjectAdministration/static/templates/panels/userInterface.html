@@ -1,9 +1,14 @@
 <div>
     <h2>Interface</h2>
 
-    <h3>General</h3>
-    <div class="settings-group">
-        <input type="checkbox" id="interface-enabled-checkbox" />
+    <!-- <h3>General</h3> -->
+    <div class="settings-group" id="enable-interface-panel">
+        <div class="custom-control custom-switch">
+            <input type="checkbox" class="custom-control-input" id="interface-enabled-checkbox">
+            <label class="custom-control-label" for="interface-enabled-checkbox">Enable annotation interface</label>
+        </div>
+
+        <!-- <input type="checkbox" id="interface-enabled-checkbox" />
         <label for="interface-enabled-checkbox">Enable annotation interface</label>
         <br />
 
@@ -13,10 +18,20 @@
         <div style="margin-left:20px">
             <input type="checkbox" id="show-image-uris-checkbox" disabled />
             <label for="show-image-uris-checkbox">Enable hyperlinks to images</label>
-        </div>
+        </div> -->
     </div>
 
     <h3>Image viewer</h3>
+    <div class="settings-group">
+        <input type="checkbox" id="show-image-names-checkbox" />
+        <label for="show-image-names-checkbox">Show file names below images</label>
+        <br />
+        <div style="margin-left:20px">
+            <input type="checkbox" id="show-image-uris-checkbox" disabled />
+            <label for="show-image-uris-checkbox">Enable hyperlinks to images</label>
+        </div>
+    </div>
+
     <div class="settings-group"></div>
         <table>
             <tr>
@@ -225,6 +240,41 @@
     .entry {
         display: block !important;
         width: 500px;
+    }
+
+    .custom-control-input {
+        position: relative;
+    }
+
+    .custom-control-label {
+        font-size: 14pt;
+        left: 10px;
+    }
+
+    .custom-switch .custom-control-label::before {
+        left: -2.8rem;
+        width: 2.5rem;
+        height: 1.5rem;
+        border-radius: .8rem;
+    }
+
+    .custom-switch .custom-control-label::after {
+        left: calc(-2.8rem + 2px);
+        top: calc(.3rem + 2px);
+        width: calc(1.3rem - 4px);
+        height: calc(1.3rem - 4px);
+    }
+
+    .custom-switch .custom-control-input:checked~.custom-control-label::after {
+        -webkit-transform: translateX(1rem);
+        transform: translateX(1rem);
+    }
+
+    #enable-interface-panel {
+        background: #606060;
+        padding: 20px;
+        padding-left: 0;
+        border-radius: 10px;
     }
 </style>
 <script type="text/javascript" src="/static/interface/js/dataHandler.js?v={{ version }}"></script>

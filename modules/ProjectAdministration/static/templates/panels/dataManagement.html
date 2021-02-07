@@ -402,8 +402,6 @@
                     contentType: 'application/json; charset=utf-8',
                     dataType: 'json',
                     success: function(response) {
-                        console.log(response);  //TODO: show pane, then reload image browser
-
                         if(action === 'delete_images') {
                             // images deleted; refresh folders in parallel
                             initializeDirectoryBrowser();
@@ -411,11 +409,13 @@
 
                         return updateImageBrowser(true, false).done(function() {
                             window.messager.addMessage(actionText, 'success');
+                        }).fail(function() {
+                            window.messager.addMessage('An unknown error occurred trying to execute action on selected images.', 'error', 0);
                         });
                     },
-                    error: function(response) {
-                        console.log('error:');   //TODO: show pane
-                        console.log(response);
+                    error: function(xhr, status, error) {
+                        console.error(error);
+                        window.messager.addMessage('An error occurred trying to execute action on selected images (message: "'+error+'").', 'error', 0);
                     }
                 })
             }

@@ -407,7 +407,6 @@ class AIMiddleware():
             Queries the database for the latest images to be used for model training.
             Returns a list with image UUIDs accordingly, split into the number of
             available workers.
-            #TODO: includeGoldenQuestions
         '''
         # sanity checks
         if not (isinstance(minTimestamp, datetime) or minTimestamp == 'lastState' or
@@ -438,6 +437,12 @@ class AIMiddleware():
         elif isinstance(minTimestamp, int) or isinstance(minTimestamp, float):
             timestampStr = sql.SQL('WHERE iu.last_checked > COALESCE(to_timestamp(0), to_timestamp(%s))')
             queryVals.append(minTimestamp)
+        
+        # golden questions
+        if includeGoldenQuestions:
+            gqStr = sql.SQL('')
+        else:
+            gqStr = sql.SQL('AND isGoldenQuestion != TRUE')
 
         if minNumAnnoPerImage > 0:
             queryVals.append(minNumAnnoPerImage)
@@ -455,7 +460,8 @@ class AIMiddleware():
                     JOIN (
                         SELECT id AS iid
                         FROM {id_img}
-                        WHERE corrupt IS NULL OR corrupt = FALSE
+                        WHERE (corrupt IS NULL OR corrupt = FALSE)
+                        {gqStr}
                     ) AS imgQ
                     ON iu.image = imgQ.iid
                     {timestampStr}
@@ -465,6 +471,7 @@ class AIMiddleware():
             ''').format(
                 id_iu=sql.Identifier(project, 'image_user'),
                 id_img=sql.Identifier(project, 'image'),
+                gqStr=gqStr,
                 timestampStr=timestampStr,
                 limitStr=limitStr)
 
@@ -510,11 +517,11 @@ class AIMiddleware():
         return imageIDs
 
 
+
     def get_inference_images(self, project, goldenQuestionsOnly=False, forceUnlabeled=False, maxNumImages=None, maxNumWorkers=-1):
         '''
             Queries the database for the latest images to be used for inference after model training.
             Returns a list with image UUIDs accordingly, split into the number of available workers.
-            #TODO: goldenQuestionsOnly
         '''
         if maxNumImages is None or maxNumImages == -1:
             queryResult = self.dbConn.execute('''
@@ -526,7 +533,7 @@ class AIMiddleware():
         queryVals = (maxNumImages,)
 
         # load the IDs of the images that are being subjected to inference
-        sql = self.sqlBuilder.getInferenceQueryString(project, forceUnlabeled, maxNumImages)
+        sql = self.sqlBuilder.getInferenceQueryString(project, forceUnlabeled, goldenQuestionsOnly, maxNumImages)
         imageIDs = self.dbConn.execute(sql, queryVals, 'all')
         imageIDs = [i['image'] for i in imageIDs]
 

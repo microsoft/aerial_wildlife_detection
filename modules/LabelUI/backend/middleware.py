@@ -743,7 +743,7 @@ class DBMiddleware():
         ''').format(
             id_img=sql.Identifier(project, 'image')
         )
-        result = self.dbConnector.execute(queryStr, submissions, 'all')
+        result = self.dbConnector.insert(queryStr, submissions, 'all')
         imgs_result = {}
         for r in result:
             imgs_result[str(r['id'])] = r['isgoldenquestion']
