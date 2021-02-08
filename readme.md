@@ -14,7 +14,7 @@ Progress on tasks/implementations:
 - [ ] General unit testing
 
 
-**NOTE:** Getting this branch to run additionally requires the installation of the Detectron2 library, which has to be done __after__ all other packages are already installed. Essentially, prepare a Python environment and install the requirements and then add Detectron2:
+**NOTE:** Getting this branch to run additionally requires the installation of the Detectron2 library (>= 0.3), which has to be done __after__ all other packages are already installed. Essentially, prepare a Python environment and install the requirements and then add Detectron2:
 ```bash
     conda create -y -n aide_detectron2 python=3.7
     conda activate aide_detectron2

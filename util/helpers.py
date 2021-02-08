@@ -5,6 +5,7 @@
 '''
 
 import os
+import sys
 import importlib
 from functools import reduce
 from datetime import datetime
@@ -98,6 +99,30 @@ def get_class_executable(path):
     classPath, executableName = path[0:idx], path[idx+1:]
     execFile = importlib.import_module(classPath)
     return getattr(execFile, executableName)
+
+
+
+def get_library_available(libName, checkImport=False):
+    '''
+        Checks whether a Python library is available and returns a bool
+        accordingly. Library names can be dot-separated as common in
+        Python imports. If "checkImport" is True, the library is attempt-
+        ed to be actually imported; if this fails, False is returned.
+    '''
+    try:
+        if sys.version_info[1] <= 3:
+            if importlib.find_loader(libName) is None:
+                raise
+        else:
+            if importlib.util.find_spec(libName) is None:
+                raise
+        
+        if checkImport:
+            importlib.import_module(libName)
+        
+        return True
+    except:
+        return False
 
 
 

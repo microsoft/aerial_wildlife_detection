@@ -2,7 +2,7 @@
 
 ## Requirements
 
-The AIDE label interface (without the AI backend) requires the following libraries:
+The AIDE label interface requires the following libraries:
 
 * bottle>=0.12
 * psycopg2>=2.8.2
@@ -13,23 +13,22 @@ The AIDE label interface (without the AI backend) requires the following librari
 * Pillow>=2.2.1
 * numpy>=1.16.4
 * requests>=2.22.0
-
-The AI backend core further relies on:
-
 * celery[librabbitmq,redis,auth,msgpack]>=4.3.0
 
 
 Finally, the [built-in models](builtin_models.md) require:
 
-* pytorch>=1.1.0
-* torchvision>=0.3.0
+* pytorch>=1.5.0
+* torchvision>=0.6.0
+* detectron2>=0.3.0
+* opencv-python
 
-It is highly recommended to install PyTorch with GPU support (see the [official website](https://pytorch.org/get-started/locally/)).
+If you have a CUDA-capable GPU it is highly recommended to install PyTorch with GPU support (see the [official website](https://pytorch.org/get-started/locally/)).
 
 
 ## Step-by-step installation
 
-The following installation routine had been tested on Ubuntu 16.04. AIDE will likely run on different OS as well, with instructions requiring corresponding adaptations.
+The following installation routine had been tested on Ubuntu >= 16.04. AIDE will likely run on different OS as well, with instructions requiring corresponding adaptations.
 
 
 
@@ -87,12 +86,7 @@ See [here](setup_db.md)
 
 ### Set up the message broker
 
-The message broker is required for the following services of AIDE:
-* Data management (file up- and download)
-* AI model training and inference coordination
-* Statistical evaluation of user and model performances (TODO: to be migrated to Celery)
-
-This means that as of the latest version of AIDE, a message broker must be configured in any case, even if no AI model is used.
+The message broker is required for all services of AIDE, except for the Database.
 To set up the message broker correctly, see [here](installation_aiTrainer.md).
 
 

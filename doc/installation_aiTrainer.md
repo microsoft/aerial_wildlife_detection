@@ -22,10 +22,7 @@ Make sure the ports are open for any machine running an _AIController_ or _AIWor
 
 ### Install requirements
 
-Besides the usual requirements listed in the [installation guide](install.md/#requirements), the _AIController_ and all _AIWorker_ instances further need the following package:
-* celery[librabbitmq,redis,auth,msgpack]>=4.3.0
-
-which can be installed using pip:
+The required libraries for the message broker can be installed e.g. using pip:
 ```bash
     conda activate aide
     pip install celery[librabbitmq,redis,auth,msgpack]

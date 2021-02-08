@@ -50,8 +50,8 @@ This launches the Gunicorn HTTP web server, and/or a Celery message broker consu
 
 | Module | HTTP web server | Celery |
 |--------------|-----------------|--------|
-| LabelUI | ✓ |  |
-| AIController | ✓ |  |
+| LabelUI | ✓ | ✓ |
+| AIController | ✓ | ✓ |
 | AIWorker |  | ✓ |
 | FileServer | ✓ | ✓ |
 
