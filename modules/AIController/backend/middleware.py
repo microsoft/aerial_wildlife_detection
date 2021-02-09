@@ -369,7 +369,7 @@ class AIMiddleware():
 
     
     
-    def can_launch_task(project, autoLaunched):
+    def can_launch_task(self, project, autoLaunched):
         '''
             Polls ongoing tasks for the project in question and retrieves
             the maximum number of tasks that are allowed to be executed

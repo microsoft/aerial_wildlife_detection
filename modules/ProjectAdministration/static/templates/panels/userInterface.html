@@ -479,7 +479,7 @@
             data: JSON.stringify(data),
             success: function(data) {
                 return reloadUIsettings().done(function() {
-                    window.messager.addMessage('Configuration saved successfully.', 'success');
+                    // window.messager.addMessage('Configuration saved successfully.', 'success');
                     return $.Deferred().promise();
                 });
             },
