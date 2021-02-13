@@ -3,7 +3,7 @@
     model states from an in-memory Python dict according
     to states as saved in AIDE.
 
-    2020 Benjamin Kellenberger
+    2020-21 Benjamin Kellenberger
 '''
 
 from detectron2.checkpoint import DetectionCheckpointer
@@ -31,9 +31,9 @@ class DetectionCheckpointerInMem(DetectionCheckpointer):
 
         for key in self.checkpointables if checkpointables is None else checkpointables:
             if key in stateDict:  # pyre-ignore
-                self.logger.info("Loading {} from {}".format(key, path))
+                self.logger.info("Loading {} from state dict".format(key))
                 obj = self.checkpointables[key]
-                obj.load_state_dict(checkpoint.pop(key))  # pyre-ignore
+                obj.load_state_dict(stateDict.pop(key))  # pyre-ignore
 
         # return any further checkpoint data
         return stateDict

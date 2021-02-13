@@ -15,7 +15,7 @@ import torch
 from torch.nn.parallel import DistributedDataParallel
 import detectron2
 from detectron2.config import get_cfg
-from detectron2.data import MetadataCatalog, MapDataset, build_detection_train_loader, build_detection_test_loader
+from detectron2.data import MetadataCatalog, build_detection_train_loader, build_detection_test_loader
 from detectron2.data import transforms as T
 from detectron2.solver import build_lr_scheduler, build_optimizer
 import detectron2.utils.comm as comm

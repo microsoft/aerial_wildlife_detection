@@ -12,7 +12,6 @@
 import json
 from threading import Thread, Event
 import math
-import uuid
 from psycopg2 import sql
 from celery import current_app
 
@@ -68,6 +67,8 @@ class Watchdog(Thread):
         
         tasks_orphaned = set()
         activeTasks = current_app.control.inspect().active()
+        if not isinstance(activeTasks, dict):
+            activeTasks = {}
         for dbKey in tasksRunning_db.keys():
             # auto-launched workflow running according to database; check Celery for completeness
             if not len(activeTasks):
@@ -77,6 +78,13 @@ class Watchdog(Thread):
             else:
                 for key in activeTasks:
                     for task in activeTasks[key]:
+                        # check type of task
+                        taskName = task['name'].lower()
+                        if not (taskName.startswith('aiworker') or \
+                            taskName in ('aicontroller.get_training_images', 'aicontroller.get_inference_images')):
+                            # task is not AI model training-related; skip
+                            continue
+
                         if task_ids_match(tasksRunning_db[dbKey], task['id']):
                             # confirmed task running
                             self.runningTasks.append(task['id'])
@@ -88,6 +96,14 @@ class Watchdog(Thread):
         tasks_resurrected = set()
         for key in activeTasks:
             for task in activeTasks[key]:
+
+                # check type of task
+                taskName = task['name'].lower()
+                if not (taskName.startswith('aiworker') or \
+                    taskName in ('aicontroller.get_training_images', 'aicontroller.get_inference_images')):
+                    # task is not AI model training-related; skip
+                    continue
+
                 taskID = task['id']
                 if taskID not in tasksRunning_db:
                     tasks_resurrected.add(taskID)

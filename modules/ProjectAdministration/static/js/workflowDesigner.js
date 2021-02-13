@@ -1,5 +1,5 @@
 /*
- * 2020 Benjamin Kellenberger
+ * 2020-21 Benjamin Kellenberger
  */
 
 
@@ -445,15 +445,26 @@ class TrainNode extends DefaultNode {
         //TODO 3: figure out if min. timestamp is for model or images...
 
         // minimum timestamp
+        let hasTimestamp = (typeof(this.params['min_timestamp']) === 'number');
+
         var minTmarkup = $('<div></div>');
         minTmarkup.append('<div>Images last viewed:</div>');
         this.minTgr = $('<buttonGroup></buttonGroup>');
-        this.minTgr.append($('<input type="radio" name="min-timestamp" id="'+this.id+'-minT-latest" value="lastState" checked="checked" />' +
+        this.minTgr.append($('<input type="radio" name="min-timestamp" id="'+this.id+'-minT-latest" value="lastState" '+(!hasTimestamp? 'checked="checked"' : '')+'" />' +
                             '<label for="'+this.id+'-minT-latest">Latest</label>'));
         this.minTgr.append($('<br />'));
-        this.minTgr.append($('<input type="radio" name="min-timestamp" id="'+this.id+'-minT-latest" value="timestamp" />' +
-                            '<label for="'+this.id+'-minT-latest">From date on:</label>'));
+        this.minTgr.append($('<input type="radio" name="min-timestamp" id="'+this.id+'-minT-timestamp" value="timestamp" '+(hasTimestamp? 'checked="checked"' : '')+'" />' +
+                            '<label for="'+this.id+'-minT-timestamp">From date on:</label>'));
+        this.timestampSpecifier = $('<input type="text" />');
+        this.timestampSpecifier.datetimepicker({
+            defaultDate: (hasTimestamp? new Date(this.params['min_timestamp'] * 1000) : null)
+        });
+        if(hasTimestamp) {
+            //TODO: needed because of buggy date time picker plugin
+            this.timestampSpecifier.val(new Date(this.params['min_timestamp'] * 1000).toString());
+        }
         minTmarkup.append(this.minTgr);
+        minTmarkup.append(this.timestampSpecifier);
         this.propertiesMarkup.append(minTmarkup);
 
         // golden question images
@@ -510,7 +521,8 @@ class TrainNode extends DefaultNode {
         var timestampSel = this.minTgr.find('input:radio[name="min-timestamp"]:checked').val();
         if(timestampSel === 'timestamp') {
             // get from date instead
-            timestampSel = new Date();  //TODO
+            timestampSel = new Date(this.timestampSpecifier.val()).getTime() / 1000;
+            // timestampSel = new Date();  //TODO
         }
         this.params['min_timestamp'] = timestampSel;
         this.params['min_anno_per_image'] = this.minNumAnno.val();

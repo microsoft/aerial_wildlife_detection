@@ -10,7 +10,6 @@
 '''
 
 import copy
-from io import BytesIO
 import base64
 import numpy as np
 import cv2

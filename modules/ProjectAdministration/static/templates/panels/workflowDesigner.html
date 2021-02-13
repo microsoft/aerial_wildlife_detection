@@ -81,6 +81,7 @@
     <div class="grad-border-h"></div>
     <div id="task-status-div" style="margin-top:30px;max-height:800px;overflow-y:auto;"></div>
 </div>
+<link rel="stylesheet" href="/static/general/libs/datetimepicker/jquery.datetimepicker.css?v={{ version }}" />
 <link rel="stylesheet" href="/static/projectAdmin/css/workflowDesigner.css?v={{ version }}" />
 <link rel="stylesheet" href="/static/aiController/css/workflowMonitor.css?v={{ version }}" />
 <link rel="stylesheet" href="/static/general/css/optionsEngine.css?v={{ version }}" />
@@ -123,6 +124,7 @@
         border-radius: 5px;
     }
 </style>
+<script src="/static/general/libs/datetimepicker/jquery.datetimepicker.js?v={{ version }}"></script>
 <script src="/static/general/js/progressbar.js?v={{ version }}"></script>
 <script src="/static/aiController/js/workflowMonitor.js?v={{ version }}"></script>
 <script src="/static/projectAdmin/js/workflowDesigner.js?v={{ version }}"></script>
@@ -237,9 +239,11 @@
         }
 
         function saveWorkflow() {
-            $('#save-workflow').prop('disabled', true);
             var wName = $('#workflow-name').val();
-            if(wName === '') return;
+            if(wName === '') {
+                $('#save-workflow').prop('disabled', true);
+                return;
+            }
 
             // get mode: if ID given and name identical, we overwrite, otherwise we create a new workflow
             let idGiven = (window.editedWorkflowID !== undefined && typeof(window.savedWorkflows[window.editedWorkflowID]) === 'object');
@@ -248,7 +252,7 @@
             } else {
                 var nameIdentical = false;
             }
-
+            
             var data = {};
             if(!idGiven || !nameIdentical) {
                 // new workflow; check if name already exists
@@ -446,6 +450,9 @@
             // find selected workflow
             window.editedWorkflowID = getSelectedWorkflowID();
             if(window.editedWorkflowID === null) return;
+
+            // set workflow name
+            $('#workflow-name').val(window.savedWorkflows[window.editedWorkflowID]['name']);
 
             // draw workflow
             try {
