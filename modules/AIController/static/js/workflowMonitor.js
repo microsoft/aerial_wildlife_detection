@@ -396,6 +396,11 @@ class Task {
         }
         return progress;
     }
+
+    showDetails(visible) {
+        if(visible) this.childrenDiv.slideDown();
+        else this.childrenDiv.slideUp();
+    }
 }
 
 
@@ -499,18 +504,20 @@ class WorkflowMonitor {
                         // new task found
                         task = new Task(tasks[t], undefined, true, self.showAdminFunctionalities);
                         self.tasks[taskID] = task;
-                        if(task.taskFinished()) {
+                        if(task.taskFinished() || task.taskFailed() || task.taskSuccessful()) {
                             self.finishedTasksContainer.append(task.markup);
+                            task.showDetails(false);
                         } else {
                             numActiveTasks++;
                             self.runningTasksContainer.append(task.markup);
                         }
                     } else {
                         task.updateStatus(tasks[t]);
-                        if(task.taskFinished()) {
+                        if(task.taskFinished() || task.taskFailed() || task.taskSuccessful()) {
                             if(task.markup.parent().attr('id') !== 'finished-tasks-list') {
                                 task.markup.detach();
                                 self.finishedTasksContainer.prepend(task.markup);
+                                task.showDetails(false);
                             }
                         } else {
                             numActiveTasks++;

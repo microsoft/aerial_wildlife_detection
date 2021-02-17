@@ -110,7 +110,7 @@ class DeepLabV3Plus(GenericDetectron2SegmentationModel):
                 else:
                     classMap_updated[clName] = index_updated
                     index_updated += 1
-            
+
             weights = weights[valid,...]
             biases = biases[valid,...]
 
@@ -164,7 +164,7 @@ if __name__ == '__main__':
     
 
     # launch model
-    rn = DeepLabV3Plus(project, config, database, fileServer, None)
-    _, stateDict = rn.loadAndAdaptModel(None, data, updateStateFun)
-    # stateDict = rn.train(stateDict, data, updateStateFun)
-    rn.inference(stateDict, data, updateStateFun)
+    dl = DeepLabV3Plus(project, config, database, fileServer, None)
+    _, stateDict = dl.loadAndAdaptModel(None, data, updateStateFun)
+    stateDict, _ = dl.train(stateDict, data, updateStateFun)
+    dl.inference(stateDict, data, updateStateFun)

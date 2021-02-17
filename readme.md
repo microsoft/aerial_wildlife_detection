@@ -49,7 +49,7 @@ AIDE is primarily developed by [Benjamin Kellenberger](https://bkellenb.github.i
 We are delighted to officially announce AIDE version 2!
 Highlights:
 * Multi-project support: create and configure as many annotation projects as you like through the Web browser, all on one installation of AIDE.
-* Powerful new models: AIDE v2 officially includes [Detectron2](https://github.com/facebookresearch/detectron2) and comes with a plethora of powerful, deep learning-based models, from ResNet over Faster R-CNN to DeepLabV3+ (see [below](#using-a-built-in-ai-model)).
+* Powerful new models: AIDE v2 officially includes [Detectron2](https://github.com/facebookresearch/detectron2) and comes with a plethora of powerful, deep learning-based models, from ResNet over Faster R-CNN to DeepLabV3+ (see [below](#built-in-ai-models)).
 * Model Marketplace: choose from a variety of pre-trained deep learning models to start with good quality predictions from the first few labels. Contribute and share your own models with other people or across projects.
 * Expansive quality control: monitor the progress and accuracy of users and models with a few clicks through the browser.
 
@@ -95,23 +95,24 @@ See [here](doc/install_overview.md).
 
 AIDE ships with a set of built-in models that can be configured and customized:
 
-| Label type | AI model | Model variants | More info |
+| Label type | AI model | Model variants / backbones | More info |
 |-|-|-|-|
 | Image labels | AlexNet | AlexNet | [paper](https://arxiv.org/abs/1404.5997) |
 |  | DenseNet | DenseNet-161 | [paper](https://arxiv.org/abs/1608.06993) |
 |  | MNASNet | MNASNet | [paper](https://arxiv.org/abs/1807.11626) |
 |  | MobileNet | MobileNet V2 | [paper](https://arxiv.org/abs/1801.04381) |
-|  | ResNet | ResNet-18 ResNet-34 ResNet-50 ResNet-101 ResNet-152 | [paper](https://arxiv.org/abs/1512.03385) |
-|  | ResNeXt | ResNeXt-50 ResNeXt-101 | [paper](https://arxiv.org/abs/1611.05431) |
+|  | ResNet | ResNet-18; ResNet-34; ResNet-50; ResNet-101; ResNet-152 | [paper](https://arxiv.org/abs/1512.03385) |
+|  | ResNeXt | ResNeXt-50; ResNeXt-101 | [paper](https://arxiv.org/abs/1611.05431) |
 |  | ShuffleNet | ShuffleNet V2 | [paper](https://arxiv.org/abs/1807.11164) |
 |  | SqueezeNet | SqueezeNet | [paper](https://arxiv.org/abs/1602.07360) |
 |  | VGG | VGG-16 | [paper](https://arxiv.org/abs/1409.1556) |
-|  | Wide ResNet | Wide ResNet-50 Wide ResNet-101 | [info](https://pytorch.org/vision/stable/models.html#wide-resnet) |
-| Bounding boxes | Faster R-CNN | with ResNet-50 (PASCAL VOC) with ResNet-50 (MS-COCO) with ResNeXt-101 FPN (MS-COCO) | [paper](https://arxiv.org/pdf/1506.01497.pdf), [implementation details](https://github.com/facebookresearch/detectron2/blob/master/MODEL_ZOO.md#faster-r-cnn) |
-|  | RetinaNet | with ResNet-50 FPN (MS-COCO) with ResNet-101 FPN (MS-COCO) | [paper](https://openaccess.thecvf.com/content_ICCV_2017/papers/Lin_Focal_Loss_for_ICCV_2017_paper.pdf), [implementation details](https://github.com/facebookresearch/detectron2/blob/master/MODEL_ZOO.md#retinanet) |
+|  | Wide ResNet | Wide ResNet-50; Wide ResNet-101 | [info](https://pytorch.org/vision/stable/models.html#wide-resnet) |
+| Bounding boxes | Faster R-CNN | with ResNet-50 (PASCAL VOC); with ResNet-50 (MS-COCO); with ResNeXt-101 FPN (MS-COCO) | [paper](https://arxiv.org/pdf/1506.01497.pdf), [implementation details](https://github.com/facebookresearch/detectron2/blob/master/MODEL_ZOO.md#faster-r-cnn) |
+|  | RetinaNet | with ResNet-50 FPN (MS-COCO); with ResNet-101 FPN (MS-COCO) | [paper](https://openaccess.thecvf.com/content_ICCV_2017/papers/Lin_Focal_Loss_for_ICCV_2017_paper.pdf), [implementation details](https://github.com/facebookresearch/detectron2/blob/master/MODEL_ZOO.md#retinanet) |
 | Segmentation masks | DeepLabV3+ | with modified ResNet-101 (Cityscapes) | [paper](http://openaccess.thecvf.com/content_ECCV_2018/papers/Liang-Chieh_Chen_Encoder-Decoder_with_Atrous_ECCV_2018_paper.pdf), [implementation details](https://github.com/facebookresearch/detectron2/tree/master/projects/DeepLab) |
 
-All models can be configured in various ways through the AI model settings page in the Web browser.
+
+All models can be configured in various ways through the AI model settings page in the Web browser. They all are pre-trained on [ImageNet](https://ieeexplore.ieee.org/document/5206848) unless specified otherwise.
 To use one of the built-in models, simply import the requested one to your project through the Model Marketplace in the Web browser and start training/predicting!
 
 
