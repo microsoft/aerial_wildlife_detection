@@ -1,28 +1,3 @@
-# Work in Progress: Integration of Detectron2
-
-This is a development branch with the goal of implementing the [Detectron2](https://github.com/facebookresearch/detectron2) API into AIDE!
-At the moment, this branch is **not** stable. Please clone the [official version](https://github.com/microsoft/aerial_wildlife_detection) for stable models.
-
-Progress on tasks/implementations:
-- [x] Basic Detectron2 trainer implemented
-- [x] RetinaNet as demonstrator model partially works (not yet tested)
-- [x] Options verification (still needs to be verified)
-- [x] Model state averaging
-- [ ] Advanced class addition heuristics
-- [ ] Need to implement other models (Faster R-CNN, custom backbone, semantic segmentation, etc.)
-- [ ] Test DistributedDataParallel functionality (might crash due to daemonic subprocess conflict with Celery)
-- [ ] General unit testing
-
-
-**NOTE:** Getting this branch to run additionally requires the installation of the Detectron2 library (>= 0.3), which has to be done __after__ all other packages are already installed. Essentially, prepare a Python environment and install the requirements and then add Detectron2:
-```bash
-    conda create -y -n aide_detectron2 python=3.7
-    conda activate aide_detectron2
-    pip install -U -r requirements.txt
-    pip install git+https://github.com/facebookresearch/detectron2.git
-```
-
-
 # AIDE: Annotation Interface for Data-driven Ecology
 
 AIDE is two things in one: <i>a tool for manually annotating images</i> and <i>a tool for training and running machine (deep) learning models</i>. Those two things are coupled in an <i>active learning loop</i>: the human annotates a few images, the system trains a model, that model is used to make predictions and to select more images for the human to annotate, etc.
@@ -31,7 +6,6 @@ More generally, AIDE is a modular Web framework for labeling image datasets with
 
 AIDE is primarily developed by [Benjamin Kellenberger](https://bkellenb.github.io), supported by the [Microsoft AI for Earth](https://www.microsoft.com/en-us/ai/ai-for-earth) program.
 
-![AIDE overview](https://github.com/microsoft/aerial_wildlife_detection/raw/master/doc/figures/AIde_animal_hero_1100.jpg)
 
 
 ## Contents
@@ -44,7 +18,7 @@ AIDE is primarily developed by [Benjamin Kellenberger](https://bkellenb.github.i
     * [With Docker](#with-docker)
     * [Manual installation](#manual-installation)
 * [AI models in AIDE](#ai-models-in-aide)
-  * [Using a built-in AI model](#using-a-built-in-ai-model)
+  * [Built-in AI models](#built-in-ai-models)
   * [Writing your own AI model](#writing-your-own-ai-model)
 * [Publications and References](#publications-and-references)
 * [Contributing](#contributing)
@@ -62,11 +36,27 @@ AIDE is primarily developed by [Benjamin Kellenberger](https://bkellenb.github.i
 * **Fully featured:** Beyond image labeling and model training, AIDE has management and graphical user/machine performance evaluation tools built-in, right in the web browser, allowing for advanced, manual label quality checks.
 * **Modular:** AIDE is separated into individual _modules_, each of which can be run on separate machines for scalability. It even supports on-the-fly addition of computational workers for computationally intensive model training!
 
-![AIDE highlights](doc/figures/Aide_highlights.png)
+![AIDE highlights](doc/figures/AIDE_workflow.png)
 
 
 
 ## News
+
+### AIDE v2 is out
+
+![AIDE highlights](doc/figures/AIDE_v2_teaser.png)
+
+We are delighted to officially announce AIDE version 2!
+Highlights:
+* Multi-project support: create and configure as many annotation projects as you like through the Web browser, all on one installation of AIDE.
+* Powerful new models: AIDE v2 officially includes [Detectron2](https://github.com/facebookresearch/detectron2) and comes with a plethora of powerful, deep learning-based models, from ResNet over Faster R-CNN to DeepLabV3+ (see [below](#using-a-built-in-ai-model)).
+* Model Marketplace: choose from a variety of pre-trained deep learning models to start with good quality predictions from the first few labels. Contribute and share your own models with other people or across projects.
+* Expansive quality control: monitor the progress and accuracy of users and models with a few clicks through the browser.
+
+There's lots more to discover. Check out the [demos](#demos) or [get started](#new-installation) straightaway!
+
+
+### Older news
 
 * **November 19, 2020:** We now have an official publication on AIDE:
 Kellenberger, Benjamin, Devis Tuia, and Dan Morris. "AIDE: Accelerating image‐based ecological surveys with interactive machine learning." Methods in Ecology and Evolution 11(12), 1716-1727.
@@ -93,75 +83,45 @@ You can try out the labeling frontend of AIDE (V1) in a couple of demo instances
 
 ## Installation and launching AIDE
 
-### Migration from AIDE v1
-If you have [AIDE v1](https://github.com/microsoft/aerial_wildlife_detection/tree/v1) already running and want to upgrade its contents to AIDE v2, see [here](doc/upgrade_from_v1.md).
+See [here](doc/install_overview.md).
 
 
-### New installation
-
-#### With Docker
-
-AIDE now comes with both [Docker](https://www.docker.com) and [Docker Compose](https://docs.docker.com/compose) support!
-The current scripts are not 100% tested yet, but they make installation a breeze!
-
-Here's how to install and launch AIDE with Docker on the current machine:
-
-1. Download and install [Docker](https://docs.docker.com/engine/install) as well as [Docker Compose](https://docs.docker.com/compose/install)
-2. If you want to use a GPU (and only then), you have to install the NVIDIA container toolkit:
-```bash
-    distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
-    curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
-    curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
-    sudo apt-get update && sudo apt-get install -y nvidia-container-toolkit
-    sudo systemctl restart docker
-```
-3. Clone the AIDE repository: `git clone https://github.com/microsoft/aerial_wildlife_detection.git && cd aerial_wildlife_detection/`
-4. **Important:** modify the `docker/settings.ini` file and replace the default super user credentials (section `[Project]`) with new values. Make sure to review and update the other default settings as well, if needed.
-5. Install:
-    ```bash
-        cd docker
-        sudo docker-compose build
-        cd ..
-    ```
-6. Launch:
-    * With Docker:
-    ```bash
-        sudo docker/docker_run_cpu.sh     # for machines without a GPU
-        sudo docker/docker_run_gpu.sh     # for AIWorker instances with a CUDA-enabled GPU (strongly recommended for model training)
-    ```
-    * With Docker Compose (note that Docker Compose currently does not provide support for GPUs):
-    ```bash
-        cd docker
-        sudo docker-compose up
-    ```
-
-
-
-#### Manual installation
-
-See [here](doc/install.md) for instructions on configuring an instance of AIDE.
-
-After that, see [here](doc/launch_aide.md) for instructions on launching an instance of AIDE.
 
 
 ## AI models in AIDE
 
-### Using a built-in AI model
-AIDE ships with a set of built-in models that can be configured and customized:
-* Image labels: [ResNet](http://openaccess.thecvf.com/content_cvpr_2016/papers/He_Deep_Residual_Learning_CVPR_2016_paper.pdf)
-* Points: [weakly-supervised detector](http://openaccess.thecvf.com/content_CVPRW_2019/papers/EarthVision/Kellenberger_When_a_Few_Clicks_Make_All_the_Difference_Improving_Weakly-Supervised_CVPRW_2019_paper.pdf)
-* Bounding boxes: [RetinaNet](http://openaccess.thecvf.com/content_ICCV_2017/papers/Lin_Focal_Loss_for_ICCV_2017_paper.pdf)
-* Semantic segmentation: [U-Net](https://arxiv.org/pdf/1505.04597.pdf)
+### Built-in AI models
 
-See [this page](doc/builtin_models.md) for instructions on how to use one of the built-in models.
+
+AIDE ships with a set of built-in models that can be configured and customized:
+
+| Label type | AI model | Model variants | More info |
+|-|-|-|-|
+| Image labels | AlexNet | AlexNet | [paper](https://arxiv.org/abs/1404.5997) |
+|  | DenseNet | DenseNet-161 | [paper](https://arxiv.org/abs/1608.06993) |
+|  | MNASNet | MNASNet | [paper](https://arxiv.org/abs/1807.11626) |
+|  | MobileNet | MobileNet V2 | [paper](https://arxiv.org/abs/1801.04381) |
+|  | ResNet | ResNet-18 ResNet-34 ResNet-50 ResNet-101 ResNet-152 | [paper](https://arxiv.org/abs/1512.03385) |
+|  | ResNeXt | ResNeXt-50 ResNeXt-101 | [paper](https://arxiv.org/abs/1611.05431) |
+|  | ShuffleNet | ShuffleNet V2 | [paper](https://arxiv.org/abs/1807.11164) |
+|  | SqueezeNet | SqueezeNet | [paper](https://arxiv.org/abs/1602.07360) |
+|  | VGG | VGG-16 | [paper](https://arxiv.org/abs/1409.1556) |
+|  | Wide ResNet | Wide ResNet-50 Wide ResNet-101 | [info](https://pytorch.org/vision/stable/models.html#wide-resnet) |
+| Bounding boxes | Faster R-CNN | with ResNet-50 (PASCAL VOC) with ResNet-50 (MS-COCO) with ResNeXt-101 FPN (MS-COCO) | [paper](https://arxiv.org/pdf/1506.01497.pdf), [implementation details](https://github.com/facebookresearch/detectron2/blob/master/MODEL_ZOO.md#faster-r-cnn) |
+|  | RetinaNet | with ResNet-50 FPN (MS-COCO) with ResNet-101 FPN (MS-COCO) | [paper](https://openaccess.thecvf.com/content_ICCV_2017/papers/Lin_Focal_Loss_for_ICCV_2017_paper.pdf), [implementation details](https://github.com/facebookresearch/detectron2/blob/master/MODEL_ZOO.md#retinanet) |
+| Segmentation masks | DeepLabV3+ | with modified ResNet-101 (Cityscapes) | [paper](http://openaccess.thecvf.com/content_ECCV_2018/papers/Liang-Chieh_Chen_Encoder-Decoder_with_Atrous_ECCV_2018_paper.pdf), [implementation details](https://github.com/facebookresearch/detectron2/tree/master/projects/DeepLab) |
+
+All models can be configured in various ways through the AI model settings page in the Web browser.
+To use one of the built-in models, simply import the requested one to your project through the Model Marketplace in the Web browser and start training/predicting!
+
+
 
 
 ### Writing your own AI model
-AIDE is fully modular and supports custom AI models, as long as they provide a Python interface and can handle the different annotation and prediction types appropriately.
+AIDE is fully modular and supports custom AI models, as long as they provide a Python interface and can handle at least one of the different annotation and prediction types appropriately.
 We greatly welcome contributions and are happy to help in the implementation of your custom models!
-For example, check out the [awesome TensorFlow implementation](https://github.com/ctorney/aerial_wildlife_detection/tree/tensorflow) of [YOLOv3](https://arxiv.org/pdf/1804.02767.pdf) by contributor Colin Torney!
 
-See [here](doc/custom_model.md) for instructions on using custom models.
+See [here](doc/custom_model.md) for instructions on implementing custom models into AIDE.
 
 
 

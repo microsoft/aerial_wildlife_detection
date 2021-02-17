@@ -240,9 +240,9 @@
 				"name": "Pre-made configuration",
 				"description": "Choose a pre-trained model state here or create your own model from scratch (\"manual\").",
 				"type": "select",
-				"value": "Cityscapes-SemanticSegmentation/deeplab_v3_plus_R_103_os16_mg124_poly_90k_bs16.yaml",
+				"value": "segmentationMasks/Cityscapes-SemanticSegmentation/deeplab_v3_plus_R_103_os16_mg124_poly_90k_bs16.yaml",
 				"options": {
-					"Cityscapes-SemanticSegmentation/deeplab_v3_plus_R_103_os16_mg124_poly_90k_bs16.yaml": {
+					"segmentationMasks/Cityscapes-SemanticSegmentation/deeplab_v3_plus_R_103_os16_mg124_poly_90k_bs16.yaml": {
 						"name": "Modified ResNet-101 backbone with diilated convolutions, pre-trained on ImageNet"
 					}
 				}

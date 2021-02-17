@@ -68,6 +68,11 @@ class DeepLabV3Plus(GenericDetectron2SegmentationModel):
         # modify model weights to accept new label classes
         if len(newClasses):
 
+            # create vector of label classes
+            classVector = len(stateDict['labelclassMap']) * [None]
+            for (key, index) in zip(stateDict['labelclassMap'].keys(), stateDict['labelclassMap'].values()):
+                classVector[index] = key
+
             weights = model.sem_seg_head.predictor.weight
             biases = model.sem_seg_head.predictor.bias
             numClasses_orig = len(biases)
@@ -93,29 +98,27 @@ class DeepLabV3Plus(GenericDetectron2SegmentationModel):
                     # prepend
                     weights = torch.cat((newWeight.unsqueeze(0), weights), 0)
                     biases = torch.cat((newBias.unsqueeze(0), biases), 0)
-                
+                    classVector.insert(0, newClasses[cl])
+
             # remove old classes
-            classmap_updated = {}
             valid = torch.ones(len(biases), dtype=torch.bool)
-            classmap_inv = {}
-            for key in stateDict['labelclassMap'].keys():
-                classmap_inv[stateDict['labelclassMap'][key]] = key
+            classMap_updated = {}
             index_updated = 0
-            for clIdx in range(len(classmap_inv)):
-                clName = classmap_inv[clIdx]
+            for idx, clName in enumerate(classVector):
                 if clName not in data['labelClasses']:
-                    index = clIdx + len(newClasses)   # we prepended new class weights; need to add offset
-                    valid[index] = False
+                    valid[idx] = 0
                 else:
-                    classmap_updated[clName] = index_updated
+                    classMap_updated[clName] = index_updated
                     index_updated += 1
-            stateDict['labelclassMap'] = classmap_updated
+            
             weights = weights[valid,...]
             biases = biases[valid,...]
 
             # apply updated weights and biases
             model.sem_seg_head.predictor.weight = torch.nn.Parameter(weights)
             model.sem_seg_head.predictor.bias = torch.nn.Parameter(biases)
+
+            stateDict['labelclassMap'] = classMap_updated
                 
             print(f'Neurons for {len(newClasses)} new label classes added to DeepLabV3+ model.')
 

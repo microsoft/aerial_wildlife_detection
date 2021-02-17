@@ -256,7 +256,7 @@ DEFAULT_OPTIONS = {
 				"value": "segmentationMasks/Cityscapes-SemanticSegmentation/deeplab_v3_plus_R_103_os16_mg124_poly_90k_bs16.yaml",
 				"options": {
 					"segmentationMasks/Cityscapes-SemanticSegmentation/deeplab_v3_plus_R_103_os16_mg124_poly_90k_bs16.yaml": {
-						"name": "Modified ResNet-101 backbone with diilated convolutions, pre-trained on ImageNet"
+						"name": "Modified ResNet-101 backbone with diilated convolutions, pre-trained on ImageNet & Cityscapes"
 					}
 				}
 			},

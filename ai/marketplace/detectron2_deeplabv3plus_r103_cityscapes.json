@@ -1,0 +1,48 @@
+{
+    "aide_model_version": 1.0,
+    "name": "DeepLabV3+ (modified ResNet-101, pre-trained on ImageNet & Cityscapes)",
+    "description": "<a href=\"https://github.com/facebookresearch/detectron2/tree/master/projects/DeepLab\" target=\"_blank\">DeepLabV3+</a> semantic segmentation model, trained on <a href=\"https://ieeexplore.ieee.org/document/5206848\" target=\"_blank\">ImageNet</a> and <a href=\"https://www.visinf.tu-darmstadt.de/media/visinf/vi_papers/2015/cordts-cvprws.pdf\" target=\"_blank\">Cityscapes</a>.",
+    "author": "facebook, inc.",
+    "time_created": 1611918642,
+    "tags": [
+        "DeepLabV3+",
+        "Deep Residual Learning",
+        "ResNet",
+        "ImageNet",
+        "Cityscapes",
+        "detectron2"
+    ],
+    "labelclasses": [
+        "road",
+        "sidewalk",
+        "building",
+        "wall",
+        "fence",
+        "pole",
+        "traffic light",
+        "traffic sign",
+        "vegetation",
+        "terrain",
+        "sky",
+        "person",
+        "rider",
+        "car",
+        "truck",
+        "bus",
+        "train",
+        "motorcycle",
+        "bicycle"
+    ],
+    "annotation_type": "segmentationMasks",
+    "prediction_type": "segmentationMasks",
+    "ai_model_library": "ai.models.detectron2.DeepLabV3Plus",
+    "ai_model_settings": {
+        "options": {
+            "model": {
+                "config": {
+                    "value": "segmentationMasks/Cityscapes-SemanticSegmentation/deeplab_v3_plus_R_103_os16_mg124_poly_90k_bs16.yaml"
+                }
+            }
+        }
+    }
+}

@@ -1,5 +1,9 @@
 # Configure the built-in models
 
+**NOTE:** The built-in models described below are deprecated as of AIDE version 2.0 and above and will be removed in a future release. Please use official replacements accordingly.
+
+
+
 AIDE comes with a number of built-in models for both the AI model and the ranker. These are, to a certain extent, customizable, which we will discuss below.  If you instead wish to completely write your own module(s) for modeling and/or ranking, you can do so by referring to the instructions [here](custom_model.md).
 
 
