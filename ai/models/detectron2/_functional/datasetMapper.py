@@ -21,7 +21,7 @@ from detectron2.structures import BoxMode
 
 class Detectron2DatasetMapper(DatasetMapper):
 
-    def __init__(self, project, fileServer, augmentations, is_train, instance_mask_format='bitmask', recompute_boxes=True):
+    def __init__(self, project, fileServer, augmentations, is_train, instance_mask_format='bitmask', recompute_boxes=True, classIndexMap=None):
         super(DatasetMapper, self).__init__()
         self.project = project
         self.fileServer = fileServer
@@ -31,6 +31,7 @@ class Detectron2DatasetMapper(DatasetMapper):
         self.is_train = is_train
         self.instance_mask_format = instance_mask_format
         self.recompute_boxes = recompute_boxes
+        self.classIndexMap = classIndexMap      # used to map e.g. segmentation index values from AIDE to model
         self.keypoint_hflip_indices = None  #TODO
 
 
@@ -73,6 +74,10 @@ class Detectron2DatasetMapper(DatasetMapper):
             try:
                 raster = np.frombuffer(base64.b64decode(dataset_dict['segmentationMask']), dtype=np.uint8)
                 sem_seg_gt = np.reshape(raster, image_shape)    #TODO: check format
+                if self.classIndexMap is not None:
+                    sem_seg_gt_copy = np.copy(sem_seg_gt)
+                    for k, v in self.classIndexMap.items(): sem_seg_gt_copy[sem_seg_gt==k] = v
+                    sem_seg_gt = sem_seg_gt_copy
             except:
                 print('WARNING: Segmentation mask for image "{}" could not be loaded or decoded.'.format(dataset_dict["file_name"]))
                 sem_seg_gt = None

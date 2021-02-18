@@ -11,6 +11,7 @@ import copy
 import json
 from uuid import UUID
 from tqdm import trange
+from psycopg2 import sql
 import torch
 from torch.nn.parallel import DistributedDataParallel
 import detectron2
@@ -372,6 +373,37 @@ class GenericDetectron2Model(AIModel):
         return transforms
 
 
+
+    def _get_labelclass_index_map(self, labelclassMap, reverse=False):
+        '''
+            For some annotation types (e.g., semantic segmentation),
+            the labels stored in the ground truth are derived from
+            the class' "idx" value as per database. This does not au-
+            tomatically correspond to the true index, e.g. if a class
+            gets removed. This function therefore creates a map from
+            AIDE's official label class index to the model's
+            labelclassMap.
+            If "reverse" is True, a flipped map will be created that
+            is to be used for inference (otherwise for training).
+        '''
+        indexMap = {}
+
+        # get AIDE indices
+        query = self.dbConnector.execute(sql.SQL('''
+                SELECT id, idx FROM {}
+            ''').format(sql.Identifier(self.project, 'labelclass')),
+            None, 'all')
+        for row in query:
+            lcID = row['id']
+            aideIdx = row['idx']
+            modelIdx = labelclassMap[lcID]
+            if reverse:
+                indexMap[modelIdx] = aideIdx
+            else:
+                indexMap[aideIdx] = modelIdx
+        return indexMap
+
+
     
     def _build_optimizer(self, cfg, model):
         return build_optimizer(cfg, model)
@@ -407,8 +439,8 @@ class GenericDetectron2Model(AIModel):
         # wrap dataset for usage with Detectron2
         ignoreUnsure = optionsHelper.get_hierarchical_value(self.options, ['options', 'train', 'ignore_unsure', 'value'], fallback=True)
         transforms = self.initializeTransforms(mode='train')
-
-        datasetMapper = Detectron2DatasetMapper(self.project, self.fileServer, transforms, True)
+        indexMap = self._get_labelclass_index_map(stateDict['labelclassMap'], False)
+        datasetMapper = Detectron2DatasetMapper(self.project, self.fileServer, transforms, True, classIndexMap=indexMap)
         dataLoader = build_detection_train_loader(
             dataset=getDetectron2Data(data, ignoreUnsure, self.detectron2cfg.DATALOADER.FILTER_EMPTY_ANNOTATIONS),
             mapper=datasetMapper,
@@ -505,7 +537,7 @@ class GenericDetectron2Model(AIModel):
         # wrap dataset for usage with Detectron2
         transforms = []
         transforms = self.initializeTransforms(mode='inference')
-
+        indexMap = self._get_labelclass_index_map(stateDict['labelclassMap'], True)
         datasetMapper = Detectron2DatasetMapper(self.project, self.fileServer, transforms, False)
         dataLoader = build_detection_test_loader(
             dataset=getDetectron2Data(data, False, False),
@@ -568,6 +600,12 @@ class GenericDetectron2Model(AIModel):
                 elif 'sem_seg' in outputs:
                     outputs = outputs['sem_seg']
                     confidence, label = torch.max(outputs, 0)
+
+                    # map back to AIDE indices
+                    label_copy = label.clone()
+                    for k, v in indexMap.items(): label_copy[label==k] = v
+                    label = label_copy
+
                     predictions.append({
                         'label': label.cpu().numpy(),
                         'logits': outputs.cpu().numpy().tolist(),

@@ -1,7 +1,7 @@
 '''
     PyTorch dataset wrapper for segmentation masks.
 
-    2020 Benjamin Kellenberger
+    2020-21 Benjamin Kellenberger
 '''
 
 from io import BytesIO
@@ -39,6 +39,7 @@ class SegmentationDataset(Dataset):
         self.transform = transform
         self.imageOrder = list(self.data['images'].keys())
         self.ignore_unlabeled = (kwargs['ignore_unlabeled'] if 'ignore_unlabeled' in kwargs else True)
+        self.indexMap = (kwargs['index_map'] if 'index_map' in kwargs else None)
 
 
     def __len__(self):
@@ -67,7 +68,15 @@ class SegmentationDataset(Dataset):
                 height = int(annotation['height'])
                 raster = np.frombuffer(base64.b64decode(annotation['segmentationmask']), dtype=np.uint8)
                 raster = np.reshape(raster, (height,width,))
+
+                if self.indexMap is not None:
+                    # map from AIDE to model class indices
+                    raster_copy = np.copy(raster)
+                    for k, v in self.classIndexMap.items(): raster_copy[raster==k] = v
+                    raster = raster_copy
+
                 segmentationMask = Image.fromarray(raster)
+
             except:
                 print(f'WARNING: Segmentation mask for image "{imagePath}" could not be loaded or decoded.')
                 segmentationMask = None

@@ -44,6 +44,6 @@ Here's how to install and launch AIDE with Docker on the current machine:
 
 ### Manual installation
 
-See [here](doc/install.md) for instructions on configuring an instance of AIDE.
+See [here](install.md) for instructions on configuring an instance of AIDE.
 
-After that, see [here](doc/launch_aide.md) for instructions on launching an instance of AIDE.
+After that, see [here](launch_aide.md) for instructions on launching an instance of AIDE.

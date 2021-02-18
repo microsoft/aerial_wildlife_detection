@@ -1,10 +1,10 @@
 '''
     Generic AIWorker model implementation that supports PyTorch models for classification.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
-import io
+from psycopg2 import sql
 import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
@@ -23,7 +23,37 @@ class SegmentationModel(GenericPyTorchModel_Legacy):
     def __init__(self, project, config, dbConnector, fileServer, options, defaultOptions):
         super(SegmentationModel, self).__init__(project, config, dbConnector, fileServer,
             options, defaultOptions)
-        
+    
+
+    def _get_labelclass_index_map(self, labelclassMap, reverse=False):
+        '''
+            For some annotation types (e.g., semantic segmentation),
+            the labels stored in the ground truth are derived from
+            the class' "idx" value as per database. This does not au-
+            tomatically correspond to the true index, e.g. if a class
+            gets removed. This function therefore creates a map from
+            AIDE's official label class index to the model's
+            labelclassMap.
+            If "reverse" is True, a flipped map will be created that
+            is to be used for inference (otherwise for training).
+        '''
+        indexMap = {}
+
+        # get AIDE indices
+        query = self.dbConnector.execute(sql.SQL('''
+                SELECT id, idx FROM {}
+            ''').format(sql.Identifier(self.project, 'labelclass')),
+            None, 'all')
+        for row in query:
+            lcID = row['id']
+            aideIdx = row['idx']
+            modelIdx = labelclassMap[lcID]
+            if reverse:
+                indexMap[modelIdx] = aideIdx
+            else:
+                indexMap[aideIdx] = modelIdx
+        return indexMap
+
 
     def train(self, stateDict, data, updateStateFun):
         '''
@@ -40,6 +70,7 @@ class SegmentationModel(GenericPyTorchModel_Legacy):
         transform = parse_transforms(self.options['train']['transform'])
         dataset_kwargs = self.options['dataset']['kwargs']
         dataset_kwargs['ignore_unlabeled'] = self.ignore_unlabeled
+        dataset_kwargs['index_map'] = self._get_labelclass_index_map(labelclassMap, False)
         dataset = self.dataset_class(data, self.fileServer, labelclassMap,
                                 transform,
                                 **dataset_kwargs
@@ -113,6 +144,7 @@ class SegmentationModel(GenericPyTorchModel_Legacy):
                                 collate_fn=collator.collate,
                                 **self.options['inference']['dataLoader']['kwargs']
                                 )
+        indexMap = self._get_labelclass_index_map(labelclassMap, True)
 
         # perform inference
         device = self.get_device()
@@ -133,6 +165,12 @@ class SegmentationModel(GenericPyTorchModel_Legacy):
             for i in range(len(imgID)):
                 logits = pred_batch[i,...]
                 confidence, label = torch.max(logits, 0)
+
+                # map back to AIDE indices
+                label_copy = label.clone()
+                for k, v in indexMap.items(): label_copy[label==k] = v
+                label = label_copy
+
                 response[imgID[i]] = {
                     'predictions': [
                         {
