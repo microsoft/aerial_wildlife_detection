@@ -11,7 +11,7 @@ AIDE is primarily developed by [Benjamin Kellenberger](https://bkellenb.github.i
 ## Contents
 * [Highlights](#highlights)
 * [News](#news)
-* [Demos](#demos)
+* [Demo](#demo)
 * [Installation and launching AIDE](#installation-and-launching-aide)
   * [Migration from AIDE v1](#migration-from-aide-v1)
   * [New installation](#new-installation)
@@ -69,14 +69,15 @@ Please cite this manuscript whenever you use AIDE in your work. Thank you very m
 
 
 
-## Demos
+## Demo
 
-You can try out the labeling frontend of AIDE (V1) in a couple of demo instances:
+A demo of AIDE v2 can be accessed **[here](http://aidedemo.westeurope.cloudapp.azure.com:8080/)**.
 
-* **[Image labels](http://aerialannotationdemo.southcentralus.cloudapp.azure.com/snapshot-serengeti/interface)** on the [Snapshot Serengeti camera traps dataset](http://lila.science/datasets/snapshot-serengeti)
-* **[Points](http://aerialannotationdemo.southcentralus.cloudapp.azure.com/vgg-penguins/interface)** on the [VGG Penguins dataset](http://www.robots.ox.ac.uk/~vgg/data/penguins/)
-* **[Bounding boxes](http://aerialannotationdemo.southcentralus.cloudapp.azure.com/arcticseals/interface)** on the [NOAA Arctic Seals aerial imagery](http://lila.science/datasets/arcticseals)
-* **[Semantic segmentation](http://aerialannotationdemo.southcentralus.cloudapp.azure.com/landcover/interface)** on the [Chesapeake Land Cover satellite imagery](http://lila.science/datasets/chesapeakelandcover) _(early preview - stay tuned for official announcement of segmentation support!)_
+This demo allows exploring the annotation front-end with a number of example datasets, including:
+* **[Image labels](http://aidedemo.westeurope.cloudapp.azure.com:8080/snapshot-serengeti/interface)** on the [Snapshot Serengeti camera traps dataset](http://lila.science/datasets/snapshot-serengeti)
+* **[Points](http://aidedemo.westeurope.cloudapp.azure.com:8080/vgg-penguins/interface)** on the [VGG Penguins dataset](http://www.robots.ox.ac.uk/~vgg/data/penguins/)
+* **[Bounding boxes](http://aidedemo.westeurope.cloudapp.azure.com:8080/arcticseals/interface)** on the [NOAA Arctic Seals aerial imagery](http://lila.science/datasets/arcticseals)
+* **[Semantic segmentation](http://aidedemo.westeurope.cloudapp.azure.com:8080/landcover/interface)** on the [Chesapeake Land Cover satellite imagery](http://lila.science/datasets/chesapeakelandcover) _(early preview - stay tuned for official announcement of segmentation support!)_
 
 
 
