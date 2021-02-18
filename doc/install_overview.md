@@ -1,7 +1,7 @@
 # Installing AIDE
 
 ## Migration from AIDE v1
-If you have [AIDE v1](https://github.com/microsoft/aerial_wildlife_detection/tree/v1) already running and want to upgrade its contents to AIDE v2, see [here](doc/upgrade_from_v1.md).
+If you have [AIDE v1](https://github.com/microsoft/aerial_wildlife_detection/tree/v1) already running and want to upgrade its contents to AIDE v2, see [here](upgrade_from_v1.md).
 
 
 ## New installation
