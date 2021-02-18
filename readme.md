@@ -53,7 +53,7 @@ Highlights:
 * Model Marketplace: choose from a variety of pre-trained deep learning models to start with good quality predictions from the first few labels. Contribute and share your own models with other people or across projects.
 * Expansive quality control: monitor the progress and accuracy of users and models with a few clicks through the browser.
 
-There's lots more to discover. Check out the [demos](#demos) or [get started](#new-installation) straightaway!
+There's lots more to discover. Check out the [demo](#demo) or [get started](#new-installation) straightaway!
 
 
 ### Older news
