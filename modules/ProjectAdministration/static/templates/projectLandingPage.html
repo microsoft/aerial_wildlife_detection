@@ -158,13 +158,13 @@
                     success: function(data) {
                         data = data['info'];
                         window.demoMode = data['demoMode'];
+                        $('#project-description').append($('<p>'+data['projectDescription']+'</p>'));
                     },
                     error: function(xhr, status, error) {
                         console.error(error);
                     }
                 });
             }
-
             
             function checkAuthentication() {
                 // check authentication and put interface buttons accordingly
@@ -420,7 +420,7 @@
                     <div id="overview-container">
                         <div id="general-overview" style="text-align:center;margin-bottom:20px;">
                             <h2 id="project-title" style="font-size:40px;">{{ projectTitle }}</h2>
-                            <p id="project-description" style="font-size:20px;">{{ projectDescription }}</p>
+                            <div id="project-description" style="font-size:20px;"></div>
                             <div id="project-buttons-container" style="margin-top:50px;"></div>
                         </div>
                         <hr style="margin-bottom:40px" />
