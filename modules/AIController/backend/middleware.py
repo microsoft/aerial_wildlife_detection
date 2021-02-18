@@ -1029,24 +1029,33 @@ class AIMiddleware():
                 raise Exception('Workflow is not valid.')   #TODO: detailed error message
             workflow = json.dumps(workflow)
 
-            updateExisting = False
+
+            # check if workflow already exists
+            queryArgs = [workflowName]
             if workflowID is not None:
-                # ID provided; query first if id exists
-                workflowID = uuid.UUID(workflowID)
-                idExists = self.dbConn.execute(
-                    sql.SQL('''
-                        SELECT COUNT(*)
-                        FROM {id_workflow}
-                        WHERE id = %s;
-                    ''').format(id_workflow=sql.Identifier(project, 'workflow')),
-                    (workflowID,),
-                    1
-                )
-                if len(idExists) and idExists[0]['count'] == 1:
-                    updateExisting = True
+                queryArgs.append(uuid.UUID(workflowID))
+                idStr = sql.SQL(' OR id = %s')
+            else:
+                idStr = sql.SQL('')
+            
+            existingWorkflow = self.dbConn.execute(
+                sql.SQL('''
+                    SELECT id
+                    FROM {id_workflow}
+                    WHERE name = %s {idStr};
+                ''').format(
+                    id_workflow=sql.Identifier(project, 'workflow'),
+                    idStr=idStr),
+                tuple(queryArgs),
+                1
+            )
+            if existingWorkflow is not None and len(existingWorkflow):
+                existingWorkflow = existingWorkflow[0]['id']
+            else:
+                existingWorkflow = None
 
             # commit to database
-            if updateExisting:
+            if existingWorkflow is not None:
                 result = self.dbConn.execute(
                     sql.SQL('''
                         UPDATE {id_workflow}
@@ -1054,7 +1063,7 @@ class AIMiddleware():
                         WHERE id = %s
                         RETURNING id;
                     ''').format(id_workflow=sql.Identifier(project, 'workflow')),
-                    (workflowName, workflow, workflowID),
+                    (workflowName, workflow, existingWorkflow),
                     1
                 )
             else:
@@ -1138,17 +1147,24 @@ class AIMiddleware():
             deleted by a super user.
         '''
         if isinstance(workflowID, str):
-            workflowID = (workflowID,)
-        else:
-            workflowID = tuple([(w,) for w in workflowID])
+            workflowID = [uuid.UUID(workflowID)]
+        elif not isinstance(workflowID, Iterable):
+            workflowID = [workflowID]
+        for w in range(len(workflowID)):
+            if not isinstance(workflowID[w], uuid.UUID):
+                workflowID[w] = uuid.UUID(workflowID[w])
+
+        workflowID = tuple([(w,) for w in workflowID])
 
         queryStr = sql.SQL('''
             DELETE FROM {id_workflow}
-            WHERE username = %s
-            OR username IN (
-                SELECT name
-                FROM aide_admin.user
-                WHERE isSuperUser = true
+            WHERE (
+                username = %s
+                OR username IN (
+                    SELECT name
+                    FROM aide_admin.user
+                    WHERE isSuperUser = true
+                )
             )
             AND id IN %s
             RETURNING id;

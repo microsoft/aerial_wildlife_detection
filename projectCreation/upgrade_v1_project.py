@@ -56,8 +56,7 @@ import json
 import secrets
 from psycopg2 import sql
 from setup.setupDB import setupDB
-from setup.migrate_aide import migrate_aide, MODIFICATIONS_sql
-from urllib.parse import urlparse
+from setup.migrate_aide import MODIFICATIONS_sql
 from modules import UserHandling
 from util import helpers
 
