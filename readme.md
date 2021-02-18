@@ -134,7 +134,9 @@ Please cite the following paper if you use AIDE in your work:
 Kellenberger, Benjamin, Devis Tuia, and Dan Morris. "AIDE: Accelerating image‐based ecological surveys with interactive machine learning." Methods in Ecology and Evolution 11(12), 1716-1727.
 DOI: [10.1111/2041-210X.13489](https://doi.org/10.1111/2041-210X.13489).
 
-Thank you.
+
+If you use AIDE, we would be happy to hear from you! Please send us an [E-mail](mailto:benjamin.kellenberger@epfl.ch) with a little bit of info about your use case; besides getting to know the fellow usership of our software, this also enables us to provide somewhat more tailored support for you if needed. 
+Thank you very much.
 
 
 ## Contributing
