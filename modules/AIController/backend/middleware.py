@@ -1178,3 +1178,73 @@ class AIMiddleware():
             'status': 0,
             'workflowIDs': result
         }
+
+
+
+    def deleteWorkflow_history(self, project, workflowID, revokeIfRunning=False):
+        '''
+            Receives a str or iterable of str variables under
+            "workflowID" and finds and deletes them for a given
+            project. Only deletes them if they were created by
+            the user provided in "username", or if they are
+            deleted by a super user.
+            If "revokeIfRunning" is True, any workflow with ID
+            given that is still running is aborted first.
+        '''
+        if workflowID == 'all':
+            # get all workflow IDs from DB
+            workflowID = self.dbConn.execute(
+                sql.SQL('''
+                    SELECT id FROM {id_workflowhistory};
+                ''').format(
+                    id_workflowhistory=sql.Identifier(project, 'workflowhistory')
+                ),
+                None,
+                'all'
+            )
+            if workflowID is None or not len(workflowID):
+                return {
+                    'status': 0,
+                    'workflowIDs': None
+                }
+            workflowID = [w['id'] for w in workflowID]
+
+        elif isinstance(workflowID, str):
+            workflowID = [uuid.UUID(workflowID)]
+        elif not isinstance(workflowID, Iterable):
+            workflowID = [workflowID]
+        for w in range(len(workflowID)):
+            if not isinstance(workflowID[w], uuid.UUID):
+                workflowID[w] = uuid.UUID(workflowID[w])
+
+        if not len(workflowID):
+            return {
+                'status': 0,
+                'workflowIDs': None
+            }
+
+        if revokeIfRunning:
+            WorkflowTracker._revoke_task([{'id': w} for w in workflowID])
+        else:
+            # skip ongoing tasks
+            ongoingTasks = self.get_ongoing_tasks(project)
+            for o in range(len(ongoingTasks)):
+                if not isinstance(ongoingTasks[o], uuid.UUID):
+                    ongoingTasks[o] = uuid.UUID(ongoingTasks[o])
+            workflowID = list(set(workflowID).difference(set(ongoingTasks)))
+
+
+        queryStr = sql.SQL('''
+            DELETE FROM {id_workflowhistory}
+            WHERE id IN %s
+            RETURNING id;
+        ''').format(
+            id_workflowhistory=sql.Identifier(project, 'workflowhistory')
+        )
+        result = self.dbConn.execute(queryStr, (tuple(workflowID),), 'all')
+        result = [str(r['id']) for r in result]
+
+        return {
+            'status': 0,
+            'workflowIDs': result
+        }

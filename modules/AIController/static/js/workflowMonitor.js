@@ -87,6 +87,8 @@ class Task {
         headerDiv.append(subHeaderDiv);
         this.statusIcon = $('<div class="task-status-icon"></div>');
         if(this.isRootTask) {
+            let showInfoContainer = $('<div style="padding:2px"></div>');
+
             if(this.showAdminFunctionalities) {
                 // abort button
                 let revokeTaskButton = $('<button class="btn btn-sm btn-danger">Abort</button>');
@@ -94,6 +96,13 @@ class Task {
                     self.revokeTask();
                 });
                 this.statusIcon.append(revokeTaskButton);
+
+                // delete button
+                this.deleteTaskButton = $('<button class="btn btn-sm btn-danger task-info-button" style="display:none">Delete</button>');
+                this.deleteTaskButton.on('click', function() {
+                    self.deleteTask();
+                });
+                showInfoContainer.append(this.deleteTaskButton);
             }
             this.markup.append(headerDiv);
 
@@ -107,7 +116,6 @@ class Task {
             showInfoButton.click(function() {
                 infoPane.slideToggle();
             });
-            let showInfoContainer = $('<div style="padding:2px"></div>');
             showInfoContainer.append(showInfoButton);
             headerDiv.append(showInfoContainer);
             this.markup.append(infoPane);
@@ -208,6 +216,8 @@ class Task {
                 } else {
                     this.statusIcon.append($('<img src="/static/general/img/error.svg" />'));
                 }
+
+                this.deleteTaskButton.show();
             }
         }
 
@@ -285,7 +295,45 @@ class Task {
                     });
                 }
             }
-        })
+        });
+    }
+
+    deleteTask() {
+        let self = this;
+        return $.ajax({
+            url: window.baseURL + 'deleteWorkflowHistory',
+            method: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            data: JSON.stringify({
+                workflow_id: self.id
+            }),
+            success: function(data) {
+                if(data['status'] !== 0) {
+                    let message = 'Workflow could not be deleted';
+                    if(typeof(data['message']) === 'string') {
+                        message += ' (message: "' + data['message'] + '")';
+                    }
+                    message += '.';
+                    window.messager.addMessage(message, 'error', 0);
+                } else {
+                    self.markup.slideUp();
+                    self.markup.detach();
+                    //TODO: remove task from parent
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+                window.messager.addMessage('Workflow with id "'+self.id+'" could not be deleted (message: "'+error+'").', 'error', 0);
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        self.deleteTask();
+                    });
+                }
+            }
+        });
     }
 
     _set(timeFinished, successful) {
@@ -441,8 +489,15 @@ class WorkflowMonitor {
         let fwHead = $('<h3 class="task-list-header">Finished workflows</h3>');
         fwHead.click(function() {
             self.finishedTasksContainer.slideToggle();
-        })
-        this.domElement_main.append(fwHead);
+        });
+        let fwHeadContainer = $('<div></div>');
+        fwHeadContainer.append(fwHead);
+        let deleteAll = $('<button class="btn btn-sm btn-danger">Delete all</button>');
+        deleteAll.on('click', function() {
+            self.deleteAllWorkflows(false);
+        });
+        fwHeadContainer.append(deleteAll);
+        this.domElement_main.append(fwHeadContainer);
         this.domElement_main.append(this.finishedTasksContainer);
 
         // footer
@@ -574,7 +629,7 @@ class WorkflowMonitor {
     _query_workflows(nudgeWatchdog) {
         let self = this;
         let promise = this._do_query(nudgeWatchdog);
-        promise.done(function() {
+        return promise.done(function() {
             if(self.queryInterval > 0) {
                 setTimeout(function() {
                     self._query_workflows(nudgeWatchdog);
@@ -626,5 +681,50 @@ class WorkflowMonitor {
 
     queryNow(nudgeWatchdog) {
         return this._do_query(nudgeWatchdog);
+    }
+
+    deleteAllWorkflows(abortRunning) {
+        let self = this;
+        return $.ajax({
+            url: window.baseURL + 'deleteWorkflowHistory',
+            method: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            data: JSON.stringify({
+                workflow_id: 'all',
+                revoke_running: abortRunning
+            }),
+            success: function(data) {
+                let message = 'Workflows successfully deleted.'
+                let success = 'success';
+                let duration = undefined;
+                if(data['status'] !== 0) {
+                    message = 'Workflow could not be deleted';
+                    if(typeof(data['message']) === 'string') {
+                        message += ' (message: "' + data['message'] + '")';
+                    }
+                    message += '.';
+                    success = 'error';
+                    duration = 0;
+                }
+                // reload workflows
+                self.tasks = {};
+                self.finishedTasksContainer.empty();
+                self.queryNow().then(function() {
+                    window.messager.addMessage(message, success, duration);
+                });
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+                window.messager.addMessage('Workflows could not be deleted (message: "'+error+'").', 'error', 0);
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return self.deleteAllWorkflows(abortRunning);
+                    });
+                }
+            }
+        });
     }
 }

@@ -15,7 +15,7 @@ from psycopg2 import sql
 from celery import current_app
 from celery.result import AsyncResult, GroupResult
 from celery.task.control import revoke
-from . import task_ids_match
+# from . import task_ids_match
 
 
 
@@ -483,7 +483,6 @@ class WorkflowTracker:
                     task = json.loads(task)
             WorkflowTracker._revoke_task(task)
 
-
         # commit to DB
         queryStr = sql.SQL('''
             UPDATE {id_wHistory}
@@ -497,3 +496,58 @@ class WorkflowTracker:
         self.dbConnector.execute(queryStr, (username, taskID), None)
 
         #TODO: return value?
+
+    
+
+    def deleteWorkflow(self, project, ids, revokeIfRunning=False):
+        '''
+            Removes workflow entries from the database. Input "ids" may either
+            be a UUID, an Iterable of UUIDs, or "all", in which case all workflows
+            are removed from the project.
+            If "revokeIfRunning" is True, all workflows with given IDs that
+            happen to still be running are aborted. Otherwise, their deletion
+            is skipped.
+        '''
+        workflowIDs = []
+        if ids == 'all':
+            # get all workflow IDs from DB
+            if revokeIfRunning:
+                runningStr = sql.SQL('')
+            else:
+                runningStr = sql.SQL('WHERE timefinished IS NOT NULL')
+
+            workflowIDs = self.dbConnector.execute(
+                sql.SQL('''
+                    SELECT id FROM {id_workflowhistory}
+                    {runningStr};
+                ''').format(
+                    id_workflowhistory=sql.Identifier(project, 'workflowhistory'),
+                    runningStr=runningStr
+                ),
+                None,
+                'all'
+            )
+
+        else:
+            if isinstance(ids, str):
+                ids = [UUID(ids)]
+            elif not isinstance(ids, Iterable):
+                ids = [ids]
+            for w in range(len(ids)):
+                nextID = ids[w]
+                if not isinstance(nextID, UUID):
+                    nextID = UUID(nextID)
+                workflowIDs.append({'id':nextID})
+            
+        if revokeIfRunning:
+            # no need to commit revoke to DB since we're going to delete the workflows anyway
+            WorkflowTracker._revoke_task(workflowIDs)
+        
+        # delete from database
+        self.dbConnector.execute(sql.SQL('''
+            DELETE FROM {id_workflowhistory}
+            WHERE id IN %s;
+            '''
+        ).format(
+            id_workflowhistory=sql.Identifier(project, 'workflowhistory'),
+        ), tuple((w['id'],) for w in workflowIDs))

@@ -265,6 +265,27 @@ class AIController:
                 return {'status':1, 'message':str(e)}
 
 
+
+        @self.app.post('/<project>/deleteWorkflowHistory')
+        def delete_workflow_history(project):
+            '''
+                Receives a string (ID) or list of strings (IDs) for work-
+                flow(s) to be deleted. They can only be deleted by the
+                authors or else super users.
+            '''
+            if not self.loginCheck(project, admin=True):
+                abort(401, 'unauthorized')
+            
+            try:
+                workflowID = request.json['workflow_id']
+                revokeRunning = (request.json['revoke_running'] if 'revoke_running' in request.json else False)
+                status = self.middleware.deleteWorkflow_history(project, workflowID, revokeRunning)
+                return status
+
+            except Exception as e:
+                return {'status':1, 'message':str(e)}
+
+
     
         @self.app.get('/<project>/getAvailableAImodels')
         def get_available_ai_models(project):

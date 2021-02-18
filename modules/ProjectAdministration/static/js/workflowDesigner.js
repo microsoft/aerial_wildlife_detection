@@ -1383,9 +1383,11 @@ class WorkflowDesigner {
         // put nodes in order first
         var nodeSpec = [];
         var currentNode = this.startingNode;
+        let numNodes = 0;
         do {
             if(currentNode !== undefined && currentNode !== null) {
                 nodeSpec.push(currentNode.toJSON());
+                numNodes++;
             } else {
                 break;
             }
@@ -1403,6 +1405,9 @@ class WorkflowDesigner {
                 }
             }
         }
+
+        // check if there is any node (besides the start node); return nothing if not
+        if(numNodes <= 1) return {}
 
         // return
         return {

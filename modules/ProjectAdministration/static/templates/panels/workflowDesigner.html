@@ -400,6 +400,7 @@
 
         function runWorkflow() {
             var workflow = window.workflowDesigner.toJSON();
+            if(!workflow.hasOwnProperty('tasks')) return;
             return $.ajax({
                 url: window.baseURL + 'launchWorkflow',
                 method: 'POST',
