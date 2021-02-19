@@ -14,6 +14,43 @@ let labelTypeConversion = {
     'instanceSegmentation': 'instance segmentation'
 }
 
+function setProjectArchived(project, archived) {
+    console.log(project + ', ' + archived)
+    return $.ajax({
+        url: '/' + project + '/setArchived',        //TODO: new base URL
+        method: 'POST',
+        contentType: 'application/json; charset=utf-8',
+        dataType: 'json',
+        data: JSON.stringify({
+            archived: archived
+        }),
+        success: function(response) {
+            if(response['status'] === 0) {
+                window.messager.addMessage('Project archival status changed successfully.', 'success');
+            } else {
+                let message = 'An error occurred while changing project archival status';
+                if(typeof(response['message']) === 'string') {
+                    message += ' (message: "' + respones['message'] + '")';
+                }
+                message += '.';
+                window.messager.addMessage(message, 'error', 0);
+            }
+            //TODO: reload projects...
+            return $.Deferred().resolve().promise();
+        },
+        error: function(xhr, status, error) {
+            window.messager.addMessage('An error occurred while trying to set or un-set project archived (message: "' + error + '").', 'error', 0);
+        },
+        statusCode: {
+            401: function(xhr) {
+                return window.renewSessionRequest(xhr, function() {
+                    return setProjectArchived(project, archived);
+                });
+            }
+        }
+    });
+}
+
 function loadProjectInfo() {
     let projDiv = $('#projects');
     let projArchivedDiv = $('#projects-archived-tbody');
@@ -43,19 +80,21 @@ function loadProjectInfo() {
                         let markup = $('<tr id="archivedEntry_'+key+'"></tr>');
                         markup.append($('<td><a href="' + key + '">' + projName + '</a></td>'));
 
-                        if(isOwner || role === 'super user') {
-                            // only owners and super users are allowed to unarchive a project
-                            let unarchive = $('<td></td>');
-                            let unarchiveBtn = $('<button class="btn btn-sm btn-primary unarchive-button">Unarchive</button>');
-                            unarchiveBtn.on('click', function() {
-                                //TODO
-                                window.messager.addMessage('Button not yet implemented. Please unarchive project <a href="' + key + '/configuration/dangerZone">here</a>.', 'error', 0);
-                            });
-                            unarchive.append(unarchiveBtn);
-                            markup.append(unarchive);
-                        } else {
-                            markup.append($('<td></td>'));
-                        }
+                        //TODO: implement correctly
+                        // if(isOwner || role === 'super user') {
+                        //     // only owners and super users are allowed to unarchive a project
+                        //     let unarchive = $('<td></td>');
+                        //     let unarchiveBtn = $('<button class="btn btn-sm btn-primary unarchive-button">Unarchive</button>');
+                        //     unarchiveBtn.on('click', function() {
+                        //         setProjectArchived(key, false);
+                        //     });
+                        //     unarchive.append(unarchiveBtn);
+                        //     markup.append(unarchive);
+                        // } else {
+                        //     markup.append($('<td></td>'));
+                        // }
+                        markup.append($('<td></td>'));
+                        ///TODO
                         projArchivedDiv.append(markup);
 
                     } else {
@@ -67,17 +106,16 @@ function loadProjectInfo() {
                         let adminButtons = '';
                         if(role === 'admin' || role === 'super user') {
                             // show button to project configuration page
-                            adminButtons = '<span class="project-buttons"><a href="' + key + '/configuration/verview" class="btn btn-sm btn-success">Statistics</a>' +
+                            adminButtons = '<span class="project-buttons"><a href="' + key + '/configuration/overview" class="btn btn-sm btn-success">Statistics</a>' +
                                         '<a href="' + key + '/configuration/general" class="btn btn-sm btn-secondary">Configure</a>';
                             if(data['projects'][key]['aiModelSelected'] && !demoMode) {
                                 adminButtons += '<a href="' + key + '/configuration/aiModel" class="btn btn-sm btn-info">AI model</a>';
                             }
-                            //TODO: implement correctly:
+                            // //TODO: implement correctly:
                             // if(isOwner) {
-                            //     let archiveButton = '<button class="btn btn-sm btn-warning">Archive</button>';
+                            //     let archiveButton = '<button class="btn btn-sm btn-warning" id="archive_'+key+'">Archive</button>';
                             //     $(archiveButton).on('click', function() {
-                            //         //TODO
-                            //         console.log(key);
+                            //         setProjectArchived(key, true);
                             //     })
                             //     adminButtons += archiveButton;
                             // }

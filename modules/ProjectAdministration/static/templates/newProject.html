@@ -65,13 +65,17 @@
                 position: absolute;
                 right: 10px;
                 width: 400px;
-                top: 300px;
+                top: 440px;
                 color: white;
                 background: #434343;
-                overflow-x: auto;
                 border: 1px solid #aaa;
                 border-radius: 5px;
                 padding: 20px;
+            }
+            .ai-models-sidepanel-body {
+                height: 500px;
+                overflow-x: auto;
+                overflow-y: auto;
             }
         </style>
         <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
@@ -489,7 +493,7 @@
 
                     
                     <div class="settings-container">
-                        <div class="custom-control custom-switch">
+                        <div class="custom-control custom-switch" style="cursor:pointer">
                             <input type="checkbox" class="custom-control-input" id="different-prediction-type">
                             <label class="custom-control-label" for="different-prediction-type">
                                 <h2>Different prediction type <span class="warning">*</span></h2>
@@ -538,16 +542,18 @@
                 <!-- TODO -->
                 <div class="ai-models-sidepanel">
                     <h2>Compatible AI models</h2>
-                    <div id="ai-models-none" style="display:none">(none available)</div>
-                    <table id="ai-models-table" style="display:none">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Author</th>
-                            </tr>
-                        </thead>
-                        <tbody id="ai-models-tbody"></tbody>
-                    </table>
+                    <div class="ai-models-sidepanel-body">
+                        <div id="ai-models-none" style="display:none">(none available)</div>
+                        <table id="ai-models-table" style="display:none">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Author</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ai-models-tbody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
