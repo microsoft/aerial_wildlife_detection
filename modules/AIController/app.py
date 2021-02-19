@@ -301,6 +301,19 @@ class AIController:
 
 
 
+        @self.app.get('/getAvailableAImodels')
+        def get_available_ai_models():
+            '''
+                Returns all available AI models (class, name) that are
+                installed in this instance of AIDE.
+            '''
+            if not self.loginCheck(canCreateProjects=True):
+                abort(401, 'unauthorized')
+            
+            return self.middleware.getAvailableAImodels(None)
+
+
+
         @self.app.post('/<project>/verifyAImodelOptions')
         def verify_model_options(project):
             '''

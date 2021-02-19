@@ -716,16 +716,16 @@ class ProjectConfigMiddleware:
         '''
         if not isinstance(projectName, str):
             return False
-        projectName = projectName.strip().lower()
-        if not len(projectName):
+        projectName_stripped = projectName.strip().lower()
+        if not len(projectName_stripped):
             return False
 
         # check if name matches prohibited AIDE keywords (we do not replace long names)
-        if projectName in self.PROHIBITED_STRICT or any([p in projectName for p in self.PROHIBITED_STRICT]):
+        if projectName_stripped in self.PROHIBITED_STRICT or any([p in projectName_stripped for p in self.PROHIBITED_STRICT]):
             return False
-        if projectName in self.PROHIBITED_NAMES:
+        if projectName_stripped in self.PROHIBITED_NAMES:
             return False
-        if any([projectName.startswith(p) for p in self.PROHIBITED_NAME_PREFIXES]):
+        if any([projectName_stripped.startswith(p) for p in self.PROHIBITED_NAME_PREFIXES]):
             return False
 
         # check if name is already taken
@@ -751,16 +751,16 @@ class ProjectConfigMiddleware:
         '''
         if not isinstance(projectName, str):
             return False
-        projectName = projectName.strip().lower()
-        if not len(projectName):
+        projectName_stripped = projectName.strip().lower()
+        if not len(projectName_stripped):
             return False
 
         # check if name matches prohibited AIDE keywords; replace where possible
-        if projectName in self.PROHIBITED_STRICT or any([p in projectName for p in self.PROHIBITED_STRICT]):
+        if projectName_stripped in self.PROHIBITED_STRICT or any([p in projectName_stripped for p in self.PROHIBITED_STRICT]):
             return False
-        if projectName in self.PROHIBITED_NAMES or projectName in self.PROHIBITED_SHORTNAMES:
+        if projectName_stripped in self.PROHIBITED_NAMES or projectName_stripped in self.PROHIBITED_SHORTNAMES:
             return False
-        if any([projectName.startswith(p) for p in self.PROHIBITED_NAME_PREFIXES]):
+        if any([projectName_stripped.startswith(p) for p in self.PROHIBITED_NAME_PREFIXES]):
             return False
         for p in self.SHORTNAME_PATTERNS_REPLACE:
             projectName = projectName.replace(p, '_')

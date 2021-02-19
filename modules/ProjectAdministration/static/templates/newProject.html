@@ -8,25 +8,77 @@
         <link rel="stylesheet" href="/static/interface/css/interface.css?v={{ version }}" />
         <link rel="stylesheet" href="/static/general/css/messaging.css?v={{ version }}" />
         <style>
+            .settings-container {
+                margin-top: 20px;
+                margin-bottom: 40px;
+            }
+            .settings-container div {
+                margin: 0 auto;
+            }
             .new-project-fields {
-                width:600px;
-                margin:0 auto;
+                width: 50%;
+                min-width: 900px;
+                margin: 0 auto;
                 color: white;
+                padding-top: 40px;
+                height: calc(100vh - 150px);
+                overflow-y: auto;
             }
             .new-project-fields > input, textarea {
-                width: 400px;
+                width: 500px;
+                margin-bottom: 10px;
             }
             .new-project-fields > label {
                 margin-top: 20px;
             }
+            h2 {
+                margin-bottom: 25px;
+            }
             .warning {
                 color: red;
+            }
+            table {
+                margin: 0 auto;
+            }
+            td input {
+                width: 500px;
+            }
+            .anno-type-container {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                width: 850px;
+                text-align: center;
+            }
+            [type=radio] { 
+                position: absolute;
+                opacity: 0;
+                width: 0;
+                height: 0;
+            }
+            .anno-type-label {
+                cursor: pointer;
+            }
+            [type=radio]:checked + img {
+                outline: 2px solid #f00;
+            }
+            .ai-models-sidepanel {
+                position: absolute;
+                right: 10px;
+                width: 400px;
+                top: 300px;
+                color: white;
+                background: #434343;
+                overflow-x: auto;
+                border: 1px solid #aaa;
+                border-radius: 5px;
+                padding: 20px;
             }
         </style>
         <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
         <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
         <script type="text/javascript" src="/static/general/js/messaging.js?v={{ version }}"></script>
+        <script src="/static/general/js/overlay.js?v={{ version }}"></script>
         <script type="text/javascript">
             const SHORTNAME_PATTERNS_REPLACE = [
                 '|',
@@ -35,94 +87,158 @@
                 ':'
             ];
 
-            $(document).ready(function() {
-                // globals
-                window.projNameAvailable = false;
-                window.projShortnameAvailable = false;
+            // globals
+            window.projNameAvailable = false;
+            window.projShortnameAvailable = false;
+            window.aiModels = {};
 
-                var replaceProhibitedShortnameStrings = function(shortname) {
-                    for(var p=0; p<SHORTNAME_PATTERNS_REPLACE.length; p++) {
-                        shortname = shortname.replace(SHORTNAME_PATTERNS_REPLACE[p], '_')
-                    }
-                    return shortname;
-                }
-
-                var checkValuesCorrect = function() {
-                    
-                    var projName = $('#project-name-field').val();
-                    var projShortname = $('#project-shortname-field').val();
-
-
-                    if(projName.length) {
-                        var promise = checkNameAvailable('verifyProjectName',
-                                                            { name: projName },
-                                                            $('#project-name-availability'));
-                    } else {
-                        window.projNameAvailable = false;
-                        $('#project-name-availability').hide();
-                        $('#create-project-button').prop('disabled', true);
-                        var promise = $.Deferred().promise();
-                    }
-                    
-                    promise = promise.then(function() {
-                        if(projShortname.length) {
-                            // replace prohibited patterns
-                            projShortname = replaceProhibitedShortnameStrings(projShortname);
-                            $('#project-shortname-field').val(projShortname);
-
-                            return checkNameAvailable('verifyProjectShort',
-                                                            { shorthand: projShortname },
-                                                            $('#project-shortname-availability'));
-                        } else {
-                            window.projShortnameAvailable = false;
-                            $('#project-shortname-availability').hide();
-                            $('#create-project-button').prop('disabled', true);
-                            return $.Deferred().promise();
-                        }    
-                    });
-
-                    promise = promise.then(function() {
-                        if(window.projNameAvailable && window.projShortnameAvailable) {
-                            $('#create-project-button').prop('disabled', false);
-                        } else {
-                            $('#create-project-button').prop('disabled', true);
-                        }
-                    });
-
-                    return promise;
-                }
-
-                var checkNameAvailable = function checkNameAvailable(url, params, div) {
-                    return $.ajax({
-                        url: url,
-                        data: params,
-                        method: 'GET',
-                        success: function(data) {
-                            if(data.hasOwnProperty('available') && data['available']) {
-                                $(div).html('OK');
-                                $(div).css('color', 'green');
-                                $(div).css('display', 'inline');
-                                if(params.hasOwnProperty('shorthand')) {
-                                    window.projShortnameAvailable = true;
-                                } else {
-                                    window.projNameAvailable = true;
+            function getAvailableAImodels() {
+                return $.ajax({
+                    url: '/getAvailableAImodels',
+                    method: 'GET',
+                    success: function(data) {
+                        try {
+                            let aiModels = data['models']['prediction'];
+                            for(var key in aiModels) {
+                                let model = aiModels[key];
+                                let modelInfo = {
+                                    name: model['name'],
+                                    author: model['author'],
+                                    description: model['description']
                                 }
-                                return true;
-                            } else {
-                                $(div).html('name unavailable');
-                                $(div).css('color', 'red');
-                                $(div).css('display', 'inline');
-                                $('#create-project-button').prop('disabled', true);
-                                if(params.hasOwnProperty('shorthand')) {
-                                    window.projShortnameAvailable = false;
-                                } else {
-                                    window.projNameAvailable = false;
+                                let annoTypes = model['annotationType'];
+                                let predTypes = model['predictionType'];
+                                for(var a=0; a<annoTypes.length; a++) {
+                                    if(!window.aiModels.hasOwnProperty(annoTypes[a])) {
+                                        window.aiModels[annoTypes[a]] = {};
+                                    }
+                                    for(var p=0; p<predTypes.length; p++) {
+                                        if(!window.aiModels[annoTypes[a]].hasOwnProperty(predTypes[p])) {
+                                            window.aiModels[annoTypes[a]][predTypes[p]] = [];
+                                        }
+                                        window.aiModels[annoTypes[a]][predTypes[p]].push(JSON.parse(JSON.stringify(modelInfo)));
+                                    }
                                 }
-                                return false;
                             }
-                        },
-                        error: function() {
-                            $(div).html('an unknown error occurred');
+                        } catch(err) {
+                            window.aiModels = {};
+                        }
+                    },
+                    statusCode: {
+                        401: function(xhr) {
+                            return window.renewSessionRequest(xhr, function() {
+                                return getAvailableAImodels();
+                            });
+                        }
+                    }
+                });
+            }
+
+            function updateAImodelsTable() {
+                let table = $('#ai-models-table');
+                let tbody = $('#ai-models-tbody');
+                let placeholder = $('#ai-models-none');
+                let types = getAnnoPredTypes();
+                tbody.empty();
+                try {
+                    let models = window.aiModels[types['annotationType']][types['predictionType']];
+                    if(models.length === 0) throw 'no model';
+                    for(var m=0; m<models.length; m++) {
+                        let model = models[m];
+                        let markup = $('<tr style="cursor:pointer"><td>' + model['name'] + '</td>' +
+                            '<td>' + model['author'] + '</td></tr>');
+                        
+                        // description on click in overlay
+                        let overlayMarkup = $('<div></div>');
+                        overlayMarkup.append(model['description']);
+                        overlayMarkup.append($('<br />'));
+                        let overlayCloseBtn = $('<button class="btn btn-sm btn-primary">Close</button>');
+                        overlayCloseBtn.on('click', function() {
+                            window.showOverlay(null);
+                        });
+                        overlayMarkup.append(overlayCloseBtn);
+                        markup.on('click', function() {
+                            window.showOverlay(overlayMarkup, true, false);
+                        });
+                        tbody.append(markup);
+                    }
+                    placeholder.hide();
+                    table.show();
+                } catch(err) {
+                    table.hide();
+                    placeholder.show();
+                }
+            }
+
+            function replaceProhibitedShortnameStrings(shortname) {
+                for(var p=0; p<SHORTNAME_PATTERNS_REPLACE.length; p++) {
+                    shortname = shortname.replace(SHORTNAME_PATTERNS_REPLACE[p], '_')
+                }
+                return shortname;
+            }
+
+            function checkValuesCorrect() {
+                let projName = $('#project-name-field').val();
+                let projShortname = $('#project-shortname-field').val();
+
+
+                if(projName.length) {
+                    var promise = checkNameAvailable('verifyProjectName',
+                                                        { name: projName },
+                                                        $('#project-name-availability'));
+                } else {
+                    window.projNameAvailable = false;
+                    $('#project-name-availability').hide();
+                    $('#create-project-button').prop('disabled', true);
+                    var promise = $.Deferred().resolve().promise();
+                }
+                
+                promise = promise.then(function() {
+                    if(projShortname.length) {
+                        // replace prohibited patterns
+                        projShortname = replaceProhibitedShortnameStrings(projShortname);
+                        $('#project-shortname-field').val(projShortname);
+
+                        return checkNameAvailable('verifyProjectShort',
+                                                        { shorthand: projShortname },
+                                                        $('#project-shortname-availability'));
+                    } else {
+                        window.projShortnameAvailable = false;
+                        $('#project-shortname-availability').hide();
+                        $('#create-project-button').prop('disabled', true);
+                        return $.Deferred().promise();
+                    }    
+                });
+
+                promise = promise.then(function() {
+                    if(window.projNameAvailable && window.projShortnameAvailable) {
+                        $('#create-project-button').prop('disabled', false);
+                    } else {
+                        $('#create-project-button').prop('disabled', true);
+                    }
+                });
+
+                return promise;
+            }
+
+            function checkNameAvailable(url, params, div) {
+                return $.ajax({
+                    url: url,
+                    data: params,
+                    method: 'GET',
+                    success: function(data) {
+                        if(data.hasOwnProperty('available') && data['available']) {
+                            $(div).html('OK');
+                            $(div).css('color', 'green');
+                            $(div).css('display', 'inline');
+                            if(params.hasOwnProperty('shorthand')) {
+                                window.projShortnameAvailable = true;
+                            } else {
+                                window.projNameAvailable = true;
+                            }
+                            return true;
+                        } else {
+                            $(div).html('name unavailable');
                             $(div).css('color', 'red');
                             $(div).css('display', 'inline');
                             $('#create-project-button').prop('disabled', true);
@@ -132,76 +248,128 @@
                                 window.projNameAvailable = false;
                             }
                             return false;
-                        },
-                        statusCode: {
-                            401: function(xhr) {
-                                return window.renewSessionRequest(xhr, function() {
-                                    return checkNameAvailable(url, params, div);    //TODO
-                                });
-                            }
                         }
-                    });
-                }
-
-                // name and shortname availability
-                $('#project-name-field').on('focusout', checkValuesCorrect);
-                $('#project-shortname-field').on('focusout', function() {
-                    var promise = checkValuesCorrect();
-                    promise = promise.then(function() {
-                        if(window.projShortnameAvailable) {
-                            $('#project-shorthand-title').html($('#project-shortname-field').val());
+                    },
+                    error: function() {
+                        $(div).html('an unknown error occurred');
+                        $(div).css('color', 'red');
+                        $(div).css('display', 'inline');
+                        $('#create-project-button').prop('disabled', true);
+                        if(params.hasOwnProperty('shorthand')) {
+                            window.projShortnameAvailable = false;
                         } else {
-                            $('#project-shorthand-title').html('');
+                            window.projNameAvailable = false;
                         }
-                    });
-                });
-
-                var _doCreateProject = function() {
-                    var promise = checkValuesCorrect();
-                    promise.then(function() {
-                        if(window.projNameAvailable && window.projShortnameAvailable) {
-                            // submit data and create new project
-                            var shortname = $('#project-shortname-field').val();
-                            return $.ajax({
-                                url: '/createProject',
-                                method: 'POST',
-                                contentType: 'application/json; charset=utf-8',
-                                dataType: 'json',
-                                data: JSON.stringify({
-                                    name: $('#project-name-field').val(),
-                                    shortname: shortname,
-                                    description: $('#project-description-field').val(),
-                                    annotationType: $('#project-annotation-type').val(),
-                                    predictionType: $('#project-prediction-type').val()
-                                }),
-                                success: function(response) {
-                                    if(response.hasOwnProperty('success') && response['success']) {
-                                        window.location.href = '/' + shortname + '/setup';
-                                    } else {
-                                        console.error('An unknown error occurred.');
-                                        window.messager.addMessage('An unknown error occurred while trying to create project.', 'error', 0);
-                                    }
-                                },
-                                error: function(xhr, status, error) {
-                                    console.error(error);
-                                    window.messager.addMessage('Project could not be created (message: "'+error+'").', 'error', 0);
-                                },
-                                statusCode: {
-                                    401: function(xhr) {
-                                        return window.renewSessionRequest(xhr, function() {
-                                            return _doCreateProject();
-                                        });
-                                    }
-                                }
+                        return false;
+                    },
+                    statusCode: {
+                        401: function(xhr) {
+                            return window.renewSessionRequest(xhr, function() {
+                                return checkNameAvailable(url, params, div);
                             });
-                        } else {
-                            return $.Deferred().promise();
                         }
-                    });
-                }
+                    }
+                });
+            }
 
-                $('#create-project-button').click(function() {
-                    _doCreateProject();
+            function getAnnoPredTypes() {
+                // annotation and prediction type
+                let annoType = $('input[name="annotation-type"]:checked').val();
+                let predType = annoType;
+                if($('#different-prediction-type').prop('checked')) {
+                    predType = $('input[name="prediction-type"]:checked').val();
+                }
+                return {
+                    annotationType: annoType,
+                    predictionType: predType
+                }
+            }
+
+            function doCreateProject() {
+                let types = getAnnoPredTypes();
+
+                let promise = checkValuesCorrect();
+                promise.then(function() {
+                    if(window.projNameAvailable && window.projShortnameAvailable) {
+                        // submit data and create new project
+                        var shortname = $('#project-shortname-field').val();
+                        return $.ajax({
+                            url: '/createProject',
+                            method: 'POST',
+                            contentType: 'application/json; charset=utf-8',
+                            dataType: 'json',
+                            data: JSON.stringify({
+                                name: $('#project-name-field').val(),
+                                shortname: shortname,
+                                description: $('#project-description-field').val(),
+                                annotationType: types['annotationType'],
+                                predictionType: types['predictionType']
+                            }),
+                            success: function(response) {
+                                if(response.hasOwnProperty('success') && response['success']) {
+                                    window.location.href = '/' + shortname + '/setup';
+                                } else {
+                                    console.error('An unknown error occurred.');
+                                    window.messager.addMessage('An unknown error occurred while trying to create project.', 'error', 0);
+                                }
+                            },
+                            error: function(xhr, status, error) {
+                                console.error(error);
+                                window.messager.addMessage('Project could not be created (message: "'+error+'").', 'error', 0);
+                            },
+                            statusCode: {
+                                401: function(xhr) {
+                                    return window.renewSessionRequest(xhr, function() {
+                                        return doCreateProject();
+                                    });
+                                }
+                            }
+                        });
+                    } else {
+                        return $.Deferred().resolve().promise();
+                    }
+                });
+            }
+
+            $(document).ready(function() {
+
+                let promise = getAvailableAImodels();
+
+                promise.then(function() {
+                    updateAImodelsTable();
+
+                    // name and shortname availability
+                    $('#project-name-field').on('focusout', checkValuesCorrect);
+                    $('#project-shortname-field').on('focusout', function() {
+                        var promise = checkValuesCorrect();
+                        promise = promise.then(function() {
+                            if(window.projShortnameAvailable) {
+                                $('#project-shorthand-title').html($('#project-shortname-field').val());
+                            } else {
+                                $('#project-shorthand-title').html('');
+                            }
+                        });
+                    });
+
+                    $('input[name="annotation-type"]').on('input', function() {
+                        updateAImodelsTable();
+                    });
+                    $('input[name="prediction-type"]').on('input', function() {
+                        updateAImodelsTable();
+                    });
+
+                    $('#different-prediction-type').on('input', function() {
+                        if($(this).prop('checked')) {
+                            $('#prediction-type-container').slideDown();
+                        } else {
+                            $('#prediction-type-container').slideUp();
+                        }
+                        updateAImodelsTable();
+                    });
+
+                    $('#create-project-button').click(function() {
+                        doCreateProject();
+                    });
                 });
             });
         </script>
@@ -251,33 +419,110 @@
 
                 <div class="new-project-fields">
 
-                    <label for="project-name-field">Project name <span class="warning">*</span></label><br />
-                    <input type="text" id="project-name-field" required />
-                    <div id="project-name-availability" style="display:none"></div><br />
+                    <div id="general" class="settings-container">
+                        <h2>General</h2>
 
-                    <label for="project-shortname-field">Project shortname <span class="warning">*</span></label><br />
-                    <input type="text" id="project-shortname-field" required />
-                    <div id="project-shortname-availability" style="display:none"></div><br />
+                        <table>
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <label for="project-name-field">Project name <span class="warning">*</span></label>
+                                    </td>
+                                    <td>
+                                        <input type="text" id="project-name-field" required />
+                                    </td>
+                                    <td>
+                                        <div id="project-name-availability" style="display:none"></div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <label for="project-shortname-field">Project shortname <span class="warning">*</span></label>
+                                    </td>
+                                    <td>
+                                        <input type="text" id="project-shortname-field" required />
+                                    </td>
+                                    <td>
+                                        <div id="project-shortname-availability" style="display:none"></div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <label for="project-description-field">Short description</label>
+                                    </td>
+                                    <td>
+                                        <textarea type="text" id="project-description-field" placeholder="Short project description"></textarea>
+                                    </td>
+                                    <td></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
 
-                    <label for="project-description-field">Short description</label><br />
-                    <textarea type="text" id="project-description-field" placeholder="Short project description"></textarea><br />
 
+                    <div class="settings-container">
+                        <h2>Annotation type <span class="warning">*</span></h2>
 
-                    <label for="project-annotation-type">Annotation type <span class="warning">*</span></label><br />
-                    <select id="project-annotation-type">
-                        <option value="labels">Image Labels</option>
-                        <option value="points">Points</option>
-                        <option value="boundingBoxes">Bounding Boxes</option>
-                        <option value="segmentationMasks">Segmentation Masks</option>
-                    </select><br />
+                        <div class="anno-type-container">
+                            <label class="anno-type-label">
+                                <input type="radio" id="labels" value="labels" name="annotation-type" checked />
+                                <img src="/static/general/img/annotationTypes/labels.png" width="400" height="300" />
+                                <h3>Image labels</h3>
+                            </label>
+                            <label class="anno-type-label">
+                                <input type="radio" id="points" value="points" name="annotation-type" />
+                                <img src="/static/general/img/annotationTypes/points.png" width="400" height="300" />
+                                <h3>Points</h3>
+                            </label>
+                            <label class="anno-type-label">
+                                <input type="radio" id="boundingBoxes" value="boundingBoxes" name="annotation-type" />
+                                <img src="/static/general/img/annotationTypes/boundingBoxes.png" width="400" height="300" />
+                                <h3>Bounding boxes</h3>
+                            </label>
+                            <label class="anno-type-label">
+                                <input type="radio" id="segmentationMasks" value="segmentationMasks" name="annotation-type" />
+                                <img src="/static/general/img/annotationTypes/segmentationMasks.png" width="400" height="300" />
+                                <h3>Pixel-wise segmentation masks</h3>
+                            </label>
+                        </div>
+                    </div>
 
-                    <label for="project-prediction-type">Prediction type <span class="warning">*</span></label><br />
-                    <select id="project-prediction-type">
-                        <option value="labels">Image Labels</option>
-                        <option value="points">Points</option>
-                        <option value="boundingBoxes">Bounding Boxes</option>
-                        <option value="segmentationMasks">Segmentation Masks</option>
-                    </select><br />
+                    
+                    <div class="settings-container">
+                        <div class="custom-control custom-switch">
+                            <input type="checkbox" class="custom-control-input" id="different-prediction-type">
+                            <label class="custom-control-label" for="different-prediction-type">
+                                <h2>Different prediction type <span class="warning">*</span></h2>
+                            </label>
+                        </div>
+                        <p style="font-size:9pt;font-style:italic">
+                            Note that choosing a different prediction type might limit the number of AI models available.
+                            See panel on the right.
+                        </p>
+
+                        <div class="anno-type-container" id="prediction-type-container" style="display:none">
+                            <label class="anno-type-label">
+                                <input type="radio" id="labels" value="labels" name="prediction-type" checked />
+                                <img src="/static/general/img/annotationTypes/labels.png" width="400" height="300" />
+                                <h3>Image labels</h3>
+                            </label>
+                            <label class="anno-type-label">
+                                <input type="radio" id="points" value="points" name="prediction-type" />
+                                <img src="/static/general/img/annotationTypes/points.png" width="400" height="300" />
+                                <h3>Points</h3>
+                            </label>
+                            <label class="anno-type-label">
+                                <input type="radio" id="boundingBoxes" value="boundingBoxes" name="prediction-type" />
+                                <img src="/static/general/img/annotationTypes/boundingBoxes.png" width="400" height="300" />
+                                <h3>Bounding boxes</h3>
+                            </label>
+                            <label class="anno-type-label">
+                                <input type="radio" id="segmentationMasks" value="segmentationMasks" name="prediction-type" />
+                                <img src="/static/general/img/annotationTypes/segmentationMasks.png" width="400" height="300" />
+                                <h3>Pixel-wise segmentation masks</h3>
+                            </label>
+                        </div>
+                    </div>
 
                     <div class="warning" style="margin-top:20px;">
                         * Note: Values are required and cannot be changed once the project has been created.
@@ -288,6 +533,21 @@
                         <a class="btn btn-secondary" href="/">Cancel</a>
                         <button class="btn btn-primary" id="create-project-button" style="float:right" disabled="disabled">Create</button>
                     </div>
+                </div>
+
+                <!-- TODO -->
+                <div class="ai-models-sidepanel">
+                    <h2>Compatible AI models</h2>
+                    <div id="ai-models-none" style="display:none">(none available)</div>
+                    <table id="ai-models-table" style="display:none">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Author</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ai-models-tbody"></tbody>
+                    </table>
                 </div>
             </div>
 
