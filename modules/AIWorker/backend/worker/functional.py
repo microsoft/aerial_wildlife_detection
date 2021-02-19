@@ -518,8 +518,11 @@ def _call_inference(project, imageIDs, epoch, numEpochs, modelInstance, modelLib
                             if fn in prediction and prediction[fn] is None and 'confidence' in prediction:
                                 # ranker somehow didn't assign value; use confidence by default
                                 nextResultValues.append(prediction['confidence'])
-                            else:
+                            elif fn in prediction:
                                 nextResultValues.append(prediction[fn])
+                            else:
+                                #TODO: provide replacement for priority, e.g. in case of segmentation masks
+                                nextResultValues.append(None)
                         else:
                             if fn in prediction:
                                 #TODO: might need to do typecasts (e.g. UUID?)
