@@ -10,7 +10,6 @@
 '''
 
 import os
-import requests
 from urllib import request
 import urllib.parse
 from urllib.error import HTTPError
@@ -45,27 +44,6 @@ class FileServer:
         '''
         baseURI = self.config.getProperty('Server', 'dataServer_uri')
         return is_localhost(baseURI)
-        # # check for explicit localhost or hostname appearance in URL
-        # localhosts = ['localhost', socket.gethostname()]
-        # interfaces = netifaces.interfaces()
-        # for i in interfaces:
-        #     iface = netifaces.ifaddresses(i).get(netifaces.AF_INET)
-        #     if iface != None:
-        #         for j in iface:
-        #             localhosts.append(j['addr'])
-        
-        # baseURI_fragments = urlsplit(baseURI)
-        # baseURI_stripped = baseURI_fragments.netloc
-        # for l in localhosts:
-        #     if baseURI_stripped.startswith(l):
-        #         return True
-        
-        # # also check for local addresses that do not even specify the hostname (e.g. '/files' or just 'files')
-        # if not baseURI.startswith('http'):
-        #     return True
-        
-        # # all checks failed; file server is running on another machine
-        # return False
 
     
 

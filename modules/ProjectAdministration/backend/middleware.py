@@ -78,7 +78,9 @@ class ProjectConfigMiddleware:
         'getceleryworkerdetails',
         'getprojectdetails',
         'getuserdetails',
-        'setpassword'
+        'setpassword',
+        'exec',
+        'v'
     ]
 
     # prohibited name prefixes

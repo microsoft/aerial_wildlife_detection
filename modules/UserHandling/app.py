@@ -9,7 +9,6 @@ import html
 from bottle import request, response, static_file, abort, redirect
 from .backend.middleware import UserMiddleware
 from .backend.exceptions import *
-from util import helpers
 
 
 class UserHandler():
@@ -269,6 +268,14 @@ class UserHandler():
             else:
                 abort(404, 'not found')
 
+
+        @self.app.get('/v')
+        def userVerify():
+            '''
+                Reserve for future implementations that require
+                unauthorized but token-protected user services.
+            '''
+            abort(404, 'not found')
 
 
     def checkAuthenticated(self, project=None, admin=False, superuser=False, canCreateProjects=False, extend_session=False, return_all=False):

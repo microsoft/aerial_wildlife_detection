@@ -5,7 +5,7 @@
 '''
 
 import html
-from bottle import post, request, response, abort
+from bottle import request, abort
 from modules.AIController.backend.middleware import AIMiddleware
 from modules.AIController.backend import celery_interface
 from util.helpers import LogDecorator

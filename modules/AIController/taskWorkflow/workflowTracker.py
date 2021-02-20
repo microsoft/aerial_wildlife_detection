@@ -12,10 +12,9 @@ from collections.abc import Iterable
 from uuid import UUID
 import json
 from psycopg2 import sql
+import celery
 from celery import current_app
 from celery.result import AsyncResult, GroupResult
-from celery.task.control import revoke
-# from . import task_ids_match
 
 
 
@@ -122,7 +121,7 @@ class WorkflowTracker:
     @staticmethod
     def _revoke_task(tasks):
         if isinstance(tasks, dict) and 'id' in tasks:
-            revoke(tasks['id'], terminate=True)
+            celery.task.control.revoke(tasks['id'], terminate=True)
         elif isinstance(tasks, Iterable):
             for task in tasks:
                 WorkflowTracker._revoke_task(task)
@@ -182,54 +181,6 @@ class WorkflowTracker:
             identified through the database and Celery running status, if
             needed.
         '''
-
-        #TODO: we now assume the AIC middleware has checked whether task is allowed to launch
-        # if author is None:
-        #     # check if workflow is already running
-        #     alWFrunning = {}
-        #     runningAutoWFs = self.dbConnector.execute(
-        #         sql.SQL('''
-        #             SELECT id, tasks, timeFinished, succeeded, abortedBy
-        #             FROM {}
-        #             WHERE launchedBy IS NULL;
-        #         ''').format(sql.Identifier(project, 'workflowhistory')),
-        #         None, 'all'
-        #     )
-        #     if runningAutoWFs is not None:
-        #         for wf in runningAutoWFs:
-        #             #TODO: fields to choose?
-        #             if wf['timefinished'] is None and \
-        #                 wf['abortedby'] is None:
-        #                 alWFrunning[wf['id']] = json.loads(wf['tasks'])
-            
-        #     alTaskRunning = False
-        #     alTasks_orphaned = set()
-        #     activeTasks = current_app.control.inspect().active()
-        #     for alKey in alWFrunning.keys():
-        #         # auto-launched workflow running according to database; check Celery for completeness
-        #         for key in activeTasks:
-        #             for task in activeTasks[key]:
-        #                 if task_ids_match(alWFrunning[alKey], task['id']):
-        #                     # confirmed task running
-        #                     alTaskRunning = True
-                            
-        #                 else:
-        #                     # task not running; flag as such in database
-        #                     alTasks_orphaned.add(alKey)
-
-        #     # clean up orphaned tasks
-        #     if len(alTasks_orphaned):
-        #         self.dbConnector.execute(sql.SQL('''
-        #             UPDATE {}
-        #             SET timeFinished = NOW(), succeeded = FALSE,
-        #                 messages = '[\'Auto-launched task did not finish\']'
-        #             WHERE id IN %s;
-        #         ''').format(sql.Identifier(project, 'workflowhistory')),
-        #         tuple([UUID(i) for i in alTasks_orphaned]), None)
-
-        #     # abort if auto-launched task running
-        #     if alTaskRunning:
-        #         raise Exception('Auto-launched workflow already running.')
 
         # create entry in database
         queryStr = sql.SQL('''

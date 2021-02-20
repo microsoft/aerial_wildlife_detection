@@ -4,12 +4,8 @@
 
 import inspect
 import json
-from psycopg2 import sql
-from celery import current_app
-from kombu import Queue
 from modules.AIWorker.backend.worker import functional
 from modules.AIWorker.backend import fileserver
-from modules.Database.app import Database
 from util.helpers import LogDecorator, get_class_executable
 
 
@@ -22,7 +18,7 @@ class AIWorker():
             print('AIWorker'.ljust(LogDecorator.get_ljust_offset()), end='')
 
         try:
-            self.dbConnector = dbConnector  #Database(config)
+            self.dbConnector = dbConnector
             self.passiveMode = passiveMode
             self._init_fileserver()
         except Exception as e:

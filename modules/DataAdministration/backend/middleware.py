@@ -9,18 +9,16 @@
     2020-21 Benjamin Kellenberger
 '''
 
-import uuid
 import html
 from . import celery_interface
 from .dataWorker import DataWorker
-from modules.Database.app import Database
 
 
 class DataAdministrationMiddleware:
 
     def __init__(self, config, dbConnector, taskCoordinator):
         self.config = config
-        self.dbConnector = dbConnector  #Database(config)
+        self.dbConnector = dbConnector
         self.taskCoordinator = taskCoordinator
         self.dataWorker = DataWorker(config, dbConnector)
 

@@ -23,10 +23,7 @@
 from threading import Thread
 import time
 from datetime import datetime
-import uuid
-import html
 import celery
-from celery.result import AsyncResult, GroupResult
 import kombu.five
 from util.helpers import current_time
 

@@ -41,12 +41,6 @@ class FileServer():
     def _initBottle(self):
 
         ''' static routing to files '''
-        # @enable_cors
-        # @self.app.route(os.path.join(self.staticAddressSuffix, '<path:path>'))
-        # def send_file_deprecated(path):
-        #     return static_file(path, root=self.staticDir)
-
-        
         @enable_cors
         @self.app.route(os.path.join('/', self.staticAddressSuffix, '/<project>/files/<path:path>'))
         def send_file(project, path):

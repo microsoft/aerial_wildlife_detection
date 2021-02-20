@@ -37,12 +37,6 @@ def listImages(project, folder=None, imageAddedRange=None, lastViewedRange=None,
         orderBy, order, startFrom, limit)
 
 
-# @current_app.task(name='DataAdministration.upload_images')
-# def uploadImages(project, images):
-#     #TODO: check if makes sense to do this in a Celery task
-#     return worker.uploadImages(project, images)
-
-
 @current_app.task(name='DataAdministration.scan_for_images')
 def scanForImages(project):
     return worker.scanForImages(project)

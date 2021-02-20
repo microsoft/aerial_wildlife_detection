@@ -11,7 +11,6 @@ import requests
 from psycopg2 import sql
 from celery import current_app
 from constants.version import AIDE_VERSION, MIN_FILESERVER_VERSION, compare_versions
-from modules.Database.app import Database
 from util import celeryWorkerCommons
 from util.helpers import LogDecorator, is_localhost
 
@@ -20,7 +19,7 @@ class AdminMiddleware:
 
     def __init__(self, config, dbConnector):
         self.config = config
-        self.dbConnector = dbConnector      #Database(config)
+        self.dbConnector = dbConnector
 
 
     def getServiceDetails(self, verbose=False, raise_error=False):

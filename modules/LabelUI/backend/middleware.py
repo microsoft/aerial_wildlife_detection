@@ -13,7 +13,6 @@ import dateutil.parser
 import json
 from PIL import Image
 from psycopg2 import sql
-from modules.Database.app import Database
 from .sql_string_builder import SQLStringBuilder
 from .annotation_sql_tokens import QueryStrings_annotation, AnnotationParser
 from util import helpers
@@ -23,7 +22,7 @@ class DBMiddleware():
 
     def __init__(self, config, dbConnector):
         self.config = config
-        self.dbConnector = dbConnector      #Database(config)
+        self.dbConnector = dbConnector
 
         self.project_immutables = {}       # project settings that cannot be changed (project shorthand -> {settings})
 

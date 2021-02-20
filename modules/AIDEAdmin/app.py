@@ -65,6 +65,15 @@ class AIDEAdmin:
                 abort(401, 'forbidden')
 
 
+        @self.app.get('/exec')
+        def aide_exec():
+            '''
+                Reserve for future implementations that require
+                unauthorized but token-protected services.
+            '''
+            abort(404, 'not found')
+
+
         @self.app.route('/admin')
         def send_aide_admin_page():
             if not self.loginCheck():

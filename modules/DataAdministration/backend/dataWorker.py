@@ -10,11 +10,9 @@
 import os
 import io
 import re
-import glob
 import shutil
 import tempfile
 import zipfile
-import zlib
 import math
 from datetime import datetime
 import pytz
@@ -23,7 +21,6 @@ from celery import current_app
 from kombu import Queue
 from PIL import Image
 from psycopg2 import sql
-from modules.Database.app import Database
 from modules.LabelUI.backend.annotation_sql_tokens import QueryStrings_annotation, QueryStrings_prediction
 from util.helpers import VALID_IMAGE_EXTENSIONS, FILENAMES_PROHIBITED_CHARS, listDirectory, base64ToImage
 from util.imageSharding import split_image
@@ -37,7 +34,7 @@ class DataWorker:
 
     def __init__(self, config, dbConnector, passiveMode=False):
         self.config = config
-        self.dbConnector = dbConnector      #Database(config)
+        self.dbConnector = dbConnector
         self.countPattern = re.compile('\_[0-9]+$')
         self.passiveMode = passiveMode
 

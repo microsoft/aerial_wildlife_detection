@@ -7,18 +7,13 @@
 
 import os
 import glob
-from datetime import datetime
 from uuid import UUID
-from urllib import request
 import json
 from psycopg2 import sql
 import celery
 from ai import PREDICTION_MODELS
-from modules.Database.app import Database
 from modules.LabelUI.backend.middleware import DBMiddleware     # required to obtain label class definitions (TODO: make more elegant)
 from . import celery_interface
-from modules.AIWorker.backend.fileserver import FileServer
-from util.helpers import get_class_executable, current_time
 
 
 class ModelMarketplaceMiddleware:
@@ -35,7 +30,7 @@ class ModelMarketplaceMiddleware:
 
     def __init__(self, config, dbConnector, taskCoordinator):
         self.config = config
-        self.dbConnector = dbConnector      #Database(config)
+        self.dbConnector = dbConnector
         self.taskCoordinator = taskCoordinator
         self.labelUImiddleware = DBMiddleware(config, dbConnector)
         self._init_available_ai_models()

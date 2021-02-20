@@ -8,7 +8,7 @@ import os
 import html
 from uuid import UUID
 import bottle
-from bottle import request, response, static_file, redirect, abort, SimpleTemplate
+from bottle import request, redirect, abort, SimpleTemplate
 from constants.version import AIDE_VERSION
 from .backend.middleware import DBMiddleware
 from util.helpers import LogDecorator, parse_boolean

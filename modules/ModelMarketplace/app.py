@@ -10,18 +10,13 @@
     2020-21 Benjamin Kellenberger
 '''
 
-import os
-import datetime
-import tempfile
 import uuid
-import json
 import html
-from bottle import static_file, request, response, abort
-import requests
+import bottle
+from bottle import static_file, request, abort
 from .backend.middleware import ModelMarketplaceMiddleware
 from .backend.marketplaceWorker import ModelMarketplaceWorker
 from util.cors import enable_cors
-from util import helpers
 
 
 class ModelMarketplace:

@@ -7,8 +7,6 @@
 
 import os
 from celery import current_app
-from kombu.common import Broadcast
-from constants.version import AIDE_VERSION
 from modules.AIWorker.app import AIWorker
 from modules.Database.app import Database
 from util.configDef import Config

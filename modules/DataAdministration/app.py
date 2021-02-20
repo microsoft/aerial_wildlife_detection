@@ -14,7 +14,7 @@ import tempfile
 import uuid
 import json
 import html
-from bottle import static_file, request, response, abort
+from bottle import static_file, request, abort
 import requests
 from .backend.middleware import DataAdministrationMiddleware
 from util.cors import enable_cors
@@ -97,29 +97,6 @@ class DataAdministrator:
 
 
     def _initBottle(self):
-
-        # ''' Status polling '''
-        # @self.app.post('/<project>/pollStatus')
-        # def pollStatus(project):
-        #     '''
-        #         Receives a task ID and polls the middleware
-        #         for an ongoing data administration task.
-        #         Returns a dict with (meta-) data, including
-        #         the Celery status type, result (if completed),
-        #         error message (if failed), etc.
-        #     '''
-        #     if not self.loginCheck(project=project, admin=True):
-        #         abort(401, 'forbidden')
-
-        #     try:
-        #         taskID = request.json['taskID']
-        #         status = self.middleware.pollStatus(project, taskID)
-
-        #         return {'response': status}
-
-        #     except Exception as e:
-        #         abort(400, str(e))
-
 
         ''' Image management functionalities '''
         @self.app.get('/<project>/getImageFolders')

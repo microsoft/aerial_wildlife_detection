@@ -89,8 +89,13 @@ class Watchdog(Thread):
                             # confirmed task running
                             self.runningTasks.append(task['id'])
                         else:
-                            # task not running; flag as such in database
-                            tasks_orphaned.add(dbKey)
+                            # task not running; check project and flag as such in database
+                            try:
+                                project = task['kwargs']['project']
+                                if project == self.project:
+                                    tasks_orphaned.add(dbKey)
+                            except:
+                                continue
         
         # vice-versa: check running tasks and re-enable them if flagged as orphaned in DB
         tasks_resurrected = set()
@@ -104,10 +109,14 @@ class Watchdog(Thread):
                     # task is not AI model training-related; skip
                     continue
 
-                taskID = task['id']
-                if taskID not in tasksRunning_db:
-                    tasks_resurrected.add(taskID)
-                    self.runningTasks.append(taskID)
+                try:
+                    project = task['kwargs']['project']
+                    taskID = task['id']
+                    if project == self.project and taskID not in tasksRunning_db:
+                        tasks_resurrected.add(taskID)
+                        self.runningTasks.append(taskID)
+                except:
+                    continue
         
         tasks_orphaned = tasks_orphaned.difference(tasks_resurrected)
                 

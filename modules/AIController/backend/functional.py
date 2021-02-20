@@ -6,7 +6,6 @@
     2020-21 Benjamin Kellenberger
 '''
 
-from collections import defaultdict
 from collections.abc import Iterable
 import json
 from uuid import UUID
