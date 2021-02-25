@@ -9,7 +9,7 @@ import celery
 from celery import current_app
 from celery.result import AsyncResult
 
-from modules.Database.app import Database
+from util.helpers import isAItask
 
 
 class TaskCoordinatorMiddleware:
@@ -20,7 +20,7 @@ class TaskCoordinatorMiddleware:
         self.celery_app.set_current()
         self.celery_app.set_default()
 
-        self.dbConnector = dbConnector      #Database(config)
+        self.dbConnector = dbConnector
 
         self.jobs = {}      # dict per project of jobs
 
@@ -90,30 +90,8 @@ class TaskCoordinatorMiddleware:
             self.jobs[project] = self.jobs[project].union(jobIDs)
 
 
-
-    # def _poll_broker(self):
-    #     '''
-    #         Function to poll message broker for missing jobs.
-    #         This is a rather expensive operation and is thus only called
-    #         if a job is missing locally.
-    #     '''
-    #     #TODO: function is obsolete since every task is being registered in database before submission
-    #     i = self.celery_app.control.inspect()
-    #     stats = i.stats()
-    #     if stats is not None and len(stats):
-    #         active_tasks = i.active()
-    #         for key in stats:
-    #             for task in active_tasks[key]:
-    #                 # append task if of correct project
-    #                 taskProject = task['delivery_info']['routing_key']      #TODO
-    #                 if taskProject == project:
-    #                     if not task['id'] in self.jobs[project]:
-    #                         self._register_job(project, None, task['id'])
-
-
     
     def pollJobs(self, project=None):
-        # self._poll_broker()
         if project is not None:
             self._poll_database(project)
 
@@ -134,6 +112,82 @@ class TaskCoordinatorMiddleware:
         
         self._register_job(project, username, task_id, str(process))
         return task_id
+
+    
+
+    def revokeJob(self, project, username, jobID, includeAItasks=False):
+        '''
+            Revokes (aborts) one or more ongoing job(s) and sets a flag
+            in the database accordingly.
+            "jobID" may either be a single job ID, an Iterable of
+            job IDs, or 'all', in which case all jobs for a given project
+            will be revoked.
+            If "includeAItasks" is True, any AI model-related tasks
+            will also be revoked (if present in the list).
+        '''
+        if isinstance(jobID, str) or isinstance(jobID, uuid.UUID):
+            jobID = [jobID]
+
+        #TODO: doesn't work that way; also too expensive...
+        if jobID[0] == 'all':
+            # revoke all jobs; poll broker first
+            jobID = []
+            i = self.celery_app.control.inspect()
+            stats = i.stats()
+            if stats is not None and len(stats):
+                active_tasks = i.active()
+                for key in stats:
+                    for task in active_tasks[key]:
+                        try:
+                            taskProject = task['kwargs']['project']
+                            if taskProject != project:
+                                continue
+                            taskType = task['name']
+                            if not includeAItasks and not isAItask(taskType):  #TODO
+                                continue
+                            jobID.append(task['id'])
+                        except:
+                            continue
+
+        # filter jobs if needed
+        if not includeAItasks:
+            jobs_revoke = []
+            jobs_project = self.jobs[project]
+            for jID in jobID:
+                if jID in jobs_project:
+                    #TODO
+                    pass
+        else:
+            jobs_revoke = jobID
+
+        # revoke
+        for j in range(len(jobs_revoke)):
+            if not isinstance(jobID[j], uuid.UUID):
+                jobs_revoke[j] = uuid.UUID(jobs_revoke[j])
+            try:
+                celery.task.control.revoke(jobs_revoke[j], terminate=True)
+            except Exception as e:
+                print(e)    #TODO
+
+        # set flag in database
+        self.dbConnector.execute(sql.SQL('''
+            UPDATE {id_taskhistory}
+            SET abortedBy = %s
+            WHERE task_id IN %s;
+        ''').format(id_taskhistory=sql.Identifier(project, 'taskhistory')),
+        (username, tuple(jobs_revoke)))
+
+
+
+    def revokeAllJobs(self, project, username, includeAItasks=False):
+        '''
+            Polls all workers for ongoing jobs under a given project
+            and revokes them all.
+            Also sets flags in the database accordingly.
+            If "includeAItasks" is True, any AI model-related tasks
+            will also be revoked (if present in the list).
+        '''
+        return self.revokeJob(project, username, 'all', includeAItasks)
 
 
 

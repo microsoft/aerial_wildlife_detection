@@ -47,6 +47,14 @@ class AIMiddleware():
             self.workflowTracker = WorkflowTracker(self.dbConn, self.celery_app)
             self.messageProcessor.start()
 
+    
+    def __del__(self):
+        if self.passiveMode:
+            return
+        self.messageProcessor.stop()
+        for w in self.watchdogs.values():
+            w.stop()
+
 
     def _init_available_ai_models(self):
         # for built-in models: check if Detectron2 and PyTorch are installed
@@ -566,6 +574,19 @@ class AIMiddleware():
             the task).
         '''
         self.workflowTracker.revokeTask(username, project, taskID)
+
+    
+
+    def revoke_all_tasks(self, project, username):
+        '''
+            Revokes (aborts) all tasks for a given project.
+            Also sets an entry in the database (and notes who aborted
+            the task).
+        '''
+        #TODO: make more elegant
+        taskIDs = self.get_ongoing_tasks(project)
+        for taskID in taskIDs:
+            self.revoke_task(project, taskID, username)
 
 
 

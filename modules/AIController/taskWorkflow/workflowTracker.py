@@ -13,7 +13,6 @@ from uuid import UUID
 import json
 from psycopg2 import sql
 import celery
-from celery import current_app
 from celery.result import AsyncResult, GroupResult
 
 

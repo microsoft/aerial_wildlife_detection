@@ -20,7 +20,7 @@
     2019-21 Benjamin Kellenberger
 '''
 
-from threading import Thread
+from threading import Thread, Event
 import time
 from datetime import datetime
 import celery
@@ -35,6 +35,7 @@ class MessageProcessor(Thread):
         super(MessageProcessor, self).__init__()
         
         self.celery_app = celery_app
+        self._stop_event = Event()
 
         # job store
         self.jobs = {}          # dict of lists (one list for each project)
@@ -44,6 +45,14 @@ class MessageProcessor(Thread):
 
         # worker status store
         self.worker_status = {}
+    
+
+    def stop(self):
+        self._stop_event.set()
+    
+
+    def stopped(self):
+        return self._stop_event.is_set()
 
 
     @staticmethod
@@ -295,6 +304,9 @@ class MessageProcessor(Thread):
 
         # iterate over all registered tasks and get their result, one by one
         while True:
+            if self.stopped():
+                return
+
             if not len(self.jobs):
                 # no jobs in current queue; ping workers for other running tasks
                 self.pollNow()

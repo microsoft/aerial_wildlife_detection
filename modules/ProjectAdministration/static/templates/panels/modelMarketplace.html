@@ -291,16 +291,20 @@
             url: window.baseURL + 'getAvailableAImodels',
             method: 'GET',
             success: function(data) {
-                availableAImodels = data['models']['prediction'];
+                let models = data['models']['prediction'];
+
+                availableAImodels = {};
 
                 // populate filter table as well
                 let filterTable = $('#marketplace-search-modeltype');
                 filterTable.empty();
-                for(var key in availableAImodels) {
+                for(var key in models) {
+                    if(models[key]['hidden'] === true) continue;
                     let entry = $('<div id="modeltype_'+key+'"></div>');
                     entry.append($('<input type="checkbox" checked />'));
-                    entry.append($('<span>'+availableAImodels[key]['name']+'</span>'));
+                    entry.append($('<span>'+models[key]['name']+'</span>'));
                     filterTable.append(entry);
+                    availableAImodels[key] = models[key];
                 }
             },
             error: function(xhr, status, error) {

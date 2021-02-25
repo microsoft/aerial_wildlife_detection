@@ -29,6 +29,7 @@ class Watchdog(Thread):
         self.middleware = middleware
 
         self.timer = Event()
+        self._stop_event = Event()
 
         self.config = config
         self.dbConnector = dbConnector
@@ -223,11 +224,21 @@ class Watchdog(Thread):
         return self.runningTasks
 
 
+    def stop(self):
+        self._stop_event.set()
+    
+
+    def stopped(self):
+        return self._stop_event.is_set()
+
+
 
     def run(self):
 
         while True:
-            
+            if self.stopped():
+                return
+
             taskOngoing = (len(self.getOngoingTasks()) > 0)
 
             if self.getAImodelAutoTrainingEnabled() and self.getThreshold() > 0:

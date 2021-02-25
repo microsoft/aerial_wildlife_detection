@@ -18,7 +18,9 @@
                                 'boundingBoxes'
                             ],
                             'predictionType': 'boundingBoxes',
-                            'canUpdateLabels': True
+                            'canAddLabelclasses': True,
+                            'canRemoveLabelclasses': True,
+                            'hidden': False
         }
 
     This model (named "My great model") is located in /python/pyth/filename.py,
@@ -59,7 +61,9 @@
     This may not be the best solution, so if you can find a better one, I would be happy to get to know it to improve
     the built-in models!
 
-
+    If keyword 'hidden' is provided and set to True, the model won't be visible in the Model Marketplace. It will still
+    be available for existing projects that make use of it, but new projects won't directly be able to use it anymore.
+    This is used e.g. for legacy implementations that only remain to ensure compatibility with existing projects.
 
     Similarly, you can define your own AL criterion in the second dict below.
     For example:
@@ -226,7 +230,7 @@ PREDICTION_MODELS = {
                                        },
 
     'ai.models.detectron2.FasterRCNN': {
-                                            'name': 'Faster R-CNN (beta)',
+                                            'name': 'Faster R-CNN',
                                             'author': '(built-in)',
                                             'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of the <a href="https://doi.org/10.1109/TPAMI.2016.2577031" target="_blank">Faster R-CNN</a> object detector.',
                                             'annotationType': 'boundingBoxes',
@@ -235,7 +239,7 @@ PREDICTION_MODELS = {
                                             'canRemoveLabelclasses': False
                                        },
     'ai.models.detectron2.RetinaNet': {
-                                            'name': 'RetinaNet (beta)',
+                                            'name': 'RetinaNet',
                                             'author': '(built-in)',
                                             'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of the <a href="http://openaccess.thecvf.com/content_ICCV_2017/papers/Lin_Focal_Loss_for_ICCV_2017_paper.pdf" target="_blank">RetinaNet</a> object detector.',
                                             'annotationType': 'boundingBoxes',
@@ -244,7 +248,7 @@ PREDICTION_MODELS = {
                                             'canRemoveLabelclasses': True
                                        },
     'ai.models.detectron2.DeepLabV3Plus': {
-                                            'name': 'DeepLabV3+ (beta)',
+                                            'name': 'DeepLabV3+',
                                             'author': '(built-in)',
                                             'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of the <a href="https://openaccess.thecvf.com/content_ECCV_2018/papers/Liang-Chieh_Chen_Encoder-Decoder_with_Atrous_ECCV_2018_paper.pdf" target="_blank">DeepLabV3+</a> semantic segmentation network.',
                                             'annotationType': 'segmentationMasks',
@@ -261,7 +265,8 @@ PREDICTION_MODELS = {
                                             'annotationType': 'labels',
                                             'predictionType': 'labels',
                                             'canAddLabelclasses': True,
-                                            'canRemoveLabelclasses': True
+                                            'canRemoveLabelclasses': True,
+                                            'hidden': True
                                         },
     'ai.models.pytorch.points.WSODPointModel': {
                                             'name': 'Weakly-supervised point detector',
@@ -270,7 +275,8 @@ PREDICTION_MODELS = {
                                             'annotationType': ['labels', 'points'],
                                             'predictionType': 'points',
                                             'canAddLabelclasses': True,
-                                            'canRemoveLabelclasses': True
+                                            'canRemoveLabelclasses': True,
+                                            'hidden': True
                                         },
     'ai.models.pytorch.boundingBoxes.RetinaNet': {
                                             'name': 'RetinaNet (legacy)',
@@ -279,7 +285,8 @@ PREDICTION_MODELS = {
                                             'annotationType': 'boundingBoxes',
                                             'predictionType': 'boundingBoxes',
                                             'canAddLabelclasses': True,
-                                            'canRemoveLabelclasses': True
+                                            'canRemoveLabelclasses': True,
+                                            'hidden': True
                                         },
     'ai.models.pytorch.segmentationMasks.UNet': {
                                             'name': 'U-Net',
@@ -288,7 +295,8 @@ PREDICTION_MODELS = {
                                             'annotationType': 'segmentationMasks',
                                             'predictionType': 'segmentationMasks',
                                             'canAddLabelclasses': True,
-                                            'canRemoveLabelclasses': True
+                                            'canRemoveLabelclasses': True,
+                                            'hidden': True
                                         }
 
     # define your own here

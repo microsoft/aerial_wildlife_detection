@@ -273,6 +273,17 @@ def is_localhost(baseURI):
 
 
 
+def isAItask(taskName):
+    '''
+        Returns True if the taskName (str) is part of the AI
+        task chain, or False if not (e.g., another type of task).
+    '''
+    tn = str(taskName).lower()
+    return tn.startswith('aiworker') or \
+        tn in ('aicontroller.get_training_images', 'aicontroller.get_inference_images')
+
+
+
 def listDirectory(baseDir, recursive=False):
     '''
         Similar to glob's recursive file listing, but

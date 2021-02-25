@@ -7,16 +7,18 @@
 
 import os
 import re
-import ast
 import secrets
 import json
 import uuid
 from datetime import datetime
+import requests
 from psycopg2 import sql
-from modules.Database.app import Database
+from bottle import request
+
 from modules.DataAdministration.backend import celery_interface as fileServer_interface
+from modules.TaskCoordinator.backend.middleware import TaskCoordinatorMiddleware
 from .db_fields import Fields_annotation, Fields_prediction
-from util.helpers import parse_parameters, check_args
+from util.helpers import parse_parameters, check_args, is_localhost
 
 
 class ProjectConfigMiddleware:
@@ -112,7 +114,7 @@ class ProjectConfigMiddleware:
     
     def __init__(self, config, dbConnector):
         self.config = config
-        self.dbConnector = dbConnector      #Database(config)
+        self.dbConnector = dbConnector
 
         # load default UI settings
         try:
@@ -159,14 +161,29 @@ class ProjectConfigMiddleware:
         else:
             parameters = allParams
         parameters = list(parameters)
+
+        # check if FileServer needs to be contacted
+        serverURI = self.config.getProperty('Server', 'dataServer_uri')
+        serverDir = self.config.getProperty('FileServer', 'staticfiles_dir')
+        if 'server_dir' in parameters and not is_localhost(serverURI):
+            # FileServer is remote instance; get info via URL query
+            try:
+                cookies = request.cookies.dict
+                for key in cookies:
+                    cookies[key] = cookies[key][0]
+                fsData = requests.get(os.path.join(serverURI, 'getFileServerInfo'), cookies=cookies)
+                fsData = json.loads(fsData.text)
+                serverDir = fsData['staticfiles_dir']
+            except Exception as e:
+                print(f'WARNING: an error occurred trying to query FileServer for static files directory (message: "{str(e)}").')
+                print(f'Using value provided in this instance\'s config instaed ("{serverDir}").')
+
         response = {}
         for param in parameters:
             if param.lower() == 'server_uri':
-                uri = os.path.join(self.config.getProperty('Server', 'dataServer_uri'), project, 'files')
-                response[param] = uri
+                response[param] = os.path.join(serverURI, project, 'files')
             elif param.lower() == 'server_dir':
-                sdir = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), project)
-                response[param] = sdir
+                response[param] = os.path.join(serverDir, project)
             elif param.lower() == 'watch_folder_interval':
                 interval = self.config.getProperty('FileServer', 'watch_folder_interval', type=float, fallback=60)
                 response[param] = interval
@@ -927,6 +944,12 @@ class ProjectConfigMiddleware:
                 'status': 3,
                 'message': 'Project does not exist.'
             }
+
+        # stop ongoing tasks
+        #TODO: make more elegant
+        tc = TaskCoordinatorMiddleware(self.config, self.dbConnector)
+        tc.revokeAllJobs(project, username, includeAItasks=True)
+
 
         # remove rows from database
         self.dbConnector.execute('''

@@ -148,6 +148,22 @@ class AIController:
                         'message': str(e) }
 
 
+
+        @self.app.post('/<project>/abortAllWorkflows')
+        def abort_all_workflows(project):
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+            try:
+                username = html.escape(request.get_cookie('username'))
+                self.middleware.revoke_all_tasks(project, username)
+
+                return { 'status': 0 }
+
+            except Exception as e:
+                return { 'status': 1,
+                        'message': str(e) }
+
+
         
         @self.app.get('/<project>/status')
         def check_status(project):
