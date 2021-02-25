@@ -301,7 +301,7 @@
             success: function(data) {
                 settings = data['settings'];
                 $('#public-checkbox').prop('checked', settings['ispublic']);
-                $('#field-secret-token').val(window.location.host + window.location.pathname.replace('/configuration','') + '/enroll/'+settings['secret_token']);
+                $('#field-secret-token').val(window.location.host + '/' + window.project + '/enroll/'+settings['secret_token']);
                 $('#demo-checkbox').prop('checked', settings['demomode']);
             },
             error: function(xhr, status, error) {
@@ -339,7 +339,7 @@
                     if(data.hasOwnProperty('secret_token')) {
                         $('#field-secret-token').val(window.location.host +
                             window.project +
-                            '/enroll'+'?t='+data['secret_token']);
+                            '/enroll/' + data['secret_token']);
                     } else {
                         $('#renew-secret-token').prop('disabled', true);
                         $('#field-secret-token').val('(sorry, an unknown error occurred)');

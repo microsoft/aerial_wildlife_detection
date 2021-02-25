@@ -352,6 +352,7 @@
 
         $('#select-all-users').click(function() {
             let isChecked = $(this).prop('checked');
+            let uList = $('#users-list');
             $.each(uList.children(), function() {
                 let chckbx = $('#'+$(this).attr('id')+'__select');
                 chckbx.prop('checked', isChecked);

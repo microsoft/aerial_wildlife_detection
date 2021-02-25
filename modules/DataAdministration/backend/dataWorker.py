@@ -804,7 +804,7 @@ class DataWorker:
         # remove redundant query fields
         queryFields = set(queryFields)
         for key in extraFields.keys():
-            if not extraFields[key]:
+            if key in queryFields and not extraFields[key]:
                 queryFields.remove(key)
         queryFields = list(queryFields)
 
