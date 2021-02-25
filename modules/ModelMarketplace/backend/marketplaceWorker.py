@@ -144,6 +144,7 @@ class ModelMarketplaceWorker:
             self.dbConnector.execute('''
                 UPDATE aide_admin.project
                 SET ai_model_library = %s,
+                ai_model_enabled = TRUE,
                 ai_model_settings = %s
                 WHERE shortname = %s;
             ''', (meta['model_library'], modelOptions, project))

@@ -67,7 +67,7 @@ class TaskCoordinatorMiddleware:
             Returns a UUID that is not already in use.
         '''
         while True:
-            id = project + '__' + str(uuid.uuid1())
+            id = str(uuid.uuid1()) #TODO: causes conflict with database format: project + '__' + str(uuid.uuid1())
             if project not in self.jobs or id not in self.jobs[project]:
                 return id
 
@@ -170,12 +170,13 @@ class TaskCoordinatorMiddleware:
                 print(e)    #TODO
 
         # set flag in database
-        self.dbConnector.execute(sql.SQL('''
-            UPDATE {id_taskhistory}
-            SET abortedBy = %s
-            WHERE task_id IN %s;
-        ''').format(id_taskhistory=sql.Identifier(project, 'taskhistory')),
-        (username, tuple(jobs_revoke)))
+        if len(jobs_revoke):
+            self.dbConnector.execute(sql.SQL('''
+                UPDATE {id_taskhistory}
+                SET abortedBy = %s
+                WHERE task_id IN %s;
+            ''').format(id_taskhistory=sql.Identifier(project, 'taskhistory')),
+            (username, tuple(jobs_revoke)))
 
 
 
@@ -210,34 +211,39 @@ class TaskCoordinatorMiddleware:
         if project not in self.jobs or jobID not in self.jobs[project]:
             self.pollJobs(project)
         
-        if project not in self.jobs:
-            raise Exception(f'Project {project} not found.')
-        if jobID not in self.jobs[project]:
-            raise Exception('Job with ID {} does not exist.'.format(jobID))
+        #TODO: we temporarily allow querying all jobs without checking...
+        # if project not in self.jobs:
+        #     raise Exception(f'Project {project} not found.')
+        # if jobID not in self.jobs[project]:
+        #     raise Exception('Job with ID {} does not exist.'.format(jobID))
 
         # poll status
-        msg = self.celery_app.backend.get_task_meta(jobID)
-        if msg['status'] == celery.states.FAILURE:
-            # append failure message
-            if 'meta' in msg:
-                info = { 'message': html.escape(str(msg['meta']))}
-            elif 'result' in msg:
-                info = { 'message': html.escape(str(msg['result']))}
+        try:
+            msg = self.celery_app.backend.get_task_meta(jobID)
+            if msg['status'] == celery.states.FAILURE:
+                # append failure message
+                if 'meta' in msg:
+                    info = { 'message': html.escape(str(msg['meta']))}
+                elif 'result' in msg:
+                    info = { 'message': html.escape(str(msg['result']))}
+                else:
+                    info = { 'message': 'an unknown error occurred'}
+                self._update_job(project, jobID, abortedBy=None, result=info)
+
             else:
-                info = { 'message': 'an unknown error occurred'}
-            self._update_job(project, jobID, abortedBy=None, result=info)
+                info = msg['result']
 
-        else:
-            info = msg['result']
+                # check if ongoing and remove if done
+                result = AsyncResult(jobID)
+                if result.ready():
+                    status['result'] = result.get()
+                    result.forget()
+                    self._update_job(project, jobID, abortedBy=None, result=status['result'])
 
-            # check if ongoing and remove if done
-            result = AsyncResult(jobID)
-            if result.ready():
-                status['result'] = result.get()
-                result.forget()
-                self._update_job(project, jobID, abortedBy=None, result=status['result'])
+            status['status'] = msg['status']
+            status['meta'] = info
 
-        status['status'] = msg['status']
-        status['meta'] = info
+        except:
+            status = {}
 
         return status

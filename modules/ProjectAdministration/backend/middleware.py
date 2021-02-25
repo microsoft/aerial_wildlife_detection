@@ -176,7 +176,7 @@ class ProjectConfigMiddleware:
                 serverDir = fsData['staticfiles_dir']
             except Exception as e:
                 print(f'WARNING: an error occurred trying to query FileServer for static files directory (message: "{str(e)}").')
-                print(f'Using value provided in this instance\'s config instaed ("{serverDir}").')
+                print(f'Using value provided in this instance\'s config instead ("{serverDir}").')
 
         response = {}
         for param in parameters:
@@ -440,6 +440,10 @@ class ProjectConfigMiddleware:
                 interface_enabled,
                 annotationType, predictionType,
                 isPublic, demoMode,
+                ai_alcriterion_library,
+                numImages_autotrain,
+                minNumAnnoPerImage,
+                maxNumImages_train,
                 ui_settings)
             VALUES (
                 %s, %s, %s,
@@ -448,6 +452,10 @@ class ProjectConfigMiddleware:
                 %s,
                 %s, %s,
                 %s, %s,
+                %s,
+                %s,
+                %s,
+                %s,
                 %s
             );
             ''',
@@ -461,6 +469,8 @@ class ProjectConfigMiddleware:
                 properties['annotationType'],
                 properties['predictionType'],
                 False, False,
+                'ai.al.builtins.maxconfidence.MaxConfidence',   #TODO: default AL criterion to facilitate auto-training
+                128, 0, 128,            #TODO: default values for automated AI model training
                 json.dumps(self.defaultUIsettings)
             ),
             None)
