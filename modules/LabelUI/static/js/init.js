@@ -1,7 +1,7 @@
 /*
     Sets up the frontend and loads all required parameters in correct order.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 */
 
 $(document).ready(function() {
@@ -434,7 +434,7 @@ $(document).ready(function() {
 
     // AI backend
     promise = promise.then(function() {
-        if(window.aiModelAvailable && window.aiControllerURI != null && ! window.demoMode) {
+        if(window.aiControllerURI != null && ! window.demoMode && (window.aiModelAvailable || window.isAdmin)) {
             window.wfMonitor = new WorkflowMonitor($('#ai-task-monitor'), $('#ai-minipanel-status'), window.isAdmin, window.aiModelAvailable, 1000, 10000, 10000);    //TODO: query intervals
             $('#ai-worker-minipanel').click(function() {
                 $('#ai-worker-panel').slideToggle();

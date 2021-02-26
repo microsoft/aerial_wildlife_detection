@@ -102,13 +102,11 @@
                         // window.aiControllerURI = data['info']['aiControllerURI'];    //TODO: check if AIC is available (not possible with this query)
                         window.demoMode = data['info']['demoMode'];
 
-                        if(window.aiModelAvailable && ! window.demoMode) {
-                            window.wfMonitor = new WorkflowMonitor($('#ai-task-monitor'), $('#ai-minipanel-status'), true, window.aiModelAvailable, 1000, 10000, 10000);    //TODO: query intervals
-                            $('#ai-worker-minipanel').click(function() {
-                                $('#ai-worker-panel').slideToggle();
-                            });
-                            $('#ai-worker-minipanel').show();
-                        }
+                        window.wfMonitor = new WorkflowMonitor($('#ai-task-monitor'), $('#ai-minipanel-status'), true, window.aiModelAvailable, 1000, 10000, 10000);    //TODO: query intervals
+                        $('#ai-worker-minipanel').click(function() {
+                            $('#ai-worker-panel').slideToggle();
+                        });
+                        $('#ai-worker-minipanel').show();
                     },
                     statusCode: {
                         401: function(xhr) {
@@ -139,9 +137,9 @@
                 $('.navigation-entry').each(function() {
                     let id = $(this).attr('id');
                     $(this).click(function() {
-                        //TODO
-                        // window.location.href = window.baseURL + 'configuration/' + id;
-                        setPanel(id, true);
+                        //TODO: first need to resolve duplicate class declarations due to multiple imports (--> import all scripts here already, even if not needed?)
+                        window.location.href = window.baseURL + 'configuration/' + id;
+                        // setPanel(id, true);
                     });
                 });
 
