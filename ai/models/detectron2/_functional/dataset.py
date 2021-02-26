@@ -58,9 +58,17 @@ def getDetectron2Data(aideData, ignoreUnsure=False, filterEmpty=False):
                     continue
                 elif 'label' in anno:
                     # image labels; skip instances and append to base dict
+                    if anno['label'] is None:
+                        # unlabeled images; ignore
+                        continue
+                    if anno['label'] not in labelclassMap:
+                        # unknown label class
+                        unknownClasses.add(anno['label'])
+                        continue
                     record['gt_label'] = labelclassMap[anno['label']]
                     break
                 if 'label' in anno:
+                    # labels for instances
                     if anno['label'] not in labelclassMap:
                         # unknown label class; ignore for now
                         unknownClasses.add(anno['label'])

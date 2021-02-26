@@ -485,6 +485,10 @@
         });
 
         return p.then(function() {
+            if(typeof(window.setupWorkflowMonitor) === 'function') {
+                window.setupWorkflowMonitor();
+            }
+
             return loadSettings();
         });
     }

@@ -434,7 +434,8 @@ canvas {
 .ai-worker-panel {
     position: absolute;
     right: 90px;
-    width: 450px;
+    width: 550px;
+    z-index: 1000;
 }
 #ai-worker-minipanel {
     display: flex;

@@ -431,18 +431,20 @@ class Task {
 
     getProgress() {
         if(this.taskFinished()) return 1.0;
-        let progress = this.done / this.total;
-        for(var c=0; c<this.childTasks.length; c++) {
-            let childProgress = this.childTasks[c].getProgress();
-            if(!isNaN(childProgress)) {
-                if(!isNaN(progress)) {
-                    progress = Math.min(progress, childProgress);
-                } else {
-                    progress = childProgress;
-                }
-            }
-        }
+        let progress = Math.max(0, Math.min(this.done / this.total, 1.0));
+        if(isNaN(progress)) progress = 0.0;
         return progress;
+        // for(var c=0; c<this.childTasks.length; c++) {
+        //     let childProgress = this.childTasks[c].getProgress();
+        //     if(!isNaN(childProgress)) {
+        //         if(!isNaN(progress)) {
+        //             progress = Math.min(progress, childProgress);
+        //         } else {
+        //             progress = childProgress;
+        //         }
+        //     }
+        // }
+        // return progress;
     }
 
     showDetails(visible) {
@@ -590,7 +592,6 @@ class WorkflowMonitor {
                 } else {
                     self.setQueryInterval(self.queryIntervals['idle'], false);
                     totalProgress = 0;
-                    targetProgress = 0;
                 }
                 self._set_footer_progress('tasks', true, totalProgress, targetProgress, (targetProgress<=0 && numActiveTasks>0), numActiveTasks + ' task(s)');
 

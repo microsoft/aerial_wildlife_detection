@@ -8,6 +8,7 @@
         <link rel="stylesheet" href="/static/interface/css/interface.css?v={{ version }}" />
         <link rel="stylesheet" href="/static/general/css/messaging.css?v={{ version }}" />
         <link rel="stylesheet" href="/static/projectAdmin/css/config-page.css?v={{ version }}" />
+        <link rel="stylesheet" href="/static/aiController/css/workflowMonitor.css?v={{ version }}" />
         <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
         <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
@@ -21,6 +22,7 @@
         <script type="text/javascript" src="/static/interface/js/util.js?v={{ version }}"></script>
         <!-- /TODO -->
         <script src="/static/general/js/overlay.js?v={{ version }}"></script>
+        <script src="/static/aiController/js/workflowMonitor.js?v={{ version }}"></script>
         <script type="text/javascript">
 
             window.baseURL = '/{{ projectShortname }}/';
@@ -98,6 +100,38 @@
                 }
             }
 
+            // workflow monitor
+            window.setupWorkflowMonitor = function() {
+                return $.ajax({
+                    url: window.baseURL + 'getProjectInfo',
+                    method: 'GET',
+                    success: function(data) {
+                        window.aiModelAvailable = data['info']['ai_model_available'];
+                        // window.aiControllerURI = data['info']['aiControllerURI'];    //TODO: check if AIC is available (not possible with this query)
+                        window.demoMode = data['info']['demoMode'];
+
+                        if(window.aiModelAvailable && ! window.demoMode) {
+                            window.wfMonitor = new WorkflowMonitor($('#ai-task-monitor'), $('#ai-minipanel-status'), true, window.aiModelAvailable, 1000, 10000, 10000);    //TODO: query intervals
+                            $('#ai-worker-minipanel').click(function() {
+                                $('#ai-worker-panel').slideToggle();
+                            });
+                            $('#ai-worker-minipanel').show();
+                        }
+                    },
+                    statusCode: {
+                        401: function(xhr) {
+                            window.renewSessionRequest(xhr, function() {
+                                return window.setupWorkflowMonitor();
+                            });
+                        },
+                        404: function(xhr) {
+                            // invalid panel name; reset to default
+                            window.location.href = window.baseURL + 'configuration/overview';
+                        }
+                    }
+                });
+            }
+
             $(document).ready(function() {
                 // fix trailing slash (if present)
                 if(window.location.href.endsWith('/')) {
@@ -153,6 +187,9 @@
                         console.error(data);    //TODO
                     }
                 });
+
+                // show AI minipanel if available
+                window.setupWorkflowMonitor();
             });
         </script>
     </head>
@@ -239,6 +276,23 @@
             </div>
 
             <footer class="page-footer" id="footer">
+                
+                <!-- Collapsible AI worker panel -->
+                <div id="ai-worker-panel" class="ai-worker-panel">
+                    <h2 id="ai-worker-panel-header">AI Backend</h2>
+                    <div class="grad-border-h"></div>
+                    <div class="container" id="ai-task-monitor" style="max-height:330px;overflow-y:auto;"></div>
+                    <div class="grad-border-h" style="position:absolute;bottom:0"></div>
+                </div>
+
+                <!-- Mini-entry in footer to it -->
+                <div class="ai-worker-panel" id="ai-worker-minipanel" style="display:none;">
+                    <div class="grad-border-v"></div>
+                    <span class="minipanel-span">AI</span>
+                    <div id="ai-minipanel-status" class="minipanel-span" style="flex:3"></div>
+                    <div class="grad-border-v"></div>
+                </div>
+
                 <div class="ms-logo">
                     <a href="about"><img height="100%" src="/static/general/img/ms_logo.png" /></a>
                 </div>
