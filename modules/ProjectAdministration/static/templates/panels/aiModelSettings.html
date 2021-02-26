@@ -8,7 +8,7 @@
         <br />
 
         <div style="margin-left:20px">
-            <table>
+            <table id="ai-autotrain-settings">
                 <tr>
                     <td><label for="ai-model-num-images-autotrain">Number of labeled images to wait every training step:</label></td>
                     <td><input type="number" min="1" value="128" id="ai-model-num-images-autotrain" /></td>
@@ -140,7 +140,7 @@
         transform: translateX(1rem);
     }
 
-    td:first-child {
+    .ai-autotrain-settings td:first-child {
         width: 600px;
     }
 </style>

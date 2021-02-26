@@ -519,7 +519,7 @@ class WorkflowMonitor {
             footerContainer.append(rtDiv);
 
             // progress bar for # annotated images until auto re-training
-            this.autoTrainPbar = new ProgressBar(true, 0, 0, false);
+            this.autoTrainPbar = new ProgressBar(false, 0, 0, false);
             let atDiv = $('<tr class="footer-pbar-inline"></tr>');
             atDiv.append($('<td class="footer-span">images until re-train:</td>'));
             let atCell = $('<td class="footer-pbar-cell"></td>');

@@ -23,7 +23,7 @@
                 </div>
             </div>
             <div class="flex-container">
-                <table>
+                <table class="mm-table">
                     <thead>
                         <tr>
                             <th>Name</th>
@@ -77,7 +77,7 @@
         <!-- project-specific models table -->
         <div class="table-container flex-container" id="projectmodels-container" style="display:none">
             <!-- TODO: sort, search, filter -->
-            <table>
+            <table class="mm-table">
                 <thead>
                     <tr>
                         <th>#</th>
@@ -192,7 +192,7 @@
         padding-left: 5px;
     }
 
-    table {
+    .mm-table {
         display: inline-block;
         height: 90%;
         max-height: 90%;
@@ -202,23 +202,23 @@
         min-width: 550px;
     }
 
-    thead {
+    .mm-table thead {
         background: #5f5f5f;
         font-weight: bold;
     }
 
-    tbody {
+    .mm-table tbody {
         overflow-x: hidden;
         overflow-y: auto;
     }
 
-    thead, tbody {
+    .mm-table thead, .mm-table tbody {
         display: block;
         padding-left: 5px;
         padding-right: 5px;
     }
 
-    td, th {
+    .mm-table td, .mm-table th {
         padding-right: 5px;
     }
 
@@ -227,7 +227,7 @@
         background: #AAAAAA;
     }
 
-    tbody tr {
+    .mm-table tbody tr {
         cursor: pointer;
     }
 

@@ -30,7 +30,7 @@
 
     <!-- TODO: implement search function to add new users -->
     <div id="letter-picker"></div>
-    <table>
+    <table class="ac-table">
         <thead>
             <tr>
                 <th><input type="checkbox" id="select-all-users" /></th>
@@ -56,29 +56,29 @@
     </div>
 </div>
 <style>
-    table {
+    .ac-table {
         width: 100%;
         border: 1px solid #aaa;
     }
 
-    thead {
+    .ac-table thead {
         background: #5f5f5f;
         font-weight: bold;
     }
 
-    tbody {
+    .ac-table tbody {
         overflow-x: hidden;
         overflow-y: auto;
         height: calc(100vh - 620px);
     }
 
-    thead, tbody {
+    .ac-table thead, .ac-table tbody {
         display: block;
         padding-left: 5px;
         padding-right: 5px;
     }
 
-    td {
+    .ac-table td {
         padding-right: 5px;
     }
 </style>

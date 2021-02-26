@@ -6,9 +6,9 @@
         </div>
         <div id="options-container">
             <div class="user-tables-container">
-                <div class="user-table" style="order:1;">
+                <div class="user-table-div" style="order:1;">
                     <div>Users to be evaluated:</div>
-                    <table>
+                    <table class="user-table">
                         <thead>
                             <tr><th><input type="checkbox" id="eval-check-all" checked /></th><th>Name</th></tr>
                         </thead>
@@ -16,9 +16,9 @@
                     </table>
                 </div>
 
-                <div class="user-table" style="order:2;">
+                <div class="user-table-div" style="order:2;">
                     <div>Target user:</div>
-                    <table>
+                    <table class="user-table">
                         <thead>
                             <tr><th></th><th>Name</th></tr>
                         </thead>
@@ -63,36 +63,36 @@
         flex-direction: row;
     }
 
-    .user-table {
+    .user-table-div {
         margin: 10px;
         width: 50%;
     }
 
-    table {
+    .user-table {
         width: 100%;
         max-width: 400px;
         max-height: 200px;
         border: 1px solid #aaa;
     }
 
-    thead {
+    .user-table thead {
         background: #5f5f5f;
         font-weight: bold;
     }
 
-    tbody {
+    .user-table tbody {
         overflow-x: hidden;
         overflow-y: auto;
         max-height: 200px;
     }
 
-    thead, tbody {
+    .user-table thead, .user-table tbody {
         display: block;
         padding-left: 5px;
         padding-right: 5px;
     }
 
-    td, th {
+    .user-table td, .user-table th {
         padding-right: 5px;
     }
 
