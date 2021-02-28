@@ -2,7 +2,7 @@
     Common functionalities for Celery workers
     (AIController, AIWorker, FileServer).
 
-    2020 Benjamin Kellenberger
+    2020-21 Benjamin Kellenberger
 '''
 
 import os
@@ -29,3 +29,34 @@ def get_worker_details():
         'modules': _get_modules()
         #TODO: GPU capabilities, CPU?
     }
+
+
+
+def getCeleryWorkerDetails():
+        '''
+            Queries all Celery workers for their details (name,
+            URL, capabilities, AIDE version, etc.)
+        '''
+        result = {}
+        
+        i = current_app.control.inspect()
+        workers = i.stats()
+
+        if workers is None or not len(workers):
+            return result
+
+        for w in workers:
+            aiwV = get_worker_details.s()
+            try:
+                res = aiwV.apply_async(queue=w)
+                res = res.get(timeout=20)                   #TODO: timeout (in seconds)
+                if res is None:
+                    raise Exception('connection timeout')
+                result[w] = res
+                result[w]['online'] = True
+            except Exception as e:
+                result[w] = {
+                    'online': False,
+                    'message': str(e)
+                }
+        return result

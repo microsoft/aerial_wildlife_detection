@@ -176,6 +176,48 @@
     });
 
 
+    let getAImodelTrainingInfo = $.ajax({
+        url: window.baseURL + 'getAImodelTrainingInfo',
+        method: 'GET',
+        error: function(xhr, status, error) {
+            console.error(error);       //TODO
+        },
+        statusCode: {
+            401: function(xhr) {
+                return window.renewSessionRequest(xhr, function() {
+                    return getAImodelTrainingInfo();
+                });
+            }
+        }
+    });
+
+
+    function setWorkflowDesignerEnabled(canCreateWorkflows, canLaunchTasks) {
+        /**
+         * Enables (or disables) the WorkflowDesigner.
+         * If "canCreateWorkflows" is false, the entire WorkflowDesigner
+         * is disabled (e.g. if no AI model is configured for project).
+         * If "canLaunchTasks" is false, workflows may be created and saved
+         * (if "canCreatWorkflows" is true), but they cannot be launched
+         * (e.g. if AIDE workers are missing).
+         */
+        let buttons = $.find('button');
+        if(!canCreateWorkflows) {
+            // disable everything
+            for(var b=0; b<buttons.length; b++) {
+                $(buttons[b]).prop('disabled', true);
+            }
+        } else {
+            for(var b=0; b<buttons.length; b++) {
+                if($(buttons[b]).attr('id') === 'run-workflow') {
+                    $(buttons[b]).prop('disabled', !canLaunchTasks);
+                }
+            }
+        }
+        window.workflowDesigner.setUIenabled(canCreateWorkflows);
+    }
+
+
     $(document).ready(function() {
 
         window.aiModelMeta = null;
@@ -589,9 +631,42 @@
             }
 
             // finalize remaining components
-            window.workflowDesigner = new WorkflowDesigner(canvasWrapper, null, aiModels['prediction'], aiModels['ranking']);
+            window.workflowDesigner = new WorkflowDesigner(canvasWrapper, null, aiModels['prediction'], aiModels['ranking'], false);
             loadSavedWorkflows();
             window.showLoadingOverlay(false);
+        }).done(function() {
+            getAImodelTrainingInfo.done(function(data) {
+                // check if using AI model is possible (depends on Project and AIDE module status)
+                let hasAImodel = false;
+                try {
+                    aiModel = data['response']['ai_model_library'];
+                    if(typeof(aiModel) === 'string') hasAImodel = true;
+                } catch {
+                    hasAImodel = false;
+                }
+                let canLaunchWorkflow = false;
+                try {
+                    let workers = data['response']['workers'];
+                    canLaunchWorkflow = (Object.keys(workers['AIController']).length > 0) && (Object.keys(workers['AIWorker']).length > 0);
+                } catch {
+                    canLaunchWorkflow = false;
+                }
+
+                setWorkflowDesignerEnabled(hasAImodel, canLaunchWorkflow);
+
+                // show message
+                if(!hasAImodel) {
+                    let msg = 'Project has no AI model configured. See the <a href="modelMarketplace">Model Marketplace</a> for available AI models.';
+                    if(!canLaunchWorkflow) {
+                        msg += ' Also, no worker is attached to this instance of AIDE.';
+                    }
+                    msg += ' Workflow Designer is therefore unavailable.'
+                    window.messager.addMessage(msg, 'error', 0);
+                } else if(!canLaunchWorkflow) {
+                    let msg = 'No worker is attached to this instance of AIDE. You can still create and modify workflows, but they currently cannot be launched.';
+                    window.messager.addMessage(msg, 'info', 0);
+                }
+            });
         });
     });
 </script>

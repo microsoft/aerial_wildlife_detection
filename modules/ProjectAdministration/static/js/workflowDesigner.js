@@ -953,7 +953,7 @@ class Canvas {
 
 
 class WorkflowDesigner {
-    constructor(domElement, workflow, aiModelMeta, alCriterionMeta) {
+    constructor(domElement, workflow, aiModelMeta, alCriterionMeta, uiEnabled) {
         this.domElement = domElement;
         this.aiModelMeta = aiModelMeta;
         this.alCriterionMeta = alCriterionMeta;
@@ -966,6 +966,8 @@ class WorkflowDesigner {
         if(Array.isArray(workflow) && workflow.length > 0) {
             this.fromJSON(workflow);
         }
+
+        this.uiEnabled = uiEnabled;
     }
 
     _setup_canvas(domElement) {
@@ -1025,6 +1027,7 @@ class WorkflowDesigner {
     }
 
     __handle_mousedown(e) {
+        if(!this.uiEnabled) return;
         this.mousedown = true;
         this.mousePos = this.___get_coords(e);
         this.mousedownPos = this.mousePos;
@@ -1045,7 +1048,7 @@ class WorkflowDesigner {
     }
 
     __handle_mousemove(e) {
-        if(!this.mousedown) return;
+        if(!this.uiEnabled || !this.mousedown) return;
         var newPos = this.___get_coords(e);
         var coordsDiff = [newPos[0] - this.mousePos[0], newPos[1] - this.mousePos[1]];
         
@@ -1074,6 +1077,7 @@ class WorkflowDesigner {
     }
 
     __handle_mouseup(e) {
+        if(!this.uiEnabled) return;
         this.mousedown = false;
         this.mousePos = this.___get_coords(e);
         this.mousedownPos = [undefined, undefined];
@@ -1154,6 +1158,7 @@ class WorkflowDesigner {
     }
 
     __handle_mouseleave(e) {
+        if(!this.uiEnabled) return;
         this.mousedown = false;
         this.mousedownPos = [undefined, undefined];
         this.mousedownElement = undefined;
@@ -1162,6 +1167,7 @@ class WorkflowDesigner {
     }
 
     __handle_keyup(e) {
+        if(!this.uiEnabled) return;
         //TODO: this also deletes node when only a field is highlighted... need to stop propagation
         // if(e.keyCode === 8 || e.keyCode === 46) {
         //     // backspace or delete; remove active elements
@@ -1231,6 +1237,7 @@ class WorkflowDesigner {
     }
 
     addNode(params) {
+        if(!this.uiEnabled) return; //TODO: allow non-UI action
         if(typeof(params) === 'string') {
             var type = params;
             var nodeParams = {};
@@ -1320,6 +1327,8 @@ class WorkflowDesigner {
     }
 
     removeNode(nodeID) {
+        if(!this.uiEnabled) return; //TODO: allow non-UI action
+
         // find node
         var nodeIndex = -1;
         for(var i=0; i<this.mainCanvas.elements.length; i++) {
@@ -1366,6 +1375,7 @@ class WorkflowDesigner {
     }
 
     removeSelectedNodes() {
+        if(!this.uiEnabled) return; //TODO: allow non-UI action
         for(var key in this.activeElements) {
             if(key === this.startingNode.id) continue;
             this.removeNode(key);
@@ -1375,6 +1385,7 @@ class WorkflowDesigner {
     }
 
     clear() {
+        if(!this.uiEnabled) return; //TODO: allow non-UI action
         this.mainCanvas.clear(this.startingNode);
         this.bottomCanvas.clear(this.tempConnectionLine);
     }
@@ -1414,5 +1425,9 @@ class WorkflowDesigner {
             tasks: nodeSpec,
             repeaters: repeaterSpec
         }
+    }
+
+    setUIenabled(enabled) {
+        this.uiEnabled = enabled;
     }
 }

@@ -20,6 +20,7 @@ from .annotationWatchdog import Watchdog
 from modules.AIController.taskWorkflow.workflowDesigner import WorkflowDesigner
 from modules.AIController.taskWorkflow.workflowTracker import WorkflowTracker
 from modules.AIWorker.backend.fileserver import FileServer
+from util import celeryWorkerCommons
 from util.helpers import array_split, parse_parameters, get_class_executable, get_library_available
 
 from .sql_string_builder import SQLStringBuilder
@@ -212,6 +213,51 @@ class AIMiddleware():
             FROM aide_admin.project WHERE shortname = %s;''')
         settings = self.dbConn.execute(queryStr, (project,), 1)[0]
         return settings
+
+
+
+    def get_ai_model_training_info(self, project):
+        '''
+            Returns information required to determine whether AI models can be trained
+            for a given project.
+            This includes:
+                - Whether an AI model library is configured for the project
+                - Whether at least consumer for each AIController and AIWorker is
+                  connected and available
+            Returns a dict of this information accordingly.
+        '''
+        # check whether project has an AI model configured
+        aiModelLibrary = self.dbConn.execute('''
+            SELECT ai_model_library
+            FROM aide_admin.project
+            WHERE shortname = %s;
+        ''', (project,), 1)
+        try:
+            aiModelLibrary = aiModelLibrary[0]['ai_model_library']
+        except:
+            aiModelLibrary = None
+        
+        # check if AIController worker and AIWorker are connected
+        aicW = {}
+        aiwW = {}
+        workers = celeryWorkerCommons.getCeleryWorkerDetails()
+        for wk in workers.keys():
+            try:
+                worker = workers[wk]
+                if 'AIController' in worker['modules'] and worker['modules']['AIController'] == True:
+                    aicW[wk] = workers[wk]
+                if 'AIWorker' in worker['modules'] and worker['modules']['AIWorker'] == True:
+                    aiwW[wk] = workers[wk]
+            except:
+                pass
+        
+        return {
+            'ai_model_library': aiModelLibrary,
+            'workers': {
+                'AIController': aicW,
+                'AIWorker': aiwW
+            }
+        }
 
 
 

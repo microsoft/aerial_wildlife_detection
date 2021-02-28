@@ -301,6 +301,29 @@ class AIController:
             except Exception as e:
                 return {'status':1, 'message':str(e)}
 
+        
+
+        @self.app.get('/<project>/getAImodelTrainingInfo')
+        def get_ai_model_training_info(project):
+            '''
+            Returns information required to determine whether AI models can be trained
+            for a given project.
+            This includes:
+                - Whether an AI model library is configured for the project
+                - Whether at least consumer for each AIController and AIWorker is
+                  connected and available
+            Returns a dict of this information accordingly.
+        '''
+            if not self.loginCheck(project, admin=True):
+                abort(401, 'unauthorized')
+            
+            try:
+                status = self.middleware.get_ai_model_training_info(project)
+                return {'response': status}
+
+            except Exception as e:
+                return {'status':1, 'message':str(e)}
+
 
     
         @self.app.get('/<project>/getAvailableAImodels')
