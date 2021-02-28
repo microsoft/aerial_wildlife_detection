@@ -4,6 +4,7 @@
     2019-21 Benjamin Kellenberger
 '''
 
+import copy
 from psycopg2 import sql
 import numpy as np
 from .statisticalFormulas import StatisticalFormulas_user, StatisticalFormulas_model
@@ -15,7 +16,7 @@ class ProjectStatisticsMiddleware:
 
     def __init__(self, config, dbConnector):
         self.config = config
-        self.dbConnector = dbConnector      #Database(config)
+        self.dbConnector = dbConnector
     
 
     def getProjectStatistics(self, project):
@@ -172,22 +173,27 @@ class ProjectStatisticsMiddleware:
         '''
         entityType = entityType.lower()
 
-        # get annotation type for project
-        annoType = self.dbConnector.execute('''SELECT annotationType
+        # get annotation and prediction types for project
+        annoTypes = self.dbConnector.execute('''SELECT annotationType, predictionType
             FROM aide_admin.project WHERE shortname = %s;''',
             (project,),
             1)
-        annoType = annoType[0]['annotationtype']
+        annoType = annoTypes[0]['annotationtype']
+        predType = annoTypes[0]['predictiontype']
+
+        if entityType != 'user' and annoType != predType:
+            # different combinations of annotation and prediction types are currently not supported
+            raise Exception('Statistics for unequal annotation and AI model prediction types are currently not supported.')
 
         # for segmentation masks: get label classes and their ordinals      #TODO: implement per-class statistics for all types
         labelClasses = {}
         lcDef = self.dbConnector.execute(sql.SQL('''
-            SELECT id, idx, color FROM {id_lc};
+            SELECT id, name, idx, color FROM {id_lc};
         ''').format(id_lc=sql.Identifier(project, 'labelclass')),
         None, 'all')
         if lcDef is not None:
             for l in lcDef:
-                labelClasses[str(l['id'])] = (l['idx'], l['color'])
+                labelClasses[str(l['id'])] = (l['idx'], l['name'], l['color'])
 
         else:
             # no label classes defined
@@ -293,7 +299,7 @@ class ProjectStatisticsMiddleware:
                     entity = str(b['cnnstate'])
 
                 if not entity in response:
-                    response[entity] = tokens.copy()
+                    response[entity] = copy.deepcopy(tokens)
                 if annoType in ('points', 'boundingBoxes'):
                     response[entity]['num_matches'] = 1
                     if b['num_target'] > 0:

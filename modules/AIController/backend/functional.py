@@ -264,7 +264,7 @@ class AIControllerWorker:
             else:
                 sqlFilter = 'WHERE marketplace_origin_id IS NULL'
 
-
+        #TODO: add number of images used to train model, too?
         queryResult = self.dbConn.execute(sql.SQL('''
             SELECT id, model_library, EXTRACT(epoch FROM timeCreated) AS timeCreated, stats FROM {id_cnnstate}
             {sql_filter}

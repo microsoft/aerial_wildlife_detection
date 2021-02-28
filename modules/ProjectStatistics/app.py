@@ -61,22 +61,33 @@ class ProjectStatistics:
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
 
-            params = request.json
-            entities_eval = params['entities_eval']
-            entity_target = params['entity_target']
-            entityType = params['entity_type']
-            if 'threshold' in params:
-                threshold = params['threshold']
-            else:
-                threshold = None
-            if 'goldenQuestionsOnly' in params:
-                goldenQuestionsOnly = params['goldenQuestionsOnly']
-            else:
-                goldenQuestionsOnly = False
+            try:
+                params = request.json
+                entities_eval = params['entities_eval']
+                entity_target = params['entity_target']
+                entityType = params['entity_type']
+                if 'threshold' in params:
+                    threshold = params['threshold']
+                else:
+                    threshold = None
+                if 'goldenQuestionsOnly' in params:
+                    goldenQuestionsOnly = params['goldenQuestionsOnly']
+                else:
+                    goldenQuestionsOnly = False
 
-            stats = self.middleware.getPerformanceStatistics(project, entities_eval, entity_target, entityType, threshold, goldenQuestionsOnly)
+                stats = self.middleware.getPerformanceStatistics(project, entities_eval, entity_target, entityType, threshold, goldenQuestionsOnly)
 
-            return { 'result': stats }
+                return {
+                    'status': 0,
+                    'result': stats
+                }
+
+            except Exception as e:
+                return {
+                    'status': 1,
+                    'message': str(e)
+                }
+
 
         
         @self.app.post('/<project>/getUserAnnotationSpeeds')

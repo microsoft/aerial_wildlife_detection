@@ -61,12 +61,33 @@
     .header-toggle {
         cursor: pointer;
     }
+
+    .chartWrapper {
+        position: relative;
+    }
+
+    .chartWrapper > canvas {
+        position: absolute;
+        left: 0;
+        top: 0;
+    }
+
+    .chartAreaWrapper {
+        width: 100%;
+        height: 300px;
+        max-height: 300px;
+        overflow-x: scroll;
+    }
 </style>
 <script src="/static/dataAdmin/js/taskPolling.js?v={{ version }}"></script>
 <script src="/static/statistics/libs/chartjs/Chart.min.js?v={{ version }}"></script>
 <script type="text/javascript">
 
     let COLORS = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#ffff99','#b15928'];
+
+    function roundNumber(value, multiplier) {
+        return Math.round(value * multiplier) / multiplier;
+    }
 
     function getSelectedModelIDs() {
         let modelStates = [];
@@ -164,73 +185,83 @@
                     let modelLibs = Object.keys(data['series']);
                     for(var m=0; m<modelLibs.length; m++) {
                         let modelLib = modelLibs[m];
-                        let timestamps = data['timestamps'][modelLib];
-                        // for(var t=0; t<data['timestamps'][modelLib].length; t++) {
-                        //     let timestamp = data['timestamps'][modelLib][t] * 1000;
-                        //     timestamps.push(new Date(timestamp));
-                        // }
-                        let seriesNames = Object.keys(data['series'][modelLib]);
-                        let datasets = [];
-                        for(var s=0; s<seriesNames.length; s++) {
-                            let seriesName = seriesNames[s];
-                            let series = [];
-                            for(var t=0; t<timestamps.length; t++) {
-                                series.push({
-                                    'x': timestamps[t],
-                                    'y': data['series'][modelLib][seriesName][t]
-                                });
-                            }
-                            datasets.push({
-                                label: seriesName,
-                                data: series, //data['series'][modelLib][seriesName],
-                                borderColor: COLORS[(COLORS.length-1) % (s+1)],
-                                fill: false
-                            });
-                        }
 
-                        // create chart
                         let modelName = window.availableAImodels[modelLib]['name'];
                         let header = $('<h3 class="header-toggle">'+modelName+'</h3>');
                         containerDiv.append(header);
-                        let canvas = $('<canvas height=300></canvas>');
-                        containerDiv.append(canvas);
-                        header.on('click', function() {
-                            canvas.slideToggle();
-                        });
-                        new Chart(canvas[0].getContext('2d'), {
-                            type: 'line',
-                            data: {
-                                labels: timestamps,
-                                datasets: datasets
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                tooltips: {
-                                    callbacks: {
-                                        title(datasets) {
-                                        var time = new Date(datasets[0].xLabel * 1000);
-                                            return time.toLocaleString('default', { month: 'short' }) + ' ' + time.getDate() + ' ' + time.getUTCFullYear() + ', ' + time.getHours()+':'+time.getMinutes();
-                                        }
-                                    }
+
+                        let timestamps = data['timestamps'][modelLib];
+                        let seriesNames = Object.keys(data['series'][modelLib]);
+                        if(seriesNames.length > 0) {
+                            let datasets = [];
+                            for(var s=0; s<seriesNames.length; s++) {
+                                let seriesName = seriesNames[s];
+                                let series = [];
+                                for(var t=0; t<timestamps.length; t++) {
+                                    series.push({
+                                        'x': t,     //TODO: timestamps[t],
+                                        'y': data['series'][modelLib][seriesName][t]
+                                    });
+                                }
+                                datasets.push({
+                                    label: seriesName,
+                                    data: series,
+                                    borderColor: COLORS[(COLORS.length-1) % (s+1)],
+                                    fill: false
+                                });
+                            }
+
+                            // create chart
+                            let cw = $('<div class="chartWrapper"><div class="chartAreaWrapper"></div></div>');
+                            let canvas = $('<canvas height=300></canvas>');
+                            cw.append(canvas);
+                            containerDiv.append(cw);
+                            header.on('click', function() {
+                                canvas.slideToggle();
+                            });
+                            new Chart(canvas[0].getContext('2d'), {
+                                type: 'line',
+                                data: {
+                                    labels: timestamps,
+                                    datasets: datasets
                                 },
-                                scales: {
-                                    xAxes: [
-                                        {
-                                            type: 'linear',
-                                            position: 'bottom',
-                                            ticks: {
-                                                callback(value) {
-                                                    var time = new Date(value * 1000);
-                                                    return time.toLocaleString('default', { month: 'short' }) + ' ' + time.getDate() + ' ' + time.getUTCFullYear() + ', ' + time.getHours()+':'+time.getMinutes();
-                                                }
+                                options: {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    tooltips: {
+                                        callbacks: {
+                                            // title: function(tooltipItem, data) {
+                                            //     //TODO: provide model state number
+                                            // },
+                                            label: function(tooltipItem, data) {
+                                                let label = datasets[tooltipItem.datasetIndex]['label'];
+                                                return label + ': ' + roundNumber(tooltipItem.value, 100);
                                             }
                                         }
-                                    ]
+                                    },
+                                    scales: {
+                                        xAxes: [
+                                            {
+                                                type: 'linear',
+                                                position: 'bottom',
+                                                ticks: {
+                                                    callback(value) {
+                                                        let time = new Date(timestamps[value-1] * 1000);    //TODO: -1?
+                                                        if(isNaN(time)) return '';
+                                                        return time.toLocaleString('default', { month: 'short' }) + ' ' + time.getDate() + ' ' + time.getUTCFullYear() + ', ' + time.getHours()+':'+time.getMinutes();
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
                                 }
-                            }
-                        });
-                        hasChart = true;
+                            });
+                            hasChart = true;
+
+                        } else {
+                            // no stats to show for model
+                            containerDiv.append($('<div>(no data to show)</div>'));
+                        }
                     }
                 }
                 $('#loading-placeholder').hide();

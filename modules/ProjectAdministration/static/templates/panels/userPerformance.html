@@ -180,6 +180,16 @@
             contentType: 'application/json; charset=utf-8',
             dataType: 'json',
             success: function(data) {
+                if(data['status'] > 0) {
+                    let msg = 'Could not retrieve user performance statistics';
+                    if(typeof(data['message']) === 'string') {
+                        msg += ' (message: "' + data['message'] + '")'
+                    }
+                    msg += '.';
+                    window.messager.addMessage(msg, 'error', 0);
+                    return;
+                }
+
                 // assemble global, per-user statistics
                 var usernames = [];
                 var series = {

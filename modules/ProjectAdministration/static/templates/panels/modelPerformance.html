@@ -108,7 +108,6 @@
         position: absolute;
         left: 0;
         top: 0;
-        pointer-events:none;
     }
 
     .chartAreaWrapper {
@@ -124,11 +123,85 @@
 
     window.save = undefined;
 
+    function roundNumber(value, multiplier) {
+        return Math.round(value * multiplier) / multiplier;
+    }
+
     var detailedStatistics = {};
+    let detailedStatsChart = undefined;
 
     function showDetailedChart(modelStateID) {
-        let stats = detailedStatistics[modelStateID];
-        console.log(stats); //TODO
+        let stats = detailedStatistics['series'][modelStateID];
+        let canvas = $('#detailed-chart-canvas');
+        if(detailedStatsChart === undefined) {
+            detailedStatsChart = new Chart(canvas[0].getContext('2d'), {
+                type: 'scatter',
+                data: {
+                    labels: detailedStatistics['class_meta']['names'],
+                    datasets: [{
+                        label: 'per-class performance',
+                        data: stats['precRec'],
+                        pointRadius: stats['pointRadii'],
+                        pointHoverRadius: stats['pointRadii'],
+                        backgroundColor: detailedStatistics['class_meta']['colors']
+                    }]
+                },
+                options: {
+                    legend: {
+                        display: false
+                    },
+                    tooltips: {
+                        callbacks: {
+                            label: function(tooltipItem, data) {
+                                return tooltipItem.index
+                                // var label = detailedStatistics['class_meta']['names'][tooltipItem.index];
+                                // console.log(detailedStatistics + ', ' + tooltipItem.index)
+                                // return label + ': (Precision: ' + tooltipItem.yLabel + ', Recall: ' + tooltipItem.xLabel + ')';
+                            }
+                        }
+                    },
+                    scales: {
+                        yAxes: [{
+                            scaleLabel: {
+                                display: true,
+                                labelString: 'Precision'
+                            },
+                            ticks: {
+                                min: 0.0,
+                                max: 1.0,
+                                beginAtZero: true
+                            }
+                        }],
+                        xAxes: [{
+                            scaleLabel: {
+                                display: true,
+                                labelString: 'Recall'
+                            },
+                            ticks: {
+                                min: 0.0,
+                                max: 1.0,
+                                beginAtZero: true
+                            }
+                        }],
+                    },
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        } else {
+            detailedStatsChart.data = {
+                labels: detailedStatistics['class_meta']['names'],
+                datasets: [{
+                    label: 'per-class performance',
+                    data: stats['precRec'],
+                    pointRadius: stats['pointRadii'],
+                    pointHoverRadius: stats['pointRadii'],
+                    backgroundColor: detailedStatistics['class_meta']['colors']
+                }]
+            };
+            detailedStatsChart.update();
+        }
+        canvas.show();
     }
 
     function getSelectedModelIDs() {
@@ -158,10 +231,11 @@
             params['threshold'] = threshold;
         }
 
-        // clear num matches cells
+        // clear current data
         $.each($('#cnn-states-tbody').children(), function() {
             $(this).children().last().html('0');
         });
+        detailedStatsChart = undefined;
 
         // update chart
         let resultsContainer = $('#performance-container');
@@ -173,11 +247,32 @@
             contentType: 'application/json; charset=utf-8',
             dataType: 'json',
             success: function(data) {
+                if(data['status'] > 0) {
+                    let msg = 'Could not retrieve model performance statistics';
+                    if(typeof(data['message']) === 'string') {
+                        msg += ' (message: "' + data['message'] + '")'
+                    }
+                    msg += '.';
+                    window.messager.addMessage(msg, 'error', 0);
+                    return;
+                }
+
+                // assemble sorted list of label class names for per-class statistics below
+                let lcKeys = Object.keys(data['result']['label_classes']);
+                let lcNames = [];
+                let lcColors = [];
+                for(var k=0; k<lcKeys.length; k++) {
+                    lcNames.push(data['result']['label_classes'][lcKeys[k]][1]);
+                    lcColors.push(data['result']['label_classes'][lcKeys[k]][2]);
+                }
+
+
                 // assemble global, per-model state statistics
                 var modelNames = [];
                 var series = {
                     'color': []
                 };        // dict of lists
+                detailedStatistics = {};
                 for(var i=0; i<modelStates.length; i++) {
                     var model = modelStates[i];
                     if(!data['result']['per_entity'].hasOwnProperty(model)) {
@@ -232,8 +327,8 @@
                             tooltips: {
                                 callbacks: {
                                     label: function(tooltipItem, data) {
-                                    var label = data.labels[tooltipItem.index];
-                                    return label + ': (OA: ' + tooltipItem.yLabel + ')';
+                                        var label = data.labels[tooltipItem.index];
+                                        return label + ': (OA: ' + roundNumber(tooltipItem.yLabel*100, 100) + '%)';
                                     }
                                 }
                             },
@@ -295,8 +390,8 @@
                             tooltips: {
                                 callbacks: {
                                     label: function(tooltipItem, data) {
-                                    var label = data.labels[tooltipItem.index];
-                                    return label + ': (Precision: ' + tooltipItem.yLabel + ', Recall: ' + tooltipItem.xLabel + ')';
+                                        var label = data.labels[tooltipItem.index];
+                                        return label + ': (Precision: ' + roundNumber(tooltipItem.yLabel*100, 100) + '%, Recall: ' + roundNumber(tooltipItem.xLabel*100, 100) + '%)';
                                     }
                                 }
                             },
@@ -319,7 +414,8 @@
                                     },
                                     ticks: {
                                         min: 0.0,
-                                        max: 1.0
+                                        max: 1.0,
+                                        beginAtZero: true
                                     }
                                 }],
                             },
@@ -330,71 +426,100 @@
                     resultsContainer.append(cw);
                 }
 
-                if(series.hasOwnProperty('avg_dist') || series.hasOwnProperty('avg_iou')) {
-                    var geomData = [];
-                    var chartTitle = 'Geometric precision';
-                    var chartLabel = 'average ';
-                    if(series.hasOwnProperty('avg_dist')) {
-                        geomData = series['avg_dist'];
-                        chartLabel += 'point distance';
-                    } else if(series.hasOwnProperty('avg_iou')) {
-                        geomData = series['avg_iou'];
-                        chartLabel += 'Intersection-over-Union';
-                    }
+                //TODO: still produces erroneous results; fix formula first then uncomment this block
+                // if(series.hasOwnProperty('avg_dist') || series.hasOwnProperty('avg_iou')) {
+                //     var geomData = [];
+                //     var chartTitle = 'Geometric precision';
+                //     var chartLabel = 'average ';
+                //     if(series.hasOwnProperty('avg_dist')) {
+                //         geomData = series['avg_dist'];
+                //         chartLabel += 'point distance';
+                //     } else if(series.hasOwnProperty('avg_iou')) {
+                //         geomData = series['avg_iou'];
+                //         chartLabel += 'Intersection-over-Union';
+                //     }
 
-                    // geometric precision bar charts
-                    var cw_geom = $('<div class="chartWrapper"><div class="chartAreaWrapper"></div></div>');
-                    let canvas_geom = $('<canvas width=400 height=300></canvas>');
-                    cw_geom.find('.chartAreaWrapper').append(canvas_geom);
-                    new Chart(canvas_geom[0].getContext('2d'), {
-                        type: 'bar',
-                        data: {
-                            labels: modelNames,
-                            datasets: [{
-                                label: chartLabel,
-                                data: geomData,
-                                backgroundColor: series['color']
-                            }]
-                        },
-                        options: {
-                            scales: {
-                                yAxes: [{
-                                    scaleLabel: {
-                                        display: true,
-                                        labelString: chartLabel
-                                    },
-                                    ticks: {
-                                        min: 0.0,
-                                        max: 1.0,
-                                        beginAtZero: true
-                                    }
-                                }]
-                            },
-                            responsive: true,
-                            maintainAspectRatio: false
-                        }
-                    });
-                    resultsContainer.append(cw_geom);
-                }
-
+                //     // geometric precision bar charts
+                //     var cw_geom = $('<div class="chartWrapper"><div class="chartAreaWrapper"></div></div>');
+                //     let canvas_geom = $('<canvas width=400 height=300></canvas>');
+                //     cw_geom.find('.chartAreaWrapper').append(canvas_geom);
+                //     new Chart(canvas_geom[0].getContext('2d'), {
+                //         type: 'bar',
+                //         data: {
+                //             labels: modelNames,
+                //             datasets: [{
+                //                 label: chartLabel,
+                //                 data: geomData,
+                //                 backgroundColor: series['color']
+                //             }]
+                //         },
+                //         options: {
+                //             scales: {
+                //                 yAxes: [{
+                //                     scaleLabel: {
+                //                         display: true,
+                //                         labelString: chartLabel
+                //                     },
+                //                     ticks: {
+                //                         min: 0.0,
+                //                         max: 1.0,
+                //                         beginAtZero: true
+                //                     }
+                //                 }]
+                //             },
+                //             responsive: true,
+                //             maintainAspectRatio: false
+                //         }
+                //     });
+                //     resultsContainer.append(cw_geom);
+                // }
+                ///TODO
                 
                 if(series.hasOwnProperty('per_class')) {
                     // create detailed charts
+                    detailedStatistics = {
+                        class_meta: {
+                            names: lcNames,
+                            colors: lcColors
+                        },
+                        series: {}
+                    };
                     resultsContainer.append($('<h3>Per label class</h3>'));
                     resultsContainer.append($('<span>Select model state:</span>'));
                     var modelSelect = $('<select id="detailed-model-select"></select>');
-                    for(var m=0; m<modelStates.length; m++) {
-                        modelSelect.append($('<option value="'+modelStates[m]+'">'+(m+1)+'</option>'));
+                    for(var m=0; m<modelNames.length; m++) {
+                        modelSelect.append($('<option value="'+modelNames[m]+'">'+modelNames[m]+'</option>'));
+                        
+                        // parse data
+                        let perClassSeries = series['per_class'][m];
+                        let chartData = [];
+                        let pointRadii = [];
+                        let maxRadius = 0;
+                        for(var k=0; k<lcKeys.length; k++) {
+                            chartData.push({
+                                x: perClassSeries[lcKeys[k]]['rec'],
+                                y: perClassSeries[lcKeys[k]]['prec']
+                            });
+                            pointRadii.push(perClassSeries[lcKeys[k]]['num_matches']);
+                            maxRadius = Math.max(maxRadius, perClassSeries[lcKeys[k]]['num_matches']);
+                        }
+                        for(var k=0; k<lcKeys.length; k++) {
+                            pointRadii[k] *= 10.0 / maxRadius;
+                        }
+                        detailedStatistics['series'][modelNames[m]] = {
+                            precRec: chartData,
+                            pointRadii: pointRadii
+                        };
                     }
                     modelSelect.on('change', function() {
                         showDetailedChart($(this).val());
                     });
                     resultsContainer.append(modelSelect);
-
-                    // parse detailed data
-                    detailedStatistics = {};
-                    //TODO
-                    
+                    let cw_plc = $('<div class="chartWrapper"><div class="chartAreaWrapper"></div></div>');
+                    let canvas = $('<canvas id="detailed-chart-canvas" width=400 height=300 style="display:none"></canvas>');
+                    cw_plc.append(canvas);
+                    resultsContainer.append(cw_plc);
+                    modelSelect.trigger('change');
                 }
             },
             error: function(xhr, status, error) {
