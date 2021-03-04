@@ -77,6 +77,8 @@ class AbstractNode {
         this.parent = parent;
         this.nodeType = nodeType;
         this.active = false;
+        this.expanded = false;        // for nodes with expandable content
+        if(typeof(params['expanded']) === 'boolean') this.expanded = params['expanded'];
         this.connectionLines = [undefined, undefined];  // incoming, outgoing
         this.repeaterLines = [undefined, undefined];    // same principle, special hooks for repeaters
     }
@@ -275,12 +277,18 @@ class AbstractNode {
         }
     }
 
+    isExpanded() {
+        // to be overridden and used by subclasses that have expandable content
+        return this.expanded;
+    }
+
     toJSON() {
         return {
             id: this.id,
             type: this.nodeType,
             kwargs: this.params,
-            extent: this.getExtent()
+            extent: this.getExtent(),
+            expanded: this.isExpanded()
         }
     }
 }
@@ -437,8 +445,13 @@ class TrainNode extends DefaultNode {
                 self.propertiesMarkup.slideToggle(400, function() {
                     self.notifyPositionChange();
                 });
+                self.expanded = self.propertiesMarkup.is(':visible');
             }
         });
+        if(this.isExpanded()) {
+            this.propertiesMarkup.show();
+            this.notifyPositionChange();
+        }
 
         //TODO: set defaults correctly...
         //TODO 2: add date & time chooser for min. timestamp
@@ -575,9 +588,14 @@ class InferenceNode extends DefaultNode {
             if(self.active) {
                 self.propertiesMarkup.slideToggle(400, function() {
                     self.notifyPositionChange();
+                    self.expanded = self.propertiesMarkup.is(':visible');
                 });
             }
         });
+        if(this.isExpanded()) {
+            this.propertiesMarkup.show();
+            this.notifyPositionChange();
+        }
 
         // force unlabeled images
         this.unlabChck = $('<input type="checkbox" id="fUnlabeled_' + this.id + '" />');
