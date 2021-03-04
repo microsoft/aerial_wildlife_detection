@@ -82,8 +82,10 @@ class SQLStringBuilder:
 
         queryStr = sql.SQL('''
             SELECT query.imageID AS image FROM (
-                SELECT image.id AS imageID, image_user.viewcount FROM {id_img}
-                {gqString}
+                SELECT image.id AS imageID, image_user.viewcount FROM (
+                    SELECT * FROM {id_img}
+                    {gqString}
+                ) AS image
                 LEFT OUTER JOIN {id_iu}
                 ON image.id = image_user.image
                 {conditionString}
