@@ -68,9 +68,9 @@ class SQLStringBuilder:
             gqString = sql.SQL('')
 
         if forceUnlabeled:
-            conditionString = sql.SQL('WHERE viewcount IS NULL AND (corrupt IS NULL OR corrupt = FALSE) {}').format(gqString)
+            conditionString = sql.SQL('WHERE viewcount IS NULL AND (corrupt IS NULL OR corrupt = FALSE)')
         else:
-            conditionString = sql.SQL('WHERE corrupt IS NULL OR corrupt = FALSE {}').format(gqString)
+            conditionString = sql.SQL('WHERE corrupt IS NULL OR corrupt = FALSE')
         
         if limit is None or limit <= 0:
             limitString = sql.SQL('')
@@ -83,6 +83,7 @@ class SQLStringBuilder:
         queryStr = sql.SQL('''
             SELECT query.imageID AS image FROM (
                 SELECT image.id AS imageID, image_user.viewcount FROM {id_img}
+                {gqString}
                 LEFT OUTER JOIN {id_iu}
                 ON image.id = image_user.image
                 {conditionString}
@@ -92,6 +93,7 @@ class SQLStringBuilder:
         ''').format(
             id_img=sql.Identifier(project, 'image'),
             id_iu=sql.Identifier(project, 'image_user'),
+            gqString=gqString,
             conditionString=conditionString,
             limit=limitString
         )

@@ -17,8 +17,6 @@ import math
 from datetime import datetime
 import pytz
 from uuid import UUID
-from celery import current_app
-from kombu import Queue
 from PIL import Image
 from psycopg2 import sql
 from modules.LabelUI.backend.annotation_sql_tokens import QueryStrings_annotation, QueryStrings_prediction
@@ -28,9 +26,9 @@ from util.imageSharding import split_image
 
 class DataWorker:
 
-    
-
     NUM_IMAGES_LIMIT = 4096         # maximum number of images that can be queried at once (to avoid bottlenecks)
+
+
 
     def __init__(self, config, dbConnector, passiveMode=False):
         self.config = config
@@ -51,6 +49,10 @@ class DataWorker:
             return
         if 'task' in message:
             if message['task'] == 'create_project_folders':
+                if 'fileserver' not in os.environ['AIDE_MODULES'].lower():
+                    # required due to Celery interface import
+                    return
+
                 # set up folders for a newly created project
                 if 'projectName' in message:
                     destPath = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), message['projectName'])

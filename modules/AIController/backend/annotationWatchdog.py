@@ -245,6 +245,9 @@ class Watchdog(Thread):
 
                 # poll for user progress
                 count = self.dbConnector.execute(self.queryStr, self.queryVals, 1)
+                if count is None:
+                    # project got deleted
+                    return
                 count = count[0]['count']
 
                 if not taskOngoing and count >= self.properties['numimages_autotrain']:

@@ -593,7 +593,8 @@ class WorkflowMonitor {
                     self.setQueryInterval(self.queryIntervals['idle'], false);
                     totalProgress = 0;
                 }
-                self._set_footer_progress('tasks', true, totalProgress, targetProgress, (targetProgress<=0 && numActiveTasks>0), numActiveTasks + ' task(s)');
+                let taskSuffix = (numActiveTasks === 1 ? ' task' : ' tasks');
+                self._set_footer_progress('tasks', true, totalProgress, targetProgress, (targetProgress<=0 && numActiveTasks>0), numActiveTasks + taskSuffix);
 
                 
                 // auto-train

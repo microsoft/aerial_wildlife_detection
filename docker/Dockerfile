@@ -25,7 +25,7 @@ RUN apt-get update \
     && /opt/conda/bin/pip install pylint \
     #
     # Libraries for OpenCV
-    && apt-get -y install ffmpeg libsm6 libxext6 \
+    && apt-get -y install ffmpeg libsm6 libxext6 python3-opencv \
     #
     # Create a non-root user to use if preferred - see https://aka.ms/vscode-remote/containers/non-root-user.
     && groupadd --gid $USER_GID $USERNAME \
