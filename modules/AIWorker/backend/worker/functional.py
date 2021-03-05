@@ -489,14 +489,34 @@ def _call_inference(project, imageIDs, epoch, numEpochs, modelInstance, modelLib
                             else:
                                 nextResultValues.append(None)
                         elif fn == 'priority':
+                            value = None
                             if fn in prediction and prediction[fn] is None and 'confidence' in prediction:
                                 # ranker somehow didn't assign value; use confidence by default
-                                nextResultValues.append(prediction['confidence'])
+                                value = prediction['confidence']
                             elif fn in prediction:
-                                nextResultValues.append(prediction[fn])
+                                value = prediction[fn]
                             else:
                                 #TODO: provide replacement for priority, e.g. in case of segmentation masks
-                                nextResultValues.append(None)
+                                value = None
+                            
+                            if isinstance(value, list) or isinstance(value, np.ndarray):
+                                # segmentation masks, etc.: array of values provided; take average instead
+                                try:
+                                    value = np.nanmean(np.array(value))
+                                except:
+                                    value = None
+                            nextResultValues.append(value)
+                        elif fn == 'confidence':
+                            value = None
+                            if fn in prediction:
+                                value = prediction[fn]
+                                if isinstance(value, list) or isinstance(value, np.ndarray):
+                                    # segmentation masks, etc.: array of values provided; take average instead
+                                    try:
+                                        value = np.nanmean(np.array(value))
+                                    except:
+                                        value = None
+                            nextResultValues.append(value)
                         else:
                             if fn in prediction:
                                 #TODO: might need to do typecasts (e.g. UUID?)

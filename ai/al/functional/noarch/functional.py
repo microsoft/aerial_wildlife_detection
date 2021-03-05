@@ -27,7 +27,9 @@ def _breaking_ties(prediction):
             logits = np.sort(logits)
             btVal = 1 - (logits[-1] - logits[-2])
     if isinstance(btVal, np.ndarray):
-        btVal = btVal.tolist()
+        # criterion across multiple inputs (e.g., segmentation mask): take average
+        btVal = np.mean(btVal)
+        # btVal = btVal.tolist()
     return btVal
 
 
@@ -55,5 +57,7 @@ def _max_confidence(prediction):
         maxVal = None
     
     if isinstance(maxVal, np.ndarray):
-        maxVal = maxVal.tolist()
+        # criterion across multiple inputs (e.g., segmentation mask): take maximum
+        maxVal = np.max(maxVal)
+        # maxVal = maxVal.tolist()
     return maxVal
