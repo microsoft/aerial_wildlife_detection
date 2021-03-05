@@ -55,20 +55,20 @@
 
     <h3>AI model predictions</h3>
     <div class="settings-group">
-        <input type="checkbox" id="show-predictions-checkbox" />
-        <label for="show-predictions-checkbox">Show model predictions</label>
+        <!-- <input type="checkbox" id="show-predictions-checkbox" /> -->
+        <!-- <label for="show-predictions-checkbox">Show model predictions</label> -->
         <table>
             <tr>
-                <td>Minimum confidence to show:</td>
+                <td>Default minimum confidence for prediction visibility:</td>
                 <td><input class="number-input" id="field-minModelConfidence-show" type="number" min="0" max="1" /></td>
             </tr>
         </table>
 
-        <input type="checkbox" id="carryover-predictions-checkbox" />
-        <label for="carryover-predictions-checkbox">Automatically convert predictions to annotations</label>
+        <!-- <input type="checkbox" id="carryover-predictions-checkbox" />
+        <label for="carryover-predictions-checkbox">Automatically convert predictions to annotations</label> -->
         <table>
             <tr>
-                <td>Minimum confidence to convert:</td>
+                <td>Default minimum confidence for auto-conversion of predictions to annotations:</td>
                 <td><input class="number-input" id="field-minModelConfidence-convert" type="number" min="0" max="1" /></td>
             </tr>
             <tr>
@@ -295,9 +295,9 @@
         'ui_settings/defaultImage_w': {id: 'field-defaultImageWidth', type: 'value'},
         'ui_settings/defaultImage_h': {id: 'field-defaultImageHeight', type: 'value'},
         'ui_settings/minImageWidth': {id: 'field-minImageWidth', type: 'value'},
-        'ui_settings/showPredictions': {id: 'show-predictions-checkbox', type: 'checkbox'},
+        // 'ui_settings/showPredictions': {id: 'show-predictions-checkbox', type: 'checkbox'},
         'ui_settings/showPredictions_minConf': {id: 'field-minModelConfidence-show', type: 'value'},
-        'ui_settings/carryOverPredictions': {id: 'carryover-predictions-checkbox', type: 'checkbox'},
+        // 'ui_settings/carryOverPredictions': {id: 'carryover-predictions-checkbox', type: 'checkbox'},
         'ui_settings/carryOverPredictions_minConf': {id: 'field-minModelConfidence-convert', type: 'value'},
         'ui_settings/carryOverRule': {id: 'field-conversionRule', type: 'value'},
 
@@ -510,9 +510,9 @@
         window.dataType = 'images';
         window.eventTypes = [];
         window.projectShortname = window.project;
-        window.showPredictions = $('#show-predictions-checkbox').prop('checked');
+        window.showPredictions = true;  //$('#show-predictions-checkbox').prop('checked');
         window.showPredictions_minConf = parseFloat($('#field-minModelConfidence-convert'));
-        window.carryOverPredictions = $('#carryover-predictions-checkbox').prop('checked');
+        window.carryOverPredictions = true; //$('#carryover-predictions-checkbox').prop('checked');
         window.carryOverRule = $('#field-conversionRule').val();
         window.uiControlHandler = {
             getDefaultCursor() {
@@ -552,6 +552,18 @@
                 let key = Object.keys(data)[0];
                 data = data[key];
 
+                // limit predictions if multiple are available
+                try {
+                    let predKeys = Object.keys(data['predictions']);
+                    if(predKeys.length > 5) {
+                        let predictions_subset = {};
+                        for(var p=0; p<5; p++) {
+                            predictions_subset[predKeys[p]] = data['predictions'][predKeys[p]];
+                        }
+                        data['predictions'] = predictions_subset;
+                    }
+                } catch {}
+
                 // create new data entries
                 window.sampleEntry = null;
                 switch(String(window.projectImmutables['annotationType'])) {
@@ -589,9 +601,9 @@
         if(window.sampleEntry === undefined) return;
 
         // gather general values
-        window.showPredictions = $('#show-predictions-checkbox').prop('checked');
+        window.showPredictions = true;  //$('#show-predictions-checkbox').prop('checked');
         window.showPredictions_minConf = parseFloat($('#field-minModelConfidence-convert'));
-        window.carryOverPredictions = $('#carryover-predictions-checkbox').prop('checked');
+        window.carryOverPredictions = true; //$('#carryover-predictions-checkbox').prop('checked');
         window.carryOverRule = $('#field-conversionRule').val();
 
         // gather all styles
@@ -664,10 +676,6 @@
             $('#show-image-uris-checkbox').prop('disabled', !$(this).prop('checked'));
         });
 
-        // $('#proj-settings-save-button').on('click', function() {
-        //     window.save();
-        // });
-
         // load sample data
         promise = promise.then(function() {
             if(window.annotationType !== 'segmentationMasks') {
@@ -694,6 +702,7 @@
                     $(id).val($(this).val());
                     redrawSampleImage();
                 });
+                $(id_num).trigger('input');
             });
 
             window.showLoadingOverlay(false);

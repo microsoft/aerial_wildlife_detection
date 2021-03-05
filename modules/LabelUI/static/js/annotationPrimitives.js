@@ -161,7 +161,13 @@ class Annotation {
     }
 
     setVisible(visible) {
-        this.geometry.setVisible(visible);
+        if(typeof(visible) === 'number' && !isNaN(this.confidence)) {
+            // confidence-based
+            this.geometry.setVisible(this.confidence >= visible);
+        } else {
+            // boolean
+            this.geometry.setVisible(visible);
+        }
     }
 
     styleChanged() {

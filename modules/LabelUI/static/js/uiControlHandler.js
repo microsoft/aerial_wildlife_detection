@@ -2,7 +2,7 @@
     Manages functionalities around the UI/viewport/canvas,
     such as control buttons (select, add, zoom, etc.).
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 */
 
 
@@ -153,13 +153,13 @@ class UIControlHandler {
             chkbx.prop('checked', self.burstMode);
             window.setCookie('burstModeEnabled', self.burstMode);
         };
-        var burstModeCheck = $('<input type="checkbox" id="burst-mode-check" class="inline-control" style="margin-right:2px" title="Enable burst mode (M)" />');
+        let burstModeCheck = $('<input type="checkbox" id="burst-mode-check" class="custom-control-input inline-control" style="margin-right:2px" title="Enable burst mode (M)" />');
         burstModeCheck.change(burstModeCallback);
         burstModeCheck.prop('checked', this.burstMode);
-        dtControls.append(burstModeCheck);
-        var burstModeLabel = $('<label for="#burst-mode-check" class="inline-control" style="margin-left:0px;margin-right:10px;color:white;cursor:pointer;" title="Enable burst mode (M)">burst mode</label>');
-        burstModeLabel.click(burstModeCallback);
-        dtControls.append(burstModeLabel);
+        let burstModeCheckContainer = $('<div class="custom-control custom-switch inline-control"></div>');
+        burstModeCheckContainer.append(burstModeCheck);
+        burstModeCheckContainer.append($('<label for="burst-mode-check" class="custom-control-label inline-control" style="margin-left:0px;margin-right:10px;color:white;cursor:pointer;" title="Enable burst mode (M)">burst mode</label>'));
+        dtControls.append(burstModeCheckContainer);
 
         if(window.enableEmptyClass) {
             var clearAllCallback = function() {
@@ -169,9 +169,9 @@ class UIControlHandler {
             clearAllBtn.click(clearAllCallback);
             dtControls.append(clearAllBtn);
         }
-
-        // label all and unsure buttons
+        
         if(window.annotationType != 'segmentationMasks') {
+            // label all and unsure buttons
             var labelAllCallback = function() {
                 self.dataHandler.assignLabelToAll();
             }
@@ -184,6 +184,88 @@ class UIControlHandler {
             var unsureBtn = $('<button class="btn btn-sm btn-warning" id="unsure-button" title="Toggle Unsure flag for Annotation (U)">Unsure</button>');
             unsureBtn.click(unsureCallback);
             dtControls.append(unsureBtn);
+
+            // prediction threshold controls
+            let predThreshContainer = $('<div class="inline-control" id="prediction-threshold-container"></div>');
+            predThreshContainer.append($('<div style="margin:5px">AI</div>'));
+            let predThreshRangeContainer = $('<table id="pred-thresh-ranges"></table>');
+            let ptrc_vis = $('<tr class="prediction-range-container"></tr>');
+            ptrc_vis.append($('<td>Visibility</td>'));
+            let predThreshRange_vis = $('<input type="range" id="pred-thresh-vis" min="0" max="100" value="50" />');
+            predThreshRange_vis.on({
+                'input': function() {
+                    let value = 1 - parseFloat($(this).val() / 100.0);
+                    if(isNaN(value)) {
+                        value = 0.5;
+                        $(this).val(value);
+                    }
+                    window.showPredictions = (value > 0);
+                    window.showPredictions_minConf = value;
+
+                    self.dataHandler.setPredictionsVisible(window.showPredictions_minConf);
+                },
+                'change': function () {
+                    let value = parseFloat($(this).val());
+                    let cookieVals = window.getCookie('predThreshVis');
+                    try {
+                        cookieVals = JSON.parse(cookieVals);
+                    } catch {
+                        cookieVals = {};
+                    }
+                    cookieVals[window.projectShortname] = value;
+                    window.setCookie('predThreshVis', JSON.stringify(cookieVals));
+                }
+            });
+            try {
+                let value = JSON.parse(window.getCookie('predThreshVis'))[window.projectShortname];
+                predThreshRange_vis.val(value);
+            } catch {
+                predThreshRange_vis.val(100 - window.showPredictions_minConf * 100);
+            }
+            let rangeTd_vis = $('<td></td>');
+            rangeTd_vis.append(predThreshRange_vis);
+            ptrc_vis.append(rangeTd_vis);
+            predThreshRangeContainer.append(ptrc_vis);
+            let ptrc_convert = $('<tr class="prediction-range-container"></tr>');
+            ptrc_convert.append($('<td>Conversion</td>'));
+            let predThreshRange_convert = $('<input type="range" id="pred-thresh-convert" min="0" max="100" value="95" />');
+            predThreshRange_convert.on({
+                'input': function() {
+                    let value = 1 - parseFloat($(this).val() / 100.0);
+                    if(isNaN(value)) {
+                        value = 0.05;
+                        $(this).val(value);
+                    }
+                    window.carryOverPredictions = (value > 0);
+                    window.carryOverPredictions_minConf = value;
+
+                    // re-convert predictions into annotations
+                    self.dataHandler.convertPredictions();
+                },
+                'change': function() {
+                    let value = parseFloat($(this).val());
+                    let cookieVals = window.getCookie('predThreshConv');
+                    try {
+                        cookieVals = JSON.parse(cookieVals);
+                    } catch {
+                        cookieVals = {};
+                    }
+                    cookieVals[window.projectShortname] = value;
+                    window.setCookie('predThreshConv', JSON.stringify(cookieVals));
+                }
+            });
+            try {
+                let value = JSON.parse(window.getCookie('predThreshConv'))[window.projectShortname];
+                predThreshRange_convert.val(value);
+            } catch {
+                predThreshRange_convert.val(100 - window.carryOverPredictions_minConf * 100);
+            }
+            let rangeTd_convert = $('<td></td>');
+            rangeTd_convert.append(predThreshRange_convert);
+            ptrc_convert.append(rangeTd_convert);
+            predThreshRangeContainer.append(ptrc_convert);
+            predThreshContainer.append(predThreshRangeContainer);
+            dtControls.append(predThreshContainer);
         }
 
         // semantic segmentation controls

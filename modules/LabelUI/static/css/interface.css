@@ -112,6 +112,23 @@ h3 {
     display: inline;
     vertical-align: middle;
 }
+#prediction-threshold-container {
+    display: inline-flex;
+    color: white;
+    height: 32px;
+    border-radius: .2rem;
+    background: #514e4d;
+    padding-left: 2px;
+    padding-right: 5px;
+}
+#pred-thresh-ranges {
+    display: inline-table;
+    text-align: right;
+    font-size: 10px;
+}
+#pred-thresh-ranges input {
+    height: 10px;
+}
 .entry {
     display: inline-block;
     padding: 10px;  /* 18px without margin */

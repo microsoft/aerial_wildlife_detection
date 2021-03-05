@@ -132,6 +132,13 @@ class DataHandler {
         if(annotationsActive) window.unsureButtonActive = false;
     }
 
+    convertPredictions() {
+        if(window.uiBlocked) return;
+        for(var i=0; i<this.dataEntries.length; i++) {
+            this.dataEntries[i].convertPredictions();
+        }
+    }
+
     setPredictionsVisible(visible) {
         if(window.uiBlocked) return;
         for(var i=0; i<this.dataEntries.length; i++) {
@@ -152,7 +159,6 @@ class DataHandler {
             this.dataEntries[i].setMinimapVisible(visible);
         }
     }
-
 
     getAllPresentClassIDs() {
         /*
@@ -252,6 +258,10 @@ class DataHandler {
 
                 // update present classes list
                 self.updatePresentClasses();
+
+                // show (or hide) predictions depending on threshold
+                self.setPredictionsVisible(window.showPredictions_minConf); //TODO: more elegant solution that doesn't require window?
+                self.convertPredictions();
 
                 // adjust width of entries
                 window.windowResized();
@@ -354,6 +364,10 @@ class DataHandler {
 
                 // update present classes list
                 self.updatePresentClasses();
+
+                // show (or hide) predictions depending on threshold
+                self.setPredictionsVisible(window.showPredictions_minConf); //TODO: more elegant solution that doesn't require window?
+                self.convertPredictions();
 
                 // update slider and date text
                 $('#review-timerange').val(Math.min($('#review-timerange').prop('max'), minTimestamp));
@@ -505,6 +519,10 @@ class DataHandler {
 
                 // update present classes list
                 self.updatePresentClasses();
+
+                // show (or hide) predictions depending on threshold
+                self.setPredictionsVisible(window.showPredictions_minConf); //TODO: more elegant solution that doesn't require window?
+                self.convertPredictions();
 
                 // adjust width of entries
                 window.windowResized();
