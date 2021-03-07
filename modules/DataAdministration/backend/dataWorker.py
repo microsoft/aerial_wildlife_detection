@@ -20,7 +20,7 @@ from uuid import UUID
 from PIL import Image
 from psycopg2 import sql
 from modules.LabelUI.backend.annotation_sql_tokens import QueryStrings_annotation, QueryStrings_prediction
-from util.helpers import VALID_IMAGE_EXTENSIONS, FILENAMES_PROHIBITED_CHARS, listDirectory, base64ToImage
+from util.helpers import VALID_IMAGE_EXTENSIONS, FILENAMES_PROHIBITED_CHARS, listDirectory, base64ToImage, hexToRGB
 from util.imageSharding import split_image
 
 
@@ -737,7 +737,7 @@ class DataWorker:
                             indexedColors.extend([0,0,0])
                         else:
                             # convert to RGB format
-                            indexedColors.extend(helpers.hexToRGB(color))
+                            indexedColors.extend(hexToRGB(color))
 
                 except:
                     # an error occurred; don't convert segmentation mask to indexed colors
@@ -918,20 +918,21 @@ class DataWorker:
                 WHERE watch_folder_enabled IS TRUE;
             ''', None, 'all')
 
-        for p in projects:
-            pName = p['shortname']
+        if projects is not None and len(projects):
+            for p in projects:
+                pName = p['shortname']
 
-            # add new images
-            _, imgs_added = self.addExistingImages(pName, None)
+                # add new images
+                _, imgs_added = self.addExistingImages(pName, None)
 
-            # remove orphaned images (if enabled)
-            if p['watch_folder_remove_missing_enabled']:
-                imgs_orphaned = self.removeOrphanedImages(pName)
-                if len(imgs_added) or len(imgs_orphaned):
-                    print(f'[Project {pName}] {len(imgs_added)} new images found and added, {len(imgs_orphaned)} orphaned images removed from database.')
+                # remove orphaned images (if enabled)
+                if p['watch_folder_remove_missing_enabled']:
+                    imgs_orphaned = self.removeOrphanedImages(pName)
+                    if len(imgs_added) or len(imgs_orphaned):
+                        print(f'[Project {pName}] {len(imgs_added)} new images found and added, {len(imgs_orphaned)} orphaned images removed from database.')
 
-            elif len(imgs_added):
-                print(f'[Project {pName}] {len(imgs_added)} new images found and added.')
+                elif len(imgs_added):
+                    print(f'[Project {pName}] {len(imgs_added)} new images found and added.')
 
 
     
