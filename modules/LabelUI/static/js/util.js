@@ -1,7 +1,7 @@
 /**
  * Utility functions for the labeling interface.
  * 
- * 2020 Benjamin Kellenberger
+ * 2020-21 Benjamin Kellenberger
  */
 
 
@@ -30,11 +30,34 @@ window.showLoadingOverlay = function(visible) {
 }
 
 // cookie helper
-window.getCookie = function(name) {
-    var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-    if (match) return match[2];
+function encodeCookieArray(value) {
+
+}
+
+window.getCookie = function(name, decodeToObject) {
+    let match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    if (match) match = match[2];
+
+    if(typeof(match) === 'string' && decodeToObject) {
+        let tokens = match.split(',');
+        if(tokens.length >= 2 && tokens.length % 2 == 0) {
+            match = {};
+            for(var t=0; t<tokens.length; t+=2) {
+                match[tokens[t]] = tokens[t+1];
+            }
+        }
+    }
+    return match;
 }
 window.setCookie = function(name, value, days) {
+    if(typeof(value) === 'object') {
+        let objStr = '';
+        for(var key in value) {
+            let val = value[key];
+            objStr += key + ',' + val + ',';
+        }
+        value = objStr.slice(0, -1);
+    }
     var d = new Date;
     d.setTime(d.getTime() + 24*60*60*1000*days);
     document.cookie = name + "=" + value + ";path=/;expires=" + d.toGMTString();

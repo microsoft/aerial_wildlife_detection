@@ -206,18 +206,16 @@ class UIControlHandler {
                 },
                 'change': function () {
                     let value = parseFloat($(this).val());
-                    let cookieVals = window.getCookie('predThreshVis');
-                    try {
-                        cookieVals = JSON.parse(cookieVals);
-                    } catch {
+                    let cookieVals = window.getCookie('predThreshVis', true);
+                    if(cookieVals === null || typeof(cookieVals) !== 'object') {
                         cookieVals = {};
                     }
                     cookieVals[window.projectShortname] = value;
-                    window.setCookie('predThreshVis', JSON.stringify(cookieVals));
+                    window.setCookie('predThreshVis', cookieVals);
                 }
             });
             try {
-                let value = JSON.parse(window.getCookie('predThreshVis'))[window.projectShortname];
+                let value = window.getCookie('predThreshVis', true)[window.projectShortname];
                 predThreshRange_vis.val(value);
             } catch {
                 predThreshRange_vis.val(100 - window.showPredictions_minConf * 100);
@@ -244,18 +242,16 @@ class UIControlHandler {
                 },
                 'change': function() {
                     let value = parseFloat($(this).val());
-                    let cookieVals = window.getCookie('predThreshConv');
-                    try {
-                        cookieVals = JSON.parse(cookieVals);
-                    } catch {
+                    let cookieVals = window.getCookie('predThreshConv', true);
+                    if(cookieVals === null || typeof(cookieVals) !== 'object') {
                         cookieVals = {};
                     }
                     cookieVals[window.projectShortname] = value;
-                    window.setCookie('predThreshConv', JSON.stringify(cookieVals));
+                    window.setCookie('predThreshConv', cookieVals);
                 }
             });
             try {
-                let value = JSON.parse(window.getCookie('predThreshConv'))[window.projectShortname];
+                let value = window.getCookie('predThreshConv', true)[window.projectShortname];
                 predThreshRange_convert.val(value);
             } catch {
                 predThreshRange_convert.val(100 - window.carryOverPredictions_minConf * 100);

@@ -216,19 +216,23 @@ class AbstractDataEntry {
 
         let geometryType_anno = String(window.annotationType);
 
-        if(window.annotationType === window.predictionType) {
-            // no conversion required
-            for(var key in this.predictions_raw) {
-                let props = this.predictions_raw[key];
-                if(props['confidence'] >= window.carryOverPredictions_minConf) {
-                    let anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation', true);
-                    // anno.setProperty('changed', true);
-                    this._addElement(anno);
-                }
-            }
-        } else if(window.annotationType === 'labels') {
+        if(window.annotationType === 'labels') {
             // need image-wide labels
-            if(window.predictionType === 'points' || window.predictionType === 'boundingBoxes') {
+            if(window.predictionType === 'labels') {
+                // both annotations and predictions are labels: only convert if user has not yet provided a label
+                if(typeof(this.labelInstance) === 'object' && typeof(this.labelInstance.autoConverted) === 'boolean' && !this.labelInstance.autoConverted) {
+                    // user has already provided a label; abort
+                    return
+                }
+                let pred = this.predictions_raw[Object.keys(this.predictions_raw)[0]];
+                if(pred['confidence'] >= window.carryOverPredictions_minConf) {
+                    this.setLabel(pred['label']);
+                    this.labelInstance.setProperty('autoConverted', true);
+                } else {
+                    this.setLabel(null);
+                }
+
+            } else if(window.predictionType === 'points' || window.predictionType === 'boundingBoxes') {
                 // check carry-over rule
                 if(window.carryOverRule === 'maxConfidence') {
                     // select arg max
@@ -246,7 +250,6 @@ class AbstractDataEntry {
                         let id = this.predictions_raw[key]['id'];
                         let label = this.predictions_raw[key]['label'];
                         let anno = new Annotation(window.getRandomID(), {'id':id, 'label':label, 'confidence':maxConf}, geometryType_anno, 'annotation', true);
-                        // anno.setProperty('changed', true);
                         this._addElement(anno);
                     }
                 } else if(window.carryOverRule === 'mode') {
@@ -270,9 +273,17 @@ class AbstractDataEntry {
                     // add new label annotation
                     if(argMax != null) {
                         let anno = new Annotation(window.getRandomID(), {'label':argMax}, geometryType_anno, 'annotation', true);
-                        // anno.setProperty('changed', true);
                         this._addElement(anno);
                     }
+                }
+            }
+        } else if(window.annotationType === window.predictionType) {
+            // no conversion required
+            for(var key in this.predictions_raw) {
+                let props = this.predictions_raw[key];
+                if(props['confidence'] >= window.carryOverPredictions_minConf) {
+                    let anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation', true);
+                    this._addElement(anno);
                 }
             }
         } else if(window.annotationType === 'points' && window.predictionType === 'boundingBoxes') {
@@ -294,7 +305,6 @@ class AbstractDataEntry {
                     props['width'] = window.defaultBoxSize_w;
                     props['height'] = window.defaultBoxSize_h;
                     let anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation', true);
-                    // anno.setProperty('changed', true);
                     this._addElement(anno);
                 }
             }
@@ -750,6 +760,15 @@ class ClassificationEntry extends AbstractDataEntry {
         }
     }
 
+    getLabel() {
+        if(typeof(this.annotations) !== 'object') {
+            return null;
+        }
+        let entryKey = Object.keys(this.annotations);
+        if(entryKey.length === 0) return null;
+        return this.annotations[entryKey[0]].getProperty('label');
+    }
+
     setLabel(label) {
         if(typeof(this.labelInstance) !== 'object') {
             // add new annotation
@@ -758,6 +777,14 @@ class ClassificationEntry extends AbstractDataEntry {
 
         } else {
             this.labelInstance.setProperty('label', label);
+            if(label === null) {
+                // re-enable auto-conversion of predictions
+                this.labelInstance.setProperty('autoConverted', true);
+            }
+        }
+        if(Object.keys(this.annotations).length === 0) {
+            // re-add label instance
+            this._addElement(this.labelInstance);
         }
 
         // flip text color of BorderStrokeElement if needed
@@ -804,6 +831,7 @@ class ClassificationEntry extends AbstractDataEntry {
                 }
             }
         }
+        this.labelInstance.setProperty('autoConverted', false);
         this.render();
 
         window.dataHandler.updatePresentClasses();
@@ -815,8 +843,11 @@ class ClassificationEntry extends AbstractDataEntry {
             this.annotations[key].setActive(false, this.viewport);
             this._removeElement(this.annotations[key]);
         }
-        if(typeof(this.labelInstance) === 'object')
+        if(typeof(this.labelInstance) === 'object') {
             this.labelInstance.setProperty('label', null);
+            // re-enable auto-conversion of predictions
+            this.labelInstance.setProperty('autoConverted', true);
+        }
         this.render();
 
         window.dataHandler.updatePresentClasses();

@@ -54,12 +54,12 @@ class DBMiddleware():
             self.defaultStyles = json.load(open('modules/ProjectAdministration/static/json/default_ui_settings.json', 'r'))
 
 
-    def _assemble_annotations(self, project, cursor, hideGoldenQuestionInfo):
+    def _assemble_annotations(self, project, queryData, hideGoldenQuestionInfo):
         response = {}
-        while True:
-            b = cursor.fetchone()
-            if b is None:
-                break
+        for b in queryData:
+            # b = cursor.fetchone()
+            # if b is None:
+            #     break
 
             imgID = str(b['image'])
             if not imgID in response:
@@ -370,17 +370,12 @@ class DBMiddleware():
         else:
             queryVals = (uuids, username, username,)
 
-        with self.dbConnector.execute_cursor(queryStr, queryVals) as cursor:
-            try:
-                response = self._assemble_annotations(project, cursor, hideGoldenQuestionInfo)
-                # self.dbConnector.conn.commit()
-            except Exception as e:
-                print(e)
-                # self.dbConnector.conn.rollback()
-            finally:
-                pass
-                # cursor.close()
-        
+        annoResult = self.dbConnector.execute(queryStr, queryVals, 'all')
+        try:
+            response = self._assemble_annotations(project, annoResult, hideGoldenQuestionInfo)
+        except Exception as e:
+            print(e)
+    
         # filter out images that are invalid
         imgs_malformed = list(set(imgs_malformed).union(set(data).difference(set(response.keys()))))
 
@@ -415,8 +410,11 @@ class DBMiddleware():
         if projImmutables['demoMode']:      #TODO: demoMode can now change dynamically
             queryVals = (limit,)
 
-        with self.dbConnector.execute_cursor(queryStr, queryVals) as cursor:
-            response = self._assemble_annotations(project, cursor, hideGoldenQuestionInfo)
+        annoResult = self.dbConnector.execute(queryStr, queryVals, 'all')
+        try:
+            response = self._assemble_annotations(project, annoResult, hideGoldenQuestionInfo)
+        except Exception as e:
+            print(e)
 
         # mark images as requested
         self._set_images_requested(project, response)
@@ -456,16 +454,11 @@ class DBMiddleware():
             queryVals.append(tuple(userList))
 
         # query and parse results
-        with self.dbConnector.execute_cursor(queryStr, tuple(queryVals)) as cursor:
-            try:
-                response = self._assemble_annotations(project, cursor, hideGoldenQuestionInfo)
-                # self.dbConnector.conn.commit()
-            except Exception as e:
-                print(e)
-                # self.dbConnector.conn.rollback()
-            finally:
-                pass
-                # cursor.close()
+        annoResult = self.dbConnector.execute(queryStr, tuple(queryVals), 'all')
+        try:
+            response = self._assemble_annotations(project, annoResult, hideGoldenQuestionInfo)
+        except Exception as e:
+            print(e)
 
         # # mark images as requested
         # self._set_images_requested(project, response)
@@ -516,11 +509,11 @@ class DBMiddleware():
 
         # query and parse results
         response = None
-        with self.dbConnector.execute_cursor(queryStr, None) as cursor:
-            try:
-                response = self._assemble_annotations(project, cursor, True)
-            except:
-                pass
+        annoResult = self.dbConnector.execute(queryStr, None, 'all')
+        try:
+            response = self._assemble_annotations(project, annoResult, True)
+        except Exception as e:
+            print(e)
         
         if response is None or not len(response):
             # no valid data found for project; fall back to sample data
