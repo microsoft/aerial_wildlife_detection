@@ -243,6 +243,11 @@ class Watchdog(Thread):
 
             if self.getAImodelAutoTrainingEnabled() and self.getThreshold() > 0:
 
+                # check if AIController worker and AIWorker are available
+                aiModelInfo = self.middleware.get_ai_model_training_info(self.project)
+                hasAICworker = (len(aiModelInfo['workers']['AIController']) > 0)
+                hasAIWworker = (len(aiModelInfo['workers']['AIWorker']) > 0)
+
                 # poll for user progress
                 count = self.dbConnector.execute(self.queryStr, self.queryVals, 1)
                 if count is None:
@@ -250,17 +255,31 @@ class Watchdog(Thread):
                     return
                 count = count[0]['count']
 
-                if not taskOngoing and count >= self.properties['numimages_autotrain']:
-                    # threshold exceeded; initiate training process followed by inference and return
+                if not taskOngoing and \
+                    count >= self.properties['numimages_autotrain'] and \
+                        hasAICworker and hasAIWworker:
+                    # threshold exceeded; load workflow
+                    defaultWorkflowID = self.dbConnector.execute('''
+                        SELECT default_workflow FROM aide_admin.project
+                        WHERE shortname = %s;
+                    ''', (self.project,), 1)
+                    defaultWorkflowID = defaultWorkflowID[0]['default_workflow']
+
                     try:
-                        self.middleware.start_train_and_inference(project=self.project,
-                            minTimestamp='lastState',
-                            maxNumImages_train=self.properties['maxnumimages_train'],
-                            maxNumWorkers_train=self.config.getProperty('AIController', 'maxNumWorkers_train', type=int, fallback=1),           #TODO: replace by project-specific argument
-                            forceUnlabeled_inference=True,
-                            maxNumImages_inference=self.properties['maxnumimages_inference'],
-                            maxNumWorkers_inference=self.config.getProperty('AIController', 'maxNumWorkers_inference', type=int, fallback=-1))  #TODO: replace by project-specific argument
-                        
+                        if defaultWorkflowID is not None:
+                            # default workflow set
+                            self.middleware.launch_task(self.project, defaultWorkflowID, None)
+
+                        else:
+                            # no workflow set; launch standard training-inference chain
+                            self.middleware.start_train_and_inference(project=self.project,
+                                minTimestamp='lastState',
+                                maxNumImages_train=self.properties['maxnumimages_train'],
+                                maxNumWorkers_train=self.config.getProperty('AIController', 'maxNumWorkers_train', type=int, fallback=1),           #TODO: replace by project-specific argument
+                                forceUnlabeled_inference=True,
+                                maxNumImages_inference=self.properties['maxnumimages_inference'],
+                                maxNumWorkers_inference=self.config.getProperty('AIController', 'maxNumWorkers_inference', type=int, fallback=-1))  #TODO: replace by project-specific argument
+                            
                     except:
                         # error in case auto-launched task is already ongoing; ignore
                         pass

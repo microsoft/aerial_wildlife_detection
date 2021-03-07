@@ -8,17 +8,9 @@
         <br />
 
         <div style="margin-left:20px">
-            <table id="ai-autotrain-settings">
-                <tr>
-                    <td><label for="ai-model-num-images-autotrain">Number of labeled images to wait every training step:</label></td>
-                    <td><input type="number" min="1" value="128" id="ai-model-num-images-autotrain" /></td>
-                </tr>
-                
-                <!-- TODO: replace default parameters with workflow possibilities -->
-                <tr>
-                    <td><label for="ai-model-num-labels-image-autotrain">Only consider images with the following number (or more) of annotations:</label></td>
-                    <td><input type="number" min="0" value="0" id="ai-model-num-labels-image-autotrain" /></td>
-                </tr>
+            <input type="radio" name="ai-autotrain-action" value="no-default-workflow" id="no-default-workflow" checked="checked" />
+            <label for="no-default-workflow">Training and inference</label>
+            <table id="no-default-workflow-settings" style="margin-left:40px">
                 <tr>
                     <td><label for="ai-model-max-num-images-autotrain">Maximum number of images to train on at a time (0 = unlimited):</label></td>
                     <td><input type="number" min="0" value="0" id="ai-model-max-num-images-autotrain" /></td>
@@ -27,6 +19,24 @@
                     <td><label for="ai-model-max-num-images-inference">Maximum number of images to predict on at a time (0 = unlimited):</label></td>
                     <td><input type="number" min="0" value="0" id="ai-model-max-num-images-inference" /></td>
                 </tr>
+            </table>
+
+            <input type="radio" name="ai-autotrain-action" value="default-workflow" id="default-workflow" />
+            <label for="default-workflow">Pre-defined workflow:</label>
+            <select id="saved-workflows"></select>
+            <p style="margin-left:40px;font-style:italic;font-size:10pt">You can define custom workflows in the <a href="workflowDesigner">Workflow Designer</a>.</p>
+
+
+            <table id="ai-autotrain-settings" style="margin-top:20px">
+                <tr>
+                    <td><label for="ai-model-num-images-autotrain">Number of labeled images to wait every training step:</label></td>
+                    <td><input type="number" min="1" value="128" id="ai-model-num-images-autotrain" /></td>
+                </tr>
+                <tr>
+                    <td><label for="ai-model-num-labels-image-autotrain">Only consider images with the following number (or more) of annotations:</label></td>
+                    <td><input type="number" min="0" value="0" id="ai-model-num-labels-image-autotrain" /></td>
+                </tr>
+                
                 <tr>
                     <td>
                         <label for="ai-model-inference-chunk-size">Number of images to group prediction runs into (&leq;0 = maximum):</label>
@@ -38,21 +48,24 @@
                     </td>
                     <td style="position:relative"><input type="number" min="0" value="0" id="ai-model-inference-chunk-size" style="position:absolute;top:2px" /></td>
                 </tr>
-                <tr>
-                    <td>
-                        <label for="ai-model-max-num-concurrent-tasks">Maximum number of concurrent tasks (&leq;0 = maximum):</label>
-                        <div style="margin-left:20px;font-style:italic;font-size:10pt">
-                            Limit the maximum number of AI model workflows to be executed in parallel here.<br />
-                            Automatic AI model training only launches one workflow at a time, even if the required number of annotated images has been reached early.<br />
-                            The maximum number of concurrent workflows per project on this instance of AIDE is: <span id="concurrent-tasks-limit">(querying...)</span>.
-                        </div>
-                    </td>
-                    <td style="position:relative"><input type="number" min="0" value="2" id="ai-model-max-num-concurrent-tasks" style="position:absolute;top:2px" /></td>
-                </tr>
             </table>
         </div>
     </div>
     
+    <table style="margin-bottom:50px">
+        <tr>
+            <td>
+                <label for="ai-model-max-num-concurrent-tasks">Maximum number of concurrent tasks (&leq;0 = maximum):</label>
+                <div style="margin-left:20px;font-style:italic;font-size:10pt">
+                    Limit the maximum number of AI model workflows to be executed in parallel here.<br />
+                    Automatic AI model training only launches one workflow at a time, even if the required number of annotated images has been reached early.<br />
+                    The maximum number of concurrent workflows per project on this instance of AIDE is: <span id="concurrent-tasks-limit">(querying...)</span>.
+                </div>
+            </td>
+            <td style="position:relative"><input type="number" min="0" value="2" id="ai-model-max-num-concurrent-tasks" style="position:absolute;top:2px" /></td>
+        </tr>
+    </table>
+
     <h3>Prediction model</h3>
     <div class="settings-group">
         <label for="ai-model-class">Model:</label>
@@ -165,6 +178,96 @@
     let aiModelSelect = $('#ai-model-class');
     let alModelSelect = $('#al-model-class');
 
+    function initAutotrainAction() {
+        /**
+         * Queries for workflows saved in this project and sets up the controls for the
+         * default workflow accordingly.
+         */
+        let savedWorkflowsList = $('#saved-workflows');
+        savedWorkflowsList.empty();
+        return $.ajax({
+            url: window.baseURL + 'getSavedWorkflows',
+            method: 'GET',
+            success: function(data) {
+                if(data.hasOwnProperty('workflows')) {
+                    let defaultWFset = false;
+                    for(var wfID in data['workflows']) {
+                        let wf = data['workflows'][wfID];
+                        let entry = $('<option value="'+wfID+'">' + wf['name'] + '</option>');
+                        if(wf['default_workflow']) {
+                            defaultWFset = true;
+                            entry.attr('selected', true);
+                        }
+                        savedWorkflowsList.append(entry);
+                    }
+
+                    if(defaultWFset) {
+                        $('#default-workflow').prop('checked', true);
+                    } else {
+                        $('#no-default-workflow').prop('checked', true);
+                    }
+                } else {
+                    savedWorkflowsList.append($('<option value="null" disabled>(none configured yet)</option>'));
+                }
+                $('#default-workflow').trigger('change');
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+                if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                    window.messager.addMessage('An error occurred while trying to load saved workflows (message: "' + error + '").', 'error', 0);
+                }
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return initSavedWorkflows();
+                    });
+                }
+            }
+        });
+    }
+
+    function saveDefaultWorkflow() {
+        let defaultWorkflowID = null;
+        if($('#default-workflow').prop('checked')) {
+            defaultWorkflowID = $('#saved-workflows').val();
+        }
+
+        return $.ajax({
+            url: window.baseURL + 'setDefaultWorkflow',
+            method: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            data: JSON.stringify({workflow_id:defaultWorkflowID}),
+            success: function(data) {
+                if(data['status'] === 0) {
+                    // re-populate saved workflows table
+                    return initAutotrainAction();
+                } else {
+                    let message = 'An error occurred while trying to set workflow as default';
+                    if(typeof(data['message']) === 'string') {
+                        message += ' (message: "' + data['message'] + '")';
+                    }
+                    message += '.';
+                    window.messager.addMessage(message, 'error', 0);
+                }
+            },
+            error: function(xhr, status, error) {
+                //TODO: global save function will still report "success" message even if this has failed...
+                console.error(error);
+                if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                    window.messager.addMessage('An error occurred while trying to set workflow as default (message: "' + error + '").', 'error', 0);
+                }
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return setSelectedAsDefault();
+                    });
+                }
+            }
+        })
+    }
 
     function showModelOptionsPanel(data, onlyShowIfWarnings) {
         if(typeof(data) !== 'object') return;
@@ -459,7 +562,7 @@
         if(window.annotationType === 'segmentationMasks') {
             settings['segmentation_ignore_unlabeled'] = ($('#seg-unlabeled-select').val() === '1');
         }
-        var p = $.ajax({
+        let p = $.ajax({
             url: window.baseURL + 'saveAImodelSettings',
             method: 'POST',
             contentType: 'application/json; charset=utf-8',
@@ -477,6 +580,12 @@
                 console.error(data);
             }
         });
+
+        // default workflow settings
+        p = p.then(function() {
+            return saveDefaultWorkflow();
+        });
+
         p = p.then(function() {
             // nudge annotation watchdog to update auto-training info
             return $.ajax({
@@ -518,6 +627,10 @@
             return loadSettings();
         });
 
+        promise = promise.then(function() {
+            return initAutotrainAction();
+        });
+
         // initialize options engine
         window.optionsEngine = new OptionsEngine($('#default-ai-model-options-engine'));
 
@@ -555,12 +668,26 @@
 
         $('#ai-model-enabled-checkbox').change(function() {
             let disabled = !$(this).prop('checked');
+            $('#default-workflow').prop('disabled', disabled);
+            $('#no-default-workflow').prop('disabled', disabled);
+            $('#saved-workflows').prop('disabled', disabled);
             $('#ai-model-num-images-autotrain').prop('disabled', disabled);
             $('#ai-model-num-labels-image-autotrain').prop('disabled', disabled);
-            $('#ai-model-max-num-images-autotrain').prop('disabled', disabled);
-            $('#ai-model-max-num-images-inference').prop('disabled', disabled);
+            $('#ai-model-max-num-images-autotrain').prop('disabled', disabled || !$('#no-default-workflow').prop('checked'));
+            $('#ai-model-max-num-images-inference').prop('disabled', disabled || !$('#no-default-workflow').prop('checked'));
             $('#ai-model-inference-chunk-size').prop('disabled', disabled);
         });
+        $('input[name="ai-autotrain-action"]').each(function() {
+            $(this).on('change', function() {
+                let aiModelDisabled = !$('#ai-model-enabled-checkbox').prop('checked');
+                let defaultWorkflowDisabled = !$('#no-default-workflow').prop('checked');
+                $('#ai-model-max-num-images-autotrain').prop('disabled', aiModelDisabled || defaultWorkflowDisabled);
+                $('#ai-model-max-num-images-inference').prop('disabled', aiModelDisabled || defaultWorkflowDisabled);
+                $('#saved-workflows').prop('disabled', aiModelDisabled || !defaultWorkflowDisabled);
+            });
+        });
+        $('#default-workflow').trigger('change');
+
 
         $('#seg-unlabeled-select').change(function() {
             let infoDiv = $('#seg-unlabeled-info-text');

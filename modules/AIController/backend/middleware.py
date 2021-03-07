@@ -582,11 +582,11 @@ class AIMiddleware():
             # load workflow as per UUID
             queryStr = sql.SQL('''
                     SELECT workflow FROM {id_workflow}
-                    WHERE id %s;
+                    WHERE id = %s;
                 ''').format(
                     id_workflow=sql.Identifier(project, 'workflow')
                 )
-            result = self.dbConn.execute(queryStr, (project,), 1)
+            result = self.dbConn.execute(queryStr, (workflow,), 1)
             if result is None or not len(result):
                 return {
                     'status': 2,
@@ -1175,7 +1175,7 @@ class AIMiddleware():
         '''
         if isinstance(workflowID, str):
             workflowID = uuid.UUID(workflowID)
-        if not isinstance(workflowID, uuid.UUID):
+        if workflowID is not None and not isinstance(workflowID, uuid.UUID):
             return {
                 'status': 2,
                 'message': f'Provided argument "{str(workflowID)}" is not a valid workflow ID'
