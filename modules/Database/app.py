@@ -52,7 +52,7 @@ class Database():
             port=self.port,
             user=self.user,
             password=self.password,
-            # connect_timeout=2
+            connect_timeout=10
         )
 
 

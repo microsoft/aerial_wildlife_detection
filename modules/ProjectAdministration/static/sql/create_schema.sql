@@ -112,6 +112,7 @@ CREATE TABLE IF NOT EXISTS {id_prediction} (
     FOREIGN KEY (image) REFERENCES {id_image}(id),
     FOREIGN KEY (cnnstate) REFERENCES {id_cnnstate}(id)
 );
+CREATE INDEX pred_idx ON {id_prediction} (cnnstate);
 
 CREATE TABLE IF NOT EXISTS {id_workflow} (
     id uuid DEFAULT uuid_generate_v4(),

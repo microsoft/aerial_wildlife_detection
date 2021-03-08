@@ -185,24 +185,30 @@ class AIControllerWorker:
         # verify IDs
         if not isinstance(modelStateIDs, Iterable):
             modelStateIDs = [modelStateIDs]
-        uuids = []
         modelIDs_invalid = []
-        for m in modelStateIDs:
+        queryStr_a = sql.SQL('''
+                DELETE FROM {id_pred}
+                WHERE cnnstate = %s;
+            ''').format(
+                id_pred=sql.Identifier(project, 'prediction')            )
+        queryStr_b = sql.SQL('''
+                DELETE FROM {id_cnnstate}
+                WHERE id = %s;
+            ''').format(
+                id_cnnstate=sql.Identifier(project, 'cnnstate')
+            )
+        for idx, m in enumerate(modelStateIDs):
+            print(f'[{project}] Deleting model state {idx+1}/{len(modelStateIDs)}...')
             try:
-                uuids.append((UUID(m),))
+                if isinstance(m, UUID):
+                    nextID = m
+                else:
+                    nextID = UUID(m)
+                self.dbConn.execute(queryStr_a, (nextID,))
+                self.dbConn.execute(queryStr_b, (nextID,))
             except:
                 modelIDs_invalid.append(str(m))
-        self.dbConn.execute(sql.SQL('''
-            DELETE FROM {id_pred}
-            WHERE cnnstate IN %s;
-            DELETE FROM {id_cnnstate}
-            WHERE id IN %s;
-        ''').format(
-                id_pred=sql.Identifier(project, 'prediction'),
-                id_cnnstate=sql.Identifier(project, 'cnnstate')
-            ),
-            (tuple(uuids),tuple(uuids))
-        )
+        
         return modelIDs_invalid
 
 
