@@ -45,7 +45,7 @@ if __name__ == '__main__':
 
     config = Config()
     dbConn = Database(config)
-    if dbConn.connectionPool is None:
+    if not dbConn.canConnect():
         raise Exception('Error connecting to database.')
     dbSchema = config.getProperty('Database', 'schema')
 

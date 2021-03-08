@@ -309,7 +309,7 @@ def migrate_aide(forceMigrate=False):
     
     config = Config()
     dbConn = Database(config)
-    if dbConn.connectionPool is None:
+    if not dbConn.canConnect():
         raise Exception('Error connecting to database.')
     
     warnings = []

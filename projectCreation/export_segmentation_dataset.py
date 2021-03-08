@@ -55,7 +55,7 @@ if __name__ == '__main__':
 
     # setup DB connection
     dbConn = Database(config)
-    if dbConn.connectionPool is None:
+    if not dbConn.canConnect():
         raise Exception('Error connecting to database.')
 
     # check if valid file format provided

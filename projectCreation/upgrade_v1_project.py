@@ -75,7 +75,7 @@ if __name__ == '__main__':
     # v2 config file
     config = Config()
     dbConn = Database(config)
-    if dbConn.connectionPool is None:
+    if not dbConn.canConnect():
         raise Exception('Error connecting to database.')
 
     # v1 config file

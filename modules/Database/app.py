@@ -45,7 +45,7 @@ class Database():
 
     def _createConnectionPool(self):
         self.connectionPool = ThreadedConnectionPool(
-            2,
+            0,
             max(2, self.config.getProperty('Database', 'max_num_connections', type=int, fallback=20)),  # 2 connections are needed as minimum for retrying of execution
             host=self.host,
             database=self.database,

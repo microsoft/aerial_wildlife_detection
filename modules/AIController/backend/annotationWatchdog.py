@@ -31,10 +31,6 @@ class Watchdog(Thread):
         self.timer = Event()
         self._stop_event = Event()
 
-        self.config = config
-        self.dbConnector = dbConnector
-        self.middleware = middleware
-
         # waiting times
         self.maxWaitingTime = 1800                      # seconds
         self.minWaitingTime = 20
