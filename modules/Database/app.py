@@ -52,13 +52,14 @@ class Database():
             port=self.port,
             user=self.user,
             password=self.password,
-            connect_timeout=2
+            # connect_timeout=2
         )
 
 
-    def runServer(self):
-        ''' Dummy function for compatibility reasons '''
-        return
+    
+    def canConnect(self):
+        with self._get_connection() as conn:
+            return conn is not None and not conn.closed
 
 
 
