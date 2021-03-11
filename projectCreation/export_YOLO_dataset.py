@@ -2,7 +2,7 @@
     Pull annotations and predictions from the database and export them into a
     folder according to the YOLO standard.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 import os
@@ -128,33 +128,31 @@ if __name__ == '__main__':
             sql_excludeUsers=sql_excludeUsers
         )
         
-        cursor = dbConn.execute_cursor(queryStr, queryArgs)
-
+        print('Querying database...\n')
+        allData = dbConn.execute(queryStr, queryArgs, 'all')
 
         # iterate
-        print('Querying database...\n')
-        while True:
-            nextItem = cursor.fetchone()
-            if nextItem is None:
-                break
-            
-            # parse
-            if nextItem['label'] is None:
-                # TODO: it might happen that an annotation has no label; skip in this case
-                continue
-                
-            imgName = nextItem['filename']
-            label = labeldef[nextItem['label']][1]      # store label index
-            x = nextItem['x']
-            y = nextItem['y']
-            w = nextItem['width']
-            h = nextItem['height']
+        if allData is not None and len(allData):
+            for nextItem in allData:
+                # parse
+                if nextItem['label'] is None:
+                    # TODO: it might happen that an annotation has no label; skip in this case
+                    continue
+                    
+                imgName = nextItem['filename']
+                label = labeldef[nextItem['label']][1]      # store label index
+                x = nextItem['x']
+                y = nextItem['y']
+                w = nextItem['width']
+                h = nextItem['height']
 
-            # append
-            if not imgName in output:
-                output[imgName] = []
-            output[imgName].append('{} {} {} {} {}\n'.format(str(label), x, y, w, h))
-        
+                # append
+                if not imgName in output:
+                    output[imgName] = []
+                output[imgName].append('{} {} {} {} {}\n'.format(str(label), x, y, w, h))
+        else:
+            print('No data found in database.')
+            
 
     # write to disk
     if len(output) > 0:

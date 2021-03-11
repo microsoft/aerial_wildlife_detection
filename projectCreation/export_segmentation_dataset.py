@@ -2,7 +2,7 @@
     Pulls segmentation masks from the database and exports them
     into folders with specifiable format (JPEG, TIFF, etc.).
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 import os
@@ -129,28 +129,26 @@ if __name__ == '__main__':
             sql_excludeUsers=sql_excludeUsers
         )
 
-        cursor = dbConn.execute_cursor(queryStr, queryArgs)
-
+        allData = dbConn.execute(queryStr, queryArgs, 'all')
 
         # iterate
-        print('Exporting images...\n')
-        while True:
-            nextItem = cursor.fetchone()
-            if nextItem is None:
-                break
-        
-            # parse
-            imgName = nextItem['filename']
-            imgName, _ = os.path.splitext(imgName)
-            targetName = os.path.join(args.target_folder, imgName+'.'+args.file_format)
-            parent,_ = os.path.split(targetName)
-            os.makedirs(parent, exist_ok=True)
+        if allData is not None and len(allData):
+            print('Exporting images...\n')
+            for nextItem in allData:   
+                # parse
+                imgName = nextItem['filename']
+                imgName, _ = os.path.splitext(imgName)
+                targetName = os.path.join(args.target_folder, imgName+'.'+args.file_format)
+                parent,_ = os.path.split(targetName)
+                os.makedirs(parent, exist_ok=True)
 
-            # convert base64 mask to image
-            width = nextItem['width']
-            height = nextItem['height']
-            raster = np.frombuffer(base64.b64decode(nextItem['segmentationmask']), dtype=np.uint8)
-            raster = np.reshape(raster, (height,width,))
-            img = Image.fromarray(raster)
-            img.save(targetName)
-            print(targetName)
+                # convert base64 mask to image
+                width = nextItem['width']
+                height = nextItem['height']
+                raster = np.frombuffer(base64.b64decode(nextItem['segmentationmask']), dtype=np.uint8)
+                raster = np.reshape(raster, (height,width,))
+                img = Image.fromarray(raster)
+                img.save(targetName)
+                print(targetName)
+        else:
+            print('No images to export.')

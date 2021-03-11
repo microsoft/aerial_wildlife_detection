@@ -43,6 +43,7 @@ class Database():
             LogDecorator.print_status('ok')
 
 
+
     def _createConnectionPool(self):
         self.connectionPool = ThreadedConnectionPool(
             0,
@@ -71,6 +72,7 @@ class Database():
             yield conn
         finally:
             self.connectionPool.putconn(conn, close=False)
+
 
 
     def execute(self, query, arguments, numReturn=None):
@@ -121,29 +123,6 @@ class Database():
             except Exception as e:
                 print(e)
     
-
-    def execute_cursor(self, query, arguments):
-        with self._get_connection() as conn:
-            cursor = conn.cursor(cursor_factory=RealDictCursor)
-            try:
-                cursor.execute(query, arguments)
-                conn.commit()
-                return cursor
-            except:
-                if not conn.closed:
-                    conn.rollback()
-                # cursor.close()
-
-                # retry execution
-                conn = self.connectionPool.getconn()
-                try:
-                    cursor = conn.cursor(cursor_factory=RealDictCursor)
-                    cursor.execute(query, arguments)
-                    conn.commit()
-                except Exception as e:
-                    if not conn.closed:
-                        conn.rollback()
-                    print(e)
 
 
     def insert(self, query, values):

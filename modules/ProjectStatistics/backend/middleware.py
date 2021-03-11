@@ -287,12 +287,9 @@ class ProjectStatisticsMiddleware:
 
         # get stats
         response = {}
-        with self.dbConnector.execute_cursor(queryStr, tuple(queryArgs)) as cursor:
-            while True:
-                b = cursor.fetchone()
-                if b is None:
-                    break
-
+        result = self.dbConnector.execute(queryStr, tuple(queryArgs), 'all')
+        if result is not None and len(result):
+            for b in result:
                 if entityType == 'user':
                     entity = b['username']
                 else:

@@ -836,12 +836,9 @@ class DataWorker:
             mainFile = open(destPath, 'w')
         metaStr = '; '.join(queryFields) + '\n'
 
-        with self.dbConnector.execute_cursor(queryStr, tuple(queryArgs)) as cursor:
-            while True:
-                b = cursor.fetchone()
-                if b is None:
-                    break
-
+        allData = self.dbConnector.execute(queryStr, tuple(queryArgs), 'all')
+        if allData is not None and len(allData):
+            for b in allData:
                 if is_segmentation:
                     # convert and store segmentation mask separately
                     segmask_filename = 'segmentation_masks/'
