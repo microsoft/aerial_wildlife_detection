@@ -738,7 +738,7 @@ class DBMiddleware():
         result = self.dbConnector.insert(queryStr, submissions, 'all')
         imgs_result = {}
         for r in result:
-            imgs_result[str(r['id'])] = r['isgoldenquestion']
+            imgs_result[str(r[0])] = r[1]
 
         return {
             'status': 0,
