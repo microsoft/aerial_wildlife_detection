@@ -624,6 +624,12 @@
             window.selectedNode,
             newName
         );
+
+        // deselect element
+        window.lcTree.tree(
+            'selectNode',
+            null
+        );
     }
 
     function addElement() {
