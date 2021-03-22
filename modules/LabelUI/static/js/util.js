@@ -1,7 +1,7 @@
 /**
  * Utility functions for the labeling interface.
  * 
- * 2020 Benjamin Kellenberger
+ * 2020-21 Benjamin Kellenberger
  */
 
 
@@ -162,6 +162,7 @@ window.base64ToBuffer = function(base64) {
 
 // misc.
 window.parseBoolean = function(value) {
+    if(value === null || value === undefined) return false;
     return (value===1 || ['yes', '1', 'true'].includes(value.toString().toLowerCase()));
 }
 

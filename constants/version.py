@@ -10,4 +10,4 @@
     2020-21 Benjamin Kellenberger
 '''
 
-AIDE_VERSION = '1.9.201116d'
+AIDE_VERSION = '1.9.201116e'
