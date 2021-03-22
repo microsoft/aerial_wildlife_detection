@@ -51,6 +51,8 @@ COPY docker/requirements.txt docker/requirements.txt
 
 RUN pip install -r docker/requirements.txt
 # RUN pip install lib/librabbitmq-2.0.0-cp37-cp37m-linux_x86_64.whl
+#TODO: temporary fix until detectron2's requirements are resolved
+RUN pip install -U git+https://github.com/facebookresearch/fvcore.git
 RUN pip install git+https://github.com/facebookresearch/detectron2.git
 
 # ============================ DB SERVER ONLY BEGINS ======================================
