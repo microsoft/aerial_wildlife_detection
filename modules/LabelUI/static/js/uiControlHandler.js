@@ -36,7 +36,7 @@ class UIControlHandler {
         this.default_cursor = 'pointer';    // changes depending on action
 
         this.burstMode = window.getCookie('burstModeEnabled');             // if true, add and remove annotation buttons stay active upon user interaction
-        if(this.burstMode === undefined) this.burstMode = false;
+        if(this.burstMode === undefined || this.burstMode === null) this.burstMode = false;
         else this.burstMode = window.parseBoolean(this.burstMode);
 
         window.loupeMagnification = 0.11;

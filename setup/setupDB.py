@@ -17,6 +17,7 @@ import argparse
 from constants.version import AIDE_VERSION
 from util.configDef import Config
 from modules import Database, UserHandling
+from setup.migrate_aide import migrate_aide
 
 
 def setupDB():
@@ -33,13 +34,6 @@ def setupDB():
     # run SQL
     dbConn.execute(sql, None, None)
 
-    # add AIDE version
-    dbConn.execute('''
-        INSERT INTO aide_admin.version (version)
-        VALUES (%s)
-        ON CONFLICT (version) DO NOTHING;
-    ''', (AIDE_VERSION,), None)
-
     # add admin user
     sql = '''
         INSERT INTO aide_admin.user (name, email, hash, issuperuser)
@@ -52,6 +46,16 @@ def setupDB():
 
     values = (config.getProperty('Project', 'adminName'), config.getProperty('Project', 'adminEmail'), adminPass, True,)
     dbConn.execute(sql, values, None)
+
+    # finalize: migrate database in any case (this also adds the AIDE version if needed)
+    migrate_aide()
+
+    # fresh database; add AIDE version
+    dbConn.execute('''
+        INSERT INTO aide_admin.version (version)
+        VALUES (%s)
+        ON CONFLICT (version) DO NOTHING;
+    ''', (AIDE_VERSION,), None)
 
 
 if __name__ == '__main__':

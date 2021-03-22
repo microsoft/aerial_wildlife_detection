@@ -52,7 +52,7 @@ function start {
 
     if [ $numHTTPmodules -gt 0 ]; then
         # perform verbose pre-flight checks
-        python setup/assemble_server.py
+        python setup/assemble_server.py --migrate_db 1
 
         if [ $? -eq 0 ]; then
             # pre-flight checks succeeded; get host and port from configuration file

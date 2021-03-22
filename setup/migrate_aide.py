@@ -7,9 +7,6 @@
 
 import os
 import argparse
-import json
-import secrets
-from urllib.parse import urlparse
 from constants import version
 
 

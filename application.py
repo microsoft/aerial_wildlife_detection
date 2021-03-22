@@ -3,7 +3,7 @@
     Can launch multiple modules at once,
     but requires environment variables to be set to do so.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 from setup.assemble_server import assemble_server
