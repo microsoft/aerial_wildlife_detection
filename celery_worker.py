@@ -90,6 +90,10 @@ app.conf.update(
             'queue': 'AIController',
             'routing_key': 'get_model_training_statistics'
         },
+        'AIController.duplicate_model_state': {
+            'queue': 'AIController',
+            'routing_key': 'duplicate_model_state'
+        },
         'AIWorker.call_update_model': {
             'queue': 'AIWorker',
             'routing_key': 'call_update_model'

@@ -17,7 +17,8 @@
         </table>
         <div style="margin-top:10px">
             <button class="btn btn-sm btn-primary" id="reload-button" style="margin-right:10px">Reload</button>
-            <button class="btn btn-sm btn-danger" id="delete-selected-models-button">Delete selected</button>
+            <button class="btn btn-sm btn-primary" id="set-selected-current-button" disabled>Set selected as current</button>
+            <button class="btn btn-sm btn-danger" id="delete-selected-models-button" disabled>Delete selected</button>
         </div>
     </div>
 
@@ -131,8 +132,14 @@
                     data = data['modelStates'];
                     for(var i=0; i<data.length; i++) {
                         // construct model state markup
-                        var markup = $('<tr></tr>');
-                        markup.append($('<td><input type="checkbox" id="'+data[i]['id']+'" /></td>'));
+                        let markup = $('<tr></tr>');
+                        let chckCell = $('<td></td>');
+                        let chckBox = $('<input type="checkbox" id="'+data[i]['id']+'" />');
+                        chckBox.on('click', function() {
+                            toggleModelStateButtons();
+                        });
+                        chckCell.append(chckBox);
+                        markup.append(chckCell);
                         markup.append($('<td>' + (data.length-i) + '</td>'));
                         markup.append($('<td>'+new Date(data[i]['time_created'] * 1000).toLocaleString()+'</td>'));
                         markup.append($('<td>'+data[i]['model_library']['name']+'</td>'));
@@ -144,10 +151,11 @@
                     // select all checkbox
                     $('#select-all-states').off();
                     $('#select-all-states').click(function() {
-                        var checked = $(this).prop('checked');
+                        let checked = $(this).prop('checked');
                         $.each($('#cnn-states-tbody').find('input[type=checkbox]'), function() {
                             $(this).prop('checked', checked);
                         });
+                        toggleModelStateButtons();
                     });
                 }
             },
@@ -377,6 +385,71 @@
             _do_delete, null, 'Delete', 'Cancel', 'btn-danger', 'btn-secondary', false, false);
     }
 
+    function duplicateSelectedModel() {
+        let selModel = getSelectedModelIDs();
+        if(selModel.length === 0 || selModel.length > 1) return;
+        selModel = selModel[0];
+
+        let _on_message = function(data) {
+            if(data.hasOwnProperty('status') && data['status'] === 'FAILURE') {
+                // error
+                let message = '(an unknown error occurred)';
+                if(data.hasOwnProperty('meta') && data['meta'].hasOwnProperty('message')) {
+                    message = 'an error occurred trying to set model state as current (' + data['meta']['message'] + ').';
+                }
+                window.messager.addMessage(message, 'error', 0);
+            } else {
+                let promise = listModelStates()
+                promise = promise.then(function() {
+                    return getTrainingStats(false);
+                });
+                promise.then(function() {
+                    window.messager.addMessage('Successfully set model state as current.', 'success');
+                });
+            }
+        }
+
+        let _do_duplicate = function() {
+            return $.ajax({
+                url: window.baseURL + 'duplicateModelState',
+                method: 'POST',
+                data: JSON.stringify({model_id: selModel}),
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+                success: function(data) {
+                    let taskID = data['task_id'];
+                    if(typeof(taskID) === 'string') {
+                        poll_status(taskID, function(data) {
+                            _on_message(data);
+                        },
+                        function(data) {
+                            _on_message(data);
+                        }, 1000);
+                    } else {
+                        if(data.hasOwnProperty('message')) {
+                            window.messager.addMessage('An error occurred while trying to set model state as current (message: "'+data['message']+'").', 'error', 0);
+                        } else {
+                            window.messager.addMessage('An unknown error occurred while trying to set model state as current', 'error', 0);
+                        }
+                    }
+                },
+                error: function(xhr, status, error) {
+                    window.messager.addMessage('An error occurred while setting model state as current (message: "'+error+'").', 'error', 0);
+                },
+                statusCode: {
+                    401: function(xhr) {
+                        return window.renewSessionRequest(xhr, function() {
+                            return _do_delete();
+                        });
+                    }
+                }
+            });
+        }
+
+        window.showYesNoOverlay($('<div>Are you sure you would like to set the selected model state as current?<br />This will duplicate the model state and will cause the next AI model workflow to start from it accordingly.</div>'),
+        _do_duplicate, null, 'Proceed', 'Cancel', 'btn-primary', 'btn-secondary', false, false);
+    }
+
     function reloadAll(showMessageOnSuccess) {
         let promise = listModelStates();
         promise = promise.then(function() {
@@ -385,6 +458,19 @@
         return promise;
     }
 
+    function toggleModelStateButtons() {
+        let selModel = getSelectedModelIDs();
+        if(selModel.length === 0) {
+            $('#set-selected-current-button').prop('disabled', true);
+            $('#delete-selected-models-button').prop('disabled', true);
+        } else if(selModel.length > 1) {
+            $('#set-selected-current-button').prop('disabled', true);
+            $('#delete-selected-models-button').prop('disabled', false);
+        } else {
+            $('#set-selected-current-button').prop('disabled', false);
+            $('#delete-selected-models-button').prop('disabled', false);
+        }
+    }
 
     $(document).ready(function() {
         //TODO: show summary, running processes, etc.
@@ -402,6 +488,9 @@
             });
             $('#delete-selected-models-button').on('click', function() {
                 return deleteSelectedModels(); 
+            });
+            $('#set-selected-current-button').on('click', function() {
+                return duplicateSelectedModel();
             });
 
             window.showLoadingOverlay(false);

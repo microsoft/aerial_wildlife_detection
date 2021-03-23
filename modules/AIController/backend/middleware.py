@@ -993,6 +993,23 @@ class AIMiddleware():
 
 
     
+    def duplicateModelState(self, project, username, modelStateID, skipIfLatest=True):
+        '''
+            Receives a model state ID and creates a copy of it in this project.
+            This copy receives the current date, which makes it the most recent
+            model state.
+            If "skipIfLatest" is True and the model state with "modelStateID" is
+            already the most recent state, no duplication is being performed.
+        '''
+        if not isinstance(modelStateID, uuid.UUID):
+            modelID = uuid.UUID(modelStateID)
+        
+        process = aic_int.duplicate_model_state.s(project, modelStateID)
+        taskID = self.taskCoordinator.submitJob(project, username, process, 'AIController')
+        return taskID
+
+
+    
     def getModelTrainingStatistics(self, project, username, modelStateIDs=None):
         '''
             Launches a task to assemble model-provided statistics

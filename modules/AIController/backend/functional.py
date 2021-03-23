@@ -212,6 +212,111 @@ class AIControllerWorker:
         return modelIDs_invalid
 
 
+
+    def duplicate_model_state(self, project, modelStateID, skipIfLatest=True):
+        '''
+            Receives a model state ID and creates a copy of it in this project.
+            This copy receives the current date, which makes it the most recent
+            model state.
+            If "skipIfLatest" is True and the model state with "modelStateID" is
+            already the most recent state, no duplication is being performed.
+            Returns the ID of the newly duplicated model state.
+        '''
+
+        if not isinstance(modelStateID, UUID):
+            modelStateID = UUID(modelStateID)
+
+        # check if model ID exists and get AI model library
+        newModelDetails = self.dbConn.execute(
+            sql.SQL('''
+                SELECT model_library
+                FROM {id_cnnstate}
+                WHERE id = %s
+                AND partial = FALSE;
+            ''').format(
+                id_cnnstate=sql.Identifier(project, 'cnnstate')
+            ),
+            (modelStateID,),
+            1
+        )
+        if newModelDetails is None or not len(newModelDetails):
+            raise Exception(f'Model state with ID "{modelStateID}" does not exist in project.')
+        
+        newModelLibrary = newModelDetails[0]['model_library']
+        
+        # check if latest (if required)
+        if skipIfLatest:
+            isLatest = self.dbConn.execute(
+                sql.SQL('''
+                    SELECT id
+                    FROM {id_cnnstate}
+                    WHERE timeCreated = (
+                        SELECT MAX(timeCreated)
+                        FROM {id_cnnstate}
+                    );
+                ''').format(
+                    id_cnnstate=sql.Identifier(project, 'cnnstate')
+                ),
+                None,
+                1
+            )
+            if isLatest is not None and len(isLatest) and isLatest[0]['id'] == modelStateID:
+                # is already latest
+                return str(modelStateID)
+
+        # get current AI model and settings
+        currentModelDetails = self.dbConn.execute('''
+            SELECT ai_model_library, ai_model_settings
+            FROM aide_admin.project
+            WHERE shortname = %s;
+        ''', (project,), 1)
+
+        if currentModelDetails is not None and len(currentModelDetails):
+            currentModelDetails = currentModelDetails[0]
+        
+        insertionArgs = []
+
+        if currentModelDetails['ai_model_library'] != newModelLibrary:
+            # user wants to switch to another AI model; update settings accordingly
+            aiModelUpdateStr = sql.SQL('''
+                UPDATE aide_admin.project
+                SET ai_model_library = %s,
+                ai_model_settings = NULL
+                WHERE shortname = %s;
+            ''')
+            insertionArgs.extend([newModelLibrary, project])
+        else:
+            # same AI model
+            aiModelUpdateStr = sql.SQL('')
+
+        insertionArgs.append(modelStateID)
+
+        # perform the actual duplication
+        newModelStateID = self.dbConn.execute(
+            sql.SQL('''
+                {aiModelUpdateStr};
+                INSERT INTO {id_cnnstate} (model_library, alCriterion_library, timeCreated,
+                stateDict, stats, partial, marketplace_origin_id)
+                SELECT model_library, alCriterion_library, NOW(),
+                    stateDict, stats, FALSE, NULL
+                    FROM {id_cnnstate}
+                    WHERE id = %s
+                RETURNING id;
+            ''').format(
+                aiModelUpdateStr=aiModelUpdateStr,
+                id_cnnstate=sql.Identifier(project, 'cnnstate')
+            ),
+            tuple(insertionArgs),
+            1
+        )
+        if newModelStateID is None or not len(newModelStateID):
+            raise Exception(f'An unknown error occurred trying to duplicate model state with id "{modelStateID}".')
+        
+        newModelStateID = newModelStateID[0]['id']
+
+        return str(newModelStateID)
+
+
     
     def get_model_training_statistics(self, project, modelStateIDs=None, modelLibraries=None, skipImportedModels=True):
         '''

@@ -83,6 +83,33 @@ class AIController:
                     'message': str(e)
                 }
 
+        
+        @self.app.post('/<project>/duplicateModelState')
+        def duplicate_model_state(project):
+            '''
+                Receives a model state ID and creates a copy of it in this project.
+                This copy receives the current date, which makes it the most recent
+                model state.
+            '''
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+            
+            try:
+                username = html.escape(request.get_cookie('username'))
+                modelStateID = request.json['model_id']
+                taskID = self.middleware.duplicateModelState(project, username, modelStateID, skipIfLatest=True)
+                return {
+                    'status': 0,
+                    'task_id': taskID
+                }
+
+            except Exception as e:
+                return {
+                    'status': 1,
+                    'message': str(e)
+                }
+
+
 
         @self.app.get('/<project>/getModelTrainingStatistics')
         def get_model_training_statistics(project):

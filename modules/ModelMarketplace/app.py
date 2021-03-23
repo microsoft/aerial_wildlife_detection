@@ -12,7 +12,6 @@
 
 import uuid
 import html
-import bottle
 from bottle import static_file, request, abort
 from .backend.middleware import ModelMarketplaceMiddleware
 from .backend.marketplaceWorker import ModelMarketplaceWorker
@@ -38,16 +37,6 @@ class ModelMarketplace:
 
     def addLoginCheckFun(self, loginCheckFun):
         self.login_check = loginCheckFun
-
-
-    def __redirect(self, loginPage=False, redirect=None):
-        location = ('/login' if loginPage else '/')
-        if loginPage and redirect is not None:
-            location += '?redirect=' + redirect
-        response = bottle.response
-        response.status = 303
-        response.set_header('Location', location)
-        return response
 
 
     def _initBottle(self):

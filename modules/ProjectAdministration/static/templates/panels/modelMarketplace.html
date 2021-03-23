@@ -124,6 +124,8 @@
                         <button class="btn btn-primary" id="project-model-share">Share on Marketplace</button>
                         <button class="btn btn-danger" id="project-model-unshare" style="display:none">Remove from Marketplace</button>
                         <button class="btn btn-warning" id="project-model-reshare" style="display:none">Re-share on Marketplace</button>
+                        <button class="btn btn-primary" id="project-model-duplicate">Set as current</button>
+                        <button class="btn btn-danger" id="project-model-delete">Delete from Project</button>
                         <button class="btn btn-primary" id="project-model-download">Download</button>
                         <a id="project-download-link" style="display:none">download model</a>
                     </div>
@@ -886,6 +888,137 @@
             doUnshareModel, null, 'Remove', 'Cancel', 'btn-danger', 'btn-secondary', false, false);
     }
 
+    function deleteModel(fromProject) {
+        let modelID = null;
+        if(fromProject) {
+            try {
+                modelID = modelsProject[selectedModel_id_project]['id'];
+            } catch {
+                return $.Deferred().promise();
+            }
+        } else {
+            //TODO: not yet implemented
+            return $.Deferred().resolve().promise();
+        }
+
+        let _on_message = function(data) {
+            if(data.hasOwnProperty('status') && data['status'] === 'FAILURE') {
+                // error
+                let message = '(an unknown error occurred)';
+                if(data.hasOwnProperty('meta') && data['meta'].hasOwnProperty('message')) {
+                    message = 'an error occurred trying to delete model state (' + data['meta']['message'] + ').';
+                }
+                window.messager.addMessage(message, 'error', 0);
+            } else {
+                loadData();
+                window.messager.addMessage('Successfully deleted model state from project.', 'success');
+            }
+        }
+
+        let _do_delete = function() {
+            return $.ajax({
+                url: window.baseURL + 'deleteModelStates',
+                method: 'POST',
+                data: JSON.stringify({model_ids: [modelID]}),
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+                success: function(data) {
+                    let taskID = data['task_id'];
+                    if(typeof(taskID) === 'string') {
+                        poll_status(taskID, function(data) {
+                            _on_message(data);
+                        },
+                        function(data) {
+                            _on_message(data);
+                        }, 1000);
+                    } else {
+                        if(data.hasOwnProperty('message')) {
+                            window.messager.addMessage('An error occurred while trying to delete model state (message: "'+data['message']+'").', 'error', 0);
+                        } else {
+                            window.messager.addMessage('An unknown error occurred while trying to delete model state', 'error', 0);
+                        }
+                    }
+                },
+                error: function(xhr, status, error) {
+                    window.messager.addMessage('An error occurred while deleting model state (message: "'+error+'").', 'error', 0);
+                },
+                statusCode: {
+                    401: function(xhr) {
+                        return window.renewSessionRequest(xhr, function() {
+                            return _do_delete();
+                        });
+                    }
+                }
+            });
+        }
+
+        window.showYesNoOverlay($('<div>Are you sure you would like to delete this model state?<br />' +
+            'This only applies to the current project; if the model had been shared on the Marketplace, this will not be deleted.<br />' +
+            'This also removes predictions made by this models. The action cannot be undone.</div>'),
+            _do_delete, null, 'Delete', 'Cancel', 'btn-danger', 'btn-secondary', false, false);
+    }
+
+    function duplicateModel() {
+        if(typeof(modelsProject[selectedModel_id_project]) !== 'object' || !modelsProject[selectedModel_id_project].hasOwnProperty('id')) {
+            return $.Deferred().promise();
+        }
+        let selModel = modelsProject[selectedModel_id_project]['id'];
+
+        let _on_message = function(data) {
+            if(data.hasOwnProperty('status') && data['status'] === 'FAILURE') {
+                // error
+                let message = '(an unknown error occurred)';
+                if(data.hasOwnProperty('meta') && data['meta'].hasOwnProperty('message')) {
+                    message = 'an error occurred trying to set model state as current (' + data['meta']['message'] + ').';
+                }
+                window.messager.addMessage(message, 'error', 0);
+            } else {
+                loadData();
+                window.messager.addMessage('Successfully set model state as current.', 'success');
+            }
+        }
+
+        let _do_duplicate = function() {
+            return $.ajax({
+                url: window.baseURL + 'duplicateModelState',
+                method: 'POST',
+                data: JSON.stringify({model_id: selModel}),
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+                success: function(data) {
+                    let taskID = data['task_id'];
+                    if(typeof(taskID) === 'string') {
+                        poll_status(taskID, function(data) {
+                            _on_message(data);
+                        },
+                        function(data) {
+                            _on_message(data);
+                        }, 1000);
+                    } else {
+                        if(data.hasOwnProperty('message')) {
+                            window.messager.addMessage('An error occurred while trying to set model state as current (message: "'+data['message']+'").', 'error', 0);
+                        } else {
+                            window.messager.addMessage('An unknown error occurred while trying to set model state as current', 'error', 0);
+                        }
+                    }
+                },
+                error: function(xhr, status, error) {
+                    window.messager.addMessage('An error occurred while setting model state as current (message: "'+error+'").', 'error', 0);
+                },
+                statusCode: {
+                    401: function(xhr) {
+                        return window.renewSessionRequest(xhr, function() {
+                            return _do_delete();
+                        });
+                    }
+                }
+            });
+        }
+
+        window.showYesNoOverlay($('<div>Are you sure you would like to set the selected model state as current?<br />This will duplicate the model state and will cause the next AI model workflow to start from it accordingly.</div>'),
+        _do_duplicate, null, 'Proceed', 'Cancel', 'btn-primary', 'btn-secondary', false, false);
+    }
+
     function importModelToProject(source) {
         let modelID = null;
         let modelName = null;
@@ -1285,6 +1418,12 @@
         });
         $('#project-model-unshare').on('click', function() {
             unshareModel(true);
+        });
+        $('#project-model-duplicate').on('click', function() {
+            duplicateModel();
+        });
+        $('#project-model-delete').on('click', function() {
+            deleteModel(true);
         });
         $('#marketplace-model-reshare').on('click', function() {
             reshareModel(false);

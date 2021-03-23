@@ -37,3 +37,8 @@ def delete_model_states(project, modelStateIDs):
 @current_app.task(name='AIController.get_model_training_statistics')
 def get_model_training_statistics(project, modelStateIDs=None, modelLibraries=None, skipImportedModels=True):
     return aim.get_model_training_statistics(project, modelStateIDs, modelLibraries, skipImportedModels)
+
+
+@current_app.task(name='AIController.duplicate_model_state')
+def duplicate_model_state(project, modelStateID, skipIfLatest=True):
+    return aim.duplicate_model_state(project, modelStateID, skipIfLatest)
