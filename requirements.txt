@@ -7,6 +7,8 @@ netifaces>=0.10.9
 python-dateutil
 Pillow>=2.2.1
 numpy
+tensorflow
+keras
 requests
 celery[pylibrabbitmq,redis,auth,msgpack]>=4.3.0  #TODO: currently testing with pylibrabbitmq instead of librabbitmq
 
