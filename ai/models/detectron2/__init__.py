@@ -24,4 +24,6 @@ from .boundingBoxes.fasterrcnn.fasterrcnn import FasterRCNN
 
 from .boundingBoxes.retinanet.retinanet import RetinaNet
 
+from .boundingBoxes.tridentnet.tridentnet import TridentNet
+
 from .segmentationMasks.deeplabv3plus.deeplabv3plus import DeepLabV3Plus

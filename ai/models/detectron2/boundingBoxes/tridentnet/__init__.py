@@ -1,13 +1,30 @@
 '''
-    Detectron2-compliant wrapper for DeepLabV3+.
+    Detectron2-compliant wrapper for TridentNet.
 
-    2020 Benjamin Kellenberger
+    2021 Benjamin Kellenberger
 '''
 
 # default options for the model, may be overridden in the custom configuration loaded at runtime
 DEFAULT_OPTIONS = {
 	"defs": {
-		"transforms": {
+		"interpolators": {
+			"0": {
+				"name": "Nearest neighbor"
+			},
+			"2": {
+				"name": "Bilinear interpolation"
+			},
+			"3": {
+				"name": "Bicubic"
+			},
+			"5": {
+				"name": "Hamming"
+			},
+			"6": {
+				"name": "Lanczos"
+			}
+		},
+		"transform": {
 			"RandomBrightness": {
 				"name": "Random brightness",
 				"description": "Randomly transforms image brightness.<br />Brightness intensity is uniformly sampled in (intensity_min, intensity_max). - intensity < 1 will reduce brightness - intensity = 1 will preserve the input image - intensity > 1 will increase brightness.<br />See <a href=\"https://pillow.readthedocs.io/en/3.0.x/reference/ImageEnhance.html\" target=\"_blank\">https://pillow.readthedocs.io/en/3.0.x/reference/ImageEnhance.html</a>.",
@@ -168,36 +185,20 @@ DEFAULT_OPTIONS = {
 							"name": "Height",
 							"min": 0,
 							"max": 1e9,
-							"value": 512
+							"value": 600
 						},
 						{
 							"name": "Width",
 							"min": 0,
 							"max": 1e9,
-							"value": 1024
+							"value": 800
 						}
 					]
 				},
 				"interp": {
 					"name": "Interpolation method",
 					"type": "select",
-					"options": {
-						"0": {
-							"name": "Nearest neighbor"
-						},
-						"2": {
-							"name": "Bilinear interpolation"
-						},
-						"3": {
-							"name": "Bicubic"
-						},
-						"5": {
-							"name": "Hamming"
-						},
-						"6": {
-							"name": "Lanczos"
-						}
-					},
+					"options": "interpolators",
 					"value": 0
 				}
 			}
@@ -212,7 +213,7 @@ DEFAULT_OPTIONS = {
 				"options": {
 					"cpu": {
 						"name": "CPU",
-						"description": "Run DeepLab models on the CPU and with system RAM."
+						"description": "Run TridentNet on the CPU and with system RAM."
 					},
 					"cuda": {
 						"name": "GPU",
@@ -252,10 +253,16 @@ DEFAULT_OPTIONS = {
 				"name": "Pre-made configuration",
 				"description": "Choose a pre-trained model state here or create your own model from scratch (\"manual\").",
 				"type": "select",
-				"value": "segmentationMasks/Cityscapes-SemanticSegmentation/deeplab_v3_plus_R_103_os16_mg124_poly_90k_bs16.yaml",
+				"value": "boundingBoxes/tridentNet/tridentnet_fast_R_50_C4_3x.yaml",
 				"options": {
-					"segmentationMasks/Cityscapes-SemanticSegmentation/deeplab_v3_plus_R_103_os16_mg124_poly_90k_bs16.yaml": {
-						"name": "Modified ResNet-101 backbone with diilated convolutions, pre-trained on ImageNet & Cityscapes"
+					"boundingBoxes/tridentNet/tridentnet_fast_R_50_C4_1x.yaml": {
+						"name": "ResNet-50 (1x), pre-trained on MS-COCO"
+					},
+					"boundingBoxes/tridentNet/tridentnet_fast_R_50_C4_3x.yaml": {
+						"name": "ResNet-50 (3x), pre-trained on MS-COCO"
+					},
+                    "boundingBoxes/tridentNet/tridentnet_fast_R_101_C4_1x.yaml": {
+						"name": "ResNet-101, pre-trained on MS-COCO"
 					}
 				}
 			},
@@ -282,7 +289,7 @@ DEFAULT_OPTIONS = {
 					"name": "Base learning rate",
 					"min": 0.0,
 					"max": 100.0,
-					"value": 0.01
+					"value": 0.0001
 				},
 				"DETECTRON2.SOLVER.BIAS_LR_FACTOR": {
 					"name": "Biasing factor for learning rate",
@@ -345,14 +352,51 @@ DEFAULT_OPTIONS = {
 				"name": "Transforms",
 				"description": "Transforms are used to prepare images as inputs for the model, as well as to perform data augmentation.",
 				"type": "list",
-				"options": "transforms",
+				"options": "transform",
 				"value": [
-					"Resize",
 					"RandomFlip",
 					"RandomLighting",
 					"RandomContrast",
 					"RandomSaturation"
 				]
+			},
+			"encoding": {
+				"name": "Region proposal network encoding",
+				"DETECTRON2.MODEL.RPN.IOU_THRESHOLDS": {
+					"name": "IoU thresholds",
+					"type": "list",
+					"value": [
+						{
+							"name": "Max. IoU for negatives",
+							"description": "Maximally permitted IoU value between a target and prediction box for the latter to be treated as a False positive",
+							"min": 0.0,
+							"max": 1.0,
+							"value": 0.3,
+							"style": {
+								"slider": True
+							}
+						},
+						{
+							"name": "Min. IoU for positives",
+							"description": "Minimum IoU value between a target and prediction box for the latter to be considered a correct prediction",
+							"min": 0.0,
+							"max": 1.0,
+							"value": 0.7,
+							"style": {
+								"slider": True
+							}
+						}
+					]
+				},
+				"DETECTRON2.MODEL.RPN.NMS_THRESH": {
+					"name": "Non-maximum suppression threshold",
+					"min": 0.0,
+					"max": 1.0,
+					"value": 0.7,
+					"style": {
+						"slider": True
+					}
+				}
 			},
 			"ignore_unsure": {
 				"name": "Ignore (discard) annotations marked as \"unsure\"",
@@ -363,12 +407,39 @@ DEFAULT_OPTIONS = {
 			"name": "Inference (prediction) options",
 			"transform": {
 				"name": "Transforms",
-				"description": "Transforms to apply during inference time.",
+				"description": "Note that inference transforms exclude geometric data augmentation options.",
 				"type": "list",
-				"options": "transforms",
-				"value": [
-					"Resize"
-				]
+				"options": "transform",
+				"value": []
+			},
+			"DETECTRON2.TEST.DETECTIONS_PER_IMAGE": {
+				"name": "Maximum number of detections per image",
+				"min": 1,
+				"max": 1e9,
+				"value": 100
+			},
+			"encoding": {
+				"name": "Bounding box encoding",
+				"DETECTRON2.MODEL.ROI_HEADS.SCORE_THRESH_TEST": {
+					"name": "Min. class confidence",
+					"description": "Minimum confidence value to be reached by any label class for a box to be kept as a prediction.<br />Higher values = more confident predictions; lower values = higher recall",
+					"min": 0.0,
+					"max": 1.0,
+					"value": 0.05,
+					"style": {
+						"slider": True
+					}
+				},
+				"DETECTRON2.MODEL.ROI_HEADS.NMS_THRESH_TEST": {
+					"name": "Non-maximum suppression threshold",
+					"description": "Maximally permitted IoU between predictions. If above, boxes with lower confidence scores will be discarded (non-maximum suppression).",
+					"min": 0.0,
+					"max": 1.0,
+					"value": 0.5,
+					"style": {
+						"slider": True
+					}
+				}
 			}
 		}
 	}

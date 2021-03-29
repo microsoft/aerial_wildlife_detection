@@ -1,42 +1,68 @@
 '''
-    Faster R-CNN specifier for Detectron2 model trainer in AIDE.
+    TridentNet specifier for Detectron2 model trainer in AIDE.
 
-    2020-21 Benjamin Kellenberger
+    2021 Benjamin Kellenberger
 '''
 
+import os
 import torch
+from detectron2.config import get_cfg
+import detectron2.utils.comm as comm
+from ai.models.detectron2.boundingBoxes.tridentnet.tridentnet_detectron2.config import add_tridentnet_config
 
 from ai.models.detectron2.genericDetectronModel import GenericDetectron2Model
 from ai.models.detectron2.boundingBoxes.genericDetectronBBoxModel import GenericDetectron2BoundingBoxModel
-from ai.models.detectron2.boundingBoxes.fasterrcnn import DEFAULT_OPTIONS
+from ai.models.detectron2.boundingBoxes.tridentnet import DEFAULT_OPTIONS
+from util import optionsHelper
 
 
-class FasterRCNN(GenericDetectron2BoundingBoxModel):
+class TridentNet(GenericDetectron2BoundingBoxModel):
 
     def __init__(self, project, config, dbConnector, fileServer, options):
-        super(FasterRCNN, self).__init__(project, config, dbConnector, fileServer, options)
+        super(TridentNet, self).__init__(project, config, dbConnector, fileServer, options)
 
         try:
+            # check options
             if self.detectron2cfg.MODEL.META_ARCHITECTURE != 'GeneralizedRCNN':
-                # invalid options provided
                 raise Exception(f'Invalid meta architecture ("{self.detectron2cfg.MODEL.META_ARCHITECTURE}" != "GeneralizedRCNN")')
+            if self.detectron2cfg.MODEL.ROI_HEADS.NAME != 'TridentRes5ROIHeads':
+                raise Exception(f'Invalid ROI head architecture ("{self.detectron2cfg.MODEL.ROI_HEADS.NAME}" != "TridentRes5ROIHeads")')
+            if self.detectron2cfg.MODEL.PROPOSAL_GENERATOR.NAME != 'TridentRPN':
+                raise Exception(f'Invalid proposal generator ("{self.detectron2cfg.MODEL.PROPOSAL_GENERATOR.NAME}" != "TridentRPN")')
+            assert hasattr(self.detectron2cfg.MODEL, 'TRIDENT'), 'Missing "TRIDENT" option'
         except Exception as e:
-            print(f'[{self.project}] WARNING: provided options are not valid for Faster R-CNN (message: "{str(e)}"); falling back to defaults.')
+            print(f'[{self.project}] WARNING: provided options are not valid for TridentNet (message: "{str(e)}"); falling back to defaults.')
             self.options = self.getDefaultOptions()
             self.detectron2cfg = self._get_config()
             self.detectron2cfg = GenericDetectron2Model.parse_aide_config(self.options, self.detectron2cfg)
 
-        #TODO: Faster R-CNN currently does not work with empty images
-        self.detectron2cfg.DATALOADER.FILTER_EMPTY_ANNOTATIONS = True
+        # #TODO: VERIFY: TridentNet seems to work with empty images
+        # self.detectron2cfg.DATALOADER.FILTER_EMPTY_ANNOTATIONS = True
 
 
 
     @classmethod
     def getDefaultOptions(cls):
         return GenericDetectron2Model._load_default_options(
-            'config/ai/model/detectron2/boundingBoxes/fasterrcnn.json',
+            'config/ai/model/detectron2/boundingBoxes/tridentnet.json',
             DEFAULT_OPTIONS
         )
+
+
+
+    def _get_config(self):
+        cfg = get_cfg()
+        add_tridentnet_config(cfg)
+        defaultConfig = optionsHelper.get_hierarchical_value(self.options, ['options', 'model', 'config', 'value', 'id'])
+        configFile = os.path.join(os.getcwd(), 'ai/models/detectron2/_functional/configs', defaultConfig)
+        cfg.merge_from_file(configFile)
+
+        # disable SyncBatchNorm if not running on distributed system
+        if comm.get_world_size() <= 1:
+            cfg.MODEL.RESNETS.NORM = 'BN'
+            cfg.MODEL.SEM_SEG_HEAD.NORM = 'BN'
+
+        return cfg
 
 
 
@@ -54,12 +80,11 @@ class FasterRCNN(GenericDetectron2BoundingBoxModel):
             
             For now, only the smallest existing class weights are used
             and duplicated.
+            #TODO: 100% identical to Faster R-CNN routine
         '''
         model, stateDict, newClasses = self.initializeModel(stateDict, data)
-        assert self.detectron2cfg.MODEL.META_ARCHITECTURE == 'GeneralizedRCNN', \
-            f'ERROR: model meta-architecture "{self.detectron2cfg.MODEL.META_ARCHITECTURE}" is not a Faster R-CNN instance.'
-
-        # modify model weights to accept new label classes      #TODO: current implementation below causes loss to go to infinity...
+        
+        # modify model weights to accept new label classes
         if len(newClasses):
 
             # create vector of label classes
@@ -172,19 +197,18 @@ class FasterRCNN(GenericDetectron2BoundingBoxModel):
 
 
 
+
 #%%
 #TODO: just for debugging; remove at final revision
 
 if __name__ == '__main__':
 
-    from detectron2.modeling.meta_arch.rcnn import GeneralizedRCNN
-
     # meta data
-    project = 'aerialelephants_wc'
+    project = 'test'
 
     # set up parts of AIDE
     import os
-    os.environ['AIDE_CONFIG_PATH'] = 'settings_multiProject.ini'
+    os.environ['AIDE_CONFIG_PATH'] = 'aide_settings.ini'
     os.environ['AIDE_MODULES'] = ''
 
     from util.configDef import Config
@@ -208,6 +232,7 @@ if __name__ == '__main__':
     
 
     # launch model
-    rn = FasterRCNN(project, config, database, fileServer, None)
-    stateDict = rn.update_model(None, data, updateStateFun)
-    rn.inference(stateDict, data, updateStateFun)
+    tn = TridentNet(project, config, database, fileServer, None)
+    stateDict = tn.update_model(None, data, updateStateFun)
+    stateDict, _ = tn.train(stateDict, data, updateStateFun)
+    tn.inference(stateDict, data, updateStateFun)

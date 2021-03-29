@@ -247,6 +247,15 @@ PREDICTION_MODELS = {
                                             'canAddLabelclasses': True,
                                             'canRemoveLabelclasses': True
                                        },
+    'ai.models.detectron2.TridentNet': {
+                                            'name': 'TridentNet (beta)',
+                                            'author': '(built-in)',
+                                            'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of the <a href="https://github.com/facebookresearch/detectron2/tree/master/projects/TridentNet" target="_blank">TridentNet</a> object detector.',
+                                            'annotationType': 'boundingBoxes',
+                                            'predictionType': 'boundingBoxes',
+                                            'canAddLabelclasses': True,
+                                            'canRemoveLabelclasses': False
+                                       },
     'ai.models.detectron2.DeepLabV3Plus': {
                                             'name': 'DeepLabV3+',
                                             'author': '(built-in)',
