@@ -140,7 +140,7 @@ if __name__ == '__main__':
 
     # set up parts of AIDE
     import os
-    os.environ['AIDE_CONFIG_PATH'] = 'settings_multiProject.ini'
+    os.environ['AIDE_CONFIG_PATH'] = 'aide_settings.ini'
     os.environ['AIDE_MODULES'] = ''
 
     from util.configDef import Config

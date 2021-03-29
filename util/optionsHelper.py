@@ -153,7 +153,7 @@ def get_hierarchical_value(dictObject, keys, lookFor=('value', 'id'), fallback=N
     '''
     try:
         #return reduce(dict.get, keys, dictObject)
-        if not isinstance(dictObject, Iterable):
+        if isinstance(dictObject, str) or not isinstance(dictObject, Iterable):
             return dictObject
 
         if not isinstance(keys, list):
