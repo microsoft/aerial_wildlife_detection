@@ -56,10 +56,19 @@ class StaticFileServer:
         with open(os.path.abspath(os.path.join('modules/StaticFiles/static/templates/about.html')), 'r', encoding='utf-8') as f:
             self.aboutPage = SimpleTemplate(f.read())
 
+        with open(os.path.abspath(os.path.join('modules/StaticFiles/static/templates/privacy.html')), 'r', encoding='utf-8') as f:
+            self.privacyPage = SimpleTemplate(f.read())
+
         @self.app.route('/about')
         @self.app.route('/<project>/about')
         def about(project=None):
             return self.aboutPage.render(version=AIDE_VERSION)
+
+        
+        @self.app.route('/privacy')
+        @self.app.route('/<project>/privacy')
+        def privacy(project=None):
+            return self.privacyPage.render(version=AIDE_VERSION)
 
 
         @self.app.get('/getBackdrops')

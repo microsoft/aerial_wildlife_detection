@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <title>AIDE</title>
+    <title>AIDE - privacy statement</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <link type="text/css" href="/static/general/css/bootstrap.min.css" rel="stylesheet">
@@ -9,6 +9,11 @@
     <style type="text/css">
         body {
             overflow: hidden;
+            /* background-image: url('/static/general/img/backdrop.jpg'); */
+            -webkit-background-size: cover;
+            -moz-background-size: cover;
+            -o-background-size: cover;
+            background-size: cover;
             height: 100vh;
         }
         #backdrop {
@@ -50,17 +55,38 @@
         #overlay {
             background: #444444CC;
             color:white;
-            padding: 20px;
-            z-index: 10;
+            padding: 60px;
             margin: 0 auto;
-            margin-top: 5%;
-            width: 500px;
+            position: absolute;
+            left: 0;
+            right: 0;
+            max-height: calc(100vh - 180px);
+            /* overflow-y: auto; */
         }
+        .overlay-inset {
+            overflow-y: auto;
+        }
+        /* h2 {
+            margin-top: 40px;
+            margin-bottom: 20px;
+        } */
         label {
             text-align: right;
         }
         .fieldRow {
             margin-bottom: 10px;
+        }
+        .leading {
+            margin-left: 60px;
+            margin-top: 20px;
+            margin-bottom: 30px;
+        }
+        .inline-spans {
+            margin-bottom: 20px;
+        }
+
+        .inline-spans * {
+            display: inline;
         }
 
         .ms-logo {
@@ -68,6 +94,14 @@
             bottom: 0;
             right: 0;
             height: 40px;
+        }
+
+        .tech-logo {
+            margin: 20px;
+        }
+
+        .tech-logo > img {
+            height: 48px;
         }
     </style>
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
@@ -99,49 +133,6 @@
             });
         });
     </script>
-    <script type="text/javascript">
-        $(document).ready(function() {
-
-            function parseURLparameter(name) {
-                let url = new URL(window.location.href);
-                return url.searchParams.get(name);
-            }
-    
-            $('#login-form').on('submit', function(e) {
-                e.preventDefault();
-                let username = $(this).find('[name=username]').val();
-                let password = $(this).find('[name=password]').val();
-                let redirect = parseURLparameter('redirect');
-
-                $.ajax({
-                    url: 'doLogin',
-                    method: 'POST',
-                    data: {
-                        'username': $('form').find('[name=username]').val(),
-                        'password': $('form').find('[name=password]').val()
-                    },
-                    success: function(data) {
-                        if(typeof(redirect) === 'string' && redirect.length > 0) {
-                            window.location.href = redirect;
-                        } else {
-                            window.location.href = '/';
-                        }
-                    },
-                    error: function(xhr, response, blank) {
-                        console.log(xhr)
-                        if(xhr.status === 403) {
-                            $('#error-message').html('Invalid username and/or password provided.');
-                            $('#error-message').css('display', 'block');
-                        } else {
-                            //TODO: max login tries, login timeout...
-                            $('#error-message').html('Sorry, an unknown error occurred.');
-                            $('#error-message').css('display', 'block');
-                        }
-                    }
-                });
-            });
-        });
-    </script>
 </head>
 
 <body>
@@ -149,32 +140,52 @@
     <span id="backdrop-copyright"></span>
     <div id="page-content-wrapper">
         <div id="header" class="container-fluid">
-            <h1 id="project-title" class="mt-4">AIDE Label Interface</h1>
+            <h1 id="project-title" class="mt-4"><a href="/" style="color:white;text-decoration:none;">AIDE Label Interface</a></h1>
             <p id="project-description"></p>
         </div>
         <div id="overlay" class="container card vertical-center">
-            <h2>Sign in</h2>
-            <form id="login-form" method="POST" class="container">
-                <div class="row fieldRow" style="margin-right:0;">
-                    <label for="username" class="col-sm">Username:</label>
-                    <input type="text" name="username" required class="col-sm" />
-                </div>
-                <div class="row fieldRow" style="margin-right:0;">
-                    <label for="password" class="col-sm">Password:</label>
-                    <input type="password" name="password" required class="col-sm" />
-                </div>
-                <div class="row fieldRow">
-                    <div class="col-sm">
-                        <input class="btn btn-sm btn-primary float-right" type="submit" value="Sign In" />
-                    </div>
-                </div>
+            <div class="overlay-inset">
+                <h2>Privacy Statement</h2>
+                <div>Build {{ version }}</div>
 
-                <div id="error-message" style="display:none;color:red"></div>
-            </form>
+                <p><b>AIDE and its developers do not, and never will, collect or use your personal data.</b></p>
+                <p>In the context of the workings of this service, the following data is being stored, resp. collected.</p>
+
+                <h3>Data stored on server</h3>
+                AIDE stores the following data in plain text in a relational database on the server (restricted and password-protected access by default):
+                <ul>
+                    <li>Your user account information (name and E-mail address)</li>
+                    <li>For every viewed image and provided annotation: the <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/User-Agent" target="_blank">user agent</a> information of your Web browser, the browser's window size in pixels and the timestamp and duration at, resp. during which you viewed the image(s) and created the annotation(s)</li>
+                </ul>
+
+                <h3>Cookies used</h3>
+                AIDE sets the following cookies in your browser:
+                <ul>
+                    <li>Your AIDE username (in plain text)</li>
+                    <li>A session token, encrypted with a user-specific secret token (both randomly generated); HttpOnly</li>
+                    <li>Boolean flags (whether to suppress cookie message, whether to skip the tutorial, whether to skip the annotation confirmation dialog, whether burst mode is enabled)</li>
+                    <li>Values of AI model prediction and conversion thresholds per project</li>
+                    <li>Any cookies set by third-party libraries, such as jQuery</li>
+                </ul>
+
+                <h3>What AIDE does not do</h3>
+                By default, AIDE will <b>never</b> do the following:
+                <ul>
+                    <li>Store your IP address anywhere</li>
+                    <li>Employ any form of tracking service, especially third-party</li>
+                    <li>Provide any outside party with any of the user data</li>
+                </ul>
+
+                However, the developers behind AIDE cannot prevent others using the system of breaking these promises. The developers of AIDE take no responsibility for any such action.
+                If in doubt, please contact the system administrator responsible for this specific installation of AIDE.
+
+                <h3>Licensing</h3>
+                The AIDE software is <a href="https://github.com/microsoft/aerial_wildlife_detection" target="_blank">fully open source</a> and subject to the <a href="https://github.com/microsoft/aerial_wildlife_detection/blob/master/LICENSE" target="_blank">MIT license</a>.
+            </div>
         </div>
         <footer class="page-footer" id="footer">
             <div id="cookie-message">
-                AIDE uses a few cookies to work, but doesn't care about your personal data. <a href="/privacy">More info</a>.
+                AIDE uses a few cookies to work, but doesn't care about your personal data. See above for more info.
                 <button class="btn btn-secondary" id="cookie-message-close">Close</button>
             </div>
             <div class="ms-logo">

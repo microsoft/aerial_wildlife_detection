@@ -29,11 +29,6 @@ window.showLoadingOverlay = function(visible) {
     }
 }
 
-// cookie helper
-function encodeCookieArray(value) {
-
-}
-
 window.getCookie = function(name, decodeToObject) {
     let match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
     if (match) match = match[2];

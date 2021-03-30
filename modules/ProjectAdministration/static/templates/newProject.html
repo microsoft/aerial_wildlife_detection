@@ -6,6 +6,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
         <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous" />
         <link rel="stylesheet" href="/static/interface/css/interface.css?v={{ version }}" />
+        <link rel="stylesheet" href="/static/general/css/cookie.css?v={{ version }}" />
         <link rel="stylesheet" href="/static/general/css/messaging.css?v={{ version }}" />
         <style>
             .settings-container {
@@ -83,6 +84,8 @@
         <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
         <script type="text/javascript" src="/static/general/js/messaging.js?v={{ version }}"></script>
         <script src="/static/general/js/overlay.js?v={{ version }}"></script>
+        <script type="text/javascript" src="/static/interface/js/util.js?v={{ version }}"></script>
+        <script src="/static/general/js/cookie.js?v={{ version }}"></script>
         <script type="text/javascript">
             const SHORTNAME_PATTERNS_REPLACE = [
                 '|',
@@ -559,6 +562,10 @@
             </div>
 
             <footer class="page-footer" id="footer">
+                <div id="cookie-message">
+                    AIDE uses a few cookies to work, but doesn't care about your personal data. <a href="/privacy">More info</a>.
+                    <button class="btn btn-secondary" id="cookie-message-close">Close</button>
+                </div>
                 <div class="ms-logo">
                     <a href="about"><img height="100%" src="/static/general/img/ms_logo.png" /></a>
                 </div>

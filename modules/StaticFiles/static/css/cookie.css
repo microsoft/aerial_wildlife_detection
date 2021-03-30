@@ -1,0 +1,18 @@
+#cookie-message {
+    display: none;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 100px;
+    background: #aaaaaae0;
+    color: white;
+    padding: 30px;
+    text-align: center;
+    font-size: 20px;
+    z-index: 10000;
+}
+
+#cookie-message button {
+    float: right;
+}

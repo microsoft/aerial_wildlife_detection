@@ -5,6 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <link type="text/css" href="/static/general/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/general/css/cookie.css?v={{ version }}" />
     <style type="text/css">
         body {
             overflow: hidden;
@@ -104,6 +105,8 @@
         }
     </style>
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <script type="text/javascript" src="/static/interface/js/util.js?v={{ version }}"></script>
+    <script src="/static/general/js/cookie.js?v={{ version }}"></script>
     <script type="text/javascript">
         $(document).ready(function() {
             // set backdrops
@@ -166,6 +169,9 @@
                     <p>
                         AIDE is an <a href="https://github.com/microsoft/aerial_wildlife_detection" target="_blank">open source project</a> developed in the context of the <a href="https://www.microsoft.com/en-us/ai/ai-for-earth" target="_blank">Microsoft AI for Earth</a> initiative.
                     </p>
+                    <p>
+                        <a href="/privacy">Privacy and Cookie Statement</a>
+                    </p>
                 </div>
 
                 <h3 style="margin-top:60px">Contributors</h3>
@@ -191,6 +197,10 @@
             </div>
         </div>
         <footer class="page-footer" id="footer">
+            <div id="cookie-message">
+                AIDE uses a few cookies to work, but doesn't care about your personal data. <a href="/privacy">More info</a>.
+                <button class="btn btn-secondary" id="cookie-message-close">Close</button>
+            </div>
             <div class="ms-logo">
                 <a href="about"><img height="100%" src="/static/general/img/ms_logo.png" /></a>
             </div>

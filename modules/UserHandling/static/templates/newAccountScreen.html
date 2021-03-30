@@ -5,6 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <link type="text/css" href="/static/general/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/general/css/cookie.css?v={{ version }}" />
     <style type="text/css">
         body {
             overflow: hidden;
@@ -53,7 +54,7 @@
             z-index: 10;
             margin: 0 auto;
             margin-top: 5%;
-            width: 500px;
+            width: 800px;
         }
         label {
             text-align: right;
@@ -61,7 +62,10 @@
         .fieldRow {
             margin-bottom: 10px;
         }
-
+        #account-create-form {
+            padding-left: 80px;
+            padding-right: 80px;
+        }
         .ms-logo {
             position: absolute;
             bottom: 0;
@@ -70,6 +74,8 @@
         }
     </style>
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <script type="text/javascript" src="/static/interface/js/util.js?v={{ version }}"></script>
+    <script src="/static/general/js/cookie.js?v={{ version }}"></script>
     <script type="text/javascript">
         $(document).ready(function() {
             // set backdrops
@@ -232,8 +238,6 @@
                 var password = $(this).find('[name=password]').val();
                 var email = $(this).find('[name=email]').val();
     
-    
-    
                 $.ajax({
                     url: 'doCreateAccount',
                     method: 'post',
@@ -254,6 +258,18 @@
                     }
                 });
             });
+
+            // show warning in case of missing certificate
+            try {
+                if(window.location.protocol.toLowerCase().startsWith('http:')) {
+                    let certWarnDiv = $('<div style="color:red">Warning: this instance of AIDE has not been configured with an encryption (SSL/TLS) certificate.<br />' +
+                            'While AIDE will never store your passwords, they will be transmitted to the server in plain text and could be intercepted ' +
+                            'by eavesdroppers.<br />' +
+                            'Please do not enter any sensitive passwords (e.g., used by you for services other than AIDE).</div>');
+                    $('#password-security-warning').append(certWarnDiv);
+                    $('#password-security-warning').show();
+                }
+            } catch {}
         });
     </script>
 </head>
@@ -285,6 +301,9 @@
                     <label for="email" class="col-sm">E-Mail Address:</label>
                     <input type="email" name="email" id="email" required class="col-sm" />
                 </div>
+
+                <div id="password-security-warning" style="display:none"></div>
+
                 <input type="submit" value="Create" id="submit-button" class="btn btn-sm btn-primary" disabled />
                 <div id="account-exists-message" style="display:none;color:red;"></div>
                 <div id="error-message" style="display:none;color:red"></div>
@@ -295,7 +314,15 @@
             </form>
         </div>
         <footer class="page-footer" id="footer">
+            <div id="cookie-message">
+                AIDE uses a few cookies to work, but doesn't care about your personal data. <a href="/privacy">More info</a>.
+                <button class="btn btn-secondary" id="cookie-message-close">Close</button>
+            </div>
             <div class="ms-logo">
+                <div id="cookie-message">
+                    AIDE uses a few cookies to work, but doesn't care about your personal data. <a href="/privacy">More info</a>.
+                    <button class="btn btn-secondary" id="cookie-message-close">Close</button>
+                </div>
                 <a href="about"><img height="100%" src="/static/general/img/ms_logo.png" /></a>
             </div>
         </footer>
