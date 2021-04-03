@@ -8,9 +8,6 @@ If you have [AIDE v1](https://github.com/microsoft/aerial_wildlife_detection/tre
 
 ### With Docker
 
-AIDE now comes with both [Docker](https://www.docker.com) and [Docker Compose](https://docs.docker.com/compose) support!
-The current scripts are not 100% tested yet, but they make installation a breeze!
-
 Here's how to install and launch AIDE with Docker on the current machine:
 
 1. Download and install [Docker](https://docs.docker.com/engine/install) as well as [Docker Compose](https://docs.docker.com/compose/install)
