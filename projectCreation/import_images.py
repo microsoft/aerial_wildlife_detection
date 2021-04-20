@@ -80,7 +80,7 @@ if __name__ == '__main__':
     imgs_existing = dbConn.execute('''
         SELECT filename FROM {}.image;
     '''.format(dbSchema), None, 'all')
-    imgs_existing = set([i['filename'] for i in imgs_existing])
+    imgs_existing = set([i['filename'] for i in imgs_existing or []])
 
     imgs = list(imgs.difference(imgs_existing))
     imgs = [(i,) for i in imgs]
