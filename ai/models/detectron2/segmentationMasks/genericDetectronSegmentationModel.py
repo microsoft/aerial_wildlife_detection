@@ -10,13 +10,14 @@ from detectron2.data import build_detection_test_loader
 from ai.models.detectron2.genericDetectronModel import GenericDetectron2Model
 from ai.models.detectron2._functional.datasetMapper import Detectron2DatasetMapper
 from ai.models.detectron2._functional.dataset import getDetectron2Data
+from ai.models.detectron2._functional.util import intersectionOverUnion
 
 
 
 class GenericDetectron2SegmentationModel(GenericDetectron2Model):
 
 
-    def calculateClassCorrelations(self, model, modelClasses, targetClasses, updateStateFun, maxNumImages=None):
+    def calculateClassCorrelations(self, model, labelclassMap, modelClasses, targetClasses, updateStateFun, maxNumImages=None):
         '''
             Implementation for segmentation models.
             Here, the correlation c between a predicted p and target t box
@@ -72,7 +73,7 @@ class GenericDetectron2SegmentationModel(GenericDetectron2Model):
 
         datasetMapper = Detectron2DatasetMapper(self.project, self.fileServer, transforms, False)
         dataLoader = build_detection_test_loader(
-            dataset=getDetectron2Data(data, False, False),
+            dataset=getDetectron2Data(data, labelclassMap, {}, False, False),
             mapper=datasetMapper,
             num_workers=0
         )

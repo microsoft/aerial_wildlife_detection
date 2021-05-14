@@ -66,8 +66,8 @@ def __get_message_fun(project, cumulatedTotal=None, offset=0, epoch=None, numEpo
 def __load_model_state(project, modelLibrary, dbConnector):
     # load model state from database
     queryStr = sql.SQL('''
-        SELECT query.statedict, query.id FROM (
-            SELECT statedict, id, timecreated
+        SELECT query.statedict, query.id, query.marketplace_origin_id, query.labelclass_autoupdate FROM (
+            SELECT statedict, id, timecreated, marketplace_origin_id, labelclass_autoupdate
             FROM {}
             WHERE model_library = %s
             ORDER BY timecreated DESC NULLS LAST
@@ -79,29 +79,42 @@ def __load_model_state(project, modelLibrary, dbConnector):
         # force creation of new model
         stateDict = None
         stateDictID = None
+        modelOriginID = None
+        labelclass_autoupdate = True    # new model = no existing class map
 
     else:
         # extract
         stateDict = result[0]['statedict']
         stateDictID = result[0]['id']
+        modelOriginID = result[0]['marketplace_origin_id']
+        labelclass_autoupdate = result[0]['labelclass_autoupdate']
 
-    return stateDict, stateDictID
+    return stateDict, stateDictID, modelOriginID, labelclass_autoupdate
 
 
 
-def __load_metadata(project, dbConnector, imageIDs, loadAnnotations):
+def __load_metadata(project, dbConnector, imageIDs, loadAnnotations, modelOriginID):
 
     # prepare
     meta = {}
     if imageIDs is None:
         imageIDs = []
 
-    # label names
+    # label names and model-to-project mapping (if present)
     labels = {}
-    queryStr = sql.SQL(
-        'SELECT * FROM {};').format(sql.Identifier(project, 'labelclass'))
-    result = dbConnector.execute(queryStr, None, 'all')
-    if len(result):
+    queryStr = sql.SQL('''
+        SELECT * FROM {id_lc} AS lc
+        LEFT OUTER JOIN (
+            SELECT * FROM {id_lcmap}
+            WHERE marketplace_origin_id = %s
+        ) AS lcm
+        ON lc.id = lcm.labelclass_id_project
+    ''').format(
+        id_lc=sql.Identifier(project, 'labelclass'),
+        id_lcmap=sql.Identifier(project, 'model_labelclass')
+    )
+    result = dbConnector.execute(queryStr, (modelOriginID,), 'all')
+    if result is not None and len(result):
         for r in result:
             labels[r['id']] = r
     meta['labelClasses'] = labels
@@ -161,7 +174,7 @@ def __get_ai_library_names(project, dbConnector):
         return model_library, alcriterion_library
 
 
-def _call_update_model(project, numEpochs, modelInstance, modelLibrary, dbConnector, fileServer):
+def _call_update_model(project, numEpochs, modelInstance, modelLibrary, dbConnector):
     '''
         Checks first if any label classes have been added since the last model update.
         If so, or if a new model has been selected, this calls the model update procedure
@@ -181,15 +194,28 @@ def _call_update_model(project, numEpochs, modelInstance, modelLibrary, dbConnec
     # load model state
     update_state(state='PREPARING', message=f'[{project} - model update] loading model state')
     try:
-        stateDict, _ = __load_model_state(project, modelLibrary, dbConnector)
+        stateDict, _, modelOriginID, labelclass_autoupdate = __load_model_state(project, modelLibrary, dbConnector)
     except Exception as e:
         print(e)
         raise Exception(f'[{project} - model update] error during model state loading (reason: {str(e)})')
 
+    # check if explicit model updating is enabled
+    autoUpdateEnabled = dbConnector.execute(sql.SQL('''
+        SELECT labelclass_autoupdate AS au
+        FROM aide_admin.project
+        WHERE shortname = %s;
+    ''').format(
+        id_cnnstate=sql.Identifier(project, 'cnnstate')
+    ), (project,), 1)
+    autoUpdateEnabled = (autoUpdateEnabled[0]['au'] or labelclass_autoupdate)
+    if not autoUpdateEnabled:
+        print(f'[{project}] Model auto-update disabled; skipping...')
+        return
+
     # load labels and other metadata
     update_state(state='PREPARING', message=f'[{project} - model update] loading metadata')
     try:
-        data = __load_metadata(project, dbConnector, None, True)
+        data = __load_metadata(project, dbConnector, None, True, modelOriginID)
     except Exception as e:
         print(e)
         raise Exception(f'[{project} - model update] error during metadata loading (reason: {str(e)})')
@@ -208,10 +234,10 @@ def _call_update_model(project, numEpochs, modelInstance, modelLibrary, dbConnec
         update_state(state='FINALIZING', message=f'[{project} - model update] saving model state')
         model_library, alcriterion_library = __get_ai_library_names(project, dbConnector)
         queryStr = sql.SQL('''
-            INSERT INTO {} (stateDict, partial, model_library, alcriterion_library)
-            VALUES( %s, %s, %s, %s )
+            INSERT INTO {} (stateDict, partial, model_library, alcriterion_library, marketplace_origin_id, labelclass_autoupdate)
+            VALUES( %s, %s, %s, %s, %s, TRUE )
         ''').format(sql.Identifier(project, 'cnnstate'))
-        dbConnector.execute(queryStr, (psycopg2.Binary(stateDict), False, model_library, alcriterion_library), numReturn=None)
+        dbConnector.execute(queryStr, (psycopg2.Binary(stateDict), False, model_library, alcriterion_library, modelOriginID), numReturn=None)
     except Exception as e:
         print(e)
         raise Exception(f'[{project} - model update] error during data committing (reason: {str(e)})')
@@ -221,7 +247,7 @@ def _call_update_model(project, numEpochs, modelInstance, modelLibrary, dbConnec
 
 
 
-def _call_train(project, imageIDs, epoch, numEpochs, subset, modelInstance, modelLibrary, dbConnector, fileServer):
+def _call_train(project, imageIDs, epoch, numEpochs, subset, modelInstance, modelLibrary, dbConnector):
     '''
         Initiates model training and maintains workers, status and failure
         events.
@@ -232,7 +258,6 @@ def _call_train(project, imageIDs, epoch, numEpochs, subset, modelInstance, mode
         
         Function then performs sanity checks and forwards the data to the AI model's anonymous
         'train' function, together with some helper instances (a 'Database' instance as well as a
-        'FileServer' instance TODO for the model to access more data, if needed).
 
         Returns:
         - modelStateDict: a new, updated state dictionary of the model as returned by the AI model's
@@ -247,7 +272,7 @@ def _call_train(project, imageIDs, epoch, numEpochs, subset, modelInstance, mode
     # load model state
     update_state(state='PREPARING', message=f'[Epoch {epoch}] loading model state')
     try:
-        stateDict, _ = __load_model_state(project, modelLibrary, dbConnector)
+        stateDict, _, modelOriginID, labelclass_autoupdate = __load_model_state(project, modelLibrary, dbConnector)
     except Exception as e:
         print(e)
         raise Exception(f'[Epoch {epoch}] error during model state loading (reason: {str(e)})')
@@ -256,7 +281,7 @@ def _call_train(project, imageIDs, epoch, numEpochs, subset, modelInstance, mode
     # load labels and other metadata
     update_state(state='PREPARING', message=f'[Epoch {epoch}] loading metadata')
     try:
-        data = __load_metadata(project, dbConnector, imageIDs, True)
+        data = __load_metadata(project, dbConnector, imageIDs, True, modelOriginID)
     except Exception as e:
         print(e)
         raise Exception(f'[Epoch {epoch}] error during metadata loading (reason: {str(e)})')
@@ -286,10 +311,10 @@ def _call_train(project, imageIDs, epoch, numEpochs, subset, modelInstance, mode
         update_state(state='FINALIZING', message=f'[Epoch {epoch}] saving model state')
         model_library, alcriterion_library = __get_ai_library_names(project, dbConnector)
         queryStr = sql.SQL('''
-            INSERT INTO {} (stateDict, stats, partial, model_library, alcriterion_library)
-            VALUES( %s, %s, %s, %s, %s )
+            INSERT INTO {} (stateDict, stats, partial, model_library, alcriterion_library, marketplace_origin_id, labelclass_autoupdate)
+            VALUES( %s, %s, %s, %s, %s, %s, %s )
         ''').format(sql.Identifier(project, 'cnnstate'))
-        dbConnector.execute(queryStr, (psycopg2.Binary(stateDict), stats, subset, model_library, alcriterion_library), numReturn=None)
+        dbConnector.execute(queryStr, (psycopg2.Binary(stateDict), stats, subset, model_library, alcriterion_library, modelOriginID, labelclass_autoupdate), numReturn=None)
     except Exception as e:
         print(e)
         raise Exception(f'[Epoch {epoch}] error during data committing (reason: {str(e)})')
@@ -301,7 +326,7 @@ def _call_train(project, imageIDs, epoch, numEpochs, subset, modelInstance, mode
 
 
 
-def _call_average_model_states(project, epoch, numEpochs, modelInstance, modelLibrary, dbConnector, fileServer):
+def _call_average_model_states(project, epoch, numEpochs, modelInstance, modelLibrary, dbConnector):
     '''
         Receives a number of model states (coming from different AIWorker instances),
         averages them by calling the AI model's 'average_model_states' function and inserts
@@ -315,7 +340,7 @@ def _call_average_model_states(project, epoch, numEpochs, modelInstance, modelLi
     update_state(state='PREPARING', message=f'[Epoch {epoch}] loading model states')
     try:
         queryStr = sql.SQL('''
-            SELECT stateDict, statistics, model_library, alcriterion_library
+            SELECT stateDict, statistics, model_library, alcriterion_library, marketplace_origin_id
             FROM {}
             WHERE partial IS TRUE AND model_library = %s;
         ''').format(sql.Identifier(project, 'cnnstate'))
@@ -333,6 +358,7 @@ def _call_average_model_states(project, epoch, numEpochs, modelInstance, modelLi
     # do the work
     update_state(state='PREPARING', message=f'[Epoch {epoch}] averaging models')
     try:
+        modelOriginID = queryResult[0]['marketplace_origin_id']
         modelStates = [qr['statedict'] for qr in queryResult]
         modelStates_avg = modelInstance.average_model_states(stateDicts=modelStates, updateStateFun=update_state)
     except Exception as e:
@@ -359,10 +385,10 @@ def _call_average_model_states(project, epoch, numEpochs, modelInstance, modelLi
         model_library, alcriterion_library = __get_ai_library_names(project, dbConnector)
     try:
         queryStr = sql.SQL('''
-            INSERT INTO {} (stateDict, stats, partial, model_library, alcriterion_library)
+            INSERT INTO {} (stateDict, stats, partial, model_library, alcriterion_library, marketplace_origin_id)
             VALUES ( %s )
         ''').format(sql.Identifier(project, 'cnnstate'))
-        dbConnector.insert(queryStr, (modelStates_avg, stats_avg, False, model_library, alcriterion_library))
+        dbConnector.insert(queryStr, (modelStates_avg, stats_avg, False, model_library, alcriterion_library, modelOriginID))
     except Exception as e:
         print(e)
         raise Exception(f'[Epoch {epoch}] error during data committing (reason: {str(e)})')
@@ -386,7 +412,7 @@ def _call_average_model_states(project, epoch, numEpochs, modelInstance, modelLi
 
 
 
-def _call_inference(project, imageIDs, epoch, numEpochs, modelInstance, modelLibrary, rankerInstance, dbConnector, fileServer, batchSizeLimit):
+def _call_inference(project, imageIDs, epoch, numEpochs, modelInstance, modelLibrary, rankerInstance, dbConnector, batchSizeLimit):
     '''
 
     '''
@@ -406,7 +432,7 @@ def _call_inference(project, imageIDs, epoch, numEpochs, modelInstance, modelLib
     # load model state
     update_state(state='PREPARING', message=f'[Epoch {epoch}] loading model state')
     try:
-        stateDict, stateDictID = __load_model_state(project, modelLibrary, dbConnector)
+        stateDict, stateDictID, modelOriginID, _ = __load_model_state(project, modelLibrary, dbConnector)
     except Exception as e:
         print(e)
         raise Exception(f'[Epoch {epoch}] error during model state loading (reason: {str(e)})')
@@ -427,7 +453,7 @@ def _call_inference(project, imageIDs, epoch, numEpochs, modelInstance, modelLib
         # load remaining data (image filenames, class definitions)
         update_state(state='PREPARING', message=f'[Epoch {epoch}] loading metadata (chunk {chunkStr})')
         try:
-            data = __load_metadata(project, dbConnector, imageID_batch, False)
+            data = __load_metadata(project, dbConnector, imageID_batch, False, modelOriginID)
         except Exception as e:
             print(e)
             raise Exception(f'[Epoch {epoch}] error during metadata loading (chunk {chunkStr})')
@@ -457,7 +483,6 @@ def _call_inference(project, imageIDs, epoch, numEpochs, modelInstance, modelLib
             fieldNames.append('cnnstate')   # model state ID
             values_pred = []
             values_img = []     # mostly for feature vectors
-            # ids_img = []        # to delete previous predictions
             for imgID in result.keys():
                 for prediction in result[imgID]['predictions']:
 

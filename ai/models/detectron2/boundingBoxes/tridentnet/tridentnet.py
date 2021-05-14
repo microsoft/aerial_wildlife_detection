@@ -82,10 +82,13 @@ class TridentNet(GenericDetectron2BoundingBoxModel):
             and duplicated.
             #TODO: 100% identical to Faster R-CNN routine
         '''
-        model, stateDict, newClasses = self.initializeModel(stateDict, data)
+        model, stateDict, newClasses, projectToStateMap = self.initializeModel(stateDict, data)
         
         # modify model weights to accept new label classes
         if len(newClasses):
+
+            # create temporary labelclassMap for new classes
+            lcMap_new = dict(zip(newClasses, list(range(len(newClasses)))))
 
             # create vector of label classes
             classVector = len(stateDict['labelclassMap']) * [None]
@@ -109,7 +112,7 @@ class TridentNet(GenericDetectron2BoundingBoxModel):
                 bbox_biases_copy = bbox_biases.clone()
 
                 modelClasses = range(len(class_biases))
-                correlations = self.calculateClassCorrelations(model, modelClasses, newClasses, updateStateFun, 128)    #TODO: num images
+                correlations = self.calculateClassCorrelations(model, lcMap_new, modelClasses, newClasses, updateStateFun, 128)    #TODO: num images
                 correlations = correlations[:,:-1].to(class_weights.device)      # exclude background class
 
                 classMatches = (correlations.sum(1) > 0)            #TODO: calculate alternative strategies (e.g. class name similarities)
@@ -158,23 +161,23 @@ class TridentNet(GenericDetectron2BoundingBoxModel):
                     classVector.insert(0, newClasses[cl])
 
             # remove old classes
-            classmap_updated = {}
-            valid_cls = torch.ones(len(class_biases), dtype=torch.bool)
-            valid_box = torch.ones(len(bbox_biases), dtype=torch.bool)
             classMap_updated = {}
+            # valid_cls = torch.ones(len(class_biases), dtype=torch.bool)
+            # valid_box = torch.ones(len(bbox_biases), dtype=torch.bool)
             index_updated = 0
             for idx, clName in enumerate(classVector):
-                if clName not in data['labelClasses']:
-                    valid_cls[idx] = 0
-                    valid_box[(idx*4):(idx+1)*4] = 0
-                else:
+                # if clName not in data['labelClasses']:
+                #     valid_cls[idx] = 0
+                #     valid_box[(idx*4):(idx+1)*4] = 0
+                # else:
+                if True:    # we don't remove old classes anymore (TODO: flag in configuration)
                     classMap_updated[clName] = index_updated
                     index_updated += 1
             
-            class_weights = class_weights[valid_cls,:]
-            class_biases = class_biases[valid_cls]
-            bbox_weights = bbox_weights[valid_box,:]
-            bbox_biases = bbox_biases[valid_box]
+            # class_weights = class_weights[valid_cls,:]
+            # class_biases = class_biases[valid_cls]
+            # bbox_weights = bbox_weights[valid_box,:]
+            # bbox_biases = bbox_biases[valid_box]
 
             # apply updated weights and biases
             model.roi_heads.box_predictor.cls_score.weight = torch.nn.Parameter(class_weights)
@@ -203,6 +206,8 @@ class TridentNet(GenericDetectron2BoundingBoxModel):
 
 if __name__ == '__main__':
 
+    from detectron2.modeling.meta_arch.rcnn import GeneralizedRCNN
+
     # meta data
     project = 'test'
 
@@ -213,8 +218,9 @@ if __name__ == '__main__':
 
     from util.configDef import Config
     from modules.AIController.backend.functional import AIControllerWorker
+    from modules.AIWorker.app import AIWorker
     from modules.AIWorker.backend.fileserver import FileServer
-    from modules.AIWorker.backend.worker.functional import __load_metadata
+    from modules.AIWorker.backend.worker.functional import __load_metadata, __load_model_state
     from modules.Database.app import Database
 
     config = Config()
@@ -225,7 +231,14 @@ if __name__ == '__main__':
     data = aicw.get_training_images(
         project=project,
         maxNumImages=512)
-    data = __load_metadata(project, database, data[0], True)
+    
+
+    aiw = AIWorker(config, database, True, True)
+    model, modelLib, _ = aiw._get_model_instance(project)
+
+    stateDict, _, modelID, _ = __load_model_state(project, 'ai.models.detectron2.TridentNet', database)
+    
+    data = __load_metadata(project, database, data[0], True, modelID)
 
     def updateStateFun(state, message, done=None, total=None):
         print(f'{message}: {done}/{total}')
@@ -233,6 +246,6 @@ if __name__ == '__main__':
 
     # launch model
     tn = TridentNet(project, config, database, fileServer, None)
-    stateDict = tn.update_model(None, data, updateStateFun)
-    stateDict, _ = tn.train(stateDict, data, updateStateFun)
-    tn.inference(stateDict, data, updateStateFun)
+    # stateDict = tn.train(None, data, updateStateFun)
+    # stateDict = tn.update_model(None, data, updateStateFun)
+    tn.inference(None, data, updateStateFun)

@@ -100,21 +100,7 @@ class Detectron2DatasetMapper(DatasetMapper):
         if sem_seg_gt is not None:
             dataset_dict["sem_seg"] = torch.as_tensor(sem_seg_gt.astype("long"))
 
-        # if not self.is_train:
-        #     # USER: Modify this if you want to keep them for some reason.
-        #     dataset_dict.pop("annotations", None)
-        #     dataset_dict.pop("sem_seg_file_name", None)
-        #     return dataset_dict
-
         if "annotations" in dataset_dict:
-            # USER: Modify this if you want to keep them for some reason.
-            # for anno in dataset_dict["annotations"]:
-                # if not self.use_instance_mask:
-                #     anno.pop("segmentation", None)
-                # if not self.use_keypoint:
-                #     anno.pop("keypoints", None)
-
-            # USER: Implement additional transformations if you have other types of data
             annos = [
                 utils.transform_instance_annotations(
                     obj, transforms, image_shape, keypoint_hflip_indices=self.keypoint_hflip_indices

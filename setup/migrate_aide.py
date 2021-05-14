@@ -7,6 +7,7 @@
 
 import os
 import argparse
+from psycopg2 import sql
 from constants import version
 
 
@@ -195,7 +196,7 @@ MODIFICATIONS_sql = [
         alCriterion_library VARCHAR,
         origin_project VARCHAR,
         origin_uuid UUID,
-        origin_uri VARCHAR UNIQUE,
+        origin_uri VARCHAR,
         public BOOLEAN NOT NULL DEFAULT TRUE,
         anonymous BOOLEAN NOT NULL DEFAULT FALSE,
         selectCount INTEGER NOT NULL DEFAULT 0,
@@ -204,7 +205,7 @@ MODIFICATIONS_sql = [
         PRIMARY KEY (id)
     );''',
     'ALTER TABLE aide_admin.modelMarketplace ADD COLUMN IF NOT EXISTS shared BOOLEAN NOT NULL DEFAULT TRUE;',
-    'ALTER TABLE "{schema}".cnnstate ADD COLUMN IF NOT EXISTS marketplace_origin_id UUID UNIQUE;',
+    'ALTER TABLE "{schema}".cnnstate ADD COLUMN IF NOT EXISTS marketplace_origin_id UUID;',
     'ALTER TABLE "{schema}".cnnstate DROP CONSTRAINT IF EXISTS marketplace_origin_id_fkey;'
     'ALTER TABLE "{schema}".cnnstate ADD CONSTRAINT marketplace_origin_id_fkey FOREIGN KEY (marketplace_origin_id) REFERENCES aide_admin.modelMarketplace(id);',
     'ALTER TABLE aide_admin.modelMarketplace ADD COLUMN IF NOT EXISTS tags VARCHAR;',
@@ -295,7 +296,29 @@ MODIFICATIONS_sql = [
   'ALTER TABLE "{schema}".cnnstate ADD COLUMN IF NOT EXISTS stats VARCHAR;',
   'ALTER TABLE aide_admin.modelMarketplace ADD COLUMN IF NOT EXISTS model_settings VARCHAR;',
   'ALTER TABLE aide_admin.project ADD COLUMN IF NOT EXISTS inference_chunk_size BIGINT;',
-  'ALTER TABLE aide_admin.project ADD COLUMN IF NOT EXISTS max_num_concurrent_tasks INTEGER;'
+  'ALTER TABLE aide_admin.project ADD COLUMN IF NOT EXISTS max_num_concurrent_tasks INTEGER;',
+
+  # explicit model-to-labelclass mapping
+  '''
+    CREATE TABLE IF NOT EXISTS "{schema}".model_labelclass (
+        --ai_model_library VARCHAR NOT NULL,
+        marketplace_origin_id UUID NOT NULL,
+        labelclass_id_model VARCHAR NOT NULL,
+        labelclass_name_model VARCHAR NOT NULL,
+        labelclass_id_project UUID,
+        PRIMARY KEY (ai_model_library, labelclass_id_model),
+        FOREIGN KEY (labelclass_id_project) REFERENCES "{schema}".labelclass (id)
+    );
+  ''',
+  'ALTER TABLE "{schema}".cnnstate ADD COLUMN IF NOT EXISTS imported_from_marketplace BOOLEAN NOT NULL DEFAULT FALSE;',
+  'ALTER TABLE "{schema}".cnnstate ADD COLUMN IF NOT EXISTS labelclass_autoupdate BOOLEAN NOT NULL DEFAULT FALSE;',
+  'ALTER TABLE "aide_admin".project ADD COLUMN IF NOT EXISTS labelclass_autoupdate BOOLEAN NOT NULL DEFAULT FALSE;',
+
+  # thanks to "imported_from_marketplace" field, we don't want the unique constraint on the origin ID anymore
+  'ALTER TABLE "{schema}".cnnstate DROP CONSTRAINT IF EXISTS cnnstate_marketplace_origin_id_key;',
+
+  # we also allow multiple models with the same origin URI (for updates of Web-imported models or uploads with iid file name)
+  'ALTER TABLE "aide_admin".modelmarketplace DROP CONSTRAINT IF EXISTS modelmarketplace_origin_uri_key;'
 ]
 
 
@@ -316,6 +339,7 @@ def migrate_aide(forceMigrate=False):
     doMigrate = True
     
     # check if DB has version already implemented
+    dbVersion = None
     hasVersion = dbConn.execute('''
         SELECT EXISTS (
             SELECT FROM information_schema.tables 
@@ -359,9 +383,23 @@ def migrate_aide(forceMigrate=False):
                         #TODO: option to auto-remove?
                         continue
 
+                    # special modification for CNN-to-labelclass map: drop only dep. on version (remove ancient tests)
+                    if version.compare_versions(version.AIDE_VERSION, dbVersion) in (-1, None):
+                        dbConn.execute(sql.SQL('DROP TABLE IF EXISTS {};').format(
+                            sql.Identifier(pName, 'cnn_labelclass')
+                        ), None)
+
                     # make modifications one at a time
                     for mod in MODIFICATIONS_sql:
                         dbConn.execute(mod.format(schema=pName), None, None)
+
+                    # pre-official 2.0: mark existing CNN states as "labelclass_autoupdate" (as this was the default behavior)
+                    if version.compare_versions(dbVersion, '2.0.210514') == -1:
+                        dbConn.execute(sql.SQL('''
+                            UPDATE {}
+                            SET labelclass_autoupdate = TRUE;
+                        ''').format(sql.Identifier(pName, 'cnnstate')), None)
+
                 except Exception as e:
                     errors.append(str(e))
         else:

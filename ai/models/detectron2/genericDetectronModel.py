@@ -173,7 +173,7 @@ class GenericDetectron2Model(AIModel):
     
     
 
-    def initializeModel(self, stateDict, data):
+    def initializeModel(self, stateDict, data, revertProjectToStateMap=False):
         '''
             Loads Bytes object "stateDict" through torch and looks for a Detectron2
             config to initialize the model structure, optionally with pre-trained
@@ -263,10 +263,21 @@ class GenericDetectron2Model(AIModel):
                 pass
 
         # check data for new label classes
+        projectToStateMap = {}
         newClasses = []
         for lcID in data['labelClasses']:
             if lcID not in labelclassMap:
-                newClasses.append(lcID)
+                # check if original label class got re-mapped
+                lcMap_origin_id = data['labelClasses'][lcID].get('labelclass_id_model', None)
+                if lcMap_origin_id is None or lcMap_origin_id not in labelclassMap:
+                    # no remapping done; class really is new
+                    newClasses.append(lcID)
+                else:
+                    # class has been re-mapped
+                    if revertProjectToStateMap:
+                        projectToStateMap[lcMap_origin_id] = lcID
+                    else:
+                        projectToStateMap[lcID] = lcMap_origin_id
         stateDict['labelclassMap'] = labelclassMap
 
         # parallelize model (if architecture supports it)   #TODO: try out whether/how well this works
@@ -276,7 +287,7 @@ class GenericDetectron2Model(AIModel):
                 model, device_ids=[comm.get_local_rank()], broadcast_buffers=False
             )
 
-        return model, stateDict, newClasses
+        return model, stateDict, newClasses, projectToStateMap
 
 
 
@@ -395,12 +406,13 @@ class GenericDetectron2Model(AIModel):
             None, 'all')
         for row in query:
             lcID = row['id']
-            aideIdx = row['idx']
-            modelIdx = labelclassMap[lcID]
-            if reverse:
-                indexMap[modelIdx] = aideIdx
-            else:
-                indexMap[aideIdx] = modelIdx
+            if lcID in labelclassMap:
+                aideIdx = row['idx']
+                modelIdx = labelclassMap[lcID]
+                if reverse:
+                    indexMap[modelIdx] = aideIdx
+                else:
+                    indexMap[aideIdx] = modelIdx
         return indexMap
 
 
@@ -433,8 +445,7 @@ class GenericDetectron2Model(AIModel):
             Main training function.
         '''
         # initialize model
-        model, stateDict, _ = self.initializeModel(stateDict, data)
-        # model, stateDict = self.loadAndAdaptModel(stateDict, data, updateStateFun)  #TODO: initialize without adaptation?
+        model, stateDict, _, projectToStateMap = self.initializeModel(stateDict, data, False)
 
         # wrap dataset for usage with Detectron2
         ignoreUnsure = optionsHelper.get_hierarchical_value(self.options, ['options', 'train', 'ignore_unsure', 'value'], fallback=True)
@@ -442,7 +453,7 @@ class GenericDetectron2Model(AIModel):
         indexMap = self._get_labelclass_index_map(stateDict['labelclassMap'], False)
         datasetMapper = Detectron2DatasetMapper(self.project, self.fileServer, transforms, True, classIndexMap=indexMap)
         dataLoader = build_detection_train_loader(
-            dataset=getDetectron2Data(data, ignoreUnsure, self.detectron2cfg.DATALOADER.FILTER_EMPTY_ANNOTATIONS),
+            dataset=getDetectron2Data(data, stateDict['labelclassMap'], projectToStateMap, ignoreUnsure, self.detectron2cfg.DATALOADER.FILTER_EMPTY_ANNOTATIONS),
             mapper=datasetMapper,
             total_batch_size=self.detectron2cfg.SOLVER.IMS_PER_BATCH*comm.get_world_size(),      #TODO: verify
             aspect_ratio_grouping=True,
@@ -525,22 +536,25 @@ class GenericDetectron2Model(AIModel):
             Main inference function.
         '''
         # initialize model
-        model, stateDict, _ = self.initializeModel(stateDict, data)
-        # model, stateDict = self.loadAndAdaptModel(stateDict, data, updateStateFun)  #TODO: initialize without adaptation?
+        model, stateDict, _, stateToProjectMap = self.initializeModel(stateDict, data, True)
 
-        # construct inverted labelclass map
+        # construct inverted labelclass map, taking model-to-project mapping into account with priority
         labelclassMap_inv = {}
         for key in stateDict['labelclassMap'].keys():
-            index = stateDict['labelclassMap'][key]
-            labelclassMap_inv[index] = key
+            if key in stateToProjectMap:
+                target = stateToProjectMap[key]
+            else:
+                target = key
+            if target in data['labelClasses']:
+                index = stateDict['labelclassMap'][key]
+                labelclassMap_inv[index] = target
         
         # wrap dataset for usage with Detectron2
-        transforms = []
         transforms = self.initializeTransforms(mode='inference')
         indexMap = self._get_labelclass_index_map(stateDict['labelclassMap'], True)
         datasetMapper = Detectron2DatasetMapper(self.project, self.fileServer, transforms, False)
         dataLoader = build_detection_test_loader(
-            dataset=getDetectron2Data(data, False, False),
+            dataset=getDetectron2Data(data, stateDict['labelclassMap'], None, False, False),
             mapper=datasetMapper,
             num_workers=0
         )
@@ -554,7 +568,7 @@ class GenericDetectron2Model(AIModel):
         tbar = trange(numImg)
         dataLoaderIter = iter(dataLoader)
         with torch.no_grad():
-            for idx in range(numImg):
+            for _ in range(numImg):
                 batch = next(dataLoaderIter)
                 outputs = model(batch)
                 outputs = outputs[0]
@@ -586,7 +600,6 @@ class GenericDetectron2Model(AIModel):
                             if label not in labelclassMap_inv or not isinstance(labelclassMap_inv[label], UUID):
                                 # prediction with invalid label (e.g. from pretrained model state)
                                 continue
-
                             predictions.append({
                                 'x': bboxes[b,0].item(),
                                 'y': bboxes[b,1].item(),
@@ -615,6 +628,10 @@ class GenericDetectron2Model(AIModel):
                 elif 'pred_label' in outputs:
                     labelIndex = outputs['pred_label'].item()
                     if labelIndex not in labelclassMap_inv:
+                        # update worker state
+                        tbar.update(1)
+                        imgCount += len(batch)
+                        updateStateFun(state='PROGRESS', message='predicting', done=imgCount, total=numImg)
                         continue
                     
                     predictions.append({

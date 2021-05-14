@@ -3,6 +3,7 @@
 '''
 
 import os
+import copy
 import torch
 from detectron2.config import get_cfg
 
@@ -22,7 +23,7 @@ class GeneralizedTorchvisionClassifier(GenericDetectron2LabelModel):
         try:
             if self.detectron2cfg.MODEL.META_ARCHITECTURE != 'TorchvisionClassifier':
                 # invalid options provided
-                raise
+                raise Exception('Invalid model meta architecture')
         except:
             print(f'[{self.project}] WARNING: provided options are not valid for the Torchvision classifier model; falling back to defaults.')
             self.options = self.getDefaultOptions()
@@ -55,12 +56,15 @@ class GeneralizedTorchvisionClassifier(GenericDetectron2LabelModel):
             2. Weighted linear combination according to similarity of name
                of new classes w.r.t. existing ones (e.g. using Word2Vec)
         '''
-        model, stateDict, newClasses = self.initializeModel(stateDict, data)
+        model, stateDict, newClasses, projectToStateMap = self.initializeModel(stateDict, data)
         assert self.detectron2cfg.MODEL.META_ARCHITECTURE == 'TorchvisionClassifier', \
             f'ERROR: model meta-architecture "{self.detectron2cfg.MODEL.META_ARCHITECTURE}" is not a Torchvision classifier instance.'
         
         # modify model weights to accept new label classes
         if len(newClasses):
+
+            # create temporary labelclassMap for new classes
+            lcMap_new = dict(zip(newClasses, list(range(len(newClasses)))))
 
             # create vector of label classes
             classVector = len(stateDict['labelclassMap']) * [None]
@@ -78,7 +82,7 @@ class GeneralizedTorchvisionClassifier(GenericDetectron2LabelModel):
                 biases_copy = biases.clone()
 
                 modelClasses = range(len(biases))
-                correlations = self.calculateClassCorrelations(model, modelClasses, newClasses, updateStateFun, 128)    #TODO: num images
+                correlations = self.calculateClassCorrelations(model, lcMap_new, modelClasses, newClasses, updateStateFun, 128)    #TODO: num images
                 correlations = correlations.to(weights.device)
 
                 classMatches = (correlations.sum(1) > 0)            #TODO: calculate alternative strategies (e.g. class name similarities)
@@ -117,18 +121,19 @@ class GeneralizedTorchvisionClassifier(GenericDetectron2LabelModel):
                     classVector.insert(0, newClasses[cl])
 
             # remove old classes
-            valid = torch.ones(len(biases), dtype=torch.bool)
+            # valid = torch.ones(len(biases), dtype=torch.bool)
             classMap_updated = {}
             index_updated = 0
             for idx, clName in enumerate(classVector):
-                if clName not in data['labelClasses']:
-                    valid[idx] = 0
-                else:
+                # if clName not in data['labelClasses']:
+                #     valid[idx] = 0
+                # else:
+                if True:    # we don't remove old classes anymore (TODO: flag in configuration)
                     classMap_updated[clName] = index_updated
                     index_updated += 1
 
-            weights = weights[valid,...]
-            biases = biases[valid]
+            # weights = weights[valid,...]
+            # biases = biases[valid]
 
             # apply updated weights and biases
             classificationLayer.weight = torch.nn.Parameter(weights)

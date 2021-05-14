@@ -63,10 +63,13 @@ class DeepLabV3Plus(GenericDetectron2SegmentationModel):
             For now, only the smallest existing class weights are used
             and duplicated.
         '''
-        model, stateDict, newClasses = self.initializeModel(stateDict, data)
+        model, stateDict, newClasses, _ = self.initializeModel(stateDict, data)
         
         # modify model weights to accept new label classes
         if len(newClasses):
+
+            # create temporary labelclassMap for new classes
+            lcMap_new = dict(zip(newClasses, list(range(len(newClasses)))))
 
             # create vector of label classes
             classVector = len(stateDict['labelclassMap']) * [None]
@@ -83,7 +86,7 @@ class DeepLabV3Plus(GenericDetectron2SegmentationModel):
                 biases_copy = biases.clone()
 
                 #TODO: we currently have no indexing possibilities to retrieve images with correct labels...
-                # correlations = self.calculateClassCorrelations(model, range(numClasses_orig), newClasses, updateStateFun, 128)    #TODO: num images
+                # correlations = self.calculateClassCorrelations(model, lcMap_new, range(numClasses_orig), newClasses, updateStateFun, 128)    #TODO: num images
                 
                 # use alternative solution: choose random class
                 randomOrder = torch.randperm(numClasses_orig)
@@ -101,18 +104,19 @@ class DeepLabV3Plus(GenericDetectron2SegmentationModel):
                     classVector.insert(0, newClasses[cl])
 
             # remove old classes
-            valid = torch.ones(len(biases), dtype=torch.bool)
+            # valid = torch.ones(len(biases), dtype=torch.bool)
             classMap_updated = {}
             index_updated = 0
             for idx, clName in enumerate(classVector):
-                if clName not in data['labelClasses']:
-                    valid[idx] = 0
-                else:
+                # if clName not in data['labelClasses']:
+                #     valid[idx] = 0
+                # else:
+                if True:    # we don't remove old classes anymore (TODO: flag in configuration)
                     classMap_updated[clName] = index_updated
                     index_updated += 1
 
-            weights = weights[valid,...]
-            biases = biases[valid,...]
+            # weights = weights[valid,...]
+            # biases = biases[valid,...]
 
             # apply updated weights and biases
             model.sem_seg_head.predictor.weight = torch.nn.Parameter(weights)

@@ -94,10 +94,22 @@ CREATE TABLE IF NOT EXISTS {id_cnnstate} (
     timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     stateDict bytea,
     stats VARCHAR,
-    partial boolean NOT NULL,
-    marketplace_origin_id UUID UNIQUE,
+    partial BOOLEAN NOT NULL,
+    imported_from_marketplace BOOLEAN NOT NULL DEFAULT FALSE,
+    marketplace_origin_id UUID,
+    labelclass_autoupdate BOOLEAN NOT NULL DEFAULT FALSE,
     PRIMARY KEY (id),
     FOREIGN KEY (marketplace_origin_id) REFERENCES aide_admin.modelMarketplace(id)
+);
+
+CREATE TABLE IF NOT EXISTS {id_modellc} (
+    --ai_model_library VARCHAR NOT NULL,
+    marketplace_origin_id UUID NOT NULL,
+    labelclass_id_model VARCHAR NOT NULL,
+    labelclass_name_model VARCHAR NOT NULL,
+    labelclass_id_project UUID,
+    PRIMARY KEY (marketplace_origin_id, labelclass_id_model),
+    FOREIGN KEY (labelclass_id_project) REFERENCES {id_labelclass} (id)
 );
 
 CREATE TABLE IF NOT EXISTS {id_prediction} (

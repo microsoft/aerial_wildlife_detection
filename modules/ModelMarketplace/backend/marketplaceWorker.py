@@ -7,6 +7,7 @@
 
 import os
 import io
+import re
 import shutil
 import tempfile
 import zipfile
@@ -17,7 +18,6 @@ from urllib import request
 from psycopg2 import sql
 
 from ai import PREDICTION_MODELS
-from modules.Database.app import Database
 from modules.AIWorker.backend.fileserver import FileServer
 from modules.LabelUI.backend.middleware import DBMiddleware     # required to obtain label class definitions (TODO: make more elegant)
 from constants.version import MODEL_MARKETPLACE_VERSION
@@ -61,6 +61,26 @@ class ModelMarketplaceWorker:
             if 'canAddLabelclasses' in PREDICTION_MODELS[key] and \
                 PREDICTION_MODELS[key]['canAddLabelclasses'] is True:
                 self.availableModels.add(key)
+
+
+    
+    def getModelIdByName(self, modelName):
+        '''
+            Returns the ID of a model in the Model Marketplace under
+            a given name, or None if it does not exist.
+        '''
+        assert isinstance(modelName, str) and len(modelName.strip()) > 0, \
+            f'Invalid model name "{str(modelName)}".'
+
+        modelID = self.dbConnector.execute('''
+            SELECT id
+            FROM "aide_admin".modelmarketplace
+            WHERE name = %s;
+        ''', (modelName.strip(),), 1)
+        if modelID is not None and len(modelID):
+            return modelID[0]['id']
+        else:
+            return None
 
 
 
@@ -109,7 +129,7 @@ class ModelMarketplaceWorker:
                 WHERE marketplace_origin_id = %s;
             ''').format(
                 id_cnnstate=sql.Identifier(project, 'cnnstate')
-            ), (modelID))
+            ), (modelID,))
             return {
                 'status': 0,
                 'message': 'Model had already been imported to project and was elevated to be the most current.'
@@ -151,12 +171,13 @@ class ModelMarketplaceWorker:
 
         # finally, increase selection counter and import model state
         #TODO: - retain existing alCriterion library
+        #TODO: replaced original timeCreated with NOW(); check if this has any bad consequences
         insertedModelID = self.dbConnector.execute(sql.SQL('''
             UPDATE aide_admin.modelMarketplace
             SET selectCount = selectCount + 1
             WHERE id = %s;
-            INSERT INTO {id_cnnstate} (marketplace_origin_id, stateDict, timeCreated, partial, model_library, alCriterion_library)
-            SELECT id, stateDict, timeCreated, FALSE, model_library, alCriterion_library
+            INSERT INTO {id_cnnstate} (marketplace_origin_id, imported_from_marketplace, stateDict, timeCreated, partial, model_library, alCriterion_library)
+            SELECT id, TRUE, stateDict, NOW(), FALSE, model_library, alCriterion_library
             FROM aide_admin.modelMarketplace
             WHERE id = %s
             RETURNING id;
@@ -170,56 +191,57 @@ class ModelMarketplaceWorker:
             raise Exception('An error occurred while importing model into project.')
         return {
             'status': 0,
-            'id': str(insertedModelID[0]['id'])
+            'id': str(insertedModelID[0]['id']),
+            'marketplace_origin_id': str(modelID)
         }
 
 
-    
-    def importModelURI(self, project, username, modelURI):
+
+    def _import_model_state_file(self, project, modelURI, modelDefinition, stateDict=None, public=True, anonymous=False, namePolicy='skip', customName=None):
         '''
-            Tries to retrieve a model from a given URI (either with prefix "aide://" for
-            local models or URL for Web imports) and, if successful, adds it to the
-            current project.
-            Model definitions need to be in correct JSON format.
-            Models are always shared on Model Marketplace (meta data retrieved from model
-            definition and decoupled from project). Hence, if a model with the same
-            modelURI has already been imported before, AIDE will simply skip loading the
-            model and import it from the existing database record.
+            Receives two files:
+            - "modelDefinition": JSON-encoded metadata file
+            - "stateDict" (optional): BytesIO file containing model state
+            
+            Parses the files for completeness and integrity and attempts to launch 
+            a model with them. If all checks are successful, the new model state is
+            inserted into the database and the UUID is returned.
+            Parameter "namePolicy" can have one of three values:
+                - "skip" (default): skips model import if another with the same name already
+                                    exists in the Model Marketplace database
+                - "increment":      appends or increments a number at the end of the name if
+                                    it is already found in the database
+                - "custom":         uses the value under "customName"
         '''
-        assert isinstance(modelURI, str), 'Incorrect model URI provided.'
-        warnings = []
-
-       # check if model has already been imported into model marketplace
-        modelExists = self.dbConnector.execute('''
-            SELECT id
-            FROM aide_admin.modelMarketplace
-            WHERE origin_uri = %s;
-        ''', (modelURI,), 1)
-        if modelExists is not None and len(modelExists):
-            # model already exists; import to project
-            return modelExists[0]['id']
-
-        # check import type
-        if modelURI.lower().startswith('aide://'):
-            # local import
-            localPath = modelURI.replace('aide://', '').strip('/')
-            if not os.path.exists(localPath):
-                raise Exception(f'Local file could not be found ("{localPath}").')
-            with open(localPath, 'r') as f:
-                modelState = f.read()      #TODO: raise if not text file
-
-        else:
-            # network import
+        # check inputs
+        if not isinstance(modelDefinition, dict):
             try:
-                with request.urlopen(modelURI) as f:
-                    modelState = f.read().decode('utf-8')   #TODO: handle composed AIDE models (.zip)
+                if isinstance(modelDefinition, bytes):
+                    modelDefinition = json.load(io.BytesIO(modelDefinition))
+                elif isinstance(modelDefinition, str):
+                    modelDefinition = json.loads(modelDefinition)
             except Exception as e:
-                raise Exception(f'Error retrieving model state from URL ("{modelURI}"). Message: "{str(e)}".')
+                raise Exception(f'Invalid model state definition file (message: "{e}").')
 
-        try:
-            modelState = json.loads(modelState)
-        except Exception as e:
-            raise Exception(f'Model state is not a valid AIDE JSON file (message: "{str(e)}").')
+        if stateDict is not None and not isinstance(stateDict, bytes):
+            raise Exception('Invalid model state dict provided (not a binary file).')
+
+        # check naming policy
+        namePolicy = str(namePolicy).lower()
+        assert namePolicy in ('skip', 'increment', 'custom'), f'Invalid naming policy "{namePolicy}".'
+
+        if namePolicy == 'skip':
+            # check if model with same name already exists
+            modelID = self.getModelIdByName(modelDefinition['name'])
+            if modelID is not None:
+                return modelID
+
+        elif namePolicy == 'custom':
+            assert isinstance(customName, str) and len(customName), 'Invalid custom name provided.'
+
+            # check if name is available
+            if self.getModelIdByName(customName) is not None:
+                raise Exception(f'Custom name "{customName}" is unavailable.')
 
         # project metadata
         projectMeta = self.dbConnector.execute('''
@@ -232,12 +254,15 @@ class ModelMarketplaceWorker:
         projectMeta = projectMeta[0]
 
         # check fields
+        if 'author' not in modelDefinition:
+            modelDefinition['author'] = None
+
         for field in self.MODEL_STATE_REQUIRED_FIELDS:
-            if field not in modelState:
+            if field not in modelDefinition:
                 raise Exception(f'Missing field "{field}" in AIDE JSON file.')
             if field == 'aide_model_version':
                 # check model definition version
-                modelVersion = modelState['aide_model_version']
+                modelVersion = modelDefinition['aide_model_version']
                 if isinstance(modelVersion, str):
                     if not modelVersion.isnumeric():
                         raise Exception(f'Invalid AIDE model version "{modelVersion}" in JSON file.')
@@ -249,7 +274,7 @@ class ModelMarketplaceWorker:
 
             if field == 'ai_model_library':
                 # check if model library is installed
-                modelLibrary = modelState[field]
+                modelLibrary = modelDefinition[field]
                 if modelLibrary not in PREDICTION_MODELS:
                     raise Exception(f'Model library "{modelLibrary}" is not installed in this instance of AIDE.')
                 # check if annotation and prediction types match
@@ -259,8 +284,8 @@ class ModelMarketplaceWorker:
                     raise Exception('Project\'s prediction type is not compatible with this model state.')
         
         # check if model state URI provided
-        if hasattr(modelState, 'ai_model_state_uri'):
-            stateDictURI = modelState['ai_model_state_uri']
+        if stateDict is None and hasattr(modelDefinition, 'ai_model_state_uri'):
+            stateDictURI = modelDefinition['ai_model_state_uri']
             try:
                 if stateDictURI.lower().startswith('aide://'):
                     # load from disk
@@ -277,27 +302,44 @@ class ModelMarketplaceWorker:
 
             except Exception as e:
                 raise Exception(f'Model state URI provided ("{stateDictURI}"), but could not be loaded (message: "{str(e)}").')
-        else:
-            stateDict = None
         
+        # model name
+        modelName = modelDefinition['name']
+        if namePolicy == 'increment':
+            # check if model name needs to be incremented
+            allNames = self.dbConnector.execute('SELECT name FROM "aide_admin".modelmarketplace;', None, 'all')
+            allNames = (set([a['name'].strip() for a in allNames]) if allNames is not None else set())
+            if modelName.strip() in allNames:
+                startIdx = 1
+                insertPos = len(modelName)
+                trailingNumber = re.findall(' \d+$', modelName.strip())
+                if len(trailingNumber):
+                    startIdx = int(trailingNumber[0])
+                    insertPos = modelName.rfind(str(startIdx)) - 1
+                while modelName.strip() in allNames:
+                    modelName = modelName[:insertPos] + f' {startIdx}'
+                    startIdx += 1
+
+        elif namePolicy == 'custom':
+            modelName = customName
+
         # remaining parameters
-        modelName = modelState['name']
-        modelAuthor = modelState['author']
-        modelDescription = (modelState['description'] if 'description' in modelState else None)
-        modelTags = (';;'.join(modelState['tags']) if 'tags' in modelState else None)
-        labelClasses = modelState['labelclasses']       #TODO: parse?
+        modelAuthor = modelDefinition['author']
+        modelDescription = (modelDefinition['description'] if 'description' in modelDefinition else None)
+        modelTags = (';;'.join(modelDefinition['tags']) if 'tags' in modelDefinition else None)
+        labelClasses = modelDefinition['labelclasses']       #TODO: parse?
         if not isinstance(labelClasses, str):
             labelClasses = json.dumps(labelClasses)
-        modelOptions = (modelState['ai_model_settings'] if 'ai_model_settings' in modelState else None)
-        modelLibrary = modelState['ai_model_library']
-        alCriterion_library = (modelState['alcriterion_library'] if 'alcriterion_library' in modelState else None)
+        modelOptions = (modelDefinition['ai_model_settings'] if 'ai_model_settings' in modelDefinition else None)
+        modelLibrary = modelDefinition['ai_model_library']
+        alCriterion_library = (modelDefinition['alcriterion_library'] if 'alcriterion_library' in modelDefinition else None)
         annotationType = PREDICTION_MODELS[modelLibrary]['annotationType']      #TODO
         predictionType = PREDICTION_MODELS[modelLibrary]['predictionType']      #TODO
         if not isinstance(annotationType, str):
             annotationType = ','.join(annotationType)
         if not isinstance(predictionType, str):
             predictionType = ','.join(predictionType)
-        timeCreated = (modelState['time_created'] if 'time_created' in modelState else None)
+        timeCreated = (modelDefinition['time_created'] if 'time_created' in modelDefinition else None)
         try:
             timeCreated = datetime.fromtimestamp(timeCreated)
         except:
@@ -338,21 +380,136 @@ class ModelMarketplaceWorker:
                 timeCreated,
                 origin_project, origin_uuid, origin_uri, public, anonymous)
             VALUES %s
-            ON CONFLICT(origin_uri) DO NOTHING
             RETURNING id;
         ''',
         [(
             modelName, modelDescription, modelTags, labelClasses, modelAuthor,
             stateDict, modelLibrary, modelOptions, alCriterion_library, annotationType, predictionType,
             timeCreated,
-            None, None, modelURI, True, False
+            project, None, modelURI, public, anonymous
         )],
         1)
         if success is None or not len(success):
-            raise Exception('Model could not be imported into Model Marketplace.')
+
+            #TODO: temporary fix to get ID: try again by re-querying DB
+            success = self.dbConnector.execute('''
+                SELECT id FROM aide_admin.modelMarketplace
+                WHERE name = %s;
+            ''', (modelName,), 1)
+            if success is None or not len(success):
+                raise Exception('Model could not be imported into Model Marketplace.')
         
         # model import to Marketplace successful; now import to projet
         return success[0]['id']
+
+
+    
+    def importModelURI(self, project, username, modelURI, public=True, anonymous=False, forceReimport=True, namePolicy='skip', customName=None):
+        '''
+            Tries to retrieve a model from a given URI (either with prefix "aide://" for
+            local models or URL for Web imports) and, if successful, adds it to the
+            current project.
+            Model definitions need to be in correct JSON format.
+            Models are always shared on Model Marketplace (meta data retrieved from model
+            definition and decoupled from project). Hence, if a model with the same
+            modelURI has already been imported before, AIDE will simply skip loading the
+            model and import it from the existing database record.
+            If "forceReimport" is True, the model is imported into the database even if
+            another model with the same origin URI already exists.
+            Parameter "namePolicy" can have one of three values:
+                - "skip" (default): skips model import if another with the same name already
+                                    exists in the Model Marketplace database
+                - "increment":      appends or increments a number at the end of the name if
+                                    it is already found in the database
+                - "custom":         uses the value under "customName"
+
+            The model is only renamed if it doesn't already exist in the database and
+            "forceReimport" is set to False.
+        '''
+        assert isinstance(modelURI, str), 'Incorrect model URI provided.'
+
+        # check if model has already been imported into model marketplace
+        if not forceReimport:
+            modelExists = self.dbConnector.execute('''
+                SELECT id
+                FROM aide_admin.modelMarketplace
+                WHERE origin_uri = %s;
+            ''', (modelURI,), 1)
+            if modelExists is not None and len(modelExists):
+                # model already exists; import to project
+                return modelExists[0]['id']
+
+        # check import type
+        if modelURI.lower().startswith('aide://'):
+            # local import
+            localPath = modelURI.replace('aide://', '').strip('/')
+            if not os.path.exists(localPath):
+                raise Exception(f'Local file could not be found ("{localPath}").')
+            with open(localPath, 'r') as f:
+                modelState = f.read()      #TODO: raise if not text file
+
+        else:
+            # network import
+            try:
+                with request.urlopen(modelURI) as f:
+                    modelState = f.read()   #.decode('utf-8')   #TODO: handle composed AIDE models (.zip)
+            except Exception as e:
+                raise Exception(f'Error retrieving model state from URL ("{modelURI}"). Message: "{str(e)}".')
+
+        # proceed with file import
+        return self.importModelFile(project, username, modelState, modelURI, public, anonymous, namePolicy, customName)
+
+        # try:
+        #     modelState = json.load(modelState)  #TODO: was .loads with decode
+        # except Exception as e:
+        #     raise Exception(f'Model state is not a valid AIDE JSON file (message: "{str(e)}").')
+
+        # # parse and import model state into database
+        # return self._import_model_state_file(project, modelURI, modelState, None)   #TODO: allow zip files
+
+
+
+
+    def importModelFile(self, project, username, file, fileName, public=True, anonymous=False, namePolicy='skip', customName=None):
+        '''
+            Receives a model state file and checks it for integrity and validity.
+            Then imports it to the database.
+            Model definitions need to be in correct JSON format.
+            Models are always shared on Model Marketplace (meta data retrieved from model
+            definition and decoupled from project).
+            Parameter "namePolicy" can have one of three values:
+                - "skip" (default): skips model import if another with the same name already
+                                    exists in the Model Marketplace database
+                - "increment":      appends or increments a number at the end of the name if
+                                    it is already found in the database
+                - "custom":         uses the value under "customName"
+        '''
+        stateDict = None
+
+        # parse and check integrity of upload
+        if fileName.lower().endswith('.json'):
+            # JSON file
+            if isinstance(file, bytes):
+                modelState = json.load(file)
+            else:
+                modelState = json.loads(file)
+        
+        else:
+            # ZIP file
+            container = zipfile.ZipFile(file)
+            containerFileNames = {}
+            for f in container.filelist:
+                _, fName = os.path.split(f.filename)
+                containerFileNames[fName] = f.filename
+            if 'modelDefinition.json' not in containerFileNames:
+                raise Exception(f'File "{fileName}" is not a valid AIDE model state ("modelDefinition.json" missing).')
+            with container.open(containerFileNames['modelDefinition.json'], 'r') as f:
+                modelState = f.read()
+            if 'modelState.bin' in containerFileNames:
+                with container.open(containerFileNames['modelState.bin'], 'r') as f:
+                    stateDict = f.read()
+
+        return self._import_model_state_file(project, fileName, modelState, stateDict, public, anonymous, namePolicy, customName)
 
 
 
@@ -417,7 +574,7 @@ class ModelMarketplaceWorker:
 
         # check if model hasn't been imported from the marketplace
         isImported = self.dbConnector.execute(sql.SQL('''
-            SELECT marketplace_origin_id
+            SELECT marketplace_origin_id, imported_from_marketplace
             FROM {id_cnnstate}
             WHERE id = %s;
         ''').format(
@@ -425,7 +582,7 @@ class ModelMarketplaceWorker:
         ),
         (modelID,),
         1)
-        if isImported is not None and len(isImported):
+        if isImported is not None and len(isImported) and isImported[0]['imported_from_marketplace']:
             marketplaceID = isImported[0]['marketplace_origin_id']
             if marketplaceID is not None:
                 return {
@@ -433,11 +590,52 @@ class ModelMarketplaceWorker:
                     'message': f'The selected model is already shared through the marketplace (id "{str(marketplaceID)}").'
                 }
 
+        # extract original Model Marketplace ID to obtain manual label class mapping (if necessary)
+        modelOriginID = isImported[0]['marketplace_origin_id']
+
         # get project immutables
         immutables = self.labelUImiddleware.get_project_immutables(project)
 
         # get label class info
-        labelclasses = json.dumps(self.labelUImiddleware.getClassDefinitions(project, False))
+        autoUpdateEnabled = self.dbConnector.execute(sql.SQL('''
+            SELECT labelclass_autoupdate AS au
+            FROM aide_admin.project
+            WHERE shortname = %s
+            UNION ALL
+            SELECT labelclass_autoupdate AS au
+            FROM {id_cnnstate}
+            WHERE id = %s;
+        ''').format(
+            id_cnnstate=sql.Identifier(project, 'cnnstate')
+        ), (project, modelID,), 2)
+        autoUpdateEnabled = (autoUpdateEnabled[0]['au'] or \
+            autoUpdateEnabled[1]['au'])
+        
+        if autoUpdateEnabled:
+            # model has been set up to automatically incorporate new classes; use project's class definitions
+            labelclasses = json.dumps(self.labelUImiddleware.getClassDefinitions(project, False))
+        else:
+            # labelclass auto-update disabled; use inverse of manually defined mapping as class definitions
+            labelclasses = {}
+            lcQuery = self.dbConnector.execute(sql.SQL('''
+                SELECT * FROM (
+                    SELECT * FROM {id_modellc}
+                    WHERE marketplace_origin_id = %s
+                ) AS lcMap
+                LEFT OUTER JOIN {id_lc} AS lc
+                ON lcMap.labelclass_id_project = lc.id;
+            ''').format(
+                id_modellc=sql.Identifier(project, 'model_labelclass'),
+                id_lc=sql.Identifier(project, 'labelclass')
+            ), (modelOriginID,), 'all')
+            for lc in lcQuery:
+                name = (lc['name'] if lc['name'] is not None else lc['labelclass_name_model'])
+                labelclasses[lc['labelclass_id_model']] = {
+                    'id': lc['labelclass_id_model'],
+                    'name': name
+                }
+            labelclasses = json.dumps({'entries': labelclasses})
+
 
         # check if name is unique (TODO: required?)
         nameTaken = self.dbConnector.execute('''
@@ -450,6 +648,10 @@ class ModelMarketplaceWorker:
                 'status': 5,
                 'message': f'A model state with name "{modelName}" already exists in the Model Marketplace.'
             }
+        
+        if modelName is None:
+            from celery.contrib import rdb
+            rdb.set_trace()
 
         # share model state
         sharedModelID = self.dbConnector.execute(sql.SQL('''
@@ -549,6 +751,11 @@ class ModelMarketplaceWorker:
                 elif key in modelDefinition:
                     modelDefinition[key] = result[key]
             
+            if 'author' not in modelDefinition:
+                # append user name as author
+                modelDefinition['author'] = username
+
+
             # get model implementation meta data
             modelImplementationID = modelDefinition['ai_model_library']
             if modelImplementationID not in PREDICTION_MODELS:

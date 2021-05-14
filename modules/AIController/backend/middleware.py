@@ -900,7 +900,7 @@ class AIMiddleware():
 
 
 
-    def listModelStates(self, project):
+    def listModelStates(self, project, latestOnly=False):
         modelLibraries = self.getAvailableAImodels()
 
         # get meta data about models shared through model marketplace
@@ -912,23 +912,39 @@ class AIMiddleware():
             WHERE origin_project = %s OR origin_project IS NULL;
         ''', (project,), 'all')
         if result is not None and len(result):
-            modelMarketplaceMeta = {}
+            modelMarketplaceMeta = [] # {}
             for r in result:
-                mmID = r['id']
+                # mmID = r['id']
                 values = {}
                 for key in r.keys():
                     if isinstance(r[key], uuid.UUID):
                         values[key] = str(r[key])
                     else:
                         values[key] = r[key]
-                modelMarketplaceMeta[mmID] = values
+                modelMarketplaceMeta.append(values)
+                # modelMarketplaceMeta[mmID] = values
         else:
-            modelMarketplaceMeta = {}
+            modelMarketplaceMeta = []   # {}
 
         # get project-specific model states
+        if latestOnly:
+            latestOnlyStr = sql.SQL('''
+                WHERE timeCreated = (
+                    SELECT MAX(timeCreated)
+                    FROM {}
+                )
+            ''').format(sql.Identifier(project, 'cnnstate'))
+        else:
+            latestOnlyStr = sql.SQL('')
+
         queryStr = sql.SQL('''
-            SELECT id, marketplace_origin_id, EXTRACT(epoch FROM timeCreated) AS time_created, model_library, alCriterion_library, num_pred
-            FROM {id_cnnstate} AS cnnstate
+            SELECT id, marketplace_origin_id, imported_from_marketplace,
+                EXTRACT(epoch FROM timeCreated) AS time_created,
+                model_library, alCriterion_library, num_pred, labelclass_autoupdate
+            FROM (
+                SELECT * FROM {id_cnnstate}
+                {latestOnlyStr}
+            ) AS cnnstate
             LEFT OUTER JOIN (
                 SELECT cnnstate, COUNT(cnnstate) AS num_pred
                 FROM {id_pred}
@@ -938,12 +954,14 @@ class AIMiddleware():
             ORDER BY time_created DESC;
         ''').format(
             id_cnnstate=sql.Identifier(project, 'cnnstate'),
-            id_pred=sql.Identifier(project, 'prediction')
+            id_pred=sql.Identifier(project, 'prediction'),
+            latestOnlyStr=latestOnlyStr
         )
         result = self.dbConn.execute(queryStr, None, 'all')
         response = []
         if result is not None and len(result):
             for r in result:
+                mID = str(r['id'])
                 try:
                     modelLibrary = modelLibraries['models']['prediction'][r['model_library']]
                 except:
@@ -959,17 +977,32 @@ class AIMiddleware():
                     }
                 alCriterionLibrary['id'] = r['alcriterion_library']
 
-                if r['marketplace_origin_id'] in modelMarketplaceMeta:
-                    marketplaceInfo = modelMarketplaceMeta[r['marketplace_origin_id']]
-                else:
-                    marketplaceInfo = {}
+                # Model Marketplace information
+                marketplaceInfo = {}
+                for mm in modelMarketplaceMeta:
+                    if mID == mm['origin_uuid']:
+                        # priority: model has been shared to Marketplace
+                        marketplaceInfo = mm
+                        break
+                    elif str(r['marketplace_origin_id']) == mm['id'] and r['imported_from_marketplace']:
+                        # model state comes from Marketplace
+                        marketplaceInfo = mm
+
+                # elif r['marketplace_origin_id'] in modelMarketplaceMeta:
+                #     # model state comes from Marketplace
+                #     marketplaceInfo = modelMarketplaceMeta[r['marketplace_origin_id']]
+                # else:
+                #     # model has no relationship to Marketplace
+                #     marketplaceInfo = {}
 
                 response.append({
-                    'id': str(r['id']),
+                    'id': mID,
                     'time_created': r['time_created'],
                     'model_library': modelLibrary,
                     'al_criterion_library': alCriterionLibrary,
                     'num_pred': (r['num_pred'] if r['num_pred'] is not None else 0),
+                    'labelclass_autoupdate': r['labelclass_autoupdate'],
+                    'imported_from_marketplace': r['imported_from_marketplace'],
                     'marketplace_info': marketplaceInfo
                 })
         return response
@@ -1002,7 +1035,7 @@ class AIMiddleware():
             already the most recent state, no duplication is being performed.
         '''
         if not isinstance(modelStateID, uuid.UUID):
-            modelID = uuid.UUID(modelStateID)
+            modelStateID = uuid.UUID(modelStateID)
         
         process = aic_int.duplicate_model_state.s(project, modelStateID)
         taskID = self.taskCoordinator.submitJob(project, username, process, 'AIController')
@@ -1332,3 +1365,83 @@ class AIMiddleware():
             'status': 0,
             'workflowIDs': result
         }
+
+
+    
+    def getLabelclassAutoadaptInfo(self, project, modelID=None):
+        '''
+            Retrieves information on whether the model in a project has been
+            configured to automatically incorporate new classes by parameter
+            expansion, as well as whether it is actually possible to disable
+            the property (once enabled, it cannot be undone for any current
+            model state).
+            Also checks and returns whether AI model implementation actually
+            supports label class adaptation.
+        '''
+
+        if modelID is not None:
+            if not isinstance(modelID, uuid.UUID):
+                modelID = uuid.UUID(modelID)
+            modelIDstr = sql.SQL('WHERE id = %s')
+            queryArgs = (modelID, project)
+        else:
+            modelIDstr = sql.SQL('''
+                WHERE timeCreated = (
+                    SELECT MAX(timeCreated)
+                    FROM {id_cnnstate}
+                )
+            ''').format(
+                id_cnnstate=sql.Identifier(project, 'cnnstate')
+            )
+            queryArgs = (project,)
+
+        queryStr = sql.SQL('''
+            SELECT 'model' AS row_type, labelclass_autoupdate, NULL AS ai_model_library
+            FROM {id_cnnstate}
+            {modelIDstr}
+            UNION ALL
+            SELECT 'project' AS row_type, labelclass_autoupdate, ai_model_library
+            FROM "aide_admin".project
+            WHERE shortname = %s;
+        ''').format(
+            id_cnnstate=sql.Identifier(project, 'cnnstate'),
+            modelIDstr=modelIDstr
+        )
+        result = self.dbConn.execute(queryStr, queryArgs, 2)
+        response = {
+            'model': False,
+            'model_lib': False,
+            'project': False
+        }
+        for row in result:
+            if row['ai_model_library'] is not None:
+                # check if AI model library supports adaptation
+                modelLib = row['ai_model_library']
+                response['model_lib'] = self.aiModels['prediction'][modelLib]['canAddLabelclasses']
+            response[row['row_type']] = row['labelclass_autoupdate']
+        
+        return response
+
+
+
+    def setLabelclassAutoadaptEnabled(self, project, enabled):
+        '''
+            Sets automatic labelclass adaptation to the specified value.
+            This is only allowed if the current model state does not already
+            have automatic labelclass adaptation enabled.
+        '''
+        if not enabled:
+            # user requests to disable adaptation; check if possible
+            enabled_model = self.getLabelclassAutoadaptInfo(project, None)
+            if enabled_model['model']:
+                # current model has adaptation enabled; abort
+                return False
+        
+        result = self.dbConn.execute('''
+            UPDATE "aide_admin".project
+            SET labelclass_autoupdate = %s
+            WHERE shortname = %s
+            RETURNING labelclass_autoupdate;
+        ''', (enabled, project), None)
+
+        return result[0]['labelclass_autoupdate']

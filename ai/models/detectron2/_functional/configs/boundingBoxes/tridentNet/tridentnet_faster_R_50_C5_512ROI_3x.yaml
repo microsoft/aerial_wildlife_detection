@@ -1,0 +1,6 @@
+_BASE_: "Base-TridentNet-Fast-C4.yaml"
+MODEL:
+  WEIGHTS: "https://dl.fbaipublicfiles.com/detectron2/COCO-Detection/faster_rcnn_R_50_C4_3x/137849393/model_final_f97cb7.pkl"
+  MASK_ON: False
+  RESNETS:
+    DEPTH: 50

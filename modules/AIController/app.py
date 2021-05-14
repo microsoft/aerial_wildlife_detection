@@ -8,7 +8,7 @@ import html
 from bottle import request, abort
 from modules.AIController.backend.middleware import AIMiddleware
 from modules.AIController.backend import celery_interface
-from util.helpers import LogDecorator
+from util.helpers import LogDecorator, parse_boolean
 
 
 class AIController:
@@ -56,7 +56,12 @@ class AIController:
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
             
-            return {'modelStates': self.middleware.listModelStates(project) }
+            try:
+                latestOnly = bool(request.params.get('latest_only'))
+            except:
+                latestOnly = False
+            
+            return {'modelStates': self.middleware.listModelStates(project, latestOnly) }
         
 
         @self.app.post('/<project>/deleteModelStates')
@@ -413,6 +418,37 @@ class AIController:
             try:
                 settings = request.json['settings']
                 response = self.middleware.updateAImodelSettings(project, settings)
+                return {'status': 0, 'message': response}
+            except Exception as e:
+                return {'status': 1, 'message': str(e)}
+
+
+
+        @self.app.get('/<project>/getLabelclassAutoadaptInfo')
+        def get_labelclass_autoadapt_info(project):
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'unauthorized')
+            
+            try:
+                try:
+                    modelID = request.params.get('model_id')
+                except:
+                    modelID = None
+                response = self.middleware.getLabelclassAutoadaptInfo(project, modelID)
+                return {'status': 0, 'message': response}
+            except Exception as e:
+                return {'status': 1, 'message': str(e)}
+
+
+        
+        @self.app.post('/<project>/saveLabelclassAutoadaptInfo')
+        def save_labelclass_autoadapt_info(project):
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'unauthorized')
+            
+            try:
+                enabled = parse_boolean(request.params.get('enabled'))
+                response = self.middleware.setLabelclassAutoadaptEnabled(project, enabled)
                 return {'status': 0, 'message': response}
             except Exception as e:
                 return {'status': 1, 'message': str(e)}

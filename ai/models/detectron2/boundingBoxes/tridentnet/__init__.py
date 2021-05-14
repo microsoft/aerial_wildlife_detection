@@ -253,16 +253,25 @@ DEFAULT_OPTIONS = {
 				"name": "Pre-made configuration",
 				"description": "Choose a pre-trained model state here or create your own model from scratch (\"manual\").",
 				"type": "select",
-				"value": "boundingBoxes/tridentNet/tridentnet_fast_R_50_C4_3x.yaml",
+				"value": "boundingBoxes/tridentNet/tridentnet_tridentfast_R_50_C5_128ROI_1x.yaml",
 				"options": {
-					"boundingBoxes/tridentNet/tridentnet_fast_R_50_C4_1x.yaml": {
-						"name": "ResNet-50 (1x), pre-trained on MS-COCO"
+					"boundingBoxes/tridentNet/tridentnet_tridentfast_R_50_C5_128ROI_1x.yaml": {
+						"name": "ResNet-50 C5-128ROI (1x), pre-trained on MS-COCO"
 					},
-					"boundingBoxes/tridentNet/tridentnet_fast_R_50_C4_3x.yaml": {
-						"name": "ResNet-50 (3x), pre-trained on MS-COCO"
+					"boundingBoxes/tridentNet/tridentnet_tridentfast_R_50_C5_128ROI_3x.yaml": {
+						"name": "ResNet-50 C5-128ROI (3x), pre-trained on MS-COCO"
 					},
-                    "boundingBoxes/tridentNet/tridentnet_fast_R_101_C4_1x.yaml": {
-						"name": "ResNet-101, pre-trained on MS-COCO"
+					"boundingBoxes/tridentNet/tridentnet_tridentfast_R_101_C5_128ROI_3x.yaml": {
+						"name": "ResNet-101 C5-128ROI (3x), pre-trained on MS-COCO"
+					},
+					"boundingBoxes/tridentNet/tridentnet_faster_R_50_C5_512ROI_1x.yaml": {
+						"name": "ResNet-50 C5-512ROI (1x), pre-trained on MS-COCO"
+					},
+					"boundingBoxes/tridentNet/tridentnet_faster_R_50_C5_512ROI_3x.yaml": {
+						"name": "ResNet-50 C5-512ROI (3x), pre-trained on MS-COCO"
+					},
+					"boundingBoxes/tridentNet/tridentnet_faster_R_101_C5_512ROI_3x.yaml": {
+						"name": "ResNet-101 C5-512ROI (3x), pre-trained on MS-COCO"
 					}
 				}
 			},

@@ -1,0 +1,6 @@
+_BASE_: "Base-TridentNet-Fast-C4.yaml"
+MODEL:
+  WEIGHTS: "https://dl.fbaipublicfiles.com/detectron2/TridentNet/tridentnet_fast_R_50_C4_1x/148572687/model_final_756cda.pkl"
+  MASK_ON: False
+  RESNETS:
+    DEPTH: 50

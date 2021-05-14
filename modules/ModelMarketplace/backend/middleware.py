@@ -7,6 +7,7 @@
 
 import os
 import glob
+from collections.abc import Iterable
 from uuid import UUID
 import json
 from psycopg2 import sql
@@ -119,11 +120,15 @@ class ModelMarketplaceMiddleware:
 
     
 
-    def getModelsMarketplace(self, project, username):
+    def getModelsMarketplace(self, project, username, modelIDs=None):
         '''
             Returns a dict of model state meta data,
             filtered by the project settings (model library;
             annotation type, prediction type).
+            Models can optionally be filtered by an Iterable of
+            "modelIDs" (note that built-in states that have not
+            yet been added to the database will be appended
+            regardless).
         '''
 
         # get project meta data (immutables, model library)
@@ -145,20 +150,39 @@ class ModelMarketplaceMiddleware:
         # get project models to cross-check which ones have already been imported from the Marketplace
         modelsProject = {}
         projectModelMeta = self.dbConnector.execute(sql.SQL('''
-            SELECT marketplace_origin_id, timeCreated
+            SELECT marketplace_origin_id, imported_from_marketplace, timeCreated
             FROM {id_cnnstate};
         ''').format(
             id_cnnstate=sql.Identifier(project, 'cnnstate')
         ), None, 'all')
         if projectModelMeta is not None and len(projectModelMeta):
             for model in projectModelMeta:
-                if model['marketplace_origin_id'] is not None:
+                if model['marketplace_origin_id'] is not None and model['imported_from_marketplace'] is True:
                     modelsProject[str(model['marketplace_origin_id'])] = model['timecreated']
 
 
+        queryArgs = [username, project, annotationType, predictionType, project]
+
+        # filter for model IDs if needed
+        if isinstance(modelIDs, str):
+            modelIDs = (UUID(modelIDs),)
+        elif isinstance(modelIDs, UUID):
+            modelIDs = (modelIDs,)
+        elif isinstance(modelIDs, Iterable):
+            modelIDs = list(modelIDs)
+            for m in range(len(modelIDs)):
+                if not isinstance(modelIDs[m], UUID):
+                    modelIDs[m] = UUID(modelIDs[m])
+
+        if modelIDs is not None:
+            mIDstr = sql.SQL('AND id IN (%s)')
+            queryArgs.append(tuple(modelIDs))
+        else:
+            mIDstr = sql.SQL('')
+
         # get matching model states
         result = self.dbConnector.execute(
-            '''
+            sql.SQL('''
                 SELECT id, name, description, labelclasses, model_library,
                     annotationType, predictionType, EXTRACT(epoch FROM timeCreated) AS time_created, alcriterion_library,
                     public, anonymous, selectCount,
@@ -177,14 +201,17 @@ class ModelMarketplaceMiddleware:
                         (public = TRUE AND shared = TRUE) OR
                         origin_project = %s
                     )
+                    {mIDstr}
                 ) AS mm
                 LEFT OUTER JOIN (
                     SELECT name AS projectName, shortname
                     FROM aide_admin.project
                 ) AS pn
                 ON mm.origin_project = pn.shortname;
-            ''',
-            (username, project, annotationType, predictionType, project),
+            ''').format(
+                mIDstr=mIDstr
+            ),
+            tuple(queryArgs),
             'all'
         )
         builtinStates = set()       # built-ins that have already been added to database; no need to add them again
@@ -222,6 +249,15 @@ class ModelMarketplaceMiddleware:
         return matchingStates
 
 
+    
+    def getModelIdByName(self, modelName):
+        '''
+            Returns the ID of a model in the Model Marketplace under
+            a given name, or None if it does not exist.
+        '''
+        return celery_interface.worker.getModelIdByName(modelName)
+
+
 
     def importModelDatabase(self, project, username, modelID):
         '''
@@ -238,7 +274,7 @@ class ModelMarketplaceMiddleware:
 
 
 
-    def importModelURI(self, project, username, modelURI):
+    def importModelURI(self, project, username, modelURI, public=True, anonymous=False, namePolicy='skip', customName=None):
         '''
             Tries to retrieve a model from a given URI (either with prefix "aide://" for
             local models or URL for Web imports) and, if successful, adds it to the
@@ -250,9 +286,37 @@ class ModelMarketplaceMiddleware:
             model and import it from the existing database record.
         '''
         process = celery.chain(
-            celery_interface.import_model_uri.si(project, username, modelURI),  # first import to Model Marketplace...
-            celery_interface.import_model_database.s(project, username)         # ...and then to the project
+            celery_interface.import_model_uri.si(project, username, modelURI, public, anonymous,
+                                                    namePolicy, customName),                        # first import to Model Marketplace...
+            celery_interface.import_model_database.s(project, username)                             # ...and then to the project
         )
+        taskID = self.taskCoordinator.submitJob(project, username, process, 'ModelMarketplace')
+
+        return {
+            'status': 0,
+            'task_id': taskID
+        }
+
+
+
+    def importModelFile(self, project, username, modelFile, public=True, anonymous=False, namePolicy='skip', customName=None):
+        '''
+            Receives a file, uploaded by a user, and tries to import it to the Model
+            Marketplace.
+            This is done in-place (without Celery). Upon successful completion of the
+            import, a task is launched to import the model to the project.
+            Model definitions need to be in correct JSON format.
+            Models are always shared on Model Marketplace (meta data retrieved from model
+            definition and decoupled from project). Hence, if a model with the same
+            modelURI has already been imported before, AIDE will simply skip loading the
+            model and import it from the existing database record.
+        '''
+
+        # import model from file
+        modelID = celery_interface.worker.importModelFile(project, username, modelFile.file, modelFile.raw_filename, \
+                                                            public, anonymous, namePolicy, customName)
+
+        process = celery_interface.import_model_database.s(modelID, project, username)
         taskID = self.taskCoordinator.submitJob(project, username, process, 'ModelMarketplace')
 
         return {

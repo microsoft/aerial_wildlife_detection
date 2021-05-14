@@ -205,7 +205,7 @@ class AIWorker():
         modelInstance, modelLibrary, _ = self._get_model_instance(project, aiModelSettings)
 
         return functional._call_update_model(project, numEpochs, modelInstance, modelLibrary,
-                self.dbConnector, self.fileServer)
+                self.dbConnector)
 
 
     def call_train(self, data, epoch, numEpochs, project, subset, aiModelSettings=None):
@@ -214,7 +214,7 @@ class AIWorker():
         modelInstance, modelLibrary, _ = self._get_model_instance(project, aiModelSettings)
 
         return functional._call_train(project, data, epoch, numEpochs, subset, modelInstance, modelLibrary,
-                self.dbConnector, self.fileServer)
+                self.dbConnector)
     
 
 
@@ -224,7 +224,7 @@ class AIWorker():
         modelInstance, modelLibrary, _ = self._get_model_instance(project, aiModelSettings)
         
         return functional._call_average_model_states(project, epoch, numEpochs, modelInstance, modelLibrary,
-                self.dbConnector, self.fileServer)
+                self.dbConnector)
 
 
 
@@ -237,7 +237,7 @@ class AIWorker():
         return functional._call_inference(project, imageIDs, epoch, numEpochs,
                 modelInstance, modelLibrary,
                 alCriterionInstance,
-                self.dbConnector, self.fileServer,
+                self.dbConnector,
                 inferenceChunkSize)
 
 

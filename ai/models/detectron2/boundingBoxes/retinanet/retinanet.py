@@ -22,7 +22,7 @@ class RetinaNet(GenericDetectron2BoundingBoxModel):
         try:
             if self.detectron2cfg.MODEL.META_ARCHITECTURE != 'RetinaNet':
                 # invalid options provided
-                raise
+                raise Exception('Invalid model architecture')
         except:
             print('WARNING: provided options are not valid for RetinaNet; falling back to defaults.')
             self.options = self.getDefaultOptions()
@@ -55,12 +55,15 @@ class RetinaNet(GenericDetectron2BoundingBoxModel):
             For now, only the smallest existing class weights are used
             and duplicated.
         '''
-        model, stateDict, newClasses = self.initializeModel(stateDict, data)
+        model, stateDict, newClasses, projectToStateMap = self.initializeModel(stateDict, data)
         assert self.detectron2cfg.MODEL.META_ARCHITECTURE == 'RetinaNet', \
             f'ERROR: model meta-architecture "{self.detectron2cfg.MODEL.META_ARCHITECTURE}" is not a RetinaNet instance.'
 
         # modify model weights to accept new label classes
         if len(newClasses):
+
+            # create temporary labelclassMap for new classes
+            lcMap_new = dict(zip(newClasses, list(range(len(newClasses)))))
 
             # create vector of label classes
             classVector = len(stateDict['labelclassMap']) * [None]
@@ -81,7 +84,7 @@ class RetinaNet(GenericDetectron2BoundingBoxModel):
                 biases_copy = biases.clone()
 
                 modelClasses = range(model.num_classes)
-                correlations = self.calculateClassCorrelations(model, modelClasses, newClasses, updateStateFun, 128)    #TODO: num images
+                correlations = self.calculateClassCorrelations(model, lcMap_new, modelClasses, newClasses, updateStateFun, 128)    #TODO: num images
                 correlations_expanded = correlations.repeat(1,numAnchors).to(weights.device)
 
                 classMatches = (correlations.sum(1) > 0)            #TODO: calculate alternative strategies (e.g. class name similarities)
@@ -89,7 +92,7 @@ class RetinaNet(GenericDetectron2BoundingBoxModel):
                 randomIdx = torch.randperm(int(len(biases_copy)/numAnchors))
                 if len(randomIdx) < len(newClasses):
                     # source model has fewer classes than target model; repeat
-                    randomIdx = randomIdx.repeat(int(len(newClasses)/len(class_biases)+1))
+                    randomIdx = randomIdx.repeat(int(len(newClasses)/len(biases)+1))
 
                 for cl in range(len(newClasses)):
 
@@ -132,14 +135,15 @@ class RetinaNet(GenericDetectron2BoundingBoxModel):
             classMap_updated = {}
             index_updated = 0
             for idx, clName in enumerate(classVector):
-                if clName not in data['labelClasses']:
-                    valid[idx*numAnchors:(idx+1)*numAnchors] = 0
-                else:
+                # if clName not in data['labelClasses']:
+                #     valid[idx*numAnchors:(idx+1)*numAnchors] = 0
+                # else:
+                if True:    # we don't remove old classes anymore (TODO: flag in configuration)
                     classMap_updated[clName] = index_updated
                     index_updated += 1
 
-            weights = weights[valid,...]
-            biases = biases[valid,...]
+            # weights = weights[valid,...]
+            # biases = biases[valid,...]
 
             # apply updated weights and biases
             model.head.cls_score.weight = torch.nn.Parameter(weights)

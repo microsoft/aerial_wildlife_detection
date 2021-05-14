@@ -1,7 +1,7 @@
 {
 	"aide_model_version": 1.0,
-	"name": "TridentNet (ResNet-101 3x, pre-trained on MS-COCO)",
-	"description": "TridentNet object detector with ResNet-101 as feature extractor, trained on <a href=\"https://cocodataset.org\" target=\"_blank\">MS-COCO</a>.<br />See <a href=\"https://github.com/facebookresearch/detectron2/tree/master/projects/TridentNet\" target=\"_blank\">here</a> for more information.",
+	"name": "TridentNet (ResNet-50 C5-512ROI 1x, pre-trained on MS-COCO)",
+	"description": "TridentNet object detector with ResNet-50 as feature extractor, trained on <a href=\"https://cocodataset.org\" target=\"_blank\">MS-COCO</a>.<br />See <a href=\"https://github.com/facebookresearch/detectron2/tree/master/projects/TridentNet\" target=\"_blank\">here</a> for more information.",
 	"author": "facebook, inc.",
 	"time_created": 1607964812,
 	"tags": [
@@ -99,7 +99,7 @@
         "options": {
             "model": {
                 "config": {
-                    "value": "boundingBoxes/tridentNet/tridentnet_fast_R_101_C4_3x.yaml"
+                    "value": "boundingBoxes/tridentNet/tridentnet_faster_R_50_C5_512ROI_1x.yaml"
                 }
             }
         }

@@ -83,8 +83,9 @@
                         <th>#</th>
                         <th>Model</th>
                         <th>Time created</th>
-                        <th>No. predictions</th>
+                        <th>No. pred.</th>
                         <th>Shared</th>
+                        <th>Name on Marketplace</th>
                     </tr>
                 </thead>
                 <tbody id="project-models-tbody"></tbody>
@@ -134,21 +135,71 @@
         </div>
 
         <!-- Controls for model Web import -->
-        <div class="table-container flex-container option-box" id="webimport-container" style="display:none">
-            <label for="web-import-url-field">URL:</label>
-            <input type="url" id="web-import-url-field" style="width:800px" />
-            <button class="btn btn-sm btn-primary" id="start-web-import">Import</button>
+        <div class="table-container flex-container option-box" id="webimport-container" style="display:none;flex-direction:column;">
+            <div>
+                <label for="web-import-url-field">URL:</label>
+                <input type="url" id="web-import-url-field" style="width:800px" />
+                <button class="btn btn-sm btn-primary" id="web-import-start">Import</button>
+            </div><br />
+            <div>
+                <label for="web-import-share-public">Share with:</label>
+                <select id="web-import-share-public">
+                    <option value="everyone">Everyone</option>
+                    <option value="projects">My own projects only</option>
+                </select>
+                <br />
+                <input type="checkbox" id="web-import-share-anonymous" />
+                <label for="web-import-share-anonymous">Anonymous (hide author name and project information)</label><br />
+                <div>
+                    If model with same name already exists:
+                    <fieldset id="web-import-model-rename-mode">
+                        <input type="radio" id="web-import-model-rename-mode-skip" name="web-import-model-rename-mode" value="skip" checked>
+                        <label for="web-import-model-rename-mode-skip">Skip import and select existing</label><br />
+                        <input type="radio" id="web-import-model-rename-mode-increment" name="web-import-model-rename-mode" value="increment" checked>
+                        <label for="web-import-model-rename-mode-increment">Append number to model name</label><br />
+                        <input type="radio" id="web-import-model-rename-mode-rename" name="web-import-model-rename-mode" value="custom">
+                        <label for="web-import-model-rename-mode-rename">Rename to: </label>
+                        <input type="text" id="web-import-model-rename-to" disabled />
+                        <span class="name-error-span" id="web-import-model-rename-error"></span>
+                    </fieldset>
+                </div>
+            </div>
         </div>
 
         <!-- Controls to upload models from disk -->
         <div class="table-container flex-container option-box" id="uploaddisk-container" style="display:none">
             <input type="file" id="file-upload-field" name="AIDE model file (.json, .zip)" accept=".json,.zip" />
-            <button class="btn btn-sm btn-primary" id="start-disk-import">Import</button>
+            <button class="btn btn-sm btn-primary" id="file-upload-start">Import</button>
+            <div id="file-upload-progress-bar" style="margin-top:10px;width:100%;"></div><br />
+            <div>
+                <label for="file-upload-share-public">Share with:</label>
+                <select id="file-upload-share-public">
+                    <option value="everyone">Everyone</option>
+                    <option value="projects">My own projects only</option>
+                </select>
+                <br />
+                <input type="checkbox" id="file-upload-share-anonymous" />
+                <label for="file-upload-share-anonymous">Anonymous (hide author name and project information)</label>
+                <div>
+                    If model with same name already exists:
+                    <fieldset id="file-upload-model-rename-mode">
+                        <input type="radio" id="file-upload-model-rename-mode-skip" name="file-upload-model-rename-mode" value="skip" checked>
+                        <label for="file-upload-model-rename-mode-skip">Skip import and select existing</label><br />
+                        <input type="radio" id="file-upload-model-rename-mode-increment" name="file-upload-model-rename-mode" value="increment" checked>
+                        <label for="file-upload-model-rename-mode-increment">Append number to model name</label><br />
+                        <input type="radio" id="file-upload-model-rename-mode-rename" name="file-upload-model-rename-mode" value="custom">
+                        <label for="file-upload-model-rename-mode-rename">Rename to: </label>
+                        <input type="text" id="file-upload-model-rename-to" disabled />
+                        <span class="name-error-span" id="file-upload-model-rename-error"></span>
+                    </fieldset>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 <link rel="stylesheet" href="/static/statistics/libs/chartjs/Chart.min.css?v={{ version }}" />
 <link rel="stylesheet" href="/static/projectAdmin/libs/jqtree/jqtree_custom.css?v={{ version }}" />
+<link rel="stylesheet" href="/static/general/css/modelLabelclassMapper.css?v={{ version }}" />
 <script src="/static/projectAdmin/libs/jqtree/tree.jquery.js?v={{ version }}"></script>
 <script src="/static/dataAdmin/js/taskPolling.js?v={{ version }}"></script>
 <style>
@@ -256,8 +307,14 @@
         margin-left: 5px;
         border-radius: 50px;
     }
+    .name-error-span {
+        display: none;
+        color: red;
+        margin-left: 20px;
+    }
 </style>
 <script src="/static/statistics/libs/chartjs/Chart.min.js?v={{ version }}"></script>
+<script src="/static/general/js/modelLabelclassMapper.js?v={{ version }}"></script>
 <script type="text/javascript">
 
     window.save = undefined;
@@ -370,6 +427,12 @@
                         no_classes = classdef.length;
                     } else if(classdef.hasOwnProperty('numClasses')) {
                         no_classes = classdef['numClasses'];
+                    } else if(classdef.hasOwnProperty('entries')) {
+                        if(Array.isArray(classdef['entries'])) {
+                            no_classes = classdef['entries'].length;
+                        } else if(typeof(classdef['entries']) === 'object') {
+                            no_classes = Object.keys(classdef['entries']).length;
+                        }
                     }
                     
                     let shared = (model['shared'] ? '<img src="/static/general/img/success.svg" />' : '<img src="/static/general/img/error.svg" />');
@@ -425,6 +488,15 @@
                             }
                         }
 
+                        // check if model still in current project (allow re-importing if not)
+                        let modelExistsInProject = false;
+                        for(var p=0; p<modelsProject.length; p++) {
+                            if(modelsProject[p]['marketplace_info']['id'] === selectedModel_id_marketplace) {
+                                modelExistsInProject = true;
+                                break;
+                            }
+                        }
+
                         // download link
                         if(typeof(selectedModel['download_link']) === 'string') {
                             $('#marketplace-download-link').attr('href', selectedModel['download_link']);
@@ -434,29 +506,34 @@
                         }
 
                         // buttons for actions
+                        let modelDisclaimer = '';
                         if(selectedModel['is_owner']) {
-                            $('#marketplace-model-select').hide();
                             if(selectedModel['shared']) {
-                                $('#marketplace-model-type-disclaimer').html('You are the author of this model and have shared it on '+ timeCreated + '.');
+                                modelDisclaimer = 'You are the author of this model and have shared it on '+ timeCreated + '.';
                                 $('#marketplace-model-remove').show();
                                 $('#marketplace-model-reshare').hide();
-                            } else {
-                                $('#marketplace-model-type-disclaimer').html('You had shared this model on '+ timeCreated + ', but have hidden it from the marketplace again.');
+                            } else {
+                                modelDisclaimer = 'You had shared this model on '+ timeCreated + ', but have hidden it from the marketplace again.';
                                 $('#marketplace-model-remove').hide();
                                 $('#marketplace-model-reshare').show();
                             }
-                            
                         } else if(alreadyImported) {
-                            $('#marketplace-model-type-disclaimer').html('You have imported this model into your project on ' + new Date(timeImported*1000).toLocaleString() + '.');
-                            $('#marketplace-model-select').hide();
-                            $('#marketplace-model-remove').hide();
+                            if(modelExistsInProject) {
+                                modelDisclaimer += '<br />You have imported this model into your project on ' + new Date(timeImported*1000).toLocaleString() + '.';
+                                $('#marketplace-model-select').hide();
+                            } else {
+                                modelDisclaimer += '<br />This model is not in the current project anymore, but you can re-import it if you want.';
+                                $('#marketplace-model-select').show();
+                            }
                             $('#marketplace-model-reshare').hide();
-
                         } else {
-                            $('#marketplace-model-type-disclaimer').html('You can import this model to your project.');
+                            modelDisclaimer = 'You can import this model to your project.';
                             $('#marketplace-model-select').show();
                             $('#marketplace-model-remove').hide();
+                            $('#marketplace-model-reshare').hide();
                         }
+                        $('#marketplace-model-type-disclaimer').html(modelDisclaimer);
+                        
                         $('#no-model-selected-marketplace').hide();
                         $('#selected-model-info-marketplace').show();
                     });
@@ -497,11 +574,17 @@
                     let shared = '';
                     if(modelsProject[i]['marketplace_info'].hasOwnProperty('id')) {
                         //TODO: also include shared meta data
-                        if(modelsProject[i]['marketplace_info']['shared']) {
+                        if(modelsProject[i]['marketplace_info']['shared'] && modelsProject[i]['imported_from_marketplace'] === false) {
                             shared = '<img src="/static/general/img/success.svg" />';
                         } else if(modelsProject[i]['marketplace_info']['shared'] === false) {
                             shared = '<img src="/static/general/img/error.svg" />';
                         }
+                    }
+
+                    let marketplaceName = '';
+                    if(modelsProject[i]['marketplace_info'].hasOwnProperty('name') &&
+                        typeof(modelsProject[i]['marketplace_info']['name']) === 'string') {
+                            marketplaceName = modelsProject[i]['marketplace_info']['name'];
                     }
 
                     let markup = $('<tr id="project_' + i + '">' +
@@ -510,9 +593,10 @@
                         '<td>' + new Date(modelsProject[i]['time_created'] * 1000).toLocaleString() + '</td>' +
                         '<td>' + modelsProject[i]['num_pred'] + '</td>' +
                         '<td>' + shared + '</td>' +
+                        '<td>' + marketplaceName + '</td>' +
                         '</tr>');
                     markup.on('click', function() {
-                        let selID = $(this).attr('id').replace(/(^)project_/g, '');
+                        let selID = parseInt($(this).attr('id').replace(/(^)project_/g, ''));
                         for(var m=0; m<modelsProjectMarkups.length; m++) {
                             modelsProjectMarkups[m].removeClass('tr-highlighted');
                         }
@@ -528,7 +612,9 @@
                         selectedModel_id_project = selID;
                         markup.addClass('tr-highlighted');
 
-                        let readonly = (selectedModel['marketplace_info']['origin_uuid'] === null && selectedModel['marketplace_info']['author'] !== window.user);
+                        let readonly = (selectedModel['marketplace_info']['origin_uuid'] === null && 
+                                        selectedModel['imported_from_marketplace'] === true &&
+                                        selectedModel['marketplace_info']['author'] !== window.user);
 
                         // populate info panel
                         $('#project-info-name').val(null);
@@ -571,36 +657,69 @@
                         $('#selected-model-info-project').show();
 
                         // modify sharing controls
+                        let modelImported = selectedModel['imported_from_marketplace'];
+                        let shareNotice = '';
                         if(readonly) {
                             $('#project-model-share').hide();
                             $('#project-model-unshare').hide();
                             $('#project-model-reshare').hide();
+                            if(modelImported) {
+                                shareNotice = 'This model got imported from the Model Marketplace';
+                                if(typeof(selectedModel['time_created']) === 'number') {
+                                    shareNotice += ' on ' + new Date(selectedModel['time_created']*1000).toLocaleString() + '.';
+                                } else {
+                                    shareNotice += '.';
+                                }
+                            }
+
                         } else {
-                            try {
-                                let modelShared = selectedModel['marketplace_info']['shared'];
-                                if(modelShared) {
+                            let modelSharedNow = (selectedModel['marketplace_info']['shared'] === true);
+                            let modelSharedOnce = (selectedModel['marketplace_info']['origin_uuid'] === selectedModel['id']);
+
+                            if(!modelImported) {
+                                if(modelSharedNow) {
                                     $('#project-model-share').html('Update shared model');
                                     $('#project-model-share').show();
                                     $('#project-model-unshare').show();
                                     $('#project-model-reshare').hide();
-                                } else if(modelShared === false) {
+
+                                    shareNotice = 'You have shared this model on the Model Marketplace';
+                                    if(typeof(selectedModel['time_created']) === 'number') {
+                                        shareNotice += ' on ' + new Date(selectedModel['time_created']*1000).toLocaleString() + '.';
+                                    } else {
+                                        shareNotice += '.';
+                                    }
+
+                                } else if(modelSharedOnce) {
                                     $('#project-model-share').html('Update and re-share');
                                     $('#project-model-share').show();
                                     $('#project-model-unshare').hide();
                                     $('#project-model-reshare').show();
+
+                                    shareNotice = 'You did share this model on the Model Marketplace in the past, but have hidden it again. You can re-share it if you like.';
+
                                 } else {
                                     $('#project-model-share').html('Share model');
                                     $('#project-model-share').show();
                                     $('#project-model-unshare').hide();
                                     $('#project-model-reshare').hide();
+
+                                    shareNotice = 'You can share this model with others or other projects on the Model Marketplace.';
                                 }
-                            } catch {
-                                $('#project-model-share').html('Share model');
-                                $('#project-model-share').show();
+                            } else {
+                                $('#project-model-share').hide();
                                 $('#project-model-unshare').hide();
                                 $('#project-model-reshare').hide();
+
+                                shareNotice = 'You have imported this model from the Model Marketplace';
+                                if(typeof(selectedModel['time_created']) === 'number') {
+                                    shareNotice += ' on ' + new Date(selectedModel['time_created']*1000).toLocaleString() + '.';
+                                } else {
+                                    shareNotice += '.';
+                                }
                             }
                         }
+                        $('#project-model-share-notice').html(shareNotice);
 
                         // download link
                         if(typeof(selectedModel['download_link']) === 'string') {
@@ -608,19 +727,6 @@
                             $('#project-download-link').show();
                         } else {
                             $('#project-download-link').hide();
-                        }
-
-                        // notice about model import/sharing possibilities
-                        if(readonly) {
-                            let importNotice = 'You have imported this model from the Model Marketplace';
-                            if(typeof(selectedModel['time_created']) === 'number') {
-                                importNotice += ' on ' + new Date(selectedModel['time_created']*1000).toLocaleString() + '.';
-                            } else {
-                                importNotice += '.';
-                            }
-                            $('#project-model-share-notice').html(importNotice);
-                        } else {
-                            $('#project-model-share-notice').html('You can share this model with others or other projects on the Model Marketplace.');
                         }
 
                     });
@@ -641,12 +747,20 @@
                     });
                 }
             }
-        })
+        });
+    }
+
+    function getModelMarketplaceNameAvailable(name) {
+        return $.ajax({
+            url: window.baseURL + 'getModelMarketplaceNameAvailable?name=' + name,
+            method: 'GET'
+        });
     }
 
     function shareModel(fromProject) {
         let params = null;
         let modelName = null;
+        let isReshare = false;  // skip name check if we're re-sharing a previously shared model under the same name
         if(fromProject) {
             if(typeof(modelsProject[selectedModel_id_project]) !== 'object' || !modelsProject[selectedModel_id_project].hasOwnProperty('id')) {
                 return $.Deferred().promise();
@@ -657,9 +771,11 @@
                 model_name: modelName,
                 model_description: $('#project-info-description').val(),
                 tags: Object.keys(getTags('project', true)),
-                public: ($('#project-model-share-public').val() == 'everyone'? true : false),
+                public: ($('#project-model-share-public').val() === 'everyone'? true : false),
                 anonymous: $('#project-model-share-anonymous').prop('checked')
             };
+            isReshare = (modelsProject[selectedModel_id_project]['id'] === modelsProject[selectedModel_id_project]['marketplace_info']['origin_uuid']) &&
+                        (modelName === modelsProject[selectedModel_id_project]['marketplace_info']['name']);
         } else {
             if(typeof(selectedModel_id_marketplace) !== 'string') {
                 return $.Deferred().promise();
@@ -724,8 +840,24 @@
             });
         }
 
-        window.showYesNoOverlay($('<div>Proceeding will make the selected model available on the marketplace.<br />Are you sure?</div>'),
-            doShareModel, null, 'Share', 'Cancel', 'btn-danger', 'btn-secondary', false, false);
+        // check if model name is available
+        if(typeof(modelName) !== 'string' || modelName.trim().length === 0) {
+            window.messager.addMessage('Please provide a model name first', 'error');
+            return;
+        }
+
+        let promise = $.Deferred().resolve({'status':0,'available':true}).promise();
+        if(!isReshare) {
+            promise = getModelMarketplaceNameAvailable(modelName);
+        }
+        promise.then(function(response) {
+            if(response['status'] === 0 && response['available']) {
+                window.showYesNoOverlay($('<div>Proceeding will make the selected model available on the marketplace.<br />Are you sure?</div>'),
+                    doShareModel, null, 'Share', 'Cancel', 'btn-danger', 'btn-secondary', false, false);
+            } else {
+                window.messager.addMessage('Model name "' + modelName + '" is unavailable.', 'error');
+            }
+        });
     }
 
     function reshareModel(fromProject) {
@@ -815,6 +947,7 @@
         if(fromProject) {
             try {
                 modelID = modelsProject[selectedModel_id_project]['marketplace_info']['id'];
+                modelName = modelsProject[selectedModel_id_project]['marketplace_info']['name'];
             } catch {
                 return $.Deferred().promise();
             }
@@ -823,28 +956,8 @@
                 return $.Deferred().promise();
             }
             modelID = selectedModel_id_marketplace;
+            modelName = modelsMarketplace[selectedModel_id_marketplace]['name'];
         }
-
-        function _pollUnshare(data) {
-                console.log(data);
-                let success = 'success';
-                let message = '';
-                if(data['status'] !== 0) {
-                    success = 'error';
-                    message = 'An error occurred while trying to hide the selected model from the Model Marketplace.';
-                    if(data['message'] !== undefined) {
-                        message += ' (message: "'+data['message'] + '")';
-                    }
-                    message += '.';
-                } else {
-                    message = 'Model successfully hidden from Model Marketplace.';
-                }
-                if(message.length > 0)
-                    window.messager.addMessage(message, success, (success === 'success' ? undefined : 0));
-                else
-                    window.messager.addMessage('An unknown error occurred while trying to hide the selected model from the Model Marketplace.', 'error', 0);
-                loadData();
-            }
 
         let doUnshareModel = function() {
             return $.ajax({
@@ -854,24 +967,21 @@
                 dataType: 'json',
                 data: JSON.stringify({model_id: modelID}),
                 success: function(data) {
-                    let taskID = data['task_id'];
-                    if(typeof(taskID) === 'string') {
-                        poll_status(taskID, function(data) {
-                            _pollUnshare(data);
-                        },
-                        function(data) {
-                            _pollUnshare(data);
-                        }, 1000);
-                    } else {
-                        //TODO: error message
-                        console.error(error);
-                        window.messager.addMessage('An error occurred while trying to import model "'+modelName+'" to project', 'error', 0);
+                    let success = 'success';
+                    let message = 'Model "' + modelName + '" successfully hidden from Marketplace.';
+                    let duration = undefined;
+                    if(data['status'] !== 0) {
+                        message = 'An error occurred while trying to hide model "' + modelName + '" from Marketplace (message: "' + data['message'] + '").';
+                        success = 'error';
+                        duration = 0;
                     }
+                    loadData();
+                    window.messager.addMessage(message, success, duration);
                 },
                 error: function(xhr, status, error) {
                     console.error(error);
                     if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
-                        window.messager.addMessage('An error occurred while trying to hide selected model from Model Marketplace (message: "' + error + '").', 'error', 0);
+                        window.messager.addMessage('An error occurred while trying to hide model "' + modelName + '" from Model Marketplace (message: "' + error + '").', 'error', 0);
                     }
                 },
                 statusCode: {
@@ -1019,9 +1129,61 @@
         _do_duplicate, null, 'Proceed', 'Cancel', 'btn-primary', 'btn-secondary', false, false);
     }
 
+    // show label class mapper upon successful import
+    function showLCmapper(modelID) {
+        let lcMapper = new ModelLabelclassMapper(window.project, modelsMarketplace[modelID]);
+        window.lcMapper = lcMapper;
+        lcMapper.loadData().then(function() {
+            window.showYesNoOverlay(lcMapper.getMarkup(),
+                function() {
+                    lcMapper.saveData().then(function(result, message, status) {
+                        loadData();
+                        if(message === 'success') {
+                            window.messager.addMessage('Label class map saved successfully.', 'success');
+                        } else if(result.hasOwnProperty('message')) {
+                            window.messager.addMessage('Could not save label class map (message: "' + result['message'] +'").', 'error', 0);
+                        }
+                    });
+                },
+                null, 'Import', 'Cancel', 'btn-primary', 'btn-secondary', true, false);
+        });
+    }
+
+    function pollImport(data) {
+        let success = 'success';
+        let message = '';
+        if(data['status'] !== 0) {
+            success = 'error';
+            message = 'An error occurred while trying to import model "'+modelName+'" to project';
+            if(data['message'] !== undefined) {
+                message += ' (message: "'+data['message'] + '")';
+            }
+            message += '.';
+        } else {
+            // model import successful; extract ID and prompt for label class mapper
+            let modelID = data['marketplace_origin_id'];
+            getModelsMarketplace().then(function() {
+                return showLCmapper(modelID);
+            });
+
+            message = 'Model "'+modelName+'" imported successfully.';
+        }
+        if(message.length > 0)
+            window.messager.addMessage(message, success, (success === 'success' ? undefined : 0));
+        else
+            window.messager.addMessage('An unknown error occurred while trying to import model "'+modelName+'" to project.', 'error', 0);
+        loadData();
+    }
+
+
     function importModelToProject(source) {
         let modelID = null;
         let modelName = null;
+        let contentType = 'application/json; charset=utf-8';
+        let dataType = 'json';
+        let data = null;
+        let pBar = null;
+
         if(source === 'url') {
             // import from URL
             let modelURL = $('#web-import-url-field').val();
@@ -1034,128 +1196,119 @@
             }
             modelID = modelURL;
 
+            data = JSON.stringify({
+                model_id: modelID,
+                public: ($('#web-import-share-public').val() === 'everyone'),
+                anonymous: $('#web-import-share-anonymous').prop('checked'),
+                name_policy: $('#web-import-model-rename-mode input[type=radio]:checked').val(),
+                custom_name: $('#web-import-model-rename-to').val()
+            });
+
+        } else if(source === 'disk') {
+            // upload from local machine
+            let fileInput = $('#file-upload-field')[0];
+            let fileName = (fileInput.hasOwnProperty('webkitRelativePath')? fileInput['webkitRelativePath'] : fileInput['name']);
+            if(fileName.startsWith('/')) {
+                fileName = fileName.slice(1)
+            }
+            modelName = fileName;
+            modelID = modelName;
+            contentType = false;
+            dataType = null;
+            data = new FormData();
+            data.append(fileName, fileInput.files[0]);
+            data.append('public', ($('#file-upload-share-public').val() === 'everyone'));
+            data.append('anonymous', $('#file-upload-share-anonymous').prop('checked'));
+            data.append('name_policy', $('#file-upload-model-rename-mode input[type=radio]:checked').val());
+            data.append('custom_name', $('#file-upload-model-rename-to').val());
+            pBar = new ProgressBar(true, 0, 100, true);
+            $('#file-upload-progress-bar').append(pBar.getMarkup());
+
         } else {
             if(selectedModel_id_marketplace === null || selectedModel_id_marketplace === undefined) {
                 return $.Deferred().promise();
             }
             modelName = modelsMarketplace[selectedModel_id_marketplace]['name'];
             modelID = modelsMarketplace[selectedModel_id_marketplace]['id'];
+            data = JSON.stringify({model_id: modelID});
+        }
+
+        let ajaxParams = {
+            url: window.baseURL + 'importModel',
+            method: 'POST',
+            contentType: contentType,
+            data: data,
+            cache: false,
+            processData: false,
+            success: function(data) {
+                let taskID = data['task_id'];
+                if(typeof(taskID) === 'string') {
+                    poll_status(taskID, function(data) {
+                        pollImport(data);
+                    },
+                    function(data) {
+                        pollImport(data);
+                    }, 1000);
+                } else {
+                    let errorMessage = 'An error occurred while trying to import model "'+modelName+'" to project';
+                    if(typeof(data['message']) === 'string') {
+                        errorMessage += ' (message: "' + data['message'] + '")';
+                    }
+                    errorMessage += '.';
+                    window.messager.addMessage(errorMessage, 'error', 0);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+                if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                    window.messager.addMessage('An error occurred while trying to import model to project (message: "' + error + '").', 'error', 0);
+                }
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return doImportModel();
+                    });
+                }
+            }
+        };
+
+        if(dataType !== null) {
+            ajaxParams['dataType'] = dataType;
+        }
+
+        if(pBar !== null) {
+            let xhrFun = function () {
+                var customXhr = $.ajaxSettings.xhr();
+                if(customXhr.upload) {
+                    customXhr.upload.addEventListener('progress', function(e) {
+                        if(e.lengthComputable) {
+                            if(e.loaded < e.total) {
+                                pBar.set(true, e.loaded, e.total, false);
+                            } else {
+                                pBar.set(false);
+                            }
+                        } else {
+                            pBar.set(false);
+                        }
+                    }, false);
+                }
+                return customXhr;
+            }
+            ajaxParams['xhr'] = xhrFun;
         }
 
         let doImportModel = function() {
             if(modelID === undefined) return $.Deferred().promise();
 
-            function _pollImport(data) {
-                let success = 'success';
-                let message = '';
-                if(data['status'] !== 0) {
-                    success = 'error';
-                    message = 'An error occurred while trying to import model "'+modelName+'" to project';
-                    if(data['message'] !== undefined) {
-                        message += ' (message: "'+data['message'] + '")';
-                    }
-                    message += '.';
-                } else {
-                    message = 'Model "'+modelName+'" imported successfully.';
-                }
-                if(message.length > 0)
-                    window.messager.addMessage(message, success, (success === 'success' ? undefined : 0));
-                else
-                    window.messager.addMessage('An unknown error occurred while trying to import model "'+modelName+'" to project.', 'error', 0);
-                loadData();
-            }
-
-            return $.ajax({
-                url: window.baseURL + 'importModel',
-                method: 'POST',
-                contentType: 'application/json; charset=utf-8',
-                dataType: 'json',
-                data: JSON.stringify({model_id: modelID}),
-                success: function(data) {
-                    let taskID = data['task_id'];
-                    if(typeof(taskID) === 'string') {
-                        poll_status(taskID, function(data) {
-                            _pollImport(data);
-                        },
-                        function(data) {
-                            _pollImport(data);
-                        }, 1000);
-                    } else {
-                        //TODO: error message
-                        console.error(error);
-                        window.messager.addMessage('An error occurred while trying to import model "'+modelName+'" to project', 'error', 0);
-                    }
-                },
-                error: function(xhr, status, error) {
-                    console.error(error);
-                    if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
-                        window.messager.addMessage('An error occurred while trying to import model to project (message: "' + error + '").', 'error', 0);
-                    }
-                },
-                statusCode: {
-                    401: function(xhr) {
-                        return window.renewSessionRequest(xhr, function() {
-                            return doImportModel();
-                        });
-                    }
-                }
-            });
+            return $.ajax(ajaxParams);
         }
 
+        // prompt for confirmation, then start the work
         window.showYesNoOverlay($('<div>Proceeding will import the selected model to the project and make it the starting point for future workflows in that project.<br />Are you sure?</div>'),
             doImportModel, null, 'Import', 'Cancel', 'btn-primary', 'btn-secondary', false, false);
     }
 
-    function startWebImport() {
-        let modelURL = $('#web-import-url-field').val();
-        try {
-            new URL(modelURL);
-        } catch {
-            //TODO: show red highlight around URL field instead?
-            window.messager.addMessage('"' + modelURL + '" is not a valid URL.', 'error');
-            return $.Deferred().promise();
-        }
-
-        return $.ajax({
-                url: window.baseURL + 'importModel',
-                method: 'POST',
-                contentType: 'application/json; charset=utf-8',
-                dataType: 'json',
-                data: JSON.stringify({model_id: modelURL}),
-                success: function(data) {
-                    let success = 'success';
-                    let message = '';
-                    if(data['status'] !== 0) {
-                        success = 'error';
-                        message = 'An error occurred trying to import model from URL "'+modelURL+'" to project';
-                        if(data['message'] !== undefined) {
-                            message += ' (message: "'+data['message'] + '")';
-                        }
-                        message += '.';
-                    } else {
-                        message = 'Model from URL "'+modelURL+'" imported successfully.';
-                    }
-                    if(message.length > 0)
-                        window.messager.addMessage(message, success, (success === 'success' ? undefined : 0));
-                    else
-                        window.messager.addMessage('An unknown error occurred trying to import model from URL "'+modelURL+'" to project', 'error', 0);
-                    loadData();
-                },
-                error: function(xhr, status, error) {
-                    console.error(error);
-                    if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
-                        window.messager.addMessage('An error occurred while trying to import model to project (message: "' + error + '").', 'error', 0);
-                    }
-                },
-                statusCode: {
-                    401: function(xhr) {
-                        return window.renewSessionRequest(xhr, function() {
-                            return startWebImport();
-                        });
-                    }
-                }
-            });
-    }
 
     function requestModelDownload(source) {
         let modelID = undefined;
@@ -1224,9 +1377,13 @@
                         _pollForDownloadLink(data, taskID, false);
                     }, 1000);
                 } else {
-                    //TODO: error message
                     console.error(error);
-                    window.messager.addMessage('An error occurred while trying to request model download.', 'error', 0);
+                    let errorMessage = 'An error occurred while trying to request model download';
+                    if(typeof(data['message']) === 'string') {
+                        errorMessage += ' (message: "' + data['message'] + '")';
+                    }
+                    errorMessage += '.';
+                    window.messager.addMessage(errorMessage, 'error', 0);
                 }
                 
             },
@@ -1441,8 +1598,56 @@
             requestModelDownload('project');
         });
 
-        $('#start-web-import').on('click', function() {
+        $('#web-import-start').on('click', function() {
             importModelToProject('url');
+        });
+        $('#file-upload-start').on('click', function() {
+            importModelToProject('disk');
+        });
+
+        // name policy
+        function _check_custom_name(importType) {
+            let name = $('#'+importType+'-model-rename-to').val();
+            let errorFieldHandle = $('#'+importType+'-model-rename-error');
+            let importButtonHandle = $('#'+importType+'-start');
+            return $.ajax({
+                url: window.baseURL + 'getModelMarketplaceNameAvailable?name=' + name,
+                method: 'GET',
+                success: function(data) {
+                    if(data['available']) {
+                        $(errorFieldHandle).hide();
+                        $(importButtonHandle).prop('disabled', false);
+                    } else {
+                        $(errorFieldHandle).html('name unavailable');
+                        $(errorFieldHandle).show();
+                        $(importButtonHandle).prop('disabled', true);
+                    }
+                }
+            });
+        }
+        function _check_rename_policy(importType) {
+            let namePolicy = $('#'+importType+'-model-rename-mode input[type=radio]:checked').val();
+            let renameField = $('#'+importType+'-model-rename-to');
+            if(namePolicy === 'rename') {
+                $(renameField).prop('disabled', false);
+                return _check_custom_name(importType);
+            } else {
+                $(renameField).prop('disabled', true);
+                $('#'+importType+'-start-import').prop('disabled', false);
+            }
+        }
+        
+        $('#web-import-model-rename-to').on('input', function() {
+            _check_custom_name('web-import');
+        });
+        $('#file-upload-model-rename-to').on('input', function() {
+            _check_custom_name('file-upload');
+        });
+        $('#web-import-model-rename-mode').on('change', function() {
+            _check_rename_policy('web-import');
+        });
+        $('#file-upload-model-rename-mode').on('change', function() {
+            _check_rename_policy('file-upload');
         });
 
         // search and filter

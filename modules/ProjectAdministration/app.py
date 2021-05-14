@@ -269,6 +269,42 @@ class ProjectConfigurator:
                 abort(400, str(e))
 
         
+        @self.app.get('/<project>/getModelClassMapping')
+        def get_model_to_project_class_mapping(project):
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+            try:
+                # parse AI model state ID if provided
+                try:
+                    aiModelID = request.params.get('modelID')
+                except:
+                    aiModelID = None
+                response = self.middleware.getModelToProjectClassMapping(project, aiModelID)
+                return {
+                    'status': 0,
+                    'response': response
+                }
+
+            except Exception as e:
+                abort(400, str(e))
+
+            
+        @self.app.post('/<project>/saveModelClassMapping')
+        def save_model_to_project_class_mapping(project):
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+            try:
+                params = request.json
+                mapping = params['mapping']
+                status = self.middleware.saveModelToProjectClassMapping(project, mapping)
+                return {
+                    'status': status
+                }
+
+            except Exception as e:
+                abort(400, str(e))
+
+        
         @self.app.post('/<project>/renewSecretToken')
         def renew_secret_token(project):
             if not self.loginCheck(project=project, admin=True):

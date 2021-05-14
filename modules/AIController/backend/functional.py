@@ -296,9 +296,9 @@ class AIControllerWorker:
             sql.SQL('''
                 {aiModelUpdateStr};
                 INSERT INTO {id_cnnstate} (model_library, alCriterion_library, timeCreated,
-                stateDict, stats, partial, marketplace_origin_id)
+                stateDict, stats, partial, marketplace_origin_id, imported_from_marketplace)
                 SELECT model_library, alCriterion_library, NOW(),
-                    stateDict, stats, FALSE, NULL
+                    stateDict, stats, FALSE, NULL, imported_from_marketplace
                     FROM {id_cnnstate}
                     WHERE id = %s
                 RETURNING id;

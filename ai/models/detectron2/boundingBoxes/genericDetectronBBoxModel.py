@@ -17,7 +17,7 @@ from ai.models.detectron2._functional.dataset import getDetectron2Data
 class GenericDetectron2BoundingBoxModel(GenericDetectron2Model):
 
 
-    def calculateClassCorrelations(self, model, modelClasses, targetClasses, updateStateFun, maxNumImages=None):
+    def calculateClassCorrelations(self, model, labelclassMap, modelClasses, targetClasses, updateStateFun, maxNumImages=None):
         '''
             Implementation for bounding box models.
             Here, the correlation c between a predicted p and target t box
@@ -26,7 +26,7 @@ class GenericDetectron2BoundingBoxModel(GenericDetectron2Model):
 
         '''
         #TODO: safety checks; update state fun; etc.
-        
+        correlations = torch.zeros(len(targetClasses), len(modelClasses))
 
         # query data
         queryArgs = [tuple((l,) for l in targetClasses)]
@@ -49,6 +49,10 @@ class GenericDetectron2BoundingBoxModel(GenericDetectron2Model):
             limitStr=limitStr
         )
         result = self.dbConnector.execute(queryStr, tuple(queryArgs), 'all')
+        if result is None or not len(result):
+            # no images found; cannot calculate class correlations
+            return correlations
+
         imgDict = {}
         for r in result:
             imgID = r['image']
@@ -64,7 +68,6 @@ class GenericDetectron2BoundingBoxModel(GenericDetectron2Model):
         }
 
         # prepare result vector
-        correlations = torch.zeros(len(targetClasses), len(modelClasses))
         counts = correlations.clone()
 
         # prepare data loader
@@ -72,7 +75,7 @@ class GenericDetectron2BoundingBoxModel(GenericDetectron2Model):
 
         datasetMapper = Detectron2DatasetMapper(self.project, self.fileServer, transforms, False)
         dataLoader = build_detection_test_loader(
-            dataset=getDetectron2Data(data, False, False),
+            dataset=getDetectron2Data(data, labelclassMap, {}, False, False),
             mapper=datasetMapper,
             num_workers=0
         )

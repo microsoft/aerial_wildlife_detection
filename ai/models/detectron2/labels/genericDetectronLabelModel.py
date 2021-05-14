@@ -14,7 +14,7 @@ from ai.models.detectron2._functional.dataset import getDetectron2Data
 
 class GenericDetectron2LabelModel(GenericDetectron2Model):
 
-    def calculateClassCorrelations(self, model, modelClasses, targetClasses, updateStateFun, maxNumImages=None):
+    def calculateClassCorrelations(self, model, labelclassMap, modelClasses, targetClasses, updateStateFun, maxNumImages=None):
         '''
             Class correlation implementation for image label prediction models.
         '''
@@ -64,7 +64,7 @@ class GenericDetectron2LabelModel(GenericDetectron2Model):
 
         datasetMapper = Detectron2DatasetMapper(self.project, self.fileServer, transforms, False)
         dataLoader = build_detection_test_loader(
-            dataset=getDetectron2Data(data, False, False),
+            dataset=getDetectron2Data(data, labelclassMap, {}, False, False),
             mapper=datasetMapper,
             num_workers=0
         )

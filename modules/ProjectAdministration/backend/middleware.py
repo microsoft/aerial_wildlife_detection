@@ -11,6 +11,7 @@ import secrets
 import json
 import uuid
 from datetime import datetime
+from collections.abc import Iterable
 import requests
 from psycopg2 import sql
 from bottle import request
@@ -420,6 +421,7 @@ class ProjectConfigMiddleware:
                 id_labelclass=sql.Identifier(shortname, 'labelclass'),
                 id_annotation=sql.Identifier(shortname, 'annotation'),
                 id_cnnstate=sql.Identifier(shortname, 'cnnstate'),
+                id_modellc=sql.Identifier(shortname, 'model_labelclass'),
                 id_prediction=sql.Identifier(shortname, 'prediction'),
                 id_workflow=sql.Identifier(shortname, 'workflow'),
                 id_workflowHistory=sql.Identifier(shortname, 'workflowhistory'),
@@ -736,6 +738,88 @@ class ProjectConfigMiddleware:
         self.dbConnector.insert(queryStr, lcdata)
 
         return True
+
+    
+
+    def getModelToProjectClassMapping(self, project, aiModelID=None):
+        '''
+            Returns a dict of tuples of tuples (AI model label class name,
+            project label class ID), organized by AI model library.
+            These label class mappings are used to translate from AI model
+            state class predictions from the Model Marketplace to label class
+            IDs present in the current project.
+            If "aiModelID" is provided (str or Iterable of str), only
+            definitions for the provided AI model libraries are returned.
+        '''
+        if aiModelID is None or not isinstance(aiModelID, Iterable):
+            libStr = sql.SQL('')
+        else:
+            if isinstance(aiModelID, str):
+                aiModelID = (uuid.UUID(aiModelID),)
+            elif isinstance(aiModelID, uuid.UUID):
+                aiModelID = (aiModelID,)
+            elif isinstance(aiModelID, Iterable):
+                aiModelID = list(aiModelID)
+                for aIdx in range(len(aiModelID)):
+                    if not isinstance(aiModelID[aIdx], uuid.UUID):
+                        aiModelID[aIdx] = uuid.UUID(aiModelID)
+            libStr = sql.SQL('WHERE marketplace_origin_id IN (%s)')
+        
+        response = {}
+        result = self.dbConnector.execute(sql.SQL(
+            'SELECT * FROM {id_modellc} {libStr};'
+        ).format(
+            id_modellc=sql.Identifier(project, 'model_labelclass'),
+            libStr=libStr
+        ), aiModelID, 'all')
+        if result is not None and len(result):
+            for r in result:
+                modelID = str(r['marketplace_origin_id'])
+                if modelID not in response:
+                    response[modelID] = []
+                lcProj = (str(r['labelclass_id_project']) if r['labelclass_id_project'] is not None else None)
+                response[modelID].append((r['labelclass_id_model'], r['labelclass_name_model'], lcProj))
+        return response
+
+
+    
+    def saveModelToProjectClassMapping(self, project, mapping):
+        '''
+            Receives a dict of tuples of tuples, organized by AI model library, and saves
+            the information in the database.
+            NOTE: all previous rows in the database for the given AI model
+            library entries are deleted prior to insertion of the new values.
+        '''
+        # assemble arguments
+        aiModelIDs = set()
+        values = []
+        for aiModelID in mapping.keys():
+            aiModelIDs.add(uuid.UUID(aiModelID))
+            nextMap = mapping[aiModelID]
+            for row in nextMap:
+                # tuple order in map: (source class ID, source class name, target class ID)
+                sourceID = row[0]
+                sourceName = row[1]
+                targetID = (uuid.UUID(row[2]) if isinstance(row[2], str) else None)
+                values.append((uuid.UUID(aiModelID), sourceID, sourceName, targetID))
+        
+        # perform insertion
+        self.dbConnector.insert(sql.SQL('''
+            DELETE FROM {id_modellc} WHERE
+            marketplace_origin_id IN %s;
+        ''').format(
+            id_modellc=sql.Identifier(project, 'model_labelclass')
+        ),
+        (tuple(aiModelIDs),))
+        self.dbConnector.insert(sql.SQL('''
+            INSERT INTO {id_modellc} (marketplace_origin_id, labelclass_id_model, labelclass_name_model,
+            labelclass_id_project)
+            VALUES %s;
+        ''').format(
+            id_modellc=sql.Identifier(project, 'model_labelclass')
+        ),
+        tuple(values))
+        return 0
 
 
 

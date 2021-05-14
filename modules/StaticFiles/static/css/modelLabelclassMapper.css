@@ -1,0 +1,22 @@
+.labelclass-mapper-table {
+    border-collapse: unset;
+}
+.labelclass-mapper-table thead {
+    display: block;
+}
+.labelclass-mapper-table tbody {
+    display: block;
+    max-height: 630px;
+    overflow-y: auto;
+}
+.labelclass-filter-field, .labelclass-mapper-table td, .labelclass-mapper-table th, .labelclass-auto-assign-button {
+    width: 200px;
+}
+.labelclass-mapper-table td:nth-child(2), .labelclass-mapper-table th:nth-child(2) {
+    border-spacing: 40px 0px;
+}
+.label-auto-switch-disclaimer {
+    font-style: italic;
+    margin-left: 20px;
+    margin-bottom: 0;
+}

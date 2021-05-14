@@ -8,17 +8,19 @@
     2020-21 Benjamin Kellenberger
 '''
 
+import copy
 from detectron2.structures import BoxMode
 
 
-def getDetectron2Data(aideData, ignoreUnsure=False, filterEmpty=False):
-    # create labelclassMap first
-    labelclassMap = {}
-    idx = 0
-    for lcID in aideData['labelClasses']:
-        if lcID not in labelclassMap:
-            labelclassMap[lcID] = idx       #NOTE: we do not use the labelclass' serial 'idx', since this might contain gaps
-            idx += 1
+def getDetectron2Data(aideData, labelclassMap, projectToStateMap={}, ignoreUnsure=False, filterEmpty=False):
+    # merge mappings of model state and model-to-project specifier
+    labelclassMap = copy.deepcopy(labelclassMap)
+    if isinstance(projectToStateMap, dict):
+        for key in projectToStateMap.keys():
+            target = projectToStateMap[key]
+            if target in labelclassMap:
+                targetIdx = labelclassMap[target]
+                labelclassMap[key] = targetIdx
 
     # parse over entries
     dataset_dicts = []
@@ -65,15 +67,17 @@ def getDetectron2Data(aideData, ignoreUnsure=False, filterEmpty=False):
                         # unknown label class
                         unknownClasses.add(anno['label'])
                         continue
-                    record['gt_label'] = labelclassMap[anno['label']]
+                    else:
+                        record['gt_label'] = labelclassMap[anno['label']]
                     break
                 if 'label' in anno:
                     # labels for instances
                     if anno['label'] not in labelclassMap:
-                        # unknown label class; ignore for now
+                        # unknown label class
                         unknownClasses.add(anno['label'])
                         continue
-                    obj['category_id'] = labelclassMap[anno['label']]
+                    else:
+                        obj['category_id'] = labelclassMap[anno['label']]
                 if len(obj):
                     annotations.append(obj)
         
@@ -87,6 +91,6 @@ def getDetectron2Data(aideData, ignoreUnsure=False, filterEmpty=False):
         dataset_dicts.append(record)
     
     if len(unknownClasses):
-        print('WARNING: encountered unknown label classes: {}'.format(', '.join(list(unknownClasses))))
+        print('WARNING: encountered unknown label classes: {}'.format(', '.join([str(u) for u in unknownClasses])))
     
     return dataset_dicts

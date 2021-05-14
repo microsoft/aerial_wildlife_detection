@@ -55,12 +55,15 @@ class FasterRCNN(GenericDetectron2BoundingBoxModel):
             For now, only the smallest existing class weights are used
             and duplicated.
         '''
-        model, stateDict, newClasses = self.initializeModel(stateDict, data)
+        model, stateDict, newClasses, projectToStateMap = self.initializeModel(stateDict, data)
         assert self.detectron2cfg.MODEL.META_ARCHITECTURE == 'GeneralizedRCNN', \
             f'ERROR: model meta-architecture "{self.detectron2cfg.MODEL.META_ARCHITECTURE}" is not a Faster R-CNN instance.'
 
         # modify model weights to accept new label classes      #TODO: current implementation below causes loss to go to infinity...
         if len(newClasses):
+
+            # create temporary labelclassMap for new classes
+            lcMap_new = dict(zip(newClasses, list(range(len(newClasses)))))
 
             # create vector of label classes
             classVector = len(stateDict['labelclassMap']) * [None]
@@ -84,7 +87,7 @@ class FasterRCNN(GenericDetectron2BoundingBoxModel):
                 bbox_biases_copy = bbox_biases.clone()
 
                 modelClasses = range(len(class_biases))
-                correlations = self.calculateClassCorrelations(model, modelClasses, newClasses, updateStateFun, 128)    #TODO: num images
+                correlations = self.calculateClassCorrelations(model, lcMap_new, modelClasses, newClasses, updateStateFun, 128)    #TODO: num images
                 correlations = correlations[:,:-1].to(class_weights.device)      # exclude background class
 
                 classMatches = (correlations.sum(1) > 0)            #TODO: calculate alternative strategies (e.g. class name similarities)
@@ -133,23 +136,23 @@ class FasterRCNN(GenericDetectron2BoundingBoxModel):
                     classVector.insert(0, newClasses[cl])
 
             # remove old classes
-            classmap_updated = {}
-            valid_cls = torch.ones(len(class_biases), dtype=torch.bool)
-            valid_box = torch.ones(len(bbox_biases), dtype=torch.bool)
+            # valid_cls = torch.ones(len(class_biases), dtype=torch.bool)
+            # valid_box = torch.ones(len(bbox_biases), dtype=torch.bool)
             classMap_updated = {}
             index_updated = 0
             for idx, clName in enumerate(classVector):
-                if clName not in data['labelClasses']:
-                    valid_cls[idx] = 0
-                    valid_box[(idx*4):(idx+1)*4] = 0
-                else:
+                # if clName not in data['labelClasses']:
+                #     valid_cls[idx] = 0
+                #     valid_box[(idx*4):(idx+1)*4] = 0
+                # else:
+                if True:    # we don't remove old classes anymore (TODO: flag in configuration)
                     classMap_updated[clName] = index_updated
                     index_updated += 1
             
-            class_weights = class_weights[valid_cls,:]
-            class_biases = class_biases[valid_cls]
-            bbox_weights = bbox_weights[valid_box,:]
-            bbox_biases = bbox_biases[valid_box]
+            # class_weights = class_weights[valid_cls,:]
+            # class_biases = class_biases[valid_cls]
+            # bbox_weights = bbox_weights[valid_box,:]
+            # bbox_biases = bbox_biases[valid_box]
 
             # apply updated weights and biases
             model.roi_heads.box_predictor.cls_score.weight = torch.nn.Parameter(class_weights)
@@ -161,8 +164,6 @@ class FasterRCNN(GenericDetectron2BoundingBoxModel):
             stateDict['labelclassMap'] = classMap_updated
 
             print(f'[{self.project}] Neurons for {len(newClasses)} new label classes added to Faster R-CNN model.')
-        
-        #TODO: remove superfluous?
 
         # finally, update model and config
         stateDict['detectron2cfg'].MODEL.ROI_HEADS.NUM_CLASSES = len(stateDict['labelclassMap'])
@@ -180,17 +181,18 @@ if __name__ == '__main__':
     from detectron2.modeling.meta_arch.rcnn import GeneralizedRCNN
 
     # meta data
-    project = 'test'
+    project = 'test2'
 
     # set up parts of AIDE
     import os
     os.environ['AIDE_CONFIG_PATH'] = 'aide_settings.ini'
     os.environ['AIDE_MODULES'] = ''
 
+    from uuid import UUID
     from util.configDef import Config
     from modules.AIController.backend.functional import AIControllerWorker
     from modules.AIWorker.backend.fileserver import FileServer
-    from modules.AIWorker.backend.worker.functional import __load_metadata
+    from modules.AIWorker.backend.worker.functional import __load_metadata, __load_model_state
     from modules.Database.app import Database
 
     config = Config()
@@ -201,7 +203,11 @@ if __name__ == '__main__':
     data = aicw.get_training_images(
         project=project,
         maxNumImages=512)
-    data = __load_metadata(project, database, data[0], True)
+    
+
+    _, _, modelID, _ = __load_model_state(project, 'ai.models.detectron2.FasterRCNN', database)
+    
+    data = __load_metadata(project, database, data[0], True, modelID)
 
     def updateStateFun(state, message, done=None, total=None):
         print(f'{message}: {done}/{total}')
@@ -209,5 +215,6 @@ if __name__ == '__main__':
 
     # launch model
     rn = FasterRCNN(project, config, database, fileServer, None)
-    stateDict = rn.update_model(None, data, updateStateFun)
-    rn.inference(stateDict, data, updateStateFun)
+    stateDict = rn.train(None, data, updateStateFun)
+    # stateDict = rn.update_model(None, data, updateStateFun)
+    rn.inference(None, data, updateStateFun)

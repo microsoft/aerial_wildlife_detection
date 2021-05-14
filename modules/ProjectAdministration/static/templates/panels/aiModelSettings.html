@@ -79,6 +79,7 @@
         <span id="ai-model-class-author"></span>
         <p id="ai-model-class-descr"></p>
 
+        <!-- model options -->
         <div>Default model options:</div>
         <div id="default-ai-model-options-engine"></div>
         <div>
@@ -86,6 +87,10 @@
             <button id="load-ai-model-options" class="btn btn-sm btn-dark">Load model defaults</button>
             <button id="verify-ai-model-options" class="btn btn-sm btn-secondary" style="float:right">Verify</button>
         </div>
+
+        <!-- labelclass mapping -->
+        <div style="margin-top:40px">Labelclass mapping:</div>
+        <div id="ai-model-labelclass-mapping"></div>
     </div>
 
     <h3>Ranking criterion</h3>
@@ -112,6 +117,7 @@
     </div>
 </div>
 <link rel="stylesheet" href="/static/general/css/optionsEngine.css?v={{ version }}" />
+<link rel="stylesheet" href="/static/general/css/modelLabelclassMapper.css?v={{ version }}" />
 <style>
     textarea {
         width: 100%;
@@ -158,6 +164,7 @@
     }
 </style>
 <script src="/static/general/js/optionsEngine.js?v={{ version }}"></script>
+<script src="/static/general/js/modelLabelclassMapper.js?v={{ version }}"></script>
 <script type="text/javascript">
     // helper function
     function getInt(value, fallback, min, max) {
@@ -593,6 +600,11 @@
             });
         });
 
+        // label class mapping
+        p = p.then(function() {
+            return window.lcMapper.saveData();
+        });
+
         return p.then(function() {
             if(typeof(window.setupWorkflowMonitor) === 'function') {
                 window.setupWorkflowMonitor();
@@ -602,6 +614,13 @@
         });
     }
 
+    function setupLabelclassMapper() {
+        window.lcMapper = new ModelLabelclassMapper(window.project);
+        window.lcMapper.loadData().then(function() {
+            $('#ai-model-labelclass-mapping').append(window.lcMapper.getMarkup());
+        });
+        return $.Deferred().resolve().promise();
+    }
 
 
     $(document).ready(function() {
@@ -628,7 +647,7 @@
         });
 
         promise = promise.then(function() {
-            return initAutotrainAction();
+            return $.when(initAutotrainAction(), setupLabelclassMapper());
         });
 
         // initialize options engine

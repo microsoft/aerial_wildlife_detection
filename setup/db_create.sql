@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS aide_admin.project (
     ai_alCriterion_settings VARCHAR,
     watch_folder_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     watch_folder_remove_missing_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    labelclass_autoupdate BOOLEAN NOT NULL DEFAULT FALSE,
     PRIMARY KEY(shortname)
 );
 
@@ -167,7 +168,7 @@ CREATE TABLE IF NOT EXISTS aide_admin.modelMarketplace (
     alCriterion_library VARCHAR,
     origin_project VARCHAR,
     origin_uuid UUID,
-    origin_uri VARCHAR UNIQUE,
+    origin_uri VARCHAR,
     public BOOLEAN NOT NULL DEFAULT TRUE,
     anonymous BOOLEAN NOT NULL DEFAULT FALSE,
     selectCount INTEGER NOT NULL DEFAULT 0,

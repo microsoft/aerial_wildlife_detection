@@ -10,12 +10,14 @@
     2020-21 Benjamin Kellenberger
 '''
 
+from util.helpers import parse_boolean
 import uuid
 import html
 from bottle import static_file, request, abort
 from .backend.middleware import ModelMarketplaceMiddleware
 from .backend.marketplaceWorker import ModelMarketplaceWorker
 from util.cors import enable_cors
+from util.helpers import parse_boolean
 
 
 class ModelMarketplace:
@@ -48,8 +50,32 @@ class ModelMarketplace:
             
             try:
                 username = html.escape(request.get_cookie('username'))
-                modelStates = self.middleware.getModelsMarketplace(project, username)
+
+                try:
+                    modelIDs = request.params.get('model_ids')
+                    if isinstance(modelIDs, str) and len(modelIDs):
+                        modelIDs = modelIDs.split(',')
+                    else:
+                        modelIDs = None
+                except:
+                    modelIDs = None
+
+                modelStates = self.middleware.getModelsMarketplace(project, username, modelIDs)
                 return {'modelStates': modelStates}
+            except Exception as e:
+                return {'status': 1, 'message': str(e)}
+
+        
+        @self.app.get('/<project>/getModelMarketplaceNameAvailable')
+        def get_model_marketplace_name_available(project):
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+            
+            try:
+                modelName = request.params.get('name')
+                
+                available = (self.middleware.getModelIdByName(modelName) is None)
+                return {'status': 0, 'available': available}
             except Exception as e:
                 return {'status': 1, 'message': str(e)}
 
@@ -62,16 +88,36 @@ class ModelMarketplace:
             try:
                 # get data
                 username = html.escape(request.get_cookie('username'))
-                modelID = request.json['model_id']
-                try:
-                    modelID = uuid.UUID(modelID)
 
-                    # modelID is indeed a UUID; import from database
-                    return self.middleware.importModelDatabase(project, username, modelID)
+                if request.json is not None:
 
-                except:
-                    # model comes from file or network
-                    return self.middleware.importModelURI(project, username, modelID)
+                    modelID = request.json['model_id']
+                    try:
+                        modelID = uuid.UUID(modelID)
+
+                        # modelID is indeed a UUID; import from database
+                        return self.middleware.importModelDatabase(project, username, modelID)
+
+                    except:
+                        # model comes from network
+                        public = request.json.get('public', True)
+                        anonymous = request.json.get('anonymous', False)
+
+                        namePolicy = request.json.get('name_policy', 'skip')
+                        customName = request.json.get('custom_name', None)
+
+                        return self.middleware.importModelURI(project, username, modelID, public, anonymous, namePolicy, customName)
+                
+                else:
+                    # file upload
+                    file = request.files.get(list(request.files.keys())[0])
+                    public = parse_boolean(request.params.get('public', True))
+                    anonymous = parse_boolean(request.params.get('anonymous', False))
+
+                    namePolicy = request.params.get('name_policy', 'skip')
+                    customName = request.params.get('custom_name', None)
+
+                    return self.middleware.importModelFile(project, username, file, public, anonymous, namePolicy, customName)
 
             except Exception as e:
                 return {'status': 1, 'message': str(e)}
@@ -113,10 +159,10 @@ class ModelMarketplace:
                 username = html.escape(request.get_cookie('username'))
                 modelID = request.json['model_id']
                 modelName = request.json['model_name']
-                modelDescription = request.json['model_description']
-                tags = request.json['tags']
-                public = request.json['public']
-                anonymous = request.json['anonymous']
+                modelDescription = request.json.get('model_description', '')
+                tags = request.json.get('tags', [])
+                public = request.json.get('public', True)
+                anonymous = request.json.get('anonymous', False)
                 result = self.middleware.shareModel(project, username,
                                                     modelID, modelName, modelDescription, tags,
                                                     public, anonymous)
