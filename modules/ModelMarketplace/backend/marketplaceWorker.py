@@ -459,15 +459,6 @@ class ModelMarketplaceWorker:
         # proceed with file import
         return self.importModelFile(project, username, modelState, modelURI, public, anonymous, namePolicy, customName)
 
-        # try:
-        #     modelState = json.load(modelState)  #TODO: was .loads with decode
-        # except Exception as e:
-        #     raise Exception(f'Model state is not a valid AIDE JSON file (message: "{str(e)}").')
-
-        # # parse and import model state into database
-        # return self._import_model_state_file(project, modelURI, modelState, None)   #TODO: allow zip files
-
-
 
 
     def importModelFile(self, project, username, file, fileName, public=True, anonymous=False, namePolicy='skip', customName=None):

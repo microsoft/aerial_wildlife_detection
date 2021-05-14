@@ -91,7 +91,7 @@ class ModelMarketplace:
 
                 if request.json is not None:
 
-                    modelID = request.json['model_id']
+                    modelID = str(request.json['model_id'])
                     try:
                         modelID = uuid.UUID(modelID)
 
@@ -106,7 +106,9 @@ class ModelMarketplace:
                         namePolicy = request.json.get('name_policy', 'skip')
                         customName = request.json.get('custom_name', None)
 
-                        return self.middleware.importModelURI(project, username, modelID, public, anonymous, namePolicy, customName)
+                        forceReimport = not(modelID.strip().lower().startswith('aide://'))
+
+                        return self.middleware.importModelURI(project, username, modelID, public, anonymous, forceReimport, namePolicy, customName)
                 
                 else:
                     # file upload

@@ -1628,7 +1628,7 @@
         function _check_rename_policy(importType) {
             let namePolicy = $('#'+importType+'-model-rename-mode input[type=radio]:checked').val();
             let renameField = $('#'+importType+'-model-rename-to');
-            if(namePolicy === 'rename') {
+            if(namePolicy === 'custom') {
                 $(renameField).prop('disabled', false);
                 return _check_custom_name(importType);
             } else {

@@ -33,8 +33,8 @@ def import_model_database(modelID, project, username):
 
 
 @current_app.task(name='ModelMarketplace.importModelURI')
-def import_model_uri(project, username, modelURI, public=True, anonymous=False, namePolicy='skip', customName=None):
-    return worker.importModelURI(project, username, modelURI, public, anonymous, namePolicy, customName)
+def import_model_uri(project, username, modelURI, public=True, anonymous=False, forceReimport=True, namePolicy='skip', customName=None):
+    return worker.importModelURI(project, username, modelURI, public, anonymous, forceReimport, namePolicy, customName)
 
 
 @current_app.task(name='ModelMarketplace.requestModelDownload')

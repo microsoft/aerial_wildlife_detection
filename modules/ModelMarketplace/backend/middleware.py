@@ -274,7 +274,7 @@ class ModelMarketplaceMiddleware:
 
 
 
-    def importModelURI(self, project, username, modelURI, public=True, anonymous=False, namePolicy='skip', customName=None):
+    def importModelURI(self, project, username, modelURI, public=True, anonymous=False, forceReimport=True, namePolicy='skip', customName=None):
         '''
             Tries to retrieve a model from a given URI (either with prefix "aide://" for
             local models or URL for Web imports) and, if successful, adds it to the
@@ -287,7 +287,7 @@ class ModelMarketplaceMiddleware:
         '''
         process = celery.chain(
             celery_interface.import_model_uri.si(project, username, modelURI, public, anonymous,
-                                                    namePolicy, customName),                        # first import to Model Marketplace...
+                                                    forceReimport, namePolicy, customName),         # first import to Model Marketplace...
             celery_interface.import_model_database.s(project, username)                             # ...and then to the project
         )
         taskID = self.taskCoordinator.submitJob(project, username, process, 'ModelMarketplace')
