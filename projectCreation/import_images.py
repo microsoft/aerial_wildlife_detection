@@ -83,7 +83,10 @@ if __name__ == '__main__':
     imgs_existing = dbConn.execute(sql.SQL('''
         SELECT filename FROM {};
     ''').format(sql.Identifier(project, 'image'), None, 'all')
-    imgs_existing = set([i['filename'] for i in imgs_existing])
+    if imgs_existing is not None:
+        imgs_existing = set([i['filename'] for i in imgs_existing])
+    else:
+        imgs_existing = set()
 
     imgs = list(imgs.difference(imgs_existing))
     imgs = [(i,) for i in imgs]
