@@ -45,7 +45,10 @@
         <script type="text/javascript" src="/static/interface/js/util.js?v={{ version }}"></script>
         <script type="text/javascript">
 
+            window.baseURL = '/{{ projectShortname }}/';
+            window.project = '{{ projectShortname }}';
             window.projectShortname = '{{ projectShortname }}';
+            window.user = '{{ username }}';
             selectedPanel = null;
 
             function parseURLparameter(name) {
