@@ -41,13 +41,9 @@ if __name__ == '__main__':
     if not 'AIDE_CONFIG_PATH' in os.environ:
         os.environ['AIDE_CONFIG_PATH'] = str(args.settings_filepath)
     
-    import glob
-    from tqdm import tqdm
-    import datetime
     import numpy as np
     from PIL import Image
     import base64
-    from io import BytesIO
     from util.configDef import Config
     from modules import Database
 
