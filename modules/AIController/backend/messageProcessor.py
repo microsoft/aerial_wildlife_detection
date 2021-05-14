@@ -24,7 +24,6 @@ from threading import Thread, Event
 import time
 from datetime import datetime
 import celery
-import kombu.five
 from util.helpers import current_time
 
 
@@ -61,29 +60,6 @@ class MessageProcessor(Thread):
             yield nodes.parent
             nodes = nodes.parent
         yield nodes
-
-
-    # def __add_worker_task(self, task):
-    #     project = task['kwargs']['project']
-    #     if not project in self.messages:
-    #         self.messages[project] = {}
-
-    #     result = AsyncResult(task['id'])
-    #     if not task['id'] in self.messages[project]:
-    #         try:
-    #             timeSubmitted = datetime.fromtimestamp(time.time() - (kombu.five.monotonic() - task['time_start']))
-    #         except:
-    #             timeSubmitted = current_time() #TODO: dirty hack to make failsafe with UI
-    #         self.messages[project][task['id']] = {
-    #             'type': ('train' if 'train' in task['name'] else 'inference'),        #TODO
-    #             'submitted': str(timeSubmitted),
-    #             'status': celery.states.PENDING,
-    #             'meta': {'message':'job at worker'}
-    #         }
-
-    #     #TODO: needed?
-    #     if result.ready():
-    #         result.forget()
 
 
 
@@ -284,7 +260,7 @@ class MessageProcessor(Thread):
                     if not taskID in self.messages[project]:
                         # task got lost (e.g. due to server restart); re-add
                         try:
-                            timeSubmitted = datetime.fromtimestamp(time.time() - (kombu.five.monotonic() - t['time_start']))
+                            timeSubmitted = datetime.fromtimestamp(time.time() - (time.monotonic() - t['time_start']))
                         except:
                             timeSubmitted = current_time() #TODO: dirty hack to make failsafe with UI
                         self.messages[project][taskID] = {

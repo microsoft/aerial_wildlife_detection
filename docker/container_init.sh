@@ -30,7 +30,7 @@ echo ""
 echo "=========================="
 echo "RABBITMQ SETUP IS STARTING"
 echo "=========================="
-# I need to set rabitmq user and permissions here, as it takes hostname (dynamic) during build of previous phases as part of config folder :-()
+# I need to set rabbitmq user and permissions here, as it takes hostname (dynamic) during build of previous phases as part of config folder :-()
 RMQ_username=aide
 RMQ_password=password # This should never be left here for any serious use of course
 sudo service rabbitmq-server start

@@ -8,8 +8,8 @@ python-dateutil
 Pillow>=2.2.1
 numpy
 requests
-kombu==4.6.11
-celery[redis,auth,msgpack]==4.4.7
+# kombu==4.6.11
+celery[redis,auth,msgpack]  #==4.4.7
 
 # for the AI backend
 opencv-python

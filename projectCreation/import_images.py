@@ -23,7 +23,7 @@ from util.helpers import VALID_IMAGE_EXTENSIONS, listDirectory
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description='Parse YOLO annotations and import into database.')
+    parser = argparse.ArgumentParser(description='Import images into database.')
     parser.add_argument('--project', type=str,
                     help='Shortname of the project to insert the images into.')
     parser.add_argument('--settings_filepath', type=str, default='config/settings.ini', const=1, nargs='?',
@@ -81,7 +81,10 @@ if __name__ == '__main__':
     imgs_existing = dbConn.execute(sql.SQL('''
         SELECT filename FROM {};
     ''').format(sql.Identifier(project, 'image')), None, 'all')
-    imgs_existing = set([i['filename'] for i in imgs_existing])
+    if imgs_existing is not None:
+        imgs_existing = set([i['filename'] for i in imgs_existing])
+    else:
+        imgs_existing = set()
 
     imgs = list(imgs.difference(imgs_existing))
     imgs = [(i,) for i in imgs]

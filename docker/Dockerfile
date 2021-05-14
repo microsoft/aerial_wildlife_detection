@@ -83,7 +83,7 @@ RUN ln -fs /usr/share/zoneinfo/$LOC_REGION/$LOC_TIMEZONE /etc/localtime \
 RUN sudo apt-get update && sudo apt-get install -y rabbitmq-server \
 # optional: if the port for RabbitMQ is anything else than 5672, execute the following line:
     && port=5672   # replace with your port \
-    && sudo sed -i "s/^\s*#\s*NODE_PORT\s*=.*/NODE_PORT=$port/g" /etc/rabbitmq/rabitmq-env.conf 
+    && sudo sed -i "s/^\s*#\s*NODE_PORT\s*=.*/NODE_PORT=$port/g" /etc/rabbitmq/rabbitmq-env.conf 
     #&& sudo systemctl enable rabbitmq-server.service 
 
 RUN sudo apt-get update && sudo apt-get -y install redis-server \
