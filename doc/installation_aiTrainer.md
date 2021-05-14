@@ -46,7 +46,7 @@ Carry out these steps on the instance running the _AIController_ module:
 
     # optional: if the port for RabbitMQ is anything else than 5672, execute the following line:
     port=5672   # replace with your port
-    sudo sed -i "s/^\s*#\s*NODE_PORT\s*=.*/NODE_PORT=$port/g" /etc/rabbitmq/rabitmq-env.conf
+    sudo sed -i "s/^\s*#\s*NODE_PORT\s*=.*/NODE_PORT=$port/g" /etc/rabbitmq/rabbitmq-env.conf
 
     # start RabbitMQ server
     sudo systemctl enable rabbitmq-server.service
