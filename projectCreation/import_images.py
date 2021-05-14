@@ -12,17 +12,20 @@
        *.ini file).
     3. Call the script from the AIDE code base on the FileServer instance.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 import os
 import argparse
+from psycopg2 import sql
 from util.helpers import valid_image_extensions, listDirectory
 
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description='Parse YOLO annotations and import into database.')
+    parser = argparse.ArgumentParser(description='Import images into database.')
+    parser.add_argument('--project', type=str,
+                    help='Shortname of the project to insert the images into.')
     parser.add_argument('--settings_filepath', type=str, default='config/settings.ini', const=1, nargs='?',
                     help='Manual specification of the directory of the settings.ini file; only considered if environment variable unset (default: "config/settings.ini").')
     args = parser.parse_args()
@@ -47,7 +50,7 @@ if __name__ == '__main__':
     dbConn = Database(config)
     if dbConn.connectionPool is None:
         raise Exception('Error connecting to database.')
-    dbSchema = config.getProperty('Database', 'schema')
+    project = args.project
 
 
     # check if running on file server
@@ -77,9 +80,9 @@ if __name__ == '__main__':
 
     # ignore images that are already in database
     print('Filter images already in database...')
-    imgs_existing = dbConn.execute('''
-        SELECT filename FROM {}.image;
-    '''.format(dbSchema), None, 'all')
+    imgs_existing = dbConn.execute(sql.SQL('''
+        SELECT filename FROM {};
+    ''').format(sql.Identifier(project, 'image'), None, 'all')
     imgs_existing = set([i['filename'] for i in imgs_existing])
 
     imgs = list(imgs.difference(imgs_existing))
@@ -87,10 +90,10 @@ if __name__ == '__main__':
 
     # push image to database
     print('Adding to database...')
-    dbConn.insert('''
-        INSERT INTO {}.image (filename)
+    dbConn.insert(sql.SQL('''
+        INSERT INTO {} (filename)
         VALUES %s;
-    '''.format(dbSchema),
+    ''').format(sql.Identifier(project, 'image'),
     imgs)
 
     print('Done.')
