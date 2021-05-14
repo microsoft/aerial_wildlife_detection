@@ -27,7 +27,6 @@ import uuid
 import html
 import celery
 from celery.result import AsyncResult, GroupResult
-import kombu.five
 from util.helpers import current_time
 
 
@@ -61,7 +60,7 @@ class MessageProcessor(Thread):
         result = AsyncResult(task['id'])
         if not task['id'] in self.messages[project]:
             try:
-                timeSubmitted = datetime.fromtimestamp(time.time() - (kombu.five.monotonic() - task['time_start']))
+                timeSubmitted = datetime.fromtimestamp(time.time() - (time.monotonic() - task['time_start']))
             except:
                 timeSubmitted = current_time() #TODO: dirty hack to make failsafe with UI
             self.messages[project][task['id']] = {
@@ -316,7 +315,7 @@ class MessageProcessor(Thread):
                     if not taskID in self.messages[project]:
                         # task got lost (e.g. due to server restart); re-add
                         try:
-                            timeSubmitted = datetime.fromtimestamp(time.time() - (kombu.five.monotonic() - t['time_start']))
+                            timeSubmitted = datetime.fromtimestamp(time.time() - (time.monotonic() - t['time_start']))
                         except:
                             timeSubmitted = current_time() #TODO: dirty hack to make failsafe with UI
                         self.messages[project][taskID] = {
