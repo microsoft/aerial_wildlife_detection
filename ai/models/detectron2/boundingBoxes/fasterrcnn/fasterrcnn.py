@@ -181,7 +181,7 @@ if __name__ == '__main__':
     from detectron2.modeling.meta_arch.rcnn import GeneralizedRCNN
 
     # meta data
-    project = 'test2'
+    project = 'test'
 
     # set up parts of AIDE
     import os
@@ -205,7 +205,7 @@ if __name__ == '__main__':
         maxNumImages=512)
     
 
-    _, _, modelID, _ = __load_model_state(project, 'ai.models.detectron2.FasterRCNN', database)
+    stateDict, _, modelID, _ = __load_model_state(project, 'ai.models.detectron2.FasterRCNN', database)
     
     data = __load_metadata(project, database, data[0], True, modelID)
 
@@ -215,6 +215,6 @@ if __name__ == '__main__':
 
     # launch model
     rn = FasterRCNN(project, config, database, fileServer, None)
-    stateDict = rn.train(None, data, updateStateFun)
+    stateDict = rn.train(stateDict, data, updateStateFun)
     # stateDict = rn.update_model(None, data, updateStateFun)
     rn.inference(None, data, updateStateFun)

@@ -60,8 +60,8 @@ class GenericDetectron2Model(AIModel):
         # prepare Detectron2 configuration
         self.detectron2cfg = self._get_config()
 
-        # write AIDE configuration values into Detectron2 config
-        self.detectron2cfg = self.parse_aide_config(self.options, self.detectron2cfg)
+        # # write AIDE configuration values into Detectron2 config (TODO: we now do this below)
+        # self.detectron2cfg = self.parse_aide_config(self.options, self.detectron2cfg)
 
 
 
@@ -94,6 +94,7 @@ class GenericDetectron2Model(AIModel):
     
     def _get_config(self):
         cfg = get_cfg()
+        cfg.set_new_allowed(True)
 
         # augment and initialize Detectron2 cfg with selected model
         defaultConfig = optionsHelper.get_hierarchical_value(self.options, ['options', 'model', 'config', 'value', 'id'])
@@ -207,44 +208,29 @@ class GenericDetectron2Model(AIModel):
             stateDict = {}
 
         # retrieve Detectron2 cfg
-        # if 'detectron2cfg' in stateDict and not forceNewModel:            #TODO: we rather give precedence over default config if user changed something
-        #     detectron2cfg = copy.deepcopy(stateDict['detectron2cfg'])
-        # else:
-        detectron2cfg = copy.deepcopy(self.detectron2cfg)
         if 'detectron2cfg' in stateDict and not forceNewModel:
-            # copy over some important parameters
-            try:
-                detectron2cfg.MODEL.ROI_HEADS.NUM_CLASSES = stateDict['detectron2cfg'].MODEL.ROI_HEADS.NUM_CLASSES
-            except:
-                pass
-            try:
-                detectron2cfg.MODEL.RETINANET.NUM_CLASSES = stateDict['detectron2cfg'].MODEL.RETINANET.NUM_CLASSES
-            except:
-                pass
-            try:
-                detectron2cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES = stateDict['detectron2cfg'].MODEL.SEM_SEG_HEAD.NUM_CLASSES
-            except:
-                pass
-            try:
-                detectron2cfg.MODEL.TVCLASSIFIER.NUM_CLASSES = stateDict['detectron2cfg'].MODEL.TVCLASSIFIER.NUM_CLASSES
-            except:
-                pass
-        stateDict['detectron2cfg'] = detectron2cfg
+            # medium priority: model overrides
+            self.detectron2cfg.merge_from_other_cfg(stateDict['detectron2cfg'])
+
+        # top priority: AIDE config overrides
+        self.detectron2cfg = self.parse_aide_config(self.options, self.detectron2cfg)
+
+        stateDict['detectron2cfg'] = self.detectron2cfg
         
         # check if CUDA is available; set to CPU temporarily if not
         if not torch.cuda.is_available():
-            detectron2cfg.MODEL.DEVICE = 'cpu'
+            self.detectron2cfg.MODEL.DEVICE = 'cpu'
 
         # construct model and load state
-        model = detectron2.modeling.build_model(detectron2cfg)
+        model = detectron2.modeling.build_model(self.detectron2cfg)
         checkpointer = DetectionCheckpointerInMem(model)
         if 'model' in stateDict and not forceNewModel:
             # trained weights available
             checkpointer.loadFromObject(stateDict)
         else:
             # fresh model; initialize from Detectron2 weights
-            checkpointer.load(detectron2cfg.MODEL.WEIGHTS)
-
+            checkpointer.load(self.detectron2cfg.MODEL.WEIGHTS)
+        
         # load or create labelclass map
         if 'labelclassMap' in stateDict and not forceNewModel:
             labelclassMap = stateDict['labelclassMap']
@@ -253,7 +239,7 @@ class GenericDetectron2Model(AIModel):
         
             # add existing label classes; any non-UUID entry will be discarded during prediction
             try:
-                pretrainedDataset = detectron2cfg.DATASETS.TRAIN
+                pretrainedDataset = self.detectron2cfg.DATASETS.TRAIN
                 if isinstance(pretrainedDataset, list) or isinstance(pretrainedDataset, tuple):
                     pretrainedDataset = pretrainedDataset[0]
                 pretrainedMeta = MetadataCatalog.get(pretrainedDataset)
