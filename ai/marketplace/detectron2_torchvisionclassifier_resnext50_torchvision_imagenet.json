@@ -1,7 +1,7 @@
 {
     "aide_model_version": 1.0,
     "name": "ImageNet (ResNeXt-50)",
-    "description": "<a href=\"https://arxiv.org/abs/1611.05431\" target=\"_blank\">ResNeXt</a>-50 image classification model, trained on the <a href=\"https://ieeexplore.ieee.org/document/5206848\" target=\"_blank\">ImageNet</a> dataset challenge.",
+    "description": "<a href=\"http://openaccess.thecvf.com/content_cvpr_2017/papers/Xie_Aggregated_Residual_Transformations_CVPR_2017_paper.pdf\" target=\"_blank\">ResNeXt</a>-50 image classification model, trained on the <a href=\"https://ieeexplore.ieee.org/document/5206848\" target=\"_blank\">ImageNet</a> dataset challenge.",
     "time_created": 1611918642,
     "author": "torchvision (facebook, inc.)",
     "tags": [
@@ -1023,5 +1023,6 @@
                 }
             }
         }
-    }
+    },
+    "citation_info": "ResNeXt:<br /><p class=\"citation\">Xie, S., Girshick, R., Dollár, P., Tu, Z. and He, K., 2017. Aggregated residual transformations for deep neural networks. In Proceedings of the IEEE conference on computer vision and pattern recognition (pp. 1492-1500).</p><br />ImageNet:<br/><p class=\"citation\">Deng, J., Dong, W., Socher, R., Li, L.J., Li, K. and Fei-Fei, L., 2009, June. ImageNet: A large-scale hierarchical image database. In 2009 IEEE conference on computer vision and pattern recognition (pp. 248-255).</p>"
 }

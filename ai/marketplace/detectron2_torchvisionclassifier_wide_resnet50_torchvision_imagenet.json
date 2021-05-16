@@ -1024,5 +1024,6 @@
                 }
             }
         }
-    }
+    },
+    "citation_info": "Wide ResNet:<br /><p class=\"citation\">Zagoruyko, S. and Komodakis, N., 2016. Wide residual networks. arXiv preprint arXiv:1605.07146.</p><br />ImageNet:<br/><p class=\"citation\">Deng, J., Dong, W., Socher, R., Li, L.J., Li, K. and Fei-Fei, L., 2009, June. ImageNet: A large-scale hierarchical image database. In 2009 IEEE conference on computer vision and pattern recognition (pp. 248-255).</p>"
 }

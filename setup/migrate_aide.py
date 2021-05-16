@@ -318,7 +318,11 @@ MODIFICATIONS_sql = [
   'ALTER TABLE "{schema}".cnnstate DROP CONSTRAINT IF EXISTS cnnstate_marketplace_origin_id_key;',
 
   # we also allow multiple models with the same origin URI (for updates of Web-imported models or uploads with iid file name)
-  'ALTER TABLE "aide_admin".modelmarketplace DROP CONSTRAINT IF EXISTS modelmarketplace_origin_uri_key;'
+  'ALTER TABLE "aide_admin".modelmarketplace DROP CONSTRAINT IF EXISTS modelmarketplace_origin_uri_key;',
+
+  # for Model Marketplace version 1.1
+  'ALTER TABLE "aide_admin".modelmarketplace ADD COLUMN IF NOT EXISTS citation_info VARCHAR;',
+  'ALTER TABLE "aide_admin".modelmarketplace ADD COLUMN IF NOT EXISTS license VARCHAR;'
 ]
 
 

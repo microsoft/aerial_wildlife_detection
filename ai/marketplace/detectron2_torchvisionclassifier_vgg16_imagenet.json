@@ -1023,5 +1023,6 @@
                 }
             }
         }
-    }
+    },
+    "citation_info": "VGG:<br /><p class=\"citation\">Simonyan, K. and Zisserman, A., 2014. Very deep convolutional networks for large-scale image recognition. arXiv preprint arXiv:1409.1556.</p><br />ImageNet:<br/><p class=\"citation\">Deng, J., Dong, W., Socher, R., Li, L.J., Li, K. and Fei-Fei, L., 2009, June. ImageNet: A large-scale hierarchical image database. In 2009 IEEE conference on computer vision and pattern recognition (pp. 248-255).</p>"
 }

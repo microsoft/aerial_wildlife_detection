@@ -544,5 +544,6 @@
 				}
 			}
 		}
-	}
+	},
+	"citation_info": "RetinaNet:<br /><p class=\"citation\">Lin, T.Y., Goyal, P., Girshick, R., He, K. and Dollár, P., 2017. Focal loss for dense object detection. In Proceedings of the IEEE international conference on computer vision (pp. 2980-2988).</p><br />MS-COCO:<br/><p class=\"citation\">Lin, T.Y., Maire, M., Belongie, S., Hays, J., Perona, P., Ramanan, D., Dollár, P. and Zitnick, C.L., 2014, September. Microsoft COCO: Common objects in context. In European conference on computer vision (pp. 740-755). Springer, Cham.</p>"
 }

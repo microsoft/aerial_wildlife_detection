@@ -1023,5 +1023,6 @@
                 }
             }
         }
-    }
+    },
+    "citation_info": "DenseNet:<br /><p class=\"citation\">Huang, G., Liu, Z., Van Der Maaten, L. and Weinberger, K.Q., 2017. Densely connected convolutional networks. In Proceedings of the IEEE conference on computer vision and pattern recognition (pp. 4700-4708).</p><br />ImageNet:<br/><p class=\"citation\">Deng, J., Dong, W., Socher, R., Li, L.J., Li, K. and Fei-Fei, L., 2009, June. ImageNet: A large-scale hierarchical image database. In 2009 IEEE conference on computer vision and pattern recognition (pp. 248-255).</p>"
 }

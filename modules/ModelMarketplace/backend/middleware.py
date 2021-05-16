@@ -94,6 +94,8 @@ class ModelMarketplaceMiddleware:
                     'is_owner': False,
                     'shared': True,
                     'tags': (modelState['tags'] if 'tags' in modelState else None),
+                    'citation_info': modelState.get('citation_info', None),
+                    'license': modelState.get('license', None),
                     'origin_project': None,
                     'origin_uuid': None,
                     'origin_uri': 'built-in'
@@ -186,7 +188,7 @@ class ModelMarketplaceMiddleware:
                 SELECT id, name, description, labelclasses, model_library,
                     annotationType, predictionType, EXTRACT(epoch FROM timeCreated) AS time_created, alcriterion_library,
                     public, anonymous, selectCount,
-                    is_owner, shared, tags,
+                    is_owner, shared, tags, citation_info, license,
                     CASE WHEN NOT is_owner AND anonymous THEN NULL ELSE author END AS author,
                     CASE WHEN NOT is_owner AND anonymous THEN NULL ELSE origin_project END AS origin_project,
                     CASE WHEN NOT is_owner AND anonymous THEN NULL ELSE origin_uuid END AS origin_uuid,

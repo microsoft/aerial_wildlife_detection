@@ -1,5 +1,5 @@
 {
-    "aide_model_version": 1.0,
+    "aide_model_version": 1.1,
     "name": "Cityscapes (modified ResNet-101)",
     "description": "<a href=\"https://github.com/facebookresearch/detectron2/tree/master/projects/DeepLab\" target=\"_blank\">DeepLabV3+</a> semantic segmentation model, trained on <a href=\"https://ieeexplore.ieee.org/document/5206848\" target=\"_blank\">ImageNet</a> and <a href=\"https://www.visinf.tu-darmstadt.de/media/visinf/vi_papers/2015/cordts-cvprws.pdf\" target=\"_blank\">Cityscapes</a>.",
     "author": "facebook, inc.",
@@ -44,5 +44,6 @@
                 }
             }
         }
-    }
+    },
+    "citation_info": "DeepLabV3+:<br /><p class=\"citation\">Chen, L.C., Zhu, Y., Papandreou, G., Schroff, F. and Adam, H., 2018. Encoder-decoder with atrous separable convolution for semantic image segmentation. In Proceedings of the European conference on computer vision (ECCV) (pp. 801-818).</p><br />Cityscapes dataset:<br /><p class=\"citation\">Cordts, M., Omran, M., Ramos, S., Rehfeld, T., Enzweiler, M., Benenson, R., Franke, U., Roth, S. and Schiele, B., 2016. The cityscapes dataset for semantic urban scene understanding. In Proceedings of the IEEE conference on computer vision and pattern recognition (pp. 3213-3223).</p>"
 }

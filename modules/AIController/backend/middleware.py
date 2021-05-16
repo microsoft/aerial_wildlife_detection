@@ -907,7 +907,8 @@ class AIMiddleware():
         result = self.dbConn.execute('''
             SELECT id, origin_uuid,
             author, anonymous, public,
-            shared, tags, name, description
+            shared, tags, name, description,
+            citation_info, license
             FROM aide_admin.modelMarketplace
             WHERE origin_project = %s OR origin_project IS NULL;
         ''', (project,), 'all')

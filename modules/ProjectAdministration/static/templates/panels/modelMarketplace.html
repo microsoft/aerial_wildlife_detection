@@ -56,6 +56,10 @@
                         <div class="info-field" id="marketplace-info-labelclasses"></div>
                         <div>Tags:</div>
                         <div class="info-field" id="marketplace-info-tags"></div>
+                        <div>Citation info:</div>
+                        <div class="info-field" id="marketplace-info-citation"></div>
+                        <div>License:</div>
+                        <div class="info-field" id="marketplace-info-license"></div>
                         <!-- TODO: more -->
 
                         <span id="marketplace-model-type-disclaimer" style="font-style:italic"></span>
@@ -111,6 +115,14 @@
                     <button id="project-info-add-tag-button" class="btn btn-sm btn-primary">+ add</button>
                     <div class="info-field select-field" id="project-info-tags" style="min-height:54px"></div>
                     <br />
+
+                    <div>Citation info:</div>
+                    <textarea id="project-info-citation" class="select-field" style="height:200px"></textarea>
+                    <br />
+                    <div>License:</div>
+                    <textarea id="project-info-license" class="select-field" style="height:200px"></textarea>
+                    <br />
+
                     <label for="project-model-share-public">Share with:</label>
                     <select id="project-model-share-public">
                         <option value="everyone">Everyone</option>
@@ -317,6 +329,13 @@
         color: red;
         margin-left: 20px;
     }
+
+    .citation {
+        margin-left: 20px;
+        margin-right: 20px;
+        margin-bottom: 10px;
+        font-weight: normal;
+    }
 </style>
 <script src="/static/statistics/libs/chartjs/Chart.min.js?v={{ version }}"></script>
 <script src="/static/general/js/modelLabelclassMapper.js?v={{ version }}"></script>
@@ -494,6 +513,18 @@
                             }
                         }
 
+                        let citationInfo = selectedModel['citation_info']
+                        if(typeof(citationInfo) !== 'string') {
+                            citationInfo = '';
+                        }
+                        $('#marketplace-info-citation').html(citationInfo);
+
+                        let license = selectedModel['license']
+                        if(typeof(license) !== 'string') {
+                            license = '';
+                        }
+                        $('#marketplace-info-license').html(license);
+
                         // check if model still in current project (allow re-importing if not)
                         let modelExistsInProject = false;
                         for(var p=0; p<modelsProject.length; p++) {
@@ -659,6 +690,11 @@
                         $('#project-info-add-tag').prop('disabled', readonly);
                         $('#project-info-add-tag-button').prop('disabled', readonly);
 
+                        $('#project-info-citation').html(selectedModel['marketplace_info']['citation_info']);
+                        $('#project-info-license').html(selectedModel['marketplace_info']['license']);
+                        $('#project-info-citation').prop('disabled', readonly);
+                        $('#project-info-license').prop('disabled', readonly);
+
                         $('#no-model-selected-project').hide();
                         $('#selected-model-info-project').show();
 
@@ -777,6 +813,8 @@
                 model_name: modelName,
                 model_description: $('#project-info-description').val(),
                 tags: Object.keys(getTags('project', true)),
+                citation_info: $('#project-info-citation').val(),
+                license: $('#project-info-license').val(),
                 public: ($('#project-model-share-public').val() === 'everyone'? true : false),
                 anonymous: $('#project-model-share-anonymous').prop('checked')
             };
@@ -1639,7 +1677,7 @@
                 return _check_custom_name(importType);
             } else {
                 $(renameField).prop('disabled', true);
-                $('#'+importType+'-start-import').prop('disabled', false);
+                $('#'+importType+'-start').prop('disabled', false);
             }
         }
         

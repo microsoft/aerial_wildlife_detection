@@ -1023,5 +1023,6 @@
                 }
             }
         }
-    }
+    },
+    "citation_info": "MobileNet V2:<br /><p class=\"citation\">Sandler, M., Howard, A., Zhu, M., Zhmoginov, A. and Chen, L.C., 2018. Mobilenetv2: Inverted residuals and linear bottlenecks. In Proceedings of the IEEE conference on computer vision and pattern recognition (pp. 4510-4520).</p><br />ImageNet:<br/><p class=\"citation\">Deng, J., Dong, W., Socher, R., Li, L.J., Li, K. and Fei-Fei, L., 2009, June. ImageNet: A large-scale hierarchical image database. In 2009 IEEE conference on computer vision and pattern recognition (pp. 248-255).</p>"
 }

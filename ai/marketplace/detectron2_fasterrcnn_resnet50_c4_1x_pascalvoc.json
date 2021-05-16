@@ -470,5 +470,6 @@
 				}
 			}
 		}
-	}
+	},
+	"citation_info": "Faster R-CNN:<br /><p class=\"citation\">Ren, S., He, K., Girshick, R. and Sun, J., 2015. Faster R-CNN: Towards real-time object detection with region proposal networks. IEEE Conference on Neural Information Processing Systems.</p><br />PASCAL VOC:<br/><p class=\"citation\">Everingham, M., Van Gool, L., Williams, C.K., Winn, J. and Zisserman, A., 2010. The pascal visual object classes (voc) challenge. International journal of computer vision, 88(2), pp.303-338.</p>"
 }

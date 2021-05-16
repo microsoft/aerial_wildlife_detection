@@ -163,10 +163,13 @@ class ModelMarketplace:
                 modelName = request.json['model_name']
                 modelDescription = request.json.get('model_description', '')
                 tags = request.json.get('tags', [])
+                citationInfo = request.json.get('citation_info', None)
+                license = request.json.get('license', None)
                 public = request.json.get('public', True)
                 anonymous = request.json.get('anonymous', False)
                 result = self.middleware.shareModel(project, username,
                                                     modelID, modelName, modelDescription, tags,
+                                                    citationInfo, license,
                                                     public, anonymous)
                 return result
             except Exception as e:

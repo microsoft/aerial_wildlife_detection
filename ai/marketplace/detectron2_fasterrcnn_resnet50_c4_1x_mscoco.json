@@ -1,5 +1,5 @@
 {
-	"aide_model_version": 1.0,
+	"aide_model_version": 1.1,
 	"name": "MS-COCO (ResNet-50)",
 	"description": "Faster R-CNN object detector with ResNet-50 as feature extractor, trained on <a href=\"https://cocodataset.org\" target=\"_blank\">MS-COCO</a>.<br />See <a href=\"https://github.com/facebookresearch/detectron2/blob/master/MODEL_ZOO.md\" target=\"_blank\">here</a> for more information.",
 	"author": "facebook, inc.",
@@ -530,5 +530,6 @@
 				}
 			}
 		}
-	}
+	},
+	"citation_info": "Faster R-CNN:<br /><p class=\"citation\">Ren, S., He, K., Girshick, R. and Sun, J., 2015. Faster R-CNN: Towards real-time object detection with region proposal networks. IEEE Conference on Neural Information Processing Systems.</p><br />MS-COCO:<br/><p class=\"citation\">Lin, T.Y., Maire, M., Belongie, S., Hays, J., Perona, P., Ramanan, D., Dollár, P. and Zitnick, C.L., 2014, September. Microsoft COCO: Common objects in context. In European conference on computer vision (pp. 740-755). Springer, Cham.</p>"
 }

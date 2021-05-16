@@ -531,5 +531,6 @@
 				}
 			}
 		}
-	}
+	},
+	"citation_info": "Faster R-CNN:<br /><p class=\"citation\">Ren, S., He, K., Girshick, R. and Sun, J., 2015. Faster R-CNN: Towards real-time object detection with region proposal networks. IEEE Conference on Neural Information Processing Systems.</p><br />MS-COCO:<br/><p class=\"citation\">Lin, T.Y., Maire, M., Belongie, S., Hays, J., Perona, P., Ramanan, D., Dollár, P. and Zitnick, C.L., 2014, September. Microsoft COCO: Common objects in context. In European conference on computer vision (pp. 740-755). Springer, Cham.</p>"
 }

@@ -163,6 +163,8 @@ CREATE TABLE IF NOT EXISTS aide_admin.modelMarketplace (
     model_settings VARCHAR,
     annotationType labelType NOT NULL,
     predictionType labelType NOT NULL,
+    citation_info VARCHAR,
+    license VARCHAR,
     statedict BYTEA,
     timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     alCriterion_library VARCHAR,

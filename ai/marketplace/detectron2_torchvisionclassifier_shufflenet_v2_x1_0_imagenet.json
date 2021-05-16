@@ -1,7 +1,7 @@
 {
     "aide_model_version": 1.0,
     "name": "ImageNet (ShuffleNet V2)",
-    "description": "<a href=\"https://arxiv.org/abs/1807.11164\" target=\"_blank\">ShuffleNet V2</a> image classification model, trained on the <a href=\"https://ieeexplore.ieee.org/document/5206848\" target=\"_blank\">ImageNet</a> dataset challenge.",
+    "description": "<a href=\"https://openaccess.thecvf.com/content_ECCV_2018/papers/Ningning_Light-weight_CNN_Architecture_ECCV_2018_paper.pdf\" target=\"_blank\">ShuffleNet V2</a> image classification model, trained on the <a href=\"https://ieeexplore.ieee.org/document/5206848\" target=\"_blank\">ImageNet</a> dataset challenge.",
     "author": "torchvision (facebook, inc.)",
     "time_created": 1611918642,
     "tags": [
@@ -1022,5 +1022,6 @@
                 }
             }
         }
-    }
+    },
+    "citation_info": "ShuffleNet V2:<br /><p class=\"citation\">Ma, N., Zhang, X., Zheng, H.T. and Sun, J., 2018. Shufflenet v2: Practical guidelines for efficient CNN architecture design. In Proceedings of the European conference on computer vision (ECCV) (pp. 116-131).</p><br />ImageNet:<br/><p class=\"citation\">Deng, J., Dong, W., Socher, R., Li, L.J., Li, K. and Fei-Fei, L., 2009, June. ImageNet: A large-scale hierarchical image database. In 2009 IEEE conference on computer vision and pattern recognition (pp. 248-255).</p>"
 }

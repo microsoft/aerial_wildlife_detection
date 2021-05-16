@@ -26,7 +26,7 @@ from util.helpers import current_time, get_class_executable, FILENAMES_PROHIBITE
 
 class ModelMarketplaceWorker:
 
-    MAX_AIDE_MODEL_VERSION = 1.0        # maximum Model Marketplace file definition version supported by this installation of AIDE
+    MAX_AIDE_MODEL_VERSION = 1.1        # maximum Model Marketplace file definition version supported by this installation of AIDE
 
     BUILTIN_MODELS_DIR = 'ai/marketplace'
 
@@ -254,8 +254,9 @@ class ModelMarketplaceWorker:
         projectMeta = projectMeta[0]
 
         # check fields
-        if 'author' not in modelDefinition:
-            modelDefinition['author'] = None
+        for field in ('author', 'citation_info', 'license'):
+            if field not in modelDefinition:
+                modelDefinition[field] = None
 
         for field in self.MODEL_STATE_REQUIRED_FIELDS:
             if field not in modelDefinition:
@@ -335,6 +336,8 @@ class ModelMarketplaceWorker:
         alCriterion_library = (modelDefinition['alcriterion_library'] if 'alcriterion_library' in modelDefinition else None)
         annotationType = PREDICTION_MODELS[modelLibrary]['annotationType']      #TODO
         predictionType = PREDICTION_MODELS[modelLibrary]['predictionType']      #TODO
+        citationInfo = modelDefinition['citation_info']
+        license = modelDefinition['license']
         if not isinstance(annotationType, str):
             annotationType = ','.join(annotationType)
         if not isinstance(predictionType, str):
@@ -377,6 +380,7 @@ class ModelMarketplaceWorker:
                 (name, description, tags, labelclasses, author, statedict,
                 model_library, model_settings, alCriterion_library,
                 annotationType, predictionType,
+                citation_info, license,
                 timeCreated,
                 origin_project, origin_uuid, origin_uri, public, anonymous)
             VALUES %s
@@ -385,6 +389,7 @@ class ModelMarketplaceWorker:
         [(
             modelName, modelDescription, modelTags, labelClasses, modelAuthor,
             stateDict, modelLibrary, modelOptions, alCriterion_library, annotationType, predictionType,
+            citationInfo, license,
             timeCreated,
             project, None, modelURI, public, anonymous
         )],
@@ -505,6 +510,7 @@ class ModelMarketplaceWorker:
 
 
     def shareModel(self, project, username, modelID, modelName, modelDescription, tags,
+                    citationInfo, license,
                     public, anonymous):
         '''
             Shares a model from a given project on the Model Marketplace.
@@ -558,8 +564,10 @@ class ModelMarketplaceWorker:
                 public = %s,
                 anonymous = %s,
                 tags = %s
+                citation_info = %s,
+                license = %s,
                 WHERE id = %s AND author = %s;
-            ''', (modelName, modelDescription, public, anonymous, tags,
+            ''', (modelName, modelDescription, public, anonymous, tags, citationInfo, license,
                 isShared[0]['id'], username), None)
             return {'status': 0}
 

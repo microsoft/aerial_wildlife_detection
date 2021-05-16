@@ -1,7 +1,7 @@
 {
 	"aide_model_version": 1.0,
 	"name": "MS-COCO (ResNet-50 C5-128ROI 1x)",
-	"description": "TridentNet object detector with ResNet-50 as feature extractor, trained on <a href=\"https://cocodataset.org\" target=\"_blank\">MS-COCO</a>.<br />See <a href=\"https://github.com/facebookresearch/detectron2/tree/master/projects/TridentNet\" target=\"_blank\">here</a> for more information.",
+	"description": "<a href=\"http://openaccess.thecvf.com/content_ICCV_2019/papers/Li_Scale-Aware_Trident_Networks_for_Object_Detection_ICCV_2019_paper.pdf\" target=\"_blank\">TridentNet</a> object detector with ResNet-50 as feature extractor, trained on <a href=\"https://cocodataset.org\" target=\"_blank\">MS-COCO</a>.<br />See <a href=\"https://github.com/facebookresearch/detectron2/tree/master/projects/TridentNet\" target=\"_blank\">here</a> for more information.",
 	"author": "facebook, inc.",
 	"time_created": 1607964812,
 	"tags": [
@@ -103,5 +103,6 @@
                 }
             }
         }
-    }
+    },
+	"citation_info": "TridentNet:<br /><p class=\"citation\">Li, Y., Chen, Y., Wang, N. and Zhang, Z., 2019. Scale-aware trident networks for object detection. In Proceedings of the IEEE/CVF International Conference on Computer Vision (pp. 6054-6063).</p><br />MS-COCO:<br/><p class=\"citation\">Lin, T.Y., Maire, M., Belongie, S., Hays, J., Perona, P., Ramanan, D., Dollár, P. and Zitnick, C.L., 2014, September. Microsoft COCO: Common objects in context. In European conference on computer vision (pp. 740-755). Springer, Cham.</p>"
 }
