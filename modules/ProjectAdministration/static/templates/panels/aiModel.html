@@ -82,6 +82,7 @@
 </style>
 <script src="/static/dataAdmin/js/taskPolling.js?v={{ version }}"></script>
 <script src="/static/statistics/libs/chartjs/Chart.min.js?v={{ version }}"></script>
+<script src="/static/general/js/tableWidthAdjuster.js?v={{ version }}"></script>
 <script type="text/javascript">
 
     let COLORS = ['#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#ffff99','#b15928'];
@@ -475,6 +476,21 @@
     $(document).ready(function() {
         //TODO: show summary, running processes, etc.
         window.save = undefined;
+
+        // table column widths
+        window.adjustTableWidth(
+            '#model-states-table',
+            [
+                '20px',
+                '20px',
+                '160px',
+                '140px',
+                '140px',
+                '130px'
+            ],
+            true,
+            true
+        );
 
         let promise = $.when(getAvailableAImodels(), listModelStates());
 

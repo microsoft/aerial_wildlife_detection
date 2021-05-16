@@ -18,7 +18,7 @@
 
                 <div class="user-table-div" style="order:2;">
                     <div>Target user:</div>
-                    <table class="user-table">
+                    <table id="target-users-table" class="user-table">
                         <thead>
                             <tr><th></th><th>Name</th></tr>
                         </thead>
@@ -115,6 +115,7 @@
     }
 </style>
 <script src="/static/statistics/libs/chartjs/Chart.min.js?v={{ version }}"></script>
+<script src="/static/general/js/tableWidthAdjuster.js?v={{ version }}"></script>
 <script type="text/javascript">
 
     window.save = undefined;
@@ -470,6 +471,16 @@
     }
 
     $(document).ready(function() {
+
+        // table column widths
+        window.adjustTableWidth(
+            '#target-users-table',
+            [
+                '20px'
+            ],
+            true,
+            true
+        );
 
         $('#options-header').click(function() {
             let container = $('#options-container');

@@ -30,7 +30,7 @@
 
     <!-- TODO: implement search function to add new users -->
     <div id="letter-picker"></div>
-    <table class="ac-table">
+    <table id="ac-table" class="ac-table">
         <thead>
             <tr>
                 <th><input type="checkbox" id="select-all-users" /></th>
@@ -86,6 +86,7 @@
 <link rel="stylesheet" href="/static/general/css/letterPicker.css?v={{ version }}" />
 <script type="text/javascript" src="/static/general/libs/datetimepicker/jquery.datetimepicker.js?v={{ version }}"></script>
 <script type="text/javascript" src="/static/general/js/letterPicker.js?v={{ version }}"></script>
+<script src="/static/general/js/tableWidthAdjuster.js?v={{ version }}"></script>
 <script type="text/javascript">
     function getUsers() {
         let uList = $('#users-list');
@@ -285,6 +286,20 @@
     }
 
     $(document).ready(function() {
+        // table column widths
+        window.adjustTableWidth(
+            '#ac-table',
+            [
+                '20px',
+                '140px',
+                '120px',
+                '160px',
+                '160px'
+            ],
+            true,
+            true
+        );
+
         // general settings
         var promise = $.ajax({
             url: window.baseURL + 'getConfig',

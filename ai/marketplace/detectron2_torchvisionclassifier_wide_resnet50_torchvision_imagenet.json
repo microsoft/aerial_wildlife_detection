@@ -1,6 +1,6 @@
 {
     "aide_model_version": 1.0,
-    "name": "Wide ResNet-50 (pre-trained on ImageNet)",
+    "name": "ImageNet (Wide ResNet-50)",
     "description": "<a href=\"https://arxiv.org/pdf/1605.07146.pdf\" target=\"_blank\">Wide ResNet</a>-50 image classification model, trained on the <a href=\"https://ieeexplore.ieee.org/document/5206848\" target=\"_blank\">ImageNet</a> dataset challenge.",
     "author": "torchvision (facebook, inc.)",
     "time_created": 1611918642,

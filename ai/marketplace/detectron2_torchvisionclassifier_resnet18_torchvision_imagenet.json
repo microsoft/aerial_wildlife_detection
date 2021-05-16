@@ -1,6 +1,6 @@
 {
     "aide_model_version": 1.0,
-    "name": "ResNet-18 (pre-trained on ImageNet)",
+    "name": "ImageNet (ResNet-18)",
     "description": "<a href=\"https://openaccess.thecvf.com/content_cvpr_2016/papers/He_Deep_Residual_Learning_CVPR_2016_paper.pdf\" target=\"_blank\">ResNet</a>-18 image classification model, trained on the <a href=\"https://ieeexplore.ieee.org/document/5206848\" target=\"_blank\">ImageNet</a> dataset challenge.",
     "author": "torchvision (facebook, inc.)",
     "time_created": 1611918642,

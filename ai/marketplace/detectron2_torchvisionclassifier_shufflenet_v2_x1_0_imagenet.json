@@ -1,6 +1,6 @@
 {
     "aide_model_version": 1.0,
-    "name": "ShuffleNet V2 (pre-trained on ImageNet)",
+    "name": "ImageNet (ShuffleNet V2)",
     "description": "<a href=\"https://arxiv.org/abs/1807.11164\" target=\"_blank\">ShuffleNet V2</a> image classification model, trained on the <a href=\"https://ieeexplore.ieee.org/document/5206848\" target=\"_blank\">ImageNet</a> dataset challenge.",
     "author": "torchvision (facebook, inc.)",
     "time_created": 1611918642,

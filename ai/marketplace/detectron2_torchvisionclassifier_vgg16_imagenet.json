@@ -1,6 +1,6 @@
 {
     "aide_model_version": 1.0,
-    "name": "VGG-16 (pre-trained on ImageNet)",
+    "name": "ImageNet (VGG-16)",
     "description": "<a href=\"https://arxiv.org/abs/1409.1556\" target=\"_blank\">VGG</a>-16 image classification model, trained on the <a href=\"https://ieeexplore.ieee.org/document/5206848\" target=\"_blank\">ImageNet</a> dataset challenge.",
     "author": "torchvision (facebook, inc.)",
     "time_created": 1611918642,

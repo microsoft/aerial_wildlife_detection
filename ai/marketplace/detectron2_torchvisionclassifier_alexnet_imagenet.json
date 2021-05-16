@@ -1,6 +1,6 @@
 {
     "aide_model_version": 1.0,
-    "name": "AlexNet (pre-trained on ImageNet)",
+    "name": "ImageNet (AlexNet)",
     "description": "<a href=\"https://arxiv.org/abs/1404.5997\" target=\"_blank\">AlexNet</a> image classification model, trained on the <a href=\"https://ieeexplore.ieee.org/document/5206848\" target=\"_blank\">ImageNet</a> dataset challenge.",
     "author": "torchvision (facebook, inc.)",
     "time_created": 1611918642,

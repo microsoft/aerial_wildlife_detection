@@ -1,6 +1,6 @@
 {
     "aide_model_version": 1.0,
-    "name": "MobileNetV2 (pre-trained on ImageNet)",
+    "name": "ImageNet (MobileNetV2)",
     "description": "<a href=\"https://arxiv.org/abs/1801.04381\" target=\"_blank\">MobileNetV2</a> image classification model, trained on the <a href=\"https://ieeexplore.ieee.org/document/5206848\" target=\"_blank\">ImageNet</a> dataset challenge.",
     "author": "torchvision (facebook, inc.)",
     "time_created": 1611918642,

@@ -1,6 +1,6 @@
 {
     "aide_model_version": 1.0,
-    "name": "SqueezeNet (pre-trained on ImageNet)",
+    "name": "ImageNet (SqueezeNet)",
     "description": "<a href=\"https://arxiv.org/abs/1602.07360\" target=\"_blank\">SqueezeNet</a> image classification model, trained on the <a href=\"https://ieeexplore.ieee.org/document/5206848\" target=\"_blank\">ImageNet</a> dataset challenge.",
     "author": "torchvision (facebook, inc.)",
     "time_created": 1611918642,

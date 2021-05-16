@@ -7,7 +7,7 @@
         <div class="tables-container">
             <div class="entity-table" style="display:table;width:70%;order:1;">
                 <div>AI models to be evaluated:</div>
-                <table class="perf-table">
+                <table id="ai-models-table" class="perf-table">
                     <thead>
                         <tr>
                             <th><input type="checkbox" id="select-all-states" /></th>
@@ -26,7 +26,7 @@
             </div>
             <div class="entity-table" style="width:20%;order:2;">
                 <div>Target user:</div>
-                <table class="perf-table">
+                <table id="target-users-table" class="perf-table">
                     <thead>
                         <tr><th></th><th>Name</th></tr>
                     </thead>
@@ -119,6 +119,7 @@
 </style>
 <script src="/static/dataAdmin/js/taskPolling.js?v={{ version }}"></script>
 <script src="/static/statistics/libs/chartjs/Chart.min.js?v={{ version }}"></script>
+<script src="/static/general/js/tableWidthAdjuster.js?v={{ version }}"></script>
 <script type="text/javascript">
 
     window.save = undefined;
@@ -700,6 +701,30 @@
     }
 
     $(document).ready(function() {
+
+        // adjust table layout of Marketplace and Project
+        window.adjustTableWidth(
+            '#ai-models-table',
+            [
+                '20px',
+                '20px',
+                '160px',
+                '140px',
+                '140px',
+                '130px',
+                '130px'
+            ],
+            true,
+            true
+        );
+        window.adjustTableWidth(
+            '#target-users-table',
+            [
+                '20px'
+            ],
+            true,
+            true
+        );
 
         // get project annotation and prediction types
         var promise = getProjectSettings();

@@ -107,50 +107,34 @@
     #delete-options {
         margin-left: 20px;
     }
-
-    .list-table thead tr th,
-    .list-table thead tr td {
-        word-break: break-all;
-    }
-
-    .list-table thead tr th:nth-child(2),
-    .list-table tbody tr td:nth-child(2) {
-        width: 100px;
-        text-align: center;
-    }
-
-    .list-table thead tr th:nth-child(3),
-    .list-table tbody tr td:nth-child(3) {
-        width: 250px;
-    }
-
-    .list-table thead tr th:nth-child(4),
-    .list-table tbody tr td:nth-child(4),
-    .list-table thead tr th:nth-child(5),
-    .list-table tbody tr td:nth-child(5) {
-        width: 110px;
-    }
-
-    .list-table thead tr th:nth-child(6),
-    .list-table tbody tr td:nth-child(6),
-    .list-table thead tr th:nth-child(7),
-    .list-table tbody tr td:nth-child(7) {
-        width: 70px;
-    }
-
-    .list-table thead tr th:nth-child(8),
-    .list-table tbody tr td:nth-child(8) {
-        width: 140px;
-    }
 </style>
 <script src="/static/dataAdmin/js/imageBrowser.js?v={{ version }}"></script>
 <script src="/static/general/js/fileDirectoryBrowser.js?v={{ version }}"></script>
 <script src="/static/dataAdmin/js/taskPolling.js?v={{ version }}"></script>
+<script src="/static/general/js/tableWidthAdjuster.js?v={{ version }}"></script>
 <script type="text/javascript">
 
     window.save = undefined;
 
     $(document).ready(function() {
+        // table column widths
+        window.adjustTableWidth(
+            '.list-table',
+            [
+                '20px',
+                '100px',
+                '500px',
+                '180px',
+                '180px',
+                '70px',
+                '70px',
+                '30px'
+            ],
+            true,
+            false,
+            true
+        );
+
         // general functions
         function onClickMore(event) {
             updateImageBrowser(false, true);
@@ -190,8 +174,8 @@
                     {'last_viewed': 'Last viewed'},
                     {'num_anno': '# Anno'},
                     {'num_pred': '# Pred'},
-                    {'golden_question': 'Golden question'},
-                    {'link': 'View in annotator'}
+                    {'golden_question': '<img title="golden question" src="/static/interface/img/controls/flag_active.svg" height="16px" />'},
+                    {'link': 'View'}
                 ]
             });
             window.imageBrowser.setTrailingButton(true,
