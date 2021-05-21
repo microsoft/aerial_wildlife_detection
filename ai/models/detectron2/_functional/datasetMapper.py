@@ -21,7 +21,7 @@ from detectron2.structures import BoxMode
 
 class Detectron2DatasetMapper(DatasetMapper):
 
-    def __init__(self, project, fileServer, augmentations, is_train, instance_mask_format='bitmask', recompute_boxes=True, classIndexMap=None):
+    def __init__(self, project, fileServer, augmentations, is_train, image_format='BGR', instance_mask_format='bitmask', recompute_boxes=True, classIndexMap=None):
         super(DatasetMapper, self).__init__()
         self.project = project
         self.fileServer = fileServer
@@ -29,6 +29,7 @@ class Detectron2DatasetMapper(DatasetMapper):
         if not isinstance(self.augmentations, T.AugmentationList):
             self.augmentations = T.AugmentationList(self.augmentations)
         self.is_train = is_train
+        self.image_format = image_format
         self.instance_mask_format = instance_mask_format
         self.recompute_boxes = recompute_boxes
         self.classIndexMap = classIndexMap      # used to map e.g. segmentation index values from AIDE to model
@@ -43,6 +44,10 @@ class Detectron2DatasetMapper(DatasetMapper):
         # USER: Write your own image loading if it's not from a file
         try:
             image = cv2.imdecode(np.frombuffer(self.fileServer.getFile(dataset_dict["file_name"]), np.uint8), -1)
+            if self.image_format == 'RGB':
+                # flip along spectral dimension
+                if image.ndim >= 3:
+                    image = np.flip(image, 2)
         except:
             #TODO: cannot handle corrupt data input here; needs to be done earlier
             print('WARNING: Image {} is corrupt and could not be loaded.'.format(dataset_dict["file_name"]))

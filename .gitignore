@@ -118,3 +118,6 @@ venv.bak/
 
 # logs and traces
 nohup.out
+
+# unofficial model tests
+model_tests

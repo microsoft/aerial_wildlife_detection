@@ -210,6 +210,7 @@ class GenericDetectron2Model(AIModel):
         # retrieve Detectron2 cfg
         if 'detectron2cfg' in stateDict and not forceNewModel:
             # medium priority: model overrides
+            self.detectron2cfg.set_new_allowed(True)
             self.detectron2cfg.merge_from_other_cfg(stateDict['detectron2cfg'])
 
         # top priority: AIDE config overrides
@@ -437,7 +438,12 @@ class GenericDetectron2Model(AIModel):
         ignoreUnsure = optionsHelper.get_hierarchical_value(self.options, ['options', 'train', 'ignore_unsure', 'value'], fallback=True)
         transforms = self.initializeTransforms(mode='train')
         indexMap = self._get_labelclass_index_map(stateDict['labelclassMap'], False)
-        datasetMapper = Detectron2DatasetMapper(self.project, self.fileServer, transforms, True, classIndexMap=indexMap)
+        try:
+            imageFormat = self.detectron2cfg.INPUT.FORMAT
+            assert imageFormat.upper() in ('RGB', 'BGR')
+        except:
+            imageFormat = 'BGR'
+        datasetMapper = Detectron2DatasetMapper(self.project, self.fileServer, transforms, True, imageFormat, classIndexMap=indexMap)
         dataLoader = build_detection_train_loader(
             dataset=getDetectron2Data(data, stateDict['labelclassMap'], projectToStateMap, ignoreUnsure, self.detectron2cfg.DATALOADER.FILTER_EMPTY_ANNOTATIONS),
             mapper=datasetMapper,
@@ -538,7 +544,12 @@ class GenericDetectron2Model(AIModel):
         # wrap dataset for usage with Detectron2
         transforms = self.initializeTransforms(mode='inference')
         indexMap = self._get_labelclass_index_map(stateDict['labelclassMap'], True)
-        datasetMapper = Detectron2DatasetMapper(self.project, self.fileServer, transforms, False)
+        try:
+            imageFormat = self.detectron2cfg.INPUT.FORMAT
+            assert imageFormat.upper() in ('RGB', 'BGR')
+        except:
+            imageFormat = 'BGR'
+        datasetMapper = Detectron2DatasetMapper(self.project, self.fileServer, transforms, False, imageFormat)
         dataLoader = build_detection_test_loader(
             dataset=getDetectron2Data(data, stateDict['labelclassMap'], None, False, False),
             mapper=datasetMapper,

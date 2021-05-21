@@ -61,8 +61,12 @@ class GenericDetectron2LabelModel(GenericDetectron2Model):
 
         # prepare data loader
         transforms = self.initializeTransforms(mode='inference')
-
-        datasetMapper = Detectron2DatasetMapper(self.project, self.fileServer, transforms, False)
+        try:
+            imageFormat = self.detectron2cfg.INPUT.FORMAT
+            assert imageFormat.upper() in ('RGB', 'BGR'), 'Invalid image format, reverting to default (BGR).'
+        except:
+            imageFormat = 'BGR'
+        datasetMapper = Detectron2DatasetMapper(self.project, self.fileServer, transforms, False, imageFormat)
         dataLoader = build_detection_test_loader(
             dataset=getDetectron2Data(data, labelclassMap, {}, False, False),
             mapper=datasetMapper,
