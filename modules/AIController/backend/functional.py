@@ -371,9 +371,9 @@ class AIControllerWorker:
         # skip imported model states
         if skipImportedModels:
             if len(sqlFilter):
-                sqlFilter += ' AND marketplace_origin_id IS NULL'
+                sqlFilter += ' AND imported_from_marketplace IS FALSE'
             else:
-                sqlFilter = 'WHERE marketplace_origin_id IS NULL'
+                sqlFilter = 'WHERE imported_from_marketplace IS FALSE'
 
         #TODO: add number of images used to train model, too?
         queryResult = self.dbConn.execute(sql.SQL('''
