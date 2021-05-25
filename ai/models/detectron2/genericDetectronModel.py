@@ -211,7 +211,7 @@ class GenericDetectron2Model(AIModel):
         if 'detectron2cfg' in stateDict and not forceNewModel:
             # medium priority: model overrides
             self.detectron2cfg.set_new_allowed(True)
-            self.detectron2cfg.merge_from_other_cfg(stateDict['detectron2cfg'])
+            self.detectron2cfg.update(stateDict['detectron2cfg'])
 
         # top priority: AIDE config overrides
         self.detectron2cfg = self.parse_aide_config(self.options, self.detectron2cfg)
