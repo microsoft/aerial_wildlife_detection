@@ -27,7 +27,7 @@ AIDE is primarily developed by [Benjamin Kellenberger](https://bkellenb.github.i
 * **Fast:** AIDE has been designed with speed in mind, both in terms of computations and workflow.
 * **Flexible:** The framework allows full customizability, from hyperparameters to models to annotation types to libraries. It provides:
     * Support for image classification, point annotations, and bounding boxes (object detection)
-    * A number of AI models and Active Learning criteria [built-in](doc/builtin_models.md)
+    * Many deep learning-based AI models and Active Learning criteria built-in
     * Interfaces for custom AI models and criteria, using any framework or library you want (see how to [write your own model](doc/custom_model.md)).
 * **Fully featured:** Beyond image labeling and model training, AIDE has management and graphical user/machine performance evaluation tools built-in, right in the web browser, allowing for advanced, manual label quality checks.
 * **Modular:** AIDE is separated into individual _modules_, each of which can be run on separate machines for scalability. It even supports on-the-fly addition of computational workers for computationally intensive model training!
@@ -49,7 +49,7 @@ Highlights:
 * Model Marketplace: choose from a variety of pre-trained deep learning models to start with good quality predictions from the first few labels. Contribute and share your own models with other people or across projects.
 * Expansive quality control: monitor the progress and accuracy of users and models with a few clicks through the browser.
 
-There's lots more to discover. Check out the [demo](#demo) or [get started](#new-installation) straightaway!
+There's lots more to discover. Check out the [demo](#demo) or [get started](#installation-and-launching-aide) straightaway!
 
 
 ### Older news
@@ -130,6 +130,20 @@ Please cite the following paper if you use AIDE in your work:
 
 Kellenberger, Benjamin, Devis Tuia, and Dan Morris. "AIDE: Accelerating image‐based ecological surveys with interactive machine learning." Methods in Ecology and Evolution 11(12), 1716-1727.
 DOI: [10.1111/2041-210X.13489](https://doi.org/10.1111/2041-210X.13489).
+
+```BibTeX
+@article{kellenberger2020aide,
+  title={AIDE: Accelerating image-based ecological surveys with interactive machine learning},
+  author={Kellenberger, Benjamin and Tuia, Devis and Morris, Dan},
+  journal={Methods in Ecology and Evolution},
+  volume={11},
+  number={12},
+  pages={1716--1727},
+  year={2020},
+  publisher={Wiley Online Library}
+}
+```
+
 
 
 If you use AIDE, we would be happy to hear from you! Please send us an [E-mail](mailto:benjamin.kellenberger@epfl.ch) with a little bit of info about your use case; besides getting to know the fellow usership of our software, this also enables us to provide somewhat more tailored support for you if needed. 
