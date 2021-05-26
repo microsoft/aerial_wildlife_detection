@@ -313,6 +313,9 @@ MODIFICATIONS_sql = [
   'ALTER TABLE "{schema}".cnnstate ADD COLUMN IF NOT EXISTS imported_from_marketplace BOOLEAN NOT NULL DEFAULT FALSE;',
   'ALTER TABLE "{schema}".cnnstate ADD COLUMN IF NOT EXISTS labelclass_autoupdate BOOLEAN NOT NULL DEFAULT FALSE;',
   'ALTER TABLE "aide_admin".project ADD COLUMN IF NOT EXISTS labelclass_autoupdate BOOLEAN NOT NULL DEFAULT FALSE;',
+   
+  'ALTER TABLE "aide_admin".project ADD COLUMN IF NOT EXISTS annotationType labelType NOT NULL',
+  'ALTER TABLE "aide_admin".project ADD COLUMN IF NOT EXISTS predictionType labelType NOT NULL',
 
   # thanks to "imported_from_marketplace" field, we don't want the unique constraint on the origin ID anymore
   'ALTER TABLE "{schema}".cnnstate DROP CONSTRAINT IF EXISTS cnnstate_marketplace_origin_id_key;',
