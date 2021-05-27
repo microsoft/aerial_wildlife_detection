@@ -485,10 +485,10 @@ class ModelMarketplaceWorker:
         # parse and check integrity of upload
         if fileName.lower().endswith('.json'):
             # JSON file
-            if isinstance(file, bytes):
-                modelState = json.load(file)
-            else:
+            if isinstance(file, str):
                 modelState = json.loads(file)
+            else:
+                modelState = json.load(file)
         
         else:
             # ZIP file
