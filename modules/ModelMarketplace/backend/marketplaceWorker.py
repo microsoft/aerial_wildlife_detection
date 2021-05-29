@@ -15,13 +15,14 @@ from datetime import datetime
 from uuid import UUID
 import json
 from urllib import request
+from urllib.parse import urlsplit
 from psycopg2 import sql
 
 from ai import PREDICTION_MODELS
 from modules.AIWorker.backend.fileserver import FileServer
 from modules.LabelUI.backend.middleware import DBMiddleware     # required to obtain label class definitions (TODO: make more elegant)
 from constants.version import MODEL_MARKETPLACE_VERSION
-from util.helpers import current_time, get_class_executable, FILENAMES_PROHIBITED_CHARS
+from util.helpers import current_time, get_class_executable, download_file, FILENAMES_PROHIBITED_CHARS
 
 
 class ModelMarketplaceWorker:
@@ -456,8 +457,35 @@ class ModelMarketplaceWorker:
         else:
             # network import
             try:
-                with request.urlopen(modelURI) as f:
-                    modelState = f.read()   #.decode('utf-8')   #TODO: handle composed AIDE models (.zip)
+                uriTokens = urlsplit(modelURI)
+                netLoc = uriTokens.netloc
+                if netLoc.startswith('/') or netLoc.startswith(os.sep):
+                    netLoc = netLoc[1:]
+                netPath = uriTokens.path
+                if netPath.startswith('/') or netPath.startswith(os.sep):
+                    netPath = netPath[1:]
+                tempFile = os.path.join(self.tempDir, netLoc, netPath)
+                
+                if os.path.exists(tempFile):
+                    os.remove(tempFile)
+                parent, _ = os.path.split(tempFile)
+                os.makedirs(parent, exist_ok=True)
+
+                download_file(modelURI, tempFile)
+                if not os.path.exists(tempFile):
+                    raise Exception(f'Failed to download model from URI "{modelURI}".')
+
+                _, ext = os.path.splitext(tempFile)
+                if ext.lower() == '.json':
+                    with open(tempFile, 'r') as f:
+                        modelState = f.read()
+                else:
+                    modelState = io.BytesIO()
+                    with open(tempFile, 'rb') as f:
+                        modelState.write(f.read())
+
+                from celery.contrib import rdb
+                rdb.set_trace()
             except Exception as e:
                 raise Exception(f'Error retrieving model state from URL ("{modelURI}"). Message: "{str(e)}".')
 
@@ -483,7 +511,8 @@ class ModelMarketplaceWorker:
         stateDict = None
 
         # parse and check integrity of upload
-        if fileName.lower().endswith('.json'):
+        uriTokens = urlsplit(fileName)
+        if uriTokens.path.lower().endswith('.json'):
             # JSON file
             if isinstance(file, str):
                 modelState = json.loads(file)

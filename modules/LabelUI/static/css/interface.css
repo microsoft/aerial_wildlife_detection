@@ -287,6 +287,7 @@ canvas {
     max-width: 50%;
     /* max-height: 50%; */
     border-radius: 10px;
+    overflow-y: auto;
 }
 #overlay-loader {
     display: none;
