@@ -484,8 +484,6 @@ class ModelMarketplaceWorker:
                     with open(tempFile, 'rb') as f:
                         modelState.write(f.read())
 
-                from celery.contrib import rdb
-                rdb.set_trace()
             except Exception as e:
                 raise Exception(f'Error retrieving model state from URL ("{modelURI}"). Message: "{str(e)}".')
 
@@ -676,10 +674,6 @@ class ModelMarketplaceWorker:
                 'status': 5,
                 'message': f'A model state with name "{modelName}" already exists in the Model Marketplace.'
             }
-        
-        if modelName is None:
-            from celery.contrib import rdb
-            rdb.set_trace()
 
         # share model state
         sharedModelID = self.dbConnector.execute(sql.SQL('''
