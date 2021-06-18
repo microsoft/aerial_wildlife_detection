@@ -25,8 +25,28 @@ class Database():
             self.database = config.getProperty('Database', 'name').lower()
             self.host = config.getProperty('Database', 'host')
             self.port = config.getProperty('Database', 'port')
-            self.user = config.getProperty('Database', 'user').lower()
-            self.password = config.getProperty('Database', 'password')
+            self.user = config.getProperty('Database', 'user', fallback=None)
+            self.password = config.getProperty('Database', 'password', fallback=None)
+
+            if self.user is None or self.password is None:
+                # load from credentials file instead
+                credentials = config.getProperty('Database', 'credentials')
+                with open(credentials, 'r') as c:
+                    lines = c.readlines()
+                    for line in lines:
+                        line = line.lstrip().rstrip('\r').rstrip('\n')
+                        if line.startswith('#') or line.startswith(';'):
+                            continue
+                        tokens = line.split('=')
+                        if len(tokens) >= 2:
+                            idx = line.find('=') + 1
+                            field = tokens[0].strip().lower()
+                            if field == 'username':
+                                self.user = line[idx:]
+                            elif field == 'password':
+                                self.password = line[idx:]
+
+            self.user = self.user.lower()
         except Exception as e:
             if verbose_start:
                 LogDecorator.print_status('fail')

@@ -210,7 +210,7 @@ class DataHandler {
                     uuids_added[uuids_load[u]] = 1;
                 }
             }
-            return this._loadFixedBatch(uuids_filtered);
+            return this._loadFixedBatch(uuids_filtered, true);
         } else {
             return this._loadNextBatch();
         }
@@ -366,7 +366,7 @@ class DataHandler {
                 self.updatePresentClasses();
 
                 // show (or hide) predictions depending on threshold
-                self.setPredictionsVisible(window.showPredictions_minConf); //TODO: more elegant solution that doesn't require window?
+                // self.setPredictionsVisible(window.showPredictions_minConf); //TODO: more elegant solution that doesn't require window?
                 self.convertPredictions();
 
                 // update slider and date text
@@ -465,7 +465,7 @@ class DataHandler {
         });
     }
 
-    _loadFixedBatch(batch) {
+    _loadFixedBatch(batch, applyModelPredictions) {
         var self = this;
 
         // check if changed and then submit current annotations first
@@ -520,9 +520,11 @@ class DataHandler {
                 // update present classes list
                 self.updatePresentClasses();
 
-                // show (or hide) predictions depending on threshold
-                self.setPredictionsVisible(window.showPredictions_minConf); //TODO: more elegant solution that doesn't require window?
-                self.convertPredictions();
+                if(applyModelPredictions) {
+                    // show (or hide) predictions depending on threshold
+                    self.setPredictionsVisible(window.showPredictions_minConf); //TODO: more elegant solution that doesn't require window?
+                    self.convertPredictions();
+                }
 
                 // adjust width of entries
                 window.windowResized();
@@ -546,7 +548,7 @@ class DataHandler {
             error: function(xhr, status, error) {
                 if(error == 'Unauthorized') {
                     var callback = function() {
-                        self._loadFixedBatch(batch);
+                        self._loadFixedBatch(batch, applyModelPredictions);
                     }
                     window.verifyLogin((callback).bind(self));
                 }
@@ -591,7 +593,7 @@ class DataHandler {
                 var callback = function() {
                     if(self.redoStack.length > 0) {
                         var nb = self.redoStack.pop();
-                        self._loadFixedBatch(nb.slice());
+                        self._loadFixedBatch(nb.slice(), false);
                     } else {
                         //TODO: temporary mode to ensure compatibility with running instances
                         try {
@@ -654,11 +656,11 @@ class DataHandler {
                 var doSubmit = $('#imorder-auto').prop('checked') || $('#review-enable-editing').prop('checked');
                 if(doSubmit) {
                     this._submitAnnotations().done(function() {
-                        self._loadFixedBatch(pb.slice());
+                        self._loadFixedBatch(pb.slice(), false);
                     });
                 } else {
                     // only go to next batch, don't submit annotations
-                    self._loadFixedBatch(pb.slice());
+                    self._loadFixedBatch(pb.slice(), false);
                 }
                 // if(dontCommit) {
                 //     self._loadFixedBatch(pb.slice());
