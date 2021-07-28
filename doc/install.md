@@ -48,7 +48,7 @@ It is strongly recommended to run AIDE in a self-contained Python environment, s
     # download AIDE source code
     sudo apt-get update && sudo apt-get install -y git
     cd $targetDir
-    git clone -b multiProject https://github.com/microsoft/aerial_wildlife_detection.git
+    git clone https://github.com/microsoft/aerial_wildlife_detection.git
 
     # install required libraries
     sudo apt-get install -y build-essential libpq-dev python-dev ffmpeg libsm6 libxext6 python3-opencv
@@ -61,7 +61,7 @@ It is strongly recommended to run AIDE in a self-contained Python environment, s
 Every instance running one of the services for AIDE gets its general required properties from a *.ini file.
 It is highly recommended to prepare a .ini file at the start of the installation of AIDE and to have a copy of the same file on all machines.
 Note that in the latest version of AIDE, the .ini file does not contain any project-specific parameters anymore.
-**Important: NEVER, EVER make the configuration file accessible to the outside web.**
+**Important: NEVER, EVER make the configuration file accessible to anyone, let alone the network or Web.**
 
 1. Create a *.ini file for your general AIDE setup. See the provided file under `config/settings.ini` for an example. To view all possible parameters, see [here](configure_settings.md).
 2. Copy the *.ini file to each server instance.

@@ -24,8 +24,8 @@ However, for the database operation, this is not required. If you wish to skip t
 ## Install PostgreSQL server
 
 ```bash
-    # specify postgres version you wish to use (must be >= 9.5)
-    version=10
+    # specify postgres version you wish to use (must be >= 9.5; AIDE is currently compatible with versions 9.5 to 13)
+    version=13
 
 
     # install packages

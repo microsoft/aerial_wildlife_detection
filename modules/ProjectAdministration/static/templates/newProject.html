@@ -60,9 +60,9 @@
                 cursor: pointer;
             }
             [type=radio]:checked + img {
-                outline: 2px solid #f00;
+                outline: 8px solid #f00;
             }
-            .ai-models-sidepanel {
+            #ai-models-sidepanel {
                 position: absolute;
                 right: 10px;
                 width: 400px;
@@ -73,10 +73,27 @@
                 border-radius: 5px;
                 padding: 20px;
             }
-            .ai-models-sidepanel-body {
+            #ai-models-sidepanel-header {
+                cursor: pointer;
+            }
+            #ai-models-sidepanel-header-arrow {
+                display: inline-block;
+                transform: rotate(90deg);
+            }
+            #ai-models-sidepanel-body {
+                display: flex;
                 height: 500px;
                 overflow-x: auto;
                 overflow-y: auto;
+            }
+            #ai-models-sidepanel-summary {
+                transform: rotate(-90deg);
+                display: inline-block;
+                position: absolute;
+                width: 100%;
+                left: -170px;
+                top: 170px;
+                cursor: pointer;
             }
         </style>
         <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
@@ -146,6 +163,7 @@
                 let table = $('#ai-models-table');
                 let tbody = $('#ai-models-tbody');
                 let placeholder = $('#ai-models-none');
+                let numModels = 0;
                 let types = getAnnoPredTypes();
                 tbody.empty();
                 try {
@@ -169,13 +187,16 @@
                             window.showOverlay(overlayMarkup, true, false);
                         });
                         tbody.append(markup);
+                        numModels++;
                     }
                     placeholder.hide();
                     table.show();
                 } catch(err) {
+                    numModels = 0;
                     table.hide();
                     placeholder.show();
                 }
+                $('#ai-models-sidepanel-summary').html(numModels + ' AI models available');
             }
 
             function replaceProhibitedShortnameStrings(shortname) {
@@ -339,6 +360,28 @@
                 });
             }
 
+            function showSidePanel(visible) {
+                let panel = $('#ai-models-sidepanel');
+                
+                let target = '-355px';
+                let rot = 90;
+                if(visible) {
+                    target = '10px';
+                    rot = 0;
+                }
+                panel.animate({
+                    right: target
+                });
+                $({deg: rot}).animate({deg: Math.abs(rot-90)}, {
+                    duration: 500,
+                    step: function(now) {
+                        $('#ai-models-sidepanel-header-arrow').css({
+                            transform: 'rotate(' + now + 'deg)'
+                        });
+                    }
+                });
+            }
+
             $(document).ready(function() {
 
                 let promise = getAvailableAImodels();
@@ -378,6 +421,14 @@
                     $('#create-project-button').click(function() {
                         doCreateProject();
                     });
+
+                    // collapsible AI models side panel
+                    $('#ai-models-sidepanel-header, #ai-models-sidepanel-summary').on('click', function() {
+                        let panel = $('#ai-models-sidepanel');
+                        let panelPos = panel.css('right');
+                        showSidePanel(panelPos.startsWith('-'));
+                    });
+                    showSidePanel($(window).width() > 1630);
                 });
             });
         </script>
@@ -543,10 +594,15 @@
                     </div>
                 </div>
 
-                <!-- TODO -->
-                <div class="ai-models-sidepanel">
-                    <h2>Compatible AI models</h2>
-                    <div class="ai-models-sidepanel-body">
+                <div id="ai-models-sidepanel">
+                    <h2 id="ai-models-sidepanel-header">
+                        <span id="ai-models-sidepanel-header-arrow">&#x25BA;</span>
+                        <span>Compatible AI models</span>
+                    </h2>
+                    <div id="ai-models-sidepanel-body">
+                        <div style="flex:0">
+                            <span id="ai-models-sidepanel-summary"></span>
+                        </div>
                         <div id="ai-models-none" style="display:none">(none available)</div>
                         <table id="ai-models-table" style="display:none">
                             <thead>
