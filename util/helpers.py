@@ -155,6 +155,8 @@ def parse_boolean(boolean):
     '''
     if isinstance(boolean, bool):
         return boolean
+    elif isinstance(boolean, int):
+        return bool(boolean)
     elif isinstance(boolean, str):
         boolean = boolean.lower()
         if boolean.startswith('t') or boolean == '1' or boolean.startswith('y'):

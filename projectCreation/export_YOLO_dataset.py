@@ -9,6 +9,9 @@ import os
 import argparse
 from psycopg2 import sql
 
+from util.helpers import parse_boolean
+
+
 def _replace(string, oldTokens, newToken):
     if isinstance(oldTokens, str):
         oldTokens = [oldTokens]
@@ -26,8 +29,10 @@ if __name__ == '__main__':
                     help='Manual specification of the directory of the settings.ini file; only considered if environment variable unset (default: "config/settings.ini").')
     parser.add_argument('--target_folder', type=str, default='export', const=1, nargs='?',
                     help='Export directory for the annotation text files.')
-    parser.add_argument('--export_annotations', type=bool, default=True, const=1, nargs='?',
-                    help='Whether to export annotations (default: True).')
+    parser.add_argument('--export_annotations', type=int, default=1,
+                    help='Whether to export annotations (default: 1).')
+    parser.add_argument('--include_empty', type=int, default=0,
+                    help='Export empty images (create empty annotation text files for them) (default: 0).')
     parser.add_argument('--limit_users', type=str,
                     help='Which users (comma-separated list of usernames) to limit annotations to (default: None).')
     parser.add_argument('--exclude_users', type=str, default=None, const=1, nargs='?',
@@ -40,6 +45,8 @@ if __name__ == '__main__':
     # parser.add_argument('--predictions_min_date', type=str, default=None, const=1, nargs='?',
     #                 help='Timestamp of earliest predictions to consider (default: None, i.e. all).')
     args = parser.parse_args()
+    args.export_annotations = parse_boolean(args.export_annotations)
+    args.include_empty = parse_boolean(args.include_empty)
 
 
     # setup
@@ -151,8 +158,31 @@ if __name__ == '__main__':
                     output[imgName] = []
                 output[imgName].append('{} {} {} {} {}\n'.format(str(label), x, y, w, h))
         else:
-            print('No data found in database.')
-            
+            print('No annotated images found in database.')
+        
+        if args.include_empty:
+            # also query for viewed but unannotated images
+            queryStr = sql.SQL('''
+                SELECT filename FROM {id_iu} AS iu
+                JOIN (SELECT id AS imID, filename FROM {id_img}) AS img
+                ON iu.image = img.imID
+                WHERE image NOT IN (
+                    SELECT image FROM {id_anno}
+                );
+            ''').format(
+                id_iu=sql.Identifier(args.project, 'image_user'),
+                id_img=sql.Identifier(args.project, 'image'),
+                id_anno=sql.Identifier(args.project, 'annotation')
+            )
+            allData = dbConn.execute(queryStr, None, 'all')
+
+            # iterate
+            if allData is not None and len(allData):
+                for nextItem in allData:
+                    # append
+                    output[nextItem['filename']] = ''
+            else:
+                print("No viewed but unannotated images found in database.")
 
     # write to disk
     if len(output) > 0:
