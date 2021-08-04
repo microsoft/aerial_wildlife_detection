@@ -40,16 +40,7 @@ AIDE is primarily developed by [Benjamin Kellenberger](https://bkellenb.github.i
 
 ### AIDE v2.1 is out
 
-![AIDE highlights](doc/figures/AIDE_v2_teaser.png)
-
 AIDE v2.1 is out! This includes a new interactive installer for Debian/Ubuntu systems as well as a plethora of bug fixes.
-Highlights:
-* Multi-project support: create and configure as many annotation projects as you like through the Web browser, all on one installation of AIDE.
-* Powerful new models: AIDE v2 officially includes [Detectron2](https://github.com/facebookresearch/detectron2) and comes with a plethora of powerful, deep learning-based models, from ResNet over Faster R-CNN to DeepLabV3+ (see [below](#built-in-ai-models)).
-* Model Marketplace: choose from a variety of pre-trained deep learning models to start with good quality predictions from the first few labels. Contribute and share your own models with other people or across projects.
-* Expansive quality control: monitor the progress and accuracy of users and models with a few clicks through the browser.
-
-There's lots more to discover. Check out the [demo](#demo) or [get started](#installation-and-launching-aide) straightaway!
 
 
 [Older news](doc/news.md)
