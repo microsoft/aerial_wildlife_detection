@@ -2,7 +2,7 @@
     Pull annotations and predictions from the database and export them into a
     folder according to the YOLO standard.
 
-    2019-21 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger, Matthew Skiffington
 '''
 
 import os
