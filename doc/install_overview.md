@@ -6,9 +6,31 @@ If you have [AIDE v1](https://github.com/microsoft/aerial_wildlife_detection/tre
 
 ## New installation
 
-### With Docker
+### Ubuntu / Debian
 
-Here's how to install and launch AIDE with Docker on the current machine:
+#### With the Installer
+
+__New since AIDE version 2.1:__ AIDE now offers an interactive installation script (beta) for easy setup that even supports configuring it to launch at system boot!
+
+1. Install a Python environment manager, such as [Conda](https://conda.io/) (recommended and used below) or [Virtualenv](https://virtualenv.pypa.io).
+2. Create a new Python environment for AIDE:
+```bash
+    conda create -y -n aide python=3.8
+    conda activate aide
+```
+3. Clone the AIDE repository: `git clone https://github.com/microsoft/aerial_wildlife_detection.git && cd aerial_wildlife_detection/`
+4. Launch installer and follow the instructions:
+```
+    ./install/install_debian.sh
+```
+
+__Tip:__ the installer also supports more advanced configurations; you can check it out by calling `./install/install_debian.sh --help`.
+
+
+
+#### With Docker
+
+If you wish to install AIDE in a self-contained environment instead of the host operating system, you can do so with Docker:
 
 1. Download and install [Docker](https://docs.docker.com/engine/install) as well as [Docker Compose](https://docs.docker.com/compose/install)
 2. If you want to use a GPU (and only then), you have to install the NVIDIA container toolkit:
@@ -39,8 +61,14 @@ Here's how to install and launch AIDE with Docker on the current machine:
         sudo docker-compose up
     ```
 
-### Manual installation
+#### Manual installation
 
-See [here](install.md) for instructions on configuring an instance of AIDE.
+See [here](install_manual.md) for instructions on configuring an instance of AIDE.
 
 After that, see [here](launch_aide.md) for instructions on launching an instance of AIDE.
+
+
+
+### Microsoft Windows
+
+Instructions coming soon.

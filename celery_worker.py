@@ -13,6 +13,7 @@
 import os
 import celery
 from celery import Celery
+from celery.signals import celeryd_after_setup
 from kombu import Queue
 from kombu.common import Broadcast
 from util.configDef import Config
@@ -27,6 +28,11 @@ if not 'AIDE_MODULES' in os.environ:
     raise ValueError('Missing system environment variable "AIDE_MODULES".')
 config = Config()
 
+# get Celery worker hostname
+hostname='aide'
+@celeryd_after_setup.connect
+def capture_worker_name(sender, instance, **kwargs):
+    hostname = '{0}'.format(sender)
 
 # parse AIDE modules and set up queues
 queues = []
@@ -45,7 +51,7 @@ for m in aideModules:
 
 queues.extend([
     Broadcast('aide_broadcast'),
-    Queue('aide@'+celery.utils.nodenames.gethostname())
+    Queue(hostname+'@'+celery.utils.nodenames.gethostname())
 ])
 
 

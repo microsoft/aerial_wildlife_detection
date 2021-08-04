@@ -3,7 +3,7 @@
 **WARNING: the scripts below apply for the old version of AIDE and may only work in the new version if the configuration .ini file contains all legacy, project-specific parameters. New data management scripts will be under development.**
 
 
-AIDE ships with a couple of helper scripts that allow importing existing datasets into the platform. All of the scripts (and instructions below) need to be executed from the _FileServer_ instance. This means that you must have [installed](install.md) and [configured](configure_settings.md) AIDE on that machine accordingly, and to have the [database instance running](setup_db.md).
+AIDE ships with a couple of helper scripts that allow importing existing datasets into the platform. All of the scripts (and instructions below) need to be executed from the _FileServer_ instance. This means that you must have [installed](install_overview.md) and [configured](configure_settings.md) AIDE on that machine accordingly, and to have the [database instance running](setup_db.md).
 
 
 ## Import images only

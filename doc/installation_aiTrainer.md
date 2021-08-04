@@ -22,7 +22,7 @@ Make sure the ports are open for any machine running an _AIController_ or _AIWor
 
 ### Install requirements
 
-Skip this step if you have already installed the requirements as per [base installation routine](install.md#prepare-environment).
+Skip this step if you have already installed the requirements as per [base installation routine](install_manual.md#prepare-environment).
 The required libraries for the message broker can be installed e.g. using pip:
 ```bash
     conda activate aide

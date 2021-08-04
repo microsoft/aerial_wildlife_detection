@@ -8,7 +8,7 @@ Note that AIDE requires PostgreSQL >= 9.5 (it has been tested with version 10).
 
 ## Define database details
 
-The instructions below assume you have [installed the AIDE project](install.md) and [configured the project configuration file](configure_settings.md) on the machine that is dedicated to running the database.
+The instructions below assume you have [installed the AIDE project](install_manual.md) and [configured the project configuration file](configure_settings.md) on the machine that is dedicated to running the database.
 However, for the database operation, this is not required. If you wish to skip these steps you will have to manually provide the four parameters below (replace `$(python util/configDef.py ...)` with the respective values).
 
 ```bash
@@ -73,7 +73,7 @@ This needs to be done from the installation root of AIDE, with the correct envir
 ```bash
     sudo -u postgres psql -c "CREATE USER $dbUser WITH PASSWORD '$dbPassword';"
     sudo -u postgres psql -c "CREATE DATABASE $dbName WITH OWNER $dbUser CONNECTION LIMIT -1;"
-    sudo -u postgres psql -c "GRANT CONNECT ON DATABASE $dbName TO $dbUser;"
+    sudo -u postgres psql -c "GRANT CREATE, CONNECT ON DATABASE $dbName TO $dbUser;"
     sudo -u postgres psql -d $dbName -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
 
     # NOTE: needs to be run after init

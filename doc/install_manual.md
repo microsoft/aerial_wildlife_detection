@@ -1,4 +1,6 @@
-# Installation
+# Manual installation for Debian/Ubuntu
+
+Follow these instructions if you are encountering issues with the [installer](install_overview.md#Debian-) or would like to take full control over which components you want to install.
 
 ## Requirements
 
@@ -42,7 +44,7 @@ It is strongly recommended to run AIDE in a self-contained Python environment, s
     targetDir=/path/to/desired/source/folder
 
     # create environment (requires conda or miniconda)
-    conda create -y -n aide python=3.7
+    conda create -y -n aide python=3.8
     conda activate aide
 
     # download AIDE source code

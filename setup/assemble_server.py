@@ -15,22 +15,23 @@ import bottle
 from bottle import Bottle
 from util.helpers import LogDecorator
 from util.configDef import Config
+from setup.setupDB import add_update_superuser
 from setup.migrate_aide import migrate_aide
 from modules import REGISTERED_MODULES, Database
 from constants.version import AIDE_VERSION
 
 
 def _verify_unique(instances, moduleClass):
-        '''
-            Compares the newly requested module, address and port against
-            already launched modules on this instance.
-            Raises an Exception if another module from the same type has already been launched on this instance
-        '''
-        for key in instances.keys():
-            instance = instances[key]
-            if moduleClass.__class__.__name__ == instance.__class__.__name__:
-                raise Exception('Module {} already launched on this server.'.format(moduleClass.__class__.__name__))
-
+    '''
+        Compares the newly requested module, address and port against
+        already launched modules on this instance.
+        Raises an Exception if another module from the same type has already been launched on this instance
+    '''
+    for key in instances.keys():
+        instance = instances[key]
+        if moduleClass.__class__.__name__ == instance.__class__.__name__:
+            raise Exception('Module {} already launched on this server.'.format(moduleClass.__class__.__name__))
+            
 
 
 def assemble_server(verbose_start=True, check_v1_config=True, migrate_database=True, force_migrate=False, passive_mode=False):
@@ -153,6 +154,23 @@ def assemble_server(verbose_start=True, check_v1_config=True, migrate_database=T
         else:
             LogDecorator.print_status('ok')
 
+    # add/modify superuser credentials if needed
+    try:
+        result = add_update_superuser(config, dbConnector)
+        if result['new_account']:
+            print('New super user credentials found in configuration file and added to database:')
+            print('\tName:   ' + result['details']['name'])
+            print('\tE-mail: ' + result['details']['email'])
+            print('\tPassword: ****')
+        elif len(result['changes']):
+            print('Super user account details changed for account name "". New credentials:')
+            print('\tName:   ' + result['details']['name'])
+            print('\tE-mail: ' + result['details']['email'] + (' (changed)' if result['changes'].get('adminEmail', False) else ''))
+            print('\tPassword: ****' + (' (changed)' if result['changes'].get('adminPassword', False) else ''))
+    except Exception as e:
+        # no superuser credentials provided; ignore
+        print(e)    #TODO
+        pass
 
     # prepare bottle
     app = Bottle()

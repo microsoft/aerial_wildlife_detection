@@ -20,6 +20,66 @@ from modules import Database, UserHandling
 from setup.migrate_aide import migrate_aide
 
 
+
+def add_update_superuser(config, dbConn):
+    '''
+        Reads the super user credentials from the config file and checks if
+        anything has changed w.r.t. the entries in the database. Makes
+        modifications if this is the case and reports back the changes.
+    '''
+    isNewAccount = False
+    changes = {}
+
+    # values in config file
+    adminName = config.getProperty('Project', 'adminName')
+    if adminName is None or not len(adminName):
+        return None
+    adminEmail = config.getProperty('Project', 'adminEmail')
+    adminPass = config.getProperty('Project', 'adminPassword')
+    if adminPass is None or not len(adminPass):
+        raise Exception('No password defined for admin account in configuration file.')
+    uHandler = UserHandling.backend.middleware.UserMiddleware(config, dbConn)
+    adminPass = uHandler._create_hash(adminPass.encode('utf8'))
+
+    # get current values
+    currentMeta = dbConn.execute('''
+        SELECT email, hash
+        FROM aide_admin.user
+        WHERE name = %s;
+    ''', (adminName,), 1)
+    if currentMeta is None or not len(currentMeta):
+        # no account found under this name; create new
+        isNewAccount = True
+    
+    # check if changes
+    if currentMeta is not None and len(currentMeta):
+        currentMeta = currentMeta[0]
+        if currentMeta['email'] != adminEmail:
+            changes['adminEmail'] = True
+        if currentMeta['hash'] != adminPass:
+            changes['adminPassword'] = True
+
+    if isNewAccount or len(changes):
+        sql = '''
+            INSERT INTO aide_admin.user (name, email, hash, issuperuser)
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (name) DO UPDATE
+            SET email=EXCLUDED.email, hash=EXCLUDED.hash;
+        '''
+        values = (adminName, adminEmail, adminPass, True,)
+        dbConn.execute(sql, values, None)
+
+    return {
+        'details': {
+            'name': adminName,
+            'email': adminEmail
+        },
+        'new_account': isNewAccount,
+        'changes': changes
+    }
+
+
+
 def setupDB():
     config = Config()
     dbConn = Database(config)
@@ -35,17 +95,7 @@ def setupDB():
     dbConn.execute(sql, None, None)
 
     # add admin user
-    sql = '''
-        INSERT INTO aide_admin.user (name, email, hash, issuperuser)
-        VALUES (%s, %s, %s, %s)
-        ON CONFLICT (name) DO NOTHING;
-    '''
-    adminPass = config.getProperty('Project', 'adminPassword')
-    uHandler = UserHandling.backend.middleware.UserMiddleware(config, dbConn)
-    adminPass = uHandler._create_hash(adminPass.encode('utf8'))
-
-    values = (config.getProperty('Project', 'adminName'), config.getProperty('Project', 'adminEmail'), adminPass, True,)
-    dbConn.execute(sql, values, None)
+    add_update_superuser(config, dbConn)
 
     # finalize: migrate database in any case (this also adds the AIDE version if needed)
     migrate_aide()
@@ -56,6 +106,7 @@ def setupDB():
         VALUES (%s)
         ON CONFLICT (version) DO NOTHING;
     ''', (AIDE_VERSION,), None)
+
 
 
 if __name__ == '__main__':
