@@ -30,7 +30,7 @@ test_only=FALSE                     # skip installation and only do checks and t
 # constants
 INSTALLER_VERSION=2.1.210804
 MIN_PG_VERSION=9.5
-PG_KEY=https://www.postgresql.org/media/keys/ACCC4CF8.asc
+PG_KEY=ACCC4CF8.asc
 DEFAULT_PORT_RABBITMQ=5672
 DEFAULT_PORT_REDIS=6379
 SYSTEMD_TARGET_SERVER=aide-server                   # for AIDE Web server: /etc/systemd/system/$(SYSTEMD_TARGET_SERVER).service
@@ -983,8 +983,9 @@ if [[ $install_database == true ]]; then
 
         # install and configure PostgreSQL
         echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
-        wget --quiet -O - $PG_KEY | sudo apt-key add -
-        sudo apt-get install -y postgresql-$pg_version | tee -a $log;
+        wget --quiet -O - https://www.postgresql.org/media/keys/$PG_KEY | sudo apt-key add -
+        wget --quiet -O - https://www.postgresql.org/repos/apt/$PG_KEY | sudo apt-key add -
+        sudo apt-get update && apt-get install -y postgresql-$pg_version | tee -a $log;
 
         # modify authentication
         dbAuth=$dbUser
