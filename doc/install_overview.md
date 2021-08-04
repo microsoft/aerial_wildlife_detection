@@ -18,9 +18,12 @@ __New since AIDE version 2.1:__ AIDE now offers an interactive installation scri
     conda create -y -n aide python=3.8
     conda activate aide
 ```
-3. Clone the AIDE repository: `git clone https://github.com/microsoft/aerial_wildlife_detection.git && cd aerial_wildlife_detection/`
-4. Launch installer and follow the instructions:
+3. Clone the AIDE repository:
+```bash
+git clone https://github.com/microsoft/aerial_wildlife_detection.git && cd aerial_wildlife_detection/
 ```
+4. Launch installer and follow the instructions:
+```bash
     ./install/install_debian.sh
 ```
 
