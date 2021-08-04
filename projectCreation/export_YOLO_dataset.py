@@ -33,6 +33,8 @@ if __name__ == '__main__':
                     help='Whether to export annotations (default: 1).')
     parser.add_argument('--include_empty', type=int, default=0,
                     help='Export empty images (create empty annotation text files for them) (default: 0).')
+    parser.add_argument('--exclude_golden', type=int, default=0,
+                    help='Exclude images flagged as Golden Questions (so they do not have annotation text files created for them) (default: 0).')
     parser.add_argument('--limit_users', type=str,
                     help='Which users (comma-separated list of usernames) to limit annotations to (default: None).')
     parser.add_argument('--exclude_users', type=str, default=None, const=1, nargs='?',
@@ -47,8 +49,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     args.export_annotations = parse_boolean(args.export_annotations)
     args.include_empty = parse_boolean(args.include_empty)
-
-
+    args.exclude_golden = parse_boolean(args.exclude_golden)
+    
     # setup
     print('Setup...\n')
     if not 'AIDE_CONFIG_PATH' in os.environ:
@@ -162,17 +164,24 @@ if __name__ == '__main__':
         
         if args.include_empty:
             # also query for viewed but unannotated images
+            
+            if args.export_golden:
+                gqStr = sql.SQL('and isGoldenQuestion is NOT TRUE')
+            else:
+                gqStr = sql.SQL('')
+            
             queryStr = sql.SQL('''
                 SELECT filename FROM {id_iu} AS iu
                 JOIN (SELECT id AS imID, filename FROM {id_img}) AS img
                 ON iu.image = img.imID
                 WHERE image NOT IN (
                     SELECT image FROM {id_anno}
-                );
+                ) {gqStr};
             ''').format(
                 id_iu=sql.Identifier(args.project, 'image_user'),
                 id_img=sql.Identifier(args.project, 'image'),
-                id_anno=sql.Identifier(args.project, 'annotation')
+                id_anno=sql.Identifier(args.project, 'annotation'),
+                gqStr=gqStr
             )
             allData = dbConn.execute(queryStr, None, 'all')
 
