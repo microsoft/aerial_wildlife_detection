@@ -207,7 +207,7 @@ class ImageViewport {
 
 
     __mousewheel_event(event) {
-        if(event.metaKey) {
+        if(event.metaKey || event.shiftKey) {
             // zoom in or out
             let delta = event.originalEvent.deltaY;
             if(delta > 0) {
