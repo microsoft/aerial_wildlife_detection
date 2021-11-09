@@ -7,6 +7,7 @@ body {
     background-size: cover;
     max-height: 100%;
     max-width: 100%;
+    overscroll-behavior-x: none; /* to prevent Chrome/Edge/etc. from going to previous site */
 }
 
 h1 {
@@ -378,13 +379,23 @@ canvas {
 .tooltip {
     opacity: 100;
 }
-
 .tooltip-inner {
     background-color: #17a2b8 !important;
     color: white;
     font-size: 18px;
     max-width: 300px !important;
 }
+.meta-zoom-tooltip {
+    position: absolute;
+    display: inline;
+    margin-top: 20px;
+    margin-left: -60px;
+    border-radius: 5px;
+    padding: 10px;
+    color: white;
+    background: #3634349d;
+}
+
 
 .arrow::before{
     border-bottom-color:#17a2b8 !important;

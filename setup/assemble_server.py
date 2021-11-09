@@ -163,7 +163,7 @@ def assemble_server(verbose_start=True, check_v1_config=True, migrate_database=T
             print('\tE-mail: ' + result['details']['email'])
             print('\tPassword: ****')
         elif len(result['changes']):
-            print('Super user account details changed for account name "". New credentials:')
+            print('Super user account details changed for account name "{}". New credentials:'.format(result['details']['name']))
             print('\tName:   ' + result['details']['name'])
             print('\tE-mail: ' + result['details']['email'] + (' (changed)' if result['changes'].get('adminEmail', False) else ''))
             print('\tPassword: ****' + (' (changed)' if result['changes'].get('adminPassword', False) else ''))

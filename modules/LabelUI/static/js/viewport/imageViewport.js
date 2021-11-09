@@ -78,11 +78,22 @@ class ImageViewport {
 
 
     _zoom(event, amount) {
-        var mousePos = this.transformCoordinates(this.getRelativeCoordinates(event),
-        'validArea', true);
+        if(this.mousePos_zoom === undefined) {
+            this.mousePos_zoom = this.transformCoordinates(this.getRelativeCoordinates(event),
+            'validArea', true);
+        }
+        if(this.mousePos_zoom_timeout !== undefined) {
+            clearTimeout(this.mousePos_zoom_timeout);
+        }
+        let self = this;
+        this.mousePos_zoom_timeout = setTimeout(function() {
+            self.mousePos_zoom = undefined;
+        }, 100);
+        // var mousePos = this.transformCoordinates(this.getRelativeCoordinates(event),
+        // 'validArea', true);
         var currViewport = this.getViewport();
         var size = [(1+amount)*currViewport[2], (1+amount)*currViewport[3]];
-        var pos = [(mousePos[0]-size[0]/2 + currViewport[0])/2, (mousePos[1]-size[1]/2 + currViewport[1])/2];
+        var pos = [(this.mousePos_zoom[0]-size[0]/2 + currViewport[0])/2, (this.mousePos_zoom[1]-size[1]/2 + currViewport[1])/2];
         this.setViewport([
             pos[0], pos[1],
             size[0], size[1]
@@ -124,17 +135,17 @@ class ImageViewport {
             var repeat = false;
             if(self.mouseButton > 0) {
                 var vp = self.getViewport();
-                if(self.mousePos[0] <= 0.05) {
+                if(self.mousePos[0] - vp[0] <= 0.05) {
                     vp[0] -= 0.01;
                     repeat = true;
-                } else if(self.mousePos[0] >= 0.95) {
+                } else if((vp[0]+vp[2]) - self.mousePos[0] <= 0.05) {
                     vp[0] += 0.01;
                     repeat = true;
                 }
-                if(self.mousePos[1] <= 0.05) {
+                if(self.mousePos[1] - vp[1] <= 0.05) {
                     vp[1] -= 0.01;
                     repeat = true;
-                } else if(self.mousePos[1] >= 0.95) {
+                } else if((vp[1]+vp[3]) - self.mousePos[1] <= 0.05) {
                     vp[1] += 0.01;
                     repeat = true;
                 }
@@ -150,10 +161,12 @@ class ImageViewport {
     }
 
     __mousemove_event(event) {
+        event.preventDefault();
+
         // update position and extent shown of loupe
-        var canvasMousePos = this.transformCoordinates(this.getRelativeCoordinates(event),
+        let canvasMousePos = this.transformCoordinates(this.getRelativeCoordinates(event),
             'canvas', true);
-        var newMousePos = this.transformCoordinates(this.getRelativeCoordinates(event),
+        let newMousePos = this.transformCoordinates(this.getRelativeCoordinates(event),
             'validArea', true);
         this.loupe.setPosition(canvasMousePos[0] - 0.2,
             canvasMousePos[1] - 0.2,
@@ -172,11 +185,13 @@ class ImageViewport {
         
         if(this.mousePos != undefined && (this.mouseButton === 2 || (this.mouseButton != 0 && window.uiControlHandler.getAction() === ACTIONS.PAN))) {
             // pan around if middle mouse button pressed or if the "pan" button is active
-            var diffX = newMousePos[0] - this.mousePos[0];
-            var diffY = newMousePos[1] - this.mousePos[1];
-            var vp = this.getViewport();
-            vp[0] -= diffX;
-            vp[1] -= diffY;
+            let shift = this.transformCoordinates(
+                [event.originalEvent.movementX, event.originalEvent.movementY],
+                'canvas', true
+            )
+            let vp = this.getViewport();
+            vp[0] -= shift[0] * vp[2];
+            vp[1] -= shift[1] * vp[3];
             this.setViewport(vp);
 
         } else {
@@ -192,12 +207,42 @@ class ImageViewport {
 
 
     __mousewheel_event(event) {
-        // zoom in or out
-        var delta = event.originalEvent.deltaY;
-        if(delta > 0) {
-            this._zoom(event, 0.05);
+        if(event.metaKey) {
+            // zoom in or out
+            let delta = event.originalEvent.deltaY;
+            if(delta > 0) {
+                this._zoom(event, 0.05);
+            } else {
+                this._zoom(event, -0.05);
+            }
         } else {
-            this._zoom(event, -0.05);
+            // pan
+            let vp = this.getViewport();
+            if(vp[2] >= 1.0 && vp[3] >= 1.0) {
+                // trying to pan in full extent; show message
+                $('#meta-key-zoom').fadeIn();
+                if(this.metaKeyTimeout !== undefined) {
+                    clearTimeout(this.metaKeyTimeout);
+                }
+                let self = this;
+                this.metaKeyTimeout = setTimeout(function() {
+                    $('#meta-key-zoom').fadeOut();
+                    self.metaKeyTimeout = undefined;
+                }, 1000);
+            } else {
+                if(this.metaKeyTimeout !== undefined) {
+                    clearTimeout(this.metaKeyTimeout);
+                }
+                $('#meta-key-zoom').fadeOut();
+                this.metaKeyTimeout = undefined;
+            }
+            let shift = this.transformCoordinates(
+                [event.originalEvent.deltaX, event.originalEvent.deltaY],
+                'canvas', true
+            )
+            vp[0] += shift[0];
+            vp[1] += shift[1];
+            this.setViewport(vp);
         }
     }
 

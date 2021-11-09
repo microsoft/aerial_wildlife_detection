@@ -292,6 +292,19 @@ $(document).ready(function() {
             });          
         }
 
+        // overlay for meta key + pan to zoom
+        let metaKey = 'Meta';
+        if(navigator.userAgent.indexOf('Mac') != -1) {
+            // macOS
+            metaKey = '&#8984;';
+        } else if(navigator.userAgent.indexOf('Win') != -1) {
+            // Windows
+            metaKey = '\u2756 (Windows key)';
+        } else if(navigator.userAgent.indexOf("Linux") != -1) {
+            // Linux
+            metaKey = '&#8984; (Super key)';
+        }
+        $('#meta-key-zoom').html('Hold ' + metaKey + ' and pan to zoom')
 
         // show or hide tooltip in case of scrollable gallery
         window.galleryScrolled = function() {
