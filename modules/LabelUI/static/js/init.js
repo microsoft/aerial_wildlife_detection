@@ -304,7 +304,7 @@ $(document).ready(function() {
             // Linux
             metaKey = '&#8984; (Super key)';
         }
-        $('#meta-key-zoom').html('Hold ' + metaKey + ' and pan to zoom')
+        $('#meta-key-zoom').html('Hold ' + metaKey + ' and scroll to zoom')
 
         // show or hide tooltip in case of scrollable gallery
         window.galleryScrolled = function() {
