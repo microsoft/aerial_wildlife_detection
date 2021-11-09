@@ -130,23 +130,25 @@ class ImageViewport {
             Automatically shifts the viewport if the mouse is being dragged towards
             the borders. Does so with a delay and then repeatedly.
         */
-        var self = this;
-        var _do_shift = function() {
+        let tolerance = 0.01;
+        let shiftAmount = 0.005;
+        let self = this;
+        let _do_shift = function() {
             var repeat = false;
             if(self.mouseButton > 0) {
                 var vp = self.getViewport();
-                if(self.mousePos[0] - vp[0] <= 0.05) {
-                    vp[0] -= 0.01;
+                if(self.mousePos[0] - vp[0] <= tolerance) {
+                    vp[0] -= shiftAmount;
                     repeat = true;
-                } else if((vp[0]+vp[2]) - self.mousePos[0] <= 0.05) {
-                    vp[0] += 0.01;
+                } else if((vp[0]+vp[2]) - self.mousePos[0] <= tolerance) {
+                    vp[0] += shiftAmount;
                     repeat = true;
                 }
-                if(self.mousePos[1] - vp[1] <= 0.05) {
-                    vp[1] -= 0.01;
+                if(self.mousePos[1] - vp[1] <= tolerance) {
+                    vp[1] -= shiftAmount;
                     repeat = true;
-                } else if((vp[1]+vp[3]) - self.mousePos[1] <= 0.05) {
-                    vp[1] += 0.01;
+                } else if((vp[1]+vp[3]) - self.mousePos[1] <= tolerance) {
+                    vp[1] += shiftAmount;
                     repeat = true;
                 }
                 self.setViewport(vp);
