@@ -56,7 +56,7 @@ def add_update_superuser(config, dbConn):
         currentMeta = currentMeta[0]
         if currentMeta['email'] != adminEmail:
             changes['adminEmail'] = True
-        if currentMeta['hash'] != adminPass:
+        if bytes(currentMeta['hash']) != adminPass:
             changes['adminPassword'] = True
 
     if isNewAccount or len(changes):
