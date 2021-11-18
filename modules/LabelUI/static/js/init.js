@@ -215,7 +215,7 @@ $(document).ready(function() {
             // resize canvas to fit height (so that as little scrolling as possible is needed)
             var aspectRatio = canvas.width / canvas.height;
 
-            var height = Math.max(window.minImageWidth/aspectRatio, gallery.height() / numRows - numCols*24);   // subtract 24 pixels height for each image (footer)
+            var height = Math.max(window.minImageWidth/aspectRatio, gallery.height() / numRows - numCols*48);   // subtract 48 pixels height for each image (footer)
             var width = Math.max(window.minImageWidth, gallery.width() / numCols);
             if(height > width/aspectRatio) {
                 height = width/aspectRatio;
