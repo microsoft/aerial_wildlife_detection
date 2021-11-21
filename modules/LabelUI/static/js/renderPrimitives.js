@@ -165,19 +165,25 @@ class ElementGroup extends AbstractRenderElement {
 }
 
 
+
 class ImageElement extends AbstractRenderElement {
 
     constructor(id, image, viewport, zIndex) {
         super(id, null, zIndex, false);
         this.image = image;
         this.viewport = viewport;
-
         if(this.image != null) {
             // calculate image bounds
-            let imageSize = [this.image.naturalWidth, this.image.naturalHeight];
+            this.imageSize = [0, 0];
+            if(this.image instanceof ImageRenderer) {
+                this.imageSize = [this.image.getWidth(), this.image.getHeight()];
+            } else {
+                // regular image
+                this.imageSize = [this.image.naturalWidth, this.image.naturalHeight];
+            }
             let canvasSize = [this.viewport.canvas.width(), this.viewport.canvas.height()];
-            let scaleFactor = Math.min(canvasSize[0]/imageSize[0], canvasSize[1]/imageSize[1]);
-            let dimensions = [scaleFactor*imageSize[0]/canvasSize[0], scaleFactor*imageSize[1]/canvasSize[1]];
+            let scaleFactor = Math.min(canvasSize[0]/this.imageSize[0], canvasSize[1]/this.imageSize[1]);
+            let dimensions = [scaleFactor*this.imageSize[0]/canvasSize[0], scaleFactor*this.imageSize[1]/canvasSize[1]];
 
             // define valid canvas area as per image offset
             this.bounds = [(1-dimensions[0])/2, (1-dimensions[1])/2, dimensions[0], dimensions[1]];
@@ -193,27 +199,47 @@ class ImageElement extends AbstractRenderElement {
         return this.naturalImageExtent;
     }
 
+    getWidth() {
+        return this.imageSize[0];
+    }
+
+    getHeight() {
+        return this.imageSize[1];
+    }
+
     getTimeCreated() {
         return this.timeCreated;
+    }
+
+    _fill_text(ctx, targetCoords, text) {
+        ctx.fillStyle = window.styles.background;
+        ctx.fillRect(targetCoords[0], targetCoords[1], targetCoords[2], targetCoords[3]);
+        ctx.font = '20px sans-serif';
+        var dimensions = ctx.measureText(text);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText(text, targetCoords[2]/2 - dimensions.width/2, targetCoords[3]/2);
     }
 
     render(ctx, scaleFun) {
         super.render(ctx, scaleFun);
         var targetCoords = scaleFun([0,0,1,1], 'validArea');
-        if(this.image != null) {
-            ctx.drawImage(this.image, targetCoords[0], targetCoords[1],
-                targetCoords[2],
-                targetCoords[3]);
+        if(this.image !== null) {
+            if(this.image instanceof ImageRenderer) {
+                this.image.get_image(true).then((canvas) => {
+                    ctx.drawImage(canvas, targetCoords[0], targetCoords[1],
+                        targetCoords[2],
+                        targetCoords[3]);
+                });
+            } else {
+                // regular image
+                ctx.drawImage(this.image, targetCoords[0], targetCoords[1],
+                    targetCoords[2],
+                    targetCoords[3]);
+            }
 
         } else {
             // loading failed
-            let text = 'Loading failed.';
-            ctx.fillStyle = window.styles.background;
-            ctx.fillRect(targetCoords[0], targetCoords[1], targetCoords[2], targetCoords[3]);
-            ctx.font = '20px sans-serif';
-            var dimensions = ctx.measureText(text);
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillText(text, targetCoords[2]/2 - dimensions.width/2, targetCoords[3]/2);
+            this._fill_text(ctx, targetCoords, 'Loading failed.');
         }
     }
 }
@@ -530,6 +556,509 @@ class LineElement extends AbstractRenderElement {
         ctx.lineTo(endPos[0], endPos[1]);
         ctx.stroke();
         ctx.closePath();
+    }
+}
+
+
+class PolygonElement extends AbstractRenderElement {
+
+    constructor(id, coordinates, style, unsure, zIndex, disableInteractions) {
+        super(id, style, zIndex, disableInteractions);
+        if(!this.style.hasOwnProperty('strokeColor') && this.style.hasOwnProperty('color')) {
+            this.style['strokeColor'] = window.addAlpha(this.style.color, this.style.lineOpacity);
+        }
+        this.coordinates = coordinates;
+        this.unsure = unsure;
+
+        if(!Array.isArray(this.coordinates)) this.coordinates = [];
+
+        // check if polygon is closed
+        this.closed = (this.coordinates.length >= 6);
+        this.isValid = true;        // needs to be true at beginning to be drawn on Canvas
+        this.activeHandle = null;
+    }
+
+    setProperty(propertyName, value) {
+        super.setProperty(propertyName, value);
+        if(propertyName === 'color') {
+            this.style.strokeColor = window.addAlpha(value, this.style.lineOpacity);
+            this.style.fillColor = window.addAlpha(value, this.style.fillOpacity);
+        }
+    }
+
+    getGeometry() {
+        if(!this.isClosed()) this.closePolygon();   //TODO: return null if invalid?
+        return {
+            'type': 'polygon',
+            'coordinates': this.coordinates,
+            'unsure': this.unsure
+        }
+    }
+
+    registerAsCallback(viewport) {
+        /*
+            Adds this instance to the viewport.
+            This makes the entry user-modifiable in terms of position.
+        */
+        if(!this.disableInteractions)
+            viewport.addCallback(this.id, 'mouseup', this._get_active_handle_callback('mouseup', viewport));
+    }
+
+    deregisterAsCallback(viewport) {
+        this.setActive(false, viewport);
+        viewport.removeCallback(this.id, 'mouseup');
+    }
+
+    _get_active_handle_callback(type, viewport) {
+        let self = this;
+        if(type === 'mousedown') {
+            return function(event) {
+                self._mousedown_event(event, viewport, false);
+            };
+
+        } else if(type === 'mousemove') {
+            return function(event) {
+                self._mousemove_event(event, viewport, false);
+            }
+
+        } else if(type === 'mouseup') {
+            return function(event) {
+                self._mouseup_event(event, viewport, false);
+            }
+        } else if(type === 'mouseleave') {
+            return function(event) {
+                self._mouseleave_event(event, viewport, false);
+            }
+        }
+    }
+
+    isCloseable() {
+        /**
+         * Returns true if there are at least three vertices (a fourth back to
+         * the start could form a complete polygon).
+         */
+        return this.coordinates.length >= 6;
+    }
+
+    isClosed() {
+        if(this.coordinates.length < 6) {
+            this.closed = false;
+        }
+        return this.closed;
+    }
+
+    closePolygon() {
+        if(this.isClosed() || this.coordinates.length < 6) return;
+        this.closed = true;
+        this.adjustmentHandles_dirty = true;        //TODO: dirty hack to redraw handles upon next viewport availability
+    }
+
+    addVertex(coordinates, index) {
+        /**
+         * Adds a new vertex with given coordinates at given index in the
+         * polygon.
+         * negative indices count from the end.
+         */
+        if(index < -1) index -= 1;  // Javascript index offset
+        if(index === -1) {
+            this.coordinates.push(coordinates[0]);
+            this.coordinates.push(coordinates[1]);
+        } else {
+            this.coordinates.splice(index, 0, coordinates[0]);
+            this.coordinates.splice(index+1, 0, coordinates[1]);
+        }
+    }
+
+    removeVertex(index) {
+        /**
+         * Removes a vertex at given index in the polygon.
+         * Negative indices count from the end.
+         */
+        this.coordinates.splice(index, 1);
+        this.coordinates.splice(index, 1);
+        if(this.coordinates.length < 6) {
+            // too many vertices deleted; declare unclosed
+            this.closed = false;
+        }
+    }
+
+    containsPoint(point) {
+        /**
+         * Receives an array of X, Y coordinates and returns true if they are
+         * inside the polygon and false otherwise.
+         * Adapted from https://github.com/substack/point-in-polygon/blob/master/flat.js
+         */
+        var x = point[0], y = point[1];
+        var inside = false;
+        let start = 0;
+        let end = this.coordinates.length;
+        var len = (end-start)/2;
+        for(var i = 0, j = len - 1; i < len; j = i++) {
+            var xi = this.coordinates[start+i*2+0], yi = this.coordinates[start+i*2+1];
+            var xj = this.coordinates[start+j*2+0], yj = this.coordinates[start+j*2+1];
+            var intersect = ((yi > y) !== (yj > y))
+                && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
+    }
+
+    _euclideanDistance(a, b) {
+        /**
+         * Calculates the euclidean distance between two points.
+         * (TODO: make generally available)?
+         */
+        return Math.sqrt(Math.pow((a[0]-b[0]), 2) + Math.pow((a[1]-b[1]), 2));
+    }
+
+    euclideanDistance(point) {
+        /**
+         * Calculates the euclidean distance between the center of gravity of
+         * the polygon and the given point.
+         */
+        let center = [0.0, 0.0];
+        for(var c=0; c<this.coordinates.length; c+=2) {
+            center[0] += this.coordinates[c];
+            center[1] += this.coordinates[c+1];
+        }
+        center[0] /= this.coordinates.length/2;
+        center[1] /= this.coordinates.length/2;
+        return this._euclideanDistance(center, point);
+    }
+
+    isInDistance(coordinates, tolerance) {
+        /**
+         * Returns true if any of the polygon's vertices are close to the
+         * coordinates in euclidean distance within a given tolerance.
+         * TODO: also consider edges?
+         */
+        let minDist = 1e9;
+        for(var c=0; c<this.coordinates.length; c+=2) {
+            let dist = this._euclideanDistance(
+                [this.coordinates[c], this.coordinates[c+1]],
+                coordinates
+            );
+            minDist = Math.min(minDist, dist);
+        }
+        return (minDist <= tolerance);
+    }
+
+    _translatePolygon(offset) {
+        /**
+         * Moves all points by a given offset in x and y direction.
+         */
+        for(var c=0; c<this.coordinates.length; c+=2) {
+            this.coordinates[c] += offset[0];
+            this.coordinates[c+1] += offset[1];
+        }
+    }
+
+    __createAdjustmentHandle(x, y, handleType) {
+        let handle = new ResizeHandle(        //TODO: use a round point instead?
+            self.id + '_' + handleType + '_' + x + '_' + y,
+            x, y,
+            1
+        );
+        if(handleType === 'edge') {
+            // hide by default
+            handle.setProperty('visible', false);
+        }
+        return handle;
+    }
+
+    _createAdjustmentHandles(viewport, forceRecreate) {
+        /**
+         * Creates small drawable handles over each vertex position, as well as
+         * "add vertex" handles over each edge's mid-point of the polygon, only
+         * visible on close mouse hover.
+         */
+        if(this.coordinates.length < 2) {
+            viewport.removeRenderElement(this.adjustmentHandles);
+            this.adjustmentHandles = null;
+            return null;
+        }
+        if(!forceRecreate && this.adjustmentHandles !== null) {
+            return this.adjustmentHandles;
+        }
+        if(this.adjustmentHandles !== null) {
+            viewport.removeRenderElement(this.adjustmentHandles);
+        }
+        let handles = [];
+        for(var c=0; c<this.coordinates.length; c+=2) {
+
+            // vertices
+            handles.push(this.__createAdjustmentHandle(
+                this.coordinates[c], this.coordinates[c+1],
+                'vertex'
+            ));
+
+            // edges (mid-point)        //TODO: make visible only on hover
+            if(c<this.coordinates.length-2 || this.isClosed()) {
+                // only draw next mid-point handle at end if polygon is closed
+                let nextC = (c+2) % this.coordinates.length;
+                let nextX = (this.coordinates[c] + this.coordinates[nextC]) / 2;
+                let nextY = (this.coordinates[c+1] + this.coordinates[nextC+1]) / 2;
+                handles.push(this.__createAdjustmentHandle(
+                    nextX, nextY,
+                    'edge'
+                ));
+            }
+        }
+        this.adjustmentHandles = new ElementGroup(this.id + '_adjustHandles', handles);
+        viewport.addRenderElement(this.adjustmentHandles);
+    }
+
+    _updateAdjustmentHandles(mousePos, tolerance) {
+        if(this.adjustmentHandles === null) return;
+        for(var c=0; c<this.coordinates.length; c+=2) {
+            // vertices
+            this.adjustmentHandles.elements[c].setProperty('x', this.coordinates[c]);
+            this.adjustmentHandles.elements[c].setProperty('y', this.coordinates[c+1]);
+
+            // edges (mid-point)
+            if(c<this.coordinates.length-2 || this.isClosed()) {
+                let nextC = (c+2) % this.coordinates.length;
+                let nextX = (this.coordinates[c] + this.coordinates[nextC]) / 2;
+                let nextY = (this.coordinates[c+1] + this.coordinates[nextC+1]) / 2;
+                this.adjustmentHandles.elements[c+1].setProperty('x', nextX);
+                this.adjustmentHandles.elements[c+1].setProperty('y', nextY);
+                if(Array.isArray(mousePos) && 
+                    this.adjustmentHandles.elements[c+1].isInDistance(mousePos, tolerance)) {
+                    // mouse is close to edge handle; show
+                    this.adjustmentHandles.elements[c+1].setProperty('visible', true);
+                } else {
+                    this.adjustmentHandles.elements[c+1].setProperty('visible', false);
+                }
+            }
+        }
+    }
+
+    getClosestHandle(coordinates, tolerance) {
+        /**
+         * Returns:
+         * - the index of the closest adjustment handle if within tolerance
+         * - "center" if the coordinates are within the polygon and beyond the
+         *   tolerance away from the closest vertex
+         * - null if outside the polygon and too far away from any handle
+         */
+        if(this.adjustmentHandles === null) return null;
+        let closestHandle = null;
+        let closestDist = 1e9;
+        for(var c=0; c<this.coordinates.length; c+=2) {
+            // vertices
+            let handleCoords = [
+                this.coordinates[c], this.coordinates[c+1]
+            ]
+            let dist = this._euclideanDistance(handleCoords, coordinates);
+            if(dist <= tolerance && dist < closestDist) {
+                closestHandle = c;
+                closestDist = dist;
+            }
+
+            // edges (mid-point)
+            let nextC = (c+2) % this.coordinates.length;
+            let nextX = (this.coordinates[c] + this.coordinates[nextC]) / 2;
+            let nextY = (this.coordinates[c+1] + this.coordinates[nextC+1]) / 2;
+            dist = this._euclideanDistance([nextX, nextY], coordinates);
+            if(dist <= tolerance && dist < closestDist) {
+                closestHandle = c+1;
+                closestDist = dist;
+            }
+        }
+        if(closestHandle === null) {
+            if(this.containsPoint(coordinates)) closestHandle = 'center';
+        }
+        return closestHandle;
+    }
+
+    /* interaction events */
+    _mousedown_event(event, viewport, force) {
+        if(!this.visible ||
+            !force && (!([ACTIONS.DO_NOTHING, ACTIONS.ADD_ANNOTATION].includes(window.uiControlHandler.getAction())))) return;
+        this.mousePos_current = viewport.getRelativeCoordinates(event, 'validArea');
+        this.mouseDrag = (event.which === 1);
+        let tolerance = viewport.transformCoordinates([0,0,window.annotationProximityTolerance,0], 'canvas', true)[2];
+        if(this.isClosed()) {
+            this.activeHandle = this.getClosestHandle(this.mousePos_current, tolerance);
+        }
+        if(this.activeHandle !== null) {
+            viewport.canvas.css('cursor', 'move');
+
+            let handle = this.adjustmentHandles.elements[this.activeHandle];
+            if(handle !== undefined && handle.id.indexOf('_edge_') >= 0) {  //TODO: ugly solution
+                // clicked edge handle; turn into new vertex
+                this.addVertex([handle.x, handle.y], this.activeHandle+1);
+                this._createAdjustmentHandles(viewport, true);
+                this.activeHandle = this.getClosestHandle(this.mousePos_current, tolerance);
+            }
+        }
+    }
+
+    _mousemove_event(event, viewport, force) {
+        /**
+         * On mousemove, we update the target coordinates and the polygon:
+         * - always: update cursor
+         * - if drag and inside polygon: translate entire polygon and adjustment handles
+         * - if drag and close to one of the adjustment handles: move that particular node
+         */
+        let coords = viewport.getRelativeCoordinates(event, 'validArea');
+
+        if(!this.visible || 
+            !force && (!(window.uiControlHandler.getAction() === ACTIONS.DO_NOTHING || window.uiControlHandler.getAction() === ACTIONS.ADD_ANNOTATION)
+            )) return;
+        if(this.mouseDrag && this.activeHandle !== null) {
+            if(this.activeHandle === 'center') {
+                // translate polygon
+                let shift = [
+                    (coords[0] - this.mousePos_current[0]),
+                    (coords[1] - this.mousePos_current[1])
+                ]
+                this._translatePolygon(shift);
+                this._updateAdjustmentHandles(null);
+
+            } else if(this.activeHandle !== null) {
+                // move vertex
+                this.coordinates[this.activeHandle] = coords[0];
+                this.coordinates[this.activeHandle+1] = coords[1];
+            }
+            this.lastUpdated = new Date();
+        } else {
+            if(this.isClosed()) {
+                let tolerance = viewport.transformCoordinates([0,0,window.annotationProximityTolerance,0], 'canvas', true)[2];
+                this.activeHandle = this.getClosestHandle(coords, tolerance);
+            }
+        }
+
+        // update current mouse pos
+        this.mousePos_current = coords;
+
+        // update adjustment handles
+        if(this.adjustmentHandles_dirty) {
+            //TODO: dirty hack
+            this._createAdjustmentHandles(viewport, true);
+            this.adjustmentHandles_dirty = false;
+        } else {
+            let tolerance = viewport.transformCoordinates([0,0,window.annotationProximityTolerance,0], 'canvas', true)[2];
+            this._updateAdjustmentHandles(this.mouseDrag ? null : coords, tolerance);
+        }
+
+        // update cursor
+        if(window.uiControlHandler.getAction() === ACTIONS.ADD_ANNOTATION || this.activeHandle == null) {
+            viewport.canvas.css('cursor', window.uiControlHandler.getDefaultCursor());
+        } else {
+            viewport.canvas.css('cursor', 'move');
+        }
+
+        // set to user-modified
+        this.changed = true;
+    }
+
+    _mouseup_event(event, viewport, force) {
+        if(!this.visible ||
+            !force && (!(window.uiControlHandler.getAction() === ACTIONS.DO_NOTHING ||
+            window.uiControlHandler.getAction() === ACTIONS.ADD_ANNOTATION))) return;
+        
+        let mousePos = viewport.getRelativeCoordinates(event, 'validArea');
+        let tolerance = viewport.transformCoordinates([0,0,window.annotationProximityTolerance,0], 'canvas', true)[2];
+        if(this.isClosed()) {
+            // polygon is completed
+            this.activeHandle = this.getClosestHandle(mousePos, tolerance);
+            if(this.activeHandle === null && !this.containsPoint(mousePos)) {
+                this.setActive(false, viewport);
+            } else {
+                if(!this.active) {
+                    this.setActive(true, viewport);
+                }
+            }
+        } else {
+            // check if mouse position is close to first vertex
+            let tolerance = viewport.transformCoordinates([0,0,window.annotationProximityTolerance,0], 'canvas', true)[2];
+            let handle = this.getClosestHandle(mousePos, tolerance);
+            if(handle === 0) {
+                // clicked near first vertex; close polygon
+                this.closePolygon();
+                this._createAdjustmentHandles(viewport, true);
+            }
+        }
+
+        this.mouseDrag = false;
+    }
+
+    _mouseleave_event(event, viewport, force) {
+        this.mouseDrag = false;
+        if(force || (window.uiControlHandler.getAction() === ACTIONS.ADD_ANNOTATION && !window.uiControlHandler.burstMode)) {
+            window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
+        }
+    }
+
+    setActive(active, viewport) {
+        /**
+         * Sets the 'active' property to the given value. Also draws adjustment
+         * handles to the viewport if active and makes them adjustable through
+         * callbacks.
+         */
+        if(this.disableInteractions) return;
+
+        super.setActive(active, viewport);
+        if(active) {
+            this._createAdjustmentHandles(viewport, true);
+            viewport.addCallback(this.id, 'mousedown', this._get_active_handle_callback('mousedown', viewport));
+            viewport.addCallback(this.id, 'mousemove', this._get_active_handle_callback('mousemove', viewport));
+            viewport.addCallback(this.id, 'mouseup', this._get_active_handle_callback('mouseup', viewport));
+            viewport.addCallback(this.id, 'mouseleave', this._get_active_handle_callback('mouseleave', viewport));
+        } else {
+            // remove active properties
+            if(this.adjustmentHandles !== null && this.adjustmentHandles !== undefined) {
+                viewport.removeRenderElement(this.adjustmentHandles);
+            }
+            this.adjustmentHandles = null;
+            viewport.removeCallback(this.id, 'mousedown');
+            viewport.removeCallback(this.id, 'mousemove');
+            viewport.removeCallback(this.id, 'mouseup');
+            viewport.removeCallback(this.id, 'mouseleave');
+            this.mouseDrag = false;
+        }
+    }
+
+    setVisible(visible) {
+        super.setVisible(visible);
+
+        // also propagate to adjustment handles (if available)
+        if(this.adjustmentHandles !== null) {
+            this.adjustmentHandles.setVisible(visible);     //TODO: only show mid-point handles on close mouse pos
+        }
+    }
+
+    render(ctx, scaleFun) {
+        super.render(ctx, scaleFun);
+        if(this.coordinates.length === 0)
+            return;
+        
+        if(this.style.strokeColor != null) ctx.strokeStyle = this.style.strokeColor;
+        if(this.style.lineWidth != null) ctx.lineWidth = this.style.lineWidth;
+        ctx.setLineDash(this.style.lineDash);
+        let startPos = scaleFun([this.coordinates[0], this.coordinates[1]], 'validArea');
+        ctx.beginPath();
+        ctx.moveTo(startPos[0], startPos[1]);
+        for(var c=2; c<this.coordinates.length; c+=2) {
+            let pos = scaleFun([this.coordinates[c], this.coordinates[c+1]], 'validArea');
+            ctx.lineTo(pos[0], pos[1]);
+            ctx.stroke();
+        }
+        
+        if(!this.isClosed() && Array.isArray(this.mousePos_current)) {
+            // polygon is still in creation mode; draw additional line to mouse position
+            let pos = scaleFun([this.mousePos_current[0], this.mousePos_current[1]], 'validArea');
+            ctx.lineTo(pos[0], pos[1]);
+            ctx.stroke();
+        }
+        // draw back to origin
+        let pos = scaleFun([this.coordinates[0], this.coordinates[1]], 'validArea');
+        ctx.lineTo(pos[0], pos[1]);
+        ctx.stroke();
+        ctx.closePath();
+        ctx.fillStyle = this.style.fillColor;
+        ctx.fill();
     }
 }
 
@@ -977,6 +1506,18 @@ class ResizeHandle extends AbstractRenderElement {
         this.y = y;
     }
 
+    euclideanDistance(that) {
+        return Math.sqrt(Math.pow(this.x - that[0],2) + Math.pow(this.y - that[1],2));
+    }
+
+    isInDistance(coordinates, tolerance) {
+        /*
+            Returns true if the handle is within a tolerance's distance
+            of the provided coordinates.
+        */
+        return this.euclideanDistance(coordinates) <= tolerance;
+    }
+
     render(ctx, scaleFun) {
         super.render(ctx, scaleFun);
         if(!this.visible || this.x == null || this.y == null) return;
@@ -1258,7 +1799,7 @@ class MiniMap extends AbstractRenderElement {
         return coords_out;
     }
 
-    render(ctx, scaleFun) {
+    async render(ctx, scaleFun) {
         if(!this.visible || this.position == null) return;
         super.render(ctx, scaleFun);
 
@@ -1281,7 +1822,7 @@ class MiniMap extends AbstractRenderElement {
             if(this.parentViewport.renderStack[e].hasOwnProperty('text') ||
                 this.parentViewport.renderStack[e] instanceof ElementGroup ||
                 this.parentViewport.renderStack[e] instanceof PaintbrushElement) continue;
-            this.parentViewport.renderStack[e].render(ctx, (this.minimapScaleFun).bind(this));
+            await this.parentViewport.renderStack[e].render(ctx, (this.minimapScaleFun).bind(this));
         }
 
         // current extent of parent viewport
@@ -1502,19 +2043,23 @@ class SegmentationElement extends AbstractRenderElement {
         // convert to labelclass idx
         var indexedData = [];
         for(var i=0; i<data.length; i+=4) {
-            var colorValues = data.slice(i,i+3);
+            let colorValues = data.slice(i,i+3);
+            if(colorValues.reduce((a, b) => a + b, 0) < 5) {
+                // almost black; return "no data"
+                indexedData.push(0);
 
-            // correct color values if needed
-            for(var c=0; c<colorValues.length; c++) {
-                var closest = validColors[c].reduce(function(prev, curr) {
-                    return (Math.abs(curr - colorValues[c]) < Math.abs(prev - colorValues[c]) ? curr : prev);
-                });
-                colorValues[c] = closest;
+            } else {
+                // correct color values if needed
+                for(var c=0; c<colorValues.length; c++) {
+                    var closest = validColors[c].reduce(function(prev, curr) {
+                        return (Math.abs(curr - colorValues[c]) < Math.abs(prev - colorValues[c]) ? curr : prev);
+                    });
+                    colorValues[c] = closest;
+                }
+                // find label class at position
+                var lc = window.labelClassHandler.getByColor(colorValues);
+                indexedData.push(lc === null || lc === undefined ? 0 : lc.index);
             }
-            
-            // find label class at position
-            var lc = window.labelClassHandler.getByColor(colorValues);
-            indexedData.push(lc === null || lc === undefined ? 0 : lc.index);
         }
         return new Uint8Array(indexedData);
     }

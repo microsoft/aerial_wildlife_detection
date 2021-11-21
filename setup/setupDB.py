@@ -14,9 +14,10 @@ if not 'AIDE_MODULES' in os.environ:
     os.environ['AIDE_MODULES'] = 'FileServer'     # for compatibility with Celery worker import
 
 import argparse
+import bcrypt
 from constants.version import AIDE_VERSION
 from util.configDef import Config
-from modules import Database, UserHandling
+from modules import Database
 from setup.migrate_aide import migrate_aide
 
 
@@ -38,8 +39,6 @@ def add_update_superuser(config, dbConn):
     adminPass = config.getProperty('Project', 'adminPassword')
     if adminPass is None or not len(adminPass):
         raise Exception('No password defined for admin account in configuration file.')
-    uHandler = UserHandling.backend.middleware.UserMiddleware(config, dbConn)
-    adminPass = uHandler._create_hash(adminPass.encode('utf8'))
 
     # get current values
     currentMeta = dbConn.execute('''
@@ -56,7 +55,7 @@ def add_update_superuser(config, dbConn):
         currentMeta = currentMeta[0]
         if currentMeta['email'] != adminEmail:
             changes['adminEmail'] = True
-        if bytes(currentMeta['hash']) != adminPass:
+        if not bcrypt.checkpw(adminPass.encode('utf8'), bytes(currentMeta['hash'])):
             changes['adminPassword'] = True
 
     if isNewAccount or len(changes):

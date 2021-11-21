@@ -58,16 +58,18 @@ class DataHandler {
 
 
     renderAll() {
-        for(var i=0; i<this.dataEntries.length; i++) {
-            this.dataEntries[i].render();
-        }
+        let promises = this.dataEntries.map((entry) => {
+            return entry.render();
+        });
+        return Promise.all(promises);
     }
 
 
     resetZoom() {
-        for(var e=0; e<this.dataEntries.length; e++) {
-            this.dataEntries[e].viewport.resetViewport();
-        }
+        let promises = this.dataEntries.map((entry) => {
+            return entry.viewport.resetViewport();
+        });
+        return Promise.all(promises);
     }
 
 
@@ -241,6 +243,9 @@ class DataHandler {
                             break;
                         case 'boundingBoxes':
                             var entry = new BoundingBoxAnnotationEntry(d, data['entries'][d]);
+                            break;
+                        case 'polygons':
+                            var entry = new PolygonAnnotationEntry(d, data['entries'][d]);
                             break;
                         case 'segmentationMasks':
                             var entry = new SemanticSegmentationEntry(d, data['entries'][d]);
@@ -466,7 +471,7 @@ class DataHandler {
     }
 
     _loadFixedBatch(batch, applyModelPredictions) {
-        var self = this;
+        let self = this;
 
         // check if changed and then submit current annotations first
         return $.ajax({
@@ -502,6 +507,9 @@ class DataHandler {
                             break;
                         case 'boundingBoxes':
                             var entry = new BoundingBoxAnnotationEntry(entryID, data['entries'][entryID]);
+                            break;
+                        case 'polygons':
+                            var entry = new PolygonAnnotationEntry(entryID, data['entries'][entryID]);
                             break;
                         case 'segmentationMasks':
                             var entry = new SemanticSegmentationEntry(entryID, data['entries'][entryID]);
@@ -553,6 +561,8 @@ class DataHandler {
                     window.verifyLogin((callback).bind(self));
                 }
             }
+        }).then(() => {
+            return self.renderAll();
         });
     }
 

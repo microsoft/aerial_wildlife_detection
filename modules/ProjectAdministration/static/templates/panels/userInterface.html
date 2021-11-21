@@ -576,6 +576,8 @@
                     case 'boundingBoxes':
                         window.sampleEntry = new BoundingBoxAnnotationEntry(key, data, true);
                         break;
+                    case 'polygons':
+                        window.sampleEntry = new PolygonAnnotationEntry(key, data, true);
                     default:
                         break;
                 }
@@ -598,7 +600,7 @@
     }
 
     function redrawSampleImage() {
-        if(window.sampleEntry === undefined) return;
+        if(window.sampleEntry === undefined || window.sampleEntry === null) return;
 
         // gather general values
         window.showPredictions = true;  //$('#show-predictions-checkbox').prop('checked');

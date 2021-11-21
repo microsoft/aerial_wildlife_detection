@@ -19,7 +19,7 @@ from bottle import request
 from modules.DataAdministration.backend import celery_interface as fileServer_interface
 from modules.TaskCoordinator.backend.middleware import TaskCoordinatorMiddleware
 from .db_fields import Fields_annotation, Fields_prediction
-from util.helpers import parse_parameters, check_args, is_localhost
+from util.helpers import parse_parameters, check_args, is_localhost, DEFAULT_RENDER_CONFIG
 
 
 class ProjectConfigMiddleware:
@@ -234,7 +234,8 @@ class ProjectConfigMiddleware:
             'inference_chunk_size',
             'max_num_concurrent_tasks',
             'watch_folder_enabled',
-            'watch_folder_remove_missing_enabled'
+            'watch_folder_remove_missing_enabled',
+            'render_config'
         ])
         if parameters is not None and parameters != '*':
             if isinstance(parameters, str):
@@ -270,6 +271,11 @@ class ProjectConfigMiddleware:
                 value = check_args(value, self.defaultUIsettings)
             elif param == 'interface_enabled':
                 value = value and not result['archived']
+            elif param == 'render_config':
+                try:
+                    value = json.loads(value)
+                except:
+                    value = None
             response[param] = value
 
         return response
@@ -409,6 +415,10 @@ class ProjectConfigMiddleware:
         annotationFields = list(getattr(Fields_annotation, properties['annotationType']).value)
         predictionFields = list(getattr(Fields_prediction, properties['predictionType']).value)
 
+        # custom band configuration
+        renderConfig = properties.get('renderConfig', DEFAULT_RENDER_CONFIG)
+        if renderConfig is not None:
+            renderConfig = json.dumps(renderConfig)
 
         # create project schema
         self.dbConnector.execute(queryStr.format(
@@ -446,7 +456,8 @@ class ProjectConfigMiddleware:
                 numImages_autotrain,
                 minNumAnnoPerImage,
                 maxNumImages_train,
-                ui_settings)
+                ui_settings,
+                render_config)
             VALUES (
                 %s, %s, %s,
                 %s,
@@ -454,6 +465,7 @@ class ProjectConfigMiddleware:
                 %s,
                 %s, %s,
                 %s, %s,
+                %s,
                 %s,
                 %s,
                 %s,
@@ -473,7 +485,8 @@ class ProjectConfigMiddleware:
                 False, False,
                 'ai.al.builtins.maxconfidence.MaxConfidence',   #TODO: default AL criterion to facilitate auto-training
                 128, 0, 128,            #TODO: default values for automated AI model training
-                json.dumps(self.defaultUIsettings)
+                json.dumps(self.defaultUIsettings),
+                renderConfig
             ),
             None)
 
@@ -645,10 +658,21 @@ class ProjectConfigMiddleware:
                 while itemID in classes_update or itemID in classgroups_update:
                     itemID = uuid.uuid1()
 
+            color = item.get('color', None)
+            if isinstance(color, str) and is_segmentation:
+                # for segmentation we don't allow fully black or white (reserved for "no data")
+                rgb = list(int(color.strip('#')[i:i+2], 16) for i in (0, 2, 4))
+                if sum(rgb) < 15:
+                    rgb = [r+5 for r in rgb]
+                    color = '#{0:02x}{1:02x}{2:02x}'.format(*rgb)
+                elif sum(rgb) >= (3*255 - 15):
+                    rgb = [r-5 for r in rgb]
+                    color = '#{0:02x}{1:02x}{2:02x}'.format(*rgb)
+
             entry = {
                 'id': itemID,
                 'name': item['name'],
-                'color': (None if not 'color' in item else item['color']),
+                'color': color,
                 'keystroke': None,
                 'labelclassgroup': parent
             }

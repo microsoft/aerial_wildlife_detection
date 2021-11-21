@@ -1569,14 +1569,14 @@ User=$aide_daemon_user
 Group=$aide_group
 EnvironmentFile=$SYSTEMD_CONFIG_WORKER
 WorkingDirectory=$aide_root
-ExecStart=/bin/sh -c '\${CELERY_BIN} -A \$CELERY_APP multi start \$CELERYD_NODES \
+ExecStart=$python_exec \${CELERY_BIN} -A \$CELERY_APP multi start \$CELERYD_NODES \
     --pidfile=\${CELERYD_PID_FILE} --logfile=\${CELERYD_LOG_FILE} \
-    --loglevel="\${CELERYD_LOG_LEVEL}" \$CELERYD_OPTS'
-ExecStop=/bin/sh -c '\${CELERY_BIN} multi stopwait \$CELERYD_NODES \
-    --pidfile=${CELERYD_PID_FILE} --loglevel="\${CELERYD_LOG_LEVEL}"'
-ExecReload=/bin/sh -c '\${CELERY_BIN} -A \$CELERY_APP multi restart \$CELERYD_NODES \
+    --loglevel="\${CELERYD_LOG_LEVEL}" \$CELERYD_OPTS
+ExecStop=$python_exec \${CELERY_BIN} multi stopwait \$CELERYD_NODES \
+    --pidfile=${CELERYD_PID_FILE} --loglevel="\${CELERYD_LOG_LEVEL}"
+ExecReload=$python_exec \${CELERY_BIN} -A \$CELERY_APP multi restart \$CELERYD_NODES \
     --pidfile=\${CELERYD_PID_FILE} --logfile=\${CELERYD_LOG_FILE} \
-    --loglevel="\${CELERYD_LOG_LEVEL}" \$CELERYD_OPTS'
+    --loglevel="\${CELERYD_LOG_LEVEL}" \$CELERYD_OPTS
 Environment=AIDE_CONFIG_PATH=$config_file_out
 Environment=AIDE_MODULES=$aide_modules
 Environment=PYTHONPATH=$aide_root

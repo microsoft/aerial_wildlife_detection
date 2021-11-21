@@ -25,14 +25,15 @@ class AbstractDataEntry {
         this.imageEntry = null;
         this._setup_viewport();
         this._setup_markup();
-        this.loadingPromise = this._loadImage(this.getImageURI()).then(image => {
-            self._createImageEntry(image);
+        this.loadingPromise = this._loadImage(this.getImageURI()).then(imageRenderer => {
+            self._createImageEntry(imageRenderer);
             self._parseLabels(properties);
             self.startTime = new Date();
             self.render();
             return true;
         })
         .catch(error => {
+            console.error(error)
             self._createImageEntry(null);
             self.render();
             return false;
@@ -164,7 +165,6 @@ class AbstractDataEntry {
             // not yet initialized; abort
             return;
         }
-
         if(!element.isValid()) return;
         var key = element['annotationID'];
         if(element['type'] ==='annotation') {
@@ -356,18 +356,26 @@ class AbstractDataEntry {
         }
     }
 
-    _loadImage(imageURI) {
-        return new Promise(resolve => {
-            const image = new Image();
-            image.addEventListener('load', () => {
-                resolve(image);
-            });
-            image.src = imageURI;
+    async _loadImage(imageURI) {
+        let self = this;
+        this.renderer = new ImageRenderer(this.viewport, {}, imageURI);
+        return this.renderer.load_image().then(() => {
+            return self.renderer;
         });
+        // let promise = this.renderer.get_image();
+        // return promise;
+
+        // return new Promise(resolve => {
+        //     const image = new Image();
+        //     image.addEventListener('load', () => {
+        //         resolve(image);
+        //     });
+        //     image.src = imageURI;
+        // });
     }
 
-    _createImageEntry(image) {
-        this.imageEntry = new ImageElement(this.entryID + '_image', image, this.viewport);
+    _createImageEntry(imageRenderer) {
+        this.imageEntry = new ImageElement(this.entryID + '_image', imageRenderer, this.viewport);
         this.viewport.addRenderElement(this.imageEntry);
     }
 
@@ -586,7 +594,10 @@ class AbstractDataEntry {
     }
 
     render() {
-        this.viewport.render();
+        let self = this;
+        new Promise((resolve) => {
+            resolve(self.viewport.render());
+        });
     }
 }
 
@@ -956,7 +967,7 @@ class PointAnnotationEntry extends AbstractDataEntry {
         }
     }
 
-    _canvas_mouseout(event) {
+    _canvas_mouseleave(event) {
         // clear hover text
         if(window.uiBlocked) return;
         this.hoverTextElement.setProperty('text', null);
@@ -1024,13 +1035,20 @@ class PointAnnotationEntry extends AbstractDataEntry {
             this._createAnnotation(event);
         }
         this.render();
+        this.mousePos = this.viewport.getRelativeCoordinates(event, 'canvas');
     }
 
     _canvas_mousemove(event) {
         if(window.uiBlocked) return;
-        if(this.mouseDown) this.mouseDrag = true;
-
-        var coords = this.viewport.getRelativeCoordinates(event, 'canvas');
+        
+        //TODO: mousemove event sometimes fires without mouse actually moving; workaround solution:
+        let coords = this.viewport.getRelativeCoordinates(event, 'canvas');
+        if(Array.isArray(this.mousePos)) {
+            if(Math.pow(coords[0]-this.mousePos[0],2) + Math.pow(coords[1]-this.mousePos[1],2) > 0.001) {
+                if(this.mouseDown && event.buttons) this.mouseDrag = true;
+            }
+        }
+        this.mousePos = coords;
 
         // update hover text
         var hoverText = null;
@@ -1250,7 +1268,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
         }
     }
 
-    _canvas_mouseout(event) {
+    _canvas_mouseleave(event) {
         // clear hover text
         if(window.uiBlocked) return;
         this.hoverTextElement.setProperty('text', null);
@@ -1351,13 +1369,20 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
             this._createAnnotation(event);
         }
         this.render();
+        this.mousePos = this.viewport.getRelativeCoordinates(event, 'validArea');
     }
 
     _canvas_mousemove(event) {
         if(window.uiBlocked) return;
-        if(this.mouseDown) this.mouseDrag = true;
 
-        var coords = this.viewport.getRelativeCoordinates(event, 'validArea');
+        //TODO: mousemove event sometimes fires without mouse actually moving; workaround solution:
+        let coords = this.viewport.getRelativeCoordinates(event, 'validArea');
+        if(Array.isArray(this.mousePos)) {
+            if(Math.pow(coords[0]-this.mousePos[0],2) + Math.pow(coords[1]-this.mousePos[1],2) > 0.001) {
+                if(this.mouseDown && event.buttons) this.mouseDrag = true;
+            }
+        }
+        this.mousePos = coords;
 
         // update crosshair lines
         this._drawCrosshairLines(coords, window.uiControlHandler.getAction()==ACTIONS.ADD_ANNOTATION);
@@ -1469,6 +1494,446 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
 }
 
 
+//TODO
+class PolygonAnnotationEntry extends AbstractDataEntry {
+    /**
+     * Implementation for polygons
+     */
+    constructor(entryID, properties, disableInteractions) {
+        super(entryID, properties, disableInteractions);
+        this.activePolygon = null;
+        this._setup_markup();
+    }
+
+    getAnnotationType() {
+        return 'polygon';
+    }
+
+    setLabel(label) {
+        for(var key in this.annotations) {
+            if(label ===null) {
+                this._removeElement(this.annotations[key]);
+            } else {
+                this.annotations[key].setProperty('label', label);
+            }
+        }
+        this.numInteractions++;
+        this.render();
+        window.dataHandler.updatePresentClasses();
+    }
+
+    _setup_markup() {
+        let self = this;
+        super._setup_markup();
+        this.canvas.css('cursor', window.uiControlHandler.getDefaultCursor());
+        
+        let htStyle = {
+            fillColor: window.styles.hoverText.box.fill,
+            textColor: window.styles.hoverText.text.color,
+            strokeColor: window.styles.hoverText.box.stroke.color,
+            lineWidth: window.styles.hoverText.box.stroke.lineWidth,
+            lineDash: []
+        };
+        this.hoverTextElement = new HoverTextElement(this.entryID + '_hoverText', null, [0, 0.99], 'canvas',
+            htStyle,
+            5);
+        this.viewport.addRenderElement(this.hoverTextElement);
+
+        // interaction handlers
+        if(!this.disableInteractions) {
+            this.viewport.addCallback(this.entryID, 'mousedown', function(event) {
+                self._canvas_mousedown(event);
+            });
+            this.viewport.addCallback(this.entryID, 'mousemove', function(event) {
+                self._canvas_mousemove(event);
+            });
+            this.viewport.addCallback(this.entryID, 'mouseup', function(event) {
+                self._canvas_mouseup(event);
+            });
+            this.viewport.addCallback(this.entryID, 'mouseleave', function(event) {
+                self._canvas_mouseleave(event);
+            });
+        }
+    }
+
+    _toggleActive(event) {
+        /**
+         * Sets polygons active or inactive as follows:
+         * - if the event's coordinates are inside the polygon
+         *      - and the polygon is not active: it is turned active
+         *      - and it is active: nothing happens
+         *   Any other polygon that is active and contains the point stays active.
+         *   Other polygons that are active and do not contain the point get deactivated,
+         *   unless the shift key is held down.
+         * - if no polygon contains the coordinates, they all get deactivated
+         */
+        let coords = this.viewport.getRelativeCoordinates(event, 'validArea');
+        let minDist = 1e9;
+        let argMin = null;
+        for(var key in this.annotations) {
+            let polygon = this.annotations[key].getRenderElement();
+            if(polygon.containsPoint(coords)) {
+                let dist = polygon.euclideanDistance(coords);
+                if(dist < minDist) {
+                    minDist = dist;
+                    argMin = key;
+                }
+                if(!(event.shiftKey && this.annotations[key].isActive())) {
+                    // deactivate
+                    if(this.annotations[key].isVisible()) {
+                        this.annotations[key].setActive(false, this.viewport);
+                    }
+                }
+            } else if(!event.shiftKey) {
+                // polygon outside and no shift key; deactivate
+                if(this.annotations[key].isVisible()) {
+                    this.annotations[key].setActive(false, this.viewport);
+                }
+            }
+        }
+        // handle closest
+        if(argMin === null) {
+            // deactivate all
+            for(var key in this.annotations) {
+                if(this.annotations[key].isVisible()) {
+                    this.annotations[key].setActive(false, this.viewport);
+                }
+            }
+        } else if(this.annotations[argMin].isVisible()) {
+            // set closest one active
+            this.annotations[argMin].setActive(true, this.viewport);
+        }
+    }
+
+    _createAnnotation(event) {
+        let props = {
+            'label': window.labelClassHandler.getActiveClassID()    // polygon entry will create coordinates automatically
+        };
+        let anno = new Annotation(window.getRandomID(), props, 'polygons', 'annotation');
+        this._addElement(anno);
+        this.activePolygon = anno;
+        anno.getRenderElement().registerAsCallback(this.viewport);
+        anno.getRenderElement().setActive(true, this.viewport);
+        // // manually fire mousedown event on annotation (TODO: not needed?)
+        // anno.getRenderElement()._mousedown_event(event, this.viewport);
+    }
+
+    _deleteActiveAnnotations(event) {
+        let coords = this.viewport.getRelativeCoordinates(event, 'validArea');
+        let minDist = 1e9;
+        let argMin = null;
+        for(var key in this.annotations) {
+            let polygon = this.annotations[key].getRenderElement();
+            if(this.annotations[key].isActive()) {
+                // active annotation: check if close to adjustment handle
+                let tolerance = this.viewport.transformCoordinates([0,0,window.annotationProximityTolerance,0], 'canvas', true)[2];
+                let closestHandleIndex = polygon.getClosestHandle(coords, tolerance);
+                //TODO: dirty hack
+                if(![null, 'center'].includes(closestHandleIndex)) {
+                    try {
+                        let closestHandle = polygon.adjustmentHandles.elements[closestHandleIndex];
+                        if(closestHandle.id.indexOf('_vertex_') >= 0) {
+                            polygon.removeVertex(closestHandleIndex);
+                            if(!polygon.isClosed()) {
+                                // invalid polygon; remove altogether
+                                this._removeElement(this.annotations[key]);
+                            }
+                            return;
+                        }
+                    } catch {}
+                }
+                if(polygon.containsPoint(coords)) {
+                    // no handle close; remove entire polygon
+                    this.annotations[key].getRenderElement().deregisterAsCallback(this.viewport);
+                    this._removeElement(this.annotations[key]);
+                }
+                return;
+            }
+            var dist = polygon.euclideanDistance(coords);
+            if(dist < minDist) {
+                minDist = dist;
+                argMin = key;
+            }
+        }
+        if(argMin != null) {
+            // no active annotation found, but clicked within another one; delete it
+            this._removeElement(this.annotations[argMin]);
+        }
+        window.dataHandler.updatePresentClasses();
+    }
+
+    _getActivePolygon() {
+        /**
+         * Returns the active polygon. If it exists but has been closed, the
+         * active polygon is set to null.
+         */
+        if(this.activePolygon !== null && this.activePolygon !== undefined) {
+            if(this.activePolygon.getRenderElement().isClosed()) {
+                this.activePolygon.setActive(false, this.viewport);
+                this.activePolygon = null;
+            }
+        }
+        if(this.activePolygon === undefined) this.activePolygon = null;
+        return this.activePolygon;
+    }
+
+    _setActivePolygon(annotation) {
+        /**
+         * Closes any existing active polygons first and then sets a new active
+         * polygon.
+         */
+        if(this.activePolygon !== null)  this.activePolygon.getRenderElement().closePolygon();
+        this.activePolygon = annotation;
+    }
+
+    _drawCrosshairLines(coords, visible) {
+        if(window.uiBlocked) return;
+        if((this.crosshairLines === null || this.crosshairLines === undefined) && visible) {
+            // create
+            var vertLine = new LineElement(this.entryID + '_crosshairX', coords[0], 0, coords[0], window.defaultImage_h,
+                                window.styles.crosshairLines,
+                                false,
+                                1);
+            var horzLine = new LineElement(this.entryID + '_crosshairY', 0, coords[1], window.defaultImage_w, coords[1],
+                                window.styles.crosshairLines,
+                                false,
+                                1);
+            this.crosshairLines = new ElementGroup(this.entryID + '_crosshairLines', [vertLine, horzLine], 1);
+            this.viewport.addRenderElement(this.crosshairLines);
+            this.canvas.css('cursor', 'crosshair');
+
+        } else if(this.crosshairLines !== null && this.crosshairLines !== undefined) {
+            if(visible) {
+                // update
+                this.crosshairLines.elements[0].setProperty('startX', coords[0]);
+                this.crosshairLines.elements[0].setProperty('endX', coords[0]);
+                this.crosshairLines.elements[1].setProperty('startY', coords[1]);
+                this.crosshairLines.elements[1].setProperty('endY', coords[1]);
+                this.canvas.css('cursor', 'crosshair');
+            } else {
+                // remove
+                this.viewport.removeRenderElement(this.crosshairLines);
+                this.crosshairLines = null;
+                this.canvas.css('cursor', window.uiControlHandler.getDefaultCursor());
+            }
+        }
+    }
+
+    _canvas_mousedown(event) {
+        if(window.uiBlocked) return;
+        this.mouseDown = true;
+        this.mousePos = this.viewport.getRelativeCoordinates(event, 'validArea');
+    }
+
+    _canvas_mousemove(event) {
+        if(window.uiBlocked) return;
+        let coords = this.viewport.getRelativeCoordinates(event, 'validArea');
+
+        //TODO: mousemove event sometimes fires without mouse actually moving; workaround solution:
+        if(Array.isArray(this.mousePos)) {
+            if(Math.pow(coords[0]-this.mousePos[0],2) + Math.pow(coords[1]-this.mousePos[1],2) > 0.001) {
+                if(this.mouseDown && event.buttons) this.mouseDrag = true;
+            }
+        }
+        this.mousePos = coords;
+
+        let action = window.uiControlHandler.getAction();
+
+        // update crosshair lines
+        this._drawCrosshairLines(coords, action===ACTIONS.ADD_ANNOTATION);
+
+        // update hover text
+        let hoverText = null;
+        let ap = this._getActivePolygon();
+        switch(action) {
+            case ACTIONS.ADD_ANNOTATION:
+                if(ap !== null) {
+                    if(ap.getRenderElement().isClosed()) {
+                        // polygon is closed; show possibility to create new polygon
+                        hoverText = 'add new \"' + window.labelClassHandler.getActiveClassName() + '"';
+                        this.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getActiveColor());
+
+                    } else {
+                        // check if mouse position is close to first vertex
+                        let tolerance = this.viewport.transformCoordinates([0,0,window.annotationProximityTolerance,0], 'canvas', true)[2];
+                        let handle = ap.getRenderElement().getClosestHandle(coords, tolerance, true);
+                        if(handle === 0) {
+                            hoverText = 'close polygon';
+                        }
+                    }
+                } else {
+                    // possibility to create new polygon
+                    hoverText = 'add new \"' + window.labelClassHandler.getActiveClassName() + '"';
+                    this.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getActiveColor());
+                }
+                break;
+                
+            case ACTIONS.REMOVE_ANNOTATIONS:
+                var numActive = 0;
+                for(var key in this.annotations) {
+                    if(this.annotations[key].isActive()) numActive++;
+                }
+                if(numActive>0) {
+                    hoverText = 'Remove ' + numActive + ' annotation';
+                    if(numActive>1) hoverText += 's';
+                    this.hoverTextElement.setProperty('fillColor', window.styles.hoverText.box.fill);
+                }
+                break;
+            case ACTIONS.DO_NOTHING:
+                if(ap !== null) {
+                    // user was drawing a new polygon; complete if it's closeable, otherwise remove
+                    if(this.activePolygon.getRenderElement().isCloseable()) {
+                        this.activePolygon.getRenderElement().closePolygon();
+                        
+                    } else {
+                        // polygon was not complete; remove
+                        this.activePolygon.setActive(false, this.viewport);
+                        this._removeElement(this.activePolygon);
+                    }
+                    this._setActivePolygon(null);
+                }
+
+                // find polygon over coordinates
+                let tolerance = this.viewport.transformCoordinates([0,0,window.annotationProximityTolerance,0], 'canvas', true)[2];
+                var anno = null;
+                for(var key in this.annotations) {
+                    if(this.annotations[key].geometry.containsPoint(coords, tolerance)) {
+                        anno = this.annotations[key];
+                        break;
+                    }
+                }
+                // set text
+                if(anno === undefined || anno === null) {
+                    hoverText = null;
+                    break;
+                }
+                //TODO: dirty hack...
+                let closestHandle = this.annotations[key].geometry.getClosestHandle(coords, tolerance);
+                if(![null, 'center'].includes(closestHandle)) {
+                    try {
+                        closestHandle = this.annotations[key].geometry.adjustmentHandles.elements[closestHandle];
+                        if(closestHandle.id.indexOf('_edge_') >= 0) {
+                            hoverText = 'insert new vertex on edge';
+                        } else {
+                            hoverText = window.labelClassHandler.getName(anno.label);
+                        }
+                    } catch {
+                        hoverText = window.labelClassHandler.getName(anno.label);
+                    }
+                } else if(!this.mouseDrag && anno.isActive() && anno.label != window.labelClassHandler.getActiveClassID()) {
+                    hoverText = 'move or change label to "' + window.labelClassHandler.getActiveClassName() + '"';
+                    this.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getActiveColor());
+                } else {
+                    // show current class name of box
+                    hoverText = window.labelClassHandler.getName(anno.label);
+                    this.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getColor(anno.label));
+                }
+                break;
+        }
+        // this.hoverTextElement.setProperty('position', coords);
+
+        // flip text color if needed
+        var htFill = this.hoverTextElement.getProperty('fillColor');
+        if(htFill != null && window.getBrightness(htFill) >= 92) {
+            this.hoverTextElement.setProperty('textColor', '#000000');
+        } else {
+            this.hoverTextElement.setProperty('textColor', '#FFFFFF');
+        }
+
+        this.hoverTextElement.setProperty('text', hoverText);
+
+        this.render();
+    }
+
+    _canvas_mouseup(event) {
+        this.mouseDown = false;
+        if(window.uiBlocked) return;
+
+        // check functionality
+        if(window.uiControlHandler.getAction() === ACTIONS.ADD_ANNOTATION) {
+            if(this._getActivePolygon() === null) {
+                // set all currently active polygons inactive
+                for(var key in this.annotations) {
+                    if(this.annotations[key].isVisible()) {
+                        this.annotations[key].setActive(false, this.viewport);
+                    }
+                }
+                // start creating a new polygon
+                this._createAnnotation(event);
+
+            }
+            // add vertex for active polygon at given position
+            let coords = this.viewport.getRelativeCoordinates(event, 'validArea');
+            this.activePolygon.getRenderElement().addVertex(coords, -1);
+            this.activePolygon.getRenderElement()._createAdjustmentHandles(this.viewport, true);
+            this.numInteractions++;
+            this.render();
+            
+
+        } else if(window.uiControlHandler.getAction() === ACTIONS.REMOVE_ANNOTATIONS) {
+            this._deleteActiveAnnotations(event);
+            // window.uiControlHandler.getAction() = ACTIONS.DO_NOTHING;
+            this.numInteractions++;
+
+        } else if(window.uiControlHandler.getAction() === ACTIONS.DO_NOTHING) {
+            // update annotations to current label (if active and no dragging [resizing] was going on)
+            if(!this.mouseDrag) {
+                let coords = this.viewport.getRelativeCoordinates(event, 'validArea');
+                for(var key in this.annotations) {
+                    if(this.annotations[key].isActive()) {
+                        if(event.shiftKey || this.annotations[key].getRenderElement().containsPoint(coords)) {
+                            this.annotations[key].setProperty('label', window.labelClassHandler.getActiveClassID());
+                        }
+                    }
+                }
+
+                // activate or deactivate
+                this._toggleActive(event);
+                this.numInteractions++;
+            }
+        }
+
+        this.render();
+
+        window.dataHandler.updatePresentClasses();
+
+        this.mouseDrag = false;
+    }
+
+    _canvas_mouseleave(event) {
+        if(window.uiBlocked) return;
+        this.hoverTextElement.setProperty('text', null);
+        this._drawCrosshairLines(null, false);
+        this.render();
+    }
+
+    removeActiveAnnotations() {
+        /**
+         * For polygons, we only remove active annotations if there's more than
+         * one. Otherwise, we assume the user might want to just delete polygon
+         * vertices.
+         */
+        let numRemoved = 0;
+        let active = [];
+        for(var key in this.annotations) {
+            if(this.annotations[key].isActive()) active.push(key);
+        }
+        if(active.length > 1) {
+            // multiple polygons selected; remove all
+            for(var k=0; k<active.length; k++) {
+                this.annotations[active[k]].setActive(false, this.viewport);
+                this._removeElement(this.annotations[active[k]]);
+                numRemoved++;
+            }
+        }
+        this.render();
+        this.numInteractions++;
+        window.dataHandler.updatePresentClasses();
+        return numRemoved;
+    }
+}
+
+
 
 
 class SemanticSegmentationEntry extends AbstractDataEntry {
@@ -1481,8 +1946,11 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
         this.loadingPromise.then(response => {
             if(response) {
                 // store natural image dimensions for annotations
-                properties['width'] = this.imageEntry.image.naturalWidth;
-                properties['height'] = this.imageEntry.image.naturalHeight;
+                properties['width'] = this.imageEntry.getWidth();
+                properties['height'] = this.imageEntry.getHeight();
+                //TODO
+                // properties['width'] = this.imageEntry.image.naturalWidth;
+                // properties['height'] = this.imageEntry.image.naturalHeight;
                 this._init_data(properties);
             }
         });
@@ -1541,43 +2009,43 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
     }
 
     _init_data(properties) {
-            // create new blended segmentation map from annotation and prediction
-            try {
-                var annoKeys = Object.keys(properties['annotations']);
-            } catch {
-                annoKeys = {};
+        // create new blended segmentation map from annotation and prediction
+        try {
+            var annoKeys = Object.keys(properties['annotations']);
+        } catch {
+            annoKeys = {};
+        }
+        try {
+            var predKeys = Object.keys(properties['predictions']);
+        } catch {
+            var predKeys = {};
+        }
+        var entryProps = {};
+        if(annoKeys.length > 0) {
+            entryProps = properties['annotations'][annoKeys[0]];
+            if(predKeys.length > 0) {
+                entryProps['segmentationmask_predicted'] = properties['predictions'][predKeys[0]]['segmentationmask'];
             }
-            try {
-                var predKeys = Object.keys(properties['predictions']);
-            } catch {
-                var predKeys = {};
-            }
-            var entryProps = {};
-            if(annoKeys.length > 0) {
-                entryProps = properties['annotations'][annoKeys[0]];
-                if(predKeys.length > 0) {
-                    entryProps['segmentationmask_predicted'] = properties['predictions'][predKeys[0]]['segmentationmask'];
-                }
-            } else if(predKeys.length > 0) {
-                entryProps = properties['predictions'][predKeys[0]];
-                entryProps['segmentationmask_predicted'] = entryProps['segmentationmask'];
-                delete entryProps['segmentationmask'];
-            }
-            if(properties.hasOwnProperty('width')) {
-                entryProps['width'] = properties['width'];
-            }
-            if(properties.hasOwnProperty('height')) {
-                entryProps['height'] = properties['height'];
-            }
-            this.annotation = new Annotation(window.getRandomID(), entryProps, 'segmentationMasks', 'annotation');
-            this._addElement(this.annotation);
-            this.segMap = this.annotation.geometry;
-            this.size = this.segMap.getSize();
+        } else if(predKeys.length > 0) {
+            entryProps = properties['predictions'][predKeys[0]];
+            entryProps['segmentationmask_predicted'] = entryProps['segmentationmask'];
+            delete entryProps['segmentationmask'];
+        }
+        if(properties.hasOwnProperty('width')) {
+            entryProps['width'] = properties['width'];
+        }
+        if(properties.hasOwnProperty('height')) {
+            entryProps['height'] = properties['height'];
+        }
+        this.annotation = new Annotation(window.getRandomID(), entryProps, 'segmentationMasks', 'annotation');
+        this._addElement(this.annotation);
+        this.segMap = this.annotation.geometry;
+        this.size = this.segMap.getSize();
     }
 
     _parseLabels(properties) {
-            this.predictions = {};
-            this.annotations = {};
+        this.predictions = {};
+        this.annotations = {};
     }
 
     _setup_markup() {
@@ -1623,31 +2091,31 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
                 this.mousePos[1] * this.size[1]
             ];
 
-                // show brush
-                this.brush.setProperty('x', this.mousePos[0]);
-                this.brush.setProperty('y', this.mousePos[1]);
+            // show brush
+            this.brush.setProperty('x', this.mousePos[0]);
+            this.brush.setProperty('y', this.mousePos[1]);
 
-                // paint with brush at current position
-                if(this.mouseDown) {
-                    var scaleFactor = Math.min(
-                        (this.segMap.canvas.width/this.canvas.width()),
-                        (this.segMap.canvas.height/this.canvas.height())
-                    );
-                    var brushSize = [
-                        window.uiControlHandler.segmentation_properties.brushSize * scaleFactor,
-                        window.uiControlHandler.segmentation_properties.brushSize * scaleFactor
-                    ];
-                    if(window.uiControlHandler.getAction() === ACTIONS.REMOVE_ANNOTATIONS || event.altKey) {
-                        this.segMap.clear(mousePos_abs,
-                            window.uiControlHandler.segmentation_properties.brushType,
-                            brushSize);
-                    } else {
-                        this.segMap.paint(mousePos_abs,
-                            window.activeClassColor,
-                            window.uiControlHandler.segmentation_properties.brushType,
-                            brushSize);
-                    }
+            // paint with brush at current position
+            if(this.mouseDown) {
+                var scaleFactor = Math.min(
+                    (this.segMap.canvas.width/this.canvas.width()),
+                    (this.segMap.canvas.height/this.canvas.height())
+                );
+                var brushSize = [
+                    window.uiControlHandler.segmentation_properties.brushSize * scaleFactor,
+                    window.uiControlHandler.segmentation_properties.brushSize * scaleFactor
+                ];
+                if(window.uiControlHandler.getAction() === ACTIONS.REMOVE_ANNOTATIONS || event.altKey) {
+                    this.segMap.clear(mousePos_abs,
+                        window.uiControlHandler.segmentation_properties.brushType,
+                        brushSize);
+                } else {
+                    this.segMap.paint(mousePos_abs,
+                        window.activeClassColor,
+                        window.uiControlHandler.segmentation_properties.brushType,
+                        brushSize);
                 }
+            }
 
         } else {
             // hide brush

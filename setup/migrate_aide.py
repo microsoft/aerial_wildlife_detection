@@ -325,7 +325,11 @@ MODIFICATIONS_sql = [
 
   # for Model Marketplace version 1.1
   'ALTER TABLE "aide_admin".modelmarketplace ADD COLUMN IF NOT EXISTS citation_info VARCHAR;',
-  'ALTER TABLE "aide_admin".modelmarketplace ADD COLUMN IF NOT EXISTS license VARCHAR;'
+  'ALTER TABLE "aide_admin".modelmarketplace ADD COLUMN IF NOT EXISTS license VARCHAR;',
+
+  # v3.0
+  'ALTER TABLE "aide_admin".project ADD COLUMN IF NOT EXISTS render_config VARCHAR;',
+  'ALTER TYPE labelType ADD VALUE IF NOT EXISTS \'polygons\';'
 ]
 
 

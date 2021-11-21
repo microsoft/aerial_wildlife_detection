@@ -10,6 +10,9 @@
     <link rel="stylesheet" href="/static/general/css/messaging.css?v={{ version }}" />
     <link rel="stylesheet" href="/static/aiController/css/workflowMonitor.css?v={{ version }}" />
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <script type="text/javascript" src="/static/general/libs/geotiff.js/geotiff.js?v={{ version }}"></script>
+    <script type="text/javascript" src="/static/interface/js/imageRendererControls.js?v={{ version }}"></script>
+    <script type="text/javascript" src="/static/general/js/renderers/imageRenderer.js?v={{ version }}"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js?v={{ version }}" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
     <script type="text/javascript" src="/static/general/js/messaging.js?v={{ version }}"></script>
@@ -98,26 +101,68 @@
                 <div class="grad-border-v" id="tools-container-resize-handle"></div>
 
                 <!-- Toolboxes -->
-                <div id="tools-container">                
-                    <!-- Label Classes search box -->
-                    <div id="classes-container" class="toolbox" style="order:0;flex-shrink:0">
-                        <h2>Classes</h2>
-                        <input type="search" id="labelclass-search-box" placeholder="find..." />
-                        <!-- <div class="labelGroup" id="legend-entries-active">
-                            <h3 class="expanded">In use</h3>
-                            <div class="labelGroup-children" id="legend-entries-active-container"></div>
-                        </div> -->
+                <div id="tools-container">
+                    <!-- Toolbox tabs -->
+                    <div id="toolbox-tab-container">
+                        <button id="toolbox-tab-classes" class="btn btn-primary toolbox-tab">Classes</button>
+                        <button id="toolbox-tab-image" class="btn btn-secondary toolbox-tab">Rendering</button>
+                        <button id="toolbox-tab-order" class="btn btn-secondary toolbox-tab">Order</button>
                     </div>
 
-                    <!-- Label Classes -->
-                    <div id="classes-container" class="toolbox" style="order:1;height:100%">
-                        <div id="legend-entries"></div>
+                    <!-- Label classes -->
+                    <div id="toolbox-classes" class="toolbox" style="height:100%">
+                        <!-- Label Classes search box -->
+                        <div id="classes-container">
+                            <!-- <h2>Classes</h2> -->
+                            <input type="search" id="labelclass-search-box" placeholder="find..." />
+                            <!-- <div class="labelGroup" id="legend-entries-active">
+                                <h3 class="expanded">In use</h3>
+                                <div class="labelGroup-children" id="legend-entries-active-container"></div>
+                            </div> -->
+                        </div>
+
+                        <!-- Label Classes -->
+                        <div id="classes-container">
+                            <div id="legend-entries"></div>
+                        </div>
+                    </div>
+
+                    <!-- Image rendering controls -->
+                    <div id="toolbox-image" class="toolbox" style="display:none">
+                        <h2>Image rendering</h2>
+                        <div id="rendering-controls-container"></div>
                     </div>
                     
-                    <div id="toolbox-divider" class="grad-border-h" style="order:2;flex-shrink:0;margin-top:10px;margin-bottom:10px;display:none;"></div>
+                    <!-- Ordering controls -->
+                    <div id="toolbox-order" class="toolbox" style="display:none">
+                        <div id="review-controls-container">
+                            <h2>Image order</h2>
+                            <div id="imorder-box">
+                                <input type="radio" id="imorder-auto" name="imorder" value="imorder-auto" checked />
+                                <label for="imorder-auto">automatic</label><br />
+                                <input type="radio" id="imorder-review" name="imorder" value="imorder-review" />
+                                <label for="imorder-review">review annotations</label><br />
+                                
+                                <div id="review-controls" style="display:none">
+                                    <input type="checkbox" id="review-enable-editing" />
+                                    <label for="review-enable-editing">enable editing</label><br />
+                                    <div style="margin-left:20px;color:gray;font-size:9pt;font-style:italic;white-space:normal;word-wrap:break-word;">If editing is enabled, all annotations on screen will be copied and committed under your account.</div>
+                                    <input type="checkbox" id="review-skip-empty" />
+                                    <label for="review-skip-empty">skip empty images</label><br />
+                                    <input type="checkbox" id="review-golden-questions-only" />
+                                    <label for="review-golden-questions-only">only show golden questions</label><br />
+                                    <div>Date and time:</div>
+                                    <input type="range" id="review-timerange" min="0" max="0" value="0" /><br />
+                                    <div id="review-time-text" style="color:gray"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- <div id="toolbox-divider" class="grad-border-h" style="order:2;flex-shrink:0;margin-top:10px;margin-bottom:10px;display:none;"></div> -->
                     
                     <!-- Image sequence controls -->
-                    <div id="review-controls-container" class="toolbox" style="order:3;display:none;">
+                    <!-- <div id="review-controls-container" class="toolbox" style="order:3;display:none;">
                         <h2 id="imorder-title">Image Order</h2>
                         <div id="imorder-box" style="display:none;">
                             <input type="radio" id="imorder-auto" name="imorder" value="imorder-auto" checked />
@@ -138,7 +183,7 @@
                                 <div id="review-time-text" style="color:gray"></div>
                             </div>
                         </div>
-                    </div>
+                    </div> -->
                 </div>
             </div>
         </div>

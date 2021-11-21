@@ -103,7 +103,7 @@ PREDICTION_MODELS = {
                                             'canRemoveLabelclasses': True
                                        },
     'ai.models.detectron2.MnasNet': {
-                                            'name': 'MobileNetV2',
+                                            'name': 'MnasNet',
                                             'author': '(built-in)',
                                             'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of <a href="https://arxiv.org/abs/1807.11626" target="_blank">MnasNet</a>.',
                                             'annotationType': 'labels',

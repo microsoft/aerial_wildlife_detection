@@ -429,8 +429,8 @@ VALID_IMAGE_EXTENSIONS = (
     '.jpeg',
     '.png',
     '.gif',
-    # '.tif',
-    # '.tiff',
+    '.tif',
+    '.tiff',
     '.bmp',
     '.ico',
     '.jfif',
@@ -444,6 +444,8 @@ VALID_IMAGE_MIME_TYPES = (
     'image/bmp',
     'image/x-windows-bmp',
     'image/gif',
+    'image/tif',
+    'image/tiff',
     'image/x-icon',
     'image/png'
 )
@@ -462,3 +464,28 @@ FILENAMES_PROHIBITED_CHARS = (
     '*',
     ':'    # for macOS
 )
+
+
+DEFAULT_RENDER_CONFIG = {
+    "bands": {
+        "labels": [
+            "Red",
+            "Green",
+            "Blue"
+        ],
+        "indices": {
+            "red": 0,
+            "green": 1,
+            "blue": 2
+        }
+    },
+    "grayscale": False,
+    "white_on_black": False,
+    "contrast": {
+        "percentile": {
+            "min": 0.0,
+            "max": 100.0
+        }
+    },
+    "brightness": 0
+}

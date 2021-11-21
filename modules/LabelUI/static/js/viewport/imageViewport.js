@@ -441,7 +441,7 @@ class ImageViewport {
         return coords_out;
     }
 
-    render() {
+    async render() {
         // clear canvas
         var extent = [0, 0, this.canvas[0].width, this.canvas[0].height];
         this.ctx.fillStyle = window.styles.background;
@@ -455,7 +455,7 @@ class ImageViewport {
 
         // iterate through render stack
         for(var i=0; i<this.renderStack.length; i++) {
-            this.renderStack[i].render(this.ctx, (this.transformCoordinates).bind(this));
+            await this.renderStack[i].render(this.ctx, (this.transformCoordinates).bind(this));
         }
 
         // show zoom rectangle if present

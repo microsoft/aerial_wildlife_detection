@@ -55,7 +55,14 @@ class Annotation {
 
         } else if(this.geometryType === 'polygons') {
             // Polygon
-            throw Error('Polygons not yet implemented.');
+            // throw Error('Polygons not yet implemented.');
+            //TODO
+            this.geometry = new PolygonElement(
+                this.annotationID + '_geom',
+                properties['coordinates'],
+                style,
+                unsure
+            );
 
         } else if(this.geometryType === 'boundingBoxes') {
             // Bounding Box
@@ -64,7 +71,8 @@ class Annotation {
                 properties['x'], properties['y'],
                 properties['width'], properties['height'],
                 style,
-                unsure);
+                unsure
+            );
 
         } else if(this.geometryType === 'points') {
             // Point
@@ -74,6 +82,7 @@ class Annotation {
                 style,
                 unsure
             );
+
         } else if(this.geometryType === 'labels') {
             // Classification label
             var borderText = window.labelClassHandler.getName(this.label);
@@ -85,7 +94,8 @@ class Annotation {
                 borderText,
                 style,
                 unsure
-            )
+            );
+            
         } else {
             throw Error('Unknown geometry type (' + this.geometryType + ').')
         }

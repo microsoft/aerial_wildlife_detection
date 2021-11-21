@@ -1,5 +1,28 @@
 # AIDE: Annotation Interface for Data-driven Ecology
 
+
+## AIDE v3.0
+
+Exciting news: AIDE version 3.0 is on the way! This is the **nightly** build of it, thus with a plethora of bugs and (yet) unfinished code. Do not use for production environments.
+
+
+### Status of planned features
+
+(:red_circle: = development not started yet; :clock3: = work in progress; :ballot_box_with_check: = first version working, needs testing; :white_check_mark: = completed)
+
+* TIFF image parsing: :clock3: Web frontend works (needs testing with exotic TIFFs); :red_circle: backend to be implemented
+* :clock3: Image rendering adjustments for Web frontend (percentile stretch does not yet work; grayscale images not yet supported)
+* :clock3: Support for polygons (basic drawing and storing works, but interface is still somewhat glitchy)
+* :red_circle: New models for polygons
+* :red_circle: Advanced segmentation labeling tools: :red_circle: paint bucket; :red_circle: rectangle, polygon; :red_circle: magic wand
+* :red_circle: New design for annotation interface
+
+More functionality might come and will be added to this list as implementations progress.
+
+
+***
+
+
 AIDE is two things in one: <i>a tool for manually annotating images</i> and <i>a tool for training and running machine (deep) learning models</i>. Those two things are coupled in an <i>active learning loop</i>: the human annotates a few images, the system trains a model, that model is used to make predictions and to select more images for the human to annotate, etc.
    
 More generally, AIDE is a modular Web framework for labeling image datasets with AI assistance.  AIDE is configurable for a variety of tasks, but it is particularly intended for ecological applications, such as the acceleration wildlife surveys that use aerial images. 

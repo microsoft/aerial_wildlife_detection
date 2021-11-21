@@ -431,6 +431,11 @@ canvas {
     padding-right: 0px !important;
 }
 
+/* toolbox */
+#toolbox-tab-container {
+    margin: 0 auto;
+}
+
 /* annotation reviewing */
 #imorder-title {
     cursor: pointer;

@@ -41,58 +41,6 @@ $(document).ready(function() {
         }
     }
 
-    // // Levenshtein distance for word comparison
-    // window.levDist = function(s, t) {
-    //     var d = []; //2d matrix
-    
-    //     // Step 1
-    //     var n = s.length;
-    //     var m = t.length;
-    
-    //     if (n == 0) return m;
-    //     if (m == 0) return n;
-    
-    //     //Create an array of arrays in javascript (a descending loop is quicker)
-    //     for (var i = n; i >= 0; i--) d[i] = [];
-    
-    //     // Step 2
-    //     for (var i = n; i >= 0; i--) d[i][0] = i;
-    //     for (var j = m; j >= 0; j--) d[0][j] = j;
-    
-    //     // Step 3
-    //     for (var i = 1; i <= n; i++) {
-    //         var s_i = s.charAt(i - 1);
-    
-    //         // Step 4
-    //         for (var j = 1; j <= m; j++) {
-    
-    //             //Check the jagged ld total so far
-    //             if (i == j && d[i][j] > 4) return n;
-    
-    //             var t_j = t.charAt(j - 1);
-    //             var cost = (s_i == t_j) ? 0 : 1; // Step 5
-    
-    //             //Calculate the minimum
-    //             var mi = d[i - 1][j] + 1;
-    //             var b = d[i][j - 1] + 1;
-    //             var c = d[i - 1][j - 1] + cost;
-    
-    //             if (b < mi) mi = b;
-    //             if (c < mi) mi = c;
-    
-    //             d[i][j] = mi; // Step 6
-    
-    //             //Damerau transposition
-    //             if (i > 1 && j > 1 && s_i == t.charAt(j - 2) && s.charAt(i - 2) == t_j) {
-    //                 d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + cost);
-    //             }
-    //         }
-    //     }
-    
-    //     // Step 7
-    //     return d[n][m];
-    // }
-
 
     // project info
     var promise = $.ajax({
@@ -215,7 +163,7 @@ $(document).ready(function() {
             // resize canvas to fit height (so that as little scrolling as possible is needed)
             var aspectRatio = canvas.width / canvas.height;
 
-            var height = Math.max(window.minImageWidth/aspectRatio, gallery.height() / numRows - numCols*24);   // subtract 24 pixels height for each image (footer)
+            var height = Math.max(window.minImageWidth/aspectRatio, gallery.height() / numRows - numCols*48);   // subtract 48 pixels height for each image (footer)
             var width = Math.max(window.minImageWidth, gallery.width() / numCols);
             if(height > width/aspectRatio) {
                 height = width/aspectRatio;
@@ -256,40 +204,19 @@ $(document).ready(function() {
         }
         $(window).resize(windowResized);
 
-        if(!window.demoMode) {
-            $('#toolbox-divider').show();
-            $('#review-controls-container').show();
-            // // adjustable toolbox divider
-            // $('#toolbox-divider').on({
-            //     mousedown: function() {
-            //         this.mouseDown = true;
-            //     },
-            //     mouseup: function() {
-            //         this.mouseDown = false;
-            //     },
-            //     mousemove: function(event) {
-            //         if(this.mouseDown) {
-            //             // adjust space between legend and review toolboxes
-            //             var container = $('#tools-container');
-            //             var cHeight = container.height();
-            //             var cTop = container.position().top + 75;   // 75 for padding at top
-            //             var dividerPos = event.pageY;
-            //             var divVal = 100*(dividerPos - cTop)/cHeight;
-            //             $('#classes-container').css('height', divVal + '%');
-            //             $('#review-controls-container').css('height', 100 - divVal + '%');
-            //         }
-            //     }
-            // })
 
-            // show or hide image review pane on title click
-            $('#imorder-title').click(function() {
-                var imorderBox = $('#imorder-box');
-                if(imorderBox.is(':visible')) {
-                    imorderBox.slideUp();
-                } else {
-                    imorderBox.slideDown();
-                }
-            });          
+        // toolboxes
+        $('#toolbox-tab-container').children().on('click', function() {
+            $('.toolbox-tab').removeClass('btn-primary');
+            $('.toolbox-tab').addClass('btn-secondary');
+            $(this).removeClass('btn-secondary');   //TODO: ugly
+            $(this).addClass('btn-primary');
+            $('.toolbox').hide();
+            let tbId = $(this).attr('id').replace('tab-', '');
+            $('#'+tbId).show();
+        });
+        if(window.demoMode) {
+            $('#toolbox-tab-order').hide();
         }
 
         // overlay for meta key + pan to zoom

@@ -17,9 +17,7 @@
                 margin: 0 auto;
             }
             .new-project-fields {
-                width: 50%;
                 min-width: 900px;
-                margin: 0 auto;
                 color: white;
                 padding-top: 40px;
                 height: calc(100vh - 150px);
@@ -99,6 +97,8 @@
         <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
         <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+        <script type="text/javascript" src="/static/general/libs/geotiff.js/geotiff.js?v={{ version }}"></script>
+        <script type="text/javascript" src="/static/general/js/renderers/imageRenderer.js?v={{ version }}"></script>
         <script type="text/javascript" src="/static/general/js/messaging.js?v={{ version }}"></script>
         <script src="/static/general/js/overlay.js?v={{ version }}"></script>
         <script type="text/javascript" src="/static/interface/js/util.js?v={{ version }}"></script>
@@ -114,6 +114,8 @@
             // globals
             window.projNameAvailable = false;
             window.projShortnameAvailable = false;
+            window.customBandConfiguration = false;
+            window.bandsMatch = false;
             window.aiModels = {};
 
             function getAvailableAImodels() {
@@ -240,7 +242,8 @@
                 });
 
                 promise = promise.then(function() {
-                    if(window.projNameAvailable && window.projShortnameAvailable) {
+                    if(window.projNameAvailable && window.projShortnameAvailable && 
+                        (!window.customBandConfiguration || window.bandsMatch)) {
                         $('#create-project-button').prop('disabled', false);
                     } else {
                         $('#create-project-button').prop('disabled', true);
@@ -314,26 +317,190 @@
                 }
             }
 
+            /**
+             *  Functionality for image band configuration
+             */
+            function addBand(bandName, selected) {
+                /**
+                 *  Adds a row to the bands table.
+                 */
+                let tbody = $('#band-assignment-tbody');
+                let bIdx = tbody.children().length;
+                let bNum = bIdx + 1;
+
+                if(typeof(bandName) !== 'string') {
+                    bandName = 'Band ' + bNum.toString();
+                }
+
+                let trow = $('<tr id="band-row-'+bIdx.toString()+'"></tr>');
+                let delBtn = $('<button id="del-button-'+bIdx.toString()+'" class="btn btn-sm btn-danger"><img src="/static/general/img/error.svg" width="16" height="16" /></button>');
+                delBtn.on('click', function() {
+                    let rowID = $(this).attr('id').replace('del-button-', 'band-row-');
+                    $('#'+rowID).remove();
+                    updateDefaultBandSelectors();
+                });
+                let delCell = $('<td></td>');
+                delCell.append(delBtn);
+                trow.append(delCell);
+                trow.append($('<td>'+bNum+'</td>'));
+                trow.append($('<td><input id="band-name-'+bIdx.toString()+'" type="text" value="'+bandName+'" /></td>'));
+                let bandSelector = createBandSelector(bIdx, selected);
+                let bandSelectorCell = $('<td class="band-selector-cell"></td>');
+                bandSelectorCell.append(bandSelector);
+                trow.append(bandSelectorCell);
+                tbody.append(trow);
+            }
+
+            function autoSuggestBandsFromFile(file) {
+                /**
+                 *  Parses a provided file and tries to retrieve the number of
+                 *  bands the image has as well as the band labels. Populates
+                 *  the band label table accordingly.
+                 */
+                let tbody = $('#band-assignment-tbody');
+                
+                // get renderer according to MIME type
+                let rendererClass = getRendererByMIMEtype(file.type);
+                let renderer = new rendererClass(null, {}, file);
+                renderer.load_image().then(() => {
+                    let meta = renderer.getMetadata();
+                    if(Array.isArray(meta['band_names']) && meta['band_names'].length) {
+                        tbody.empty();
+                        if(meta['band_names'].length >= 3) {
+                            for(var b in meta['band_names']) {
+                                addBand(meta['band_names'][b]);
+                            }
+                        } else {
+                            // less than three bands; assign first as grayscale
+                            addBand(meta['band_names'][b], 'Grayscale');
+                        }
+                        updateDefaultBandSelectors();
+                    } else {
+                        //TODO: image could not be parsed
+                    }
+                });
+            }
+
+            function _getSelectorID(band) {
+                try {
+                    let id = $('.band-selector > option[value="'+band+'"]:selected').parent().attr('id');
+                    if(id === undefined) id = null;
+                    return id;
+                } catch {
+                    return null;
+                }
+            }
+            function _setSelectorID(band, selID, disabled) {
+                if(selID !== null) {
+                    $('.band-selector > option[value="'+band+'"]').prop('disabled', !disabled);
+                    $('#'+selID).val(band);
+                    $('#'+selID).find('option[value="'+band+'"]').prop('disabled', disabled);
+                } else {
+                    $('.band-selector > option[value="'+band+'"]').prop('disabled', disabled);
+                }
+            }
+
+            function createBandSelector(bandIdx, selected) {
+                let selector = $('<select class="band-selector" id="band-selector-' + bandIdx.toString() + '"></select>');
+                selector.append($('<option value="null">(unassigned)</option>'));
+                let bandNames = ['Grayscale', 'Red', 'Green', 'Blue'];
+                bandNames.map((band) => {
+                    selector.append($('<option value="'+band+'">' + band + '</option>'));
+                });
+                selector.on('change', function() {
+                    updateDefaultBandSelectors();
+                });
+
+                if(typeof(selected) === 'string') {
+                    // assign provided band
+                    selector.val(selected);
+                } else {
+                    // auto-assign default if possible
+                    for(var b=1; b<bandNames.length; b++) {      // skip grayscale in auto-assign
+                        let id = _getSelectorID(bandNames[b]);
+                        if(id === null) {
+                            selector.val(bandNames[b]);
+                            break;
+                        }
+                    }
+                }
+                return selector;
+            }
+
+            function updateDefaultBandSelectors() {
+                let grayID = _getSelectorID('Grayscale');
+                if(grayID !== null) {
+                    // grayscale selected; disable all color bands
+                    _setSelectorID('Red', null, true);
+                    _setSelectorID('Green', null, true);
+                    _setSelectorID('Blue', null, true);
+                    window.bandsMatch = true;
+                } else {
+                    // color selected
+                    let redID = _getSelectorID('Red');
+                    let greenID = _getSelectorID('Green');
+                    let blueID = _getSelectorID('Blue');
+                    _setSelectorID('Red', redID, false);
+                    _setSelectorID('Green', greenID, false);
+                    _setSelectorID('Blue', blueID, false);
+
+                    let colorSelected = (redID !== null || greenID !== null || blueID !== null);
+                    _setSelectorID('Grayscale', null, colorSelected);
+                    window.bandsMatch = (redID !== null && greenID !== null && blueID !== null);
+                }
+                checkValuesCorrect();
+            }
+
+            function parseBandSelector() {
+                let bands = {
+                    'bands': {
+                        'labels': [],
+                        'indices': {}
+                    }
+                };
+                let tableRows = $('#band-assignment-tbody').find('tr');
+                tableRows.each((rowIdx) => {
+                    let row = $(tableRows[rowIdx]);
+                    let bandName = row.find('input[type="text"]').val();
+                    let bandAssignment = row.find('select').val();
+                    bands['bands']['labels'].push(bandName);
+                    if(!['null'].includes(bandAssignment)) {
+                        bands['bands']['indices'][bandAssignment] = rowIdx;
+                    }
+                });
+                return bands;
+            }
+
+            /**
+             *  Project creation
+             */
             function doCreateProject() {
                 let types = getAnnoPredTypes();
 
                 let promise = checkValuesCorrect();
                 promise.then(function() {
-                    if(window.projNameAvailable && window.projShortnameAvailable) {
+                    if(window.projNameAvailable && window.projShortnameAvailable &&
+                        (!window.customBandConfiguration || window.bandsMatch)) {
                         // submit data and create new project
-                        var shortname = $('#project-shortname-field').val();
+                        let shortname = $('#project-shortname-field').val();
+                        let data = {
+                            name: $('#project-name-field').val(),
+                            shortname: shortname,
+                            description: $('#project-description-field').val(),
+                            annotationType: types['annotationType'],
+                            predictionType: types['predictionType']
+                        }
+                        if(window.customBandConfiguration) {
+                            data['renderConfig'] = parseBandSelector();
+                        }
+
+                        
                         return $.ajax({
                             url: '/createProject',
                             method: 'POST',
                             contentType: 'application/json; charset=utf-8',
                             dataType: 'json',
-                            data: JSON.stringify({
-                                name: $('#project-name-field').val(),
-                                shortname: shortname,
-                                description: $('#project-description-field').val(),
-                                annotationType: types['annotationType'],
-                                predictionType: types['predictionType']
-                            }),
+                            data: JSON.stringify(data),
                             success: function(response) {
                                 if(response.hasOwnProperty('success') && response['success']) {
                                     window.location.href = '/' + shortname + '/setup';
@@ -418,6 +585,30 @@
                         updateAImodelsTable();
                     });
 
+                    $('#multiband').on('input', function() {
+                        window.customBandConfiguration = $(this).prop('checked');
+                        if(window.customBandConfiguration) {
+                            $('#multiband-container').slideDown();
+                        } else {
+                            $('#multiband-container').slideUp();
+                        }
+                        updateAImodelsTable();
+                        updateDefaultBandSelectors();
+                    });
+                    $('#image-sample-file').on('change', function() {
+                        let file = this.files[0];
+                        autoSuggestBandsFromFile(file);
+                    });
+                    $('#band-assignment-add-row').on('click', function() {
+                        addBand();
+                        updateDefaultBandSelectors();
+                    });
+                    // default bands
+                    ['Red', 'Green', 'Blue'].map((bandName) => {
+                        addBand(bandName);
+                    });
+                    updateDefaultBandSelectors();
+
                     $('#create-project-button').click(function() {
                         doCreateProject();
                     });
@@ -477,120 +668,163 @@
 
 
                 <div class="new-project-fields">
+                    <div style="width:50%;margin:0 auto;">
+                        <div id="general" class="settings-container">
+                            <h2>General</h2>
 
-                    <div id="general" class="settings-container">
-                        <h2>General</h2>
-
-                        <table>
-                            <tbody>
-                                <tr>
-                                    <td>
-                                        <label for="project-name-field">Project name <span class="warning">*</span></label>
-                                    </td>
-                                    <td>
-                                        <input type="text" id="project-name-field" required />
-                                    </td>
-                                    <td>
-                                        <div id="project-name-availability" style="display:none"></div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <label for="project-shortname-field">Project shortname <span class="warning">*</span></label>
-                                    </td>
-                                    <td>
-                                        <input type="text" id="project-shortname-field" required />
-                                    </td>
-                                    <td>
-                                        <div id="project-shortname-availability" style="display:none"></div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <label for="project-description-field">Short description</label>
-                                    </td>
-                                    <td>
-                                        <textarea type="text" id="project-description-field" placeholder="Short project description"></textarea>
-                                    </td>
-                                    <td></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-
-                    <div class="settings-container">
-                        <h2>Annotation type <span class="warning">*</span></h2>
-
-                        <div class="anno-type-container">
-                            <label class="anno-type-label">
-                                <input type="radio" id="labels" value="labels" name="annotation-type" checked />
-                                <img src="/static/general/img/annotationTypes/labels.png" width="400" height="300" />
-                                <h3>Image labels</h3>
-                            </label>
-                            <label class="anno-type-label">
-                                <input type="radio" id="points" value="points" name="annotation-type" />
-                                <img src="/static/general/img/annotationTypes/points.png" width="400" height="300" />
-                                <h3>Points</h3>
-                            </label>
-                            <label class="anno-type-label">
-                                <input type="radio" id="boundingBoxes" value="boundingBoxes" name="annotation-type" />
-                                <img src="/static/general/img/annotationTypes/boundingBoxes.png" width="400" height="300" />
-                                <h3>Bounding boxes</h3>
-                            </label>
-                            <label class="anno-type-label">
-                                <input type="radio" id="segmentationMasks" value="segmentationMasks" name="annotation-type" />
-                                <img src="/static/general/img/annotationTypes/segmentationMasks.png" width="400" height="300" />
-                                <h3>Pixel-wise segmentation masks</h3>
-                            </label>
+                            <table>
+                                <tbody>
+                                    <tr>
+                                        <td>
+                                            <label for="project-name-field">Project name <span class="warning">*</span></label>
+                                        </td>
+                                        <td>
+                                            <input type="text" id="project-name-field" required />
+                                        </td>
+                                        <td>
+                                            <div id="project-name-availability" style="display:none"></div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <label for="project-shortname-field">Project shortname <span class="warning">*</span></label>
+                                        </td>
+                                        <td>
+                                            <input type="text" id="project-shortname-field" required />
+                                        </td>
+                                        <td>
+                                            <div id="project-shortname-availability" style="display:none"></div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <label for="project-description-field">Short description</label>
+                                        </td>
+                                        <td>
+                                            <textarea type="text" id="project-description-field" placeholder="Short project description"></textarea>
+                                        </td>
+                                        <td></td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
-                    </div>
 
-                    
-                    <div class="settings-container">
-                        <div class="custom-control custom-switch" style="cursor:pointer">
-                            <input type="checkbox" class="custom-control-input" id="different-prediction-type">
-                            <label class="custom-control-label" for="different-prediction-type">
-                                <h2>Different prediction type <span class="warning">*</span></h2>
-                            </label>
+
+                        <div class="settings-container">
+                            <h2>Annotation type <span class="warning">*</span></h2>
+
+                            <div class="anno-type-container">
+                                <label class="anno-type-label">
+                                    <input type="radio" id="labels" value="labels" name="annotation-type" checked />
+                                    <img src="/static/general/img/annotationTypes/labels.png" width="400" height="300" />
+                                    <h3>Image labels</h3>
+                                </label>
+                                <label class="anno-type-label">
+                                    <input type="radio" id="points" value="points" name="annotation-type" />
+                                    <img src="/static/general/img/annotationTypes/points.png" width="400" height="300" />
+                                    <h3>Points</h3>
+                                </label>
+                                <label class="anno-type-label">
+                                    <input type="radio" id="boundingBoxes" value="boundingBoxes" name="annotation-type" />
+                                    <img src="/static/general/img/annotationTypes/boundingBoxes.png" width="400" height="300" />
+                                    <h3>Bounding boxes</h3>
+                                </label>
+                                <label class="anno-type-label">
+                                    <input type="radio" id="polygons" value="polygons" name="annotation-type" />
+                                    <img src="/static/general/img/annotationTypes/polygons.png" width="400" height="300" />
+                                    <h3>Polygons</h3>
+                                </label>
+                                <label class="anno-type-label">
+                                    <input type="radio" id="segmentationMasks" value="segmentationMasks" name="annotation-type" />
+                                    <img src="/static/general/img/annotationTypes/segmentationMasks.png" width="400" height="300" />
+                                    <h3>Pixel-wise segmentation masks</h3>
+                                </label>
+                            </div>
                         </div>
-                        <p style="font-size:9pt;font-style:italic">
-                            Note that choosing a different prediction type might limit the number of AI models available.
-                            See panel on the right.
-                        </p>
 
-                        <div class="anno-type-container" id="prediction-type-container" style="display:none">
-                            <label class="anno-type-label">
-                                <input type="radio" id="labels" value="labels" name="prediction-type" checked />
-                                <img src="/static/general/img/annotationTypes/labels.png" width="400" height="300" />
-                                <h3>Image labels</h3>
-                            </label>
-                            <label class="anno-type-label">
-                                <input type="radio" id="points" value="points" name="prediction-type" />
-                                <img src="/static/general/img/annotationTypes/points.png" width="400" height="300" />
-                                <h3>Points</h3>
-                            </label>
-                            <label class="anno-type-label">
-                                <input type="radio" id="boundingBoxes" value="boundingBoxes" name="prediction-type" />
-                                <img src="/static/general/img/annotationTypes/boundingBoxes.png" width="400" height="300" />
-                                <h3>Bounding boxes</h3>
-                            </label>
-                            <label class="anno-type-label">
-                                <input type="radio" id="segmentationMasks" value="segmentationMasks" name="prediction-type" />
-                                <img src="/static/general/img/annotationTypes/segmentationMasks.png" width="400" height="300" />
-                                <h3>Pixel-wise segmentation masks</h3>
-                            </label>
+                        
+                        <div class="settings-container">
+                            <div class="custom-control custom-switch" style="cursor:pointer">
+                                <input type="checkbox" class="custom-control-input" id="different-prediction-type">
+                                <label class="custom-control-label" for="different-prediction-type">
+                                    <h2>Different prediction type <span class="warning">*</span></h2>
+                                </label>
+                            </div>
+                            <p style="font-size:9pt;font-style:italic">
+                                Note that choosing a different prediction type might limit the number of AI models available.
+                                See panel on the right.
+                            </p>
+
+                            <div class="anno-type-container" id="prediction-type-container" style="display:none">
+                                <label class="anno-type-label">
+                                    <input type="radio" id="labels" value="labels" name="prediction-type" checked />
+                                    <img src="/static/general/img/annotationTypes/labels.png" width="400" height="300" />
+                                    <h3>Image labels</h3>
+                                </label>
+                                <label class="anno-type-label">
+                                    <input type="radio" id="points" value="points" name="prediction-type" />
+                                    <img src="/static/general/img/annotationTypes/points.png" width="400" height="300" />
+                                    <h3>Points</h3>
+                                </label>
+                                <label class="anno-type-label">
+                                    <input type="radio" id="boundingBoxes" value="boundingBoxes" name="prediction-type" />
+                                    <img src="/static/general/img/annotationTypes/boundingBoxes.png" width="400" height="300" />
+                                    <h3>Bounding boxes</h3>
+                                </label>
+                                <label class="anno-type-label">
+                                    <input type="radio" id="polygons" value="polygons" name="prediction-type" />
+                                    <img src="/static/general/img/annotationTypes/polygons.png" width="400" height="300" />
+                                    <h3>Polygons</h3>
+                                </label>
+                                <label class="anno-type-label">
+                                    <input type="radio" id="segmentationMasks" value="segmentationMasks" name="prediction-type" />
+                                    <img src="/static/general/img/annotationTypes/segmentationMasks.png" width="400" height="300" />
+                                    <h3>Pixel-wise segmentation masks</h3>
+                                </label>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="warning" style="margin-top:20px;">
-                        * Note: Values are required and cannot be changed once the project has been created.
-                    </div>
 
-                    <!-- Submit and abort buttons -->
-                    <div style="margin-top:20px;">
-                        <a class="btn btn-secondary" href="/">Cancel</a>
-                        <button class="btn btn-primary" id="create-project-button" style="float:right" disabled="disabled">Create</button>
+                        <div class="settings-container">
+                            <div class="custom-control custom-switch" style="cursor:pointer">
+                                <input type="checkbox" class="custom-control-input" id="multiband">
+                                <label class="custom-control-label" for="multiband">
+                                    <h2>Multi-band images <span class="warning">*</span></h2>
+                                </label>
+                            </div>
+                            <p style="font-size:9pt;font-style:italic">
+                                TODO: warning here
+                            </p>
+
+                            <div id="multiband-container" style="display:none">
+                                <h3>Band configuration:</h3>
+                                <label for="image-sample-file">Parse from file:</label>
+                                <input type="file" id="image-sample-file" />
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th></th>
+                                            <th>#</th>
+                                            <th>Label</th>
+                                            <th>Default</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="band-assignment-tbody"></tbody>
+                                </table>
+                                <button id="band-assignment-add-row" class="btn btn-sm btn-primary">+</button>
+                            </div>
+                        </div>
+
+
+                        <div class="warning" style="margin-top:20px;">
+                            * Note: Values are required and cannot be changed once the project has been created.
+                        </div>
+
+                        <!-- Submit and abort buttons -->
+                        <div style="margin-top:20px;">
+                            <a class="btn btn-secondary" href="/">Cancel</a>
+                            <button class="btn btn-primary" id="create-project-button" style="float:right" disabled="disabled">Create</button>
+                        </div>
                     </div>
                 </div>
 

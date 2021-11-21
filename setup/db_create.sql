@@ -15,7 +15,7 @@ CREATE SCHEMA IF NOT EXISTS aide_admin
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'labeltype') THEN
-        create type labelType AS ENUM ('labels', 'points', 'boundingBoxes', 'segmentationMasks');
+        create type labelType AS ENUM ('labels', 'points', 'boundingBoxes', 'polygons', 'segmentationMasks');
     END IF;
 END
 $$;
