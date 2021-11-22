@@ -1807,20 +1807,22 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
                     hoverText = null;
                     break;
                 }
-                //TODO: dirty hack...
-                let closestHandle = this.annotations[key].geometry.getClosestHandle(coords, tolerance);
-                if(![null, 'center'].includes(closestHandle)) {
-                    try {
-                        closestHandle = this.annotations[key].geometry.adjustmentHandles.elements[closestHandle];
-                        if(closestHandle.id.indexOf('_edge_') >= 0) {
-                            hoverText = 'insert new vertex on edge';
-                        } else {
-                            hoverText = window.labelClassHandler.getName(anno.label);
-                        }
-                    } catch {
-                        hoverText = window.labelClassHandler.getName(anno.label);
-                    }
-                } else if(!this.mouseDrag && anno.isActive() && anno.label != window.labelClassHandler.getActiveClassID()) {
+                //TODO: disabled for performance reasons
+                // //TODO: dirty hack...
+                // let closestHandle = this.annotations[key].geometry.getClosestHandle(coords, tolerance);
+                // if(![null, 'center'].includes(closestHandle)) {
+                //     try {
+                //         closestHandle = this.annotations[key].geometry.adjustmentHandles.elements[closestHandle];
+                //         if(closestHandle.id.indexOf('_edge_') >= 0) {
+                //             hoverText = 'insert new vertex on edge';
+                //         } else {
+                //             hoverText = window.labelClassHandler.getName(anno.label);
+                //         }
+                //     } catch {
+                //         hoverText = window.labelClassHandler.getName(anno.label);
+                //     }
+                // } else
+                if(!this.mouseDrag && anno.isActive() && anno.label != window.labelClassHandler.getActiveClassID()) {
                     hoverText = 'move or change label to "' + window.labelClassHandler.getActiveClassName() + '"';
                     this.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getActiveColor());
                 } else {

@@ -155,6 +155,8 @@ class DBMiddleware():
                 'priority': 1.0,
                 'viewcount': None
             }
+        elif metaType == 'polygons':
+            return json.load(open('modules/LabelUI/static/exampleData/sample_polygon.json', 'r'))
         elif metaType == 'segmentationMasks':
             # read segmentation mask from disk
             segmask = Image.open('modules/LabelUI/static/exampleData/sample_segmentationMask.tif')

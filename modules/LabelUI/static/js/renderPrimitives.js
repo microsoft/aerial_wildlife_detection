@@ -564,8 +564,10 @@ class PolygonElement extends AbstractRenderElement {
 
     constructor(id, coordinates, style, unsure, zIndex, disableInteractions) {
         super(id, style, zIndex, disableInteractions);
+        if(this.style.fillOpacity === undefined) this.style.fillOpacity = 0;
         if(!this.style.hasOwnProperty('strokeColor') && this.style.hasOwnProperty('color')) {
             this.style['strokeColor'] = window.addAlpha(this.style.color, this.style.lineOpacity);
+            this.style['fillColor'] = window.addAlpha(this.style.color, this.style.fillOpacity);
         }
         this.coordinates = coordinates;
         this.unsure = unsure;
@@ -575,6 +577,7 @@ class PolygonElement extends AbstractRenderElement {
         // check if polygon is closed
         this.closed = (this.coordinates.length >= 6);
         this.isValid = true;        // needs to be true at beginning to be drawn on Canvas
+        this.adjustmentHandles = null;
         this.activeHandle = null;
     }
 
@@ -1030,9 +1033,8 @@ class PolygonElement extends AbstractRenderElement {
     }
 
     render(ctx, scaleFun) {
+        if(!this.visible || !this.coordinates.length) return;
         super.render(ctx, scaleFun);
-        if(this.coordinates.length === 0)
-            return;
         
         if(this.style.strokeColor != null) ctx.strokeStyle = this.style.strokeColor;
         if(this.style.lineWidth != null) ctx.lineWidth = this.style.lineWidth;
