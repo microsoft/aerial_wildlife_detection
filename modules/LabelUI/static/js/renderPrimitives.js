@@ -1,3 +1,9 @@
+/**
+ * Render primitives for drawing on a canvas.
+ * 
+ * 2019-2021 Benjamin Kellenberger
+ */
+
 function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
     /**
      * Draws a rounded rectangle using the current state of the canvas.
@@ -71,6 +77,14 @@ class AbstractRenderElement {
         this.isValid = true;    // set to false by instances that are missing required properties (e.g. coordinates)
         this.unsure = false;
         this.visible = true;
+
+        // for animated drawings
+        try {
+            this.refreshRate = style['refresh_rate'];                   // delay in ms until re-rendering of canvas
+            if(this.refreshRate === undefined) this.refreshRate = 0;    // <= 0: no automatic re-rendering
+        } catch {
+            this.refreshRate = 0;
+        }
     }
 
     getProperty(propertyName) {
@@ -191,7 +205,7 @@ class ImageElement extends AbstractRenderElement {
         }
         this.timeCreated = new Date();
 
-        // re-render
+        // re-render    (TODO: needed?)
         this.viewport.render();
     }
 
@@ -579,6 +593,16 @@ class PolygonElement extends AbstractRenderElement {
         this.isValid = true;        // needs to be true at beginning to be drawn on Canvas
         this.adjustmentHandles = null;
         this.activeHandle = null;
+
+        //TODO: test
+        if(this.refreshRate > 0) {
+            let self = this;
+            setInterval(function() {
+                try {
+                    self.style.lineDashOffset = (self.style.lineDashOffset + 2) % self.style.lineDash[0];
+                } catch {}
+            }, this.refreshRate);
+        }
     }
 
     setProperty(propertyName, value) {
@@ -960,7 +984,6 @@ class PolygonElement extends AbstractRenderElement {
         if(!this.visible ||
             !force && (!(window.uiControlHandler.getAction() === ACTIONS.DO_NOTHING ||
             window.uiControlHandler.getAction() === ACTIONS.ADD_ANNOTATION))) return;
-        
         let mousePos = viewport.getRelativeCoordinates(event, 'validArea');
         let tolerance = viewport.transformCoordinates([0,0,window.annotationProximityTolerance,0], 'canvas', true)[2];
         if(this.isClosed()) {
@@ -980,8 +1003,11 @@ class PolygonElement extends AbstractRenderElement {
             if(handle === 0) {
                 // clicked near first vertex; close polygon
                 this.closePolygon();
-                this._createAdjustmentHandles(viewport, true);
+            } else {
+                // clicked somewhere else; add new vertex
+                this.addVertex(mousePos, -1);
             }
+            this._createAdjustmentHandles(viewport, true);
         }
 
         this.mouseDrag = false;
@@ -1039,6 +1065,7 @@ class PolygonElement extends AbstractRenderElement {
         if(this.style.strokeColor != null) ctx.strokeStyle = this.style.strokeColor;
         if(this.style.lineWidth != null) ctx.lineWidth = this.style.lineWidth;
         ctx.setLineDash(this.style.lineDash);
+        ctx.lineDashOffset = this.style.lineDashOffset;
         let startPos = scaleFun([this.coordinates[0], this.coordinates[1]], 'validArea');
         ctx.beginPath();
         ctx.moveTo(startPos[0], startPos[1]);
@@ -2066,8 +2093,41 @@ class SegmentationElement extends AbstractRenderElement {
         return new Uint8Array(indexedData);
     }
 
+    /* selection functions */
+    magic_wand(seedCoordinates, tolerance) {
+        /**
+         * Find similar pixels based on values at seed position; within a given
+         * tolerance.
+         */
+        //TODO: could be too exhaustive to draw as a polygon...
+    }
 
     /* painting functions */
+    paint_bucket(coordinates, color) {
+        /**
+         * Paint bucket operation to fill (or clear, if color is null) the
+         * canvas with coordinates from a polygon (xy interleaved; relative to canvas size).
+         */
+        if(!Array.isArray(coordinates) || coordinates.length < 6) return;
+        if(color === null) this.ctx.globalCompositeOperation = 'destination-out';
+        else {
+            this.ctx.globalCompositeOperation = 'source-over';
+            this.ctx.fillStyle = color;
+        }
+        this.ctx.lineWidth = null;
+        let sz = [this.canvas.width, this.canvas.height];     //TODO: do outside of this function?
+        this.ctx.beginPath();
+        this.ctx.moveTo(coordinates[0]*sz[0], coordinates[1]*sz[1]);
+        for(var c=2; c<coordinates.length; c+=2) {
+            this.ctx.lineTo(coordinates[c]*sz[0], coordinates[c+1]*sz[1]);
+        }
+        this.ctx.lineTo(coordinates[0]*sz[0], coordinates[1]*sz[1]);    // close polygon
+        this.ctx.fill();
+        this.ctx.closePath();
+        this.ctx.globalCompositeOperation = 'source-over';
+    }
+
+
     _clear_circle(x, y, size) {
         this.ctx.beginPath();
         this.ctx.globalCompositeOperation = 'destination-out'

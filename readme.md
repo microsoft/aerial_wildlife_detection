@@ -14,10 +14,15 @@ Exciting news: AIDE version 3.0 is on the way! This is the **nightly** build of 
 * :clock3: Image rendering adjustments for Web frontend (percentile stretch does not yet work; grayscale images not yet supported)
 * :clock3: Support for polygons (basic drawing and storing works, but interface is still somewhat glitchy)
 * :red_circle: New models for polygons
-* :red_circle: Advanced segmentation labeling tools: :red_circle: paint bucket; :red_circle: rectangle, polygon; :red_circle: magic wand
+* :red_circle: Advanced segmentation labeling tools: :clock3: paint bucket; :red_circle: rectangle, :clock3: polygon (crude prototype working); :red_circle: magic wand
 * :red_circle: New design for annotation interface
 
 More functionality might come and will be added to this list as implementations progress.
+
+
+### Current issues
+
+* Image viewport exposes undesired behavior due to partially promise-based render stack
 
 
 ***

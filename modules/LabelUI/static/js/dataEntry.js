@@ -1615,7 +1615,7 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
         anno.getRenderElement().registerAsCallback(this.viewport);
         anno.getRenderElement().setActive(true, this.viewport);
         // // manually fire mousedown event on annotation (TODO: not needed?)
-        // anno.getRenderElement()._mousedown_event(event, this.viewport);
+        anno.getRenderElement()._mouseup_event(event, this.viewport, true);
     }
 
     _deleteActiveAnnotations(event) {
@@ -1864,10 +1864,10 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
                 this._createAnnotation(event);
 
             }
-            // add vertex for active polygon at given position
-            let coords = this.viewport.getRelativeCoordinates(event, 'validArea');
-            this.activePolygon.getRenderElement().addVertex(coords, -1);
-            this.activePolygon.getRenderElement()._createAdjustmentHandles(this.viewport, true);
+            // // add vertex for active polygon at given position
+            // let coords = this.viewport.getRelativeCoordinates(event, 'validArea');
+            // this.activePolygon.getRenderElement().addVertex(coords, -1);
+            // this.activePolygon.getRenderElement()._createAdjustmentHandles(this.viewport, true);
             this.numInteractions++;
             this.render();
             
@@ -1957,6 +1957,8 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
             }
         });
         
+        this.selectionPolygon = null;       // for paint bucket functionality
+
         this._setup_markup();
     }
 
@@ -2042,6 +2044,7 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
         this.annotation = new Annotation(window.getRandomID(), entryProps, 'segmentationMasks', 'annotation');
         this._addElement(this.annotation);
         this.segMap = this.annotation.geometry;
+        this.segMap.setActive(true);
         this.size = this.segMap.getSize();
     }
 
@@ -2084,8 +2087,10 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
 
 
     __paint(event) {
-        if(this.imageEntry !== null && [ACTIONS.ADD_ANNOTATION, ACTIONS.REMOVE_ANNOTATIONS].includes(window.uiControlHandler.getAction())) {
-
+        if(this.imageEntry !== null &&
+            [ACTIONS.ADD_ANNOTATION, ACTIONS.REMOVE_ANNOTATIONS].includes(window.uiControlHandler.getAction()) &&
+            this.segMap.isActive) {
+            
             // update mouse position
             this.mousePos = this.viewport.getRelativeCoordinates(event, 'validArea');
             var mousePos_abs = [
@@ -2136,12 +2141,83 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
 
     _canvas_mousemove(event) {
         if(window.uiBlocked) return;
-        this.__paint(event);
+        if(window.uiControlHandler.getAction() === ACTIONS.DO_NOTHING &&
+            this.selectionPolygon !== null) {
+            // polygon was being drawn but isn't anymore
+            if(this.selectionPolygon.isCloseable()) {
+                // close it
+                this.selectionPolygon.closePolygon();
+            } else {
+                // polygon was not complete; remove
+                this.selectionPolygon.setActive(false, this.viewport);
+                this.viewport.removeRenderElement(this.selectionPolygon);
+                this.selectionPolygon = null;
+            }
+        } else {
+            this.__paint(event);
+        }
     }
 
     _canvas_mouseup(event) {
         this.mouseDown = false;
         this.numInteractions++;
+        let mousePos = this.viewport.getRelativeCoordinates(event, 'validArea');
+        if(window.uiControlHandler.getAction() === ACTIONS.ADD_SELECT_POLYGON &&
+            this.selectionPolygon === null) {
+            // allow user to draw a polygon for selection
+            let selectStyle = {     //TODO: add to defaults
+                'fillColor': '#0066AA33',
+                'strokeColor': '#0066AAFF',
+                'lineOpacity': 1.0,
+                'lineWidth': 2.0,
+                'lineDash': [10],
+                'lineDashOffset': 0.0,
+                'refresh_rate': 250
+            } 
+            this.selectionPolygon = new PolygonElement(
+                this.id + '_selPolygon',
+                mousePos,
+                selectStyle,
+                false,
+                1000,
+                false);
+            this.viewport.addRenderElement(this.selectionPolygon);
+            this.selectionPolygon.setActive(true, this.viewport);
+            this.segMap.setActive(false, this.viewport);
+            window.uiControlHandler.setAction(ACTIONS.ADD_ANNOTATION);      // required for polygon drawing
+        } else if(window.uiControlHandler.getAction() === ACTIONS.PAINT_BUCKET &&
+            this.selectionPolygon !== null) {
+            // fill drawn polygon if clicked inside of it
+            if(this.selectionPolygon.containsPoint(mousePos)) {
+                this.segMap.paint_bucket(
+                    this.selectionPolygon.getProperty('coordinates'),
+                    window.labelClassHandler.getActiveColor()
+                );
+
+                this._clear_selection_polygon();
+            }
+        } else if([ACTIONS.DO_NOTHING, ACTIONS.ADD_ANNOTATION].includes(window.uiControlHandler.getAction()) &&
+        this.selectionPolygon !== null) {
+            if(this.selectionPolygon.isClosed()) {
+                // still in selection polygon mode but polygon is closed
+                if(!this.selectionPolygon.isActive) {
+                    if(this.selectionPolygon.containsPoint(mousePos)) {
+                        this.selectionPolygon.setActive(true, this.viewport);
+                    } else {
+                        this._clear_selection_polygon();
+                    }
+                }
+            }
+        }
+    }
+
+    _clear_selection_polygon() {
+        if(this.selectionPolygon === null) return;
+        this.selectionPolygon.setActive(false, this.viewport);
+        this.viewport.removeRenderElement(this.selectionPolygon);
+        this.selectionPolygon = null;
+        this.segMap.setActive(true, this.viewport);
+        this.render();
     }
 
     _canvas_mouseleave(event) {

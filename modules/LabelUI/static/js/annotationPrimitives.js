@@ -55,8 +55,6 @@ class Annotation {
 
         } else if(this.geometryType === 'polygons') {
             // Polygon
-            // throw Error('Polygons not yet implemented.');
-            //TODO
             this.geometry = new PolygonElement(
                 this.annotationID + '_geom',
                 properties['coordinates'],

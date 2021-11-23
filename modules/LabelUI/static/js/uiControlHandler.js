@@ -13,7 +13,11 @@ const ACTIONS = {
     ZOOM_IN: 3,
     ZOOM_OUT: 4,
     ZOOM_AREA: 5,
-    PAN: 6
+    PAN: 6,
+
+    // for segmentation
+    PAINT_BUCKET: 7,
+    ADD_SELECT_POLYGON: 8    
 }
 
 const CURSORS = [
@@ -270,7 +274,9 @@ class UIControlHandler {
                 brush_rectangle: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/rectangle.svg" style="height:18px" title="Square brush" /></button>'),
                 brush_circle: $('<button class="btn btn-sm btn-secondary inline-control"><img src="/static/interface/img/controls/circle.svg" style="height:18px" title="Circular brush" /></button>'),
                 brush_size: $('<input class="inline-control" type="number" min="1" max="255" value="20" title="Brush size" style="width:50px" />'),
-                opacity: $('<input class="inline-control" type="range" min="0" max="255" value="220" title="Segmentation opacity" style="width:100px" />')        //TODO: make available for other annotation types as well?
+                opacity: $('<input class="inline-control" type="range" min="0" max="255" value="220" title="Segmentation opacity" style="width:100px" />'),        //TODO: make available for other annotation types as well?
+                select_polygon: $('<button class="btn btn-sm btn-secondary inline-control active">POLY</button>'),
+                paint_bucket: $('<button class="btn btn-sm btn-secondary inline-control active">BUCKET</button>')
             };
 
             this.segmentation_controls.brush_rectangle.click(function() {
@@ -299,6 +305,12 @@ class UIControlHandler {
                     self.setSegmentationOpacity(parseInt(val)/255.0);
                 }
             });
+            this.segmentation_controls.select_polygon.on('click', function() {
+                self.setAction(ACTIONS.ADD_SELECT_POLYGON);
+            });
+            this.segmentation_controls.paint_bucket.on('click', function() {
+                self.setAction(ACTIONS.PAINT_BUCKET);
+            });
 
             var segControls = $('<div class="inline-control"></div>');
             segControls.append(this.segmentation_controls.brush_rectangle);
@@ -306,8 +318,15 @@ class UIControlHandler {
             segControls.append($('<span style="margin-left:10px;margin-right:5px;color:white">Size:</span>'));
             segControls.append(this.segmentation_controls.brush_size);
             segControls.append($('<span style="margin-left:5px;color:white">px</span>'));
+
+            // paint bucket
+            segControls.append($('<span style="margin-left:10px;margin-right:5px;color:white">Paint:</span>'));
+            segControls.append(this.segmentation_controls.select_polygon);
+            segControls.append(this.segmentation_controls.paint_bucket);
+
             segControls.append($('<span style="margin-left:10px;margin-right:5px;color:white">Opacity:</span>'));
             segControls.append(this.segmentation_controls.opacity);
+
             dtControls.append(segControls);
         }
 

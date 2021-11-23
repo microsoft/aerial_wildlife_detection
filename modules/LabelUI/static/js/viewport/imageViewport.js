@@ -1,7 +1,7 @@
 /*
     Interface to the HTML canvas for regular image annotations.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 */
 
 class ImageViewport {
@@ -41,6 +41,10 @@ class ImageViewport {
         // viewport interactions
         if(!disableInteractions)
             this._setup_interactions();
+
+        // get minimal refresh rate
+        this.refreshRate = 0;           // <=0: disable auto re-rendering
+        this.refreshHandle = null;
     }
 
     _setupCallbacks() {
@@ -332,11 +336,42 @@ class ImageViewport {
         this.addCallback('viewport', 'wheel', this.__get_callback('wheel'));
     }
 
+    _updateRefreshRate() {
+        /**
+         * Retrieves the refreshing rate (time delay in ms until canvas redraw)
+         * required by each element in the render stack. Sets it to the minimum
+         * (and redraws the canvas with the given delay). If the minimum refresh
+         * rate is < 0 (no auto re-render) for all elements, auto re-rendering
+         * is disabled.
+         */
+        let rate = 1e9;
+        for(var e=0; e<this.renderStack.length; e++) {
+            let thisRate = this.renderStack[e].getProperty('refresh_rate');
+            if(thisRate > 0) rate = Math.min(rate, thisRate);
+        }
+        if(rate > 1e8) rate = 0;        // no re-rendering required
+        this.refreshRate = rate;
+
+        if(this.refreshRate > 0) {
+            if(this.refreshHandle !== null) clearInterval(this.refreshHandle);
+            let self = this;
+            this.refreshHandle = setInterval(function() {
+                self.render();
+            }, this.refreshRate);
+        } else if(this.refreshHandle !== null) {
+            clearInterval(this.refreshHandle);
+            this.refreshHandle = null;
+        }
+
+        this.render();
+    }
+
     addRenderElement(element) {
         if(this.indexOfRenderElement(element) === -1) {
             this.renderStack.push(element);
             this.renderStack.sort(this.renderStack.sortFun);
-            this.render();
+            // this.render();
+            this._updateRefreshRate();
         }
     }
 
@@ -347,14 +382,16 @@ class ImageViewport {
     updateRenderElement(index, element) {
         this.renderStack[index] = element;
         this.renderStack.sort(this.renderStack.sortFun);
-        this.render();
+        // this.render();
+        this._updateRefreshRate();
     }
 
     removeRenderElement(element) {
         var idx = this.renderStack.indexOf(element);
         if(idx !== -1) {
             this.renderStack.splice(idx, 1);
-            this.render();
+            // this.render();
+            this._updateRefreshRate();
         }
     }
 
