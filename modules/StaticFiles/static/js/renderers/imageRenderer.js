@@ -322,6 +322,8 @@ class WebImageParser {
      */
     constructor(source) {
         this.source = source;
+        this.image = null;
+        this.imageLoadingPromise = null;
 
         // determine source type
         this.source = source;
@@ -341,15 +343,13 @@ class WebImageParser {
         /**
          * Loads the actual image contents, but no prepared array yet.
          */
-        let self = this;
-        if(!forceReload && self.imageLoadingPromise !== undefined) {
-            return self.imageLoadingPromise;
-        } else {
+        if(forceReload || this.imageLoadingPromise === null) {
+            let self = this;
             if(this.sourceType === 'uri') {
                 self.imageLoadingPromise = new Promise(resolve => {
                     self.image = new Image();
                     self.image.addEventListener('load', () => {
-                        resolve(self.image);
+                        return resolve(self.image);
                     });
                     self.image.src = self.source;
                 });
@@ -367,8 +367,8 @@ class WebImageParser {
                     reader.readAsDataURL(self.source);
                 });
             }
-            return self.imageLoadingPromise;
         }
+        return this.imageLoadingPromise;
     }
 
     get_image_array(bands) {
@@ -377,7 +377,7 @@ class WebImageParser {
          * with selected bands.
          */
         let self = this;
-        if(self.image === undefined) {
+        if(self.image === null) {
             return self.load_image().then(() => {
                 return self._image_to_array(self.image, bands);
             });
@@ -454,7 +454,7 @@ WebImageParser.prototype.get_supported_formats = function() {
 class TIFFImageParser extends WebImageParser {
     load_image(forceReload) {
         let self = this;
-        if(!forceReload && self.imageLoadingPromise !== undefined) {
+        if(!forceReload && self.imageLoadingPromise !== null) {
             return self.imageLoadingPromise;
         } else {
             self.size = [];
@@ -571,6 +571,9 @@ const getParserByMIMEtype = (type)  => {
 class ImageRenderer {
     constructor(viewport, renderConfig, source) {
         this.viewport = viewport;
+        this.canvas = null;
+        this.data = null;
+        this.renderPromise = null;
         this.renderConfig = get_render_config(renderConfig);
 
         // determine source type and required image parser
@@ -595,20 +598,24 @@ class ImageRenderer {
     }
 
     load_image() {
-        return this.parser.load_image();
+        let self = this;
+        return this.parser.load_image()
+        .then(() => {
+            return self._render_image(false);
+        });
     }
 
-    render_image(force) {
+    _render_image(force) {
         let self = this;
-        if(force || self.canvas === undefined) {
-            return self.load_image().then((img) => {
+        if(force || this.renderPromise === null) {
+            this.renderPromise = new Promise((resolve) => {
                 // band selection
                 let bands = [       //TODO: grayscale
                     self.renderConfig['bands']['indices']['red'],
                     self.renderConfig['bands']['indices']['green'],
                     self.renderConfig['bands']['indices']['blue']
                 ]
-                return self.parser.get_image_array(bands);
+                return resolve(self.parser.get_image_array(bands));
             })
             .then((arr) => {
                 // image touch-up: grayscale conversion, white on black, etc.
@@ -650,30 +657,20 @@ class ImageRenderer {
             })
              */
         }
+        return this.renderPromise;
     }
 
     get_image(as_canvas) {
-        let self = this;
-        if(this.canvas === undefined) {
-            return this.render_image().then(() => {
-                if(as_canvas) {
-                    return self.canvas;
-                } else {
-                    return self.data;
-                }
-            })
+        if(as_canvas) {
+            return this.canvas;
         } else {
-            if(as_canvas) {
-                return Promise.resolve(self.canvas);
-            } else {
-                return Promise.resolve(self.data);
-            }
+            return this.data;
         }
     }
 
     async rerenderImage() {
         let self = this;
-        this.render_image(true).then(() => {
+        this._render_image(true).then(() => {
             self.viewport.render();
         });
     }
@@ -706,413 +703,3 @@ ImageRenderer.prototype.get_render_capabilities = function() {
         "brightness": true  //TODO
     }
 }
-
-
-
-
-// //TODO: OLD
-
-
-// /**
-//  * IMAGE RENDERERS
-//  */
-// class AbstractImageRenderer {
-//     constructor(viewport, renderConfig, source) {
-//         this.viewport = viewport;
-//         this.renderConfig = get_render_config(renderConfig);
-        
-//         // determine source type
-//         this.source = source;
-//         if(typeof(this.source) === 'string') {
-//             this.sourceType = 'uri';
-//         } else if(typeof(this.source) === 'object') {
-//             if(this.source.hasOwnProperty('files')) {
-//                 this.source = this.source.files[0];
-//             }
-//             this.sourceType = 'blob';
-//         } else {
-//             this.sourceType = undefined;
-//         }
-//     }
-
-//     load_image() {
-//         throw Error('Not implemented for abstract base class.')
-//     }
-
-//     get_image() {
-//         throw Error('Not implemented for abstract base class.')
-//     }
-
-//     getWidth() {
-//         throw Error('Not implemented for abstract base class.')
-//     }
-
-//     getHeight() {
-//         throw Error('Not implemented for abstract base class.')
-//     }
-
-//     getMetadata() {
-//         /**
-//          * Returns a dict of details like band names, etc.
-//          */
-//         throw Error('Not implemented for abstract base class.')
-//     }
-
-//     renderImage() {
-//         throw Error('Not implemented for abstract base class.')
-//     }
-
-//     async rerenderImage() {
-//         let self = this;
-//         this.renderImage().then(() => {
-//             self.viewport.render();
-//         });
-//     }
-
-//     async updateRenderConfig(renderConfig) {
-//         /**
-//          * Receives an updated dict of capabilities and re-renders the image
-//          * accordingly.
-//          */
-//         this.renderConfig = renderConfig;
-//         this.rerenderImage();
-//     }
-// }
-// AbstractImageRenderer.prototype.get_render_capabilities = function() {
-//     /**
-//      * Returns a dict with the following possible values:
-//      * {
-//      *      "extensions": [".jpg", ".jpeg", ...],       // supported file extensions
-//      *      "mime_types": ["image/jpeg", ...],          // supported MIME types
-//      *      "bands": true,       // whether or not bands can be reorganised
-//      *      "contrast": {
-//      *          "percentile": true  // whether or not percentiles can be used for contrast stretch
-//      *      }
-//      * }
-//      */
-//     return {
-//         "extensions": [],
-//         "mime_types": [],
-//         "bands": false,
-//         "grayscale": false,
-//         "contrast": {
-//             "percentile": false
-//         }
-//     }
-// }
-
-
-
-// class WebImageRenderer extends AbstractImageRenderer {
-//     /**
-//      * Default Image Renderer for Web-compliant images.
-//      * Does not allow any customization in viewing (contrast stretch, etc.).
-//      */
-//     constructor(viewport, renderConfig, source) {
-//         super(viewport, renderConfig, source);
-//         this.image = undefined;
-//     }
-
-//     load_image() {
-//         let self = this;
-//         if(this.sourceType === 'uri') {
-//             return new Promise(resolve => {
-//                 self.image = new Image();
-//                 self.image.addEventListener('load', () => {
-//                     resolve(self.image);
-//                 });
-//                 self.image.src = self.source;
-//             });
-//         } else if(this.sourceType === 'blob') {
-//             //TODO: untested
-//             let reader  = new FileReader();
-//             reader.onload = function(e) {
-//                 self.image = new Image();
-//                 self.image.addEventListener('load', () => {
-//                     resolve(self.image);
-//                 });
-//                 self.image.src = e.target.result;
-//             }
-//             reader.readAsDataURL(self.source);
-//         }
-//     }
-
-//     _get_image_array(image) {
-//         return new Promise(resolve => {
-//             let canvas = document.createElement('canvas');
-//             canvas.width = image.width;
-//             canvas.height = image.height;
-//             let context = canvas.getContext('2d');
-//             context.drawImage(image, 0, 0);
-//             return resolve(context.getImageData(0, 0, image.width, image.height).data);
-//         });
-//     }
-
-//     get_image() {
-//         let self = this;
-//         if(this.image === undefined) {
-//             return this.load_image().then((resolve) => {
-//                 if(as_img) return resolve(self.image);
-//                 else return self._get_image_array(self.image);
-//             })
-//         } else {
-//             if(as_img) return resolve(self.image);
-//             else return self._get_image_array(self.image);
-//         }
-//     }
-
-//     renderImage() {
-//         return this.get_image();
-//     }
-
-//     getWidth() {
-//         return this.image.width;
-//     }
-
-//     getHeight() {
-//         return this.image.height;
-//     }
-
-//     getMetadata() {
-//         return {
-//             'band_names': [
-//                 'Red', 'Green', 'Blue'      //TODO: account for grayscale images
-//             ]
-//         }
-//     }
-
-//     get_render_capabilities() {
-//         let capabilities = super.get_render_capabilities();
-//         capabilities['extensions'] = [
-//             '.jpg',
-//             '.jpeg',
-//             '.png',
-//             '.gif',
-//             '.bmp',
-//             '.ico',
-//             '.jfif',
-//             '.pjpeg',
-//             '.pjp'
-//         ];
-//         capabilities['mime_types'] = [
-//             'image/jpeg',
-//             'image/bmp',
-//             'image/x-windows-bmp',
-//             'image/gif',
-//             'image/x-icon',
-//             'image/png'
-//         ];
-//         return capabilities;
-//     }
-// }
-
-
-// class TIFFrenderer extends AbstractImageRenderer {
-
-//     constructor(viewport, renderConfig, source) {
-//         super(viewport, renderConfig, source);
-//         /**
-//          * TODO: fetch properties:
-//          * - band configuration
-//          * - percentile cutoffs
-//          */
-//         this.img_norm = undefined;
-//         this.fakeCanvas = undefined;
-//         this.renderingPromise = undefined;
-
-//         //TODO
-//         this.percStretch = 0.02;
-//         this.brightness = 0.0;
-//     }
-
-//     get_render_capabilities() {
-//         return {
-//             "extensions": [
-//                 ".tif",
-//                 ".tiff"
-//             ],
-//             "mime_types": [
-//                 "image/tif",
-//                 "image/tiff"
-//             ],
-//             "bands": true,
-//             "grayscale": true,
-//             "white_on_black": true,
-//             "contrast": {
-//                 "percentile": true
-//             }
-//         }
-//     }
-
-//     load_image() {
-//         this.size = [];
-//         let self = this;
-//         let promise = undefined;
-//         if(this.sourceType === 'uri') {
-//             promise = GeoTIFF.fromUrl(this.source);
-//         } else if(this.sourceType === 'blob') {
-//             promise = GeoTIFF.fromBlob(this.source);
-//         }
-//         promise = promise.then((tiff) => {
-//             return tiff.getImage();
-//         }).then((image) => {
-//             self.image = image;
-//             self.size.push(image.getWidth());
-//             self.size.push(image.getHeight());
-//             return image.readRasters({interleave:false});    //TODO: speed up with interleaving?
-//         }).then((rasters) => {
-//             // get metadata (band names)
-//             let meta = self.image.getGDALMetadata();
-//             self.bandNames = [];
-//             if(meta === null || meta === undefined) {
-//                 //TODO: extract band names somehow
-//                 for(var b=0; b<rasters.length; b++) {
-//                     self.bandNames.push('Band ' + (b+1));
-//                 }
-//             } else {
-//                 // extract from GDAL metadata       //TODO: not sure if always works
-//                 for(var b=0; b<rasters.length; b++) {
-//                     try {
-//                         self.bandNames.push(meta['Band_' + (b+1).toString()]);
-//                     } catch {
-//                         self.bandNames.push('Band ' + (b+1).toString());
-//                     }
-//                 }
-//             }
-//             return normalizeImage(rasters);
-//         }).then((img_norm) => {
-//             self.img_norm = img_norm;
-//             return Promise.resolve(self.img_norm);
-//         });
-//         return promise;
-//     }
-
-//     renderImage() {
-//         /**
-//          * To be called whenever rendering properties (band order, percentile
-//          * stretch, etc.) change.
-//          */
-
-//         if(this.renderingPromise !== undefined) {
-//             return this.renderingPromise;
-//         }
-
-//         if(this.img_norm === undefined) {
-//             this.renderingPromise = this.load_image();
-//         } else {
-//             this.renderingPromise = Promise.resolve(this.img_norm);
-//         }
-
-//         let self = this;
-//         this.renderingPromise = this.renderingPromise.then((data) => {
-//             // band selection
-//             let data_bandSel = [
-//                 data[Math.min(data.length-1, self.renderConfig['bands']['indices']['red'])],
-//                 data[Math.min(data.length-1, self.renderConfig['bands']['indices']['green'])],
-//                 data[Math.min(data.length-1, self.renderConfig['bands']['indices']['blue'])]
-//             ];
-//             return data_bandSel;
-//         })
-//         .then((data) => {
-//             // quantile stretch
-//             let minVal = get_render_config_val(self.renderConfig, ['contrast', 'percentile', 'min'], 0.0) / 100.0;
-//             let maxVal = get_render_config_val(self.renderConfig, ['contrast', 'percentile', 'max'], 100.0) / 100.0;
-//             return quantileStretchImage(data, minVal, maxVal, self.brightness);
-//         })
-//         .then((arr_out) => {
-//             if(self.renderConfig['grayscale']) {
-//                 return to_grayscale(arr_out);
-//             } else {
-//                 return arr_out;
-//             }
-//         })
-//         .then((arr_out) => {
-//             if(self.renderConfig['white_on_black']) {
-//                 return white_on_black(arr_out);
-//             } else {
-//                 return arr_out;
-//             }
-//         })
-//         .then((arr_out) => {
-//             return bsqtobip(arr_out);
-//         })
-//         .then((arr_bip) => {
-//             let imageData = new ImageData(new Uint8ClampedArray(arr_bip), self.size[0], self.size[1]);
-//             if(self.fakeCanvas === undefined)
-//                 self.fakeCanvas = document.createElement('canvas');
-//             self.fakeCanvas.width = self.size[0];
-//             self.fakeCanvas.height = self.size[1];
-//             self.fakeCanvas.getContext('2d').putImageData(imageData, 0, 0);
-//             self.renderingPromise = undefined;
-//             return self.fakeCanvas;
-//         });
-//         return this.renderingPromise;
-//     }
-
-//     get_image() {
-//         let promise = Promise.resolve(this.fakeCanvas);
-//         if(this.fakeCanvas === undefined) {
-//             promise = this.renderImage();
-//         }
-//         return promise;
-//     }
-
-//     getWidth() {
-//         return this.size[0];
-//     }
-
-//     getHeight() {
-//         return this.size[1];
-//     }
-
-//     getMetadata() {
-//         return {
-//             'band_names': this.bandNames //TODO: format
-//         }
-//     }
-// }
-
-
-// // inventory of renderers
-// window.renderers = [
-//     WebImageRenderer,
-//     TIFFrenderer
-// ]
-// // get renderers by format
-// window.renderersByFormat = {
-//     'mime': {},
-//     'extension': {}
-// }
-// for(var r in window.renderers) {
-//     let renderer = window.renderers[r];
-//     let capabilities = renderer.prototype.get_render_capabilities();
-//     for(var e in capabilities['extensions']) {
-//         let ext = capabilities['extensions'][e];
-//         window.renderersByFormat['extension'][ext] = renderer;
-//     }
-//     for(var t in capabilities['mime_types']) {
-//         let type = capabilities['mime_types'][t];
-//         window.renderersByFormat['mime'][type] = renderer;
-//     }
-// }
-
-// const getRendererByExtension = (ext) => {
-//     ext = ext.toLowerCase().trim();
-//     if(!ext.startsWith('.')) ext = '.' + ext;
-//     try {
-//         return window.renderersByFormat['extension'][ext];
-//     } catch {
-//         return WebImageRenderer;
-//     }
-// }
-
-// const getRendererByMIMEtype = (type)  => {
-//     type = type.toLowerCase().trim();
-//     if(!type.startsWith('image/')) type = 'image/' + type;
-//     else if(!type.startsWith('image')) type = 'image' + type;
-//     try {
-//         return window.renderersByFormat['mime'][type];
-//     } catch {
-//         return WebImageRenderer;
-//     }
-// }

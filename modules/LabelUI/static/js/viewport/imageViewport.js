@@ -417,7 +417,6 @@ class ImageViewport {
             lative scaling and mouse/touch gesture capturing.
         */
         var coords_out = coordinates.slice();
-
         if(backwards) {
             var canvasSize = [this.canvas.width(), this.canvas.height()];
             if(target === 'canvas') {
@@ -478,7 +477,7 @@ class ImageViewport {
         return coords_out;
     }
 
-    async render() {
+    render() {
         // clear canvas
         var extent = [0, 0, this.canvas[0].width, this.canvas[0].height];
         this.ctx.fillStyle = window.styles.background;
@@ -492,7 +491,7 @@ class ImageViewport {
 
         // iterate through render stack
         for(var i=0; i<this.renderStack.length; i++) {
-            await this.renderStack[i].render(this.ctx, (this.transformCoordinates).bind(this));
+            this.renderStack[i].render(this.ctx, (this.transformCoordinates).bind(this));
         }
 
         // show zoom rectangle if present

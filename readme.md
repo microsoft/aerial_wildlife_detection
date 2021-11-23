@@ -22,7 +22,7 @@ More functionality might come and will be added to this list as implementations 
 
 ### Current issues
 
-* Image viewport exposes undesired behavior due to partially promise-based render stack
+* Poor rendering performance for polygons with high vertex counts (need dropping intermediate adjustment handles if too short segments; multi-threaded proximity checks; etc.)
 
 
 ***

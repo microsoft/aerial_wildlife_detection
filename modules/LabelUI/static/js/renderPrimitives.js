@@ -190,18 +190,30 @@ class ImageElement extends AbstractRenderElement {
             // calculate image bounds
             this.imageSize = [0, 0];
             if(this.image instanceof ImageRenderer) {
-                this.imageSize = [this.image.getWidth(), this.image.getHeight()];
+                let self = this;
+                this.image.load_image().then(() => {
+                    self.imageSize = [self.image.getWidth(), self.image.getHeight()];
+
+                    let canvasSize = [self.viewport.canvas.width(), self.viewport.canvas.height()];
+                    let scaleFactor = Math.min(canvasSize[0]/self.imageSize[0], canvasSize[1]/self.imageSize[1]);
+                    let dimensions = [scaleFactor*self.imageSize[0]/canvasSize[0], scaleFactor*self.imageSize[1]/canvasSize[1]];
+
+                    // define valid canvas area as per image offset
+                    self.bounds = [(1-dimensions[0])/2, (1-dimensions[1])/2, dimensions[0], dimensions[1]];
+                    self.viewport.setValidArea(self.bounds);
+                });
             } else {
                 // regular image
                 this.imageSize = [this.image.naturalWidth, this.image.naturalHeight];
-            }
-            let canvasSize = [this.viewport.canvas.width(), this.viewport.canvas.height()];
-            let scaleFactor = Math.min(canvasSize[0]/this.imageSize[0], canvasSize[1]/this.imageSize[1]);
-            let dimensions = [scaleFactor*this.imageSize[0]/canvasSize[0], scaleFactor*this.imageSize[1]/canvasSize[1]];
 
-            // define valid canvas area as per image offset
-            this.bounds = [(1-dimensions[0])/2, (1-dimensions[1])/2, dimensions[0], dimensions[1]];
-            this.viewport.setValidArea(this.bounds);
+                let canvasSize = [this.viewport.canvas.width(), this.viewport.canvas.height()];
+                let scaleFactor = Math.min(canvasSize[0]/this.imageSize[0], canvasSize[1]/this.imageSize[1]);
+                let dimensions = [scaleFactor*this.imageSize[0]/canvasSize[0], scaleFactor*this.imageSize[1]/canvasSize[1]];
+
+                // define valid canvas area as per image offset
+                this.bounds = [(1-dimensions[0])/2, (1-dimensions[1])/2, dimensions[0], dimensions[1]];
+                this.viewport.setValidArea(this.bounds);
+            }
         }
         this.timeCreated = new Date();
 
@@ -236,21 +248,26 @@ class ImageElement extends AbstractRenderElement {
 
     render(ctx, scaleFun) {
         super.render(ctx, scaleFun);
-        var targetCoords = scaleFun([0,0,1,1], 'validArea');
+        let targetCoords = scaleFun([0,0,1,1], 'validArea');
         if(this.image !== null) {
             if(this.image instanceof ImageRenderer) {
-                this.image.get_image(true).then((canvas) => {
+                let canvas = this.image.get_image(true);
+                if(canvas !== null) {
                     ctx.drawImage(canvas, targetCoords[0], targetCoords[1],
                         targetCoords[2],
                         targetCoords[3]);
-                });
+                }
+                // this.image.get_image(true).then((canvas) => {
+                //     ctx.drawImage(canvas, targetCoords[0], targetCoords[1],
+                //         targetCoords[2],
+                //         targetCoords[3]);
+                // });
             } else {
                 // regular image
                 ctx.drawImage(this.image, targetCoords[0], targetCoords[1],
                     targetCoords[2],
                     targetCoords[3]);
             }
-
         } else {
             // loading failed
             this._fill_text(ctx, targetCoords, 'Loading failed.');
