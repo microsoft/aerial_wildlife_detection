@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg version="1.1" id="Layer_3" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 viewBox="0 0 256 256" style="enable-background:new 0 0 256 256;" xml:space="preserve">
+<style type="text/css">
+	.st0{fill:none;stroke:#FFFFFF;stroke-width:10;}
+	.st1{fill:#FFFFFF;stroke:#FFFFFF;stroke-width:10;}
+	.st2{fill:none;stroke:#FFFFFF;stroke-width:10;stroke-linecap:round;}
+</style>
+<g>
+	<path class="st0" d="M206.3,101.6L87.1,220.8c-1.9,1.9-5.1,1.9-7.1,0l-59.3-59.3c-1.9-1.9-1.9-5.1,0-7.1L140,35.2
+		c1.9-1.9,5.1-1.9,7.1,0l59.3,59.3C208.3,96.4,208.3,99.6,206.3,101.6z"/>
+	<g>
+		<path class="st0" d="M206.3,101.6L87.1,220.8c-1.9,1.9-5.1,1.9-7.1,0l-59.3-59.3c-1.9-1.9-1.9-5.1,0-7.1L140,35.2
+			c1.9-1.9,5.1-1.9,7.1,0l59.3,59.3C208.3,96.4,208.3,99.6,206.3,101.6z"/>
+		<path class="st1" d="M206.3,101.6l-68.5,68.5c-1.9,1.9-5.1,1.9-7.1,0l-59.3-59.3c-1.9-1.9-1.9-5.1,0-7.1L140,35.2
+			c1.9-1.9,5.1-1.9,7.1,0l59.3,59.3C208.3,96.4,208.3,99.6,206.3,101.6z"/>
+	</g>
+	<line class="st2" x1="87.8" y1="221.8" x2="219.7" y2="221.8"/>
+</g>
+</svg>

@@ -121,13 +121,15 @@ class Annotation {
     }
 
     getProperties() {
+        let geometry = this.geometry.getGeometry();
+        if(geometry === null) return null;      // only return item if geometry is valid
         return {
             'id' : this.annotationID,
             'type' : (this.type.includes('annotation') ? 'annotation' : 'prediction'),
             'label' : this.label,
             'confidence' : this.confidence,
             'autoConverted': (this.autoConverted === null || this.autoConverted === undefined ? false : this.autoConverted),
-            'geometry' : this.geometry.getGeometry()
+            'geometry' : geometry
         };
     }
 

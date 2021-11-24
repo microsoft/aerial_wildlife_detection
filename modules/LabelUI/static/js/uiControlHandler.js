@@ -122,7 +122,7 @@ class UIControlHandler {
         */
         var dtControls = $('#interface-controls');
 
-        if(!(window.annotationType === 'labels')) {
+        if(!(['labels', 'segmentationMasks'].includes(window.annotationType))) {
             // add button
             var addAnnoCallback = function() {
                 self.setAction(ACTIONS.ADD_ANNOTATION);
@@ -135,20 +135,26 @@ class UIControlHandler {
             dtControls.append(addAnnoBtn);
         }
 
-
-        // remove button
-        var removeAnnoCallback = function() {
-            // remove active annotations
-            var numRemoved = self.dataHandler.removeActiveAnnotations();
-            if(numRemoved === 0) {
-                // no active annotation, set action instead
-                self.setAction(ACTIONS.REMOVE_ANNOTATIONS);
+        let removeAnnoCallback = function() {};
+        if(window.annotationType !== 'segmentationMasks') {
+            // remove button
+            removeAnnoCallback = function() {
+                // remove active annotations
+                var numRemoved = self.dataHandler.removeActiveAnnotations();
+                if(numRemoved === 0) {
+                    // no active annotation, set action instead
+                    self.setAction(ACTIONS.REMOVE_ANNOTATIONS);
+                }
             }
+            var removeAnnoBtn = $('<button id="remove-annotation" class="btn btn-sm btn-primary" title="Remove Annotation (R)">-</button>');
+            removeAnnoBtn.click(removeAnnoCallback);
+            this.staticButtons[ACTIONS.REMOVE_ANNOTATIONS] = removeAnnoBtn;
+            dtControls.append(removeAnnoBtn);
+        } else {
+            removeAnnoCallback = function() {
+                self.setAction(ACTIONS.REMOVE_ANNOTATIONS);
+            };
         }
-        var removeAnnoBtn = $('<button id="remove-annotation" class="btn btn-sm btn-primary" title="Remove Annotation (R)">-</button>');
-        removeAnnoBtn.click(removeAnnoCallback);
-        this.staticButtons[ACTIONS.REMOVE_ANNOTATIONS] = removeAnnoBtn;
-        dtControls.append(removeAnnoBtn);
 
         // burst mode checkbox
         var burstModeCallback = function() {
@@ -174,7 +180,7 @@ class UIControlHandler {
             dtControls.append(clearAllBtn);
         }
         
-        if(window.annotationType != 'segmentationMasks') {
+        if(window.annotationType !== 'segmentationMasks') {
             // label all and unsure buttons
             var labelAllCallback = function() {
                 self.dataHandler.assignLabelToAll();
@@ -271,13 +277,27 @@ class UIControlHandler {
         // semantic segmentation controls
         if(window.annotationType === 'segmentationMasks') {
             this.segmentation_controls = {
+                brush: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/spraypaint.svg" style="height:18px" title="Paint" /></button>'),
                 brush_rectangle: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/rectangle.svg" style="height:18px" title="Square brush" /></button>'),
                 brush_circle: $('<button class="btn btn-sm btn-secondary inline-control"><img src="/static/interface/img/controls/circle.svg" style="height:18px" title="Circular brush" /></button>'),
                 brush_size: $('<input class="inline-control" type="number" min="1" max="255" value="20" title="Brush size" style="width:50px" />'),
-                opacity: $('<input class="inline-control" type="range" min="0" max="255" value="220" title="Segmentation opacity" style="width:100px" />'),        //TODO: make available for other annotation types as well?
-                select_polygon: $('<button class="btn btn-sm btn-secondary inline-control active">POLY</button>'),
-                paint_bucket: $('<button class="btn btn-sm btn-secondary inline-control active">BUCKET</button>')
+                erase: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/erase.svg" style="height:18px" title="Erase" /></button>'),
+                select_polygon: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/lasso.svg" style="height:18px" title="Select by polygon" /></button>'),
+                paint_bucket: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/paintbucket.svg" style="height:18px" title="Fill selected area" /></button>'),
+                opacity: $('<input class="inline-control" type="range" min="0" max="255" value="220" title="Segmentation opacity" style="width:100px" />')        //TODO: make available for other annotation types as well?
             };
+
+            this.segmentation_controls.brush.on('click', function() {
+                // if(getBrushType() === undefined) setBrushType('square');        //TODO
+                self.setAction(ACTIONS.ADD_ANNOTATION);
+            });
+            this.staticButtons[ACTIONS.ADD_ANNOTATION] = this.segmentation_controls.brush;
+
+            this.segmentation_controls.erase.on('click', function() {
+                // if(getBrushType() === undefined) setBrushType('square');        //TODO
+                self.setAction(ACTIONS.REMOVE_ANNOTATIONS);
+            });
+            this.staticButtons[ACTIONS.REMOVE_ANNOTATIONS] = this.segmentation_controls.erase;
 
             this.segmentation_controls.brush_rectangle.click(function() {
                 self.setBrushType('rectangle');
@@ -312,17 +332,17 @@ class UIControlHandler {
                 self.setAction(ACTIONS.PAINT_BUCKET);
             });
 
-            var segControls = $('<div class="inline-control"></div>');
+            let segControls = $('<div class="inline-control"></div>');
+            segControls.append(this.segmentation_controls.brush);
             segControls.append(this.segmentation_controls.brush_rectangle);
             segControls.append(this.segmentation_controls.brush_circle);
             segControls.append($('<span style="margin-left:10px;margin-right:5px;color:white">Size:</span>'));
             segControls.append(this.segmentation_controls.brush_size);
             segControls.append($('<span style="margin-left:5px;color:white">px</span>'));
 
-            // paint bucket
-            segControls.append($('<span style="margin-left:10px;margin-right:5px;color:white">Paint:</span>'));
             segControls.append(this.segmentation_controls.select_polygon);
             segControls.append(this.segmentation_controls.paint_bucket);
+            segControls.append(this.segmentation_controls.erase);
 
             segControls.append($('<span style="margin-left:10px;margin-right:5px;color:white">Opacity:</span>'));
             segControls.append(this.segmentation_controls.opacity);

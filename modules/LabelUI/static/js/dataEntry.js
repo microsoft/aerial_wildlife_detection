@@ -25,8 +25,10 @@ class AbstractDataEntry {
         this.imageEntry = null;
         this._setup_viewport();
         this._setup_markup();
-        this.loadingPromise = this._loadImage(this.getImageURI()).then(imageRenderer => {
-            self._createImageEntry(imageRenderer);
+        this.loadingPromise = this._loadImage(this.getImageURI()).then((imageRenderer) => {
+            return self._createImageEntry(imageRenderer);
+        })
+        .then((r) => {
             self._parseLabels(properties);
             self.startTime = new Date();
             self.render();
@@ -232,7 +234,7 @@ class AbstractDataEntry {
                     this.setLabel(null);
                 }
 
-            } else if(window.predictionType === 'points' || window.predictionType === 'boundingBoxes') {
+            } else if(['points', 'polygons', 'boundingBoxes'].includes(window.predictionType)) {
                 // check carry-over rule
                 if(window.carryOverRule === 'maxConfidence') {
                     // select arg max
@@ -286,26 +288,60 @@ class AbstractDataEntry {
                     this._addElement(anno);
                 }
             }
-        } else if(window.annotationType === 'points' && window.predictionType === 'boundingBoxes') {
-            // remove width and height
-            for(var key in this.predictions_raw) {
-                let props = this.predictions_raw[key];
-                if(props['confidence'] >= window.carryOverPredictions_minConf) {
-                    delete props['width'];
-                    delete props['height'];
-                    let anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation', true);
-                    this._addElement(anno);
+        } else if(window.annotationType === 'points') {
+            if(window.predictionType === 'boundingBoxes') {
+                // remove width and height
+                for(var key in this.predictions_raw) {
+                    let props = this.predictions_raw[key];
+                    if(props['confidence'] >= window.carryOverPredictions_minConf) {
+                        delete props['width'];
+                        delete props['height'];
+                        let anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation', true);
+                        this._addElement(anno);
+                    }
+                }
+            } else if(window.predictionType === 'polygons') {
+                // use polygon center
+                for(var key in this.predictions_raw) {
+                    let props = this.predictions_raw[key];
+                    if(props['confidence'] >= window.carryOverPredictions_minConf) {
+                        let center = center([props['width'], props['height']]);
+                        if(center !== undefined) {
+                            props['x'] = center[0];
+                            props['y'] = center[1];
+                            let anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation', true);
+                            this._addElement(anno);
+                        }
+                    }
                 }
             }
-        } else if(window.annotationType === 'boundingBoxes' && window.predictionType === 'points') {
-            // add default width and height
-            for(var key in this.predictions_raw) {
-                let props = this.predictions_raw[key];
-                if(props['confidence'] >= window.carryOverPredictions_minConf) {
-                    props['width'] = window.defaultBoxSize_w;
-                    props['height'] = window.defaultBoxSize_h;
-                    let anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation', true);
-                    this._addElement(anno);
+        } else if(window.annotationType === 'boundingBoxes') {
+            if(window.predictionType === 'points') {
+                // add default width and height
+                for(var key in this.predictions_raw) {
+                    let props = this.predictions_raw[key];
+                    if(props['confidence'] >= window.carryOverPredictions_minConf) {
+                        props['width'] = window.defaultBoxSize_w;
+                        props['height'] = window.defaultBoxSize_h;
+                        let anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation', true);
+                        this._addElement(anno);
+                    }
+                }
+            } else if(window.predictionType === 'polygons') {
+                // use MBR
+                for(var key in this.predictions_raw) {
+                    let props = this.predictions_raw[key];
+                    if(props['confidence'] >= window.carryOverPredictions_minConf) {
+                        let mbr = mbr(props['coordinates']);
+                        if(mbr !== undefined) {
+                            props['x'] = mbr[0] + mbr[2]/2.0;
+                            props['y'] = mbr[1] + mbr[3]/2.0;
+                            props['width'] = mbr[2];
+                            props['height'] = mbr[3];
+                            let anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation', true);
+                            this._addElement(anno);
+                        }
+                    }
                 }
             }
         }
@@ -362,21 +398,15 @@ class AbstractDataEntry {
         return this.renderer.load_image().then(() => {
             return self.renderer;
         });
-        // let promise = this.renderer.get_image();
-        // return promise;
-
-        // return new Promise(resolve => {
-        //     const image = new Image();
-        //     image.addEventListener('load', () => {
-        //         resolve(image);
-        //     });
-        //     image.src = imageURI;
-        // });
     }
 
     _createImageEntry(imageRenderer) {
         this.imageEntry = new ImageElement(this.entryID + '_image', imageRenderer, this.viewport);
-        this.viewport.addRenderElement(this.imageEntry);
+        let self = this;
+        return this.imageEntry.loadImage().then(() => {
+            self.viewport.addRenderElement(self.imageEntry);
+            return self.imageEntry;
+        });
     }
 
     _setup_markup() {
@@ -595,7 +625,7 @@ class AbstractDataEntry {
 
     render() {
         let self = this;
-        new Promise((resolve) => {
+        return new Promise((resolve) => {
             resolve(self.viewport.render());
         });
     }
@@ -1945,15 +1975,13 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
     constructor(entryID, properties, disableInteractions) {
         super(entryID, properties, disableInteractions);
 
+        let self = this;
         this.loadingPromise.then(response => {
             if(response) {
                 // store natural image dimensions for annotations
-                properties['width'] = this.imageEntry.getWidth();
-                properties['height'] = this.imageEntry.getHeight();
-                //TODO
-                // properties['width'] = this.imageEntry.image.naturalWidth;
-                // properties['height'] = this.imageEntry.image.naturalHeight;
-                this._init_data(properties);
+                properties['width'] = self.imageEntry.getWidth();
+                properties['height'] = self.imageEntry.getHeight();
+                self._init_data(properties);
             }
         });
         
@@ -2136,7 +2164,35 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
     _canvas_mousedown(event) {
         if(window.uiBlocked) return;
         this.mouseDown = true;
-        this.__paint(event);
+
+        if(window.uiControlHandler.getAction() === ACTIONS.ADD_SELECT_POLYGON &&
+            this.selectionPolygon === null) {
+            // allow user to draw a polygon for selection
+            let mousePos = this.viewport.getRelativeCoordinates(event, 'validArea');
+            let selectStyle = {     //TODO: add to defaults
+                'fillColor': '#0066AA33',
+                'strokeColor': '#0066AAFF',
+                'lineOpacity': 1.0,
+                'lineWidth': 2.0,
+                'lineDash': [10],
+                'lineDashOffset': 0.0,
+                'refresh_rate': 250
+            } 
+            this.selectionPolygon = new PolygonElement(
+                this.id + '_selPolygon',
+                mousePos,
+                selectStyle,
+                false,
+                1000,
+                false);
+            this.viewport.addRenderElement(this.selectionPolygon);
+            this.selectionPolygon.setActive(true, this.viewport);
+            this.selectionPolygon.mouseDrag = true;     // required for freehand
+            this.segMap.setActive(false, this.viewport);
+            window.uiControlHandler.setAction(ACTIONS.ADD_ANNOTATION);      // required for polygon drawing
+        } else {
+            this.__paint(event);   
+        }
     }
 
     _canvas_mousemove(event) {
@@ -2162,30 +2218,7 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
         this.mouseDown = false;
         this.numInteractions++;
         let mousePos = this.viewport.getRelativeCoordinates(event, 'validArea');
-        if(window.uiControlHandler.getAction() === ACTIONS.ADD_SELECT_POLYGON &&
-            this.selectionPolygon === null) {
-            // allow user to draw a polygon for selection
-            let selectStyle = {     //TODO: add to defaults
-                'fillColor': '#0066AA33',
-                'strokeColor': '#0066AAFF',
-                'lineOpacity': 1.0,
-                'lineWidth': 2.0,
-                'lineDash': [10],
-                'lineDashOffset': 0.0,
-                'refresh_rate': 250
-            } 
-            this.selectionPolygon = new PolygonElement(
-                this.id + '_selPolygon',
-                mousePos,
-                selectStyle,
-                false,
-                1000,
-                false);
-            this.viewport.addRenderElement(this.selectionPolygon);
-            this.selectionPolygon.setActive(true, this.viewport);
-            this.segMap.setActive(false, this.viewport);
-            window.uiControlHandler.setAction(ACTIONS.ADD_ANNOTATION);      // required for polygon drawing
-        } else if(window.uiControlHandler.getAction() === ACTIONS.PAINT_BUCKET &&
+        if(window.uiControlHandler.getAction() === ACTIONS.PAINT_BUCKET &&
             this.selectionPolygon !== null) {
             // fill drawn polygon if clicked inside of it
             if(this.selectionPolygon.containsPoint(mousePos)) {
@@ -2197,7 +2230,7 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
                 this._clear_selection_polygon();
             }
         } else if([ACTIONS.DO_NOTHING, ACTIONS.ADD_ANNOTATION].includes(window.uiControlHandler.getAction()) &&
-        this.selectionPolygon !== null) {
+            this.selectionPolygon !== null) {
             if(this.selectionPolygon.isClosed()) {
                 // still in selection polygon mode but polygon is closed
                 if(!this.selectionPolygon.isActive) {

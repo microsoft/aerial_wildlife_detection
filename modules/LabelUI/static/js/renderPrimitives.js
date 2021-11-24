@@ -55,9 +55,39 @@ function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
     }
     if (stroke) {
       ctx.stroke();
+    }  
+}
+
+function mbr(coordinates) {
+    /**
+     * Returns the minimum bounding rectangle for an array of xy-interleaved
+     * coordinates.
+     */
+    if(!Array.isArray(coordinates) || coordinates.length < 6) return undefined;
+    let extent = [1e9, 1e9, -1, -1];
+    for(var c=0; c<coordinates.length; c+=2) {
+        extent[c%2] = Math.min(extent[c%2], coordinates[c]);
+        extent[(c%2)+2] = Math.max(extent[(c%2)+2], coordinates[c]);
+        extent[(c+1)%2] = Math.min(extent[(c+1)%2], coordinates[c+1]);
+        extent[((c+1)%2)+2] = Math.max(extent[((c+1)%2)+2], coordinates[c+1]);
     }
-  
-  }
+    return extent;
+}
+
+function center(coordinates) {
+    /**
+     * Returns the center point for an array of xy-interleaved coordinates.
+     */
+    if(!Array.isArray(coordinates) || coordinates.length < 6) return undefined;
+    let center = [0.0, 0.0];
+    for(var c=0; c<coordinates.length; c+=2) {
+        center[0] += coordinates[c];
+        center[1] += coordinates[c+1];
+    }
+    center[0] /= (coordinates.length/2);
+    center[1] /= (coordinates.length/2);
+    return center;
+}
 
 
 
@@ -186,39 +216,50 @@ class ImageElement extends AbstractRenderElement {
         super(id, null, zIndex, false);
         this.image = image;
         this.viewport = viewport;
-        if(this.image != null) {
-            // calculate image bounds
-            this.imageSize = [0, 0];
-            if(this.image instanceof ImageRenderer) {
-                let self = this;
-                this.image.load_image().then(() => {
-                    self.imageSize = [self.image.getWidth(), self.image.getHeight()];
-
-                    let canvasSize = [self.viewport.canvas.width(), self.viewport.canvas.height()];
-                    let scaleFactor = Math.min(canvasSize[0]/self.imageSize[0], canvasSize[1]/self.imageSize[1]);
-                    let dimensions = [scaleFactor*self.imageSize[0]/canvasSize[0], scaleFactor*self.imageSize[1]/canvasSize[1]];
-
-                    // define valid canvas area as per image offset
-                    self.bounds = [(1-dimensions[0])/2, (1-dimensions[1])/2, dimensions[0], dimensions[1]];
-                    self.viewport.setValidArea(self.bounds);
-                });
-            } else {
-                // regular image
-                this.imageSize = [this.image.naturalWidth, this.image.naturalHeight];
-
-                let canvasSize = [this.viewport.canvas.width(), this.viewport.canvas.height()];
-                let scaleFactor = Math.min(canvasSize[0]/this.imageSize[0], canvasSize[1]/this.imageSize[1]);
-                let dimensions = [scaleFactor*this.imageSize[0]/canvasSize[0], scaleFactor*this.imageSize[1]/canvasSize[1]];
-
-                // define valid canvas area as per image offset
-                this.bounds = [(1-dimensions[0])/2, (1-dimensions[1])/2, dimensions[0], dimensions[1]];
-                this.viewport.setValidArea(this.bounds);
-            }
-        }
         this.timeCreated = new Date();
 
-        // re-render    (TODO: needed?)
-        this.viewport.render();
+        this.loadingPromise = null;
+
+        // // re-render    (TODO: needed?)
+        // this.viewport.render();
+    }
+
+    loadImage(force) {
+        if(force || this.loadingPromise === null || this.image === null) {
+            let self = this;
+            this.loadingPromise = new Promise((resolve) => {
+                if(self.image !== null) {
+                    // calculate image bounds
+                    self.imageSize = [0, 0];
+                    if(self.image instanceof ImageRenderer) {
+                        self.image.load_image().then(() => {
+                            self.imageSize = [self.image.getWidth(), self.image.getHeight()];
+        
+                            let canvasSize = [self.viewport.canvas.width(), self.viewport.canvas.height()];
+                            let scaleFactor = Math.min(canvasSize[0]/self.imageSize[0], canvasSize[1]/self.imageSize[1]);
+                            let dimensions = [scaleFactor*self.imageSize[0]/canvasSize[0], scaleFactor*self.imageSize[1]/canvasSize[1]];
+        
+                            // define valid canvas area as per image offset
+                            self.bounds = [(1-dimensions[0])/2, (1-dimensions[1])/2, dimensions[0], dimensions[1]];
+                            self.viewport.setValidArea(self.bounds);
+                        });
+                    } else {
+                        // regular image
+                        self.imageSize = [self.image.naturalWidth, self.image.naturalHeight];
+        
+                        let canvasSize = [self.viewport.canvas.width(), self.viewport.canvas.height()];
+                        let scaleFactor = Math.min(canvasSize[0]/self.imageSize[0], canvasSize[1]/self.imageSize[1]);
+                        let dimensions = [scaleFactor*self.imageSize[0]/canvasSize[0], scaleFactor*self.imageSize[1]/canvasSize[1]];
+        
+                        // define valid canvas area as per image offset
+                        self.bounds = [(1-dimensions[0])/2, (1-dimensions[1])/2, dimensions[0], dimensions[1]];
+                        self.viewport.setValidArea(self.bounds);
+                    }
+                }
+                return resolve(self);
+            });
+        }
+        return this.loadingPromise;
     }
 
     getNaturalImageExtent() {
@@ -726,6 +767,13 @@ class PolygonElement extends AbstractRenderElement {
         }
     }
 
+    getExtent() {
+        /**
+         * Returns a minimum bounding rectangle.
+         */
+        return mbr(this.coordinates);
+    }
+
     containsPoint(point) {
         /**
          * Receives an array of X, Y coordinates and returns true if they are
@@ -791,10 +839,16 @@ class PolygonElement extends AbstractRenderElement {
         /**
          * Moves all points by a given offset in x and y direction.
          */
+        let self = this;
+        let promises = [];
         for(var c=0; c<this.coordinates.length; c+=2) {
-            this.coordinates[c] += offset[0];
-            this.coordinates[c+1] += offset[1];
+            promises.push(new Promise(resolve => {
+                self.coordinates[c] += offset[0];
+                self.coordinates[c+1] += offset[1];
+                return resolve();
+            }));
         }
+        return Promise.all(promises);
     }
 
     __createAdjustmentHandle(x, y, handleType) {
@@ -836,7 +890,7 @@ class PolygonElement extends AbstractRenderElement {
                 'vertex'
             ));
 
-            // edges (mid-point)        //TODO: make visible only on hover
+            // edges (mid-point)
             if(c<this.coordinates.length-2 || this.isClosed()) {
                 // only draw next mid-point handle at end if polygon is closed
                 let nextC = (c+2) % this.coordinates.length;
@@ -854,27 +908,35 @@ class PolygonElement extends AbstractRenderElement {
 
     _updateAdjustmentHandles(mousePos, tolerance) {
         if(this.adjustmentHandles === null) return;
-        for(var c=0; c<this.coordinates.length; c+=2) {
-            // vertices
-            this.adjustmentHandles.elements[c].setProperty('x', this.coordinates[c]);
-            this.adjustmentHandles.elements[c].setProperty('y', this.coordinates[c+1]);
 
-            // edges (mid-point)
-            if(c<this.coordinates.length-2 || this.isClosed()) {
-                let nextC = (c+2) % this.coordinates.length;
-                let nextX = (this.coordinates[c] + this.coordinates[nextC]) / 2;
-                let nextY = (this.coordinates[c+1] + this.coordinates[nextC+1]) / 2;
-                this.adjustmentHandles.elements[c+1].setProperty('x', nextX);
-                this.adjustmentHandles.elements[c+1].setProperty('y', nextY);
-                if(Array.isArray(mousePos) && 
-                    this.adjustmentHandles.elements[c+1].isInDistance(mousePos, tolerance)) {
-                    // mouse is close to edge handle; show
-                    this.adjustmentHandles.elements[c+1].setProperty('visible', true);
-                } else {
-                    this.adjustmentHandles.elements[c+1].setProperty('visible', false);
+        let self = this;
+        let closed = self.isClosed();
+        let promises = [];
+        for(var c=0; c<this.coordinates.length; c+=2) {
+            promises.push(new Promise(resolve => {
+                // vertices
+                self.adjustmentHandles.elements[c].setProperty('x', self.coordinates[c]);
+                self.adjustmentHandles.elements[c].setProperty('y', self.coordinates[c+1]);
+
+                // edges (mid-point)
+                if(c<self.coordinates.length-2 || closed) {
+                    let nextC = (c+2) % self.coordinates.length;
+                    let nextX = (self.coordinates[c] + self.coordinates[nextC]) / 2;
+                    let nextY = (self.coordinates[c+1] + self.coordinates[nextC+1]) / 2;
+                    self.adjustmentHandles.elements[c+1].setProperty('x', nextX);
+                    self.adjustmentHandles.elements[c+1].setProperty('y', nextY);
+                    if(Array.isArray(mousePos) && 
+                        self.adjustmentHandles.elements[c+1].isInDistance(mousePos, tolerance)) {
+                        // mouse is close to edge handle; show
+                        self.adjustmentHandles.elements[c+1].setProperty('visible', true);
+                    } else {
+                        self.adjustmentHandles.elements[c+1].setProperty('visible', false);
+                    }
                 }
-            }
+                return resolve();
+            }));
         }
+        Promise.all(promises);
     }
 
     getClosestHandle(coordinates, tolerance) {
@@ -948,9 +1010,9 @@ class PolygonElement extends AbstractRenderElement {
         let coords = viewport.getRelativeCoordinates(event, 'validArea');
 
         if(!this.visible || 
-            !force && (!(window.uiControlHandler.getAction() === ACTIONS.DO_NOTHING || window.uiControlHandler.getAction() === ACTIONS.ADD_ANNOTATION)
+            !force && (![ACTIONS.DO_NOTHING, ACTIONS.ADD_ANNOTATION].includes(window.uiControlHandler.getAction())
             )) return;
-        if(this.mouseDrag && this.activeHandle !== null) {
+        if(this.mouseDrag) {
             if(this.activeHandle === 'center') {
                 // translate polygon
                 let shift = [
@@ -958,12 +1020,23 @@ class PolygonElement extends AbstractRenderElement {
                     (coords[1] - this.mousePos_current[1])
                 ]
                 this._translatePolygon(shift);
-                this._updateAdjustmentHandles(null);
 
             } else if(this.activeHandle !== null) {
                 // move vertex
                 this.coordinates[this.activeHandle] = coords[0];
                 this.coordinates[this.activeHandle+1] = coords[1];
+            } else if(!this.isClosed()) {
+                // click and drag on unclosed polygon: freehand
+                let tolerance = 0.0001; //TODO: make general parameter; also solve performance problems
+                let numCoords = this.coordinates.length;
+                let dist = (numCoords ?
+                    Math.pow(this.coordinates[numCoords-2]-coords[0], 2) + Math.pow(this.coordinates[numCoords-1]-coords[1], 2)
+                    : 1e9
+                    );
+                if(dist > tolerance) {
+                    this.addVertex(coords, -1);
+                    this._createAdjustmentHandles(viewport, true);
+                }
             }
             this.lastUpdated = new Date();
         } else {
