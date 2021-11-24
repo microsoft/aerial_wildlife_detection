@@ -334,6 +334,7 @@ class UIControlHandler {
 
             let segControls = $('<div class="inline-control"></div>');
             segControls.append(this.segmentation_controls.brush);
+            segControls.append(this.segmentation_controls.erase);
             segControls.append(this.segmentation_controls.brush_rectangle);
             segControls.append(this.segmentation_controls.brush_circle);
             segControls.append($('<span style="margin-left:10px;margin-right:5px;color:white">Size:</span>'));
@@ -342,7 +343,6 @@ class UIControlHandler {
 
             segControls.append(this.segmentation_controls.select_polygon);
             segControls.append(this.segmentation_controls.paint_bucket);
-            segControls.append(this.segmentation_controls.erase);
 
             segControls.append($('<span style="margin-left:10px;margin-right:5px;color:white">Opacity:</span>'));
             segControls.append(this.segmentation_controls.opacity);
