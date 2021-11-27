@@ -6,246 +6,6 @@
 
 
 
-/**
- * TODO: math utils from here:
- * https://stackoverflow.com/questions/48719873/how-to-get-median-and-quartiles-percentiles-of-an-array-in-javascript-or-php
- */
-// sort array ascending
-const asc = arr => arr.sort((a, b) => a - b);
-const sum = arr => arr.reduce((a, b) => a + b, 0);
-const mean = arr => sum(arr) / arr.length;
-
-const roundNumber = (value, multiplier) => {
-    return Math.round(value * multiplier) / multiplier;
-}
-
-// sample standard deviation
-const std = (arr) => {
-    const mu = mean(arr);
-    const diffArr = arr.map(a => (a - mu) ** 2);
-    return Math.sqrt(sum(diffArr) / (arr.length - 1));
-};
-
-const quantile = (arr_in, q) => {
-    const arr = arr_in.slice();
-    const sorted = asc(arr);
-    const pos = (sorted.length - 1) * q;
-    const base = Math.floor(pos);
-    const rest = pos - base;
-    if (sorted[base + 1] !== undefined) {
-        return sorted[base] + rest * (sorted[base + 1] - sorted[base]);
-    } else {
-        return sorted[base];
-    }
-};
-
-const linspace = (a,b,n) => {
-    if(typeof n === "undefined") n = Math.max(Math.round(b-a)+1,1);
-    if(n<2) { return n===1?[a]:[]; }
-    var i,ret = Array(n);
-    n--;
-    for(i=n;i>=0;i--) { ret[i] = (i*b+(n-i)*a)/n; }
-    return ret;
-}
-
-const quantiles = (arr_in, quants) => {
-    const arr = arr_in.slice();
-    const sorted = asc(arr);
-    const vals_out = [];
-    for(var q in quants) {
-        const pos = (sorted.length - 1) * quants[q];
-        const base = Math.floor(pos);
-        const rest = pos - base;
-        if (sorted[base + 1] !== undefined) {
-            vals_out.push(sorted[base] + rest * (sorted[base + 1] - sorted[base]));
-        } else {
-            vals_out.push(sorted[base]);
-        }
-    }
-    return vals_out;
-}
-
-const normalizeImage = (arr) => {
-    /**
-     *  Performs 0-1 rescaling of image.
-     */
-    let promises = arr.map(band => {
-        return new Promise((resolve) => {
-            let quants = quantiles(band, [0.0,1.0]);
-            let quantDiff = quants[1] - quants[0];
-            let band_norm = new Float32Array(band).map(function(v) { 
-                return (v - quants[0]) / quantDiff;
-            });
-            return resolve(band_norm);
-        });
-    });
-    return Promise.all(promises);
-}
-
-const quantileStretchImage = (arr, low, high, brightness) => {
-    let promises = arr.map(band => {
-        return new Promise((resolve) => {
-            // calc. quantiles
-            let quantvals = quantiles(band, [low, high]);
-            let quantdiff = parseFloat(quantvals[1] - quantvals[0]);
-            let band_stretch = band.map(pixel => {
-                return 255 * (pixel - quantvals[0]) / quantdiff + brightness;
-            });
-            return resolve(band_stretch);
-        });
-    });
-    return Promise.all(promises);
-}
-
-// source: https://stackoverflow.com/questions/66037026/interleave-mutliple-arrays-in-javascript
-const biptobsq = arr => Array.from({
-    length: Math.max(...arr.map(o => o.length)), // find the maximum length
-  },
-  (_, i) => arr.map(r => r[i] ?? null) // create a new row from all items in same column or substitute with null
-).flat() // flatten the results
-
-const bsqtobip = (arr) => {
-    //TODO: multithreaded?
-    return new Promise((resolve) => {
-        let numVals = 4*arr[0].length;      // 4 for RGBA
-        let preparedArray = new Uint8ClampedArray(new Array(numVals));
-        [0, 1, 2, -1].map(bIdx => {
-            if(bIdx>=0) {
-                let band = arr[bIdx];
-                for(var s=0; s<numVals; s++) {
-                    preparedArray[(s*4)+bIdx] = band[s];
-                }
-            } else {
-                // alpha
-                for(var s=0; s<numVals; s++) {
-                    preparedArray[(s*4)+3] = 255;
-                }
-            }
-        });
-        return resolve(preparedArray);
-    });
-}
-
-/**
- * Performs band selection on an array. Can handle both interleaved and band
- * sequential arrays. For interleaved arrays "arr_num_bands" (i.e., number of
- * bands in the original input "arr") must be specified.
- */
-const band_select = (arr, bands, arr_num_bands) => {
-    let arr_out = [];
-    let promises = [];
-    if(arr[0].length) {
-        // array of arrays: band sequential
-        promises = bands.map((band) => {
-            arr_out.push(arr[band]);
-        });
-    } else {
-        // interleaved
-        let numPix = arr.length / arr_num_bands;
-        arr_out = new Array(bands.length*numPix);
-        let bandIndices = linspace(0,bands.length)
-        promises = bandIndices.map((bIdx) => {
-            for(var p=bands[bIdx]; p<arr.length; p+=arr_num_bands) {
-                arr_out[(p*arr_num_bands)+bIdx] = arr[p]; 
-            }
-        });
-    }
-    return Promise.all(promises).then(() => {
-        return arr_out;
-    })
-}
-
-const to_grayscale = (arr) => {
-    /**
-     * Works on both interleaved and band sequential arrays with four bands
-     * (RGBA). Ignores the alpha band.
-     */
-    //TODO: multithreaded?
-    if(arr[0].length) {
-        // array of arrays: band sequential
-        return new Promise((resolve) => {
-            for(var p=0; p<arr[0].length; p++) {
-                let g = (arr[0][p] + arr[1][p] + arr[2][p]) / 3.0;
-                arr[0][p] = g;
-                arr[1][p] = g;
-                arr[2][p] = g;
-            }
-            return resolve(arr);
-        });
-    } else {
-        // interleaved
-        return new Promise((resolve) => {
-            for(var p=0; p<arr.length; p+=4) {
-                let g = (arr[p] + arr[p+1] + arr[p+2]) / 3.0;
-                arr[p] = g;
-                arr[p+1] = g;
-                arr[p+2] = g;
-            }
-            return resolve(arr);
-        });
-    }
-}
-
-const white_on_black = (arr) => {
-    /**
-     * Works on BSQ arrays; expects 255 as maximum value
-     */
-    return new Promise((resolve) => {
-        arr.map((band) => {
-            for(var b=0; b<band.length; b++) {
-                band[b] = 255 - band[b];
-            }
-        });
-        return resolve(arr);
-    });
-}
-
-/**
- * Performs image enhancements according to the options in "renderConfig":
- * {
- *   "contrast": {
- *     "percentile": {
- *       "min": 0.0,
- *       "max": 100.0
- *     }
- *   },
- *   "grayscale": false,
- *   "white_on_black": false,
- *   "brightness": 0
- * }
- * 
- * Works on interleaved arrays only.
- */
-const image_enhancement = (arr, renderConfig) => {
-    //TODO: contrast stretch
-    let grayscale = get_render_config_val(renderConfig, 'grayscale', false);
-    let whiteOnBlack = get_render_config_val(renderConfig, 'white_on_black', false);
-    let brightness = get_render_config_val(renderConfig, 'brightness', 0);
-    if(!(grayscale || whiteOnBlack || brightness)) return arr;
-
-    //TODO: multithreaded?
-    return new Promise((resolve) => {
-        for(var p=0; p<arr.length; p+=4) {
-            let cVals = arr.slice(p,p+3);
-            if(grayscale) {
-                let gray = mean(cVals);
-                for(var v in cVals) {
-                    cVals[v] = gray;
-                }
-            }
-            //TODO: contrast stretch
-            [0,1,2].map((idx) => {
-                if(whiteOnBlack) {
-                    arr[p+idx] = 255 - cVals[idx] + brightness;
-                } else {
-                    arr[p+idx] = cVals[idx] + brightness;
-                }
-            });
-        }
-        return resolve(arr);
-    });
-}
-
 
 /**
  * Render configuration
@@ -312,6 +72,82 @@ const get_render_config_val = (renderConfig, tokens, fallback) => {
     }
 }
 
+/**
+ * Performs image enhancements according to the options in "renderConfig":
+ * {
+ *   "contrast": {
+ *     "percentile": {
+ *       "min": 0.0,
+ *       "max": 100.0
+ *     }
+ *   },
+ *   "grayscale": false,
+ *   "white_on_black": false,
+ *   "brightness": 0
+ * }
+ * 
+ * Works on interleaved arrays only.
+ */
+const image_enhancement = (arr, renderConfig) => {
+    //TODO: contrast stretch
+    let grayscale = get_render_config_val(renderConfig, 'grayscale', false);
+    let whiteOnBlack = get_render_config_val(renderConfig, 'white_on_black', false);
+    let brightness = get_render_config_val(renderConfig, 'brightness', 0);
+    if(!(grayscale || whiteOnBlack || brightness)) return arr;
+
+    //TODO: multithreaded?
+    return new Promise((resolve) => {
+        for(var p=0; p<arr.length; p+=4) {
+            let cVals = arr.slice(p,p+3);
+            if(grayscale) {
+                let gray = mean(cVals);
+                for(var v in cVals) {
+                    cVals[v] = gray;
+                }
+            }
+            //TODO: contrast stretch
+            [0,1,2].map((idx) => {
+                if(whiteOnBlack) {
+                    arr[p+idx] = 255 - cVals[idx] + brightness;
+                } else {
+                    arr[p+idx] = cVals[idx] + brightness;
+                }
+            });
+        }
+        return resolve(arr);
+    });
+}
+
+const calculate_edges = (arr, numBands, width, height) => {
+    /**
+     * Calculates a Sobel edge detection on an array.
+     */
+    let promise = Promise.resolve(arr);
+    // reshape array
+    let interleaved = is_interleaved(arr);
+    if(interleaved) {
+        promise = biptobsq(arr, numBands);
+    }
+
+    promise = promise.then((arr_bsq) => {
+        // convert typed to JS arrays
+        arr_bsq = arr_bsq.map((band) => {
+            return Array.from(band);
+        });
+
+        arr_bsq = math.reshape(arr_bsq, [numBands, width, height]);
+        return sobel(arr_bsq);
+    })
+    .then((arr_edges) => {
+        if(interleaved) {
+            return bsqtobip(arr_edges);
+        } else {
+            return arr_edges;
+        }
+    });
+    return promise;
+}
+
 
 /**
  * Image Parsers
@@ -371,6 +207,10 @@ class WebImageParser {
         return this.imageLoadingPromise;
     }
 
+    get_raw_image() {
+        return this.image;
+    }
+
     get_image_array(bands) {
         /**
          * Loads the image if necessary and then returns an interleaved array
@@ -425,6 +265,11 @@ class WebImageParser {
         } catch {
             return undefined;
         }
+    }
+
+    getNumBands() {
+        // standard canvas images always come in RGBA configuration
+        return 4;
     }
 }
 WebImageParser.prototype.get_supported_formats = function() {
@@ -499,6 +344,14 @@ class TIFFImageParser extends WebImageParser {
 
     getHeight() {
         return this.size[1];
+    }
+
+    getNumBands() {
+        try {
+            return this.image.length;
+        } catch {
+            return undefined;
+        }
     }
 }
 TIFFImageParser.prototype.get_supported_formats = function() {
@@ -621,6 +474,13 @@ class ImageRenderer {
                 // image touch-up: grayscale conversion, white on black, etc.
                 return image_enhancement(arr, self.renderConfig);
             })
+            //TODO: test to display edge image
+            // .then(() => {
+            //     return self.get_edge_image();
+            // })
+            // .then((arr) => {
+            //     return bsqtobip([math.reshape(arr, [-1])], 'float32')
+            // })
             .then((arr) => {
                 self.data = arr;
                 let imageData = new ImageData(new Uint8ClampedArray(arr), self.getWidth(), self.getHeight());
@@ -668,11 +528,33 @@ class ImageRenderer {
         }
     }
 
+    get_edge_image() {
+        /**
+         * Calculates the image's edges with a Sobel filter.
+         */
+        if(this.edgeImage === undefined) {
+            let self = this;
+            return new Promise((resolve) => {
+                calculate_edges(self.parser.get_raw_image(), self.getNumBands(), self.getWidth(), self.getHeight())
+                .then((edges) => {
+                    self.edgeImage = edges;
+                    return resolve(edges);
+                });
+            });
+        } else {
+            return Promise.resolve(this.edgeImage);
+        }
+    }
+
     async rerenderImage() {
         let self = this;
         this._render_image(true).then(() => {
             self.viewport.render();
         });
+    }
+
+    getNumBands() {
+        return this.parser.getNumBands();
     }
 
     getWidth() {

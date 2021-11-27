@@ -1182,6 +1182,80 @@ class PolygonElement extends AbstractRenderElement {
 }
 
 
+/**
+ * Polygon element with an edge map to snap vertices to (magnetic lasso).
+ */
+class MagneticPolygonElement extends PolygonElement {
+    
+    constructor(id, edgeMap, coordinates, style, unsure, zIndex, disableInteractions) {
+        super(id, coordinates, style, unsure, zIndex, disableInteractions);
+        this.edgeMap = edgeMap;
+    }
+
+    _get_edgemap_argmax(coords, sideLength, minVal) {
+        /**
+         * Receives a pair of absolute coordinates and a sideLength (size in
+         * pixels) and checks the edge map for high values. Returns the
+         * coordinates of the pixel with the highest value within the local
+         * neighborhood square with side length "sideLength".
+         * Only considers pixels with minimum value greater than "minVal";
+         * TODO: make percentile?
+         */
+        let maxval = minVal;
+        let argmax = undefined;
+        try {
+            let minX = Math.max(0, coords[0]-sideLength);
+            let maxX = Math.min(this.edgeMap.length-1, coords[0]+sideLength-1);
+            let minY = Math.max(0, coords[1]-sideLength);
+            let maxY = Math.min(this.edgeMap[0].length-1, coords[1]+sideLength-1);
+            for(var x=minX; x<maxX; x++) {
+                for(var y=minY; y<maxY; y++) {
+                    let val = this.edgeMap[x][y];
+                    if(val > maxval) {
+                        maxval = val;
+                        argmax = [x, y];
+                    }
+                }
+            }
+        } catch(err) {
+            console.error(err);
+        }
+        return argmax;
+    }
+
+    _mousemove_event(event, viewport, force) {
+        super._mousemove_event(event, viewport, force);
+        if(this.isActive && !this.mouseDrag && !this.isClosed()) {
+            // check distance to last vertex; if large enough snap to nearest edge
+            let coords = viewport.getRelativeCoordinates(event, 'validArea');
+            let tolerance = 0.002; //TODO: make general parameter; also solve performance problems
+            let numCoords = this.coordinates.length;
+            let dist = (numCoords ?
+                Math.pow(this.coordinates[numCoords-2]-coords[0], 2) + Math.pow(this.coordinates[numCoords-1]-coords[1], 2)
+                : 1e9
+                );
+            if(dist > tolerance) {
+                // check local neighborhood in edge map for strong gradients
+                let coords_abs = [
+                    parseInt(coords[1] * this.edgeMap.length),
+                    parseInt(coords[0] * this.edgeMap[0].length)
+                ];
+                let edge_argmax = this._get_edgemap_argmax(coords_abs, 5, 0.1);    //TODO: hyperparameters
+                if(edge_argmax !== undefined) {
+                    let edge_argmax_rel = [
+                        edge_argmax[1] / this.edgeMap.length,
+                        edge_argmax[0] / this.edgeMap[0].length
+                    ];
+                    this.addVertex(edge_argmax_rel, -1);
+                    this._createAdjustmentHandles(viewport, true);
+                }
+            }
+            this.lastUpdated = new Date();
+        }
+    }
+}
+
+
 class RectangleElement extends PointElement {
 
     constructor(id, x, y, width, height, style, unsure, zIndex, disableInteractions) {

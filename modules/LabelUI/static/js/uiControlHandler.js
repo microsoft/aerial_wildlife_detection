@@ -17,7 +17,8 @@ const ACTIONS = {
 
     // for segmentation
     PAINT_BUCKET: 7,
-    ADD_SELECT_POLYGON: 8    
+    ADD_SELECT_POLYGON: 8,
+    ADD_SELECT_POLYGON_MAGNETIC: 9
 }
 
 const CURSORS = [
@@ -283,6 +284,7 @@ class UIControlHandler {
                 brush_size: $('<input class="inline-control" type="number" min="1" max="255" value="20" title="Brush size" style="width:50px" />'),
                 erase: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/erase.svg" style="height:18px" title="Erase" /></button>'),
                 select_polygon: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/lasso.svg" style="height:18px" title="Select by polygon" /></button>'),
+                select_polygon_magnetic: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/lasso_magnetic.svg" style="height:18px" title="Select by magnetic polygon" /></button>'),
                 paint_bucket: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/paintbucket.svg" style="height:18px" title="Fill selected area" /></button>'),
                 opacity: $('<input class="inline-control" type="range" min="0" max="255" value="220" title="Segmentation opacity" style="width:100px" />')        //TODO: make available for other annotation types as well?
             };
@@ -328,6 +330,9 @@ class UIControlHandler {
             this.segmentation_controls.select_polygon.on('click', function() {
                 self.setAction(ACTIONS.ADD_SELECT_POLYGON);
             });
+            this.segmentation_controls.select_polygon_magnetic.on('click', function() {
+                self.setAction(ACTIONS.ADD_SELECT_POLYGON_MAGNETIC);
+            });
             this.segmentation_controls.paint_bucket.on('click', function() {
                 self.setAction(ACTIONS.PAINT_BUCKET);
             });
@@ -342,6 +347,7 @@ class UIControlHandler {
             segControls.append($('<span style="margin-left:5px;color:white">px</span>'));
 
             segControls.append(this.segmentation_controls.select_polygon);
+            segControls.append(this.segmentation_controls.select_polygon_magnetic);
             segControls.append(this.segmentation_controls.paint_bucket);
 
             segControls.append($('<span style="margin-left:10px;margin-right:5px;color:white">Opacity:</span>'));

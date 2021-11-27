@@ -137,6 +137,7 @@ $(document).ready(function() {
             'keyup',
             'mousein',
             'mouseout',
+            'mouseenter',
             'mouseleave',
             'mousemove',
             'mousedown',

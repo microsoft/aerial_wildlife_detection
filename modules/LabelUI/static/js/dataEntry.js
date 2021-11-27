@@ -30,6 +30,9 @@ class AbstractDataEntry {
         })
         .then((r) => {
             self._parseLabels(properties);
+            if(self.getAnnotationType() === 'segmentationMasks') {
+                self.areaSelector = new AreaSelector(this);     // for selection polygons, etc.
+            }
             self.startTime = new Date();
             self.render();
             return true;
@@ -1991,7 +1994,7 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
     }
 
     getAnnotationType() {
-        return 'segmentationMap';
+        return 'segmentationMasks';
     }
 
     setAnnotationsVisible(visible) {
@@ -2164,84 +2167,57 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
     _canvas_mousedown(event) {
         if(window.uiBlocked) return;
         this.mouseDown = true;
-
-        if(window.uiControlHandler.getAction() === ACTIONS.ADD_SELECT_POLYGON &&
-            this.selectionPolygon === null) {
-            // allow user to draw a polygon for selection
-            let mousePos = this.viewport.getRelativeCoordinates(event, 'validArea');
-            let selectStyle = {     //TODO: add to defaults
-                'fillColor': '#0066AA33',
-                'strokeColor': '#0066AAFF',
-                'lineOpacity': 1.0,
-                'lineWidth': 2.0,
-                'lineDash': [10],
-                'lineDashOffset': 0.0,
-                'refresh_rate': 250
-            } 
-            this.selectionPolygon = new PolygonElement(
-                this.id + '_selPolygon',
-                mousePos,
-                selectStyle,
-                false,
-                1000,
-                false);
-            this.viewport.addRenderElement(this.selectionPolygon);
-            this.selectionPolygon.setActive(true, this.viewport);
-            this.selectionPolygon.mouseDrag = true;     // required for freehand
-            this.segMap.setActive(false, this.viewport);
-            window.uiControlHandler.setAction(ACTIONS.ADD_ANNOTATION);      // required for polygon drawing
-        } else {
-            this.__paint(event);   
-        }
+        this.__paint(event);
     }
 
     _canvas_mousemove(event) {
-        if(window.uiBlocked) return;
-        if(window.uiControlHandler.getAction() === ACTIONS.DO_NOTHING &&
-            this.selectionPolygon !== null) {
-            // polygon was being drawn but isn't anymore
-            if(this.selectionPolygon.isCloseable()) {
-                // close it
-                this.selectionPolygon.closePolygon();
-            } else {
-                // polygon was not complete; remove
-                this.selectionPolygon.setActive(false, this.viewport);
-                this.viewport.removeRenderElement(this.selectionPolygon);
-                this.selectionPolygon = null;
-            }
-        } else {
-            this.__paint(event);
-        }
+        this.__paint(event);
+        // if(window.uiBlocked) return;
+        // if(window.uiControlHandler.getAction() === ACTIONS.DO_NOTHING &&
+        //     this.selectionPolygon !== null) {
+        //     // // polygon was being drawn but isn't anymore
+        //     // if(this.selectionPolygon.isCloseable()) {
+        //     //     // close it
+        //     //     this.selectionPolygon.closePolygon();
+        //     // } else {
+        //     //     // polygon was not complete; remove
+        //     //     this.selectionPolygon.setActive(false, this.viewport);
+        //     //     this.viewport.removeRenderElement(this.selectionPolygon);
+        //     //     this.selectionPolygon = null;
+        //     // }
+        // } else {
+        //     this.__paint(event);
+        // }
     }
 
     _canvas_mouseup(event) {
         this.mouseDown = false;
         this.numInteractions++;
-        let mousePos = this.viewport.getRelativeCoordinates(event, 'validArea');
-        if(window.uiControlHandler.getAction() === ACTIONS.PAINT_BUCKET &&
-            this.selectionPolygon !== null) {
-            // fill drawn polygon if clicked inside of it
-            if(this.selectionPolygon.containsPoint(mousePos)) {
-                this.segMap.paint_bucket(
-                    this.selectionPolygon.getProperty('coordinates'),
-                    window.labelClassHandler.getActiveColor()
-                );
+        // let mousePos = this.viewport.getRelativeCoordinates(event, 'validArea');
+        // if(window.uiControlHandler.getAction() === ACTIONS.PAINT_BUCKET &&
+        //     this.selectionPolygon !== null) {
+        //     // fill drawn polygon if clicked inside of it
+        //     if(this.selectionPolygon.containsPoint(mousePos)) {
+        //         this.segMap.paint_bucket(
+        //             this.selectionPolygon.getProperty('coordinates'),
+        //             window.labelClassHandler.getActiveColor()
+        //         );
 
-                this._clear_selection_polygon();
-            }
-        } else if([ACTIONS.DO_NOTHING, ACTIONS.ADD_ANNOTATION].includes(window.uiControlHandler.getAction()) &&
-            this.selectionPolygon !== null) {
-            if(this.selectionPolygon.isClosed()) {
-                // still in selection polygon mode but polygon is closed
-                if(!this.selectionPolygon.isActive) {
-                    if(this.selectionPolygon.containsPoint(mousePos)) {
-                        this.selectionPolygon.setActive(true, this.viewport);
-                    } else {
-                        this._clear_selection_polygon();
-                    }
-                }
-            }
-        }
+        //         this._clear_selection_polygon();
+        //     }
+        // } else if([ACTIONS.DO_NOTHING, ACTIONS.ADD_ANNOTATION].includes(window.uiControlHandler.getAction()) &&
+        //     this.selectionPolygon !== null) {
+        //     if(this.selectionPolygon.isClosed()) {
+        //         // still in selection polygon mode but polygon is closed
+        //         if(!this.selectionPolygon.isActive) {
+        //             if(this.selectionPolygon.containsPoint(mousePos)) {
+        //                 this.selectionPolygon.setActive(true, this.viewport);
+        //             } else {
+        //                 this._clear_selection_polygon();
+        //             }
+        //         }
+        //     }
+        // }
     }
 
     _clear_selection_polygon() {
