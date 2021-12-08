@@ -87,7 +87,7 @@ class FasterRCNN(GenericDetectron2BoundingBoxModel):
                 bbox_biases_copy = bbox_biases.clone()
 
                 modelClasses = range(len(class_biases))
-                correlations = self.calculateClassCorrelations(model, lcMap_new, modelClasses, newClasses, updateStateFun, 128)    #TODO: num images
+                correlations = self.calculateClassCorrelations(stateDict, model, lcMap_new, modelClasses, newClasses, updateStateFun, 128)    #TODO: num images
                 correlations = correlations[:,:-1].to(class_weights.device)      # exclude background class
 
                 classMatches = (correlations.sum(1) > 0)            #TODO: calculate alternative strategies (e.g. class name similarities)

@@ -278,7 +278,7 @@ class GenericDetectron2Model(AIModel):
 
 
 
-    def calculateClassCorrelations(self, model, modelClasses, targetClasses, maxNumImagesPerClass=None):
+    def calculateClassCorrelations(self, stateDict, model, modelClasses, targetClasses, maxNumImagesPerClass=None):
         '''
             Determines the correlation between label classes predicted by the
             model and target annotations for a given set of "targetClasses".
@@ -402,6 +402,54 @@ class GenericDetectron2Model(AIModel):
                     indexMap[aideIdx] = modelIdx
         return indexMap
 
+    
+
+    def _get_band_config(self, stateDict, data):
+        '''
+            Assembles a tuple of band indices that are to be provided to the
+            model as input. For example, if the project contains images with six
+            bands and the model provides a band configuration of (4,0,1), then a
+            three-layer image with bands at given indices are fed to the model.
+            Fallback A (model state dict does not provide a band config): the
+            RGB values from the LabelUI frontend are selected (data >
+            "render_config"). Fallback B (no render config is provided):
+            defaults are assumed (three layer image with indices at 0, 1, 2 for
+            Red, Green, Blue).
+        '''
+        # assemble band configuration
+        bandConfig = (0,0,0)
+
+        try:
+            bandNames = data['band_config']
+        except:
+            # no band names provided; assume RGB
+            bandNames = ('Red', 'Green', 'Blue')
+
+        #TODO: get band config from model state
+        bandConfig = stateDict.get('bandConfig', None)
+
+        if bandConfig is None:
+            # fallback A: get from render_config
+            try:
+                renderConfig = data['render_config']
+                try:
+                    bandConfig = []
+                    for key in ('Red', 'Green', 'Blue'):    #TODO: grayscale?
+                        bandConfig.append(renderConfig['bands']['indices'][key])
+                except:
+                    # fallback B: assume R-G-B
+                    bandConfig = (
+                        0,
+                        min(1, len(bandNames)-1),
+                        min(2, len(bandNames)-1)
+                    )
+                #TODO: for next version of AIDE: allow model to be expanded towards new bands
+                
+            except:
+                # fallback to default R-G-B
+                bandConfig = (0, 1, 2)
+        return bandConfig
+
 
     
     def _build_optimizer(self, cfg, model):
@@ -438,12 +486,14 @@ class GenericDetectron2Model(AIModel):
         ignoreUnsure = optionsHelper.get_hierarchical_value(self.options, ['options', 'train', 'ignore_unsure', 'value'], fallback=True)
         transforms = self.initializeTransforms(mode='train')
         indexMap = self._get_labelclass_index_map(stateDict['labelclassMap'], False)
-        try:
-            imageFormat = self.detectron2cfg.INPUT.FORMAT
-            assert imageFormat.upper() in ('RGB', 'BGR')
-        except:
-            imageFormat = 'BGR'
-        datasetMapper = Detectron2DatasetMapper(self.project, self.fileServer, transforms, True, imageFormat, classIndexMap=indexMap)
+        
+        bandConfig = self._get_band_config(stateDict, data)
+        # try:
+        #     imageFormat = self.detectron2cfg.INPUT.FORMAT
+        #     assert imageFormat.upper() in ('RGB', 'BGR')
+        # except:
+        #     imageFormat = 'BGR'
+        datasetMapper = Detectron2DatasetMapper(self.project, self.fileServer, transforms, True, bandConfig, classIndexMap=indexMap)
         dataLoader = build_detection_train_loader(
             dataset=getDetectron2Data(data, stateDict['labelclassMap'], projectToStateMap, ignoreUnsure, self.detectron2cfg.DATALOADER.FILTER_EMPTY_ANNOTATIONS),
             mapper=datasetMapper,
@@ -544,12 +594,14 @@ class GenericDetectron2Model(AIModel):
         # wrap dataset for usage with Detectron2
         transforms = self.initializeTransforms(mode='inference')
         indexMap = self._get_labelclass_index_map(stateDict['labelclassMap'], True)
-        try:
-            imageFormat = self.detectron2cfg.INPUT.FORMAT
-            assert imageFormat.upper() in ('RGB', 'BGR')
-        except:
-            imageFormat = 'BGR'
-        datasetMapper = Detectron2DatasetMapper(self.project, self.fileServer, transforms, False, imageFormat)
+
+        bandConfig = self._get_band_config(stateDict, data)
+        # try:
+        #     imageFormat = self.detectron2cfg.INPUT.FORMAT
+        #     assert imageFormat.upper() in ('RGB', 'BGR')
+        # except:
+        #     imageFormat = 'BGR'
+        datasetMapper = Detectron2DatasetMapper(self.project, self.fileServer, transforms, False, bandConfig)
         dataLoader = build_detection_test_loader(
             dataset=getDetectron2Data(data, stateDict['labelclassMap'], None, False, False),
             mapper=datasetMapper,

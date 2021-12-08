@@ -86,7 +86,7 @@ class DeepLabV3Plus(GenericDetectron2SegmentationModel):
                 biases_copy = biases.clone()
 
                 #TODO: we currently have no indexing possibilities to retrieve images with correct labels...
-                # correlations = self.calculateClassCorrelations(model, lcMap_new, range(numClasses_orig), newClasses, updateStateFun, 128)    #TODO: num images
+                # correlations = self.calculateClassCorrelations(stateDict, model, lcMap_new, range(numClasses_orig), newClasses, updateStateFun, 128)    #TODO: num images
                 
                 # use alternative solution: choose random class
                 randomOrder = torch.randperm(numClasses_orig)

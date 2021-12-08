@@ -1225,7 +1225,7 @@ class MagneticPolygonElement extends PolygonElement {
 
     _mousemove_event(event, viewport, force) {
         super._mousemove_event(event, viewport, force);
-        if(this.isActive && !this.mouseDrag && !this.isClosed()) {
+        if(this.isActive && !this.mouseDrag && !this.isClosed() && !event.shiftKey) {
             // check distance to last vertex; if large enough snap to nearest edge
             let coords = viewport.getRelativeCoordinates(event, 'validArea');
             let tolerance = 0.002; //TODO: make general parameter; also solve performance problems

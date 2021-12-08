@@ -18,7 +18,8 @@
 import os
 import argparse
 from psycopg2 import sql
-from util.helpers import VALID_IMAGE_EXTENSIONS, listDirectory
+from util.helpers import listDirectory
+from util import drivers
 
 
 if __name__ == '__main__':
@@ -40,6 +41,7 @@ if __name__ == '__main__':
     import datetime
     from util.configDef import Config
     from modules import Database
+    drivers.init_drivers()
 
     currentDT = datetime.datetime.now()
     currentDT = '{}-{}-{} {}:{}:{}'.format(currentDT.year, currentDT.month, currentDT.day, currentDT.hour, currentDT.minute, currentDT.second)
@@ -70,7 +72,7 @@ if __name__ == '__main__':
             continue
         
         _, ext = os.path.splitext(i)
-        if ext.lower() not in VALID_IMAGE_EXTENSIONS:
+        if ext.lower() not in drivers.VALID_IMAGE_EXTENSIONS:
             continue
 
         baseName = i.replace(imgBaseDir, '')

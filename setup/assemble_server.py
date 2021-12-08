@@ -18,6 +18,7 @@ from util.configDef import Config
 from setup.setupDB import add_update_superuser
 from setup.migrate_aide import migrate_aide
 from modules import REGISTERED_MODULES, Database
+from util import drivers
 from constants.version import AIDE_VERSION
 
 
@@ -171,6 +172,9 @@ def assemble_server(verbose_start=True, check_v1_config=True, migrate_database=T
         # no superuser credentials provided; ignore
         print(e)    #TODO
         pass
+
+    # load drivers
+    drivers.init_drivers(True)
 
     # prepare bottle
     app = Bottle()

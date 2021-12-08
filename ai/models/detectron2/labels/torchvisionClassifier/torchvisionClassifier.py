@@ -82,7 +82,7 @@ class GeneralizedTorchvisionClassifier(GenericDetectron2LabelModel):
                 biases_copy = biases.clone()
 
                 modelClasses = range(len(biases))
-                correlations = self.calculateClassCorrelations(model, lcMap_new, modelClasses, newClasses, updateStateFun, 128)    #TODO: num images
+                correlations = self.calculateClassCorrelations(stateDict, model, lcMap_new, modelClasses, newClasses, updateStateFun, 128)    #TODO: num images
                 correlations = correlations.to(weights.device)
 
                 classMatches = (correlations.sum(1) > 0)            #TODO: calculate alternative strategies (e.g. class name similarities)

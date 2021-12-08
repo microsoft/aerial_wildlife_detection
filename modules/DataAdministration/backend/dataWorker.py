@@ -13,6 +13,7 @@ import re
 import shutil
 import tempfile
 import zipfile
+import json
 import math
 from datetime import datetime
 import pytz
@@ -20,8 +21,9 @@ from uuid import UUID
 from PIL import Image
 from psycopg2 import sql
 from modules.LabelUI.backend.annotation_sql_tokens import QueryStrings_annotation, QueryStrings_prediction
-from util.helpers import VALID_IMAGE_EXTENSIONS, FILENAMES_PROHIBITED_CHARS, listDirectory, base64ToImage, hexToRGB
+from util.helpers import FILENAMES_PROHIBITED_CHARS, listDirectory, base64ToImage, hexToRGB
 from util.imageSharding import split_image
+from util import drivers
 
 
 class DataWorker:
@@ -231,6 +233,19 @@ class DataWorker:
             saved, and keys and error messages for those that
             were not.
         '''
+        # get band configuration for project
+        bandConfig = self.dbConnector.execute(
+            'SELECT band_config FROM "aide_admin".project WHERE shortname = %s;',
+            (project,), 1
+        )
+        try:
+            bandConfig = json.loads(bandConfig[0]['band_config'])
+            bandNum = set((len(bandConfig),))
+        except:
+            # no custom render configuration specified; assume default no. bands
+            # of one (grayscale) or three (RGB)
+            bandNum = set((1, 3))
+
         imgPaths_valid = []
         imgs_valid = []
         imgs_warn = {}
@@ -243,16 +258,20 @@ class DataWorker:
 
                 # check if correct file suffix
                 _, ext = os.path.splitext(nextFileName)
-                if not ext.lower() in VALID_IMAGE_EXTENSIONS:
+                if not ext.lower() in drivers.VALID_IMAGE_EXTENSIONS:
                     raise Exception(f'Invalid file type (*{ext})')
 
                 # check if loadable as image
                 cache = io.BytesIO()
                 nextUpload.save(cache)
                 try:
-                    image = Image.open(cache)
-                except Exception:
-                    raise Exception('File is not a valid image.')
+                    pixelArray = drivers.load_from_bytes(cache)
+                    bandNum_current = pixelArray.shape[0]
+                    if bandNum_current not in bandNum:
+                        raise Exception(f'Image has invalid number of bands (expected: {str(bandNum)}, actual: {str(bandNum_current)}).')
+                    # image = Image.open(cache)
+                except Exception as e:
+                    raise Exception(f'File is not a valid image (message: "{str(e)}").')
 
                 # prepare image(s) to save to disk
                 parent, filename = os.path.split(nextFileName)
@@ -264,12 +283,12 @@ class DataWorker:
 
                 if not splitImages:
                     # upload the single image directly
-                    images.append(image)
+                    images.append(cache)
                     filenames.append(filename)
 
                 else:
                     # split image into patches instead
-                    images, coords = split_image(image,
+                    images, coords = split_image(pixelArray,
                                             splitProperties['patchSize'],
                                             splitProperties['stride'],
                                             splitProperties['tight'])
@@ -355,7 +374,15 @@ class DataWorker:
                     fileParent, _ = os.path.split(absFilePath)
                     if len(fileParent):
                         os.makedirs(fileParent, exist_ok=True)
-                    subImage.save(absFilePath)
+                    
+                    if isinstance(subImage, io.BytesIO):
+                        subImage.seek(0)
+                        with open(absFilePath, 'wb') as f:
+                            f.write(subImage.getbuffer())
+                    else:
+                        # NumPy array from tiling
+                        drivers.save_to_disk(subImage, absFilePath)
+                    # subImage.save(absFilePath)
 
                     imgs_valid.append(key)
                     imgPaths_valid.append(os.path.join(parent, newFileName))

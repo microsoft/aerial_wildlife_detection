@@ -58,6 +58,23 @@ def getDetectron2Data(aideData, labelclassMap, projectToStateMap={}, ignoreUnsur
                 elif 'x' in anno and 'y' in anno:
                     # point (not yet supported by Detectron2)
                     continue
+                elif 'coordinates' in anno:
+                    # polygons
+                    obj['segmentation'] = [anno['coordinates']]
+                    # add bbox as well
+                    xCoords = anno['coordinates'][::2]
+                    yCoords = anno['coordinates'][1::2]
+                    bounds = [
+                        min(xCoords), min(yCoords),
+                        max(xCoords), max(yCoords)
+                    ]
+                    obj['bbox'] = [
+                        (bounds[0]+bounds[2])/2.0,
+                        (bounds[1]+bounds[3])/2.0,
+                        bounds[2],
+                        bounds[3]
+                    ]
+                    obj['bbox_mode'] = BoxMode.XYWH_REL
                 elif 'label' in anno:
                     # image labels; skip instances and append to base dict
                     if anno['label'] is None:

@@ -28,7 +28,7 @@ import numpy as np
 from celery import current_task, states
 import psycopg2
 from psycopg2 import sql
-from util.helpers import array_split
+from util.helpers import DEFAULT_RENDER_CONFIG, array_split, DEFAULT_BAND_CONFIG
 from constants.dbFieldNames import FieldNames_annotation, FieldNames_prediction
 
 
@@ -118,6 +118,38 @@ def __load_metadata(project, dbConnector, imageIDs, loadAnnotations, modelOrigin
         for r in result:
             labels[r['id']] = r
     meta['labelClasses'] = labels
+
+    # image format (band configuration)
+    #NOTE: we also load the render config for those models that don't specify which bands to take
+    # (i.e., we let the model use the same RGB or grayscale bands as used for the visualizer front-end)
+    try:
+        queryStr = sql.SQL('''
+            SELECT band_config, render_config
+            FROM aide_admin.project
+            WHERE shortname = %s;
+        ''')
+        config = dbConnector.execute(queryStr, (project,), 1)
+        bandConfig = json.loads(config[0]['band_config'])
+        if bandConfig is None:
+            raise
+        try:
+            renderConfig = json.loads(config[0]['render_config'])
+            if renderConfig is None:
+                raise
+        except:
+            # default render configuration; with adjustment to number of bands
+            renderConfig = DEFAULT_RENDER_CONFIG
+            renderConfig['bands']['indices'] = {
+                'red': 0,
+                'green': min(1, len(bandConfig)-1),
+                'blue': min(2, len(bandConfig)-1)
+            }
+    except:
+        # fallback to default
+        bandConfig = DEFAULT_BAND_CONFIG
+        renderConfig = DEFAULT_RENDER_CONFIG
+    meta['band_config'] = bandConfig
+    meta['render_config'] = renderConfig
 
     # image data
     imageMeta = {}

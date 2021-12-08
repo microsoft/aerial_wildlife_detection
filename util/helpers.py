@@ -19,40 +19,8 @@ import numpy as np
 from PIL import Image, ImageColor
 from psycopg2 import sql
 
-
-
-class LogDecorator:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
-
-    @staticmethod
-    def get_ljust_offset():
-        try:
-            return os.get_terminal_size().columns - 6
-        except:
-            return 74
-
-    @staticmethod
-    def print_status(status, color=None):
-        if status.lower() == 'ok':
-            print(f'{LogDecorator.OKGREEN}[ OK ]{LogDecorator.ENDC}')
-        elif status.lower() == 'warn':
-            print(f'{LogDecorator.WARNING}[WARN]{LogDecorator.ENDC}')
-        elif status.lower() == 'fail':
-            print(f'{LogDecorator.FAIL}[FAIL]{LogDecorator.ENDC}')
-        else:
-            if color is not None:
-                print(f'{getattr(LogDecorator, color)}[{status}]{LogDecorator.ENDC}')
-            else:
-                print(f'[{status}]')
-
+from util.logDecorator import LogDecorator
+from util import drivers
 
 
 def toNumber(value):
@@ -293,6 +261,8 @@ def listDirectory(baseDir, recursive=False):
         Removes the baseDir part (with trailing separator)
         from the files returned.
     '''
+    if not len(drivers.VALID_IMAGE_EXTENSIONS):
+        drivers.init_drivers()      # should not be required
     files_disk = set()
     if not baseDir.endswith(os.sep):
         baseDir += os.sep
@@ -300,7 +270,7 @@ def listDirectory(baseDir, recursive=False):
         files = os.listdir(fileDir)
         for f in files:
             path = os.path.join(fileDir, f)
-            if os.path.isfile(path) and os.path.splitext(f)[1].lower() in VALID_IMAGE_EXTENSIONS:
+            if os.path.isfile(path) and os.path.splitext(f)[1].lower() in drivers.VALID_IMAGE_EXTENSIONS:
                 imgs.add(path)
             elif os.path.islink(path):
                 if os.readlink(path) in baseDir:
@@ -423,32 +393,34 @@ def download_file(url, local_filename=None):
     return local_filename
 
 
+#TODO: replaced with drivers
+# VALID_IMAGE_EXTENSIONS = (
+#     '.jpg',
+#     '.jpeg',
+#     '.png',
+#     '.gif',
+#     '.tif',
+#     '.tiff',
+#     '.bmp',
+#     '.ico',
+#     '.jfif',
+#     '.pjpeg',
+#     '.pjp',
+#     '.dcm'
+# )
 
-VALID_IMAGE_EXTENSIONS = (
-    '.jpg',
-    '.jpeg',
-    '.png',
-    '.gif',
-    '.tif',
-    '.tiff',
-    '.bmp',
-    '.ico',
-    '.jfif',
-    '.pjpeg',
-    '.pjp'
-)
 
-
-VALID_IMAGE_MIME_TYPES = (
-    'image/jpeg',
-    'image/bmp',
-    'image/x-windows-bmp',
-    'image/gif',
-    'image/tif',
-    'image/tiff',
-    'image/x-icon',
-    'image/png'
-)
+# VALID_IMAGE_MIME_TYPES = (
+#     'image/jpeg',
+#     'image/bmp',
+#     'image/x-windows-bmp',
+#     'image/gif',
+#     'image/tif',
+#     'image/tiff',
+#     'image/x-icon',
+#     'image/png',
+#     'application/dicom'
+# )
 
 
 FILENAMES_PROHIBITED_CHARS = (
@@ -466,13 +438,14 @@ FILENAMES_PROHIBITED_CHARS = (
 )
 
 
+DEFAULT_BAND_CONFIG = (
+    'Red',
+    'Green',
+    'Blue'
+)
+
 DEFAULT_RENDER_CONFIG = {
     "bands": {
-        "labels": [
-            "Red",
-            "Green",
-            "Blue"
-        ],
         "indices": {
             "red": 0,
             "green": 1,

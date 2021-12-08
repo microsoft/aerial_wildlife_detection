@@ -54,6 +54,8 @@ CREATE TABLE IF NOT EXISTS aide_admin.project (
     watch_folder_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     watch_folder_remove_missing_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     labelclass_autoupdate BOOLEAN NOT NULL DEFAULT FALSE,
+    band_config VARCHAR,
+    render_config VARCHAR,
     PRIMARY KEY(shortname)
 );
 

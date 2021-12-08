@@ -8,7 +8,7 @@
 import os
 import argparse
 from psycopg2 import sql
-from util.helpers import VALID_IMAGE_EXTENSIONS
+from util import drivers
 
 
 if __name__ == '__main__':
@@ -47,6 +47,8 @@ if __name__ == '__main__':
     from util.configDef import Config
     from modules import Database
 
+    drivers.init_drivers(False)
+
     config = Config()
 
     # setup DB connection
@@ -55,9 +57,9 @@ if __name__ == '__main__':
         raise Exception('Error connecting to database.')
 
     # check if valid file format provided
-    valid_file_formats = list(VALID_IMAGE_EXTENSIONS)
+    valid_file_formats = list(drivers.VALID_IMAGE_EXTENSIONS)
     valid_file_formats.extend(['.tif', '.tiff'])
-    if args.file_format.lower().strip() not in VALID_IMAGE_EXTENSIONS:
+    if args.file_format.lower().strip() not in drivers.VALID_IMAGE_EXTENSIONS:
         raise Exception('Error: provided file format ("{}") is not valid.'.format(args.file_format))
 
     # check if correct type of annotations

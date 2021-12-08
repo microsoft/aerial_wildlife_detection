@@ -8,14 +8,15 @@
 
 
 /**
- * Render configuration
+ * Band and render configuration
  */
 //TODO: load from server?
+const DEFAULT_BAND_CONFIG = [
+    'Red', 'Green', 'Blue'
+]
+
 const DEFAULT_RENDER_CONFIG = {
     'bands': {
-        'labels': [
-            "Red", "Green", "Blue"
-        ],
         'indices': {
             'red': 0,
             'green': 1,
@@ -46,10 +47,18 @@ const _update_render_config = (renderConfig, defaults) => {
     return renderConfig;
 }
 
-const get_render_config = (renderConfig) => {
+const get_band_config = (bandConfig) => {
+    if(!Array.isArray(bandConfig) || bandConfig.length === 0) {
+        bandConfig = DEFAULT_BAND_CONFIG;
+    }
+    return bandConfig;
+}
+
+const get_render_config = (bandConfig, renderConfig) => {
+    bc_out = get_band_config(bandConfig);
     rc_out = _update_render_config(renderConfig, DEFAULT_RENDER_CONFIG);
     for(var l=0; l<rc_out['bands']['indices'].length; l++) {
-        rc_out['bands']['indices'][l] = Math.min(rc_out['bands']['indices'][l], rc_out['bands']['labels'].length-1);
+        rc_out['bands']['indices'][l] = Math.min(rc_out['bands']['indices'][l], bc_out.length-1);
     }
     return rc_out;
 }
@@ -422,12 +431,13 @@ const getParserByMIMEtype = (type)  => {
  * selection, contrast stretch, etc.
  */
 class ImageRenderer {
-    constructor(viewport, renderConfig, source) {
+    constructor(viewport, bandConfig, renderConfig, source) {
         this.viewport = viewport;
         this.canvas = null;
         this.data = null;
         this.renderPromise = null;
-        this.renderConfig = get_render_config(renderConfig);
+        this.bandConfig = get_band_config(bandConfig);
+        this.renderConfig = get_render_config(bandConfig, renderConfig);
 
         // determine source type and required image parser
         this.source = source;

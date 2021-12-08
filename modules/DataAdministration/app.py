@@ -18,7 +18,7 @@ from bottle import static_file, request, abort
 import requests
 from .backend.middleware import DataAdministrationMiddleware
 from util.cors import enable_cors
-from util import helpers
+from util import helpers, drivers
 
 
 class DataAdministrator:
@@ -306,7 +306,7 @@ class DataAdministrator:
                 Returns the file extensions for images currently
                 supported by AIDE.
             '''
-            return {'extensions': helpers.VALID_IMAGE_EXTENSIONS}
+            return {'extensions': tuple(drivers.VALID_IMAGE_EXTENSIONS)}
 
         
         @enable_cors
@@ -316,7 +316,7 @@ class DataAdministrator:
                 Returns the MIME types for images currently
                 supported by AIDE.
             '''
-            return {'MIME_types': helpers.VALID_IMAGE_MIME_TYPES}
+            return {'MIME_types': tuple(drivers.VALID_IMAGE_MIME_TYPES)}
 
         
         # data download

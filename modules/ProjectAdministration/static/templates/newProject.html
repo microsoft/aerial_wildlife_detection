@@ -491,7 +491,8 @@
                             predictionType: types['predictionType']
                         }
                         if(window.customBandConfiguration) {
-                            data['renderConfig'] = parseBandSelector();
+                            data['render_config'] = parseBandSelector();
+                            data['band_config'] = data['render_config']['bands']['labels'];
                         }
 
                         

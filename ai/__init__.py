@@ -233,7 +233,7 @@ PREDICTION_MODELS = {
                                             'name': 'Faster R-CNN',
                                             'author': '(built-in)',
                                             'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of the <a href="https://doi.org/10.1109/TPAMI.2016.2577031" target="_blank">Faster R-CNN</a> object detector.',
-                                            'annotationType': 'boundingBoxes',
+                                            'annotationType': ['boundingBoxes', 'polygons'],
                                             'predictionType': 'boundingBoxes',
                                             'canAddLabelclasses': True,
                                             'canRemoveLabelclasses': False
@@ -242,7 +242,7 @@ PREDICTION_MODELS = {
                                             'name': 'RetinaNet',
                                             'author': '(built-in)',
                                             'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of the <a href="http://openaccess.thecvf.com/content_ICCV_2017/papers/Lin_Focal_Loss_for_ICCV_2017_paper.pdf" target="_blank">RetinaNet</a> object detector.',
-                                            'annotationType': 'boundingBoxes',
+                                            'annotationType': ['boundingBoxes', 'polygons'],
                                             'predictionType': 'boundingBoxes',
                                             'canAddLabelclasses': True,
                                             'canRemoveLabelclasses': True
@@ -251,7 +251,7 @@ PREDICTION_MODELS = {
                                             'name': 'TridentNet (beta)',
                                             'author': '(built-in)',
                                             'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of the <a href="https://github.com/facebookresearch/detectron2/tree/master/projects/TridentNet" target="_blank">TridentNet</a> object detector.',
-                                            'annotationType': 'boundingBoxes',
+                                            'annotationType': ['boundingBoxes', 'polygons'],
                                             'predictionType': 'boundingBoxes',
                                             'canAddLabelclasses': True,
                                             'canRemoveLabelclasses': False

@@ -45,13 +45,13 @@
         - timeRequired: -1
     Also adds class definitions.
 
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 import os
 import argparse
 from psycopg2 import sql
-from util.helpers import valid_image_extensions
+from util import drivers
 
 
 if __name__ == '__main__':
@@ -87,6 +87,7 @@ if __name__ == '__main__':
     from PIL import Image
     from util.configDef import Config
     from modules import Database
+    drivers.init_drivers()
 
     if args.label_folder == '':
         args.label_folder = None
@@ -209,7 +210,7 @@ if __name__ == '__main__':
         
         basePath, ext = os.path.splitext(i)
 
-        if ext.lower() not in valid_image_extensions:
+        if ext.lower() not in drivers.valid_image_extensions:
             continue
 
         baseName = basePath.replace(imgBaseDir, '')

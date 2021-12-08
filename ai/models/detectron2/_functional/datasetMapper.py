@@ -12,16 +12,19 @@
 import copy
 import base64
 import numpy as np
-import cv2
+# import cv2
 import torch
 from detectron2.data import DatasetMapper
 import detectron2.data.transforms as T
 import detectron2.data.detection_utils as utils
 from detectron2.structures import BoxMode
 
+from util import drivers
+
+
 class Detectron2DatasetMapper(DatasetMapper):
 
-    def __init__(self, project, fileServer, augmentations, is_train, image_format='BGR', instance_mask_format='bitmask', recompute_boxes=True, classIndexMap=None):
+    def __init__(self, project, fileServer, augmentations, is_train, band_config=(0,1,2), instance_mask_format='bitmask', recompute_boxes=True, classIndexMap=None):
         super(DatasetMapper, self).__init__()
         self.project = project
         self.fileServer = fileServer
@@ -29,7 +32,7 @@ class Detectron2DatasetMapper(DatasetMapper):
         if not isinstance(self.augmentations, T.AugmentationList):
             self.augmentations = T.AugmentationList(self.augmentations)
         self.is_train = is_train
-        self.image_format = image_format
+        self.band_config = band_config
         self.instance_mask_format = instance_mask_format
         self.recompute_boxes = recompute_boxes
         self.classIndexMap = classIndexMap      # used to map e.g. segmentation index values from AIDE to model
@@ -43,11 +46,17 @@ class Detectron2DatasetMapper(DatasetMapper):
         dataset_dict = copy.deepcopy(dataset_dict)  # it will be modified by code below
         # USER: Write your own image loading if it's not from a file
         try:
-            image = cv2.imdecode(np.frombuffer(self.fileServer.getFile(dataset_dict["file_name"]), np.uint8), -1)
-            if self.image_format == 'RGB':
-                # flip along spectral dimension
-                if image.ndim >= 3:
-                    image = np.flip(image, 2)
+            file = self.fileServer.getFile(dataset_dict["file_name"])
+            image = drivers.load_from_bytes(file)
+
+            # filter according to bands
+            image = np.stack([image[min(b, image.shape[0]-1),...] for b in self.band_config], -1)
+
+            # image = cv2.imdecode(np.frombuffer(self.fileServer.getFile(dataset_dict["file_name"]), np.uint8), -1)
+            # if self.image_format == 'RGB':
+            #     # flip along spectral dimension
+            #     if image.ndim >= 3:
+            #         image = np.flip(image, 2)
         except:
             #TODO: cannot handle corrupt data input here; needs to be done earlier
             print('WARNING: Image {} is corrupt and could not be loaded.'.format(dataset_dict["file_name"]))

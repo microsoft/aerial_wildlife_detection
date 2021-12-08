@@ -19,7 +19,7 @@ from bottle import request
 from modules.DataAdministration.backend import celery_interface as fileServer_interface
 from modules.TaskCoordinator.backend.middleware import TaskCoordinatorMiddleware
 from .db_fields import Fields_annotation, Fields_prediction
-from util.helpers import parse_parameters, check_args, is_localhost, DEFAULT_RENDER_CONFIG
+from util.helpers import parse_parameters, check_args, is_localhost, DEFAULT_BAND_CONFIG, DEFAULT_RENDER_CONFIG
 
 
 class ProjectConfigMiddleware:
@@ -235,6 +235,7 @@ class ProjectConfigMiddleware:
             'max_num_concurrent_tasks',
             'watch_folder_enabled',
             'watch_folder_remove_missing_enabled',
+            'band_config',
             'render_config'
         ])
         if parameters is not None and parameters != '*':
@@ -271,7 +272,7 @@ class ProjectConfigMiddleware:
                 value = check_args(value, self.defaultUIsettings)
             elif param == 'interface_enabled':
                 value = value and not result['archived']
-            elif param == 'render_config':
+            elif param in ('band_config', 'render_config'):
                 try:
                     value = json.loads(value)
                 except:
@@ -416,7 +417,12 @@ class ProjectConfigMiddleware:
         predictionFields = list(getattr(Fields_prediction, properties['predictionType']).value)
 
         # custom band configuration
-        renderConfig = properties.get('renderConfig', DEFAULT_RENDER_CONFIG)
+        bandConfig = properties.get('band_config', DEFAULT_BAND_CONFIG)
+        if bandConfig is not None:
+            bandConfig = json.dumps(bandConfig)
+
+        # custom render configuration
+        renderConfig = properties.get('render_config', DEFAULT_RENDER_CONFIG)
         if renderConfig is not None:
             renderConfig = json.dumps(renderConfig)
 
@@ -457,6 +463,7 @@ class ProjectConfigMiddleware:
                 minNumAnnoPerImage,
                 maxNumImages_train,
                 ui_settings,
+                band_config,
                 render_config)
             VALUES (
                 %s, %s, %s,
@@ -465,6 +472,7 @@ class ProjectConfigMiddleware:
                 %s,
                 %s, %s,
                 %s, %s,
+                %s,
                 %s,
                 %s,
                 %s,
@@ -486,6 +494,7 @@ class ProjectConfigMiddleware:
                 'ai.al.builtins.maxconfidence.MaxConfidence',   #TODO: default AL criterion to facilitate auto-training
                 128, 0, 128,            #TODO: default values for automated AI model training
                 json.dumps(self.defaultUIsettings),
+                bandConfig,
                 renderConfig
             ),
             None)

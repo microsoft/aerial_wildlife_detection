@@ -84,7 +84,7 @@ class ModelMarketplaceMiddleware:
                     'description': (modelState['description'] if 'description' in modelState else None),
                     'labelclasses': modelState['labelclasses'],
                     'model_library': modelState['ai_model_library'],
-                    'annotationType': modelState['annotation_type'],
+                    'annotationType': PREDICTION_MODELS[modelState['ai_model_library']]['annotationType'],
                     'predictionType': predictionType,
                     'time_created': (modelState['time_created'] if 'time_created' in modelState else None),
                     'alcriterion_library': (modelState['alcriterion_library'] if 'alcriterion_library' in modelState else None),
@@ -107,16 +107,18 @@ class ModelMarketplaceMiddleware:
 
 
     
-    def _get_builtin_model_states(self, annotationType, predictionType):
+    def _get_builtin_model_states(self, annotationTypes, predictionType):
         '''
             Filters the built-in AI model states for provided annotation
             and prediction types and returns a subset accordingly.
         '''
+        if not isinstance(annotationTypes, list) and not isinstance(annotationTypes, tuple):
+            annotationTypes = (annotationTypes,)
         result = {}
         if predictionType in self.builtin_model_states:
             for modelID in self.builtin_model_states[predictionType].keys():
                 modelDict = self.builtin_model_states[predictionType][modelID]
-                if modelDict['annotationType'] == annotationType:
+                if any([m in annotationTypes for m in modelDict['annotationType']]):
                     result[modelDict['id']] = modelDict
         return result
 
@@ -146,7 +148,15 @@ class ModelMarketplaceMiddleware:
         if projectMeta is None or not len(projectMeta):
             raise Exception(f'Project {project} could not be found in database.')
         projectMeta = projectMeta[0]
-        annotationType = projectMeta['annotationtype']
+        aiLib = projectMeta['ai_model_library']
+        if aiLib is not None and aiLib in self.availableModels:
+            annotationType = PREDICTION_MODELS[projectMeta['ai_model_library']]['annotationType']
+        else:
+            # no AI model configured; fallback to annotation type specified in project
+            annotationType = projectMeta['annotationtype']
+        if not isinstance(annotationType, list) and not isinstance(annotationType, tuple):
+            annotationType = [annotationType]
+        annotationType = tuple(annotationType)
         predictionType = projectMeta['predictiontype']
 
         # get project models to cross-check which ones have already been imported from the Marketplace
@@ -197,7 +207,7 @@ class ModelMarketplaceMiddleware:
                     SELECT *,
                     CASE WHEN author = %s AND origin_project = %s THEN TRUE ELSE FALSE END AS is_owner
                     FROM aide_admin.modelMarketplace
-                    WHERE annotationType = %s AND
+                    WHERE annotationType IN %s AND
                     predictionType = %s
                     AND (
                         (public = TRUE AND shared = TRUE) OR

@@ -1,11 +1,11 @@
 '''
-    2019-20 Benjamin Kellenberger
+    2019-21 Benjamin Kellenberger
 '''
 
 import os
 import argparse
 from psycopg2 import sql
-from util.helpers import VALID_IMAGE_EXTENSIONS
+from util import drivers
 
 
 if __name__ == '__main__':
@@ -38,6 +38,7 @@ if __name__ == '__main__':
     from io import BytesIO
     from util.configDef import Config
     from modules import Database
+    drivers.init_drivers()
 
     if args.label_folder == '':
         args.label_folder = None
@@ -145,7 +146,7 @@ if __name__ == '__main__':
         
         basePath, ext = os.path.splitext(i)
 
-        if ext.lower() not in VALID_IMAGE_EXTENSIONS:
+        if ext.lower() not in drivers.VALID_IMAGE_EXTENSIONS:
             continue
 
         baseName = basePath.replace(imgBaseDir, '')

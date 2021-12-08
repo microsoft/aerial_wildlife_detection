@@ -129,7 +129,7 @@ def main():
     data = aicw.get_training_images(
         project=args.project,
         maxNumImages=512)
-    data = __load_metadata(args.project, dbConnector, data[0], (mode == 'train'))
+    data = __load_metadata(args.project, dbConnector, data[0], (mode == 'train'), None)     #TODO: model origin id
 
     # helper functions
     def updateStateFun(state, message, done=None, total=None):

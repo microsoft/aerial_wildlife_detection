@@ -19,13 +19,15 @@ async function rerenderAll() {
 $(document).ready(function() {
 
     // get image format for project and select renderer appropriately.
-    window.renderConfig = get_render_config({});
-    window.renderConfig_default = get_render_config({});
+    window.bandConfig = get_band_config([]);
+    window.renderConfig = get_render_config(window.bandConfig, {});
+    window.renderConfig_default = get_render_config(window.bandConfig, {});
     $.ajax({
         url: 'getConfig',
         method: 'POST',
         data: JSON.stringify({
             'parameters': [
+                'band_config',
                 'render_config'
             ]
         }),
@@ -33,11 +35,13 @@ $(document).ready(function() {
         dataType: 'json',
         success: function(data) {
             try {
+                window.bandConfig = get_band_config(data['settings']['band_config']);
+
                 window.renderConfig = data['settings']['render_config'];
                 if(typeof(window.renderConfig) !== 'object' || window.renderConfig === null) {
-                    window.renderConfig = get_render_config({});
+                    window.renderConfig = get_render_config(window.bandConfig, {});
                 } else {
-                    window.renderConfig = get_render_config(window.renderConfig);
+                    window.renderConfig = get_render_config(window.bandConfig, window.renderConfig);
                 }
                 window.renderConfig_default = JSON.parse(JSON.stringify(window.renderConfig));
 
@@ -50,8 +54,8 @@ $(document).ready(function() {
                     ['Red', 'Green', 'Blue'].map((band) => {
                         let selID = 'band-select-'+band;
                         let select = $('<select id="'+selID.toLowerCase()+'"></select>');
-                        for(var l=0; l<renderConfig['bands']['labels'].length; l++) {
-                            let label = renderConfig['bands']['labels'][l];
+                        for(var l=0; l<window.bandConfig.length; l++) {
+                            let label = window.bandConfig[l];
                             let option = $('<option value="'+l+'">'+(l+1) + ': ' + label+'</option>');
                             select.append(option);
                         }
