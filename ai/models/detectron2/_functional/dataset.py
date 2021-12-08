@@ -71,8 +71,8 @@ def getDetectron2Data(aideData, labelclassMap, projectToStateMap={}, ignoreUnsur
                     obj['bbox'] = [
                         (bounds[0]+bounds[2])/2.0,
                         (bounds[1]+bounds[3])/2.0,
-                        bounds[2],
-                        bounds[3]
+                        bounds[2]-bounds[0],
+                        bounds[3]-bounds[1]
                     ]
                     obj['bbox_mode'] = BoxMode.XYWH_REL
                 elif 'label' in anno:

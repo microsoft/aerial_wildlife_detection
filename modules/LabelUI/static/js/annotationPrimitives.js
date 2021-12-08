@@ -9,6 +9,7 @@ class Annotation {
     }
 
     _parse_properties(properties) {
+        this.loadingPromise = Promise.resolve();
         if(properties.hasOwnProperty('label')) {
             this.label = properties['label'];
         } else {
@@ -55,12 +56,25 @@ class Annotation {
 
         } else if(this.geometryType === 'polygons') {
             // Polygon
-            this.geometry = new PolygonElement(
-                this.annotationID + '_geom',
-                properties['coordinates'],
-                style,
-                unsure
-            );
+            if(properties['magnetic_polygon']) {
+                let self = this;
+                this.loadingPromise = properties['edge_map'].then((edgeMap) => {
+                    self.geometry = new MagneticPolygonElement(
+                        self.annotationID + '_geom',
+                        edgeMap,
+                        properties['coordinates'],
+                        style,
+                        unsure
+                    );
+                });
+            } else {
+                this.geometry = new PolygonElement(
+                    this.annotationID + '_geom',
+                    properties['coordinates'],
+                    style,
+                    unsure
+                );
+            }
 
         } else if(this.geometryType === 'boundingBoxes') {
             // Bounding Box

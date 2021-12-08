@@ -114,6 +114,8 @@ class ModelMarketplaceMiddleware:
         '''
         if not isinstance(annotationTypes, list) and not isinstance(annotationTypes, tuple):
             annotationTypes = (annotationTypes,)
+        if isinstance(predictionType, list) or isinstance(predictionType, tuple):
+            predictionType = predictionType[0]
         result = {}
         if predictionType in self.builtin_model_states:
             for modelID in self.builtin_model_states[predictionType].keys():
@@ -173,7 +175,7 @@ class ModelMarketplaceMiddleware:
                     modelsProject[str(model['marketplace_origin_id'])] = model['timecreated']
 
 
-        queryArgs = [username, project, annotationType, predictionType, project]
+        queryArgs = [username, project, project]
 
         # filter for model IDs if needed
         if isinstance(modelIDs, str):
@@ -196,7 +198,7 @@ class ModelMarketplaceMiddleware:
         result = self.dbConnector.execute(
             sql.SQL('''
                 SELECT id, name, description, labelclasses, model_library,
-                    annotationType, predictionType, EXTRACT(epoch FROM timeCreated) AS time_created, alcriterion_library,
+                    EXTRACT(epoch FROM timeCreated) AS time_created, alcriterion_library,
                     public, anonymous, selectCount,
                     is_owner, shared, tags, citation_info, license,
                     CASE WHEN NOT is_owner AND anonymous THEN NULL ELSE author END AS author,
@@ -207,9 +209,7 @@ class ModelMarketplaceMiddleware:
                     SELECT *,
                     CASE WHEN author = %s AND origin_project = %s THEN TRUE ELSE FALSE END AS is_owner
                     FROM aide_admin.modelMarketplace
-                    WHERE annotationType IN %s AND
-                    predictionType = %s
-                    AND (
+                    WHERE (
                         (public = TRUE AND shared = TRUE) OR
                         origin_project = %s
                     )
@@ -230,6 +230,13 @@ class ModelMarketplaceMiddleware:
         if result is not None and len(result):
             matchingStates = {}
             for r in result:
+                modelLib = r['model_library']
+                modelAnnoType = PREDICTION_MODELS[modelLib]['annotationType']
+                modelPredType = PREDICTION_MODELS[modelLib]['predictionType']
+                if projectMeta['annotationtype'] not in modelAnnoType or \
+                    projectMeta['predictiontype'] not in modelPredType:
+                    continue
+
                 stateID = str(r['id'])
                 values = {}
                 for key in r.keys():

@@ -314,8 +314,8 @@ MODIFICATIONS_sql = [
   'ALTER TABLE "{schema}".cnnstate ADD COLUMN IF NOT EXISTS labelclass_autoupdate BOOLEAN NOT NULL DEFAULT FALSE;',
   'ALTER TABLE "aide_admin".project ADD COLUMN IF NOT EXISTS labelclass_autoupdate BOOLEAN NOT NULL DEFAULT FALSE;',
    
-  'ALTER TABLE "aide_admin".project ADD COLUMN IF NOT EXISTS annotationType labelType NOT NULL',
-  'ALTER TABLE "aide_admin".project ADD COLUMN IF NOT EXISTS predictionType labelType NOT NULL',
+  'ALTER TABLE "aide_admin".project ADD COLUMN IF NOT EXISTS annotationType labelType NOT NULL;',
+  'ALTER TABLE "aide_admin".project ADD COLUMN IF NOT EXISTS predictionType labelType NOT NULL;',
 
   # thanks to "imported_from_marketplace" field, we don't want the unique constraint on the origin ID anymore
   'ALTER TABLE "{schema}".cnnstate DROP CONSTRAINT IF EXISTS cnnstate_marketplace_origin_id_key;',
@@ -330,7 +330,9 @@ MODIFICATIONS_sql = [
   # v3.0
   'ALTER TABLE "aide_admin".project ADD COLUMN IF NOT EXISTS band_config VARCHAR;',
   'ALTER TABLE "aide_admin".project ADD COLUMN IF NOT EXISTS render_config VARCHAR;',
-  'ALTER TYPE labelType ADD VALUE IF NOT EXISTS \'polygons\';'
+  'ALTER TYPE labelType ADD VALUE IF NOT EXISTS \'polygons\';',
+  'ALTER TABLE "aide_admin".modelMarketplace DROP COLUMN IF EXISTS annotationType;',
+  'ALTER TABLE "aide_admin".modelMarketplace DROP COLUMN IF EXISTS predictionType;'
 ]
 
 

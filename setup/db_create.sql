@@ -163,8 +163,6 @@ CREATE TABLE IF NOT EXISTS aide_admin.modelMarketplace (
     author VARCHAR NOT NULL,
     model_library VARCHAR NOT NULL,
     model_settings VARCHAR,
-    annotationType labelType NOT NULL,
-    predictionType labelType NOT NULL,
     citation_info VARCHAR,
     license VARCHAR,
     statedict BYTEA,

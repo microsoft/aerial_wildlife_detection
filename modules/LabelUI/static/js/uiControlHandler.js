@@ -44,6 +44,8 @@ class UIControlHandler {
         if(this.burstMode === undefined || this.burstMode === null) this.burstMode = false;
         else this.burstMode = window.parseBoolean(this.burstMode);
 
+        this.magneticPolygon = false;       // for "polygons" annotation type, but not for area selection controls
+
         window.loupeMagnification = 0.11;
 
         // tools for semantic segmentation - ignored by others
@@ -134,6 +136,23 @@ class UIControlHandler {
             this.staticButtons[ACTIONS.ADD_ANNOTATION] = addAnnoBtn;
             
             dtControls.append(addAnnoBtn);
+
+            if(window.annotationType === 'polygons') {
+                // show toggle for magnetic polygon
+                let magneticPolyCallback = function() {
+                    var chkbx = $('#magnetic-polygon-check');
+                    self.magneticPolygon = !self.magneticPolygon;
+                    chkbx.prop('checked', self.magneticPolygon);
+                    // window.setCookie('magneticPolygonEnabled', self.magneticPolygon);
+                };
+                let magneticPolygonCheck = $('<input type="checkbox" id="magnetic-polygon-check" class="custom-control-input inline-control" style="margin-right:2px" title="Magnetic Polygon" />');
+                magneticPolygonCheck.change(magneticPolyCallback);
+                magneticPolygonCheck.prop('checked', this.magneticPolygon);
+                let magneticPolygonCheckContainer = $('<div class="custom-control custom-switch inline-control"></div>');
+                magneticPolygonCheckContainer.append(magneticPolygonCheck);
+                magneticPolygonCheckContainer.append($('<label for="magnetic-polygon-check" class="custom-control-label inline-control" style="margin-left:0px;margin-right:10px;color:white;cursor:pointer;" title="Magnetic Polygon">magnetic polygon</label>'));
+                dtControls.append(magneticPolygonCheckContainer);
+            }
         }
 
         let removeAnnoCallback = function() {};

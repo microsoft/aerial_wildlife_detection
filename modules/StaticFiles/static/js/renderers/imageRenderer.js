@@ -143,7 +143,6 @@ const calculate_edges = (arr, numBands, width, height) => {
         arr_bsq = arr_bsq.map((band) => {
             return Array.from(band);
         });
-
         arr_bsq = math.reshape(arr_bsq, [numBands, width, height]);
         return sobel(arr_bsq);
     })
@@ -220,7 +219,7 @@ class WebImageParser {
         return this.image;
     }
 
-    get_image_array(bands) {
+    get_image_array(bands, bsq) {
         /**
          * Loads the image if necessary and then returns an interleaved array
          * with selected bands.
@@ -228,14 +227,14 @@ class WebImageParser {
         let self = this;
         if(self.image === null) {
             return self.load_image().then(() => {
-                return self._image_to_array(self.image, bands);
+                return self._image_to_array(self.image, bands, bsq);
             });
         } else {
-            return self._image_to_array(self.image, bands);
+            return self._image_to_array(self.image, bands, bsq);
         }
     }
 
-    _image_to_array(image, bands) {
+    _image_to_array(image, bands, bsq) {
         /**
          * Draws the given image to a canvas and extracts image data at given
          * location (bands).
@@ -253,9 +252,19 @@ class WebImageParser {
             if(4*imageData.width*imageData.height !== imageData.data.length) {      // 4 for RGBA
                 // need to subset array for bands
                 let numBands = imageData.data.length / (imageData.width*imageData.height);
-                return band_select(imageData.data, bands, numBands);
+                if(bsq) {
+                    return biptobsq(imageData.data, imageData.data.length).then((arr_bsq) => {
+                        return band_select(arr_bsq, bands, numBands);
+                    });
+                } else {
+                    return band_select(imageData.data, bands, numBands);
+                }
             } else {
-                return imageData.data;
+                if(bsq) {
+                    return biptobsq(imageData.data, imageData.data.length);
+                } else {
+                    return imageData.data;
+                }
             }
         });
     }
@@ -330,7 +339,7 @@ class TIFFImageParser extends WebImageParser {
         }
     }
 
-    _image_to_array(image, bands) {
+    _image_to_array(image, bands, bsq) {
         /**
          * For the TIFF parser we don't need a virtual canvas but can extract
          * bands directly.
@@ -339,10 +348,18 @@ class TIFFImageParser extends WebImageParser {
             if(bands.length < image.length) {
                 // need to subset array for bands
                 return band_select(image, bands).then((arr) => {
-                    return resolve(bsqtobip(arr));
-                });   // band sequential
+                    if(bsq) {
+                        return resolve(arr);
+                    } else {
+                        return resolve(bsqtobip(arr));
+                    }
+                });
             } else {
-                return resolve(bsqtobip(image));
+                if(bsq) {
+                    return resolve(image);
+                } else {
+                    return resolve(bsqtobip(image));
+                }
             }
         });
     }
@@ -543,12 +560,16 @@ class ImageRenderer {
          * Calculates the image's edges with a Sobel filter.
          */
         if(this.edgeImage === undefined) {
+            let numBands = this.getNumBands();
             let self = this;
             return new Promise((resolve) => {
-                calculate_edges(self.parser.get_raw_image(), self.getNumBands(), self.getWidth(), self.getHeight())
-                .then((edges) => {
-                    self.edgeImage = edges;
-                    return resolve(edges);
+                let allBands = Array.from(Array(numBands).keys());
+                self.parser.get_image_array(allBands, true).then((arr) => {
+                    return calculate_edges(arr, numBands, self.getWidth(), self.getHeight())
+                    .then((edges) => {
+                        self.edgeImage = edges;
+                        return resolve(edges);
+                    });
                 });
             });
         } else {

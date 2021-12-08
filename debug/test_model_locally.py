@@ -39,7 +39,7 @@ from modules.AIDEAdmin.app import AdminMiddleware
 from modules.AIController.backend.functional import AIControllerWorker
 from modules.AIWorker.app import AIWorker
 from modules.AIWorker.backend.fileserver import FileServer
-from modules.AIWorker.backend.worker.functional import __load_metadata
+from modules.AIWorker.backend.worker.functional import __load_model_state, __load_metadata
 
 
 def main():
@@ -123,13 +123,17 @@ def main():
     print(f'Using model library "{modelLibrary}".')
     modelTrainer = aiw._init_model_instance(args.project, modelLibrary, modelSettings)
 
-    stateDict = None    #TODO: load latest unless override is specified?
+    try:
+        stateDict, _, modelOriginID, _ = __load_model_state(args.project, modelLibrary, dbConnector)    #TODO: load latest unless override is specified?
+    except:
+        stateDict = None
+        modelOriginID = None
 
     # get data
     data = aicw.get_training_images(
         project=args.project,
         maxNumImages=512)
-    data = __load_metadata(args.project, dbConnector, data[0], (mode == 'train'), None)     #TODO: model origin id
+    data = __load_metadata(args.project, dbConnector, data[0], (mode == 'train'), modelOriginID)
 
     # helper functions
     def updateStateFun(state, message, done=None, total=None):

@@ -347,6 +347,34 @@ class AbstractDataEntry {
                     }
                 }
             }
+        } else if(window.annotationType === 'polygons') {
+            if(window.predictionType === 'boundingBoxes') {
+                // transform bbox into polygon
+                for(var key in this.predictions_raw) {
+                    let props = this.predictions_raw[key];
+                    if(props['confidence'] >= window.carryOverPredictions_minConf) {
+                        //TODO: move to RenderPrimitives class?
+                        props['coordinates'] = [
+                            props['x'] - props['width']/2,
+                            props['y'] - props['height']/2,
+                            props['x'] + props['width']/2,
+                            props['y'] - props['height']/2,
+                            props['x'] + props['width']/2,
+                            props['y'] + props['height']/2,
+                            props['x'] - props['width']/2,
+                            props['y'] + props['height']/2,
+                            props['x'] - props['width']/2,
+                            props['y'] - props['height']/2
+                        ]
+                        delete props['x'];
+                        delete props['y'];
+                        delete props['width'];
+                        delete props['height'];
+                        let anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation', true);
+                        this._addElement(anno);
+                    }
+                }
+            }
         }
     }
 
@@ -1638,17 +1666,22 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
         }
     }
 
-    _createAnnotation(event) {
+    _createAnnotation(event, magneticPolygon) {
         let props = {
-            'label': window.labelClassHandler.getActiveClassID()    // polygon entry will create coordinates automatically
+            'label': window.labelClassHandler.getActiveClassID(),       // polygon entry will create coordinates automatically
+            'magnetic_polygon': magneticPolygon,
+            'edge_map': (magneticPolygon? this.renderer.get_edge_image() : null)                  // for magnetic polygon
         };
         let anno = new Annotation(window.getRandomID(), props, 'polygons', 'annotation');
-        this._addElement(anno);
-        this.activePolygon = anno;
-        anno.getRenderElement().registerAsCallback(this.viewport);
-        anno.getRenderElement().setActive(true, this.viewport);
-        // // manually fire mousedown event on annotation (TODO: not needed?)
-        anno.getRenderElement()._mouseup_event(event, this.viewport, true);
+        let self = this;
+        anno.loadingPromise.then(() => {                                // required for loading of edge map (for magnetic polygon)
+            self._addElement(anno);
+            self.activePolygon = anno;
+            anno.getRenderElement().registerAsCallback(self.viewport);
+            anno.getRenderElement().setActive(true, self.viewport);
+            // // manually fire mousedown event on annotation (TODO: not needed?)
+            anno.getRenderElement()._mouseup_event(event, self.viewport, true);
+        });
     }
 
     _deleteActiveAnnotations(event) {
@@ -1894,7 +1927,11 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
                     }
                 }
                 // start creating a new polygon
-                this._createAnnotation(event);
+                let magneticPolygon = false;
+                try {
+                    magneticPolygon = window.uiControlHandler.magneticPolygon;  //TODO
+                } catch {}
+                this._createAnnotation(event, magneticPolygon);
 
             }
             // // add vertex for active polygon at given position

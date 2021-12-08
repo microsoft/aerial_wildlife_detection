@@ -96,7 +96,7 @@ class ModelMarketplaceWorker:
         # get model meta data
         meta = self.dbConnector.execute('''
             SELECT id, name, description, labelclasses, model_library, model_settings,
-            annotationType, predictionType, timeCreated, alcriterion_library,
+            timeCreated, alcriterion_library,
             public, anonymous, selectCount,
             CASE WHEN anonymous THEN NULL ELSE author END AS author,
             CASE WHEN anonymous THEN NULL ELSE origin_project END AS origin_project,
@@ -139,14 +139,14 @@ class ModelMarketplaceWorker:
         # check if model is suitable for current project
         immutables = self.labelUImiddleware.get_project_immutables(project)
         errors = ''
-        if immutables['annotationType'] != meta['annotationtype']:
-            meta_at = meta['annotationtype']
+        if immutables['annotationType'] not in PREDICTION_MODELS[modelLib]['annotationType']:
+            model_at = str(PREDICTION_MODELS[modelLib]['annotationType'])
             proj_at = immutables['annotationType']
-            errors = f'Annotation type of model ({meta_at}) is not compatible with project\'s annotation type ({proj_at}).'
-        if immutables['predictionType'] != meta['predictiontype']:
-            meta_pt = meta['predictiontype']
+            errors = f'Annotation type(s) of model ({model_at}) is not compatible with project\'s annotation type ({proj_at}).'
+        if immutables['predictionType'] != PREDICTION_MODELS[modelLib]['predictionType']:
+            model_pt = PREDICTION_MODELS[modelLib]['predictionType']
             proj_pt = immutables['predictionType']
-            errors += f'\nPrediction type of model ({meta_pt}) is not compatible with project\'s prediction type ({proj_pt}).'
+            errors += f'\nPrediction type of model ({model_pt}) is not compatible with project\'s prediction type ({proj_pt}).'
         if len(errors):
             raise Exception(errors)
 
@@ -335,14 +335,8 @@ class ModelMarketplaceWorker:
         modelOptions = (modelDefinition['ai_model_settings'] if 'ai_model_settings' in modelDefinition else None)
         modelLibrary = modelDefinition['ai_model_library']
         alCriterion_library = (modelDefinition['alcriterion_library'] if 'alcriterion_library' in modelDefinition else None)
-        annotationType = PREDICTION_MODELS[modelLibrary]['annotationType']      #TODO
-        predictionType = PREDICTION_MODELS[modelLibrary]['predictionType']      #TODO
         citationInfo = modelDefinition['citation_info']
         license = modelDefinition['license']
-        if not isinstance(annotationType, str):
-            annotationType = ','.join(annotationType)
-        if not isinstance(predictionType, str):
-            predictionType = ','.join(predictionType)
         timeCreated = (modelDefinition['time_created'] if 'time_created' in modelDefinition else None)
         try:
             timeCreated = datetime.fromtimestamp(timeCreated)
@@ -380,7 +374,6 @@ class ModelMarketplaceWorker:
             INSERT INTO aide_admin.modelMarketplace
                 (name, description, tags, labelclasses, author, statedict,
                 model_library, model_settings, alCriterion_library,
-                annotationType, predictionType,
                 citation_info, license,
                 timeCreated,
                 origin_project, origin_uuid, origin_uri, public, anonymous)
@@ -389,7 +382,7 @@ class ModelMarketplaceWorker:
         ''',
         [(
             modelName, modelDescription, modelTags, labelClasses, modelAuthor,
-            stateDict, modelLibrary, modelOptions, alCriterion_library, annotationType, predictionType,
+            stateDict, modelLibrary, modelOptions, alCriterion_library,
             citationInfo, license,
             timeCreated,
             project, None, modelURI, public, anonymous
@@ -619,9 +612,6 @@ class ModelMarketplaceWorker:
         # extract original Model Marketplace ID to obtain manual label class mapping (if necessary)
         modelOriginID = isImported[0]['marketplace_origin_id']
 
-        # get project immutables
-        immutables = self.labelUImiddleware.get_project_immutables(project)
-
         # get label class info
         autoUpdateEnabled = self.dbConnector.execute(sql.SQL('''
             SELECT labelclass_autoupdate AS au
@@ -680,7 +670,6 @@ class ModelMarketplaceWorker:
             INSERT INTO aide_admin.modelMarketplace
             (name, description, tags, labelclasses, author, statedict,
             model_library, alCriterion_library,
-            annotationType, predictionType,
             origin_project, origin_uuid, public, anonymous)
 
             SELECT %s, %s, %s, %s, %s, statedict,
@@ -693,7 +682,6 @@ class ModelMarketplaceWorker:
         ''').format(
             id_cnnstate=sql.Identifier(project, 'cnnstate')
         ), (modelName, modelDescription, tags, labelclasses, username,
-            immutables['annotationType'], immutables['predictionType'],
             project, public, anonymous, modelID))
 
         return {
@@ -737,7 +725,7 @@ class ModelMarketplaceWorker:
                 # load from marketplace table
                 queryStr = '''
                     SELECT name, description, author, timeCreated, tags, labelclasses,
-                        annotationType, predictionType, model_library, --TODO: more?
+                        model_library, --TODO: more?
                         stateDict
                     FROM aide_admin.modelMarketplace
                     WHERE id = %s;
@@ -766,10 +754,6 @@ class ModelMarketplaceWorker:
                     modelDefinition[key] = result[key].split(';;')
                 elif key == 'model_library':
                     modelDefinition['ai_model_library'] = result[key]
-                elif key == 'annotationtype':
-                    modelDefinition['annotation_type'] = result[key]
-                elif key == 'predictiontype':
-                    modelDefinition['prediction_type'] = result[key]
                 elif key in modelDefinition:
                     modelDefinition[key] = result[key]
             
