@@ -221,6 +221,8 @@ def assemble_server(verbose_start=True, check_v1_config=True, migrate_database=T
             configurator.addLoginCheckFun(userHandler.checkAuthenticated)
             statistics = REGISTERED_MODULES['ProjectStatistics'](config, app, dbConnector)
             statistics.addLoginCheckFun(userHandler.checkAuthenticated)
+            imageQuerier = REGISTERED_MODULES['ImageQuerier'](config, app, dbConnector)             #TODO: allow running on FileServer too
+            imageQuerier.addLoginCheckFun(userHandler.checkAuthenticated)
 
         elif moduleName == 'FileServer':
             from modules.DataAdministration.backend import celery_interface as daa_int

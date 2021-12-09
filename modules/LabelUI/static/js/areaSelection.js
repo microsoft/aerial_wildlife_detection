@@ -31,6 +31,27 @@ class AreaSelector {
         //TODO: init edge image for faster magnetic lasso activation
     }
 
+    grabCut(polygon) {
+        /**
+         * Runs GrabCut for a given data entry and a given polygon.
+         */
+        let fileName = this.dataEntry.fileName;
+        let self = this;
+        return $.ajax({
+            url: window.baseURL + 'grabCut',
+            method: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            data: JSON.stringify({
+                image_path: fileName,
+                coordinates: polygon,
+                return_polygon: true
+            })
+        }).then((data) => {
+            return data['result'];
+        });
+    }
+
     addSelectionElement(type, startCoordinates) {
         let element = undefined;
         let promise = null;
@@ -220,6 +241,21 @@ class AreaSelector {
                     } else {
                         this.removeSelectionElement(this.activePolygon);
                     }
+                }
+            }
+        } else if(window.uiControlHandler.getAction() === ACTIONS.GRAB_CUT) {
+            // get clicked polygon
+            for(var e in this.selectionElements) {
+                if(this.selectionElements[e].containsPoint(mousePos)) {
+                    // clicked into polygon; apply GrabCut
+                    let coords_in = this.selectionElements[e].getProperty('coordinates');
+                    let self = this;
+                    this.grabCut(coords_in).then((coords_out) => {
+                        if(Array.isArray(coords_out) && coords_out.length >= 6) {
+                            self.selectionElements[e].setProperty('coordinates', coords_out);
+                        }
+                        //TODO: else error message
+                    });
                 }
             }
         }

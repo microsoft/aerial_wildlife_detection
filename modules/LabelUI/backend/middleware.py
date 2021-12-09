@@ -5,7 +5,6 @@
 '''
 
 import os
-import ast
 from uuid import UUID
 from datetime import datetime
 import pytz

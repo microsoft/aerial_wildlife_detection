@@ -1180,6 +1180,7 @@ class PolygonElement extends AbstractRenderElement {
         }
         // draw back to origin
         let pos = scaleFun([this.coordinates[0], this.coordinates[1]], 'validArea');
+        
         ctx.lineTo(pos[0], pos[1]);
         ctx.stroke();
         ctx.closePath();

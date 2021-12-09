@@ -2,7 +2,7 @@
     Register modules here. Module-specific parameters in the config .ini file
     can be added under a section with the same name as the module.
 
-    2019-2020 Benjamin Kellenberger
+    2019-2021 Benjamin Kellenberger
 '''
 
 # set up Celery configuration
@@ -20,6 +20,7 @@ from .StaticFiles.app import StaticFileServer
 from .AIDEAdmin.app import AIDEAdmin
 from .ModelMarketplace.app import ModelMarketplace
 from .TaskCoordinator.app import TaskCoordinator
+from .ImageQuerying.app import ImageQuerier
 
 
 #TODO
@@ -41,5 +42,6 @@ REGISTERED_MODULES = {
     'StaticFileServer': StaticFileServer,
     'AIDEAdmin': AIDEAdmin,
     'ModelMarketplace': ModelMarketplace,
-    'TaskCoordinator': TaskCoordinator
+    'TaskCoordinator': TaskCoordinator,
+    'ImageQuerier': ImageQuerier
 }

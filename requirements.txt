@@ -14,6 +14,7 @@ python-magic>=0.4.24
 Pillow>=2.2.1
 rasterio>=1.2.3
 pydicom>=2.2.2
+imantics>=0.1.12
 
 # for the AI backend
 opencv-python

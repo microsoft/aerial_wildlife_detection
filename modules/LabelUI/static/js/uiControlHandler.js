@@ -15,10 +15,11 @@ const ACTIONS = {
     ZOOM_AREA: 5,
     PAN: 6,
 
-    // for segmentation
+    // for segmentation and area selection
     PAINT_BUCKET: 7,
     ADD_SELECT_POLYGON: 8,
-    ADD_SELECT_POLYGON_MAGNETIC: 9
+    ADD_SELECT_POLYGON_MAGNETIC: 9,
+    GRAB_CUT: 10
 }
 
 const CURSORS = [
@@ -373,6 +374,15 @@ class UIControlHandler {
             segControls.append(this.segmentation_controls.opacity);
 
             dtControls.append(segControls);
+        }
+
+        // GrabCut
+        if(['segmentationMasks'].includes(window.annotationType)) {  //TODO: allow for polygons and boundingBoxes as well
+            let grabCutBtn = $('<button class="btn btn-sm btn-secondary inline-control active">GrabCut</button>');
+            grabCutBtn.on('click', function() {
+                self.setAction(ACTIONS.GRAB_CUT);
+            });
+            dtControls.append(grabCutBtn);
         }
 
 

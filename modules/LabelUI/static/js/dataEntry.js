@@ -21,10 +21,14 @@ class AbstractDataEntry {
         this.mouseDown = false;
         this.mouseDrag = false;
 
-        var self = this;
         this.imageEntry = null;
         this._setup_viewport();
         this._setup_markup();
+        this._load_data(properties);
+    }
+
+    _load_data(properties) {
+        let self = this;
         this.loadingPromise = this._loadImage(this.getImageURI()).then((imageRenderer) => {
             return self._createImageEntry(imageRenderer);
         })
@@ -502,14 +506,14 @@ class AbstractDataEntry {
         this.markup.append(imageFooterDiv);
     }
 
-        getImageURI() {
-            if(this.fileName.startsWith('/')) {
-                // static image; don't prepend data server URI & Co.
-                return this.fileName;
-            } else {
-                return window.dataServerURI + window.projectShortname + '/files/' + this.fileName;
-            }
+    getImageURI() {
+        if(this.fileName.startsWith('/')) {
+            // static image; don't prepend data server URI & Co.
+            return this.fileName;
+        } else {
+            return window.dataServerURI + window.projectShortname + '/files/' + this.fileName;
         }
+    }
 
     getProperties(minimal, onlyUserAnnotations) {
         var timeCreated = this.getTimeCreated();
@@ -541,6 +545,10 @@ class AbstractDataEntry {
             }
         }
         return props;
+    }
+
+    getImageEntry() {
+        return this.imageEntry;
     }
 
     getTimeCreated() {
