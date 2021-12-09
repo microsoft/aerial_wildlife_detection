@@ -136,7 +136,7 @@ window._addAlpha = function(color, alpha) {
 window.addAlpha = function(color, alpha) {
     if(color === null || color === undefined) return null;
     if(alpha === null || alpha === undefined) return color;
-    if(alpha <= 0.0) return null;
+    if(alpha <= 0.0) return '#FFFFFF00';
     alpha = alpha > 1 ? (alpha / 100) : alpha;
     if(alpha >= 1.0) return color;
     return window._addAlpha(color, alpha);

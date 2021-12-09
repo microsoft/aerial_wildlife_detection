@@ -637,9 +637,16 @@ class PolygonElement extends AbstractRenderElement {
     constructor(id, coordinates, style, unsure, zIndex, disableInteractions) {
         super(id, style, zIndex, disableInteractions);
         if(this.style.fillOpacity === undefined) this.style.fillOpacity = 0;
-        if(!this.style.hasOwnProperty('strokeColor') && this.style.hasOwnProperty('color')) {
+
+        if(this.style.hasOwnProperty('color')) {
             this.style['strokeColor'] = window.addAlpha(this.style.color, this.style.lineOpacity);
             this.style['fillColor'] = window.addAlpha(this.style.color, this.style.fillOpacity);
+        }
+        if(this.style.hasOwnProperty('strokeColor')) {
+            this.style['strokeColor'] = window.addAlpha(this.style.strokeColor, this.style.lineOpacity);
+            if(this.style.fillColor === null) {
+                this.style['fillColor'] = window.addAlpha(this.style.strokeColor, this.style.fillOpacity);
+            }
         }
         this.coordinates = coordinates;
         this.unsure = unsure;
@@ -1237,14 +1244,14 @@ class MagneticPolygonElement extends PolygonElement {
             if(dist > tolerance) {
                 // check local neighborhood in edge map for strong gradients
                 let coords_abs = [
-                    parseInt(coords[1] * this.edgeMap.length),
-                    parseInt(coords[0] * this.edgeMap[0].length)
+                    parseInt(coords[0] * this.edgeMap.length),
+                    parseInt(coords[1] * this.edgeMap[0].length)
                 ];
                 let edge_argmax = this._get_edgemap_argmax(coords_abs, 5, 0.1);    //TODO: hyperparameters
                 if(edge_argmax !== undefined) {
                     let edge_argmax_rel = [
-                        edge_argmax[1] / this.edgeMap.length,
-                        edge_argmax[0] / this.edgeMap[0].length
+                        edge_argmax[0] / this.edgeMap.length,
+                        edge_argmax[1] / this.edgeMap[0].length
                     ];
                     this.addVertex(edge_argmax_rel, -1);
                     this._createAdjustmentHandles(viewport, true);

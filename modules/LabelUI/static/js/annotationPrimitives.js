@@ -43,7 +43,6 @@ class Annotation {
         style['strokeColor'] = window.addAlpha(color, style.lineOpacity);
         style['fillColor'] = window.addAlpha(color, style.fillOpacity);
 
-        
         if(this.geometryType === 'segmentationMasks') {
             // Semantic segmentation map
             this.geometry = new SegmentationElement(

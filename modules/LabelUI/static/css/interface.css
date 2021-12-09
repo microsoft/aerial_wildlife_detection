@@ -99,7 +99,6 @@ h3 {
 #interface-controls > * {
     display: inline;
     white-space: nowrap;
-    margin-left: 10px;
     margin-right: 10px;
 }
 #viewport-controls {
@@ -112,6 +111,14 @@ h3 {
 .inline-control {
     display: inline;
     vertical-align: middle;
+}
+#magnetic-lasso-control {
+    background: #514e4d;
+    height: 32px;
+    border-radius: 0.2rem;
+    padding-top: 5px;
+    padding-bottom: 8px;
+    padding-left: 45px;
 }
 #prediction-threshold-container {
     display: inline-flex;

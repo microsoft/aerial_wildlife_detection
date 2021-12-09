@@ -148,9 +148,9 @@ class UIControlHandler {
                 let magneticPolygonCheck = $('<input type="checkbox" id="magnetic-polygon-check" class="custom-control-input inline-control" style="margin-right:2px" title="Magnetic Polygon" />');
                 magneticPolygonCheck.change(magneticPolyCallback);
                 magneticPolygonCheck.prop('checked', this.magneticPolygon);
-                let magneticPolygonCheckContainer = $('<div class="custom-control custom-switch inline-control"></div>');
+                let magneticPolygonCheckContainer = $('<div id="magnetic-lasso-control" class="custom-control custom-switch inline-control"></div>');
                 magneticPolygonCheckContainer.append(magneticPolygonCheck);
-                magneticPolygonCheckContainer.append($('<label for="magnetic-polygon-check" class="custom-control-label inline-control" style="margin-left:0px;margin-right:10px;color:white;cursor:pointer;" title="Magnetic Polygon">magnetic polygon</label>'));
+                magneticPolygonCheckContainer.append($('<label for="magnetic-polygon-check" class="custom-control-label inline-control" style="margin-left:0px;margin-right:10px;color:white;cursor:pointer;" title="Magnetic Polygon"><img src="/static/interface/img/controls/lasso_magnetic.svg" style="height:18px" title="Magnetic Polygon" /></label>'));
                 dtControls.append(magneticPolygonCheckContainer);
             }
         }
