@@ -675,6 +675,10 @@ class PolygonElement extends AbstractRenderElement {
         if(propertyName === 'color') {
             this.style.strokeColor = window.addAlpha(value, this.style.lineOpacity);
             this.style.fillColor = window.addAlpha(value, this.style.fillOpacity);
+        } else if(propertyName === 'coordinates') {
+            if(!Array.isArray(this.coordinates)) this.coordinates = [];
+            this.closed = (this.coordinates.length >= 6);
+            this.adjustmentHandles_dirty = true;
         }
     }
 

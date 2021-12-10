@@ -41,8 +41,9 @@ class ImageQuerier:
                 imgPath = args['image_path']        #TODO: allow submitting an image directly; query by image ID; etc.
                 coords = args['coordinates']
                 returnPolygon = args.get('return_polygon', False)
+                numIter = args.get('num_iter', 5)
 
-                result = self.middleware.grabCut(project, imgPath, coords, returnPolygon)
+                result = self.middleware.grabCut(project, imgPath, coords, returnPolygon, numIter)
                 return {
                     'result': result
                 }

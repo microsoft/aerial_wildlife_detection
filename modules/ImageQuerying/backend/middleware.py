@@ -2,6 +2,7 @@
     2021 Benjamin Kellenberger
 '''
 
+import json
 import numpy as np
 import cv2
 from detectron2.structures.masks import polygons_to_bitmask, polygon_area
@@ -22,17 +23,13 @@ class ImageQueryingMiddleware:
 
     
 
-    def grabCut(self, project, imgPath, coords, return_polygon=False, num_iter=5, strictness=2):
+    def grabCut(self, project, imgPath, coords, return_polygon=False, num_iter=5):
         '''
             Runs the GrabCut algorithm on an image in the project, identified by
             the provided imgPath, as well as a set of relative coordinates (flat
             list of x, y floats). Performs GrabCut and returns either a binary
             pixel mask of the result, or a flat list of x, y coordinates of a
-            polygonized version of the mask. Parameter "strictness" controls how
-            many potential/unsure areas are to be involved:
-            - 0: include both potential foreground and background pixels
-            - 1: include potential foreground pixels
-            - 2: only include clear foreground pixels
+            polygonized version of the mask.
         '''
         assert isinstance(imgPath, str), f'Invalid image path provided ("{str(imgPath)}")'
         assert isinstance(coords, list) or isinstance(coords, tuple), 'Invalid coordinates format provided'
@@ -41,22 +38,38 @@ class ImageQueryingMiddleware:
         # get image
         imgBytes = self.fileServer.getFile(project, imgPath)
         img = drivers.load_from_bytes(imgBytes)
-        img = np.transpose(img, axes=(1,2,0))
-        img = img[:,:,:3]                          #TODO: get bands from render config
-        img = np.ascontiguousarray(img)
-
-        # normalize image
-        sz = img.shape
-        img = img.reshape((3, -1))
-        mins = np.min(img, 1)[:,np.newaxis]
-        maxs = np.max(img, 1)[:,np.newaxis]
-        img = (img - mins)/(maxs - mins)
-        img = np.fliplr(img)                # make BGR
-        img = 255 * img.reshape(sz).astype(np.uint8)
 
         # make grayscale images BGR         TODO: extra function?
-        if img.shape[2] < 3:
-            img = np.repeat(img, repeats=3, axis=2)
+        if img.shape[0] < 3:
+            img = np.repeat(img, repeats=3, axis=0)
+
+        # get render config for project
+        numBands = img.shape[0]
+        try:
+            renderConfig = self.dbConnector.execute('''
+                    SELECT render_config
+                    FROM aide_admin.project
+                    WHERE shortname = %s;
+                ''', (project,), 1)
+            renderConfig = json.loads(renderConfig[0]['render_config'])
+            indices = renderConfig['bands']['indices']
+            bands = []
+            for key in ('blue', 'green', 'red'):        # OpenCV requires BGR mode
+                bands.append(min(indices[key], numBands-1))
+        except:
+            bands = (0, min(1,numBands-1), min(2,numBands-1))
+
+        img = np.stack([img[b,:,:] for b in bands], -1)
+        img = np.ascontiguousarray(img).astype(np.float32)
+        sz = img.shape
+
+        # normalize image
+        img = img.reshape((-1, 3))
+        mins = np.min(img, 0)[np.newaxis,:]
+        maxs = np.max(img, 0)[np.newaxis,:]
+        img = (img - mins)/(maxs - mins)
+        img = 255 * img.reshape(sz)
+        img = img.astype(np.uint8)
 
         # initialize mask from coordinates
         coords_abs = np.array(coords, dtype=np.float32)
@@ -65,31 +78,27 @@ class ImageQueryingMiddleware:
         if coords_abs[-1] != coords_abs[1] or coords_abs[-2] != coords_abs[0]:
             # close polygon
             coords_abs = np.concatenate((coords_abs, coords_abs[:2]))
-        mask = polygons_to_bitmask([coords_abs], height=sz[0], width=sz[1])
-        mask = mask.astype(np.uint8)
-        mask[mask>0] = cv2.GC_PR_FGD
-        mask[mask==0] = cv2.GC_BGD
-        mask = np.ascontiguousarray(mask)
-        rect = [
-            int(np.min(coords_abs[::2])),
-            int(np.min(coords_abs[1::2])),
-            int(np.max(coords_abs[::2]) - np.min(coords_abs[::2])),
-            int(np.max(coords_abs[1::2]) - np.min(coords_abs[1::2]))
+
+        mbr = [
+            max(0, int(np.min(coords_abs[::2]))),
+            max(0, int(np.min(coords_abs[1::2]))),
+            min(sz[1], int(np.max(coords_abs[::2]))),
+            min(sz[0], int(np.max(coords_abs[1::2])))
         ]
+        mask = cv2.GC_BGD * np.ones(sz[:2], dtype=np.uint8)
+        mask[mbr[1]:mbr[3], mbr[0]:mbr[2]] = cv2.GC_PR_BGD
+        polymask = polygons_to_bitmask([coords_abs], height=sz[0], width=sz[1])
+        mask[polymask>0] = cv2.GC_PR_FGD
 
         bgdModel = np.zeros((1,65), dtype=np.float64)
         fgdModel = np.zeros((1,65), dtype=np.float64)
 
-        mask, _, _ = cv2.grabCut(img, mask, rect, bgdModel, fgdModel, num_iter, mode=cv2.GC_INIT_WITH_MASK)
-
-        #TODO
-        mask = np.where((mask==2)|(mask==0),0,1).astype(np.uint8)
-        # mask_out[mask_out==cv2.GC_PR_FGD] = cv2.GC_FGD if strictness <2 else cv2.GC_BGD
-        # mask_out[mask_out==cv2.GC_PR_BGD] = cv2.GC_FGD if strictness <1 else cv2.GC_BGD
+        mask, _, _ = cv2.grabCut(img, mask, None, bgdModel, fgdModel, num_iter, mode=cv2.GC_INIT_WITH_MASK)
+        mask_out = np.where((mask==2)|(mask==0),0,1).astype(np.uint8)
 
         if return_polygon:
             # convert mask to polygon and keep the largest only
-            polys_out = Mask(mask).polygons()
+            polys_out = Mask(mask_out).polygons()
             if not len(polys_out.points):
                 return None
             max_poly_area = 0
@@ -109,4 +118,4 @@ class ImageQueryingMiddleware:
             return max_poly.tolist()
 
         else:
-            return mask.tolist()
+            return mask_out.tolist()

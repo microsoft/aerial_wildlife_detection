@@ -48,7 +48,11 @@ class AreaSelector {
                 return_polygon: true
             })
         }).then((data) => {
-            return data['result'];
+            if(data.hasOwnProperty('result')) {
+                return data['result'];
+            } else {
+                return data;
+            }
         });
     }
 
@@ -250,12 +254,21 @@ class AreaSelector {
                     // clicked into polygon; apply GrabCut
                     let coords_in = this.selectionElements[e].getProperty('coordinates');
                     let self = this;
-                    this.grabCut(coords_in).then((coords_out) => {
-                        if(Array.isArray(coords_out) && coords_out.length >= 6) {
-                            self.selectionElements[e].setProperty('coordinates', coords_out);
-                        }
-                        //TODO: else error message
-                    });
+                    try {
+                        this.grabCut(coords_in).then((coords_out) => {
+                            if(Array.isArray(coords_out) && coords_out.length >= 6) {
+                                self.selectionElements[e].setProperty('coordinates', coords_out);
+                            } else {
+                                if(typeof(coords_out['message']) === 'string') {
+                                    window.messager.addMessage('An error occurred trying to run GrabCut on selection (message: "'+coords_out['message'].toString()+'").', 'error', 0);
+                                } else {
+                                    window.messager.addMessage('No refinement found by GrabCut.', 'regular');
+                                }
+                            }
+                        });
+                    } catch(error) {
+                        window.messager.addMessage('An error occurred trying to run GrabCut on selection (message: "'+error.toString()+'").', 'error', 0);
+                    }
                 }
             }
         }
