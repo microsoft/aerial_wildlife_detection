@@ -35,25 +35,7 @@ class AreaSelector {
         /**
          * Runs GrabCut for a given data entry and a given polygon.
          */
-        let fileName = this.dataEntry.fileName;
-        let self = this;
-        return $.ajax({
-            url: window.baseURL + 'grabCut',
-            method: 'POST',
-            contentType: 'application/json; charset=utf-8',
-            dataType: 'json',
-            data: JSON.stringify({
-                image_path: fileName,
-                coordinates: polygon,
-                return_polygon: true
-            })
-        }).then((data) => {
-            if(data.hasOwnProperty('result')) {
-                return data['result'];
-            } else {
-                return data;
-            }
-        });
+        return this.dataEntry.grabCut(polygon);
     }
 
     addSelectionElement(type, startCoordinates) {
@@ -126,7 +108,7 @@ class AreaSelector {
         }
     }
 
-    clearAll() {
+    removeAllSelectionElements() {
         for(var s in this.selectionElements) {
             this.selectionElements[s].setActive(false, this.dataEntry.viewport);
             this.dataEntry.viewport.removeRenderElement(this.selectionElements[s]);
@@ -221,14 +203,15 @@ class AreaSelector {
     _canvas_mouseup(event) {
         if(window.uiBlocked) return;
         let mousePos = this.dataEntry.viewport.getRelativeCoordinates(event, 'validArea');
-        if(window.uiControlHandler.getAction() === ACTIONS.PAINT_BUCKET) {
+        if([ACTIONS.PAINT_BUCKET, ACTIONS.ERASE_SELECTION].includes(window.uiControlHandler.getAction())) {
             // find clicked element(s)
             for(var s in this.selectionElements) {
                 if(this.selectionElements[s].containsPoint(mousePos)) {
                     // fill it... (TODO: we assume the base class has a segMap property anyway)
+                    let color = (window.uiControlHandler.getAction() === ACTIONS.PAINT_BUCKET ? window.labelClassHandler.getActiveColor() : null);
                     this.dataEntry.segMap.paint_bucket(
                         this.selectionElements[s].getProperty('coordinates'),
-                        window.labelClassHandler.getActiveColor()
+                        color
                     );
 
                     // ...and remove it
@@ -252,12 +235,13 @@ class AreaSelector {
             for(var e in this.selectionElements) {
                 if(this.selectionElements[e].containsPoint(mousePos)) {
                     // clicked into polygon; apply GrabCut
+                    window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
                     let coords_in = this.selectionElements[e].getProperty('coordinates');
                     let self = this;
                     try {
                         this.grabCut(coords_in).then((coords_out) => {
-                            if(Array.isArray(coords_out) && coords_out.length >= 6) {
-                                self.selectionElements[e].setProperty('coordinates', coords_out);
+                            if(Array.isArray(coords_out) && Array.isArray(coords_out[0]) && coords_out[0].length >= 6) {
+                                self.selectionElements[e].setProperty('coordinates', coords_out[0]);
                             } else {
                                 if(typeof(coords_out['message']) === 'string') {
                                     window.messager.addMessage('An error occurred trying to run GrabCut on selection (message: "'+coords_out['message'].toString()+'").', 'error', 0);

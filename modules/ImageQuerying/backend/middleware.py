@@ -26,14 +26,22 @@ class ImageQueryingMiddleware:
     def grabCut(self, project, imgPath, coords, return_polygon=False, num_iter=5):
         '''
             Runs the GrabCut algorithm on an image in the project, identified by
-            the provided imgPath, as well as a set of relative coordinates (flat
-            list of x, y floats). Performs GrabCut and returns either a binary
-            pixel mask of the result, or a flat list of x, y coordinates of a
-            polygonized version of the mask.
+            the provided imgPath, as well as a list of lists of relative
+            coordinates (each a flat list of x, y floats). Performs GrabCut and
+            returns either a list of binary pixel masks of each of the given
+            coordinates' result, or a list of flat lists of x, y coordinates of
+            a polygonized version of the masks.
         '''
         assert isinstance(imgPath, str), f'Invalid image path provided ("{str(imgPath)}")'
         assert isinstance(coords, list) or isinstance(coords, tuple), 'Invalid coordinates format provided'
-        assert len(coords) >= 6 and not len(coords)%2, 'Invalid number of coordinate points provided'
+        
+        if isinstance(coords[0], int) or isinstance(coords[0], float):
+            # just one polygon provided; encapsulate
+            coords = [coords]
+        for idx in range(len(coords)):
+            numel = len(coords[idx])
+            assert numel >= 6 and not numel%2, \
+                f'Polygon #{idx+1}: Invalid number of coordinate points provided ({numel} < 6 or not even)'
 
         # get image
         imgBytes = self.fileServer.getFile(project, imgPath)
@@ -71,51 +79,58 @@ class ImageQueryingMiddleware:
         img = 255 * img.reshape(sz)
         img = img.astype(np.uint8)
 
-        # initialize mask from coordinates
-        coords_abs = np.array(coords, dtype=np.float32)
-        coords_abs[::2] *= sz[1]
-        coords_abs[1::2] *= sz[0]
-        if coords_abs[-1] != coords_abs[1] or coords_abs[-2] != coords_abs[0]:
-            # close polygon
-            coords_abs = np.concatenate((coords_abs, coords_abs[:2]))
+        # iterate through all lists of coordinates provided
+        result = []
 
-        mbr = [
-            max(0, int(np.min(coords_abs[::2]))),
-            max(0, int(np.min(coords_abs[1::2]))),
-            min(sz[1], int(np.max(coords_abs[::2]))),
-            min(sz[0], int(np.max(coords_abs[1::2])))
-        ]
-        mask = cv2.GC_BGD * np.ones(sz[:2], dtype=np.uint8)
-        mask[mbr[1]:mbr[3], mbr[0]:mbr[2]] = cv2.GC_PR_BGD
-        polymask = polygons_to_bitmask([coords_abs], height=sz[0], width=sz[1])
-        mask[polymask>0] = cv2.GC_PR_FGD
+        for coord in coords:
+            # initialize mask from coordinates
+            coords_abs = np.array(coord, dtype=np.float32)
+            coords_abs[::2] *= sz[1]
+            coords_abs[1::2] *= sz[0]
+            if coords_abs[-1] != coords_abs[1] or coords_abs[-2] != coords_abs[0]:
+                # close polygon
+                coords_abs = np.concatenate((coords_abs, coords_abs[:2]))
 
-        bgdModel = np.zeros((1,65), dtype=np.float64)
-        fgdModel = np.zeros((1,65), dtype=np.float64)
+            mbr = [
+                max(0, int(np.min(coords_abs[::2]))),
+                max(0, int(np.min(coords_abs[1::2]))),
+                min(sz[1], int(np.max(coords_abs[::2]))),
+                min(sz[0], int(np.max(coords_abs[1::2])))
+            ]
+            mask = cv2.GC_BGD * np.ones(sz[:2], dtype=np.uint8)
+            mask[mbr[1]:mbr[3], mbr[0]:mbr[2]] = cv2.GC_PR_BGD
+            polymask = polygons_to_bitmask([coords_abs], height=sz[0], width=sz[1])
+            mask[polymask>0] = cv2.GC_PR_FGD
 
-        mask, _, _ = cv2.grabCut(img, mask, None, bgdModel, fgdModel, num_iter, mode=cv2.GC_INIT_WITH_MASK)
-        mask_out = np.where((mask==2)|(mask==0),0,1).astype(np.uint8)
+            bgdModel = np.zeros((1,65), dtype=np.float64)
+            fgdModel = np.zeros((1,65), dtype=np.float64)
 
-        if return_polygon:
-            # convert mask to polygon and keep the largest only
-            polys_out = Mask(mask_out).polygons()
-            if not len(polys_out.points):
-                return None
-            max_poly_area = 0
-            max_poly = None
-            for poly in polys_out.points:
-                if len(poly) < 6:
-                    continue
-                area = polygon_area(poly[:,0], poly[:,1])
-                if area > max_poly_area:
-                    max_poly_area = area
-                    max_poly = poly.ravel()
-            
-            # make relative coordinates again
-            max_poly = max_poly.astype(np.float32)
-            max_poly[::2] /= img.shape[1]
-            max_poly[1::2] /= img.shape[0]
-            return max_poly.tolist()
+            mask, _, _ = cv2.grabCut(img, mask, None, bgdModel, fgdModel, num_iter, mode=cv2.GC_INIT_WITH_MASK)
+            mask_out = np.where((mask==2)|(mask==0),0,1).astype(np.uint8)
 
-        else:
-            return mask_out.tolist()
+            if return_polygon:
+                # convert mask to polygon and keep the largest only
+                polys_out = Mask(mask_out).polygons()
+                if not len(polys_out.points):
+                    result.append(None)
+                else:
+                    max_poly_area = 0
+                    max_poly = None
+                    for poly in polys_out.points:
+                        if len(poly) < 6:
+                            continue
+                        area = polygon_area(poly[:,0], poly[:,1])
+                        if area > max_poly_area:
+                            max_poly_area = area
+                            max_poly = poly.ravel()
+                    
+                    # make relative coordinates again
+                    max_poly = max_poly.astype(np.float32)
+                    max_poly[::2] /= img.shape[1]
+                    max_poly[1::2] /= img.shape[0]
+                    result.append(max_poly.tolist())
+
+            else:
+                result.append(mask_out.tolist())
+        
+        return result

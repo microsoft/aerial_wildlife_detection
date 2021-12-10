@@ -744,7 +744,7 @@ class PolygonElement extends AbstractRenderElement {
     }
 
     closePolygon() {
-        if(this.isClosed() || this.coordinates.length < 6) return;
+        if(this.isClosed() || this.coordinates.length < 6) return;
         this.closed = true;
         this.adjustmentHandles_dirty = true;        //TODO: dirty hack to redraw handles upon next viewport availability
     }
@@ -1288,6 +1288,14 @@ class RectangleElement extends PointElement {
         super.setProperty(propertyName, value);
         if(propertyName === 'color') {
             this.style.strokeColor = window.addAlpha(value, this.style.lineOpacity);
+        } else if(propertyName === 'coordinates') {
+            // polygon provided; convert to rectangle
+            let ext = mbr(value);
+            if(ext === undefined) return;
+            this.width = ext[2]-ext[0];
+            this.height = ext[3]-ext[1];
+            this.x = ext[0] + this.width/2;
+            this.y = ext[1] + this.height/2;
         }
     }
 
@@ -1300,6 +1308,20 @@ class RectangleElement extends PointElement {
             'height': this.height,
             'unsure': this.unsure
         };
+    }
+
+    getPolygon() {
+        /**
+         * Transforms the rectangle into an Array of polygon vertex coordinates.
+         */
+        let ext = this.getExtent();
+        return [
+            ext[0], ext[1],
+            ext[2], ext[1],
+            ext[2], ext[3],
+            ext[0], ext[3],
+            ext[0], ext[1]
+        ];
     }
 
     getExtent() {

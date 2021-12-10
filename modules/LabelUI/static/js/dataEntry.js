@@ -590,6 +590,16 @@ class AbstractDataEntry {
         this.viewport.setMinimapVisible(visible);
     }
 
+    getNumActiveAnnotations() {
+        let numActiveAnnotations = 0;
+        for(var key in this.annotations) {
+            if(this.annotations[key].isActive()) {
+                numActiveAnnotations++;
+            }
+        }
+        return numActiveAnnotations;
+    }
+
     setAnnotationsInactive() {
         for(var key in this.annotations) {
             this.annotations[key].setActive(false, this.viewport);
@@ -622,6 +632,12 @@ class AbstractDataEntry {
         window.dataHandler.updatePresentClasses();
     }
 
+    removeAllSelectionElements() {
+        if(this.areaSelector !== undefined) {
+            this.areaSelector.removeAllSelectionElements();
+        }
+    }
+
     toggleActiveAnnotationsUnsure() {
         var active = false;
         for(var key in this.annotations) {
@@ -650,6 +666,71 @@ class AbstractDataEntry {
             if(label != null) classIDs[label] = 1;
         }
         return classIDs;
+    }
+
+    grabCut(polygons) {
+        /**
+         * Performs the GrabCut algorithm on a given Array of Arrays of polygon
+         * coordinates. Returns the refined coordinates accordingly, or else an
+         * object with status ID and error message if something went wrong.
+         */
+        return $.ajax({
+            url: window.baseURL + 'grabCut',
+            method: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            data: JSON.stringify({
+                image_path: this.fileName,
+                coordinates: polygons,
+                return_polygon: true
+            })
+        }).then((data) => {
+            if(data.hasOwnProperty('result')) {
+                return data['result'];       // Array of arrays of coordinates for each polygon
+            } else {
+                return data;
+            }
+        });
+    }
+
+    grabCutOnActiveAnnotations() {
+        /**
+         * Performs GrabCut on all active annotations.
+         * Currently supports boundingBoxes and polygons as annotation types.
+         */
+        if(!['boundingBoxes', 'polygons'].includes(this.getAnnotationType())) return null;
+        let polygons = [];
+        let annoKeys = Object.keys(this.annotations);
+        for(var k=0; k<annoKeys.length; k++) {
+            let key = annoKeys[k];
+            if(this.annotations[key].isActive()) {
+                let geom = this.annotations[key].geometry;
+                if(this.annotations[key].geometryType === 'boundingBoxes') {
+                    geom = geom.getPolygon();
+                } else if(this.annotations[key].geometryType === 'polygons') {
+                    geom = geom.getProperty('coordinates');
+                }
+                polygons.push(geom);
+            }
+        }
+        if(polygons.length) {
+            let self = this;
+            this.grabCut(polygons).then((data) => {
+                if(Array.isArray(data)) {
+                    for(var x=0; x<data.length; x++) {
+                        if(Array.isArray(data[x]) && data[x].length >= 6) {
+                            self.annotations[annoKeys[x]].geometry.setProperty('coordinates', data[x]);
+                        }
+                    }
+                } else {
+                    if(typeof(data['message']) === 'string') {
+                        window.messager.addMessage('An error occurred trying to run GrabCut on selection (message: "'+data['message'].toString()+'").', 'error', 0);
+                    } else {
+                        window.messager.addMessage('No refinement found by GrabCut.', 'regular');
+                    }
+                }
+            });
+        }
     }
 
     styleChanged() {
@@ -703,7 +784,7 @@ class ClassificationEntry extends AbstractDataEntry {
     }
 
     getAnnotationType() {
-        return 'label';
+        return 'labels';
     }
 
     _addElement(element) {
@@ -948,7 +1029,7 @@ class PointAnnotationEntry extends AbstractDataEntry {
     }
 
     getAnnotationType() {
-        return 'point';
+        return 'points';
     }
 
     setLabel(label) {
@@ -1237,7 +1318,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
     }
 
     getAnnotationType() {
-        return 'boundingBox';
+        return 'boundingBoxes';
     }
 
     setLabel(label) {
@@ -1563,7 +1644,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
 }
 
 
-//TODO
+
 class PolygonAnnotationEntry extends AbstractDataEntry {
     /**
      * Implementation for polygons
@@ -1575,7 +1656,7 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
     }
 
     getAnnotationType() {
-        return 'polygon';
+        return 'polygons';
     }
 
     setLabel(label) {
@@ -1971,6 +2052,34 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
                 this._toggleActive(event);
                 this.numInteractions++;
             }
+
+        } else if(window.uiControlHandler.getAction() === ACTIONS.GRAB_CUT) {
+            // find clicked polygon
+            for(var key in this.annotations) {
+                let coords = this.viewport.getRelativeCoordinates(event, 'validArea');
+                if(this.annotations[key].geometry.containsPoint(coords)) {
+                    // clicked into polygon; apply GrabCut
+                    window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
+                    let coords_in = this.annotations[key].geometry.getProperty('coordinates');
+                    let self = this;
+                    try {
+                        this.grabCut(coords_in).then((coords_out) => {
+                            if(Array.isArray(coords_out) && Array.isArray(coords_out[0]) && coords_out[0].length >= 6) {
+                                self.annotations[key].geometry.setProperty('coordinates', coords_out[0]);
+                            } else {
+                                console.log(coords_out)
+                                if(typeof(coords_out['message']) === 'string') {
+                                    window.messager.addMessage('An error occurred trying to run GrabCut on selection (message: "'+coords_out['message'].toString()+'").', 'error', 0);
+                                } else {
+                                    window.messager.addMessage('No refinement found by GrabCut.', 'regular');
+                                }
+                            }
+                        });
+                    } catch(error) {
+                        window.messager.addMessage('An error occurred trying to run GrabCut on selection (message: "'+error.toString()+'").', 'error', 0);
+                    }
+                }
+            }
         }
 
         this.render();
@@ -2217,52 +2326,11 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
 
     _canvas_mousemove(event) {
         this.__paint(event);
-        // if(window.uiBlocked) return;
-        // if(window.uiControlHandler.getAction() === ACTIONS.DO_NOTHING &&
-        //     this.selectionPolygon !== null) {
-        //     // // polygon was being drawn but isn't anymore
-        //     // if(this.selectionPolygon.isCloseable()) {
-        //     //     // close it
-        //     //     this.selectionPolygon.closePolygon();
-        //     // } else {
-        //     //     // polygon was not complete; remove
-        //     //     this.selectionPolygon.setActive(false, this.viewport);
-        //     //     this.viewport.removeRenderElement(this.selectionPolygon);
-        //     //     this.selectionPolygon = null;
-        //     // }
-        // } else {
-        //     this.__paint(event);
-        // }
     }
 
     _canvas_mouseup(event) {
         this.mouseDown = false;
         this.numInteractions++;
-        // let mousePos = this.viewport.getRelativeCoordinates(event, 'validArea');
-        // if(window.uiControlHandler.getAction() === ACTIONS.PAINT_BUCKET &&
-        //     this.selectionPolygon !== null) {
-        //     // fill drawn polygon if clicked inside of it
-        //     if(this.selectionPolygon.containsPoint(mousePos)) {
-        //         this.segMap.paint_bucket(
-        //             this.selectionPolygon.getProperty('coordinates'),
-        //             window.labelClassHandler.getActiveColor()
-        //         );
-
-        //         this._clear_selection_polygon();
-        //     }
-        // } else if([ACTIONS.DO_NOTHING, ACTIONS.ADD_ANNOTATION].includes(window.uiControlHandler.getAction()) &&
-        //     this.selectionPolygon !== null) {
-        //     if(this.selectionPolygon.isClosed()) {
-        //         // still in selection polygon mode but polygon is closed
-        //         if(!this.selectionPolygon.isActive) {
-        //             if(this.selectionPolygon.containsPoint(mousePos)) {
-        //                 this.selectionPolygon.setActive(true, this.viewport);
-        //             } else {
-        //                 this._clear_selection_polygon();
-        //             }
-        //         }
-        //     }
-        // }
     }
 
     _clear_selection_polygon() {

@@ -10,11 +10,13 @@ Exciting news: AIDE version 3.0 is on the way! This is the **nightly** build of 
 
 (:red_circle: = development not started yet; :clock3: = work in progress; :ballot_box_with_check: = first version working, needs testing; :white_check_mark: = completed)
 
-* TIFF image parsing: :clock3: Web frontend works (needs testing with exotic TIFFs); :red_circle: backend to be implemented
+* :clock3: Support for new image formats:
+  * :clock3: TIFF image parsing: :clock3: Web frontend works (needs testing with exotic TIFFs); :clock3: backend works but needs failsafety
+  * :clock3: DICOM image parsing: :red_circle: Web frontend to be implemented (Daikon library); :clock3: backend prototype works (cannot save images; no metadata is kept)
 * :clock3: Image rendering adjustments for Web frontend (percentile stretch does not yet work; grayscale images not yet supported)
-* :clock3: Support for polygons (basic drawing and storing works, but interface is still somewhat glitchy)
-* :red_circle: New models for polygons
-* :red_circle: Advanced segmentation labeling tools: :clock3: paint bucket; :red_circle: rectangle, :clock3: polygon (crude prototype working); :red_circle: magic wand
+* :clock3: Support for polygons (basic drawing and storing works, magnetic polygon works; GrabCut still glitchy)
+* :clock3: New models for polygons: Detectron2 detectors (Faster R-CNN & Co.) work with polygons as input; dedicated models to be implemented
+* :clock3: Advanced segmentation labeling tools: :ballot_box_with_check: paint bucket; :red_circle: rectangle, :ballot_box_with_check: polygon (might need improvements); :ballot_box_with_check: magnetic polygon; :red_circle: magic wand; :ballot_box_with_check: Grab Cut (needs polygon simplification algorithm)
 * :red_circle: New design for annotation interface
 
 More functionality might come and will be added to this list as implementations progress.

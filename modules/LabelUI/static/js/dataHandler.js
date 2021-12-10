@@ -96,6 +96,40 @@ class DataHandler {
         return numRemoved;
     }
 
+    removeAllSelectionElements() {
+        /**
+         * Removes and discards all selection polygons if supported (e.g., for
+         * semantic segmentation).
+         */
+        for(var i=0; i<this.dataEntries.length; i++) {
+            this.dataEntries[i].removeAllSelectionElements();
+        }
+    }
+
+    getNumActiveAnnotations() {
+        /**
+         * Iterates through the data entries and counts the number of
+         * annotations that are active. Returns the count accordingly.
+         */
+        let numActiveAnnotations = 0;
+        for(var i=0; i<this.dataEntries.length; i++) {
+            numActiveAnnotations += this.dataEntries[i].getNumActiveAnnotations();
+        }
+        return numActiveAnnotations;
+    }
+
+    grabCutOnActiveAnnotations() {
+        /**
+         * Calls the grabCut routine on each data entry:
+         * - if annotation type supports GrabCut (e.g., Polygons) and at least
+         *   one annotation is selected: perform GrabCut on it
+         * - otherwise, does nothing
+         */
+        for(var i=0; i<this.dataEntries.length; i++) {
+            this.dataEntries[i].grabCutOnActiveAnnotations();
+        }
+    }
+
     refreshActiveAnnotations() {
         /*
             Iterates through the data entries and sets all active annotations
@@ -633,7 +667,7 @@ class DataHandler {
 
 
     previousBatch() {
-        if(window.uiBlocked || this.undoStack.length === 0) return;
+        if(window.uiBlocked || this.undoStack.length === 0) return;
         
         var self = this;
 

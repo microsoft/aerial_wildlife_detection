@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg version="1.1" id="Layer_3" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 viewBox="0 0 256 256" style="enable-background:new 0 0 256 256;" xml:space="preserve">
+<style type="text/css">
+	.st0{fill:none;stroke:#FFFFFF;stroke-width:10;stroke-linejoin:round;}
+	.st1{fill:none;stroke:#FFFFFF;stroke-width:10;stroke-linejoin:round;stroke-dasharray:20.625,16.5;}
+	.st2{fill:none;stroke:#FFFFFF;stroke-width:20;stroke-linecap:round;stroke-linejoin:round;}
+</style>
+<g>
+	<g>
+		<g>
+			<polyline class="st0" points="220.5,210.5 220.5,220.5 210.5,220.5 			"/>
+			<line class="st1" x1="194" y1="220.5" x2="53.8" y2="220.5"/>
+			<polyline class="st0" points="45.5,220.5 35.5,220.5 35.5,210.5 			"/>
+			<line class="st1" x1="35.5" y1="194" x2="35.5" y2="53.7"/>
+			<polyline class="st0" points="35.5,45.5 35.5,35.5 45.5,35.5 			"/>
+			<line class="st1" x1="62" y1="35.5" x2="202.2" y2="35.5"/>
+			<polyline class="st0" points="210.5,35.5 220.5,35.5 220.5,45.5 			"/>
+			<line class="st1" x1="220.5" y1="62" x2="220.5" y2="202.2"/>
+		</g>
+	</g>
+	<line class="st2" x1="76.5" y1="179.5" x2="179.5" y2="76.5"/>
+	<line class="st2" x1="76.5" y1="76.5" x2="179.5" y2="179.5"/>
+</g>
+</svg>

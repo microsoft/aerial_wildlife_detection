@@ -17,9 +17,10 @@ const ACTIONS = {
 
     // for segmentation and area selection
     PAINT_BUCKET: 7,
-    ADD_SELECT_POLYGON: 8,
-    ADD_SELECT_POLYGON_MAGNETIC: 9,
-    GRAB_CUT: 10
+    ERASE_SELECTION: 8,
+    ADD_SELECT_POLYGON: 9,
+    ADD_SELECT_POLYGON_MAGNETIC: 10,
+    GRAB_CUT: 11
 }
 
 const CURSORS = [
@@ -153,6 +154,20 @@ class UIControlHandler {
                 magneticPolygonCheckContainer.append(magneticPolygonCheck);
                 magneticPolygonCheckContainer.append($('<label for="magnetic-polygon-check" class="custom-control-label inline-control" style="margin-left:0px;margin-right:10px;color:white;cursor:pointer;" title="Magnetic Polygon"><img src="/static/interface/img/controls/lasso_magnetic.svg" style="height:18px" title="Magnetic Polygon" /></label>'));
                 dtControls.append(magneticPolygonCheckContainer);
+
+                // GrabCut
+                let grabCutBtn = $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/grabcut.svg" style="height:18px" title="Grab Cut" /></button>');
+                grabCutBtn.on('click', function() {
+                    // special routine for Polygons: use GrabCut for active polygons, or else set action
+                    if(self.dataHandler.getNumActiveAnnotations()) {
+                        // at least one element is active; perform GrabCut directly
+                        self.dataHandler.grabCutOnActiveAnnotations();
+                    } else {
+                        // no element active (yet); only set action
+                        self.setAction(ACTIONS.GRAB_CUT);
+                    }
+                });
+                dtControls.append(grabCutBtn);
             }
         }
 
@@ -306,6 +321,8 @@ class UIControlHandler {
                 select_polygon: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/lasso.svg" style="height:18px" title="Select by polygon" /></button>'),
                 select_polygon_magnetic: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/lasso_magnetic.svg" style="height:18px" title="Select by magnetic polygon" /></button>'),
                 paint_bucket: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/paintbucket.svg" style="height:18px" title="Fill selected area" /></button>'),
+                erase_selection: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/erase_selection.svg" style="height:18px" title="Clear selected area" /></button>'),
+                clear_selection: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/clear_selection.svg" style="height:18px" title="Clear selection" /></button>'),
                 opacity: $('<input class="inline-control" type="range" min="0" max="255" value="220" title="Segmentation opacity" style="width:100px" />')        //TODO: make available for other annotation types as well?
             };
 
@@ -356,6 +373,12 @@ class UIControlHandler {
             this.segmentation_controls.paint_bucket.on('click', function() {
                 self.setAction(ACTIONS.PAINT_BUCKET);
             });
+            this.segmentation_controls.erase_selection.on('click', function() {
+                self.setAction(ACTIONS.ERASE_SELECTION);
+            });
+            this.segmentation_controls.clear_selection.on('click', function() {
+                self.removeAllSelectionElements();
+            });
 
             let segControls = $('<div class="inline-control"></div>');
             segControls.append(this.segmentation_controls.brush);
@@ -368,23 +391,23 @@ class UIControlHandler {
 
             segControls.append(this.segmentation_controls.select_polygon);
             segControls.append(this.segmentation_controls.select_polygon_magnetic);
+
+            // GrabCut
+            let grabCutBtn = $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/grabcut.svg" style="height:18px" title="Grab Cut" /></button>');
+            grabCutBtn.on('click', function() {
+                self.setAction(ACTIONS.GRAB_CUT);
+            });
+            dtControls.append(grabCutBtn);
+
             segControls.append(this.segmentation_controls.paint_bucket);
+            segControls.append(this.segmentation_controls.erase_selection);
+            segControls.append(this.segmentation_controls.clear_selection);
 
             segControls.append($('<span style="margin-left:10px;margin-right:5px;color:white">Opacity:</span>'));
             segControls.append(this.segmentation_controls.opacity);
 
             dtControls.append(segControls);
         }
-
-        // GrabCut
-        if(['segmentationMasks'].includes(window.annotationType)) {  //TODO: allow for polygons and boundingBoxes as well
-            let grabCutBtn = $('<button class="btn btn-sm btn-secondary inline-control active">GrabCut</button>');
-            grabCutBtn.on('click', function() {
-                self.setAction(ACTIONS.GRAB_CUT);
-            });
-            dtControls.append(grabCutBtn);
-        }
-
 
         // next and previous batch buttons
         var nextBatchCallback = function() {
@@ -649,6 +672,10 @@ class UIControlHandler {
         size = Math.min(Math.max(size, 1), 255);        //TODO: max
         this.segmentation_properties.brushSize = size;
         $(this.segmentation_controls.brush_size).attr('value', size);
+    }
+
+    removeAllSelectionElements() {
+        this.dataHandler.removeAllSelectionElements();
     }
 
     setSegmentationOpacity(value) {
