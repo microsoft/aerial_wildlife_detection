@@ -397,7 +397,7 @@ class UIControlHandler {
             grabCutBtn.on('click', function() {
                 self.setAction(ACTIONS.GRAB_CUT);
             });
-            dtControls.append(grabCutBtn);
+            segControls.append(grabCutBtn);
 
             segControls.append(this.segmentation_controls.paint_bucket);
             segControls.append(this.segmentation_controls.erase_selection);

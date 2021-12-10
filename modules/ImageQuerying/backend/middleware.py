@@ -125,11 +125,13 @@ class ImageQueryingMiddleware:
                             max_poly = poly.ravel()
                     
                     # make relative coordinates again
-                    max_poly = max_poly.astype(np.float32)
-                    max_poly[::2] /= img.shape[1]
-                    max_poly[1::2] /= img.shape[0]
-                    result.append(max_poly.tolist())
-
+                    if max_poly is None:
+                        result.append(None)
+                    else:
+                        max_poly = max_poly.astype(np.float32)
+                        max_poly[::2] /= img.shape[1]
+                        max_poly[1::2] /= img.shape[0]
+                        result.append(max_poly.tolist())
             else:
                 result.append(mask_out.tolist())
         
