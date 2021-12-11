@@ -715,7 +715,7 @@ class AbstractDataEntry {
         }
         if(polygons.length) {
             let self = this;
-            this.grabCut(polygons).then((data) => {
+            return this.grabCut(polygons).then((data) => {
                 if(Array.isArray(data)) {
                     for(var x=0; x<data.length; x++) {
                         if(Array.isArray(data[x]) && data[x].length >= 6) {
@@ -731,6 +731,7 @@ class AbstractDataEntry {
                 }
             });
         }
+        return null;
     }
 
     styleChanged() {
@@ -744,10 +745,11 @@ class AbstractDataEntry {
     }
 
     render() {
-        let self = this;
-        return new Promise((resolve) => {
-            resolve(self.viewport.render());
-        });
+        // let self = this;
+        // return new Promise((resolve) => {
+        //     resolve(self.viewport.render());
+        // });
+        this.viewport.render();
     }
 }
 
@@ -1983,6 +1985,7 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
                 } else {
                     // show current class name of box
                     hoverText = window.labelClassHandler.getName(anno.label);
+                    if(anno.geometry.unsure) hoverText += ' (unsure)';
                     this.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getColor(anno.label));
                 }
                 break;

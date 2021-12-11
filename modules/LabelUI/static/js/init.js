@@ -183,7 +183,7 @@ $(document).ready(function() {
             $('canvas').each(function() {
                 this.width = width;
                 this.height = height;
-            })
+            });
 
             // gallery: account for width, center entries
             // var toolsWidth = $('#tools-container').width() + $('#viewport-controls').width();
@@ -372,10 +372,14 @@ $(document).ready(function() {
         }
     });
 
+    // task monitor
+    promise = promise.then(function() {
+        window.taskMonitor = new TaskMonitor($('#task-panel'));
+    });
 
     // AI backend
     promise = promise.then(function() {
-        if(window.aiControllerURI != null && ! window.demoMode && (window.aiModelAvailable || window.isAdmin)) {
+        if(window.aiControllerURI != null && ! window.demoMode && (window.aiModelAvailable || window.isAdmin)) {
             window.wfMonitor = new WorkflowMonitor($('#ai-task-monitor'), $('#ai-minipanel-status'), window.isAdmin, window.aiModelAvailable, 1000, 10000, 10000);    //TODO: query intervals
             $('#ai-worker-minipanel').click(function() {
                 $('#ai-worker-panel').slideToggle();

@@ -1,0 +1,21 @@
+#task-panel {
+    display: flex;
+    float: left;
+    width: 200px;
+    font-size: 12px;
+    color: white;
+    margin-top: 10px;
+}
+
+#task-panel span {
+    text-overflow: ellipsis;
+    width: 120px;
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+#task-panel .progressbar {
+    width: 100px !important;
+    margin-top: 5px;
+}

@@ -11,6 +11,7 @@ class ImageViewport {
         this.disableInteractions = disableInteractions;
         this.loadingText = 'loading...';
         this.ctx = canvas[0].getContext('2d');
+        this.ctx.shadowBlur = null;
         this.validArea = [0, 0, 1, 1];    // may be a part of the canvas if the main image is smaller
         this.viewport = [0, 0, 1, 1];
         this.renderStack = [];
@@ -213,7 +214,7 @@ class ImageViewport {
 
 
     __mousewheel_event(event) {
-        if(event.metaKey || event.shiftKey || event.altKey) {
+        if(event.metaKey || event.shiftKey || event.altKey) {
             // zoom in or out
             let delta = event.originalEvent.deltaY;
             if(delta > 0) {

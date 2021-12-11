@@ -125,9 +125,12 @@ class DataHandler {
          *   one annotation is selected: perform GrabCut on it
          * - otherwise, does nothing
          */
+        let promises = [];
         for(var i=0; i<this.dataEntries.length; i++) {
-            this.dataEntries[i].grabCutOnActiveAnnotations();
+            promises.push(this.dataEntries[i].grabCutOnActiveAnnotations());
+            // this.dataEntries[i].grabCutOnActiveAnnotations();
         }
+        return Promise.all(promises);
     }
 
     refreshActiveAnnotations() {

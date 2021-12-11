@@ -8,7 +8,8 @@
     <link rel="stylesheet" href="/static/general/css/cookie.css?v={{ version }}" />
     <link rel="stylesheet" href="/static/interface/css/interface.css?v={{ version }}" />
     <link rel="stylesheet" href="/static/general/css/messaging.css?v={{ version }}" />
-    <link rel="stylesheet" href="/static/aiController/css/workflowMonitor.css?v={{ version }}" />
+    <link rel="stylesheet" href="/static/interface/css/taskMonitor.css?v={{ version }}"></script>
+    <link rel="stylesheet" href="/static/aiController/css/workflowMonitor.css?v={{ version }}" />
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
     <script src="https://unpkg.com/mathjs@9.5.1/lib/browser/math.js"></script>
     <script type="text/javascript" src="/static/general/libs/geotiff.js/geotiff.js?v={{ version }}"></script>
@@ -33,7 +34,8 @@
     <!-- <script type="text/javascript" src="/static/interface/js/aiWorkerHandler.js?v={{ version }}"></script> -->
     <script src="/static/general/js/overlay.js?v={{ version }}"></script>
     <script src="/static/general/js/progressbar.js?v={{ version }}"></script>
-    <script src="/static/aiController/js/workflowMonitor.js?v={{ version }}"></script>
+    <script src="/static/interface/js/taskMonitor.js?v={{ version }}"></script>
+    <script src="/static/aiController/js/workflowMonitor.js?v={{ version }}"></script>
     <script type="text/javascript" src="/static/interface/js/uitutorial.js?v={{ version }}"></script>
     <script type="text/javascript" src="/static/interface/js/init.js?v={{ version }}"></script>
 </head>
@@ -62,7 +64,7 @@
             <nav class="navbar navbar-expand-lg navbar-light bg-dark border-bottom">
                 <ul class="nav navbar-nav">
                     <li class="nav-item header-text">
-                        <div class="project-path"><a href="/">Projects</a> / <a href="/{{ projectShortname }}" style="font-weight:bold">{{ projectShortname }}</a> / <a href="interface">interface</a></div>
+                        <div class="project-path"><a href="/">Projects</a> / <a href="/{{ projectShortname }}" style="font-weight:bold">{{ projectShortname }}</a> / <a href="interface">interface</a></div>
                         <h1 id="project-title">{{ projectTitle }}: annotation interface</h1>
                     </li>
                 </ul>
@@ -195,6 +197,9 @@
 
             <!-- Mini message entry -->
             <div id="footer-message-panel" style="display:none;"></div>
+
+            <!-- Task panel -->
+            <div id="task-panel"></div>
 
             <!-- Collapsible AI worker panel -->
             <div id="ai-worker-panel" class="ai-worker-panel">

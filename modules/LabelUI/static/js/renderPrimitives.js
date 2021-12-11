@@ -1173,14 +1173,12 @@ class PolygonElement extends AbstractRenderElement {
         for(var c=2; c<this.coordinates.length; c+=2) {
             let pos = scaleFun([this.coordinates[c], this.coordinates[c+1]], 'validArea');
             ctx.lineTo(pos[0], pos[1]);
-            ctx.stroke();
         }
         
         if(!this.isClosed() && Array.isArray(this.mousePos_current)) {
             // polygon is still in creation mode; draw additional line to mouse position
             let pos = scaleFun([this.mousePos_current[0], this.mousePos_current[1]], 'validArea');
             ctx.lineTo(pos[0], pos[1]);
-            ctx.stroke();
         }
         // draw back to origin
         let pos = scaleFun([this.coordinates[0], this.coordinates[1]], 'validArea');
@@ -1213,6 +1211,9 @@ class MagneticPolygonElement extends PolygonElement {
          * pixels with minimum value greater than "minVal"; TODO: make
          * percentile?
          */
+        if(coords_rel[0] < 0 || coords_rel[0] > 1 ||
+            coords_rel[1] < 0 || coords_rel[1] > 1) return undefined;
+
         // calc. absolute coordinates w.r.t. edge map size
         let coords_abs = [
             parseInt(this.edgeMap.length * coords_rel[0]),

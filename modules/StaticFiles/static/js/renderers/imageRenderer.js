@@ -566,6 +566,7 @@ class ImageRenderer {
          * resolution with all bands is used to calculate the edges.
          */
         if(this.edgeImage === undefined) {
+            window.taskMonitor.addTask('edgeImage', 'finding edges');
             let numBands = this.getNumBands();
             let width = this.getWidth();
             let height = this.getHeight();
@@ -602,6 +603,7 @@ class ImageRenderer {
                     return calculate_edges(arr, numBands, width, height, false)
                     .then((edges) => {
                         self.edgeImage = edges;
+                        window.taskMonitor.removeTask('edgeImage');
                         return resolve(edges);
                     });
                 });

@@ -53,7 +53,7 @@ class AreaSelector {
             );
             promise = Promise.resolve(element);
         } else if(type === 'magnetic_polygon') {
-            //TODO: calculate edge map
+            window.taskMonitor.addTask('edgeImage', 'finding edges');
             promise = this.dataEntry.renderer.get_edge_image(true)
             .then((edgeMap) => {
                 element = new MagneticPolygonElement(
@@ -65,6 +65,7 @@ class AreaSelector {
                     1000,
                     false
                 );
+                window.taskMonitor.removeTask('edgeImage');
                 return element;
             });
         }
@@ -236,6 +237,7 @@ class AreaSelector {
                 if(this.selectionElements[e].containsPoint(mousePos)) {
                     // clicked into polygon; apply GrabCut
                     window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
+                    window.taskMonitor.addTask('grabCut', 'Grab Cut');
                     let coords_in = this.selectionElements[e].getProperty('coordinates');
                     let self = this;
                     try {
@@ -249,6 +251,7 @@ class AreaSelector {
                                     window.messager.addMessage('No refinement found by GrabCut.', 'regular');
                                 }
                             }
+                            window.taskMonitor.removeTask('grabCut');
                         });
                     } catch(error) {
                         window.messager.addMessage('An error occurred trying to run GrabCut on selection (message: "'+error.toString()+'").', 'error', 0);
