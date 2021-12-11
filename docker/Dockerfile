@@ -1,3 +1,9 @@
+#
+# AIDE main Dockerfile.
+#
+# 2020-21 Jaroslaw Szczegielniak, Benjamin Kellenberger
+#
+
 FROM pytorch/pytorch:1.7.1-cuda11.0-cudnn8-devel
 
 # Avoid warnings by switching to noninteractive
@@ -26,6 +32,9 @@ RUN apt-get update \
     #
     # Libraries for OpenCV
     && apt-get -y install ffmpeg libsm6 libxext6 python3-opencv \
+    #
+    # GDAL
+    && apt-get -y install gdal-bin libgdal-dev \
     #
     # Create a non-root user to use if preferred - see https://aka.ms/vscode-remote/containers/non-root-user.
     && groupadd --gid $USER_GID $USERNAME \

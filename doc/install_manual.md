@@ -4,26 +4,7 @@ Follow these instructions if you are encountering issues with the [installer](in
 
 ## Requirements
 
-The AIDE label interface requires the following libraries:
-
-* bottle>=0.12
-* psycopg2>=2.8.2
-* tqdm>=4.32.1
-* bcrypt>=3.1.6
-* netifaces>=0.10.9
-* gunicorn>=19.9.0
-* Pillow>=2.2.1
-* numpy>=1.16.4
-* requests>=2.22.0
-* celery[librabbitmq,redis,auth,msgpack]>=4.3.0
-
-
-Finally, the [built-in models](builtin_models.md) require:
-
-* pytorch>=1.5.0
-* torchvision>=0.6.0
-* detectron2>=0.3.0
-* opencv-python
+All AIDE modules (bar the database) require the libraries as specified in the [requirements.txt](/requirements.txt).
 
 If you have a CUDA-capable GPU it is highly recommended to install PyTorch with GPU support (see the [official website](https://pytorch.org/get-started/locally/)).
 
@@ -53,7 +34,8 @@ It is strongly recommended to run AIDE in a self-contained Python environment, s
     git clone https://github.com/microsoft/aerial_wildlife_detection.git
 
     # install required libraries
-    sudo apt-get install -y build-essential libpq-dev python-dev ffmpeg libsm6 libxext6 python3-opencv
+    sudo apt-get install -y build-essential libpq-dev python-dev ffmpeg libsm6 libxext6 python3-opencv gdal-bin libgdal-dev
+
     pip install -U -r requirements.txt
 ```
 

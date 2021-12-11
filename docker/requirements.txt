@@ -5,11 +5,16 @@ tqdm>=4.32.1
 bcrypt>=3.1.6
 netifaces>=0.10.9
 python-dateutil
-Pillow>=2.2.1
 numpy
 requests
-# kombu==4.6.11
-celery[redis,auth,msgpack]  #==4.4.7
+celery[redis,auth,msgpack]
+
+# image parsing
+python-magic>=0.4.24
+Pillow>=2.2.1
+rasterio>=1.2.3
+pydicom>=2.2.2
+imantics>=0.1.12
 
 # for the AI backend
 opencv-python
