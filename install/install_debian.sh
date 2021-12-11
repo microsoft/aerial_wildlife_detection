@@ -28,7 +28,7 @@ test_only=FALSE                     # skip installation and only do checks and t
 # -----------------------------------------------------------------------------
 
 # constants
-INSTALLER_VERSION=2.1.210804
+INSTALLER_VERSION=2.2.211211
 MIN_PG_VERSION=9.5
 PG_KEY=ACCC4CF8.asc
 DEFAULT_PORT_RABBITMQ=5672
@@ -932,8 +932,9 @@ log "\e[1m[04/11] \e[36mInstalling dependencies...\e[0m"
 if $test_only ; then
     log "Skipping..."
 else
+    sudo add-apt-repository -y ppa:ubuntugis/ppa | tee -a $log;
     sudo apt-get update | tee -a $log;
-    sudo apt-get install -y build-essential wget libpq-dev python-dev ffmpeg libsm6 libxext6 python3-opencv python3-pip | tee -a $log;
+    sudo apt-get install -y build-essential wget libpq-dev python-dev ffmpeg libsm6 libxext6 python3-opencv python3-pip gdal-bin libgdal-dev | tee -a $log;
     pip install -U -r $aide_root/requirements.txt | tee -a $log;
 fi
 

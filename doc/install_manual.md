@@ -34,6 +34,7 @@ It is strongly recommended to run AIDE in a self-contained Python environment, s
     git clone https://github.com/microsoft/aerial_wildlife_detection.git
 
     # install required libraries
+    sudo add-apt-repository -y ppa:ubuntugis/ppa && apt-get update
     sudo apt-get install -y build-essential libpq-dev python-dev ffmpeg libsm6 libxext6 python3-opencv gdal-bin libgdal-dev
 
     pip install -U -r requirements.txt

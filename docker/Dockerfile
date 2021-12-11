@@ -18,7 +18,8 @@ ARG USER_UID=1000
 ARG USER_GID=$USER_UID
 
 # Setup basic packages, environment and user
-RUN apt-get update \
+RUN add-apt-repository -y ppa:ubuntugis/ppa \
+    && apt-get update \
     && apt-get -y install --no-install-recommends apt-utils dialog 2>&1 \
     #
     # Verify git, process tools, lsb-release (common in install instructions for CLIs) installed
