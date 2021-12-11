@@ -1759,7 +1759,7 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
         let props = {
             'label': window.labelClassHandler.getActiveClassID(),       // polygon entry will create coordinates automatically
             'magnetic_polygon': magneticPolygon,
-            'edge_map': (magneticPolygon? this.renderer.get_edge_image() : null)                  // for magnetic polygon
+            'edge_map': (magneticPolygon? this.renderer.get_edge_image(true) : null)                  // for magnetic polygon
         };
         let anno = new Annotation(window.getRandomID(), props, 'polygons', 'annotation');
         let self = this;
@@ -2107,7 +2107,7 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
         for(var key in this.annotations) {
             if(this.annotations[key].isActive()) active.push(key);
         }
-        if(active.length > 1) {
+        if(active.length > 0) {
             // multiple polygons selected; remove all
             for(var k=0; k<active.length; k++) {
                 this.annotations[active[k]].setActive(false, this.viewport);

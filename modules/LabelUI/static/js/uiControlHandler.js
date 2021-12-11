@@ -169,6 +169,13 @@ class UIControlHandler {
                 });
                 dtControls.append(grabCutBtn);
             }
+
+            // extra select button here too
+            let selectButton_alt = $('<button id="select-button" class="btn btn-sm btn-secondary active" title="Select (S)"><img src="/static/interface/img/controls/select.svg" style="height:18px" /></button>');
+            selectButton_alt.on('click', function() {
+                self.setAction(ACTIONS.DO_NOTHING);
+            });
+            dtControls.append(selectButton_alt);
         }
 
         let removeAnnoCallback = function() {};
@@ -429,7 +436,7 @@ class UIControlHandler {
             Key stroke listener
         */
         $(window).keyup(function(event) {
-            if(window.uiBlocked || window.shortcutsDisabled) return;
+            if(window.uiBlocked || window.shortcutsDisabled) return;
             
             if(event.which === 16) {
                 // shift key
@@ -507,7 +514,7 @@ class UIControlHandler {
         });
 
         $(window).keydown(function(event) {
-            if(window.uiBlocked || window.shortcutsDisabled) return;
+            if(window.uiBlocked || window.shortcutsDisabled) return;
             if(event.which === 16) {
                 self.dataHandler.setPredictionsVisible(false);
                 self.dataHandler.setMinimapVisible(false);

@@ -170,10 +170,10 @@ const band_select = (arr, bands, arr_num_bands) => {
         // interleaved
         let numPix = arr.length / arr_num_bands;
         arr_out = new Array(bands.length*numPix);
-        let bandIndices = linspace(0,bands.length)
+        let bandIndices = Array.from(Array(bands.length).keys());
         promises = bandIndices.map((bIdx) => {
-            for(var p=bands[bIdx]; p<arr.length; p+=arr_num_bands) {
-                arr_out[(p*arr_num_bands)+bIdx] = arr[p]; 
+            for(var p=0; p<numPix; p++) {
+                arr_out[(p*bands.length)+bIdx] = arr[(p*arr_num_bands)+bIdx];
             }
         });
     }

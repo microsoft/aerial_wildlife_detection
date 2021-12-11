@@ -127,14 +127,14 @@ const image_enhancement = (arr, renderConfig) => {
     });
 }
 
-const calculate_edges = (arr, numBands, width, height) => {
+const calculate_edges = (arr, numBands, width, height, interleave) => {
     /**
-     * Calculates a Sobel edge detection on an array.
+     * Calculates a Sobel edge detection on an array. Returns an interleaved
+     * array if "interleave" is true, else band sequential.
      */
     let promise = Promise.resolve(arr);
     // reshape array
-    let interleaved = is_interleaved(arr);
-    if(interleaved) {
+    if(is_interleaved(arr)) {
         promise = biptobsq(arr, numBands);
     }
 
@@ -147,7 +147,7 @@ const calculate_edges = (arr, numBands, width, height) => {
         return sobel(arr_bsq);
     })
     .then((arr_edges) => {
-        if(interleaved) {
+        if(interleave) {
             return bsqtobip(arr_edges);
         } else {
             return arr_edges;
@@ -555,17 +555,51 @@ class ImageRenderer {
         }
     }
 
-    get_edge_image() {
+    get_edge_image(fromCanvas) {
         /**
-         * Calculates the image's edges with a Sobel filter.
+         * Calculates the image's edges with a Sobel filter. If "fromCanvas" is
+         * true, the current RGB image as visible on the annotation canvas will
+         * be taken as reference. This can result in strong speedups and reduced
+         * memory requirements, especially if the original image is of very high
+         * resolution and/or has more than three bands. However, it might reduce
+         * the quality of the edges. Otherwise the original image in full
+         * resolution with all bands is used to calculate the edges.
          */
         if(this.edgeImage === undefined) {
             let numBands = this.getNumBands();
+            let width = this.getWidth();
+            let height = this.getHeight();
             let self = this;
             return new Promise((resolve) => {
-                let allBands = Array.from(Array(numBands).keys());
-                self.parser.get_image_array(allBands, true).then((arr) => {
-                    return calculate_edges(arr, numBands, self.getWidth(), self.getHeight())
+                let promise = null;
+                if(fromCanvas) {
+                    // draw image onto resized canvas       //TODO: very hacky; also: dedicated function?
+                    numBands = 3;   // RGB (we'll remove the alpha band below)
+                    promise = new Promise((resolve) => {
+                        let imgC = self.get_image(true);
+                        let scaleRatio = Math.max(
+                            self.viewport.canvas.width() / imgC.width,
+                            self.viewport.canvas.height() / imgC.height
+                        )
+                        let dummyCanvas = document.createElement('canvas');
+                        width = parseInt(scaleRatio * imgC.width);
+                        height = parseInt(scaleRatio * imgC.height);
+                        dummyCanvas.width = width;
+                        dummyCanvas.height = height;
+                        let ctx = dummyCanvas.getContext('2d');
+                        ctx.drawImage(imgC, 0, 0, dummyCanvas.width, dummyCanvas.height);
+                        let imageData = ctx.getImageData(0, 0, width, height);
+                        return resolve(imageData.data);
+                    })
+                    .then((arr) => {
+                        return band_select(arr, [0,1,2], 4);        // remove alpha band
+                    });
+                } else {
+                    let allBands = Array.from(Array(numBands).keys());
+                    promise = self.parser.get_image_array(allBands, true);
+                }
+                promise.then((arr) => {
+                    return calculate_edges(arr, numBands, width, height, false)
                     .then((edges) => {
                         self.edgeImage = edges;
                         return resolve(edges);

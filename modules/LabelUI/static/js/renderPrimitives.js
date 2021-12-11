@@ -664,7 +664,7 @@ class PolygonElement extends AbstractRenderElement {
             let self = this;
             setInterval(function() {
                 try {
-                    self.style.lineDashOffset = (self.style.lineDashOffset + 2) % self.style.lineDash[0];
+                    self.style.lineDashOffset = (self.style.lineDashOffset + 1) % (2*self.style.lineDash[0]);
                 } catch {}
             }, this.refreshRate);
         }
@@ -1204,22 +1204,27 @@ class MagneticPolygonElement extends PolygonElement {
         this.edgeMap = edgeMap;
     }
 
-    _get_edgemap_argmax(coords, sideLength, minVal) {
+    _get_edgemap_argmax(coords_rel, sideLength, minVal) {
         /**
-         * Receives a pair of absolute coordinates and a sideLength (size in
-         * pixels) and checks the edge map for high values. Returns the
+         * Receives a pair of relative coordinates and a sideLength (size in
+         * pixels) and checks the edge map for high values. Returns the relative
          * coordinates of the pixel with the highest value within the local
-         * neighborhood square with side length "sideLength".
-         * Only considers pixels with minimum value greater than "minVal";
-         * TODO: make percentile?
+         * neighborhood square with side length "sideLength". Only considers
+         * pixels with minimum value greater than "minVal"; TODO: make
+         * percentile?
          */
+        // calc. absolute coordinates w.r.t. edge map size
+        let coords_abs = [
+            parseInt(this.edgeMap.length * coords_rel[0]),
+            parseInt(this.edgeMap[0].length * coords_rel[1])
+        ]
         let maxval = minVal;
         let argmax = undefined;
         try {
-            let minX = Math.max(0, coords[0]-sideLength);
-            let maxX = Math.min(this.edgeMap.length-1, coords[0]+sideLength-1);
-            let minY = Math.max(0, coords[1]-sideLength);
-            let maxY = Math.min(this.edgeMap[0].length-1, coords[1]+sideLength-1);
+            let minX = Math.max(0, coords_abs[0]-sideLength);
+            let maxX = Math.min(this.edgeMap.length-1, coords_abs[0]+sideLength-1);
+            let minY = Math.max(0, coords_abs[1]-sideLength);
+            let maxY = Math.min(this.edgeMap[0].length-1, coords_abs[1]+sideLength-1);
             for(var x=minX; x<maxX; x++) {
                 for(var y=minY; y<maxY; y++) {
                     let val = this.edgeMap[x][y];
@@ -1232,6 +1237,11 @@ class MagneticPolygonElement extends PolygonElement {
         } catch(err) {
             console.error(err);
         }
+        // back to relative coordinates
+        argmax = [
+            parseFloat(argmax[0]) / this.edgeMap.length,
+            parseFloat(argmax[1]) / this.edgeMap[0].length
+        ]
         return argmax;
     }
 
@@ -1248,17 +1258,9 @@ class MagneticPolygonElement extends PolygonElement {
                 );
             if(dist > tolerance) {
                 // check local neighborhood in edge map for strong gradients
-                let coords_abs = [
-                    parseInt(coords[0] * this.edgeMap.length),
-                    parseInt(coords[1] * this.edgeMap[0].length)
-                ];
-                let edge_argmax = this._get_edgemap_argmax(coords_abs, 5, 0.1);    //TODO: hyperparameters
+                let edge_argmax = this._get_edgemap_argmax(coords, 5, 0.1);    //TODO: hyperparameters
                 if(edge_argmax !== undefined) {
-                    let edge_argmax_rel = [
-                        edge_argmax[0] / this.edgeMap.length,
-                        edge_argmax[1] / this.edgeMap[0].length
-                    ];
-                    this.addVertex(edge_argmax_rel, -1);
+                    this.addVertex(edge_argmax, -1);
                     this._createAdjustmentHandles(viewport, true);
                 }
             }

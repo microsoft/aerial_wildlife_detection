@@ -13,7 +13,7 @@ const SELECTION_STYLE = {
     'lineWidth': 2.0,
     'lineDash': [10],
     'lineDashOffset': 0.0,
-    'refresh_rate': 250
+    'refresh_rate': 100
     //TODO: make proper animate entry
 }
 
@@ -54,7 +54,7 @@ class AreaSelector {
             promise = Promise.resolve(element);
         } else if(type === 'magnetic_polygon') {
             //TODO: calculate edge map
-            promise = this.dataEntry.renderer.get_edge_image()
+            promise = this.dataEntry.renderer.get_edge_image(true)
             .then((edgeMap) => {
                 element = new MagneticPolygonElement(
                     self.dataEntry.id + '_selPolygon_' + self.selectionElements.length.toString(),
