@@ -39,6 +39,12 @@ class AreaSelector {
     }
 
     addSelectionElement(type, startCoordinates) {
+        /**
+         * Adds a new selection element, unless there is a current one that is
+         * not yet closed.
+         */
+        if(this.activePolygon !== null && !this.activePolygon.isClosed()) return;
+
         let element = undefined;
         let promise = null;
         let self = this;
@@ -90,7 +96,7 @@ class AreaSelector {
                 element.setActive(true, self.dataEntry.viewport);
                 element.mouseDrag = true;
                 self.dataEntry.segMap.setActive(false, self.dataEntry.viewport);    //TODO
-                window.uiControlHandler.setAction(ACTIONS.ADD_ANNOTATION);      // required for polygon drawing
+                // window.uiControlHandler.setAction(ACTIONS.ADD_ANNOTATION);      // required for polygon drawing (TODO: conflicts with burst mode)
                 self.selectionElements.push(element);
                 self._set_active_polygon(element);
             }
@@ -219,15 +225,22 @@ class AreaSelector {
                     this.removeSelectionElement(this.selectionElements[s]);
                 }
             }
-        } else if([ACTIONS.DO_NOTHING, ACTIONS.ADD_ANNOTATION].includes(window.uiControlHandler.getAction()) &&
-            this.activePolygon !== null) {
-            if(this.activePolygon.isClosed()) {
+        } else if([ACTIONS.DO_NOTHING, ACTIONS.ADD_ANNOTATION].includes(window.uiControlHandler.getAction())) {
+            if(this.activePolygon !== null && this.activePolygon.isClosed()) {
                 // still in selection polygon mode but polygon is closed
                 if(!this.activePolygon.isActive) {
                     if(this.activePolygon.containsPoint(mousePos)) {
-                        this.activePolygon.setActive(true, this.viewport);
+                        this.activePolygon.setActive(true, this.dataEntry.viewport);
                     } else {
                         this.removeSelectionElement(this.activePolygon);
+                    }
+                }
+            } else {
+                // find clicked element...
+                for(var s in this.selectionElements) {
+                    if(this.selectionElements[s].containsPoint(mousePos)) {
+                        // ...and set active again
+                        this._set_active_polygon(this.selectionElements[s])
                     }
                 }
             }

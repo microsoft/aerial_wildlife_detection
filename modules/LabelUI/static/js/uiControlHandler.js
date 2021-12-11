@@ -20,7 +20,8 @@ const ACTIONS = {
     ERASE_SELECTION: 8,
     ADD_SELECT_POLYGON: 9,
     ADD_SELECT_POLYGON_MAGNETIC: 10,
-    GRAB_CUT: 11
+    GRAB_CUT: 11,
+    SIMPLIFY_POLYGON: 12
 }
 
 const CURSORS = [
@@ -125,7 +126,7 @@ class UIControlHandler {
         /*
             data controls
         */
-        var dtControls = $('#interface-controls');
+        let dtControls = $('<div class="data-controls"></div>');
 
         if(!(['labels', 'segmentationMasks'].includes(window.annotationType))) {
             // add button
@@ -150,7 +151,7 @@ class UIControlHandler {
                 let magneticPolygonCheck = $('<input type="checkbox" id="magnetic-polygon-check" class="custom-control-input inline-control" style="margin-right:2px" title="Magnetic Polygon" />');
                 magneticPolygonCheck.change(magneticPolyCallback);
                 magneticPolygonCheck.prop('checked', this.magneticPolygon);
-                let magneticPolygonCheckContainer = $('<div id="magnetic-lasso-control" class="custom-control custom-switch inline-control"></div>');
+                let magneticPolygonCheckContainer = $('<div id="magnetic-lasso-control" class="toolset-options-container custom-control custom-switch inline-control"></div>');
                 magneticPolygonCheckContainer.append(magneticPolygonCheck);
                 magneticPolygonCheckContainer.append($('<label for="magnetic-polygon-check" class="custom-control-label inline-control" style="margin-left:0px;margin-right:10px;color:white;cursor:pointer;" title="Magnetic Polygon"><img src="/static/interface/img/controls/lasso_magnetic.svg" style="height:18px" title="Magnetic Polygon" /></label>'));
                 dtControls.append(magneticPolygonCheckContainer);
@@ -171,6 +172,23 @@ class UIControlHandler {
                     }
                 });
                 dtControls.append(grabCutBtn);
+
+                // polygon simplification
+                let simplifyBtn = $('<button class="btn btn-sm btn-secondary inline-control active" style="margin-right:2px">Simplify</button>');
+                simplifyBtn.on('click', function() {
+                    self.setAction(ACTIONS.SIMPLIFY_POLYGON);
+                });
+                dtControls.append(simplifyBtn);
+                let simplifyControlsCont = $('<div id="simplify-polygon-control" class="toolset-options-container inline-control"></div>');
+                let simplifyToleranceSlider = $('<input type="range" id="simplify-polygon-tolerance" min="0" max="100" value="50" style="width:80px" />');
+                window.polygonSimplificationTolerance = 0.01;
+                simplifyToleranceSlider.on('input', function() {
+                    let val = 100.0 - parseFloat($(this).val());
+                    window.polygonSimplificationTolerance = .5 / val;
+                });
+                simplifyControlsCont.append($('<label for="simplify-polygon-tolerance" style="font-size:11pt;margin-top:5px">strength:</label>'));
+                simplifyControlsCont.append(simplifyToleranceSlider);
+                dtControls.append(simplifyControlsCont);
             }
 
             // extra select button here too
@@ -215,7 +233,9 @@ class UIControlHandler {
         let burstModeCheckContainer = $('<div class="custom-control custom-switch inline-control"></div>');
         burstModeCheckContainer.append(burstModeCheck);
         burstModeCheckContainer.append($('<label for="burst-mode-check" class="custom-control-label inline-control" style="margin-left:0px;margin-right:10px;color:white;cursor:pointer;" title="Enable burst mode (M)">burst mode</label>'));
-        dtControls.append(burstModeCheckContainer);
+        let burstModeWrapper = $('<div class="toolset-options-container"></div>');
+        burstModeWrapper.append(burstModeCheckContainer);
+        dtControls.append(burstModeWrapper);
 
         if(window.enableEmptyClass) {
             var clearAllCallback = function() {
@@ -393,11 +413,13 @@ class UIControlHandler {
             let segControls = $('<div class="inline-control"></div>');
             segControls.append(this.segmentation_controls.brush);
             segControls.append(this.segmentation_controls.erase);
-            segControls.append(this.segmentation_controls.brush_rectangle);
-            segControls.append(this.segmentation_controls.brush_circle);
-            segControls.append($('<span style="margin-left:10px;margin-right:5px;color:white">Size:</span>'));
-            segControls.append(this.segmentation_controls.brush_size);
-            segControls.append($('<span style="margin-left:5px;color:white">px</span>'));
+            let brushOptionsContainer = $('<div class="toolset-options-container inline-control"></div>');
+            brushOptionsContainer.append(this.segmentation_controls.brush_rectangle);
+            brushOptionsContainer.append(this.segmentation_controls.brush_circle);
+            brushOptionsContainer.append($('<span style="margin-left:10px;margin-right:5px;color:white">Size:</span>'));
+            brushOptionsContainer.append(this.segmentation_controls.brush_size);
+            brushOptionsContainer.append($('<span style="margin-left:5px;color:white">px</span>'));
+            segControls.append(brushOptionsContainer);
 
             segControls.append(this.segmentation_controls.select_polygon);
             segControls.append(this.segmentation_controls.select_polygon_magnetic);
@@ -413,8 +435,10 @@ class UIControlHandler {
             segControls.append(this.segmentation_controls.erase_selection);
             segControls.append(this.segmentation_controls.clear_selection);
 
-            segControls.append($('<span style="margin-left:10px;margin-right:5px;color:white">Opacity:</span>'));
-            segControls.append(this.segmentation_controls.opacity);
+            let opacityContainer = $('<div class="toolset-options-container inline-control"></div>');
+            opacityContainer.append($('<span style="margin-left:10px;margin-right:5px;color:white">Opacity:</span>'));
+            opacityContainer.append(this.segmentation_controls.opacity);
+            segControls.append(opacityContainer);
 
             dtControls.append(segControls);
         }
@@ -426,12 +450,18 @@ class UIControlHandler {
         var prevBatchCallback = function() {
             self.dataHandler.previousBatch();
         }
-        var prevBatchBtn = $('<button id="previous-button" class="btn btn-sm btn-primary float-left">Previous</button>');
+
+        let interfaceControls = $('#interface-controls');
+        
+        let prevBatchBtn = $('<button id="previous-button" class="btn btn-sm btn-primary float-left">Previous</button>');
         prevBatchBtn.click(prevBatchCallback);
-        dtControls.append(prevBatchBtn);
-        var nextBatchBtn = $('<button id="next-button" class="btn btn-sm btn-primary float-right">Next</button>');
+        interfaceControls.append(prevBatchBtn);
+        
+        interfaceControls.append(dtControls);
+        
+        let nextBatchBtn = $('<button id="next-button" class="btn btn-sm btn-primary float-right">Next</button>');
         nextBatchBtn.click(nextBatchCallback);
-        dtControls.append(nextBatchBtn);
+        interfaceControls.append(nextBatchBtn);
 
 
 

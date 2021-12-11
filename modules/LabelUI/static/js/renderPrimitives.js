@@ -89,6 +89,27 @@ function center(coordinates) {
     return center;
 }
 
+function simplifyPolygon(coordinates, tolerance, highQuality) {
+    /**
+     * Uses the Douglas-Peucker algorithm through the simplify.js library
+     * (https://github.com/mourner/simplify-js), if available.
+     */
+    if(typeof(simplify) !== 'function') return undefined;
+    if(coordinates.length < 8) return coordinates;
+
+    // convert coordinates into [{x,y}] format
+    let coords_dict = [];
+    for(var c=0; c<coordinates.length; c+=2) {
+        coords_dict.push({x:coordinates[c],y:coordinates[c+1]});
+    }
+    let coords_simplified = simplify(coords_dict, tolerance, highQuality);
+    let coords_out = [];
+    for(var c=0; c<coords_simplified.length; c++) {
+        coords_out.push(coords_simplified[c].x);
+        coords_out.push(coords_simplified[c].y);
+    }
+    return coords_out;
+}
 
 
 class AbstractRenderElement {
@@ -991,7 +1012,7 @@ class PolygonElement extends AbstractRenderElement {
     /* interaction events */
     _mousedown_event(event, viewport, force) {
         if(!this.visible ||
-            !force && (!([ACTIONS.DO_NOTHING, ACTIONS.ADD_ANNOTATION].includes(window.uiControlHandler.getAction())))) return;
+            !force && (!([ACTIONS.DO_NOTHING, ACTIONS.ADD_ANNOTATION, ACTIONS.ADD_SELECT_POLYGON, ACTIONS.ADD_SELECT_POLYGON_MAGNETIC].includes(window.uiControlHandler.getAction())))) return;
         this.mousePos_current = viewport.getRelativeCoordinates(event, 'validArea');
         this.mouseDrag = (event.which === 1);
         let tolerance = viewport.transformCoordinates([0,0,window.annotationProximityTolerance,0], 'canvas', true)[2];
@@ -1021,7 +1042,7 @@ class PolygonElement extends AbstractRenderElement {
         let coords = viewport.getRelativeCoordinates(event, 'validArea');
 
         if(!this.visible || 
-            !force && (![ACTIONS.DO_NOTHING, ACTIONS.ADD_ANNOTATION].includes(window.uiControlHandler.getAction())
+            !force && (![ACTIONS.DO_NOTHING, ACTIONS.ADD_ANNOTATION, ACTIONS.ADD_SELECT_POLYGON, ACTIONS.ADD_SELECT_POLYGON_MAGNETIC].includes(window.uiControlHandler.getAction())
             )) return;
         if(this.mouseDrag) {
             if(this.activeHandle === 'center') {
@@ -1071,7 +1092,7 @@ class PolygonElement extends AbstractRenderElement {
         }
 
         // update cursor
-        if(window.uiControlHandler.getAction() === ACTIONS.ADD_ANNOTATION || this.activeHandle == null) {
+        if([ACTIONS.ADD_ANNOTATION, ACTIONS.ADD_SELECT_POLYGON, ACTIONS.ADD_SELECT_POLYGON_MAGNETIC].includes(window.uiControlHandler.getAction()) || this.activeHandle == null) {
             viewport.canvas.css('cursor', window.uiControlHandler.getDefaultCursor());
         } else {
             viewport.canvas.css('cursor', 'move');
@@ -1084,7 +1105,7 @@ class PolygonElement extends AbstractRenderElement {
     _mouseup_event(event, viewport, force) {
         if(!this.visible ||
             !force && (!(window.uiControlHandler.getAction() === ACTIONS.DO_NOTHING ||
-            window.uiControlHandler.getAction() === ACTIONS.ADD_ANNOTATION))) return;
+            [ACTIONS.ADD_ANNOTATION, ACTIONS.ADD_SELECT_POLYGON, ACTIONS.ADD_SELECT_POLYGON_MAGNETIC].includes(window.uiControlHandler.getAction())))) return;
         let mousePos = viewport.getRelativeCoordinates(event, 'validArea');
         let tolerance = viewport.transformCoordinates([0,0,window.annotationProximityTolerance,0], 'canvas', true)[2];
         if(this.isClosed()) {
@@ -1116,7 +1137,7 @@ class PolygonElement extends AbstractRenderElement {
 
     _mouseleave_event(event, viewport, force) {
         this.mouseDrag = false;
-        if(force || (window.uiControlHandler.getAction() === ACTIONS.ADD_ANNOTATION && !window.uiControlHandler.burstMode)) {
+        if(force || ([ACTIONS.ADD_ANNOTATION, ACTIONS.ADD_SELECT_POLYGON, ACTIONS.ADD_SELECT_POLYGON_MAGNETIC].includes(window.uiControlHandler.getAction()) && !window.uiControlHandler.burstMode)) {
             window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
         }
     }

@@ -2083,6 +2083,21 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
                     }
                 }
             }
+
+        } else if(window.uiControlHandler.getAction() === ACTIONS.SIMPLIFY_POLYGON) {
+            // find clicked polygon
+            for(var key in this.annotations) {
+                let coords = this.viewport.getRelativeCoordinates(event, 'validArea');
+                if(this.annotations[key].geometry.containsPoint(coords)) {
+                    // simplify polygon
+                    window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
+                    let coords_in = this.annotations[key].geometry.getProperty('coordinates');
+                    let coords_out = simplifyPolygon(coords_in, window.polygonSimplificationTolerance, true);      //TODO: hyperparameters
+                    if(Array.isArray(coords_out)) {
+                        this.annotations[key].geometry.setProperty('coordinates', coords_out);
+                    }
+                }
+            }
         }
 
         this.render();

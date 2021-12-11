@@ -72,8 +72,11 @@ class ImageViewport {
                     }
                     if(event.type === 'mouseup') {
                         // reset action, unless in panning or burst mode
-                        if(window.uiControlHandler.getAction() != ACTIONS.PAN && !window.uiControlHandler.burstMode)
+                        if(![ACTIONS.PAN, ACTIONS.ADD_SELECT_POLYGON, ACTIONS.ADD_SELECT_POLYGON_MAGNETIC].includes(window.uiControlHandler.getAction()) &&
+                            (!window.uiControlHandler.burstMode && window.annotationType !== 'polygons')) {
+                            // polygons need multiple interactions, so we don't want to reset the action type regardless
                             window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
+                        }
                     }
                     self.render();
                 });
