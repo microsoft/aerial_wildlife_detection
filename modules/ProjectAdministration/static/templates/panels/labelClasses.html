@@ -364,7 +364,7 @@
                         if(token.includes('name') || token.includes('class') || token.includes('label')) {
                             indexMap['className'] = t;
                             headerExists = true;
-                        } else if(token.includes('color') || token.includes('colour')) {
+                        } else if(token.includes('color') || token.includes('colour')) {
                             indexMap['color'] = t;
                             headerExists = true;
                         } else {
@@ -584,7 +584,7 @@
         // check if name is unique (in case of label class)
         let newName = $('#sel-node-title').val();
         let maxPermittedEntries = (newName === window.selectedNode.name ? 1 : 0);
-        if(!Array.isArray(window.selectedNode.children) || window.selectedNode.children.length === 0) {
+        if(!Array.isArray(window.selectedNode.children) || window.selectedNode.children.length === 0) {
             let numEntries = getNumEntriesWithName(newName, $(window.lcTree).tree('getTree'), false);
             let newName_extended = undefined;
             let counter = 1;

@@ -1022,7 +1022,7 @@ class WorkflowDesigner {
          * test node, the test node and target node would form a loop,
          * hence true is returned. Else returns false.
          */
-        if(testNode === null || testNode === undefined || targetNode === null || targetNode === undefined) {
+        if(testNode === null || testNode === undefined || targetNode === null || targetNode === undefined) {
             return false;
         }
         var latestNode = targetNode;

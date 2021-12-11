@@ -547,7 +547,7 @@ class WorkflowMonitor {
                 let totalProgress = 0;
                 let targetProgress = 0;
                 let tasks = data['status']['tasks'];
-                if(tasks === undefined || tasks === null || (Array.isArray(tasks) && tasks.length === 0)) {
+                if(tasks === undefined || tasks === null || (Array.isArray(tasks) && tasks.length === 0)) {
                     tasks = [];
                     self.setQueryInterval(self.queryIntervals['idle'], false);
                 } else {

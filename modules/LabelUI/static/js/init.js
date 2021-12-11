@@ -31,7 +31,7 @@ $(document).ready(function() {
         if(keywords != null && keywords != undefined) {
             keywords = keywords.split(/s[\s ]+/);
         }
-        if(keywords.length === 0 || (keywords.length === 1 && keywords[0] === '')) keywords = null;
+        if(keywords.length === 0 || (keywords.length === 1 && keywords[0] === '')) keywords = null;
         window.labelClassHandler.filter(keywords, autoSelect);
 
         if(autoSelect) {

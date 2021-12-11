@@ -169,7 +169,7 @@
     // helper function
     function getInt(value, fallback, min, max) {
         let response = fallback;
-        if(typeof(value) === 'number' || typeof(value) === 'string') {
+        if(typeof(value) === 'number' || typeof(value) === 'string') {
             response = parseInt(value);
             if(typeof(min) === 'number') {
                 response = Math.max(response, min);
@@ -447,7 +447,7 @@
                     $('#ai-model-class-author').html(window.availableModels['prediction'][data['ai_model_library']]['author']);
                     $('#ai-model-class-descr').html(window.availableModels['prediction'][data['ai_model_library']]['description']);
                 }
-                if(rankerLib === null || rankerLib === undefined || !(window.availableModels['ranking'].hasOwnProperty(rankerLib))) {
+                if(rankerLib === null || rankerLib === undefined || !(window.availableModels['ranking'].hasOwnProperty(rankerLib))) {
                     window.currentRankerModel = undefined;
                     alModelSelect.val('unset');
                     $('#al-model-class-author').html('');

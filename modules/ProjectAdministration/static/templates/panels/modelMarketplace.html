@@ -549,7 +549,7 @@
                                 modelDisclaimer = 'You are the author of this model and have shared it on '+ timeCreated + '.';
                                 $('#marketplace-model-remove').show();
                                 $('#marketplace-model-reshare').hide();
-                            } else {
+                            } else {
                                 modelDisclaimer = 'You had shared this model on '+ timeCreated + ', but have hidden it from the marketplace again.';
                                 $('#marketplace-model-remove').hide();
                                 $('#marketplace-model-reshare').show();
@@ -1269,7 +1269,7 @@
             $('#file-upload-progress-bar').append(pBar.getMarkup());
 
         } else {
-            if(selectedModel_id_marketplace === null || selectedModel_id_marketplace === undefined) {
+            if(selectedModel_id_marketplace === null || selectedModel_id_marketplace === undefined) {
                 return $.Deferred().promise();
             }
             modelName = modelsMarketplace[selectedModel_id_marketplace]['name'];

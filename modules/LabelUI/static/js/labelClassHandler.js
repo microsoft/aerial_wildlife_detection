@@ -92,7 +92,7 @@ class LabelClass {
         }
 
         var foregroundStyle = '';
-        if(altStyle || this.darkForeground) {
+        if(altStyle || this.darkForeground) {
             foregroundStyle = 'color:black;';
         }
         var legendInactive = 'legend-inactive';
@@ -159,7 +159,7 @@ class LabelClass {
             var kw = keywords[k].toLowerCase();
             var levDist = window.levDist(target, kw);
             minLevDist = Math.min(minLevDist, levDist);
-            if(target.includes(kw) || levDist <= 3) {
+            if(target.includes(kw) || levDist <= 3) {
                 if(this.markup != null) {
                     this.markup.show();
                 }

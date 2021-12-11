@@ -133,7 +133,7 @@ function loadProjectInfo() {
                         }
 
                         var labelButton = '<a href="' + key + '/interface" class="btn btn-primary label-button">'+labelButtonText+'</a>';
-                        if(!userAdmitted || !data['projects'][key]['interface_enabled']) {
+                        if(!userAdmitted || !data['projects'][key]['interface_enabled']) {
                             labelButton = '<div class="btn btn-secondary label-button" style="cursor:not-allowed;" disabled="disabled">(interface disabled)</div>';
                         }
 

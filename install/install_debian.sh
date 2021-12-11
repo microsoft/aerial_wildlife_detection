@@ -1408,7 +1408,7 @@ fi
 # -----------------------------------------------------------------------------
 
 log "\e[1m[11/11] \e[36mSystemd processes...\e[0m"
-if [[ $test_only == false && $yes == false && ${#install_daemon} -eq 0 && ( $install_labelUI == true || $install_aicontroller == true ) ]]; then
+if [[ $test_only == false && $yes == false && ${#install_daemon} -eq 0 && ( $install_labelUI == true || $install_aicontroller == true ) ]]; then
     # prompt
     log "\nWould you like to install a systemd service for AIDE to start it with the operating system?"
     while true; do
@@ -1420,7 +1420,7 @@ if [[ $test_only == false && $yes == false && ${#install_daemon} -eq 0 && ( $ins
     done
 fi
 install_daemon=$(getBool $install_daemon)
-if [[ $test_only == false && $install_daemon == true && ( $install_labelUI == true || $install_aicontroller == true ) ]]; then
+if [[ $test_only == false && $install_daemon == true && ( $install_labelUI == true || $install_aicontroller == true ) ]]; then
 
     # AIDE service group
     if grep -q $aide_group /etc/group; then
@@ -1455,7 +1455,7 @@ if [[ $test_only == false && $install_daemon == true && ( $install_labelUI == tr
     echo "export PYTHONPATH=$aide_root" | sudo tee -a $homedir/.profile >> /dev/null;
     sudo chown $aide_daemon_user:$aide_daemon_user $homedir/.profile;
 
-    if [[ $install_labelUI == true || $install_aicontroller == true ]]; then
+    if [[ $install_labelUI == true || $install_aicontroller == true ]]; then
         # Web server daemon
         servicePath="/etc/systemd/system/$SYSTEMD_TARGET_SERVER.service"
         if [ -f "$servicePath" ]; then

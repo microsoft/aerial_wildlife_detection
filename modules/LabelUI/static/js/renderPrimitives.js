@@ -2309,7 +2309,7 @@ class SegmentationElement extends AbstractRenderElement {
          * Paint bucket operation to fill (or clear, if color is null) the
          * canvas with coordinates from a polygon (xy interleaved; relative to canvas size).
          */
-        if(!Array.isArray(coordinates) || coordinates.length < 6) return;
+        if(!Array.isArray(coordinates) || coordinates.length < 6) return;
         if(color === null) this.ctx.globalCompositeOperation = 'destination-out';
         else {
             this.ctx.globalCompositeOperation = 'source-over';
