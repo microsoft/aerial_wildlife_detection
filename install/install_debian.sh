@@ -596,8 +596,11 @@ log "\e[1m[01/11] \e[36mChecking system...\e[0m"
 
 # check if user is non-root and has admin privileges
 if [ "$EUID" -eq 0 ]; then
-    #TODO: allow root but install under new user "aide"?
-    abort 1 "Installer should not be run from root"
+    #Allow root install under New user
+    read  -p  "Please provide a value for new user name: " inp1    
+    adduser $inp1
+    usermod -aG sudo $inp1
+    su $inp1
 fi
 hasSudo=$(sudo -v)
 if [ ${#hasSudo} -ne 0 ]; then
