@@ -435,7 +435,22 @@ class UIControlHandler {
 
             // Magic wand
             segControls.append(this.segmentation_controls.magic_wand);
-            //TODO: extra controls for tolerance, size
+            let mwToolsContainer = $('<div class="toolset-options-container inline-control"></div>');
+            let mwTolerance = $('<input type="number" id="magic-wand-tolerance" min="1" max="255" value="32" />');
+            mwTolerance.on('input', function() {
+                window.magicWandTolerance = parseFloat($(this).val());
+            });
+            window.magicWandTolerance = 32.0;
+            mwToolsContainer.append($('<label for="magic-wand-tolerance">Tolerance:</label>'));
+            mwToolsContainer.append(mwTolerance);
+            let mwRadius = $('<input type="number" id="magic-wand-radius" min="1" max="8192" value="120" />');
+            mwRadius.on('input', function() {
+                window.magicWandRadius = parseInt($(this).val());
+            });
+            window.magicWandRadius = 120;
+            mwToolsContainer.append($('<label for="magic-wand-radius">Max radius:</label>'));
+            mwToolsContainer.append(mwRadius);
+            segControls.append(mwToolsContainer);
 
             // GrabCut
             let grabCutBtn = $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/grabcut.svg" style="height:18px" title="Grab Cut" /></button>');

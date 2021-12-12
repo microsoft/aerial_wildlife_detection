@@ -315,8 +315,8 @@ class AreaSelector {
             window.taskMonitor.addTask('magicWand', 'magic wand');
             try {
                 //TODO
-                let tolerance = 32;
-                let maxRadius = 120;
+                let tolerance = window.magicWandTolerance;
+                let maxRadius = window.magicWandRadius;
                 let rgbOnly = false;
                 let self = this;
                 this.magicWand(this.dataEntry.fileName, mousePos, tolerance, maxRadius, rgbOnly).then((coords_out) => {

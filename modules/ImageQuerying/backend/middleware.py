@@ -5,7 +5,7 @@
 import json
 import numpy as np
 import cv2
-from scipy.ndimage.morphology import binary_fill_holes
+from scipy.ndimage.morphology import binary_fill_holes, binary_dilation
 from detectron2.structures.masks import polygons_to_bitmask, polygon_area
 from imantics import Mask
 
@@ -119,7 +119,17 @@ class ImageQueryingMiddleware:
                 inside[idxx] = ~inside[idxx]    
 
             p1x,p1y = p2x,p2y
-        return inside    
+        return inside
+    
+
+
+    @staticmethod
+    def dilate_mask(mask):
+        '''
+            Performs morphological dilation on a mask.
+            #TODO: make extra routine somewhere?
+        '''
+        return binary_dilation(mask)
 
 
 
@@ -174,6 +184,9 @@ class ImageQueryingMiddleware:
 
         # close holes in mask
         mask_out = binary_fill_holes(mask_out)      #TODO: different structured element?
+
+        # dilate to remove border effects when polygonizing
+        mask_out = binary_dilation(mask_out)        #TODO: ditto?
 
         # polygonize; keep largest polygon that contains seed coordinates
         result = None
@@ -254,6 +267,9 @@ class ImageQueryingMiddleware:
 
             mask, _, _ = cv2.grabCut(img, mask, None, bgdModel, fgdModel, num_iter, mode=cv2.GC_INIT_WITH_MASK)
             mask_out = np.where((mask==2)|(mask==0),0,1).astype(np.uint8)
+
+            # dilate to remove border effects when polygonizing
+            mask_out = binary_dilation(mask_out)        #TODO: more advanced features?
 
             if return_polygon:
                 # convert mask to polygon and keep the largest only
