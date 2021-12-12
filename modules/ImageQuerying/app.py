@@ -33,8 +33,8 @@ class ImageQuerier:
 
         @self.app.post('/<project>/grabCut')
         def grab_cut(project):
-            if not self.loginCheck(extend_session=True):
-                abort(401, 'forbidden')
+            # if not self.loginCheck(extend_session=True):
+            #     abort(401, 'forbidden')
             
             try:
                 args = request.json
@@ -58,8 +58,8 @@ class ImageQuerier:
 
         @self.app.post('/<project>/magic_wand')
         def magic_wand(project):
-            if not self.loginCheck(extend_session=True):
-                abort(401, 'forbidden')
+            # if not self.loginCheck(extend_session=True):
+            #     abort(401, 'forbidden')
             
             try:
                 args = request.json

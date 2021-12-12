@@ -936,6 +936,7 @@ class PolygonElement extends AbstractRenderElement {
         }
         this.adjustmentHandles = new ElementGroup(this.id + '_adjustHandles', handles);
         viewport.addRenderElement(this.adjustmentHandles);
+        this.adjustmentHandles_dirty = false;
     }
 
     _updateAdjustmentHandles(mousePos, tolerance) {
@@ -1085,7 +1086,6 @@ class PolygonElement extends AbstractRenderElement {
         if(this.adjustmentHandles_dirty) {
             //TODO: dirty hack
             this._createAdjustmentHandles(viewport, true);
-            this.adjustmentHandles_dirty = false;
         } else {
             let tolerance = viewport.transformCoordinates([0,0,window.annotationProximityTolerance,0], 'canvas', true)[2];
             this._updateAdjustmentHandles(this.mouseDrag ? null : coords, tolerance);
@@ -1183,7 +1183,7 @@ class PolygonElement extends AbstractRenderElement {
     render(ctx, scaleFun) {
         if(!this.visible || !this.coordinates.length) return;
         super.render(ctx, scaleFun);
-        
+
         if(this.style.strokeColor != null) ctx.strokeStyle = this.style.strokeColor;
         if(this.style.lineWidth != null) ctx.lineWidth = this.style.lineWidth;
         ctx.setLineDash(this.style.lineDash);
@@ -1259,11 +1259,14 @@ class MagneticPolygonElement extends PolygonElement {
         } catch(err) {
             console.error(err);
         }
+        
         // back to relative coordinates
-        argmax = [
-            parseFloat(argmax[0]) / this.edgeMap.length,
-            parseFloat(argmax[1]) / this.edgeMap[0].length
-        ]
+        if(argmax !== undefined) {
+            argmax = [
+                parseFloat(argmax[0]) / this.edgeMap.length,
+                parseFloat(argmax[1]) / this.edgeMap[0].length
+            ]
+        }
         return argmax;
     }
 

@@ -239,10 +239,14 @@ class UIControlHandler {
         dtControls.append(burstModeWrapper);
 
         if(window.enableEmptyClass) {
-            var clearAllCallback = function() {
-                self.dataHandler.clearLabelInAll();
+            let clearAllCallback = function() {
+                let callbackYes = function() {
+                    window.setUIblocked(false);
+                    self.dataHandler.clearLabelInAll();
+                }
+                window.showYesNoOverlay($('<div>Are you sure you would like to clear all annotations?</div>'), callbackYes, null, 'Yes', 'Cancel');
             }
-            var clearAllBtn = $('<button class="btn btn-sm btn-warning" id="clearAll-button" title="Clear all Annotations (C)">Clear All</button>');
+            let clearAllBtn = $('<button class="btn btn-sm btn-warning" id="clearAll-button" title="Clear all Annotations (C)">Clear All</button>');
             clearAllBtn.click(clearAllCallback);
             dtControls.append(clearAllBtn);
         }
@@ -516,7 +520,11 @@ class UIControlHandler {
                     self.toggleLoupe();
 
                 } else if(ccode === 'C') {
-                    self.dataHandler.clearLabelInAll();
+                    let callbackYes = function() {
+                        window.setUIblocked(false);
+                        self.dataHandler.clearLabelInAll();
+                    }
+                    window.showYesNoOverlay($('<div>Are you sure you would like to clear all annotations?</div>'), callbackYes, null, 'Yes', 'Cancel');
 
                 } else if(ccode === 'E') {
                     self.resetZoom();

@@ -700,9 +700,10 @@ class AbstractDataEntry {
          */
         if(!['boundingBoxes', 'polygons'].includes(this.getAnnotationType())) return null;
         let polygons = [];
-        let annoKeys = Object.keys(this.annotations);
-        for(var k=0; k<annoKeys.length; k++) {
-            let key = annoKeys[k];
+        let annoKeys_all = Object.keys(this.annotations);
+        let annoKeys = [];
+        for(var k=0; k<annoKeys_all.length; k++) {
+            let key = annoKeys_all[k];
             if(this.annotations[key].isActive()) {
                 let geom = this.annotations[key].geometry;
                 if(this.annotations[key].geometryType === 'boundingBoxes') {
@@ -711,6 +712,7 @@ class AbstractDataEntry {
                     geom = geom.getProperty('coordinates');
                 }
                 polygons.push(geom);
+                annoKeys.push(key);
             }
         }
         if(polygons.length) {
@@ -720,8 +722,11 @@ class AbstractDataEntry {
                     for(var x=0; x<data.length; x++) {
                         if(Array.isArray(data[x]) && data[x].length >= 6) {
                             self.annotations[annoKeys[x]].geometry.setProperty('coordinates', data[x]);
+                            //TODO: hack to update adjustment handles
+                            self.annotations[annoKeys[x]].geometry._createAdjustmentHandles(self.viewport, true);
                         }
                     }
+                    self.render();
                 } else {
                     if(typeof(data['message']) === 'string') {
                         window.messager.addMessage('An error occurred trying to run GrabCut on selection (message: "'+data['message'].toString()+'").', 'error', 0);
