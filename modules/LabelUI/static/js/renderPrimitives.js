@@ -2350,6 +2350,29 @@ class SegmentationElement extends AbstractRenderElement {
     }
 
 
+    fill_unlabeled(color) {
+        /**
+         * Paints all currently unpainted pixels with the provided color.
+         */
+        if(typeof(color) === 'string') {
+            color = window.hexToRgb(color, true);
+        }
+
+        let pixels = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+        let data = pixels.data;
+        for(var p=0; p<data.length; p+=4) { //TODO: speedup with promises?
+            if(data[p+3] === 0) {
+                data[p] = color[0];
+                data[p+1] = color[1];
+                data[p+2] = color[2];
+                data[p+3] = 255;
+            }
+        }
+        pixels = new ImageData(data, this.canvas.width, this.canvas.height);
+        this.ctx.putImageData(pixels, 0, 0);
+    }
+
+
     _clear_circle(x, y, size) {
         this.ctx.beginPath();
         this.ctx.globalCompositeOperation = 'destination-out'

@@ -459,6 +459,7 @@ class ImageViewport {
                     coords_out[2] *= canvasSize[0];
                     coords_out[3] *= canvasSize[1];
                 }
+                
             } else if(target === 'validArea') {
 
                     // adjust coordinates according to viewport
@@ -476,6 +477,11 @@ class ImageViewport {
                     coords_out[2] *= validSize[0];
                     coords_out[3] *= validSize[1];
                 }
+            }
+
+            // cast as integers to prevent anti-aliasing in canvas (extra performance)
+            for(var c=0; c<coords_out.length; c++) {
+                coords_out[c] = parseInt(Math.round(coords_out[c]));
             }
         }
         return coords_out;

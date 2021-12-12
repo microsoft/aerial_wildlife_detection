@@ -417,14 +417,20 @@ class ProjectConfigMiddleware:
         predictionFields = list(getattr(Fields_prediction, properties['predictionType']).value)
 
         # custom band configuration
-        bandConfig = properties.get('band_config', DEFAULT_BAND_CONFIG)
-        if bandConfig is not None:
-            bandConfig = json.dumps(bandConfig)
+        bandConfig = properties.get('band_config', None)
+        if not (isinstance(bandConfig, list) or isinstance(bandConfig, tuple)):
+            bandConfig = DEFAULT_BAND_CONFIG
+        bandConfig = json.dumps(bandConfig)
 
         # custom render configuration
-        renderConfig = properties.get('render_config', DEFAULT_RENDER_CONFIG)
-        if renderConfig is not None:
-            renderConfig = json.dumps(renderConfig)
+        renderConfig = properties.get('render_config', None)
+        if isinstance(renderConfig, dict):
+            # verify entries
+            renderConfig = check_args(renderConfig, DEFAULT_RENDER_CONFIG)
+        else:
+            # set to default
+            renderConfig = DEFAULT_RENDER_CONFIG
+        renderConfig = json.dumps(renderConfig)
 
         # create project schema
         self.dbConnector.execute(queryStr.format(

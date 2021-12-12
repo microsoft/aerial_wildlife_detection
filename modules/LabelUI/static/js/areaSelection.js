@@ -38,6 +38,32 @@ class AreaSelector {
         return this.dataEntry.grabCut(polygon);
     }
 
+    magicWand(fileName, mousePos, tolerance, maxRadius, rgbOnly) {
+        /**
+         * Performs a magic wand operation on the image.
+         */
+        return $.ajax({
+            url: window.baseURL + 'magic_wand',
+            method: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            data: JSON.stringify({
+                image_path: fileName,
+                seed_coordinates: mousePos,
+                tolerance: tolerance,
+                max_radius: maxRadius,
+                rgb_only: rgbOnly
+            })
+        })
+        .then((data) => {
+            if(data.hasOwnProperty('result')) {
+                return data['result'];       // Array of coordinates
+            } else {
+                return data;
+            }
+        });
+    }
+
     addSelectionElement(type, startCoordinates) {
         /**
          * Adds a new selection element, unless there is a current one that is
@@ -212,6 +238,7 @@ class AreaSelector {
         let mousePos = this.dataEntry.viewport.getRelativeCoordinates(event, 'validArea');
         if([ACTIONS.PAINT_BUCKET, ACTIONS.ERASE_SELECTION].includes(window.uiControlHandler.getAction())) {
             // find clicked element(s)
+            let numElements = 0;
             for(var s in this.selectionElements) {
                 if(this.selectionElements[s].containsPoint(mousePos)) {
                     // fill it... (TODO: we assume the base class has a segMap property anyway)
@@ -223,7 +250,18 @@ class AreaSelector {
 
                     // ...and remove it
                     this.removeSelectionElement(this.selectionElements[s]);
+                    numElements++;
                 }
+            }
+            if(numElements === 0 && window.uiControlHandler.getAction() === ACTIONS.PAINT_BUCKET) {
+                // clicked in blank with paint bucket; ask to paint all unlabeled pixels
+                let className = window.labelClassHandler.getActiveClassName();
+                let confMarkup = $('<div>Assign all unlabeled pixels to class "' + className + '"?</div>');
+                let self = this;
+                let callbackYes = function() {
+                    self.dataEntry.fill_unlabeled(window.labelClassHandler.getActiveClassID());
+                };
+                window.showYesNoOverlay(confMarkup, callbackYes, null, 'Yes', 'Cancel')
             }
         } else if([ACTIONS.DO_NOTHING, ACTIONS.ADD_ANNOTATION].includes(window.uiControlHandler.getAction())) {
             if(this.activePolygon !== null && this.activePolygon.isClosed()) {
@@ -268,8 +306,35 @@ class AreaSelector {
                         });
                     } catch(error) {
                         window.messager.addMessage('An error occurred trying to run GrabCut on selection (message: "'+error.toString()+'").', 'error', 0);
+                        window.taskMonitor.removeTask('grabCut');
                     }
                 }
+            }
+        } else if(window.uiControlHandler.getAction() === ACTIONS.MAGIC_WAND) {
+            window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
+            window.taskMonitor.addTask('magicWand', 'magic wand');
+            try {
+                //TODO
+                let tolerance = 32;
+                let maxRadius = 120;
+                let rgbOnly = false;
+                let self = this;
+                this.magicWand(this.dataEntry.fileName, mousePos, tolerance, maxRadius, rgbOnly).then((coords_out) => {
+                    if(Array.isArray(coords_out) && coords_out.length >= 6) {
+                        // add new selection polygon
+                        self.addSelectionElement('polygon', coords_out);
+                    } else {
+                        if(coords_out !== null && typeof(coords_out['message']) === 'string') {
+                            window.messager.addMessage('An error occurred trying to run magic wand (message: "'+coords_out['message'].toString()+'").', 'error', 0);
+                        } else {
+                            window.messager.addMessage('No area found with magic wand.', 'regular');
+                        }
+                    }
+                    window.taskMonitor.removeTask('magicWand');
+                });
+            } catch(error) {
+                window.messager.addMessage('An error occurred trying to run magic wand (message: "'+error.toString()+'").', 'error', 0);
+                window.taskMonitor.removeTask('magicWand');
             }
         }
     }

@@ -462,7 +462,7 @@
                 tableRows.each((rowIdx) => {
                     let row = $(tableRows[rowIdx]);
                     let bandName = row.find('input[type="text"]').val();
-                    let bandAssignment = row.find('select').val();
+                    let bandAssignment = row.find('select').val().toLowerCase();
                     bands['bands']['labels'].push(bandName);
                     if(!['null'].includes(bandAssignment)) {
                         bands['bands']['indices'][bandAssignment] = rowIdx;

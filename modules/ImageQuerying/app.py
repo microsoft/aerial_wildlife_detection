@@ -38,13 +38,14 @@ class ImageQuerier:
             
             try:
                 args = request.json
-                imgPath = args['image_path']        #TODO: allow submitting an image directly; query by image ID; etc.
+                imgPath = args['image_path']
                 coords = args['coordinates']
                 returnPolygon = args.get('return_polygon', False)
                 numIter = args.get('num_iter', 5)
 
                 result = self.middleware.grabCut(project, imgPath, coords, returnPolygon, numIter)
                 return {
+                    'status': 0,
                     'result': result
                 }
             
@@ -53,4 +54,29 @@ class ImageQuerier:
                     'status': 1,
                     'message': str(e)
                 }
+        
+
+        @self.app.post('/<project>/magic_wand')
+        def magic_wand(project):
+            if not self.loginCheck(extend_session=True):
+                abort(401, 'forbidden')
             
+            try:
+                args = request.json
+                imgPath = args['image_path']
+                seedCoords = args['seed_coordinates']
+                tolerance = args.get('tolerance', 32)
+                maxRadius = args.get('max_radius', None)
+                rgbOnly = args.get('rgb_only', False)
+
+                result = self.middleware.magicWand(project, imgPath, seedCoords, tolerance, maxRadius, rgbOnly)
+                return {
+                    'status': 0,
+                    'result': result
+                }
+
+            except Exception as e:
+                return {
+                    'status': 1,
+                    'message': str(e)
+                }

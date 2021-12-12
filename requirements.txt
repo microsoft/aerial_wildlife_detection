@@ -10,6 +10,7 @@ requests
 celery[redis,auth,msgpack]
 
 # image parsing
+scipy>=1.7.3
 python-magic>=0.4.24
 Pillow>=2.2.1
 rasterio>=1.2.3

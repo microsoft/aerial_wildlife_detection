@@ -2335,6 +2335,16 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
     }
 
 
+    fill_unlabeled(labelClass) {
+        /**
+         * Assigns all so far unassigned pixels in the segmentation mask to the
+         * indicated class.
+         */
+        let color = window.labelClassHandler.getColor(labelClass);
+        this.segMap.fill_unlabeled(color);
+    }
+
+
     // callbacks
     _canvas_mousedown(event) {
         if(window.uiBlocked) return;
