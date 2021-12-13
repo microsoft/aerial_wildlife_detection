@@ -28,7 +28,20 @@ class AreaSelector {
 
         this._set_listeners_active(true);   //TODO
 
-        //TODO: init edge image for faster magnetic lasso activation
+        // init edge image for faster magnetic lasso activation
+        this.dataEntry.renderer.get_edge_image(true);
+
+        // dashed rectangle that previews the spatial range of the magic wand
+        let mwrect_style = {
+            strokeColor: '#000000',
+            lineWidth: 2,
+            lineDash: [3, 1]
+        };
+        this.magicWand_rectangle = new RectangleElement(
+            'magicWand_preview_rect',
+            null, null, null, null,
+            mwrect_style, false, 1000, true
+        );
     }
 
     grabCut(polygon) {
@@ -175,6 +188,20 @@ class AreaSelector {
         }
     }
 
+    _update_magic_wand_preview_rectangle(event) {
+        if(window.magicWandRadius > 0) {
+            let mousePos = this.dataEntry.viewport.getRelativeCoordinates(event, 'validArea');
+            let size = this.dataEntry.viewport.transformCoordinates([0,0,2*window.magicWandRadius,0], 'validArea', true)[2];
+            this.magicWand_rectangle.x = mousePos[0];
+            this.magicWand_rectangle.y = mousePos[1];
+            this.magicWand_rectangle.width = size;
+            this.magicWand_rectangle.height = size;
+        } else {
+            // no restriction in area; hide rectangle
+            this.magicWand_rectangle.width = null;
+        }
+    }
+
     _set_listeners_active(active) {
         let viewport = this.dataEntry.viewport;
         let self = this;
@@ -200,18 +227,27 @@ class AreaSelector {
 
     _canvas_mouseenter(event) {
         if(window.uiBlocked) return;
-        if(![ACTIONS.ADD_SELECT_POLYGON, ACTIONS.ADD_SELECT_POLYGON_MAGNETIC, ACTIONS.PAINT_BUCKET].includes(window.uiControlHandler.getAction())) {
+        let action = window.uiControlHandler.getAction();
+        if(![ACTIONS.ADD_SELECT_POLYGON, ACTIONS.ADD_SELECT_POLYGON_MAGNETIC, ACTIONS.PAINT_BUCKET].includes(action)) {
             // user changed action (e.g. to paint function); cancel active polygon and set segmentation map active instead
             this._set_active_polygon(null);
+        }
+        if(action === ACTIONS.MAGIC_WAND) {
+            // add preview rectangle
+            this._update_magic_wand_preview_rectangle(event);
+            this.dataEntry.viewport.addRenderElement(this.magicWand_rectangle);
+        } else {
+            this.dataEntry.viewport.removeRenderElement(this.magicWand_rectangle);  //TODO: store bool for better efficiency?
         }
     }
 
     _canvas_mousedown(event) {
         if(window.uiBlocked) return;
-        if(window.uiControlHandler.getAction() === ACTIONS.ADD_SELECT_POLYGON) {
+        let action = window.uiControlHandler.getAction();
+        if(action === ACTIONS.ADD_SELECT_POLYGON) {
             let mousePos = this.dataEntry.viewport.getRelativeCoordinates(event, 'validArea');
             this.addSelectionElement('polygon', mousePos);
-        } else if(window.uiControlHandler.getAction() === ACTIONS.ADD_SELECT_POLYGON_MAGNETIC) {
+        } else if(action === ACTIONS.ADD_SELECT_POLYGON_MAGNETIC) {
             let mousePos = this.dataEntry.viewport.getRelativeCoordinates(event, 'validArea');
             this.addSelectionElement('magnetic_polygon', mousePos);
         }
@@ -219,7 +255,8 @@ class AreaSelector {
 
     _canvas_mousemove(event) {
         if(window.uiBlocked) return;
-        if(window.uiControlHandler.getAction() === ACTIONS.DO_NOTHING &&
+        let action = window.uiControlHandler.getAction();
+        if(action === ACTIONS.DO_NOTHING &&
             this.activePolygon !== null) {
             // polygon was being drawn but isn't anymore
             if(this.activePolygon.isCloseable()) {
@@ -230,6 +267,8 @@ class AreaSelector {
                 this.dataEntry.viewport.removeRenderElement(this.activePolygon);
                 this._set_active_polygon(null);
             }
+        } else if(action === ACTIONS.MAGIC_WAND) {
+            this._update_magic_wand_preview_rectangle(event);
         }
     }
     
@@ -336,6 +375,7 @@ class AreaSelector {
                 window.messager.addMessage('An error occurred trying to run magic wand (message: "'+error.toString()+'").', 'error', 0);
                 window.taskMonitor.removeTask('magicWand');
             }
+            this.dataEntry.viewport.removeRenderElement(this.magicWand_rectangle);  //TODO: store bool for better efficiency?
         }
     }
 }

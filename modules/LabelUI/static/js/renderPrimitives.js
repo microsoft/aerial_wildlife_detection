@@ -2318,15 +2318,6 @@ class SegmentationElement extends AbstractRenderElement {
         return new Uint8Array(indexedData);
     }
 
-    /* selection functions */
-    magic_wand(seedCoordinates, tolerance) {
-        /**
-         * Find similar pixels based on values at seed position; within a given
-         * tolerance.
-         */
-        //TODO: could be too exhaustive to draw as a polygon...
-    }
-
     /* painting functions */
     paint_bucket(coordinates, color) {
         /**

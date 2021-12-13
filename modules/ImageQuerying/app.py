@@ -67,6 +67,9 @@ class ImageQuerier:
                 seedCoords = args['seed_coordinates']
                 tolerance = args.get('tolerance', 32)
                 maxRadius = args.get('max_radius', None)
+                if maxRadius <= 0:
+                    # no restriction in space
+                    maxRadius = None
                 rgbOnly = args.get('rgb_only', False)
 
                 result = self.middleware.magicWand(project, imgPath, seedCoords, tolerance, maxRadius, rgbOnly)
