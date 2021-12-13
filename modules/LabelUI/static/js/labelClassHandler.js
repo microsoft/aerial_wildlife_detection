@@ -116,7 +116,7 @@ class LabelClass {
         // listener for keypress if keystroke defined
         if(hasKeystroke) {
             $(window).keyup(function(event) {
-                if(window.uiBlocked || window.shortcutsDisabled) return;
+                if(window.uiBlocked || window.shortcutsDisabled || window.fieldInFocus()) return;
                 try {
                     var key = parseInt(String.fromCharCode(event.which));
                     if(key == self.keystroke) {

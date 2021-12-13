@@ -1809,17 +1809,26 @@ class PaintbrushElement extends AbstractRenderElement {
         var coords = scaleFun([this.x, this.y], 'validArea');
         var size = window.uiControlHandler.segmentation_properties.brushSize;
         size = scaleFun(scaleFun([0,0,size,size], 'canvas', true), 'validArea')[2];
+        let halfSize = parseInt(Math.round(size/2));
 
         ctx.strokeStyle = window.styles.paintbrush.strokeColor;
         ctx.lineWidth = window.styles.paintbrush.lineWidth;
         ctx.setLineDash(window.styles.paintbrush.lineDash === undefined ? [] : window.styles.paintbrush.lineDash);
         if(window.uiControlHandler.getBrushType() === 'rectangle') {
-            ctx.strokeRect(coords[0] - size/2, coords[1] - size/2,
+            ctx.strokeRect(coords[0] - halfSize, coords[1] - halfSize,
                 size, size);
-        } else {
-            // circle
+        } else if(window.uiControlHandler.getBrushType() === 'circle') {
             ctx.beginPath();
-            ctx.arc(coords[0], coords[1], size/2, 0, 2*Math.PI);
+            ctx.arc(coords[0], coords[1], halfSize, 0, 2*Math.PI);
+            ctx.stroke();
+            ctx.closePath();
+        } else if(window.uiControlHandler.getBrushType() === 'diamond') {
+            ctx.beginPath();
+            ctx.moveTo(coords[0]-halfSize, coords[1]);
+            ctx.lineTo(coords[0], coords[1]-halfSize);
+            ctx.lineTo(coords[0]+halfSize, coords[1]);
+            ctx.lineTo(coords[0], coords[1]+halfSize);
+            ctx.lineTo(coords[0]-halfSize, coords[1]);
             ctx.stroke();
             ctx.closePath();
         }
@@ -2319,7 +2328,7 @@ class SegmentationElement extends AbstractRenderElement {
     }
 
     /* painting functions */
-    paint_bucket(coordinates, color) {
+    paint_bucket(coordinates, color, ignoreLabeled) {
         /**
          * Paint bucket operation to fill (or clear, if color is null) the
          * canvas with coordinates from a polygon (xy interleaved; relative to canvas size).
@@ -2327,7 +2336,7 @@ class SegmentationElement extends AbstractRenderElement {
         if(!Array.isArray(coordinates) || coordinates.length < 6) return;
         if(color === null) this.ctx.globalCompositeOperation = 'destination-out';
         else {
-            this.ctx.globalCompositeOperation = 'source-over';
+            this.ctx.globalCompositeOperation = ignoreLabeled ? 'destination-over' : 'source-over';
             this.ctx.fillStyle = color;
         }
         this.ctx.lineWidth = null;
@@ -2367,26 +2376,38 @@ class SegmentationElement extends AbstractRenderElement {
     }
 
 
-    _clear_circle(x, y, size) {
+    _paint_circle(x, y, size) {
         this.ctx.beginPath();
-        this.ctx.globalCompositeOperation = 'destination-out'
         this.ctx.ellipse(x, y, size[0]/2, size[1]/2, 2*Math.PI, 0, 2*Math.PI)
-        // this.ctx.arc(x, y, radius, 0, Math.PI*2, true);
         this.ctx.fill();
         this.ctx.closePath();
-        this.ctx.globalCompositeOperation = 'source-over';
     }
 
-    paint(coords, color, brushType, brushSize) {
+    _paint_diamond(x, y, size) {
+        let halfSize = [
+            parseInt(Math.round(size[0] / 2)),
+            parseInt(Math.round(size[1] / 2))
+        ];
+        this.ctx.beginPath();
+        this.ctx.moveTo(x-halfSize[0], y);
+        this.ctx.lineTo(x, y-halfSize[1]);
+        this.ctx.lineTo(x+halfSize[0], y);
+        this.ctx.lineTo(x, y+halfSize[1]);
+        this.ctx.lineTo(x-halfSize[0], y);
+        this.ctx.fill();
+        this.ctx.closePath();
+    }
+
+    paint(coords, color, brushType, brushSize, ignoreLabeled) {
+        this.ctx.globalCompositeOperation = ignoreLabeled ? 'destination-over' : 'source-over';
         this.ctx.fillStyle = color;
         if(brushType === 'rectangle') {
             this.ctx.fillRect(coords[0] - brushSize[0]/2, coords[1] - brushSize[1]/2,
                 brushSize[0], brushSize[1]);
         } else if(brushType === 'circle') {
-            this.ctx.beginPath();
-            this.ctx.ellipse(coords[0], coords[1], brushSize[0]/2, brushSize[1]/2, 2*Math.PI, 0, 2*Math.PI)
-            this.ctx.fill();
-            this.ctx.closePath();
+            this._paint_circle(coords[0], coords[1], brushSize);
+        } else if(brushType === 'diamond') {
+            this._paint_diamond(coords[0], coords[1], brushSize);
         }
     }
 
@@ -2395,7 +2416,11 @@ class SegmentationElement extends AbstractRenderElement {
             this.ctx.clearRect(coords[0] - brushSize[0]/2, coords[1] - brushSize[1]/2,
                 brushSize[0], brushSize[1]);
         } else if(brushType === 'circle') {
-            this._clear_circle(coords[0], coords[1], brushSize)
+            this.ctx.globalCompositeOperation = 'destination-out';
+            this._paint_circle(coords[0], coords[1], brushSize);
+        }  else if(brushType === 'diamond') {
+            this.ctx.globalCompositeOperation = 'destination-out';
+            this._paint_diamond(coords[0], coords[1], brushSize);
         }
     }
 

@@ -349,9 +349,10 @@ class UIControlHandler {
         if(window.annotationType === 'segmentationMasks') {
             this.segmentation_controls = {
                 brush: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/spraypaint.svg" style="height:18px" title="Paint" /></button>'),
-                brush_rectangle: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/rectangle.svg" style="height:18px" title="Square brush" /></button>'),
-                brush_circle: $('<button class="btn btn-sm btn-secondary inline-control"><img src="/static/interface/img/controls/circle.svg" style="height:18px" title="Circular brush" /></button>'),
-                brush_size: $('<input class="inline-control" type="number" min="1" max="255" value="20" title="Brush size" style="width:50px" />'),
+                brush_rectangle: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/rectangle.svg" style="height:18px" title="square brush" /></button>'),
+                brush_circle: $('<button class="btn btn-sm btn-secondary inline-control"><img src="/static/interface/img/controls/circle.svg" style="height:18px" title="circular brush" /></button>'),
+                brush_diamond: $('<button class="btn btn-sm btn-secondary inline-control"><img src="/static/interface/img/controls/diamond.svg" style="height:18px" title="diamond brush" /></button>'),
+                brush_size: $('<input class="inline-control" type="number" id="brush-size" min="1" max="255" value="20" title="Brush size" style="width:50px" />'),
                 erase: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/erase.svg" style="height:18px" title="Erase" /></button>'),
                 select_polygon: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/lasso.svg" style="height:18px" title="Select by polygon" /></button>'),
                 select_polygon_magnetic: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/lasso_magnetic.svg" style="height:18px" title="Select by magnetic polygon" /></button>'),
@@ -379,6 +380,9 @@ class UIControlHandler {
             });
             this.segmentation_controls.brush_circle.click(function() {
                 self.setBrushType('circle');
+            });
+            this.segmentation_controls.brush_diamond.click(function() {
+                self.setBrushType('diamond');
             });
             this.segmentation_controls.brush_size.on({
                 change: function() {
@@ -425,9 +429,24 @@ class UIControlHandler {
             let brushOptionsContainer = $('<div class="toolset-options-container inline-control"></div>');
             brushOptionsContainer.append(this.segmentation_controls.brush_rectangle);
             brushOptionsContainer.append(this.segmentation_controls.brush_circle);
+            brushOptionsContainer.append(this.segmentation_controls.brush_diamond);
             brushOptionsContainer.append($('<span style="margin-left:10px;margin-right:5px;color:white">Size:</span>'));
             brushOptionsContainer.append(this.segmentation_controls.brush_size);
             brushOptionsContainer.append($('<span style="margin-left:5px;color:white">px</span>'));
+
+            let segIgnoreLabeledContainer = $('<div class="custom-control custom-switch inline-control"></div>');
+            let segIgnoreLabeledCheck = $('<input type="checkbox" id="seg-ignore-labeled-check" class="custom-control-input inline-control" style="margin-right:2px" title="Ignore labeled pixels" />');
+            segIgnoreLabeledCheck.on('change', function() {
+                let chckbx = $(this);
+                window.segmentIgnoreLabeled = !window.segmentIgnoreLabeled;
+                chckbx.prop('checked', window.segmentIgnoreLabeled);
+            });
+            window.segmentIgnoreLabeled = false;
+            segIgnoreLabeledContainer.append(segIgnoreLabeledCheck);
+            segIgnoreLabeledContainer.append($('<label for="seg-ignore-labeled-check" class="custom-control-label inline-control" style="margin-left:0px;margin-right:10px;color:white;cursor:pointer;" title="ignore labeled pixels">ignore labeled</label>'));
+            let segIgnoreLabeledWrapper = $('<div class="toolset-options-container"></div>');
+            segIgnoreLabeledWrapper.append(segIgnoreLabeledContainer);
+            brushOptionsContainer.append(segIgnoreLabeledWrapper);
             segControls.append(brushOptionsContainer);
 
             segControls.append(this.segmentation_controls.select_polygon);
@@ -497,7 +516,7 @@ class UIControlHandler {
             Key stroke listener
         */
         $(window).keyup(function(event) {
-            if(window.uiBlocked || window.shortcutsDisabled) return;
+            if(window.uiBlocked || window.shortcutsDisabled || window.fieldInFocus()) return;
             
             if(event.which === 16) {
                 // shift key
@@ -697,6 +716,30 @@ class UIControlHandler {
 
             initSliderRange();
         }
+
+        // add mouse wheel listener for input fields
+        $(window).on('wheel', function(event) {
+            if(!event.shiftKey) return;
+            let delta = Math.sign(event.originalEvent.wheelDelta);
+            if(typeof(delta) !== 'number') return;
+            let action = window.uiControlHandler.getAction();
+            if([ACTIONS.ADD_ANNOTATION, ACTIONS.REMOVE_ANNOTATIONS].includes(action) && $('#brush-size').length) {
+                let val = Math.max(1, Math.min(255, parseInt($('#brush-size').val()) + delta));
+                $('#brush-size').val(val);
+                self.setBrushSize(val);
+            } else if(action === ACTIONS.MAGIC_WAND && $('#magic-wand-radius').length) {
+                if($('#magic-wand-radius').is(':focus')) {
+                    let val = Math.max(0, Math.min(8192, parseInt($('#magic-wand-radius').val()) + delta));
+                    $('#magic-wand-radius').val(val);
+                    window.magicWandRadius = val;
+                } else {
+                    let val = Math.max(1, Math.min(255, parseInt($('#magic-wand-tolerance').val()) + delta));
+                    $('#magic-wand-tolerance').val(val);
+                    window.magicWandTolerance = val;
+                }
+            }
+            self.renderAll();
+        });
     }
 
 
@@ -727,10 +770,17 @@ class UIControlHandler {
             this.segmentation_properties.brushType = 'rectangle';
             this.segmentation_controls.brush_rectangle.addClass('active');
             this.segmentation_controls.brush_circle.removeClass('active');
+            this.segmentation_controls.brush_diamond.removeClass('active');
         } else if(type === 'circle') {
             this.segmentation_properties.brushType = 'circle';
             this.segmentation_controls.brush_rectangle.removeClass('active');
             this.segmentation_controls.brush_circle.addClass('active');
+            this.segmentation_controls.brush_diamond.removeClass('active');
+        } else if(type === 'diamond') {
+            this.segmentation_properties.brushType = 'diamond';
+            this.segmentation_controls.brush_rectangle.removeClass('active');
+            this.segmentation_controls.brush_circle.removeClass('active');
+            this.segmentation_controls.brush_diamond.addClass('active');
         } else {
             throw Error('Invalid brush type ('+type+').');
         }

@@ -284,7 +284,8 @@ class AreaSelector {
                     let color = (window.uiControlHandler.getAction() === ACTIONS.PAINT_BUCKET ? window.labelClassHandler.getActiveColor() : null);
                     this.dataEntry.segMap.paint_bucket(
                         this.selectionElements[s].getProperty('coordinates'),
-                        color
+                        color,
+                        window.segmentIgnoreLabeled
                     );
 
                     // ...and remove it
@@ -360,6 +361,13 @@ class AreaSelector {
                 let self = this;
                 this.magicWand(this.dataEntry.fileName, mousePos, tolerance, maxRadius, rgbOnly).then((coords_out) => {
                     if(Array.isArray(coords_out) && coords_out.length >= 6) {
+                        // remove any previous overlapping selection polygons first
+                        for(var e in self.selectionElements) {
+                            if(self.selectionElements[e].containsPoint(mousePos)) {
+                                self.removeSelectionElement(self.selectionElements[e]);
+                            }
+                        }
+
                         // add new selection polygon
                         self.addSelectionElement('polygon', coords_out);
                     } else {

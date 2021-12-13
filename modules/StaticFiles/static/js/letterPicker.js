@@ -71,7 +71,6 @@ class LetterPicker {
             if(!this.allowMultipleSelection) {
                 // deselect others first
                 for(var key in this.selectedLetters) {
-                    console.log('deselecting ' + key)
                     $('#letterpicker-letter-' + key).removeClass('letterpicker-letter-selected');
                     delete this.selectedLetters[key];
                 }

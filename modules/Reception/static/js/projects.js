@@ -15,7 +15,6 @@ let labelTypeConversion = {
 }
 
 function setProjectArchived(project, archived) {
-    console.log(project + ', ' + archived)
     return $.ajax({
         url: '/' + project + '/setArchived',        //TODO: new base URL
         method: 'POST',

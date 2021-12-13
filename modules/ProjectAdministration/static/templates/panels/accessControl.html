@@ -220,8 +220,6 @@
         });
         if(users.length === 0) return;
 
-        console.log(users);
-
         let timestamp = null;
         try {
             timestamp = new Date($('#datetime-specifier').val()).getTime() / 1000;

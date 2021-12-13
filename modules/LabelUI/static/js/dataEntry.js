@@ -2075,7 +2075,6 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
                             if(Array.isArray(coords_out) && Array.isArray(coords_out[0]) && coords_out[0].length >= 6) {
                                 self.annotations[key].geometry.setProperty('coordinates', coords_out[0]);
                             } else {
-                                console.log(coords_out)
                                 if(typeof(coords_out['message']) === 'string') {
                                     window.messager.addMessage('An error occurred trying to run GrabCut on selection (message: "'+coords_out['message'].toString()+'").', 'error', 0);
                                 } else {
@@ -2177,6 +2176,14 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
     setAnnotationsVisible(visible) {
         super.setAnnotationsVisible(visible);
         this.annotation.setVisible(visible);
+    }
+
+    removeActiveAnnotations() {
+        /**
+         * Not supported for segmentation masks.
+         * Instead, users can use the "Clear All" button.
+         */
+        return;
     }
 
     removeAllAnnotations() {
@@ -2312,10 +2319,11 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
 
             // paint with brush at current position
             if(this.mouseDown) {
-                var scaleFactor = Math.min(
+                var scaleFactor = [
                     (this.segMap.canvas.width/this.canvas.width()),
                     (this.segMap.canvas.height/this.canvas.height())
-                );
+                ];
+                scaleFactor = (this.segMap.canvas.width > this.segMap.canvas.height ? scaleFactor[1] : scaleFactor[0]);
                 var brushSize = [
                     window.uiControlHandler.segmentation_properties.brushSize * scaleFactor,
                     window.uiControlHandler.segmentation_properties.brushSize * scaleFactor
@@ -2328,7 +2336,8 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
                     this.segMap.paint(mousePos_abs,
                         window.activeClassColor,
                         window.uiControlHandler.segmentation_properties.brushType,
-                        brushSize);
+                        brushSize,
+                        window.segmentIgnoreLabeled);
                 }
             }
 

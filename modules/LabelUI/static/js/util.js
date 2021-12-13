@@ -29,6 +29,13 @@ window.showLoadingOverlay = function(visible) {
     }
 }
 
+window.fieldInFocus = function() {
+    /**
+     * Returns true if at least one HTML input field is in focus
+     */
+    return document.activeElement.nodeName.toLowerCase() === 'input';
+}
+
 window.getCookie = function(name, decodeToObject) {
     let match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
     if (match) match = match[2];

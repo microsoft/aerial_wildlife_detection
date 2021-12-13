@@ -57,7 +57,6 @@ $(document).ready(function() {
             }
         },
         error: function() {
-            console.log('Error retrieving project info.');
             window.messager.addMessage('Error retrieving project info.', 'error', 0);
             window.demoMode = false;
         }
