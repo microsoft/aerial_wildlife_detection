@@ -6,9 +6,10 @@ import json
 import numpy as np
 import cv2
 from scipy.ndimage.morphology import binary_fill_holes, binary_dilation
-from detectron2.structures.masks import polygons_to_bitmask, polygon_area
-from imantics import Mask
+from scipy.spatial.distance import cdist
+from detectron2.structures.masks import polygons_to_bitmask
 
+from . import regionProcessing
 from modules.AIWorker.backend import fileserver     #TODO: make generally accessible?
 from util import drivers
 
@@ -93,46 +94,6 @@ class ImageQueryingMiddleware:
 
 
 
-    @staticmethod
-    def _contains_point(poly, points):
-        '''
-            Ray tracing (point-in-polygon) algorithm; from here:
-            https://stackoverflow.com/questions/36399381/whats-the-fastest-way-of-checking-if-a-point-is-inside-a-polygon-in-python
-            #TODO: make extra routine somewhere?
-        '''
-        x, y = points[:,0], points[:,1]
-        n = len(poly)
-        inside = np.zeros(len(x),np.bool_)
-        p2x = 0.0
-        p2y = 0.0
-        xints = 0.0
-        p1x,p1y = poly[0]
-        for i in range(n+1):
-            p2x,p2y = poly[i % n]
-            idx = np.nonzero((y > min(p1y,p2y)) & (y <= max(p1y,p2y)) & (x <= max(p1x,p2x)))[0]
-            if p1y != p2y:
-                xints = (y[idx]-p1y)*(p2x-p1x)/(p2y-p1y)+p1x
-            if p1x == p2x:
-                inside[idx] = ~inside[idx]
-            else:
-                idxx = idx[x[idx] <= xints]
-                inside[idxx] = ~inside[idxx]    
-
-            p1x,p1y = p2x,p2y
-        return inside
-    
-
-
-    @staticmethod
-    def dilate_mask(mask):
-        '''
-            Performs morphological dilation on a mask.
-            #TODO: make extra routine somewhere?
-        '''
-        return binary_dilation(mask)
-
-
-
     def magicWand(self, project, imgPath, seedCoords, tolerance=32, maxRadius=None, rgbOnly=False):
         '''
             Magic wand functionality: loads an image for a project and receives
@@ -178,7 +139,7 @@ class ImageQueryingMiddleware:
         img_flat = np.reshape(img, (-1, sz[2]))
         mask_flat = mask.ravel()
         candidates = np.where(mask_flat==1)[0]
-        dist = np.sqrt(np.sum(np.power(img_flat[candidates,:] - seedVals[np.newaxis,:], 2), 1))
+        dist = np.sqrt(np.sum(np.power(img_flat[candidates,:] - seedVals[np.newaxis,:], 2), 1))     #TODO: should be np.mean, but np.sum works better somehow
         mask_flat[candidates] = dist <= tolerance
         mask_out = np.reshape(mask_flat, sz[:2])
 
@@ -189,26 +150,14 @@ class ImageQueryingMiddleware:
         mask_out = binary_dilation(mask_out)        #TODO: ditto?
 
         # polygonize; keep largest polygon that contains seed coordinates
-        result = None
-        polys_out = Mask(mask_out).polygons()
-        if len(polys_out.points):
-            max_poly_area = 0
-            max_poly = None
-            for poly in polys_out.points:
-                if len(poly) < 3:
-                    continue
-                if self._contains_point(poly, seedCoords[np.newaxis,:])[0]:
-                    area = polygon_area(poly[:,0], poly[:,1])
-                    if area > max_poly_area:
-                        max_poly_area = area
-                        max_poly = poly.ravel()
-            
-            # make relative coordinates again
-            if max_poly is not None:
-                max_poly = max_poly.astype(np.float32)
-                max_poly[::2] /= sz[1]
-                max_poly[1::2] /= sz[0]
-                result = max_poly.tolist()
+        result = regionProcessing.mask_to_poly(mask_out, True, seedCoords)
+        
+        # make relative coordinates again
+        if result is not None:
+            result = result.astype(np.float32)
+            result[::2] /= sz[1]
+            result[1::2] /= sz[0]
+            result = result.tolist()
         return result
     
 
@@ -273,29 +222,91 @@ class ImageQueryingMiddleware:
 
             if return_polygon:
                 # convert mask to polygon and keep the largest only
-                polys_out = Mask(mask_out).polygons()
-                if not len(polys_out.points):
-                    result.append(None)
-                else:
-                    max_poly_area = 0
-                    max_poly = None
-                    for poly in polys_out.points:
-                        if len(poly) < 3:
-                            continue
-                        area = polygon_area(poly[:,0], poly[:,1])
-                        if area > max_poly_area:
-                            max_poly_area = area
-                            max_poly = poly.ravel()
-                    
-                    # make relative coordinates again
-                    if max_poly is None:
-                        result.append(None)
-                    else:
-                        max_poly = max_poly.astype(np.float32)
-                        max_poly[::2] /= img.shape[1]
-                        max_poly[1::2] /= img.shape[0]
-                        result.append(max_poly.tolist())
+                largest = regionProcessing.mask_to_poly(mask_out, True)
+                
+                # make relative coordinates again
+                if largest is not None:
+                    largest = largest.astype(np.float32)
+                    largest[::2] /= sz[1]
+                    largest[1::2] /= sz[0]
+                    largest = largest.tolist()
+                result.append(largest)
             else:
                 result.append(mask_out.tolist())
+        
+        return result
+    
+
+
+    def select_similar(self, project, imgPath, seed_polygon, tolerance=32, return_polygon=False, num_max=32):
+        '''
+            Receives an image and polygon within the image and tries to find
+            other regions that are visually similar. The similarity is defined
+            by "features" that are extracted for the seed polygon region, as
+            well as "tolerance" that defines the euclidean distance of the
+            features of other regions in the image to the seed region. Other
+            regions are obtained using a specified superpixelization algorithm,
+            with optional arguments.
+        '''
+        #TODO: fixed kwargs for now
+        regionMethod = 'quickshift'
+        def featureCalc(img, regionMap):
+            return regionProcessing.histogram_of_colors(img, regionMap, num_bins=50)
+            # return np.concatenate(
+            #     (
+            #         regionProcessing.histogram_of_colors(img, regionMap, num_bins=20),
+            #         regionProcessing.bag_of_visual_words(img, regionMap, k=10, num_bins=20)
+            #     ),
+            #     1
+            # )
+
+        assert isinstance(seed_polygon, list) or isinstance(seed_polygon, tuple), 'Invalid coordinates format provided'
+        numel = len(seed_polygon)
+        assert numel >= 6 and not numel%2, \
+            f'Invalid number of coordinate points provided ({numel} < 6 or not even)'
+
+        # get image
+        img = self._load_image_for_project(project, imgPath, bands='rgb')
+        img = np.ascontiguousarray(img).astype(np.float32)
+        img = self._normalize_image(img)
+        sz = img.shape
+
+        # get mask for seed region
+        coords_abs = np.array(seed_polygon, dtype=np.float32)
+        coords_abs[::2] *= sz[1]
+        coords_abs[1::2] *= sz[0]
+        if coords_abs[-1] != coords_abs[1] or coords_abs[-2] != coords_abs[0]:
+            # close polygon
+            coords_abs = np.concatenate((coords_abs, coords_abs[:2]))
+        polymask = polygons_to_bitmask([coords_abs], height=sz[0], width=sz[1])
+
+        # segment image into regions
+        regions = regionProcessing.find_regions(img, regionMethod)      #TODO: kwargs
+
+        # calculate features for seed and candidate regions, compare and append close results
+        seedFeatures = featureCalc(img, polymask)[1,:]      # skip background
+        candidateFeatures = featureCalc(img, regions)       #TODO: remove candidates intersecting with seed region
+        dists = cdist(seedFeatures[np.newaxis,:], candidateFeatures).ravel()
+        dists[dists>tolerance] = 1e9
+        order = np.argsort(dists)
+        valid = order[:min(len(order), num_max)]
+        result = []
+        for v in valid:
+            if dists[v] > 1e8:
+                continue
+            candidate = (regions == v)
+            if return_polygon:
+                largest = regionProcessing.mask_to_poly(candidate, True)
+
+                # make relative coordinates again
+                if largest is not None:
+                    largest = largest.astype(np.float32)
+                    largest[::2] /= sz[1]
+                    largest[1::2] /= sz[0]
+                    largest = largest.tolist()
+                    result.append(largest)
+            
+            else:
+                result.append(candidate.tolist())
         
         return result

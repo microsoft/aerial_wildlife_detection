@@ -31,16 +31,11 @@ class AreaSelector {
         // init edge image for faster magnetic lasso activation
         this.dataEntry.renderer.get_edge_image(true);
 
-        // dashed rectangle that previews the spatial range of the magic wand
-        let mwrect_style = {
-            strokeColor: '#000000',
-            lineWidth: 2,
-            lineDash: [3, 1]
-        };
-        this.magicWand_rectangle = new RectangleElement(
+        // rectangle that previews the spatial range of the magic wand
+        this.magicWand_rectangle = new PaintbrushElement(
             'magicWand_preview_rect',
-            null, null, null, null,
-            mwrect_style, false, 1000, true
+            null, null, 1000, 
+            2*window.magicWandRadius
         );
     }
 
@@ -66,6 +61,33 @@ class AreaSelector {
                 tolerance: tolerance,
                 max_radius: maxRadius,
                 rgb_only: rgbOnly
+            })
+        })
+        .then((data) => {
+            if(data.hasOwnProperty('result')) {
+                return data['result'];       // Array of coordinates
+            } else {
+                return data;
+            }
+        });
+    }
+
+    selectSimilar(fileName, seedPolygon, tolerance, numMax) {
+        /**
+         * Finds similar regions in the image based on a seed polygon and
+         * returns their polygons accordingly.
+         */
+        return $.ajax({
+            url: window.baseURL + 'select_similar',
+            method: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            data: JSON.stringify({
+                image_path: fileName,
+                seed_polygon: seedPolygon,
+                tolerance: tolerance,
+                num_max: numMax,
+                return_polygon: true
             })
         })
         .then((data) => {
@@ -191,14 +213,12 @@ class AreaSelector {
     _update_magic_wand_preview_rectangle(event) {
         if(window.magicWandRadius > 0) {
             let mousePos = this.dataEntry.viewport.getRelativeCoordinates(event, 'validArea');
-            let size = this.dataEntry.viewport.transformCoordinates([0,0,2*window.magicWandRadius,0], 'validArea', true)[2];
             this.magicWand_rectangle.x = mousePos[0];
             this.magicWand_rectangle.y = mousePos[1];
-            this.magicWand_rectangle.width = size;
-            this.magicWand_rectangle.height = size;
+            this.magicWand_rectangle.size = 2*window.magicWandRadius;
         } else {
             // no restriction in area; hide rectangle
-            this.magicWand_rectangle.width = null;
+            this.magicWand_rectangle.size = null;
         }
     }
 
@@ -275,13 +295,14 @@ class AreaSelector {
     _canvas_mouseup(event) {
         if(window.uiBlocked) return;
         let mousePos = this.dataEntry.viewport.getRelativeCoordinates(event, 'validArea');
-        if([ACTIONS.PAINT_BUCKET, ACTIONS.ERASE_SELECTION].includes(window.uiControlHandler.getAction())) {
+        let action = window.uiControlHandler.getAction();
+        if([ACTIONS.PAINT_BUCKET, ACTIONS.ERASE_SELECTION].includes(action)) {
             // find clicked element(s)
             let numElements = 0;
             for(var s in this.selectionElements) {
                 if(this.selectionElements[s].containsPoint(mousePos)) {
                     // fill it... (TODO: we assume the base class has a segMap property anyway)
-                    let color = (window.uiControlHandler.getAction() === ACTIONS.PAINT_BUCKET ? window.labelClassHandler.getActiveColor() : null);
+                    let color = (action === ACTIONS.PAINT_BUCKET ? window.labelClassHandler.getActiveColor() : null);
                     this.dataEntry.segMap.paint_bucket(
                         this.selectionElements[s].getProperty('coordinates'),
                         color,
@@ -293,7 +314,7 @@ class AreaSelector {
                     numElements++;
                 }
             }
-            if(numElements === 0 && window.uiControlHandler.getAction() === ACTIONS.PAINT_BUCKET) {
+            if(numElements === 0 && action === ACTIONS.PAINT_BUCKET) {
                 // clicked in blank with paint bucket; ask to paint all unlabeled pixels
                 let className = window.labelClassHandler.getActiveClassName();
                 let confMarkup = $('<div>Assign all unlabeled pixels to class "' + className + '"?</div>');
@@ -303,7 +324,7 @@ class AreaSelector {
                 };
                 window.showYesNoOverlay(confMarkup, callbackYes, null, 'Yes', 'Cancel')
             }
-        } else if([ACTIONS.DO_NOTHING, ACTIONS.ADD_ANNOTATION].includes(window.uiControlHandler.getAction())) {
+        } else if([ACTIONS.DO_NOTHING, ACTIONS.ADD_ANNOTATION].includes(action)) {
             if(this.activePolygon !== null && this.activePolygon.isClosed()) {
                 // still in selection polygon mode but polygon is closed
                 if(!this.activePolygon.isActive) {
@@ -322,7 +343,7 @@ class AreaSelector {
                     }
                 }
             }
-        } else if(window.uiControlHandler.getAction() === ACTIONS.GRAB_CUT) {
+        } else if(action === ACTIONS.GRAB_CUT) {
             // get clicked polygon
             for(var e in this.selectionElements) {
                 if(this.selectionElements[e].containsPoint(mousePos)) {
@@ -350,11 +371,10 @@ class AreaSelector {
                     }
                 }
             }
-        } else if(window.uiControlHandler.getAction() === ACTIONS.MAGIC_WAND) {
+        } else if(action === ACTIONS.MAGIC_WAND) {
             window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
             window.taskMonitor.addTask('magicWand', 'magic wand');
             try {
-                //TODO
                 let tolerance = window.magicWandTolerance;
                 let maxRadius = window.magicWandRadius;
                 let rgbOnly = false;
@@ -384,6 +404,37 @@ class AreaSelector {
                 window.taskMonitor.removeTask('magicWand');
             }
             this.dataEntry.viewport.removeRenderElement(this.magicWand_rectangle);  //TODO: store bool for better efficiency?
+        } else if(action === ACTIONS.SELECT_SIMILAR) {
+            window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
+            window.taskMonitor.addTask('selSim', 'select similar');
+            try {
+                // find clicked polygon
+                let seedPolygon = null;
+                for(var e in this.selectionElements) {
+                    if(this.selectionElements[e].containsPoint(mousePos)) {
+                        seedPolygon = this.selectionElements[e].getProperty('coordinates');
+                        break;
+                    }
+                }
+                if(seedPolygon !== null) {
+                    let tolerance = window.magicWandTolerance;
+                    let numMax = 5; //TODO
+                    let self = this;
+                    this.selectSimilar(this.dataEntry.fileName, seedPolygon, tolerance, numMax).then((coords_similar) => {
+                        if(Array.isArray(coords_similar) && coords_similar.length) {
+                            for(var c=0; c<coords_similar.length; c++) {
+                                self.addSelectionElement('polygon', coords_similar[c]);
+                            }
+                        }
+                        window.taskMonitor.removeTask('selSim');
+                    });
+                } else {
+                    window.taskMonitor.removeTask('selSim');
+                }
+            } catch(error) {
+                window.messager.addMessage('An error occurred trying to find similar regions (message: "'+error.toString()+'").', 'error', 0);
+                window.taskMonitor.removeTask('selSim');
+            }
         }
     }
 }

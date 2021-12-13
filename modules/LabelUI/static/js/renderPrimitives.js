@@ -1797,18 +1797,18 @@ class PaintbrushElement extends AbstractRenderElement {
         Convenience class that either displays a square or circle,
         depending on the global setting, over the mouse position.
     */
-    constructor(id, x, y, zIndex, disableInteractions) {
+    constructor(id, x, y, zIndex, disableInteractions, sizeOverride) {
         super(id, null, zIndex, disableInteractions);
         this.x = x;
         this.y = y;
+        this.size = typeof(sizeOverride) === 'number' ? sizeOverride : window.uiControlHandler.segmentation_properties.brushSize;
     }
 
     render(ctx, scaleFun) {
         super.render(ctx, scaleFun);
         if(!this.visible || this.x == null || this.y == null) return;
         var coords = scaleFun([this.x, this.y], 'validArea');
-        var size = window.uiControlHandler.segmentation_properties.brushSize;
-        size = scaleFun(scaleFun([0,0,size,size], 'canvas', true), 'validArea')[2];
+        let size = scaleFun(scaleFun([0,0,this.size,this.size], 'canvas', true), 'validArea')[2];
         let halfSize = parseInt(Math.round(size/2));
 
         ctx.strokeStyle = window.styles.paintbrush.strokeColor;
@@ -2357,22 +2357,10 @@ class SegmentationElement extends AbstractRenderElement {
         /**
          * Paints all currently unpainted pixels with the provided color.
          */
-        if(typeof(color) === 'string') {
-            color = window.hexToRgb(color, true);
-        }
-
-        let pixels = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
-        let data = pixels.data;
-        for(var p=0; p<data.length; p+=4) { //TODO: speedup with promises?
-            if(data[p+3] === 0) {
-                data[p] = color[0];
-                data[p+1] = color[1];
-                data[p+2] = color[2];
-                data[p+3] = 255;
-            }
-        }
-        pixels = new ImageData(data, this.canvas.width, this.canvas.height);
-        this.ctx.putImageData(pixels, 0, 0);
+        this.ctx.fillStyle = color;
+        this.ctx.globalCompositeOperation = 'destination-over';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.globalCompositeOperation = 'source-over';
     }
 
 

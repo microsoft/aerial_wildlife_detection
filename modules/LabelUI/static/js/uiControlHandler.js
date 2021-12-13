@@ -22,7 +22,8 @@ const ACTIONS = {
     ADD_SELECT_POLYGON_MAGNETIC: 10,
     GRAB_CUT: 11,
     MAGIC_WAND: 12,
-    SIMPLIFY_POLYGON: 13
+    SELECT_SIMILAR: 13,
+    SIMPLIFY_POLYGON: 14
 }
 
 const CURSORS = [
@@ -357,6 +358,7 @@ class UIControlHandler {
                 select_polygon: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/lasso.svg" style="height:18px" title="Select by polygon" /></button>'),
                 select_polygon_magnetic: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/lasso_magnetic.svg" style="height:18px" title="Select by magnetic polygon" /></button>'),
                 magic_wand: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/magic_wand.svg" style="height:18px" title="magic wand" /></button>'),
+                // select_similar: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/select_similar.svg" style="height:18px" title="select similar" /></button>'),
                 paint_bucket: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/paintbucket.svg" style="height:18px" title="Fill selected area" /></button>'),
                 erase_selection: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/erase_selection.svg" style="height:18px" title="Clear selected area" /></button>'),
                 clear_selection: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/clear_selection.svg" style="height:18px" title="Clear selection" /></button>'),
@@ -413,6 +415,9 @@ class UIControlHandler {
             this.segmentation_controls.magic_wand.on('click', function() {
                 self.setAction(ACTIONS.MAGIC_WAND);
             });
+            // this.segmentation_controls.select_similar.on('click', function() {
+            //     self.setAction(ACTIONS.SELECT_SIMILAR);
+            // });
             this.segmentation_controls.paint_bucket.on('click', function() {
                 self.setAction(ACTIONS.PAINT_BUCKET);
             });
@@ -470,6 +475,9 @@ class UIControlHandler {
             mwToolsContainer.append($('<label for="magic-wand-radius">Max radius:</label>'));
             mwToolsContainer.append(mwRadius);
             segControls.append(mwToolsContainer);
+
+            // // select similar        //TODO: hopelessly broken for now
+            // segControls.append(this.segmentation_controls.select_similar);
 
             // GrabCut
             let grabCutBtn = $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/grabcut.svg" style="height:18px" title="Grab Cut" /></button>');

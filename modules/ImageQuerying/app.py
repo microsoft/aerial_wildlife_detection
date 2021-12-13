@@ -83,3 +83,29 @@ class ImageQuerier:
                     'status': 1,
                     'message': str(e)
                 }
+
+        
+        @self.app.post('/<project>/select_similar')
+        def select_similar(project):
+            # if not self.loginCheck(extend_session=True):
+            #     abort(401, 'forbidden')
+            
+            try:
+                args = request.json
+                imgPath = args['image_path']
+                seedPolygon = args['seed_polygon']
+                tolerance = args.get('tolerance', 32)
+                returnPolygon = args.get('return_polygon', False)
+                numMax = args.get('num_max', 1e9)
+
+                result = self.middleware.select_similar(project, imgPath, seedPolygon, tolerance, returnPolygon, numMax)
+                return {
+                    'status': 0,
+                    'result': result
+                }
+
+            except Exception as e:
+                return {
+                    'status': 1,
+                    'message': str(e)
+                }
