@@ -34,8 +34,10 @@ class AreaSelector {
         // rectangle that previews the spatial range of the magic wand
         this.magicWand_rectangle = new PaintbrushElement(
             'magicWand_preview_rect',
-            null, null, 1000, 
-            2*window.magicWandRadius
+            null, null, 1000,
+            true,
+            2*window.magicWandRadius,
+            'rectangle'
         );
     }
 
@@ -348,7 +350,7 @@ class AreaSelector {
             for(var e in this.selectionElements) {
                 if(this.selectionElements[e].containsPoint(mousePos)) {
                     // clicked into polygon; apply GrabCut
-                    window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
+                    // window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
                     window.taskMonitor.addTask('grabCut', 'Grab Cut');
                     let coords_in = this.selectionElements[e].getProperty('coordinates');
                     let self = this;
@@ -372,7 +374,7 @@ class AreaSelector {
                 }
             }
         } else if(action === ACTIONS.MAGIC_WAND) {
-            window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
+            // window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
             window.taskMonitor.addTask('magicWand', 'magic wand');
             try {
                 let tolerance = window.magicWandTolerance;
@@ -403,11 +405,15 @@ class AreaSelector {
                 window.messager.addMessage('An error occurred trying to run magic wand (message: "'+error.toString()+'").', 'error', 0);
                 window.taskMonitor.removeTask('magicWand');
             }
-            this.dataEntry.viewport.removeRenderElement(this.magicWand_rectangle);  //TODO: store bool for better efficiency?
         } else if(action === ACTIONS.SELECT_SIMILAR) {
-            window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
+            // window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
             window.taskMonitor.addTask('selSim', 'select similar');
             try {
+                //TODO: hyperparameters
+                let tolerance = .25;     //TODO: quantile
+                let numMax = 10; //TODO
+                let self = this;
+
                 // find clicked polygon
                 let seedPolygon = null;
                 for(var e in this.selectionElements) {
@@ -417,9 +423,6 @@ class AreaSelector {
                     }
                 }
                 if(seedPolygon !== null) {
-                    let tolerance = window.magicWandTolerance;
-                    let numMax = 5; //TODO
-                    let self = this;
                     this.selectSimilar(this.dataEntry.fileName, seedPolygon, tolerance, numMax).then((coords_similar) => {
                         if(Array.isArray(coords_similar) && coords_similar.length) {
                             for(var c=0; c<coords_similar.length; c++) {
@@ -429,12 +432,47 @@ class AreaSelector {
                         window.taskMonitor.removeTask('selSim');
                     });
                 } else {
-                    window.taskMonitor.removeTask('selSim');
+                    // no polygon clicked; use magic wand first
+                    let mwCoords = null;
+                    window.taskMonitor.addTask('magicWand_pre', 'magic wand');
+                    this.magicWand(this.dataEntry.fileName, mousePos, window.magicWandTolerance, window.magicWandRadius, false).then((coords_out) => {
+                        window.taskMonitor.removeTask('magicWand_pre');
+                        if(Array.isArray(coords_out) && coords_out.length >= 6) {
+                            mwCoords = coords_out;
+                            return coords_out;
+                        } else {
+                            return null;
+                        }
+                    })
+                    .then((seed_polygon) => {
+                        if(seed_polygon === null) {
+                            // nothing found
+                            window.taskMonitor.removeTask('selSim');
+                        } else {
+                            // something found; now select similar
+                            self.selectSimilar(self.dataEntry.fileName, seed_polygon, tolerance, numMax).then((coords_similar) => {
+                                // add original magic wand polygon...
+                                self.addSelectionElement('polygon', mwCoords);
+
+                                // ...and similar others
+                                if(Array.isArray(coords_similar) && coords_similar.length) {
+                                    for(var c=0; c<coords_similar.length; c++) {
+                                        self.addSelectionElement('polygon', coords_similar[c]);
+                                    }
+                                }
+                                window.taskMonitor.removeTask('selSim');
+                            });
+                        }
+                    });
                 }
             } catch(error) {
                 window.messager.addMessage('An error occurred trying to find similar regions (message: "'+error.toString()+'").', 'error', 0);
                 window.taskMonitor.removeTask('selSim');
             }
+        }
+
+        if(action !== ACTIONS.MAGIC_WAND) {
+            this.dataEntry.viewport.removeRenderElement(this.magicWand_rectangle);  //TODO: store bool for better efficiency?
         }
     }
 }

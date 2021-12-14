@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg version="1.1" id="Layer_3" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 viewBox="0 0 256 256" style="enable-background:new 0 0 256 256;" xml:space="preserve">
+<style type="text/css">
+	.st0{fill:none;stroke:#FFFFFF;stroke-width:6;}
+	.st1{fill:#FFFFFF;stroke:#FFFFFF;stroke-width:6;}
+	.st2{fill:none;stroke:#FFFFFF;stroke-width:6;stroke-linejoin:round;}
+</style>
+<g>
+	<path class="st0" d="M35,208.8l58.5-58.5c1-1,2-1.4,2.4-1.1l10.8,10.8c0.3,0.3-0.2,1.4-1.1,2.4L47.2,221c-1,1-2,1.4-2.4,1.1
+		l-10.9-10.8C33.6,210.9,34,209.8,35,208.8z"/>
+	<g>
+		<path class="st0" d="M35,208.8l58.5-58.5c1-1,2-1.4,2.4-1.1l10.8,10.8c0.3,0.3-0.2,1.4-1.1,2.4L47.2,221c-1,1-2,1.4-2.4,1.1
+			l-10.9-10.8C33.6,210.9,34,209.8,35,208.8z"/>
+		<path class="st1" d="M35.4,208.5l40.9-40.9c1.1-1.1,2.4-1.8,2.8-1.5L89.9,177c0.3,0.3-0.3,1.6-1.5,2.8l-40.9,40.9
+			c-1.1,1.1-2.4,1.8-2.8,1.5l-10.8-10.8C33.6,210.9,34.2,209.7,35.4,208.5z"/>
+	</g>
+</g>
+<polygon class="st2" points="31.1,41.2 39.5,109.1 67.3,81.4 106.9,92.7 116.5,27.1 73.8,49.2 "/>
+<polygon class="st2" points="166.5,77.2 165.6,128 188.9,110.6 216.8,123 230.8,75.8 197.1,87.5 "/>
+<polygon class="st2" points="161.2,181 179.2,231.3 198.2,218.9 217.8,225.1 228,181 194.8,194.1 "/>
+</svg>

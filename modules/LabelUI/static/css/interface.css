@@ -94,9 +94,14 @@ h3 {
 #interface-controls {
     display: flex;
     flex-direction: row;
+    max-width: calc(100vw - 500px);
+    height: 58px;
+    padding-bottom: 10px;
+}
+#interface-controls > button {
     height: 32px;
 }
-#interface-controls, .data-controls {
+#interface-controls {
     justify-content: center;
 }
 .data-controls {
@@ -110,6 +115,7 @@ h3 {
     /* display: inline; */
     white-space: nowrap;
     margin-right: 10px;
+    height: 32px;
 }
 #viewport-controls {
     display: flex;

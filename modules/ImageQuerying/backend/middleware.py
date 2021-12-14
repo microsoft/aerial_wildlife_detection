@@ -7,6 +7,7 @@ import numpy as np
 import cv2
 from scipy.ndimage.morphology import binary_fill_holes, binary_dilation
 from scipy.spatial.distance import cdist
+from scipy.stats import wasserstein_distance
 from detectron2.structures.masks import polygons_to_bitmask
 
 from . import regionProcessing
@@ -238,20 +239,30 @@ class ImageQueryingMiddleware:
     
 
 
-    def select_similar(self, project, imgPath, seed_polygon, tolerance=32, return_polygon=False, num_max=32):
+    def select_similar(self, project, imgPath, seed_polygon, tolerance=0.01, return_polygon=False, num_max=32):
         '''
             Receives an image and polygon within the image and tries to find
             other regions that are visually similar. The similarity is defined
             by "features" that are extracted for the seed polygon region, as
-            well as "tolerance" that defines the euclidean distance of the
-            features of other regions in the image to the seed region. Other
-            regions are obtained using a specified superpixelization algorithm,
-            with optional arguments.
+            well as "tolerance" that defines the quantile of the euclidean
+            distance of the features of other regions in the image to the seed
+            region. Other regions are obtained using a specified
+            superpixelization algorithm, with optional arguments.
         '''
         #TODO: fixed kwargs for now
         regionMethod = 'quickshift'
         def featureCalc(img, regionMap):
-            return regionProcessing.histogram_of_colors(img, regionMap, num_bins=50)
+            # return regionProcessing.custom_features(img, regionMap,
+            #     (lambda x: np.mean(x, 0), lambda x: np.std(x, 0)))
+            return np.concatenate(
+                (
+                    regionProcessing.custom_features(img, regionMap,
+                        (lambda x: np.mean(x, 0), lambda x: np.std(x, 0))),
+                    regionProcessing.histogram_of_colors(img, regionMap, num_bins=25)
+                ),
+                1
+            )
+            # return regionProcessing.histogram_of_colors(img, regionMap, num_bins=25)
             # return np.concatenate(
             #     (
             #         regionProcessing.histogram_of_colors(img, regionMap, num_bins=20),
@@ -282,31 +293,63 @@ class ImageQueryingMiddleware:
 
         # segment image into regions
         regions = regionProcessing.find_regions(img, regionMethod)      #TODO: kwargs
+        rIdx = np.sort(np.unique(regions))
 
-        # calculate features for seed and candidate regions, compare and append close results
+        # calculate features for seed and candidate regions and compare
         seedFeatures = featureCalc(img, polymask)[1,:]      # skip background
-        candidateFeatures = featureCalc(img, regions)       #TODO: remove candidates intersecting with seed region
-        dists = cdist(seedFeatures[np.newaxis,:], candidateFeatures).ravel()
-        dists[dists>tolerance] = 1e9
-        order = np.argsort(dists)
-        valid = order[:min(len(order), num_max)]
-        result = []
-        for v in valid:
-            if dists[v] > 1e8:
-                continue
-            candidate = (regions == v)
-            if return_polygon:
-                largest = regionProcessing.mask_to_poly(candidate, True)
+        candidateFeatures = featureCalc(img, regions)                               #TODO: remove candidates intersecting with seed region
+        dists = cdist(seedFeatures[np.newaxis,:], candidateFeatures).ravel()        #TODO: l2 distance suboptimal for histograms; use Wasserstein metric instead?
+        # dists = np.zeros(len(candidateFeatures))
+        # for c in range(len(candidateFeatures)):                                     #TODO: speedup?
+        #     dists[c] = wasserstein_distance(candidateFeatures[c,:], seedFeatures)
+        tolQuant = np.quantile(dists, tolerance)                                    #TODO: feature distances are unbounded; need to adjust tolerance somehow
+        valid = np.where(dists <= tolQuant)[0]
 
-                # make relative coordinates again
-                if largest is not None:
-                    largest = largest.astype(np.float32)
-                    largest[::2] /= sz[1]
-                    largest[1::2] /= sz[0]
-                    largest = largest.tolist()
-                    result.append(largest)
+        mask_result = np.zeros_like(regions)
+        for v in valid:                                     #TODO: speedup?
+            mask_result[regions==rIdx[v]] = 1
+
+        # extract polygons and keep those with areas most similar to seed area
+        polygons = regionProcessing.mask_to_poly(mask_result, False)
+        areas = np.array([regionProcessing.polygon_area(p[:,0], p[:,1]) for p in polygons])
+        seedArea = regionProcessing.polygon_area(coords_abs[::2], coords_abs[1::2])
+        order = np.argsort(np.power(areas - seedArea, 2))
+        order = order[:min(len(order), num_max)]
+
+        result = []
+        for o in order:
+            # make relative coordinates again
+            poly = polygons[o].astype(np.float32)
+            poly[:,0] /= sz[1]
+            poly[:,1] /= sz[0]
+            result.append(poly.ravel().tolist())
+
+        # valid = np.where(dists <= tolerance)[0]
+        # order = np.argsort(dists[valid])
+        # order = order[:min(len(order), num_max)]
+
+        # mask_result = np.zeros_like(regions)
+
+        # dists[dists>tolerance] = 1e9
+        # order = np.argsort(dists)
+        # valid = order[:min(len(order), num_max)]
+        # result = []
+        # for v in valid:
+        #     if dists[v] > 1e8:
+        #         continue
+        #     candidate = (regions == v)
+        #     if return_polygon:
+        #         largest = regionProcessing.mask_to_poly(candidate, True)
+
+        #         # make relative coordinates again
+        #         if largest is not None:
+        #             largest = largest.astype(np.float32)
+        #             largest[::2] /= sz[1]
+        #             largest[1::2] /= sz[0]
+        #             largest = largest.tolist()
+        #             result.append(largest)
             
-            else:
-                result.append(candidate.tolist())
+        #     else:
+        #         result.append(candidate.tolist())
         
         return result

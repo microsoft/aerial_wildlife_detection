@@ -1797,32 +1797,36 @@ class PaintbrushElement extends AbstractRenderElement {
         Convenience class that either displays a square or circle,
         depending on the global setting, over the mouse position.
     */
-    constructor(id, x, y, zIndex, disableInteractions, sizeOverride) {
+    constructor(id, x, y, zIndex, disableInteractions, sizeOverride, typeOverride) {
         super(id, null, zIndex, disableInteractions);
         this.x = x;
         this.y = y;
-        this.size = typeof(sizeOverride) === 'number' ? sizeOverride : window.uiControlHandler.segmentation_properties.brushSize;
+        this.hasSizeOverride = (typeof(sizeOverride) === 'number');
+        this.size = this.hasSizeOverride ? sizeOverride : window.uiControlHandler.segmentation_properties.brushSize;
+        this.hasTypeOverride = (typeof(typeOverride) === 'string');
+        this.type = this.hasTypeOverride ? typeOverride : window.uiControlHandler.getBrushType();
     }
 
     render(ctx, scaleFun) {
         super.render(ctx, scaleFun);
         if(!this.visible || this.x == null || this.y == null) return;
         var coords = scaleFun([this.x, this.y], 'validArea');
+        if(!this.hasSizeOverride) this.size = window.uiControlHandler.segmentation_properties.brushSize;
+        if(!this.hasTypeOverride) this.type = window.uiControlHandler.getBrushType();
         let size = scaleFun(scaleFun([0,0,this.size,this.size], 'canvas', true), 'validArea')[2];
         let halfSize = parseInt(Math.round(size/2));
-
         ctx.strokeStyle = window.styles.paintbrush.strokeColor;
         ctx.lineWidth = window.styles.paintbrush.lineWidth;
         ctx.setLineDash(window.styles.paintbrush.lineDash === undefined ? [] : window.styles.paintbrush.lineDash);
-        if(window.uiControlHandler.getBrushType() === 'rectangle') {
+        if(this.type === 'rectangle') {
             ctx.strokeRect(coords[0] - halfSize, coords[1] - halfSize,
                 size, size);
-        } else if(window.uiControlHandler.getBrushType() === 'circle') {
+        } else if(this.type === 'circle') {
             ctx.beginPath();
             ctx.arc(coords[0], coords[1], halfSize, 0, 2*Math.PI);
             ctx.stroke();
             ctx.closePath();
-        } else if(window.uiControlHandler.getBrushType() === 'diamond') {
+        } else if(this.type === 'diamond') {
             ctx.beginPath();
             ctx.moveTo(coords[0]-halfSize, coords[1]);
             ctx.lineTo(coords[0], coords[1]-halfSize);

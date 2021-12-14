@@ -4,6 +4,7 @@
     2021 Benjamin Kellenberger
 '''
 
+from collections.abc import Iterable
 import numpy as np
 from skimage import segmentation
 from sklearn.cluster import KMeans
@@ -36,7 +37,7 @@ def histogram_of_colors(image, regionMap, num_bins=10):
 
     img_flat = np.reshape(image, (-1, sz[2]))
     rmap_flat = regionMap.ravel().astype(np.int32)
-    regionIdx = np.unique(rmap_flat)
+    regionIdx = np.sort(np.unique(rmap_flat))
     hoc = np.zeros(shape=(len(regionIdx), num_bins))
 
     #TODO: speedup using numba?
@@ -59,7 +60,7 @@ def bag_of_visual_words(image, regionMap, k, num_bins=10):
 
     img_flat = np.reshape(image, (-1, sz[2]))
     rmap_flat = regionMap.ravel().astype(np.int32)
-    regionIdx = np.unique(rmap_flat)
+    regionIdx = np.sort(np.unique(rmap_flat))
 
     bovwH = np.zeros(shape=(len(regionIdx), num_bins))
     img_clu = KMeans(k).fit(img_flat).labels_
@@ -69,6 +70,35 @@ def bag_of_visual_words(image, regionMap, k, num_bins=10):
         mask = rmap_flat==r
         bovwH[r,:] = np.histogram(img_clu[mask], num_bins, range=(0,num_bins))[0].astype(np.float32) / mask.sum()
     return bovwH
+
+
+
+def custom_features(image, regionMap, featureFuns):
+    '''
+        Receives an image, region map, as well as one or more functions that
+        return a vector of features for each region, and applies them to the
+        image.
+    '''
+    if not isinstance(featureFuns, Iterable):
+        featureFuns = (featureFuns,)
+    featureFuns = list(featureFuns)
+
+    if image.ndim == 2:
+        image = image[:,:,np.newaxis]
+    sz = image.shape
+
+    img_flat = np.reshape(image, (-1, sz[2]))
+    rmap_flat = regionMap.ravel().astype(np.int32)
+    regionIdx = np.sort(np.unique(rmap_flat))
+
+    out = []
+
+    #TODO: speedup using numba?
+    for r in regionIdx:
+        mask = rmap_flat==r
+        out.append(np.concatenate([f(img_flat[mask]) for f in featureFuns]))
+    return np.array(out)
+
 
 
 
