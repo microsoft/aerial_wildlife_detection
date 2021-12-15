@@ -10,7 +10,7 @@
     2020-21 Benjamin Kellenberger
 '''
 
-AIDE_VERSION = '2.2.211215'
+AIDE_VERSION = '2.2.211215b'
 
 
 MIN_FILESERVER_VERSION = '2.0.210225'       # minimum required version for FileServer, due to recent changes

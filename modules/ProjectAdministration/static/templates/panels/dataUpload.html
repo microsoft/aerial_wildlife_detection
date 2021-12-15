@@ -233,6 +233,12 @@
                 'stride': [parseInt($('#patch-stride-width').val()), parseInt($('#patch-stride-height').val())],
                 'tight': $('#patch-tight-chck').prop('checked')
             };
+            if($('#discard-empty-chck').prop('checked')) {
+                let perc = parseFloat($('#discard-empty-percentage').val());
+                if(!isNaN(perc) && perc > 0 && perc < 100) {
+                    splitParams['discard_homogenous_percentage'] = perc;
+                }
+            }
 
             // global progress bar, status message, and stop button
             $('#global-progress-bar').empty();
@@ -544,23 +550,37 @@
             // split options (TODO: add description on how this works...)
             var splitOptions = $('<div style="margin-left:20px"><input type="checkbox" id="split-patches-chck" />' +
                     '<label for="split-patches-chck">Split images into tiles:</label><br />' +
-                    '<div style="margin-left:20px">' +
+                    '<div id="split-patches-properties" style="margin-left:20px">' +
                     '<table><thead><tr><th></th><th>Horizontal</th><th>Vertical</th></tr></thead><tbody>' +
                     '<tr><td>Patch size:</td>' +
-                    '<td><input type="number" id="patch-size-width" min="16" max="4096" value="800" /></td>' +
-                    '<td><input type="number" id="patch-size-height" min="16" max="4096" value="600" /></td></tr>' +
+                    '<td><input type="number" id="patch-size-width" min="16" max="4096" value="800" disabled="disabled" /></td>' +
+                    '<td><input type="number" id="patch-size-height" min="16" max="4096" value="600" disabled="disabled" /></td></tr>' +
                     '<tr><td>Stride:</td>' +
-                    '<td><input type="number" id="patch-stride-width" min="16" max="4096" value="800" /></td>' +
-                    '<td><input type="number" id="patch-stride-height" min="16" max="4096" value="600" /></td></tr></tbody></table>' +
-                    '<input type="checkbox" id="patch-tight-chck" checked="checked" /><label for="patch-tight-chck">Do not exceed image boundaries</label></div></div>');
-                optionsPanel.append(splitOptions);
+                    '<td><input type="number" id="patch-stride-width" min="16" max="4096" value="800" disabled="disabled" /></td>' +
+                    '<td><input type="number" id="patch-stride-height" min="16" max="4096" value="600" disabled="disabled" /></td></tr></tbody></table>' +
+                    '<input type="checkbox" id="patch-tight-chck" checked="checked" disabled="disabled" /><label for="patch-tight-chck">Do not exceed image boundaries</label><br />' +
+                    '<input type="checkbox" id="discard-empty-chck" disabled="disabled" /><label for="discard-empty-chck"><span>Discard patches with</span>' +
+                    '<input type="number" min="1" max="99" value="5" id="discard-empty-percentage" disabled="disabled" /><span>% or more homogeneous pixels</span></label>' +
+                    '</div></div>');
+            optionsPanel.append(splitOptions);
+
             var startFileUpload = $('<button class="btn btn-sm btn-primary" id="upload-button">Upload</button>');
             startFileUpload.on('click', function() {
                 startUploadFilesFromDisk();
             });
             window.actionPanel_upload.append(startFileUpload);
-
             $('#actions-panel').append(window.actionPanel_upload);
+            $('#split-patches-chck').on('input', function() {
+                let checked = $(this).prop('checked');
+                $('#split-patches-properties').find('input').each(function() {
+                    $(this).prop('disabled', !checked);
+                });
+                $('#discard-empty-percentage').prop('disabled', !(checked & $('#discard-empty-chck').prop('checked')));
+            });
+            $('#discard-empty-chck').on('input', function() {
+                let checked = $(this).prop('checked');
+                $('#discard-empty-percentage').prop('disabled', !checked);
+            });
             $('#upload-mode-select input:radio').on('change', function() {
                 if($(this).val() === 'browserUpload') {
                     window.actionPanel_scan.detach();

@@ -13,6 +13,7 @@ from detectron2.structures.masks import polygons_to_bitmask
 from . import regionProcessing
 from modules.AIWorker.backend import fileserver     #TODO: make generally accessible?
 from util import drivers
+from util.drivers.imageDrivers import normalize_image
 
 
 class ImageQueryingMiddleware:
@@ -81,20 +82,6 @@ class ImageQueryingMiddleware:
 
 
 
-    @staticmethod
-    def _normalize_image(img):
-        #TODO: make extra routine in image drivers (also with more features)
-        sz = img.shape
-        img = img.reshape((-1, sz[2]))
-        mins = np.min(img, 0)[np.newaxis,:]
-        maxs = np.max(img, 0)[np.newaxis,:]
-        img = (img - mins)/(maxs - mins)
-        img = 255 * img.reshape(sz)
-        img = img.astype(np.uint8)
-        return img
-
-
-
     def magicWand(self, project, imgPath, seedCoords, tolerance=32, maxRadius=None, rgbOnly=False):
         '''
             Magic wand functionality: loads an image for a project and receives
@@ -114,7 +101,7 @@ class ImageQueryingMiddleware:
 
         # get image
         img = self._load_image_for_project(project, imgPath, bands='rgb' if rgbOnly else 'all')
-        img = self._normalize_image(img)
+        img = normalize_image(img, band_axis=-1)
         img = np.ascontiguousarray(img).astype(np.float32)
         sz = img.shape
 
@@ -187,7 +174,7 @@ class ImageQueryingMiddleware:
         img = np.ascontiguousarray(img).astype(np.float32)
         sz = img.shape
 
-        img = self._normalize_image(img)
+        img = normalize_image(img, band_axis=1)
 
         # iterate through all lists of coordinates provided
         result = []
@@ -279,7 +266,7 @@ class ImageQueryingMiddleware:
         # get image
         img = self._load_image_for_project(project, imgPath, bands='rgb')
         img = np.ascontiguousarray(img).astype(np.float32)
-        img = self._normalize_image(img)
+        img = normalize_image(img, band_axis=-1)
         sz = img.shape
 
         # get mask for seed region

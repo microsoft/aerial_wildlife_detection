@@ -7,8 +7,11 @@
 
 import numpy as np
 
+from util.drivers.imageDrivers import normalize_image
 
-def split_image(array, patchSize, stride=None, tight=True):
+
+
+def split_image(array, patchSize, stride=None, tight=True, discard_homogeneous_percentage=None):
     '''
         Receives a NumPy ndarray of size (BxWxH) and splits it into patches
         on a regular grid.
@@ -27,6 +30,12 @@ def split_image(array, patchSize, stride=None, tight=True):
                             that none of the patches exceeds the image boundaries.
                             If False, patches might exceed the image boundaries and
                             contain black borders (filled with all-zeros).
+            - discard_homogeneous_percentage:
+                            If float or int, any patch with this or more percent of
+                            pixels that have the same values across all bands will be
+                            discarded. Useful to get rid of e.g. bordering patches in
+                            slanted satellite stripes. If <= 0, >= 100 or None, no
+                            patch will be discarded
         
         Returns:
             - patches:      A list of N NumPy ndarrays containing all the patches cropped
@@ -61,7 +70,12 @@ def split_image(array, patchSize, stride=None, tight=True):
         assert isinstance(stride[1], int), f'"{str(stride[1])}" is not an integer value.'
         # ditto for stride
         stride = (max(1,min(stride[1], sz[1])), max(1,min(stride[0], sz[2])))
-    
+    if isinstance(discard_homogeneous_percentage, float) or isinstance(discard_homogeneous_percentage, int):
+        if discard_homogeneous_percentage <= 0 or discard_homogeneous_percentage >= 100:
+            discard_homogeneous_percentage = None
+    else:
+        discard_homogeneous_percentage = None
+
     # define crop locations
     xLoc = list(range(0, sz[1], stride[0]))
     yLoc = list(range(0, sz[2], stride[1]))
@@ -89,8 +103,16 @@ def split_image(array, patchSize, stride=None, tight=True):
         for y in range(len(yLoc)):
             pos = (int(xLoc[x]), int(yLoc[y]))
             end = (min(pos[0]+patchSize[0], sz[1]), min(pos[1]+patchSize[1], sz[2]))
+            arr_patch = array[:,pos[0]:end[0],pos[1]:end[1]]
+            if discard_homogeneous_percentage is not None:
+                # get most frequent pixel value across bands and check percentage of it
+                psz = arr_patch.shape
+                arr_patch_int = normalize_image(arr_patch)
+                _, counts = np.unique(np.reshape(arr_patch_int, (psz[0], -1)), axis=1, return_counts=True)
+                if np.max(counts) > discard_homogeneous_percentage/100.0*(psz[1]*psz[2]):
+                    continue
             patch = np.zeros(shape=(sz[0], *patchSize), dtype=array.dtype)
-            patch[:,:(end[0]-pos[0]),:(end[1]-pos[1])] = array[:,pos[0]:end[0],pos[1]:end[1]]
+            patch[:,:(end[0]-pos[0]),:(end[1]-pos[1])] = arr_patch
             # patch = image.crop((pos[0], pos[1], pos[0]+patchSize[0], pos[1]+patchSize[1]))
             patches.append(patch)
             coords.append(pos)

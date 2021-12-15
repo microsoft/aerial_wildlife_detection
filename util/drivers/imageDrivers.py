@@ -27,6 +27,51 @@ def bytea_to_bytesio(bytea):
 
 
 
+def bytesio_to_bytea(bytesio):
+    '''
+        Returns a byte array from a BytesIO wrapper.
+    '''
+    if isinstance(bytesio, BytesIO):
+        bytesio.seek(0)
+        return bytesio.getvalue()
+    else:
+        return bytesio
+
+
+
+def normalize_image(img, band_axis=0):
+    '''
+        Receives an image in np.array format and normalizes it into a [0, 255]
+        uint8 image. Parameter "band_axis" determines in which axis the image
+        bands can be found.
+    '''
+    if img.ndim == 2:
+        img = img[np.newaxis,...]
+        band_axis = 0
+    permuted = False
+    if band_axis != 0:
+        permuted = True
+        if band_axis < 0:
+            band_axis = img.ndim + band_axis
+        bOrder = list(range(img.ndim))
+        bOrder.remove(band_axis)
+        bOrder.insert(0,band_axis)
+        img = np.transpose(img, (bOrder))
+    sz = img.shape
+    img = img.reshape((sz[0], -1)).astype(np.float32)
+    mins = np.min(img, 1)[:,np.newaxis]
+    maxs = np.max(img, 1)[:,np.newaxis]
+    img = (img - mins)/(maxs - mins)
+    img = 255 * img.reshape(sz)
+    if permuted:
+        # permute back
+        img = np.transpose(img, np.argsort(bOrder))
+    img = img.astype(np.uint8)
+    return img
+
+
+
+
 class AbstractImageDriver:
     '''
         Abstract base class for image drivers. Convention: all drivers must
@@ -156,7 +201,7 @@ class GDALImageDriver(AbstractImageDriver):
     
     @classmethod
     def load_from_bytes(cls, bytea):
-        with cls.memfile(bytea) as memfile:
+        with cls.memfile(bytesio_to_bytea(bytea)) as memfile:
             with memfile.open() as f:
                 raster = f.read()
         return raster

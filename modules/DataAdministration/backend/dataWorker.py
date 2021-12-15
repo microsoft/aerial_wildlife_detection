@@ -190,48 +190,48 @@ class DataWorker:
     def uploadImages(self, project, images, existingFiles='keepExisting',
         splitImages=False, splitProperties=None):
         '''
-            Receives a dict of files (bottle.py file format),
-            verifies their file extension and checks if they
-            are loadable by PIL.
-            If they are, they are saved to disk in the project's
-            image folder, and registered in the database.
-            Parameter "existingFiles" can be set as follows:
-            - "keepExisting" (default): if an image already exists on
-              disk with the same path/file name, the new image will be
-              renamed with an underscore and trailing number.
-            - "skipExisting": do not save images that already exist on
-              disk under the same path/file name.
-            - "replaceExisting": overwrite images that exist with the
-              same path/file name. Note: in this case all existing anno-
-              tations, predictions, and other metadata about those images,
-              will be removed from the database.
-            
+            Receives a dict of files (bottle.py file format), verifies their
+            file extension and checks if they are loadable by PIL. If they are,
+            they are saved to disk in the project's image folder, and registered
+            in the database. Parameter "existingFiles" can be set as follows:
+            - "keepExisting" (default): if an image already exists on disk with
+              the same path/file name, the new image will be renamed with an
+              underscore and trailing number.
+            - "skipExisting": do not save images that already exist on disk
+              under the same path/file name.
+            - "replaceExisting": overwrite images that exist with the same
+              path/file name. Note: in this case all existing anno- tations,
+              predictions, and other metadata about those images, will be
+              removed from the database.
+
             If "splitImages" is True, the uploaded images will be automati-
-            cally divided into patches on a regular grid according to what
-            is defined in "splitProperties". For example, the following
-            definition:
+            cally divided into patches on a regular grid according to what is
+            defined in "splitProperties". For example, the following definition:
 
                 splitProperties = {
                     'patchSize': (800, 600),
                     'stride': (400, 300),
-                    'tight': True
+                    'tight': True,
+                    'discard_homogenous_percentage': 5,
                 }
 
-            would divide the images into patches of size 800x600, with over-
-            lap of 50% (denoted by the "stride" being half the "patchSize"),
-            and with all patches completely inside the original image (para-
-            meter "tight" makes the last patches to the far left and bottom
-            of the image being fully inside the original image; they are shif-
-            ted if needed).
+            would divide the images into patches of size 800x600, with over- lap
+            of 50% (denoted by the "stride" being half the "patchSize"), and
+            with all patches completely inside the original image (para- meter
+            "tight" makes the last patches to the far left and bottom of the
+            image being fully inside the original image; they are shif- ted if
+            needed). Any patch with more than 5% of the pixels having the same
+            values across all bands would be discarded, due to the
+            "discard_homogenous_percentage" argument.
+
             Instead of the full images, the patches are stored on disk and re-
             ferenced through the database. The name format for patches is
             "imageName_x_y.jpg", with "imageName" denoting the name of the ori-
             ginal image, and "x" and "y" the left and top position of the patch
             inside the original image.
 
-            Returns image keys for images that were successfully
-            saved, and keys and error messages for those that
-            were not.
+            Returns image keys for images that were successfully saved, and keys
+            and error messages for those that were not.
         '''
         # get band configuration for project
         bandConfig = self.dbConnector.execute(
@@ -291,7 +291,8 @@ class DataWorker:
                     images, coords = split_image(pixelArray,
                                             splitProperties['patchSize'],
                                             splitProperties['stride'],
-                                            splitProperties['tight'])
+                                            splitProperties.get('tight', False),
+                                            splitProperties.get('discard_homogenous_percentage', None))
                     bareFileName, ext = os.path.splitext(filename)
                     filenames = [f'{bareFileName}_{c[0]}_{c[1]}{ext}' for c in coords]
 
