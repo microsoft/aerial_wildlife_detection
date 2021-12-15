@@ -296,12 +296,20 @@ class ImageQueryingMiddleware:
         rIdx = np.sort(np.unique(regions))
 
         # calculate features for seed and candidate regions and compare
-        seedFeatures = featureCalc(img, polymask)[1,:]      # skip background
         candidateFeatures = featureCalc(img, regions)                               #TODO: remove candidates intersecting with seed region
-        dists = cdist(seedFeatures[np.newaxis,:], candidateFeatures).ravel()        #TODO: l2 distance suboptimal for histograms; use Wasserstein metric instead?
+        seedFeatures = []
+        for r in rIdx:
+            mask = regions == r
+            if np.sum(mask*polymask):
+                seedFeatures.append(candidateFeatures[r,:])
+        seedFeatures = np.array(seedFeatures)
+
+        # candidateFeatures = featureCalc(img, regions)                               #TODO: remove candidates intersecting with seed region
+        dists = cdist(seedFeatures, candidateFeatures)                              #TODO: l2 distance suboptimal for histograms; use Wasserstein metric instead?
         # dists = np.zeros(len(candidateFeatures))
         # for c in range(len(candidateFeatures)):                                     #TODO: speedup?
         #     dists[c] = wasserstein_distance(candidateFeatures[c,:], seedFeatures)
+        dists = np.mean(dists, 0)
         tolQuant = np.quantile(dists, tolerance)                                    #TODO: feature distances are unbounded; need to adjust tolerance somehow
         valid = np.where(dists <= tolQuant)[0]
 
@@ -323,33 +331,5 @@ class ImageQueryingMiddleware:
             poly[:,0] /= sz[1]
             poly[:,1] /= sz[0]
             result.append(poly.ravel().tolist())
-
-        # valid = np.where(dists <= tolerance)[0]
-        # order = np.argsort(dists[valid])
-        # order = order[:min(len(order), num_max)]
-
-        # mask_result = np.zeros_like(regions)
-
-        # dists[dists>tolerance] = 1e9
-        # order = np.argsort(dists)
-        # valid = order[:min(len(order), num_max)]
-        # result = []
-        # for v in valid:
-        #     if dists[v] > 1e8:
-        #         continue
-        #     candidate = (regions == v)
-        #     if return_polygon:
-        #         largest = regionProcessing.mask_to_poly(candidate, True)
-
-        #         # make relative coordinates again
-        #         if largest is not None:
-        #             largest = largest.astype(np.float32)
-        #             largest[::2] /= sz[1]
-        #             largest[1::2] /= sz[0]
-        #             largest = largest.tolist()
-        #             result.append(largest)
-            
-        #     else:
-        #         result.append(candidate.tolist())
         
         return result

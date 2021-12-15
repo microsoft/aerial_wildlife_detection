@@ -36,6 +36,83 @@ const CURSORS = [
     'grab'
 ]
 
+
+
+class ButtonGroup {
+    /**
+     * Maintains a dict of Bootstrap buttons and changes their type
+     * ("btn-primary", "btn-secondary") depending on which one is active.
+     */
+    constructor(activeClass, defaultClass) {
+        this.buttons = {};
+        this.activeClass = (typeof(activeClass) === 'string' ? activeClass : 'btn-primary');
+        this.defaultClass = (typeof(defaultClass) === 'string' ? defaultClass : 'btn-secondary');
+    }
+
+    set_active_button(id) {
+        if(typeof(id) === 'object') {
+            // DOM element provided; extract id
+            id = $(id).attr('group-id');
+        }
+        for(var key in this.buttons) {
+            if(key == id) {
+                this.buttons[key].removeClass(this.defaultClass);
+                this.buttons[key].addClass(this.activeClass);
+            } else {
+                this.buttons[key].removeClass(this.activeClass);
+                this.buttons[key].addClass(this.defaultClass);
+            }
+        }
+    }
+
+    addButton(button, callback, idOverride) {
+        button = $(button);
+        let id = idOverride;
+        if(id === undefined) {
+            let bID = button.attr('id');
+            id = (bID !== undefined ? bID : button.html().toString());
+        }
+        button.attr('group-id', id);
+        button.removeClass(this.activeClass);
+        button.addClass(this.defaultClass);
+        let self = this;
+        if(this.buttons.hasOwnProperty(id)) {
+            // button already exists; update callback
+            this.buttons[id].off('click');
+        } else {
+            // add new
+            this.buttons[id] = button;
+        }
+        this.buttons[id].on('click', function(event) {
+            self.set_active_button($(this).attr('group-id'));
+            if(typeof(callback) === 'function') {
+                callback(event);
+            }
+        });
+    }
+
+    removeButton(id) {
+        if(this.buttons.hasOwnProperty(id)) {
+            this.buttons[id].off('click');
+            this.buttons[id].remove();
+        }
+    }
+}
+
+
+function _set_action_fun(action) {
+    return function() {
+        this.setAction(action);
+    }
+}
+
+function _set_brushtype_fun(type) {
+    return function() {
+        this.setBrushType(type);
+    }
+}
+
+
 class UIControlHandler {
 
     constructor(dataHandler) {
@@ -66,8 +143,9 @@ class UIControlHandler {
 
     _setup_controls() {
 
-        var self = this;
-        this.staticButtons = {};    // buttons that can be pressed in and left that way
+        let self = this;
+        this.staticButtons = {};                // buttons that can be pressed in and left that way
+        this.toggleButtons = new ButtonGroup(); // buttons that can be switched on or off one at a time
 
         /*
             viewport controls
@@ -76,36 +154,29 @@ class UIControlHandler {
 
         // select
         var selectButton = $('<button id="select-button" class="btn btn-sm btn-secondary active" title="Select (S)"><img src="/static/interface/img/controls/select.svg" style="height:18px" /></button>');
-        this.staticButtons[ACTIONS.DO_NOTHING] = selectButton;
+        // this.staticButtons[ACTIONS.DO_NOTHING] = selectButton;
         vpControls.append(selectButton);
-        selectButton.click(function() {
-            self.setAction(ACTIONS.DO_NOTHING);
-        });
+        this.toggleButtons.addButton(selectButton, (_set_action_fun(ACTIONS.DO_NOTHING)).bind(this), ACTIONS.DO_NOTHING);
+        this.toggleButtons.set_active_button(selectButton);
 
         // pan
         var panButton = $('<button id="pan-button" class="btn btn-sm btn-secondary" title="Pan (P)"><img src="/static/interface/img/controls/pan.svg" style="height:18px" /></button>');
-        this.staticButtons[ACTIONS.PAN] = panButton;
+        // this.staticButtons[ACTIONS.PAN] = panButton;
         vpControls.append(panButton);
-        panButton.click(function() {
-            self.setAction(ACTIONS.PAN);
-        });
+        this.toggleButtons.addButton(panButton, (_set_action_fun(ACTIONS.PAN)).bind(this), ACTIONS.PAN);
 
         // zoom buttons
-        vpControls.append($('<button id="zoom-in-button" class="btn btn-sm btn-secondary" title="Zoom In (I)"><img src="/static/interface/img/controls/zoom_in.svg" style="height:18px" /></button>'));
-        $('#zoom-in-button').click(function() {
-            self.setAction(ACTIONS.ZOOM_IN);
-        });
-        vpControls.append($('<button id="zoom-out-button" class="btn btn-sm btn-secondary" title="Zoom Out (O)"><img src="/static/interface/img/controls/zoom_out.svg" style="height:18px" /></button>'));
-        $('#zoom-out-button').click(function() {
-            self.setAction(ACTIONS.ZOOM_OUT);
-        });
+        let ziButton = $('<button id="zoom-in-button" class="btn btn-sm btn-secondary" title="Zoom In (I)"><img src="/static/interface/img/controls/zoom_in.svg" style="height:18px" /></button>');
+        vpControls.append(ziButton);
+        this.toggleButtons.addButton(ziButton, (_set_action_fun(ACTIONS.ZOOM_IN)).bind(this), ACTIONS.ZOOM_IN);
+        let zoButton = $('<button id="zoom-out-button" class="btn btn-sm btn-secondary" title="Zoom Out (O)"><img src="/static/interface/img/controls/zoom_out.svg" style="height:18px" /></button>');
+        vpControls.append(zoButton);
+        this.toggleButtons.addButton(zoButton, (_set_action_fun(ACTIONS.ZOOM_OUT)).bind(this), ACTIONS.ZOOM_OUT);
 
-        var zoomAreaButton = $('<button id="zoom-area-button" class="btn btn-sm btn-secondary" title="Zoom to Area (Z)"><img src="/static/interface/img/controls/zoom_area.svg" style="height:18px" /></button>');
-        this.staticButtons[ACTIONS.ZOOM_AREA] = zoomAreaButton;
-        vpControls.append(zoomAreaButton);
-        zoomAreaButton.click(function() {
-            self.setAction(ACTIONS.ZOOM_AREA);
-        });
+        let zaButton = $('<button id="zoom-area-button" class="btn btn-sm btn-secondary" title="Zoom to Area (Z)"><img src="/static/interface/img/controls/zoom_area.svg" style="height:18px" /></button>');
+        // this.staticButtons[ACTIONS.ZOOM_AREA] = zoomAreaButton;
+        vpControls.append(zaButton);
+        this.toggleButtons.addButton(zaButton, (_set_action_fun(ACTIONS.ZOOM_AREA)).bind(this), ACTIONS.ZOOM_AREA);
         vpControls.append($('<button id="zoom-reset-button" class="btn btn-sm btn-secondary" title="Original Extent (E)"><img src="/static/interface/img/controls/zoom_extent.svg" style="height:18px" /></button>'));
         $('#zoom-reset-button').click(function() {
             self.resetZoom();
@@ -132,14 +203,9 @@ class UIControlHandler {
 
         if(!(['labels', 'segmentationMasks'].includes(window.annotationType))) {
             // add button
-            var addAnnoCallback = function() {
-                self.setAction(ACTIONS.ADD_ANNOTATION);
-            }
-            var addAnnoBtn = $('<button id="add-annotation" class="btn btn-sm btn-primary" title="Add Annotation (W)">+</button>');
-            addAnnoBtn.click(addAnnoCallback);
-            
-            this.staticButtons[ACTIONS.ADD_ANNOTATION] = addAnnoBtn;
-            
+            let addAnnoBtn = $('<button id="add-annotation" class="btn btn-sm btn-primary" title="Add Annotation (W)">+</button>');
+            this.toggleButtons.addButton(addAnnoBtn, (_set_action_fun(ACTIONS.ADD_ANNOTATION)).bind(this), ACTIONS.ADD_ANNOTATION);
+            // this.staticButtons[ACTIONS.ADD_ANNOTATION] = addAnnoBtn;
             dtControls.append(addAnnoBtn);
 
             if(window.annotationType === 'polygons') {
@@ -173,13 +239,12 @@ class UIControlHandler {
                         self.setAction(ACTIONS.GRAB_CUT);
                     }
                 });
+                this.toggleButtons.addButton(grabCutBtn, (_set_action_fun(ACTIONS.GRAB_CUT)).bind(this), ACTIONS.GRAB_CUT);
                 dtControls.append(grabCutBtn);
 
                 // polygon simplification
                 let simplifyBtn = $('<button class="btn btn-sm btn-secondary inline-control active" style="margin-right:2px">Simplify</button>');
-                simplifyBtn.on('click', function() {
-                    self.setAction(ACTIONS.SIMPLIFY_POLYGON);
-                });
+                this.toggleButtons.addButton(simplifyBtn, (_set_action_fun(ACTIONS.SIMPLIFY_POLYGON)).bind(this), ACTIONS.SIMPLIFY_POLYGON);
                 dtControls.append(simplifyBtn);
                 let simplifyControlsCont = $('<div id="simplify-polygon-control" class="toolset-options-container inline-control"></div>');
                 let simplifyToleranceSlider = $('<input type="range" id="simplify-polygon-tolerance" min="0" max="100" value="50" style="width:80px" />');
@@ -195,16 +260,13 @@ class UIControlHandler {
 
             // extra select button here too
             let selectButton_alt = $('<button id="select-button" class="btn btn-sm btn-secondary active" title="Select (S)"><img src="/static/interface/img/controls/select.svg" style="height:18px" /></button>');
-            selectButton_alt.on('click', function() {
-                self.setAction(ACTIONS.DO_NOTHING);
-            });
+            this.toggleButtons.addButton(selectButton_alt, (_set_action_fun(ACTIONS.DO_NOTHING)).bind(this));       //TODO: handle multiple buttons with same ID in button group
             dtControls.append(selectButton_alt);
         }
 
-        let removeAnnoCallback = function() {};
         if(window.annotationType !== 'segmentationMasks') {
             // remove button
-            removeAnnoCallback = function() {
+            let removeAnnoCallback = function() {
                 // remove active annotations
                 var numRemoved = self.dataHandler.removeActiveAnnotations();
                 if(numRemoved === 0) {
@@ -214,12 +276,9 @@ class UIControlHandler {
             }
             var removeAnnoBtn = $('<button id="remove-annotation" class="btn btn-sm btn-primary" title="Remove Annotation (R)">-</button>');
             removeAnnoBtn.click(removeAnnoCallback);
-            this.staticButtons[ACTIONS.REMOVE_ANNOTATIONS] = removeAnnoBtn;
+            // this.staticButtons[ACTIONS.REMOVE_ANNOTATIONS] = removeAnnoBtn;
+            this.toggleButtons.addButton(removeAnnoBtn, null, ACTIONS.REMOVE_ANNOTATIONS);
             dtControls.append(removeAnnoBtn);
-        } else {
-            removeAnnoCallback = function() {
-                self.setAction(ACTIONS.REMOVE_ANNOTATIONS);
-            };
         }
 
         // burst mode checkbox
@@ -365,27 +424,37 @@ class UIControlHandler {
                 opacity: $('<input class="inline-control" type="range" min="0" max="255" value="220" title="Segmentation opacity" style="width:100px" />')        //TODO: make available for other annotation types as well?
             };
 
-            this.segmentation_controls.brush.on('click', function() {
-                // if(getBrushType() === undefined) setBrushType('square');        //TODO
-                self.setAction(ACTIONS.ADD_ANNOTATION);
-            });
-            this.staticButtons[ACTIONS.ADD_ANNOTATION] = this.segmentation_controls.brush;
+            // this.segmentation_controls.brush.on('click', function() {
+            //     // if(getBrushType() === undefined) setBrushType('square');        //TODO
+            //     self.setAction(ACTIONS.ADD_ANNOTATION);
+            // });
+            this.toggleButtons.addButton(this.segmentation_controls.brush, (_set_action_fun(ACTIONS.ADD_ANNOTATION)).bind(this), ACTIONS.ADD_ANNOTATION);
+            // this.staticButtons[ACTIONS.ADD_ANNOTATION] = this.segmentation_controls.brush;
 
-            this.segmentation_controls.erase.on('click', function() {
-                // if(getBrushType() === undefined) setBrushType('square');        //TODO
-                self.setAction(ACTIONS.REMOVE_ANNOTATIONS);
-            });
-            this.staticButtons[ACTIONS.REMOVE_ANNOTATIONS] = this.segmentation_controls.erase;
+            // this.segmentation_controls.erase.on('click', function() {
+            //     // if(getBrushType() === undefined) setBrushType('square');        //TODO
+            //     self.setAction(ACTIONS.REMOVE_ANNOTATIONS);
+            // });
+            // this.staticButtons[ACTIONS.REMOVE_ANNOTATIONS] = this.segmentation_controls.erase;
+            this.toggleButtons.addButton(this.segmentation_controls.erase, (_set_action_fun(ACTIONS.REMOVE_ANNOTATIONS)).bind(this), ACTIONS.REMOVE_ANNOTATIONS);
 
-            this.segmentation_controls.brush_rectangle.click(function() {
-                self.setBrushType('rectangle');
-            });
-            this.segmentation_controls.brush_circle.click(function() {
-                self.setBrushType('circle');
-            });
-            this.segmentation_controls.brush_diamond.click(function() {
-                self.setBrushType('diamond');
-            });
+            // brush type
+            let brushTypeGroup = new ButtonGroup();
+            brushTypeGroup.addButton(this.segmentation_controls.brush_rectangle, (_set_brushtype_fun('rectangle')).bind(this), 'rectangle');
+            brushTypeGroup.addButton(this.segmentation_controls.brush_circle, (_set_brushtype_fun('circle')).bind(this), 'circle');
+            brushTypeGroup.addButton(this.segmentation_controls.brush_diamond, (_set_brushtype_fun('diamond')).bind(this), 'diamond');
+            brushTypeGroup.set_active_button('rectangle');
+            // this.segmentation_controls.brush_rectangle.click(function() {
+            //     self.setBrushType('rectangle');
+            // });
+            // this.segmentation_controls.brush_circle.click(function() {
+            //     self.setBrushType('circle');
+            // });
+            // this.segmentation_controls.brush_diamond.click(function() {
+            //     self.setBrushType('diamond');
+            // });
+
+            // brush size
             this.segmentation_controls.brush_size.on({
                 change: function() {
                     var val = Math.max(1, Math.min(255, this.value));
@@ -406,24 +475,34 @@ class UIControlHandler {
                     self.setSegmentationOpacity(parseInt(val)/255.0);
                 }
             });
-            this.segmentation_controls.select_polygon.on('click', function() {
-                self.setAction(ACTIONS.ADD_SELECT_POLYGON);
-            });
-            this.segmentation_controls.select_polygon_magnetic.on('click', function() {
-                self.setAction(ACTIONS.ADD_SELECT_POLYGON_MAGNETIC);
-            });
-            this.segmentation_controls.magic_wand.on('click', function() {
-                self.setAction(ACTIONS.MAGIC_WAND);
-            });
-            this.segmentation_controls.select_similar.on('click', function() {
-                self.setAction(ACTIONS.SELECT_SIMILAR);
-            });
-            this.segmentation_controls.paint_bucket.on('click', function() {
-                self.setAction(ACTIONS.PAINT_BUCKET);
-            });
-            this.segmentation_controls.erase_selection.on('click', function() {
-                self.setAction(ACTIONS.ERASE_SELECTION);
-            });
+
+            // area fill tools
+            // this.segmentation_controls.select_polygon.on('click', function() {
+            //     self.setAction(ACTIONS.ADD_SELECT_POLYGON);
+            // });
+            // this.segmentation_controls.select_polygon_magnetic.on('click', function() {
+            //     self.setAction(ACTIONS.ADD_SELECT_POLYGON_MAGNETIC);
+            // });
+            // this.segmentation_controls.magic_wand.on('click', function() {
+            //     self.setAction(ACTIONS.MAGIC_WAND);
+            // });
+            // this.segmentation_controls.select_similar.on('click', function() {
+            //     self.setAction(ACTIONS.SELECT_SIMILAR);
+            // });
+            // this.segmentation_controls.paint_bucket.on('click', function() {
+            //     self.setAction(ACTIONS.PAINT_BUCKET);
+            // });
+            // this.segmentation_controls.erase_selection.on('click', function() {
+            //     self.setAction(ACTIONS.ERASE_SELECTION);
+            // });
+            
+            this.toggleButtons.addButton(this.segmentation_controls.select_polygon, (_set_action_fun(ACTIONS.ADD_SELECT_POLYGON)).bind(this), ACTIONS.ADD_SELECT_POLYGON);
+            this.toggleButtons.addButton(this.segmentation_controls.select_polygon_magnetic, (_set_action_fun(ACTIONS.ADD_SELECT_POLYGON_MAGNETIC)).bind(this), ACTIONS.ADD_SELECT_POLYGON_MAGNETIC);
+            this.toggleButtons.addButton(this.segmentation_controls.magic_wand, (_set_action_fun(ACTIONS.MAGIC_WAND)).bind(this), ACTIONS.MAGIC_WAND);
+            this.toggleButtons.addButton(this.segmentation_controls.select_similar, (_set_action_fun(ACTIONS.SELECT_SIMILAR)).bind(this), ACTIONS.SELECT_SIMILAR);
+            this.toggleButtons.addButton(this.segmentation_controls.paint_bucket, (_set_action_fun(ACTIONS.PAINT_BUCKET)).bind(this), ACTIONS.PAINT_BUCKET);
+            this.toggleButtons.addButton(this.segmentation_controls.erase_selection, (_set_action_fun(ACTIONS.ERASE_SELECTION)).bind(this), ACTIONS.ERASE_SELECTION);
+
             this.segmentation_controls.clear_selection.on('click', function() {
                 self.removeAllSelectionElements();
             });
@@ -476,7 +555,7 @@ class UIControlHandler {
             mwToolsContainer.append(mwRadius);
             segControls.append(mwToolsContainer);
 
-            // select similar        //TODO: hopelessly broken for now
+            // select similar
             segControls.append(this.segmentation_controls.select_similar);
 
             // GrabCut
@@ -488,6 +567,24 @@ class UIControlHandler {
 
             segControls.append(this.segmentation_controls.paint_bucket);
             segControls.append(this.segmentation_controls.erase_selection);
+            
+            // toggle to paint/erase all selection areas at once or individually
+            let paintAllCallback = function() {
+                var chkbx = $('#paint-all-check');
+                window.paintbucket_paint_all = chkbx.prop('checked');
+                chkbx.prop('checked', window.paintbucket_paint_all);
+                // window.setCookie('paintbucket_paint_all', window.paintbucket_paint_all);
+            };
+            let paintAllCheck = $('<input type="checkbox" id="paint-all-check" class="custom-control-input inline-control" style="margin-right:2px" title="paint/clear selected or all areas at once" />');
+            paintAllCheck.change(paintAllCallback);
+            window.paintbucket_paint_all = false;
+            let paintAllCheckContainer = $('<div id="paint-all-control" class="custom-control custom-switch inline-control"></div>');
+            paintAllCheckContainer.append(paintAllCheck);
+            paintAllCheckContainer.append($('<label for="paint-all-check" class="custom-control-label inline-control" style="margin-left:0px;margin-right:10px;color:white;cursor:pointer;" title="paint/clear selected or all areas at once">all selections</label>'));
+            let paintAllCheckWrapper = $('<div class="toolset-options-container"></div>');
+            paintAllCheckWrapper.append(paintAllCheckContainer);
+            segControls.append(paintAllCheckWrapper);
+
             segControls.append(this.segmentation_controls.clear_selection);
 
             let opacityContainer = $('<div class="toolset-options-container inline-control"></div>');
@@ -568,6 +665,9 @@ class UIControlHandler {
                     }
                     window.showYesNoOverlay($('<div>Are you sure you would like to clear all annotations?</div>'), callbackYes, null, 'Yes', 'Cancel');
 
+                } else if(ccode === 'D' && window.annotationType === 'segmentationMasks') {
+                    self.removeAllSelectionElements();
+
                 } else if(ccode === 'E') {
                     self.resetZoom();
 
@@ -576,6 +676,9 @@ class UIControlHandler {
 
                 } else if(ccode === 'I') {
                     self.setAction(ACTIONS.ZOOM_IN);
+                
+                } else if(ccode === 'K' && window.annotationType === 'segmentationMasks') {
+                    $('#seg-ignore-labeled-check').trigger('change');
 
                 } else if(ccode === 'M') {
                     if(burstModeCallback)
@@ -759,12 +862,13 @@ class UIControlHandler {
         this.action = action;
 
         // adjust buttons
-        if(this.staticButtons.hasOwnProperty(action)) {
-            for(var key in this.staticButtons) {
-                this.staticButtons[key].removeClass('active');
-            }
-            this.staticButtons[action].addClass('active');
-        }
+        this.toggleButtons.set_active_button(action);
+        // if(this.staticButtons.hasOwnProperty(action)) {
+        //     for(var key in this.staticButtons) {
+        //         this.staticButtons[key].removeClass('active');
+        //     }
+        //     this.staticButtons[action].addClass('active');
+        // }
 
         this.default_cursor = CURSORS[this.action];
     }
@@ -831,9 +935,11 @@ class UIControlHandler {
     toggleLoupe() {
         this.showLoupe = !this.showLoupe;
         if(this.showLoupe) {
-            $('#loupe-button').addClass('active');
+            $('#loupe-button').removeClass('button-secondary');
+            $('#loupe-button').addClass('button-primary');
         } else {
-            $('#loupe-button').removeClass('active');
+            $('#loupe-button').removeClass('button-primary');
+            $('#loupe-button').addClass('button-secondary');
         }
         this.renderAll();
     }

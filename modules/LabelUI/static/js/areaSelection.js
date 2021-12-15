@@ -299,10 +299,10 @@ class AreaSelector {
         let mousePos = this.dataEntry.viewport.getRelativeCoordinates(event, 'validArea');
         let action = window.uiControlHandler.getAction();
         if([ACTIONS.PAINT_BUCKET, ACTIONS.ERASE_SELECTION].includes(action)) {
-            // find clicked element(s)
+            // find valid element(s): either clicked or all if window.paintbucket_paint_all
             let numElements = 0;
-            for(var s in this.selectionElements) {
-                if(this.selectionElements[s].containsPoint(mousePos)) {
+            for(var s=this.selectionElements.length-1; s>=0; s--) {
+                if(window.paintbucket_paint_all || this.selectionElements[s].containsPoint(mousePos)) {
                     // fill it... (TODO: we assume the base class has a segMap property anyway)
                     let color = (action === ACTIONS.PAINT_BUCKET ? window.labelClassHandler.getActiveColor() : null);
                     this.dataEntry.segMap.paint_bucket(
