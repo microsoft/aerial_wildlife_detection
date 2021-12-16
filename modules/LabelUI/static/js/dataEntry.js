@@ -429,7 +429,7 @@ class AbstractDataEntry {
 
     _loadImage(imageURI) {
         let self = this;
-        this.renderer = new ImageRenderer(this.viewport, [], {}, imageURI);
+        this.renderer = new ImageRenderer(this.viewport, imageURI);
         return this.renderer.load_image().then(() => {
             return self.renderer;
         });

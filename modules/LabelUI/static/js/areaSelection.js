@@ -113,7 +113,7 @@ class AreaSelector {
         let self = this;
         if(type === 'polygon') {
             element = new PolygonElement(
-                this.dataEntry.id + '_selPolygon_' + this.selectionElements.length.toString(),
+                this.dataEntry.id + '_selPolygon_' + (new Date()).toString(),
                 startCoordinates,
                 SELECTION_STYLE,
                 false,

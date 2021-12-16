@@ -47,7 +47,10 @@ const linspace = (a,b,n) => {
 }
 
 const quantiles = (arr_in, quants) => {
-    const arr = arr_in.slice();
+    /**
+     * Quantiles calculation. Works on a single array (band) only.
+     */
+    const arr = new Float32Array(arr_in);
     const sorted = asc(arr);
     const vals_out = [];
     for(var q in quants) {
@@ -63,21 +66,64 @@ const quantiles = (arr_in, quants) => {
     return vals_out;
 }
 
-const normalizeImage = (arr) => {
+const normalizeImage = (arr, makeUint8) => {
     /**
-     *  Performs 0-1 rescaling of image.
+     *  Performs 0-1 or 0-255 (if "makeUint8" is true) rescaling of image.
      */
+    let multiplier = (makeUint8 ? 255 : 1.0);
     let promises = arr.map(band => {
         return new Promise((resolve) => {
             let quants = quantiles(band, [0.0,1.0]);
             let quantDiff = quants[1] - quants[0];
-            let band_norm = new Float32Array(band).map(function(v) { 
-                return (v - quants[0]) / quantDiff;
+            let arr_out = new Float32Array(band);
+            let band_norm = arr_out.map(function(v) { 
+                return multiplier * (v - quants[0]) / quantDiff;
             });
+            if(makeUint8) band_norm = new Uint8ClampedArray(band_norm);
             return resolve(band_norm);
         });
     });
     return Promise.all(promises);
+}
+
+const stretchImage = (arr_in, mins, maxs, makeUint8) => {
+    /**
+     * Rescales the image from band-wise [mins, maxs] ranges into either [0, 1]
+     * or [0, 255] if "makeUint8" is true.
+     */
+    let arr = new Float32Array(arr_in);
+    let numBands = mins.length;
+    let bands = Array.from(Array(numBands).keys());
+    let multiplier = (makeUint8 ? 255 : 1.0);
+    if(is_interleaved(arr)) {
+        let promises = [];
+        for(var b in bands) {
+            let rangeDiff = maxs[b] - mins[b];
+            promises.push(new Promise((resolve) => {
+                let arr_out = [];
+                for(var p=parseInt(b); p<arr.length; p+=numBands) {
+                    let val = multiplier * (arr[p] - mins[b]) / rangeDiff;
+                    arr_out.push(val);
+                }
+                return resolve(arr_out);
+            }));
+        }
+        return Promise.all(promises)
+        .then((bands) => {
+            return bsqtobip(bands, (makeUint8 ? 'uint8' : 'float32'));
+        });
+    } else {
+        let promises = bands.map(b => {
+            let rangeDiff = maxs[b] - mins[b];
+            return new Promise((resolve) => {
+                let band_stretch = arr[b].map(pixel => {
+                    return multiplier * (pixel - mins[b]) / rangeDiff;
+                });
+                return resolve(band_stretch);
+            });
+        });
+        return Promise.all(promises);
+    }
 }
 
 const quantileStretchImage = (arr, low, high, brightness) => {
@@ -125,7 +171,7 @@ const bsqtobip = (arr, type) => {
         //TODO: make more elegant
         let preparedArray = null;
         if(type === 'float32') preparedArray = new Float32Array(new Array(numVals));
-        else if(type === 'uint8') preparedArray = new Uint8Array(new Array(numVals));
+        else if(type === 'uint8') preparedArray = new Uint8ClampedArray(new Array(numVals));
         else preparedArray = new Uint8ClampedArray(new Array(numVals));
         [0, 1, 2, -1].map(bIdx => {
             if(bIdx>=0) {
@@ -161,7 +207,7 @@ const band_select = (arr, bands, arr_num_bands) => {
      */
     let arr_out = [];
     let promises = [];
-    if(arr[0].length) {
+    if(!is_interleaved(arr)) {
         // array of arrays: band sequential
         promises = bands.map((band) => {
             arr_out.push(arr[band]);
@@ -173,7 +219,7 @@ const band_select = (arr, bands, arr_num_bands) => {
         let bandIndices = Array.from(Array(bands.length).keys());
         promises = bandIndices.map((bIdx) => {
             for(var p=0; p<numPix; p++) {
-                arr_out[(p*bands.length)+bIdx] = arr[(p*arr_num_bands)+bIdx];
+                arr_out[(p*bands.length)+bIdx] = arr[(p*arr_num_bands)+bands[bIdx]];
             }
         });
     }

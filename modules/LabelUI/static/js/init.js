@@ -388,6 +388,10 @@ $(document).ready(function() {
         }
     });
 
+    // image rendering
+    promise = promise.then(function() {
+        return setupImageRendererControls();
+    });
 
     // load image batch
     promise = promise.then(function() {

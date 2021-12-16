@@ -11,18 +11,18 @@ async function rerenderAll() {
      * changed).
      */
     for(var e in window.dataHandler.dataEntries) {
-        window.dataHandler.dataEntries[e].renderer.updateRenderConfig(window.renderConfig);
+        window.dataHandler.dataEntries[e].renderer.rerenderImage();
     }
 }
 
 
-$(document).ready(function() {
+function setupImageRendererControls() {
 
     // get image format for project and select renderer appropriately.
     window.bandConfig = get_band_config([]);
     window.renderConfig = get_render_config(window.bandConfig, {});
     window.renderConfig_default = get_render_config(window.bandConfig, {});
-    $.ajax({
+    return $.ajax({
         url: 'getConfig',
         method: 'POST',
         data: JSON.stringify({
@@ -63,7 +63,7 @@ $(document).ready(function() {
                         select.val(selBand.toString());
                         select.on('change', function() {
                             let bandID = $(this).attr('id').replace('band-select-','');
-                            window.renderConfig['bands']['indices'][bandID] = this.value;
+                            window.renderConfig['bands']['indices'][bandID] = parseInt(this.value);
                             // rerenderAll();
                         });
                         let selTd = $('<td></td>');
@@ -90,15 +90,15 @@ $(document).ready(function() {
                             row.append($('<td>'+valID+':</td>'));
                             let val = get_render_config_val(window.renderConfig, ['contrast', 'percentile', valID.toLowerCase()], 2.0);
                             let sel = $('<input id="contrast-stretch-perc-'+valID.toLowerCase()+'" type="number" min="0" max="100" value="' + val + '" />');
-                            sel.on('change', function() {
+                            sel.on('focusout', function() {
                                 let minSel = $('#contrast-stretch-perc-min');
                                 let maxSel = $('#contrast-stretch-perc-max');
                                 if($(this).attr('id') === 'contrast-stretch-perc-min') {
-                                    $(this).val(Math.min($(this).val(), maxSel.val()-1.0));
-                                    window.renderConfig['contrast']['percentile']['min'] = $(this).val();
+                                    $(this).val(Math.min(parseInt($(this).val()), parseInt(maxSel.val())-1));
+                                    window.renderConfig['contrast']['percentile']['min'] = parseInt($(this).val());
                                 } else {
-                                    $(this).val(Math.max($(this).val(), minSel.val()+1.0));
-                                    window.renderConfig['contrast']['percentile']['max'] = $(this).val();
+                                    $(this).val(Math.max(parseInt($(this).val()), parseInt(minSel.val())+1));
+                                    window.renderConfig['contrast']['percentile']['max'] = parseInt($(this).val());
                                 }
                                 // rerenderAll();
                             });
@@ -195,4 +195,4 @@ $(document).ready(function() {
             }
         }
     });
-});
+}

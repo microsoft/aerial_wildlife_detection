@@ -98,7 +98,6 @@ const get_render_config_val = (renderConfig, tokens, fallback) => {
  * Works on interleaved arrays only.
  */
 const image_enhancement = (arr, renderConfig) => {
-    //TODO: contrast stretch
     let grayscale = get_render_config_val(renderConfig, 'grayscale', false);
     let whiteOnBlack = get_render_config_val(renderConfig, 'white_on_black', false);
     let brightness = get_render_config_val(renderConfig, 'brightness', 0);
@@ -114,7 +113,6 @@ const image_enhancement = (arr, renderConfig) => {
                     cVals[v] = gray;
                 }
             }
-            //TODO: contrast stretch
             [0,1,2].map((idx) => {
                 if(whiteOnBlack) {
                     arr[p+idx] = 255 - cVals[idx] + brightness;
@@ -238,8 +236,8 @@ class WebImageParser {
         /**
          * Draws the given image to a canvas and extracts image data at given
          * location (bands).
-         * TODO: try with black-and-white images
          */
+        if(!bsq && bands.length !== 4) bands.push(3);       // bip: force-add alpha band
         return new Promise(resolve => {
             let canvas = document.createElement('canvas');
             canvas.width = image.width;
@@ -249,22 +247,13 @@ class WebImageParser {
             let imageData = context.getImageData(0, 0, image.width, image.height);
             return resolve(imageData);
         }).then((imageData) => {
-            if(4*imageData.width*imageData.height !== imageData.data.length) {      // 4 for RGBA
-                // need to subset array for bands
-                let numBands = imageData.data.length / (imageData.width*imageData.height);
-                if(bsq) {
-                    return biptobsq(imageData.data, imageData.data.length).then((arr_bsq) => {
-                        return band_select(arr_bsq, bands, numBands);
-                    });
-                } else {
-                    return band_select(imageData.data, bands, numBands);
-                }
+            let numBands = imageData.data.length / (imageData.width*imageData.height);
+            if(bsq) {
+                return biptobsq(imageData.data, numBands).then((arr_bsq) => {
+                    return band_select(arr_bsq, bands, numBands);
+                });
             } else {
-                if(bsq) {
-                    return biptobsq(imageData.data, imageData.data.length);
-                } else {
-                    return imageData.data;
-                }
+                return band_select(imageData.data, bands, numBands);
             }
         });
     }
@@ -331,8 +320,12 @@ class TIFFImageParser extends WebImageParser {
             }).then((imageSource) => {
                 self.size.push(imageSource.getWidth());
                 self.size.push(imageSource.getHeight());
-                return imageSource.readRasters({interleave:false}).then((img) => {  //TODO: speed up with interleaving?
-                    self.image = img;
+                return imageSource.readRasters({interleave:false}).then((img) => {
+                    // perform rescaling into [0, 255] range
+                    return normalizeImage(img, true).then((img_norm) => {
+                        self.image = img_norm;
+                        return self.image;
+                    });
                 });    
             });
             return self.imageLoadingPromise;
@@ -448,13 +441,13 @@ const getParserByMIMEtype = (type)  => {
  * selection, contrast stretch, etc.
  */
 class ImageRenderer {
-    constructor(viewport, bandConfig, renderConfig, source) {
+    constructor(viewport, source) {
         this.viewport = viewport;
         this.canvas = null;
         this.data = null;
         this.renderPromise = null;
-        this.bandConfig = get_band_config(bandConfig);
-        this.renderConfig = get_render_config(bandConfig, renderConfig);
+
+        this.percentiles = {};      // pre-calculation of image percentile values for faster access
 
         // determine source type and required image parser
         this.source = source;
@@ -485,21 +478,77 @@ class ImageRenderer {
         });
     }
 
+    _calc_percentiles() {
+        /**
+         * We support percentiles in integer steps (1%, 2%, etc.),
+         * not floating points.
+         */
+        if(Object.keys(this.percentiles).length) return Promise.resolve(this.percentiles);
+        let percs = Array.from(Array(101).keys()).map((v) => { return v / 100.0 });
+        let bands = Array.from(Array(this.getNumBands()).keys());
+
+        let self = this;
+        return this.parser.get_image_array(bands, true)
+        .then((arr) => {
+            let promises = arr.map((band) => {
+                return quantiles(band, percs);
+            });
+            return Promise.all(promises);
+        })
+        .then((quantiles) => {
+            for(var p=0; p<percs.length; p++) {
+                let key = p+1;                  // percentile keys are integers from 0 to 100
+                self.percentiles[key] = [];
+                for(var b in quantiles) {
+                    self.percentiles[key].push(quantiles[b][p]);
+                }
+            }
+            return self.percentiles;
+        });
+    }
+
     _render_image(force) {
         let self = this;
         if(force || this.renderPromise === null) {
+            if(window.taskMonitor !== undefined) window.taskMonitor.addTask(this.source.toString(), 'rendering');
             this.renderPromise = new Promise((resolve) => {
                 // band selection
                 let bands = [       //TODO: grayscale
-                    self.renderConfig['bands']['indices']['red'],
-                    self.renderConfig['bands']['indices']['green'],
-                    self.renderConfig['bands']['indices']['blue']
-                ]
+                    window.renderConfig['bands']['indices']['red'],
+                    window.renderConfig['bands']['indices']['green'],
+                    window.renderConfig['bands']['indices']['blue']
+                ];
                 return resolve(self.parser.get_image_array(bands));
             })
             .then((arr) => {
+                // contrast stretch
+                let perc_min = Math.max(0, parseInt(get_render_config_val(window.renderConfig, ['contrast', 'percentile', 'min'], 0)));
+                let perc_max = Math.min(100, parseInt(get_render_config_val(window.renderConfig, ['contrast', 'percentile', 'max'], 100)));
+                if(perc_min <= 0 || perc_max >= 100 || perc_min > perc_max) {
+                    // error or no contrast stretch needed
+                    return arr;
+                } else {
+                    return self._calc_percentiles().then((percs) => {
+                        //TODO: ugly
+                        let pMin = [
+                            percs[perc_min][window.renderConfig['bands']['indices']['red']],
+                            percs[perc_min][window.renderConfig['bands']['indices']['green']],
+                            percs[perc_min][window.renderConfig['bands']['indices']['blue']],
+                            0
+                        ];
+                        let pMax = [
+                            percs[perc_max][window.renderConfig['bands']['indices']['red']],
+                            percs[perc_max][window.renderConfig['bands']['indices']['green']],
+                            percs[perc_max][window.renderConfig['bands']['indices']['blue']],
+                            255
+                        ];
+                        return stretchImage(arr, pMin, pMax, true);
+                    });
+                }
+            })
+            .then((arr) => {
                 // image touch-up: grayscale conversion, white on black, etc.
-                return image_enhancement(arr, self.renderConfig);
+                return image_enhancement(arr, window.renderConfig);
             })
             //TODO: test to display edge image
             // .then(() => {
@@ -515,34 +564,8 @@ class ImageRenderer {
                 self.canvas.width = imageData.width;
                 self.canvas.height = imageData.height;
                 self.canvas.getContext('2d').putImageData(imageData, 0, 0);
+                if(window.taskMonitor !== undefined) window.taskMonitor.removeTask(self.source.toString());
             });
-    
-            /**
-             * //TODO: implement functionality below (+ brightness)
-             * .then((data) => {
-                // quantile stretch
-                let minVal = get_render_config_val(self.renderConfig, ['contrast', 'percentile', 'min'], 0.0) / 100.0;
-                let maxVal = get_render_config_val(self.renderConfig, ['contrast', 'percentile', 'max'], 100.0) / 100.0;
-                return quantileStretchImage(data, minVal, maxVal, self.brightness);
-            })
-            .then((arr_out) => {
-                if(self.renderConfig['grayscale']) {
-                    return to_grayscale(arr_out);
-                } else {
-                    return arr_out;
-                }
-            })
-            .then((arr_out) => {
-                if(self.renderConfig['white_on_black']) {
-                    return white_on_black(arr_out);
-                } else {
-                    return arr_out;
-                }
-            })
-            .then((arr_out) => {
-                return bsqtobip(arr_out);
-            })
-             */
         }
         return this.renderPromise;
     }
@@ -630,15 +653,6 @@ class ImageRenderer {
 
     getHeight() {
         return this.parser.getHeight();
-    }
-
-    async updateRenderConfig(renderConfig) {
-        /**
-         * Receives an updated dict of capabilities and re-renders the image
-         * accordingly.
-         */
-        this.renderConfig = renderConfig;
-        this.rerenderImage();
     }
 }
 ImageRenderer.prototype.get_render_capabilities = function() {
