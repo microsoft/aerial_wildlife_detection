@@ -225,7 +225,7 @@ class UIControlHandler {
                 dtControls.append(magneticPolygonCheckContainer);
 
                 // GrabCut
-                let grabCutBtn = $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/grabcut_alt.svg" style="height:18px" title="Grab Cut" /></button>');
+                let grabCutBtn = $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/grabcut.svg" style="height:18px" title="Grab Cut" /></button>');
                 grabCutBtn.on('click', function() {
                     // special routine for Polygons: use GrabCut for active polygons, or else set action
                     if(self.dataHandler.getNumActiveAnnotations()) {
@@ -254,11 +254,11 @@ class UIControlHandler {
                 window.magicWandTolerance = 32.0;
                 mwToolsContainer.append($('<label for="magic-wand-tolerance">Tolerance:</label>'));
                 mwToolsContainer.append(mwTolerance);
-                let mwRadius = $('<input type="number" id="magic-wand-radius" min="1" max="8192" value="120" />');
+                let mwRadius = $('<input type="number" id="magic-wand-radius" min="0" max="8192" value="0" />');
                 mwRadius.on('input', function() {
                     window.magicWandRadius = parseInt($(this).val());
                 });
-                window.magicWandRadius = 120;
+                window.magicWandRadius = 0;
                 mwToolsContainer.append($('<label for="magic-wand-radius">Max radius:</label>'));
                 mwToolsContainer.append(mwRadius);
                 dtControls.append(mwToolsContainer);
@@ -564,7 +564,7 @@ class UIControlHandler {
             segControls.append(this.segmentation_controls.select_similar);
 
             // GrabCut
-            let grabCutBtn = $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/grabcut_alt.svg" style="height:18px" title="Grab Cut" /></button>');
+            let grabCutBtn = $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/grabcut.svg" style="height:18px" title="Grab Cut" /></button>');
             this.toggleButtons.addButton(grabCutBtn, (_set_action_fun(ACTIONS.GRAB_CUT)).bind(this), ACTIONS.GRAB_CUT);
             segControls.append(grabCutBtn);
 
@@ -577,11 +577,11 @@ class UIControlHandler {
             window.magicWandTolerance = 32.0;
             mwToolsContainer.append($('<label for="magic-wand-tolerance">Tolerance:</label>'));
             mwToolsContainer.append(mwTolerance);
-            let mwRadius = $('<input type="number" id="magic-wand-radius" min="1" max="8192" value="120" />');
+            let mwRadius = $('<input type="number" id="magic-wand-radius" min="0" max="8192" value="0" />');
             mwRadius.on('input', function() {
                 window.magicWandRadius = parseInt($(this).val());
             });
-            window.magicWandRadius = 120;
+            window.magicWandRadius = 0;
             mwToolsContainer.append($('<label for="magic-wand-radius">Max radius:</label>'));
             mwToolsContainer.append(mwRadius);
             segControls.append(mwToolsContainer);
