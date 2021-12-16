@@ -212,17 +212,24 @@ class DataWorker:
                     'patchSize': (800, 600),
                     'stride': (400, 300),
                     'tight': True,
-                    'discard_homogenous_percentage': 5,
+                    'discard_homogeneous_percentage': 5,
+                    'discard_homogeneous_quantization_value': 255
                 }
 
             would divide the images into patches of size 800x600, with over- lap
             of 50% (denoted by the "stride" being half the "patchSize"), and
-            with all patches completely inside the original image (para- meter
+            with all patches completely inside the original image (parameter
             "tight" makes the last patches to the far left and bottom of the
-            image being fully inside the original image; they are shif- ted if
+            image being fully inside the original image; they are shifted if
             needed). Any patch with more than 5% of the pixels having the same
             values across all bands would be discarded, due to the
-            "discard_homogenous_percentage" argument.
+            "discard_homogeneous_percentage" argument. The granularity and
+            definition of 'same value' is governed by parameter
+            "discard_homogeneous_quantization_value", which defines the color
+            quantization bins. Smaller values result in more diverse colors
+            being clumped together (1 = all colors are the same); larger values
+            (up to 255) define more diverse bins and thus require pixels to be
+            more similar in colors to be considered identical.
 
             Instead of the full images, the patches are stored on disk and re-
             ferenced through the database. The name format for patches is
@@ -292,7 +299,8 @@ class DataWorker:
                                             splitProperties['patchSize'],
                                             splitProperties['stride'],
                                             splitProperties.get('tight', False),
-                                            splitProperties.get('discard_homogenous_percentage', None))
+                                            splitProperties.get('discard_homogeneous_percentage', None),
+                                            splitProperties.get('discard_homogeneous_quantization_value', 255))
                     bareFileName, ext = os.path.splitext(filename)
                     filenames = [f'{bareFileName}_{c[0]}_{c[1]}{ext}' for c in coords]
 

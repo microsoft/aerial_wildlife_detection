@@ -39,15 +39,22 @@ def bytesio_to_bytea(bytesio):
 
 
 
-def normalize_image(img, band_axis=0):
+def normalize_image(img, band_axis=0, color_range=255):
     '''
         Receives an image in np.array format and normalizes it into a [0, 255]
         uint8 image. Parameter "band_axis" determines in which axis the image
-        bands can be found.
+        bands can be found. Parameter "color_range" defines the maximum
+        obtainable integer value per band. Default is 255 (full uint8 range),
+        but lower values may be specified to e.g. perform a crude quantization
+        of the image color space.
     '''
     if img.ndim == 2:
         img = img[np.newaxis,...]
         band_axis = 0
+    if not isinstance(color_range, int) and not isinstance(color_range, float):
+        color_range = 255
+    else:
+        color_range = int(min(255, max(0, color_range)))
     permuted = False
     if band_axis != 0:
         permuted = True
@@ -62,7 +69,7 @@ def normalize_image(img, band_axis=0):
     mins = np.min(img, 1)[:,np.newaxis]
     maxs = np.max(img, 1)[:,np.newaxis]
     img = (img - mins)/(maxs - mins)
-    img = 255 * img.reshape(sz)
+    img = color_range * img.reshape(sz)
     if permuted:
         # permute back
         img = np.transpose(img, np.argsort(bOrder))

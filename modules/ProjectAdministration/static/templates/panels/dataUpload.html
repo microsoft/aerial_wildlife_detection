@@ -236,7 +236,12 @@
             if($('#discard-empty-chck').prop('checked')) {
                 let perc = parseFloat($('#discard-empty-percentage').val());
                 if(!isNaN(perc) && perc > 0 && perc < 100) {
-                    splitParams['discard_homogenous_percentage'] = perc;
+                    splitParams['discard_homogeneous_percentage'] = perc;
+                }
+                let quantVal = parseFloat($('#discard-empty-quantization-value').val());
+                if(!isNaN(quantVal)) {
+                    quantVal = Math.max(1, Math.min(255, quantVal));
+                    splitParams['discard_homogeneous_quantization_value'] = quantVal;
                 }
             }
 
@@ -561,6 +566,8 @@
                     '<input type="checkbox" id="patch-tight-chck" checked="checked" disabled="disabled" /><label for="patch-tight-chck">Do not exceed image boundaries</label><br />' +
                     '<input type="checkbox" id="discard-empty-chck" disabled="disabled" /><label for="discard-empty-chck"><span>Discard patches with</span>' +
                     '<input type="number" min="1" max="99" value="5" id="discard-empty-percentage" disabled="disabled" /><span>% or more homogeneous pixels</span></label>' +
+                    '<div style="margin-left:10px"><span>Quantization value:</span><input type="number" min="1" max="255" value="255" id="discard-empty-quantization-value" disabled="disabled" />' +
+                    '<div style="font-style:italic">Determines the color variation between pixels during homogeneity evaluation. Smaller quantization values (>0) result in more diverse pixels being considered homogeneous.</div></div>' +
                     '</div></div>');
             optionsPanel.append(splitOptions);
 

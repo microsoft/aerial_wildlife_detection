@@ -859,7 +859,7 @@ class UIControlHandler {
                 let val = Math.max(1, Math.min(255, parseInt($('#brush-size').val()) + delta));
                 $('#brush-size').val(val);
                 self.setBrushSize(val);
-            } else if(action === ACTIONS.MAGIC_WAND && $('#magic-wand-radius').length) {
+            } else if([ACTIONS.MAGIC_WAND, ACTIONS.SELECT_SIMILAR, ACTIONS.GRAB_CUT].includes(action) && $('#magic-wand-radius').length) {
                 if($('#magic-wand-radius').is(':focus')) {
                     let val = Math.max(0, Math.min(8192, parseInt($('#magic-wand-radius').val()) + delta));
                     $('#magic-wand-radius').val(val);

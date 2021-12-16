@@ -11,7 +11,7 @@ from util.drivers.imageDrivers import normalize_image
 
 
 
-def split_image(array, patchSize, stride=None, tight=True, discard_homogeneous_percentage=None):
+def split_image(array, patchSize, stride=None, tight=True, discard_homogeneous_percentage=None, discard_homogeneous_quantization_value=255):
     '''
         Receives a NumPy ndarray of size (BxWxH) and splits it into patches
         on a regular grid.
@@ -35,7 +35,12 @@ def split_image(array, patchSize, stride=None, tight=True, discard_homogeneous_p
                             pixels that have the same values across all bands will be
                             discarded. Useful to get rid of e.g. bordering patches in
                             slanted satellite stripes. If <= 0, >= 100 or None, no
-                            patch will be discarded
+                            patch will be discarded.
+            - discard_homogeneous_quantization_value:
+                            Int in [1, 255]. Defines the number of color bins used for
+                            quantization during pixel homogeneity evaluation. Smaller values
+                            clump more diverse pixels together; larger values require pixels
+                            to be more similar to be considered identical.
         
         Returns:
             - patches:      A list of N NumPy ndarrays containing all the patches cropped
@@ -75,6 +80,10 @@ def split_image(array, patchSize, stride=None, tight=True, discard_homogeneous_p
             discard_homogeneous_percentage = None
     else:
         discard_homogeneous_percentage = None
+    if not isinstance(discard_homogeneous_quantization_value, int) and not isinstance(discard_homogeneous_quantization_value, float):
+        discard_homogeneous_quantization_value = 255
+    else:
+        discard_homogeneous_quantization_value = max(1, min(255, discard_homogeneous_quantization_value))
 
     # define crop locations
     xLoc = list(range(0, sz[1], stride[0]))
@@ -107,7 +116,7 @@ def split_image(array, patchSize, stride=None, tight=True, discard_homogeneous_p
             if discard_homogeneous_percentage is not None:
                 # get most frequent pixel value across bands and check percentage of it
                 psz = arr_patch.shape
-                arr_patch_int = normalize_image(arr_patch)
+                arr_patch_int = normalize_image(arr_patch, color_range=discard_homogeneous_quantization_value)
                 _, counts = np.unique(np.reshape(arr_patch_int, (psz[0], -1)), axis=1, return_counts=True)
                 if np.max(counts) > discard_homogeneous_percentage/100.0*(psz[1]*psz[2]):
                     continue
