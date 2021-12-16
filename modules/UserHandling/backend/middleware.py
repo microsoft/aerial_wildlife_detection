@@ -122,7 +122,8 @@ class UserMiddleware():
             # also tell DB about updated tokens
             self._extend_session_database(username, sessionToken)
 
-        expires = now + timedelta(0, self.config.getProperty('UserHandler', 'time_login', type=int))
+        time_login = self.config.getProperty('UserHandler', 'time_login', type=int, fallback=31536000)  # fallback: add one year
+        expires = now + timedelta(0, time_login)
 
         return sessionToken, now, expires
 
@@ -156,7 +157,7 @@ class UserMiddleware():
 
     def _check_logged_in(self, username, sessionToken):
         now = self._current_time()
-        time_login = self.config.getProperty('UserHandler', 'time_login', type=int)
+        time_login = self.config.getProperty('UserHandler', 'time_login', type=int, fallback=-1)
         if not username in self.usersLoggedIn:
             # check database
             result = self._get_user_data(username)
@@ -171,7 +172,7 @@ class UserMiddleware():
 
             # check for timestamp
             time_diff = (now - result['last_login']).total_seconds()
-            if time_diff <= time_login:
+            if time_login <= 0 or time_diff <= time_login:
                 # user still logged in
                 if not username in self.usersLoggedIn:
                     self.usersLoggedIn[username] = {
@@ -182,7 +183,7 @@ class UserMiddleware():
                     self.usersLoggedIn[username]['timestamp'] = now
 
                 # extend user session (commit to DB) if needed
-                if time_diff >= 0.75 * time_login:
+                if time_login > 0 and time_diff >= 0.75 * time_login:
                     self._extend_session_database(username, sessionToken)
 
                 return True
@@ -210,14 +211,14 @@ class UserMiddleware():
                     self.usersLoggedIn[username]['sessionToken'] = result['session_token']
                     self.usersLoggedIn[username]['timestamp'] = now
 
-            if (now - self.usersLoggedIn[username]['timestamp']).total_seconds() <= time_login:
+            if time_login <= 0 or (now - self.usersLoggedIn[username]['timestamp']).total_seconds() <= time_login:
                 # user still logged in
                 return True
 
             else:
                 # local cache session time-out; check if database holds more recent timestamp
                 result = self._get_user_data(username)
-                if (now - result['last_login']).total_seconds() <= time_login:
+                if time_login <= 0 or (now - result['last_login']).total_seconds() <= time_login:
                     # user still logged in; update
                     self._init_or_extend_session(username, sessionToken)
 

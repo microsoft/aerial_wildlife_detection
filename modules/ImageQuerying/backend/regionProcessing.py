@@ -9,7 +9,6 @@ import numpy as np
 from skimage import segmentation
 from sklearn.cluster import KMeans
 from imantics import Mask
-from detectron2.structures.masks import polygon_area
 
 
 def find_regions(image, methodName, methodKwargs={}):
@@ -22,6 +21,15 @@ def find_regions(image, methodName, methodKwargs={}):
     if image.ndim == 2:
         image = image[:,:,np.newaxis]
     return method(image, **methodKwargs)
+
+
+
+def polygon_area(x, y):
+    '''
+        Calculates the area of a polygon using the shoelace formula:
+        https://stackoverflow.com/questions/24467972/calculate-area-of-polygon-given-x-y-coordinates
+    '''
+    return 0.5 * np.abs(np.dot(x, np.roll(y, 1)) - np.dot(y, np.roll(x, 1)))
 
 
 
