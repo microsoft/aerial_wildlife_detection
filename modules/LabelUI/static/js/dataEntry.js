@@ -668,6 +668,8 @@ class AbstractDataEntry {
         return classIDs;
     }
 
+    //TODO: this and next function are doubly-defined (also in areaSelection.js)
+    // --> make dedicated script
     grabCut(polygons) {
         /**
          * Performs the GrabCut algorithm on a given Array of Arrays of polygon
@@ -687,6 +689,32 @@ class AbstractDataEntry {
         }).then((data) => {
             if(data.hasOwnProperty('result')) {
                 return data['result'];       // Array of arrays of coordinates for each polygon
+            } else {
+                return data;
+            }
+        });
+    }
+
+    magicWand(fileName, mousePos, tolerance, maxRadius, rgbOnly) {
+        /**
+         * Performs a magic wand operation on the image.
+         */
+        return $.ajax({
+            url: window.baseURL + 'magic_wand',
+            method: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            data: JSON.stringify({
+                image_path: fileName,
+                seed_coordinates: mousePos,
+                tolerance: tolerance,
+                max_radius: maxRadius,
+                rgb_only: rgbOnly
+            })
+        })
+        .then((data) => {
+            if(data.hasOwnProperty('result')) {
+                return data['result'];       // Array of coordinates
             } else {
                 return data;
             }
@@ -1768,15 +1796,17 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
             'magnetic_polygon': magneticPolygon,
             'edge_map': (magneticPolygon? this.renderer.get_edge_image(true) : null)                  // for magnetic polygon
         };
-        let anno = new Annotation(window.getRandomID(), props, 'polygons', 'annotation');
+        let annoID = window.getRandomID();
+        let anno = new Annotation(annoID, props, 'polygons', 'annotation');
         let self = this;
-        anno.loadingPromise.then(() => {                                // required for loading of edge map (for magnetic polygon)
+        return anno.loadingPromise.then(() => {                         // required for loading of edge map (for magnetic polygon)
             self._addElement(anno);
             self.activePolygon = anno;
             anno.getRenderElement().registerAsCallback(self.viewport);
             anno.getRenderElement().setActive(true, self.viewport);
             // // manually fire mousedown event on annotation (TODO: not needed?)
             anno.getRenderElement()._mouseup_event(event, self.viewport, true);
+            return annoID;
         });
     }
 
@@ -2061,13 +2091,45 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
                 this.numInteractions++;
             }
 
+        } else if(window.uiControlHandler.getAction() === ACTIONS.MAGIC_WAND) {
+            window.taskMonitor.addTask('magicWand', 'magic wand');
+            try {
+                let tolerance = window.magicWandTolerance;
+                let maxRadius = window.magicWandRadius;
+                let rgbOnly = false;
+                let mousePos = this.viewport.getRelativeCoordinates(event, 'validArea');
+                let self = this;
+                this.magicWand(this.fileName, mousePos, tolerance, maxRadius, rgbOnly).then((coords_out) => {
+                    if(Array.isArray(coords_out) && coords_out.length >= 6) {
+                        // add new polygon
+                        self._createAnnotation(event, false).then((annoID) => {
+                            self.annotations[annoID].setProperty('coordinates', coords_out);
+                            self.render();
+                            window.taskMonitor.removeTask('magicWand');
+                        });
+                    } else {
+                        if(coords_out !== null && typeof(coords_out['message']) === 'string') {
+                            window.messager.addMessage('An error occurred trying to run magic wand (message: "'+coords_out['message'].toString()+'").', 'error', 0);
+                        } else {
+                            window.messager.addMessage('No area found with magic wand.', 'regular');
+                        }
+                    }
+                    window.taskMonitor.removeTask('magicWand');
+                });
+            } catch(error) {
+                window.messager.addMessage('An error occurred trying to run magic wand (message: "'+error.toString()+'").', 'error', 0);
+                window.taskMonitor.removeTask('magicWand');
+            }
+
         } else if(window.uiControlHandler.getAction() === ACTIONS.GRAB_CUT) {
             // find clicked polygon
+            let numClicked = 0;
             for(var key in this.annotations) {
                 let coords = this.viewport.getRelativeCoordinates(event, 'validArea');
                 if(this.annotations[key].geometry.containsPoint(coords)) {
                     // clicked into polygon; apply GrabCut
                     window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
+                    numClicked++;
                     let coords_in = this.annotations[key].geometry.getProperty('coordinates');
                     let self = this;
                     try {
@@ -2086,6 +2148,47 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
                         window.messager.addMessage('An error occurred trying to run GrabCut on selection (message: "'+error.toString()+'").', 'error', 0);
                     }
                 }
+            }
+            if(!numClicked) {
+                // no selection element clicked; apply magic wand first
+                window.taskMonitor.addTask('magicWand_gc_pre', 'magic wand');
+                let mousePos = this.viewport.getRelativeCoordinates(event, 'validArea');
+                let self = this;
+                this.magicWand(this.fileName, mousePos, window.magicWandTolerance, window.magicWandRadius, false).then((coords_out) => {
+                    window.taskMonitor.removeTask('magicWand_gc_pre');
+                    if(Array.isArray(coords_out) && coords_out.length >= 6) {
+                        return coords_out;
+                    } else {
+                        return null;
+                    }
+                })
+                .then((coords_in) => {
+                    if(coords_in !== null) {
+                        // something found; now apply GrabCut
+                        try {
+                            self.grabCut(coords_in).then((coords_out) => {
+                                if(Array.isArray(coords_out) && Array.isArray(coords_out[0]) && coords_out[0].length >= 6) {
+                                    self._createAnnotation(event, false).then((annoID) => {
+                                        self.annotations[annoID].setProperty('coordinates', coords_out[0]);
+                                        window.taskMonitor.removeTask('grabCut');
+                                    });
+                                } else {
+                                    if(typeof(coords_out['message']) === 'string') {
+                                        window.messager.addMessage('An error occurred trying to run GrabCut on selection (message: "'+coords_out['message'].toString()+'").', 'error', 0);
+                                    } else {
+                                        window.messager.addMessage('No refinement found by GrabCut.', 'regular');
+                                    }
+                                    window.taskMonitor.removeTask('grabCut');
+                                }
+                            });
+                        } catch(error) {
+                            window.messager.addMessage('An error occurred trying to run GrabCut on selection (message: "'+error.toString()+'").', 'error', 0);
+                            window.taskMonitor.removeTask('grabCut');
+                        }
+                    } else {
+                        window.messager.addMessage('No refinement found by GrabCut.', 'regular');
+                    }
+                });
             }
 
         } else if(window.uiControlHandler.getAction() === ACTIONS.SIMPLIFY_POLYGON) {

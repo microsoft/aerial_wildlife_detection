@@ -347,9 +347,11 @@ class AreaSelector {
             }
         } else if(action === ACTIONS.GRAB_CUT) {
             // get clicked polygon
+            let numClicked = 0;
             for(var e in this.selectionElements) {
                 if(this.selectionElements[e].containsPoint(mousePos)) {
-                    // clicked into polygon; apply GrabCut
+                    // clicked into selection element; apply GrabCut
+                    numClicked++;
                     // window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
                     window.taskMonitor.addTask('grabCut', 'Grab Cut');
                     let coords_in = this.selectionElements[e].getProperty('coordinates');
@@ -372,6 +374,43 @@ class AreaSelector {
                         window.taskMonitor.removeTask('grabCut');
                     }
                 }
+            }
+            if(!numClicked) {
+                // no selection element clicked; apply magic wand first
+                window.taskMonitor.addTask('magicWand_gc_pre', 'magic wand');
+                let self = this;
+                this.magicWand(this.dataEntry.fileName, mousePos, window.magicWandTolerance, window.magicWandRadius, false).then((coords_out) => {
+                    window.taskMonitor.removeTask('magicWand_gc_pre');
+                    if(Array.isArray(coords_out) && coords_out.length >= 6) {
+                        return coords_out;
+                    } else {
+                        return null;
+                    }
+                })
+                .then((coords_in) => {
+                    if(coords_in !== null) {
+                        // something found; now apply GrabCut
+                        try {
+                            self.grabCut(coords_in).then((coords_out) => {
+                                if(Array.isArray(coords_out) && Array.isArray(coords_out[0]) && coords_out[0].length >= 6) {
+                                    self.addSelectionElement('polygon', coords_out[0]);
+                                } else {
+                                    if(typeof(coords_out['message']) === 'string') {
+                                        window.messager.addMessage('An error occurred trying to run GrabCut on selection (message: "'+coords_out['message'].toString()+'").', 'error', 0);
+                                    } else {
+                                        window.messager.addMessage('No refinement found by GrabCut.', 'regular');
+                                    }
+                                }
+                                window.taskMonitor.removeTask('grabCut');
+                            });
+                        } catch(error) {
+                            window.messager.addMessage('An error occurred trying to run GrabCut on selection (message: "'+error.toString()+'").', 'error', 0);
+                            window.taskMonitor.removeTask('grabCut');
+                        }
+                    } else {
+                        window.messager.addMessage('No refinement found by GrabCut.', 'regular');
+                    }
+                });
             }
         } else if(action === ACTIONS.MAGIC_WAND) {
             // window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);

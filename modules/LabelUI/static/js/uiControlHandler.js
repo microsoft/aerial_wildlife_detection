@@ -242,6 +242,27 @@ class UIControlHandler {
                 this.toggleButtons.addButton(grabCutBtn, (_set_action_fun(ACTIONS.GRAB_CUT)).bind(this), ACTIONS.GRAB_CUT);
                 dtControls.append(grabCutBtn);
 
+                // magic wand
+                let magicWandBtn = $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/magic_wand.svg" style="height:18px" title="magic wand" /></button>');
+                this.toggleButtons.addButton(magicWandBtn, (_set_action_fun(ACTIONS.MAGIC_WAND)).bind(this), ACTIONS.MAGIC_WAND);
+                dtControls.append(magicWandBtn);
+                let mwToolsContainer = $('<div class="toolset-options-container inline-control"></div>');
+                let mwTolerance = $('<input type="number" id="magic-wand-tolerance" min="1" max="255" value="32" />');
+                mwTolerance.on('input', function() {
+                    window.magicWandTolerance = parseFloat($(this).val());
+                });
+                window.magicWandTolerance = 32.0;
+                mwToolsContainer.append($('<label for="magic-wand-tolerance">Tolerance:</label>'));
+                mwToolsContainer.append(mwTolerance);
+                let mwRadius = $('<input type="number" id="magic-wand-radius" min="1" max="8192" value="120" />');
+                mwRadius.on('input', function() {
+                    window.magicWandRadius = parseInt($(this).val());
+                });
+                window.magicWandRadius = 120;
+                mwToolsContainer.append($('<label for="magic-wand-radius">Max radius:</label>'));
+                mwToolsContainer.append(mwRadius);
+                dtControls.append(mwToolsContainer);
+
                 // polygon simplification
                 let simplifyBtn = $('<button class="btn btn-sm btn-secondary inline-control active" style="margin-right:2px">Simplify</button>');
                 this.toggleButtons.addButton(simplifyBtn, (_set_action_fun(ACTIONS.SIMPLIFY_POLYGON)).bind(this), ACTIONS.SIMPLIFY_POLYGON);
@@ -536,8 +557,18 @@ class UIControlHandler {
             segControls.append(this.segmentation_controls.select_polygon);
             segControls.append(this.segmentation_controls.select_polygon_magnetic);
 
-            // Magic wand
+            // magic wand
             segControls.append(this.segmentation_controls.magic_wand);
+
+            // select similar
+            segControls.append(this.segmentation_controls.select_similar);
+
+            // GrabCut
+            let grabCutBtn = $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/grabcut_alt.svg" style="height:18px" title="Grab Cut" /></button>');
+            this.toggleButtons.addButton(grabCutBtn, (_set_action_fun(ACTIONS.GRAB_CUT)).bind(this), ACTIONS.GRAB_CUT);
+            segControls.append(grabCutBtn);
+
+            // magic wand controls
             let mwToolsContainer = $('<div class="toolset-options-container inline-control"></div>');
             let mwTolerance = $('<input type="number" id="magic-wand-tolerance" min="1" max="255" value="32" />');
             mwTolerance.on('input', function() {
@@ -554,16 +585,6 @@ class UIControlHandler {
             mwToolsContainer.append($('<label for="magic-wand-radius">Max radius:</label>'));
             mwToolsContainer.append(mwRadius);
             segControls.append(mwToolsContainer);
-
-            // select similar
-            segControls.append(this.segmentation_controls.select_similar);
-
-            // GrabCut
-            let grabCutBtn = $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/grabcut_alt.svg" style="height:18px" title="Grab Cut" /></button>');
-            grabCutBtn.on('click', function() {
-                self.setAction(ACTIONS.GRAB_CUT);
-            });
-            segControls.append(grabCutBtn);
 
             segControls.append(this.segmentation_controls.paint_bucket);
             segControls.append(this.segmentation_controls.erase_selection);
