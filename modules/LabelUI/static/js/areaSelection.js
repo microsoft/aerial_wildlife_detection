@@ -41,6 +41,25 @@ class AreaSelector {
         );
     }
 
+    convexHull(polygon) {
+        /**
+         * Receives coordinates and returns their convex hull.
+         */
+        if(!Array.isArray(polygon) || polygon.length < 6) return undefined;
+        if(polygon.length === 6) return polygon;
+        let points = [];
+        for(var p=0; p<polygon.length; p+=2) {
+            points.push({x: polygon[p], y: polygon[p+1]});
+        }
+        let cHull = convexhull.makeHull(points);
+        let polygon_out = [];
+        for(var c=0; c<cHull.length; c++) {
+            polygon_out.push(cHull[c].x);
+            polygon_out.push(cHull[c].y);
+        }
+        return polygon_out;
+    }
+
     grabCut(polygon) {
         /**
          * Runs GrabCut for a given data entry and a given polygon.
@@ -345,6 +364,39 @@ class AreaSelector {
                     }
                 }
             }
+        } else if(action === ACTIONS.CONVEX_HULL) {
+            // get clicked polygon
+            let numClicked = 0;
+            for(var e in this.selectionElements) {
+                if(this.selectionElements[e].containsPoint(mousePos)) {
+                    numClicked++;
+                    let cHull = this.convexHull(this.selectionElements[e].getProperty('coordinates'));
+                    if(Array.isArray(cHull) && cHull.length >= 6) {
+                        this.selectionElements[e].setProperty('coordinates', cHull);
+                    }
+                }
+            }
+            if(!numClicked) {
+                window.messager.addMessage('Click into a drawn polygon to transform it into its convex hull.', 'info');
+            }
+
+        } else if(action === ACTIONS.SIMPLIFY_POLYGON) {
+            // get clicked polygon
+            let numClicked = 0;
+            for(var e in this.selectionElements) {
+                if(this.selectionElements[e].containsPoint(mousePos)) {
+                    numClicked++;
+                    let coords_in = this.selectionElements[e].getProperty('coordinates');
+                    let coords_out = simplifyPolygon(coords_in, window.polygonSimplificationTolerance, true);      //TODO: hyperparameters
+                    if(Array.isArray(coords_out) && coords_out.length >= 6) {
+                        this.selectionElements[e].setProperty('coordinates', coords_out);
+                    }
+                }
+            }
+            if(!numClicked) {
+                window.messager.addMessage('Click into a drawn polygon to simplify it.', 'info');
+            }
+
         } else if(action === ACTIONS.GRAB_CUT) {
             // get clicked polygon
             let numClicked = 0;

@@ -20,10 +20,11 @@ const ACTIONS = {
     ERASE_SELECTION: 8,
     ADD_SELECT_POLYGON: 9,
     ADD_SELECT_POLYGON_MAGNETIC: 10,
-    GRAB_CUT: 11,
-    MAGIC_WAND: 12,
-    SELECT_SIMILAR: 13,
-    SIMPLIFY_POLYGON: 14
+    CONVEX_HULL: 11,
+    GRAB_CUT: 12,
+    MAGIC_WAND: 13,
+    SELECT_SIMILAR: 14,
+    SIMPLIFY_POLYGON: 15
 }
 
 const CURSORS = [
@@ -263,8 +264,13 @@ class UIControlHandler {
                 mwToolsContainer.append(mwRadius);
                 dtControls.append(mwToolsContainer);
 
+                // convex hull
+                let cHullBtn = $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/convexhull.svg" style="height:18px" title="transform polygon to its convex hull" /></button>');
+                this.toggleButtons.addButton(cHullBtn, (_set_action_fun(ACTIONS.CONVEX_HULL)).bind(this), ACTIONS.CONVEX_HULL);
+                dtControls.append(cHullBtn);
+
                 // polygon simplification
-                let simplifyBtn = $('<button class="btn btn-sm btn-secondary inline-control active" style="margin-right:2px">Simplify</button>');
+                let simplifyBtn = $('<button class="btn btn-sm btn-secondary inline-control active" style="margin-right:2px"><img src="/static/interface/img/controls/simplify.svg" style="height:18px" title="simplify polygon" /></button>');
                 this.toggleButtons.addButton(simplifyBtn, (_set_action_fun(ACTIONS.SIMPLIFY_POLYGON)).bind(this), ACTIONS.SIMPLIFY_POLYGON);
                 dtControls.append(simplifyBtn);
                 let simplifyControlsCont = $('<div id="simplify-polygon-control" class="toolset-options-container inline-control"></div>');
@@ -556,6 +562,26 @@ class UIControlHandler {
 
             segControls.append(this.segmentation_controls.select_polygon);
             segControls.append(this.segmentation_controls.select_polygon_magnetic);
+
+            // convex hull
+            let cHullBtn = $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/convexhull.svg" style="height:18px" title="transform polygon to its convex hull" /></button>');
+            this.toggleButtons.addButton(cHullBtn, (_set_action_fun(ACTIONS.CONVEX_HULL)).bind(this), ACTIONS.CONVEX_HULL);
+            segControls.append(cHullBtn);
+
+            // polygon simplification
+            let simplifyBtn = $('<button class="btn btn-sm btn-secondary inline-control active" style="margin-right:2px"><img src="/static/interface/img/controls/simplify.svg" style="height:18px" title="simplify polygon" /></button>');
+            this.toggleButtons.addButton(simplifyBtn, (_set_action_fun(ACTIONS.SIMPLIFY_POLYGON)).bind(this), ACTIONS.SIMPLIFY_POLYGON);
+            segControls.append(simplifyBtn);
+            let simplifyControlsCont = $('<div id="simplify-polygon-control" class="toolset-options-container inline-control"></div>');
+            let simplifyToleranceSlider = $('<input type="range" id="simplify-polygon-tolerance" min="0" max="100" value="50" style="width:80px" />');
+            window.polygonSimplificationTolerance = 0.01;
+            simplifyToleranceSlider.on('input', function() {
+                let val = 100.0 - parseFloat($(this).val());
+                window.polygonSimplificationTolerance = .5 / val;
+            });
+            simplifyControlsCont.append($('<label for="simplify-polygon-tolerance" style="font-size:11pt;margin-top:5px">strength:</label>'));
+            simplifyControlsCont.append(simplifyToleranceSlider);
+            segControls.append(simplifyControlsCont);
 
             // magic wand
             segControls.append(this.segmentation_controls.magic_wand);

@@ -668,8 +668,28 @@ class AbstractDataEntry {
         return classIDs;
     }
 
-    //TODO: this and next function are doubly-defined (also in areaSelection.js)
+    //TODO: this and next two functions are doubly-defined (also in areaSelection.js)
     // --> make dedicated script
+    convexHull(polygon) {
+        /**
+         * Receives coordinates and returns their convex hull.
+         */
+        if(!Array.isArray(polygon) || polygon.length < 6) return undefined;
+        if(polygon.length === 6) return polygon;
+        let points = [];
+        for(var p=0; p<polygon.length; p+=2) {
+            points.push({x: polygon[p], y: polygon[p+1]});
+        }
+        let cHull = convexhull.makeHull(points);
+        let polygon_out = [];
+        for(var c=0; c<cHull.length; c++) {
+            polygon_out.push(cHull[c].x);
+            polygon_out.push(cHull[c].y);
+        }
+        return polygon_out;
+    }
+
+
     grabCut(polygons) {
         /**
          * Performs the GrabCut algorithm on a given Array of Arrays of polygon
@@ -2093,6 +2113,7 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
 
         } else if(window.uiControlHandler.getAction() === ACTIONS.MAGIC_WAND) {
             window.taskMonitor.addTask('magicWand', 'magic wand');
+            window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
             try {
                 let tolerance = window.magicWandTolerance;
                 let maxRadius = window.magicWandRadius;
@@ -2191,19 +2212,45 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
                 });
             }
 
+        } else if(window.uiControlHandler.getAction() === ACTIONS.CONVEX_HULL) {
+            // find clicked polygon
+            let numClicked = 0;
+            for(var key in this.annotations) {
+                let coords = this.viewport.getRelativeCoordinates(event, 'validArea');
+                if(this.annotations[key].geometry.containsPoint(coords)) {
+                    // calculate convex hull
+                    numClicked++;
+                    let cHull = this.convexHull(this.annotations[key].geometry.getProperty('coordinates'));
+                    if(Array.isArray(cHull) && cHull.length >= 6) {
+                        this.annotations[key].geometry.setProperty('coordinates', cHull);
+                    }
+                }
+            }
+            if(!numClicked) {
+                window.messager.addMessage('Click into a drawn polygon to transform it into its convex hull.', 'info');
+            } else {
+                window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
+            }
+
         } else if(window.uiControlHandler.getAction() === ACTIONS.SIMPLIFY_POLYGON) {
             // find clicked polygon
+            let numClicked = 0;
             for(var key in this.annotations) {
                 let coords = this.viewport.getRelativeCoordinates(event, 'validArea');
                 if(this.annotations[key].geometry.containsPoint(coords)) {
                     // simplify polygon
-                    window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
+                    numClicked++;
                     let coords_in = this.annotations[key].geometry.getProperty('coordinates');
                     let coords_out = simplifyPolygon(coords_in, window.polygonSimplificationTolerance, true);      //TODO: hyperparameters
-                    if(Array.isArray(coords_out)) {
+                    if(Array.isArray(coords_out) && coords_out.length >= 6) {
                         this.annotations[key].geometry.setProperty('coordinates', coords_out);
                     }
                 }
+            }
+            if(!numClicked) {
+                window.messager.addMessage('Click into a drawn polygon to simplify it.', 'info');
+            } else {
+                window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
             }
         }
 

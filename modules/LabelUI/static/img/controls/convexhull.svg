@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg version="1.1" id="Layer_3" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 viewBox="0 0 256 256" style="enable-background:new 0 0 256 256;" xml:space="preserve">
+<style type="text/css">
+	.st0{fill:none;stroke:#FFFFFF;stroke-width:10;stroke-linejoin:round;}
+	.st1{fill:none;stroke:#FFFFFF;stroke-width:10;stroke-linecap:round;stroke-linejoin:round;}
+	.st2{fill:none;stroke:#FFFFFF;stroke-width:10;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:10.6575,14.21;}
+	.st3{fill:none;stroke:#FFFFFF;stroke-width:10;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:10.5157,14.021;}
+	.st4{fill:none;stroke:#FFFFFF;stroke-width:10;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:12.9884,17.3179;}
+	.st5{fill:none;stroke:#FFFFFF;stroke-width:10;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:13.5434,18.0579;}
+	.st6{fill:none;stroke:#FFFFFF;stroke-width:10;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:11.1426,14.8568;}
+</style>
+<g>
+	<polygon class="st0" points="73.5,159.1 99.7,148.6 105.6,183.4 158.1,197.8 146.9,159.8 202,157.1 183.2,126.5 163.7,112.4 
+		183,58.8 143.7,90.3 118.3,81.1 58.4,69.3 95.1,100.1 47.2,117.1 84.6,125 	"/>
+	<g>
+		<g>
+			<polyline class="st1" points="198.7,32.7 205.3,32.2 206.6,38.7 			"/>
+			<line class="st2" x1="209.6" y1="54" x2="228.9" y2="154"/>
+			<polyline class="st1" points="230.3,161.7 231.6,168.2 226.8,172.7 			"/>
+			<line class="st3" x1="215.4" y1="183.2" x2="181.4" y2="214.7"/>
+			<polyline class="st1" points="175.8,219.9 170.9,224.4 164.5,222.6 			"/>
+			<polyline class="st4" points="146.1,217.6 98.3,204.4 53.9,170.9 26.2,126.5 			"/>
+			<polyline class="st1" points="21.1,118.5 17.6,112.9 19.2,106.5 			"/>
+			<line class="st5" x1="23.7" y1="87.1" x2="29.3" y2="62.8"/>
+			<polyline class="st1" points="31.6,53.1 33,46.7 39.7,46.2 			"/>
+			<line class="st6" x1="56" y1="44.7" x2="190.5" y2="33.4"/>
+		</g>
+	</g>
+</g>
+</svg>

@@ -1,7 +1,7 @@
 /**
  * Messaging system for the user front-end.
  * 
- * 2020 Benjamin Kellenberger
+ * 2020-21 Benjamin Kellenberger
  */
 
 
@@ -9,7 +9,7 @@ class Message {
 
     constructor(text, type, fadeOutTime) {
         this.text = text;
-        this.type = (['success', 'warning', 'error'].includes(type) ? type : 'regular');
+        this.type = (['success', 'warning', 'error', 'info'].includes(type) ? type : 'regular');
         this.fadeOutTime = (typeof(fadeOutTime) === 'number' ? fadeOutTime : 10000);
 
         // setup markup
