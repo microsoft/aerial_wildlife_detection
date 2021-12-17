@@ -13,7 +13,7 @@ Exciting news: AIDE version 3.0 is on the way! This is the **nightly** build of 
 * :clock3: Support for new image formats:
   * :clock3: TIFF image parsing: :clock3: Web frontend works (needs testing with exotic TIFFs); :clock3: backend works but needs failsafety
   * :clock3: DICOM image parsing: :red_circle: Web frontend to be implemented (Daikon library); :clock3: backend prototype works (cannot save images; no metadata is kept)
-* :clock3: Image rendering adjustments for Web frontend (grayscale render configuration to be tested and adjusted)
+* :clock3: Image rendering adjustments for Web frontend (grayscale render configuration might needs minor UI adjustments)
 * :ballot_box_with_check: Support for polygons (to be implemented: polygon union, individual vertex selection and deletion, general minor bug fixes)
 * :clock3: New models for polygons: Detectron2 detectors (Faster R-CNN & Co.) work with polygons as input; dedicated models to be implemented
 * :clock3: Advanced segmentation labeling tools: :white_check_mark: paint bucket; :red_circle: rectangle, :ballot_box_with_check: polygon (might need improvements); :white_check_mark: magnetic polygon; :white_check_mark: magic wand; :white_check_mark: Grab Cut; :white_check_mark: polygon simplification and convex hull; :clock3: select similar (still not working as it should)

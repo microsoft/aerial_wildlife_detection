@@ -274,9 +274,9 @@ class WebImageParser {
         }
     }
 
-    getNumBands() {
+    getNumBands(raw) {
         // standard canvas images always come in RGBA configuration
-        return 4;
+        return (raw ? 3 : 4);
     }
 }
 WebImageParser.prototype.get_supported_formats = function() {

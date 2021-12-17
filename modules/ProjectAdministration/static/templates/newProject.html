@@ -98,8 +98,10 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
         <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
         <script type="text/javascript" src="/static/general/libs/geotiff.js/geotiff.js?v={{ version }}"></script>
+        <script type="text/javascript" src="/static/general/js/imageManipulation.js?v={{ version }}"></script>
         <script type="text/javascript" src="/static/general/js/renderers/imageRenderer.js?v={{ version }}"></script>
         <script type="text/javascript" src="/static/general/js/messaging.js?v={{ version }}"></script>
+        <script src="/static/general/js/progressbar.js?v={{ version }}"></script>
         <script src="/static/general/js/overlay.js?v={{ version }}"></script>
         <script type="text/javascript" src="/static/interface/js/util.js?v={{ version }}"></script>
         <script src="/static/general/js/cookie.js?v={{ version }}"></script>
@@ -357,27 +359,29 @@
                  *  bands the image has as well as the band labels. Populates
                  *  the band label table accordingly.
                  */
+                $('#file-parsing-progress').show();
                 let tbody = $('#band-assignment-tbody');
                 
                 // get renderer according to MIME type
-                let rendererClass = getRendererByMIMEtype(file.type);
-                let renderer = new rendererClass(null, {}, file);
+                let rendererClass = getParserByMIMEtype(file.type);
+                let renderer = new rendererClass(file);
                 renderer.load_image().then(() => {
-                    let meta = renderer.getMetadata();
-                    if(Array.isArray(meta['band_names']) && meta['band_names'].length) {
+                    let numBands = renderer.getNumBands(true);
+                    if(typeof(numBands) === 'number') {
                         tbody.empty();
-                        if(meta['band_names'].length >= 3) {
-                            for(var b in meta['band_names']) {
-                                addBand(meta['band_names'][b]);
+                        if(numBands >= 3) {
+                            for(var b=1; b<=numBands; b++) {
+                                addBand('Band ' + b);
                             }
                         } else {
                             // less than three bands; assign first as grayscale
-                            addBand(meta['band_names'][b], 'Grayscale');
+                            addBand(0, 'Grayscale');
                         }
                         updateDefaultBandSelectors();
                     } else {
                         //TODO: image could not be parsed
                     }
+                    $('#file-parsing-progress').hide();
                 });
             }
 
@@ -622,6 +626,10 @@
                     });
                     showSidePanel($(window).width() > 1630);
                 });
+
+
+                let pBar = new ProgressBar(true, 0, 0, true);
+                $('#file-parsing-progress-bar').append(pBar.markup);
             });
         </script>
     </head>
@@ -794,13 +802,19 @@
                                 </label>
                             </div>
                             <p style="font-size:9pt;font-style:italic">
-                                TODO: warning here
+                                AIDE supports images with more than three bands/channels. Please indicate the number of bands and their name below.
+                                Note that the number of bands will be fixed for this project and that any image with a different band count will be ignored during data import.
+                                Also note that enabling multi-band image support might limit the number of AI models you can use in this project.
                             </p>
 
                             <div id="multiband-container" style="display:none">
                                 <h3>Band configuration:</h3>
                                 <label for="image-sample-file">Parse from file:</label>
                                 <input type="file" id="image-sample-file" />
+                                <div id="file-parsing-progress" style="display:none;float:right">
+                                    <div id="file-parsing-progress-bar"></div>
+                                    <span>reading image...</span>
+                                </div>
                                 <table>
                                     <thead>
                                         <tr>

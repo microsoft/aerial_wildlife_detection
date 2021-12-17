@@ -45,16 +45,21 @@ class Watchdog(Thread):
 
     def _check_ongoing_tasks(self):
         #TODO: limit to AIModel tasks
+        #TODO 2: terminate if project doesn't exist anymore
         self.runningTasks = []
         tasksRunning_db = {}
-        queryResult = self.dbConnector.execute(
-            sql.SQL('''
-                SELECT id, tasks, timeFinished, succeeded, abortedBy
-                FROM {}
-                WHERE launchedBy IS NULL AND timeFinished IS NULL;
-            ''').format(sql.Identifier(self.project, 'workflowhistory')),
-            None, 'all'
-        )
+        queryResult = None
+        try:
+            queryResult = self.dbConnector.execute(
+                sql.SQL('''
+                    SELECT id, tasks, timeFinished, succeeded, abortedBy
+                    FROM {}
+                    WHERE launchedBy IS NULL AND timeFinished IS NULL;
+                ''').format(sql.Identifier(self.project, 'workflowhistory')),
+                None, 'all'
+            )
+        except Exception as e:
+            print(e)
         if queryResult is not None:
             for task in queryResult:
                 #TODO: fields to choose?

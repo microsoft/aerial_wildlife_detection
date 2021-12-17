@@ -414,11 +414,12 @@ class DBMiddleware():
         annoResult = self.dbConnector.execute(queryStr, queryVals, 'all')
         try:
             response = self._assemble_annotations(project, annoResult, hideGoldenQuestionInfo)
+            
+            # mark images as requested
+            self._set_images_requested(project, response)
         except Exception as e:
             print(e)
-
-        # mark images as requested
-        self._set_images_requested(project, response)
+            return { 'entries': {}}
 
         return { 'entries': response }
 
