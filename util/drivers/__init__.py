@@ -24,8 +24,63 @@ DRIVERS = {
     'mime_type': {}
 }
 
+
+'''
+    A - valid file extensions and MIME types for files that are fully supported
+    by AIDE, both in the Web frontend as well as the backend through the image
+    drivers.
+'''
+SUPPORTED_DATA_EXTENSIONS = (
+    '.jpg',
+    '.jpeg',
+    '.png',
+    '.gif',
+    '.tif',
+    '.tiff',
+    '.bmp',
+    '.ico',
+    '.jfif',
+    '.pjpeg',
+    '.pjp',
+    '.dcm'
+)
+
+SUPPORTED_DATA_MIME_TYPES = (
+    'image/jpeg',
+    'image/bmp',
+    'image/x-windows-bmp',
+    'image/gif',
+    'image/tif',
+    'image/tiff',
+    'image/x-icon',
+    'image/png',
+    'application/dicom'
+)
+
+# data extensions and MIME types to use for conversion
+DATA_EXTENSIONS_CONVERSION = {
+    'image': '.tif'
+}
+
+DATA_MIME_TYPES_CONVERSION = {
+    'image': 'image/tif'
+}
+
+
+'''
+    B - valid file extensions and MIME types that are supported by the drivers,
+    but not necessarily by AIDE's Web frontend. For such files, AIDE offers the
+    option to convert them to a format that is versatile enough and fully
+    supported (e.g., TIFF for images).
+'''
 VALID_IMAGE_EXTENSIONS = set()
 VALID_IMAGE_MIME_TYPES = set()
+
+# fallback image drivers - those that are to be tried in order if data extensions
+# or MIME types are not conclusive
+FALLBACK_DRIVERS = (
+    GDALImageDriver, DICOMImageDriver
+)
 
 def init_drivers(verbose=False):
     if len(VALID_IMAGE_EXTENSIONS):
@@ -74,23 +129,23 @@ def init_drivers(verbose=False):
         VALID_IMAGE_MIME_TYPES.add(mimetype)
 
 
-def get_drivers_by_mime_type(mimeType):
+def get_drivers_by_mime_type(mimeType, omit_fallback=False):
     if not len(DRIVERS['mime_type']):
         init_drivers(False)
     try:
         return DRIVERS['mime_type'][mimeType]
     except:
-        return None
+        return FALLBACK_DRIVERS
 
 
 
-def get_drivers_by_extension(ext):
+def get_drivers_by_extension(ext, omit_fallback=False):
     if not len(DRIVERS['extension']):
         init_drivers(False)
     try:
         return DRIVERS['extension'][ext]
     except:
-        return None
+        return FALLBACK_DRIVERS
 
 
 

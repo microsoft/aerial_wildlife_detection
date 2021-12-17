@@ -21,7 +21,7 @@ from uuid import UUID
 from PIL import Image
 from psycopg2 import sql
 from modules.LabelUI.backend.annotation_sql_tokens import QueryStrings_annotation, QueryStrings_prediction
-from util.helpers import FILENAMES_PROHIBITED_CHARS, listDirectory, base64ToImage, hexToRGB
+from util.helpers import FILENAMES_PROHIBITED_CHARS, listDirectory, base64ToImage, hexToRGB, slugify, current_time
 from util.imageSharding import split_image
 from util import drivers
 
@@ -188,7 +188,7 @@ class DataWorker:
 
 
     def uploadImages(self, project, images, existingFiles='keepExisting',
-        splitImages=False, splitProperties=None):
+        splitImages=False, splitProperties=None, convertUnsupported=True):
         '''
             Receives a dict of files (bottle.py file format), verifies their
             file extension and checks if they are loadable by PIL. If they are,
@@ -216,7 +216,7 @@ class DataWorker:
                     'discard_homogeneous_quantization_value': 255
                 }
 
-            would divide the images into patches of size 800x600, with over- lap
+            would divide the images into patches of size 800x600, with overlap
             of 50% (denoted by the "stride" being half the "patchSize"), and
             with all patches completely inside the original image (parameter
             "tight" makes the last patches to the far left and bottom of the
@@ -237,9 +237,19 @@ class DataWorker:
             ginal image, and "x" and "y" the left and top position of the patch
             inside the original image.
 
+            If "convertUnsupported" is True (default), images that are readable
+            by the backend image drivers but not AIDE's Web frontend will be
+            converted to a format that is fully supported. Warnings will be
+            issued for each converted image. Otherwise those images will be
+            discarded and an error message will be appended.
+
             Returns image keys for images that were successfully saved, and keys
             and error messages for those that were not.
         '''
+        # temp dir to save raw files to
+        tempRoot = os.path.join(self.tempDir, project, 'upload_' + slugify(current_time()))
+        os.makedirs(tempRoot, exist_ok=False)
+
         # get band configuration for project
         bandConfig = self.dbConnector.execute(
             'SELECT band_config FROM "aide_admin".project WHERE shortname = %s;',
@@ -261,24 +271,42 @@ class DataWorker:
             try:
                 nextUpload = images[key]
                 nextFileName = nextUpload.raw_filename
+                if nextFileName.startswith('/') or nextFileName.startswith('\\'):
+                    nextFileName = nextFileName[1:]
                 #TODO: check if raw_filename is compatible with uploads made from Windows
 
                 # check if correct file suffix
-                _, ext = os.path.splitext(nextFileName)
-                if not ext.lower() in drivers.VALID_IMAGE_EXTENSIONS:
+                targetMimeType = None       # if not None, file will be converted below
+                base, ext = os.path.splitext(nextFileName)
+                ext = ext.lower()
+                if ext not in drivers.VALID_IMAGE_EXTENSIONS:
                     raise Exception(f'Invalid file type (*{ext})')
+                elif ext not in drivers.SUPPORTED_DATA_EXTENSIONS:
+                    # file is supported by drivers but not by Web front end
+                    if convertUnsupported:
+                        # replace file name extension and add warning message
+                        nextFileName = base + drivers.DATA_EXTENSIONS_CONVERSION['image']
+                        targetMimeType = drivers.DATA_MIME_TYPES_CONVERSION['image']
+                        imgs_warn[key] = f'Image "{nextUpload.raw_filename}" has been converted to {targetMimeType} and renamed to "{nextFileName}".'
+                    else:
+                        # skip and add error message
+                        raise Exception(f'Unsupported file type for image "{nextUpload.raw_filename}".')
 
-                # check if loadable as image
-                cache = io.BytesIO()
-                nextUpload.save(cache)
+                # save to disk
+                tempFileName = os.path.join(tempRoot, nextFileName)
+                parent, _ = os.path.split(tempFileName)
+                os.makedirs(parent, exist_ok=True)
+                nextUpload.save(open(tempFileName, 'wb'))
+
+                # try to load file
                 try:
-                    pixelArray = drivers.load_from_bytes(cache)
+                    pixelArray = drivers.load_from_disk(tempFileName)
                     bandNum_current = pixelArray.shape[0]
                     if bandNum_current not in bandNum:
                         raise Exception(f'Image has invalid number of bands (expected: {str(bandNum)}, actual: {str(bandNum_current)}).')
                     # image = Image.open(cache)
                 except Exception as e:
-                    raise Exception(f'File is not a valid image (message: "{str(e)}").')
+                    raise Exception(f'File could not be added to project (message: "{str(e)}").')
 
                 # prepare image(s) to save to disk
                 parent, filename = os.path.split(nextFileName)
@@ -290,7 +318,12 @@ class DataWorker:
 
                 if not splitImages:
                     # upload the single image directly
-                    images.append(cache)
+                    if targetMimeType is None:
+                        # no conversion required; save directly
+                        images.append(tempFileName)
+                    else:
+                        # need to convert; append array instead
+                        images.append(pixelArray)
                     filenames.append(filename)
 
                 else:
@@ -388,6 +421,9 @@ class DataWorker:
                         subImage.seek(0)
                         with open(absFilePath, 'wb') as f:
                             f.write(subImage.getbuffer())
+                    elif isinstance(subImage, str):
+                        # file name; copy directly
+                        shutil.copyfile(subImage, absFilePath)
                     else:
                         # NumPy array from tiling
                         drivers.save_to_disk(subImage, absFilePath)
@@ -416,6 +452,9 @@ class DataWorker:
             'imgs_warn': imgs_warn,
             'imgs_error': imgs_error
         }
+
+        # remove temp files
+        shutil.rmtree(tempRoot)
 
         return result
 
@@ -452,6 +491,7 @@ class DataWorker:
         for i in range(len(imgs_candidates)):
             if imgs_candidates[i].startswith('/'):
                 imgs_candidates[i] = imgs_candidates[i][1:]
+            #TODO: (i.) try to load images to see if they are valid; (ii.) auto-convert semi-supported images
         return imgs_candidates
 
 

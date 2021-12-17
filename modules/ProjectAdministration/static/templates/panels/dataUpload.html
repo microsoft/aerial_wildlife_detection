@@ -284,7 +284,8 @@
                     break;
                 }
                 var nextItem = fileInput.files[i];
-                if(window.validImageMIMEtypes.includes(nextItem.type)) {
+                let extension = nextItem.name.substring(nextItem.name.lastIndexOf('.')).toLowerCase();
+                if(window.validImageExtensions.includes(extension)) {
                     // upload
                     var fileName = (nextItem.hasOwnProperty('webkitRelativePath')? nextItem['webkitRelativePath'] : nextItem['name']);
                     if(fileName.startsWith('/')) {
@@ -398,6 +399,8 @@
                     });
 
                     uploadRequests.push(uploadRequest);
+                } else {
+                    //TODO: add a fake entry showing that the file was not recognized
                 }
             }
 
@@ -448,21 +451,21 @@
             }
         });
 
-        // get valid image MIME types
+        // get valid image extensions
         promise = promise.done(function() {
             return $.ajax({
-                url: window.baseURL + 'getValidMIMEtypes',
+                url: window.baseURL + 'getValidImageExtensions',
                 method: 'GET',
                 success: function(data) {
-                    if(data.hasOwnProperty('MIME_types')) {
-                        window.validImageMIMEtypes = data['MIME_types'];
+                    if(data.hasOwnProperty('extensions')) {
+                        window.validImageExtensions = data['extensions'];
                     } else {
-                        window.validImageMIMEtypes = [];
+                        window.validImageExtensions = [];
                     }
                 },
                 error: function(data) {
                     //TODO
-                    window.validImageMIMEtypes = [];
+                    window.validImageExtensions = [];
                 }
             });
         });

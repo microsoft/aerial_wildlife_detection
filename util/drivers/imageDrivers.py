@@ -181,11 +181,13 @@ class GDALImageDriver(AbstractImageDriver):
     SUPPORTED_EXTENSIONS = (
         '.bmp',
         '.gif',
+        '.gff',
         '.heic',
         '.img',
         '.jpg', '.jpeg',
         '.jp2', '.j2k',
         '.nc',
+        '.ntf',
         '.pdf',
         '.png',
         '.tif', '.tiff',

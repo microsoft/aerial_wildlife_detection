@@ -7,6 +7,8 @@
 import os
 import sys
 import importlib
+import unicodedata
+import re
 from datetime import datetime
 import pytz
 import socket
@@ -53,6 +55,24 @@ def current_time():
         Returns the current time with UTC timestamp.
     '''
     return datetime.now(tz=pytz.utc)
+
+
+
+def slugify(value, allow_unicode=False):
+    '''
+        Taken from https://github.com/django/django/blob/master/django/utils/text.py
+        Convert to ASCII if 'allow_unicode' is False. Convert spaces or repeated
+        dashes to single dashes. Remove characters that aren't alphanumerics,
+        underscores, or hyphens. Convert to lowercase. Also strip leading and
+        trailing whitespace, dashes, and underscores.
+    '''
+    value = str(value)
+    if allow_unicode:
+        value = unicodedata.normalize('NFKC', value)
+    else:
+        value = unicodedata.normalize('NFKD', value).encode('ascii', 'ignore').decode('ascii')
+    value = re.sub(r'[^\w\s-]', '', value.lower())
+    return re.sub(r'[-\s]+', '-', value).strip('-_')
 
 
 
@@ -392,35 +412,6 @@ def download_file(url, local_filename=None):
                 f.write(chunk)
     return local_filename
 
-
-#TODO: replaced with drivers
-# VALID_IMAGE_EXTENSIONS = (
-#     '.jpg',
-#     '.jpeg',
-#     '.png',
-#     '.gif',
-#     '.tif',
-#     '.tiff',
-#     '.bmp',
-#     '.ico',
-#     '.jfif',
-#     '.pjpeg',
-#     '.pjp',
-#     '.dcm'
-# )
-
-
-# VALID_IMAGE_MIME_TYPES = (
-#     'image/jpeg',
-#     'image/bmp',
-#     'image/x-windows-bmp',
-#     'image/gif',
-#     'image/tif',
-#     'image/tiff',
-#     'image/x-icon',
-#     'image/png',
-#     'application/dicom'
-# )
 
 
 FILENAMES_PROHIBITED_CHARS = (
