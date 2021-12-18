@@ -259,6 +259,10 @@ class AbstractImageView {
         this.loadingOverlay = undefined;
     }
 
+    containsEntry(key) {
+        return this.entries.hasOwnProperty(key);
+    }
+
     addEntries(entries) {
         this.entries = {...this.entries, ...entries};
     }
@@ -274,6 +278,15 @@ class AbstractImageView {
             entries[entry.id] = entry;
         }
         this.addEntries(entries);
+    }
+
+    removeEntries(keys) {
+        if(typeof(keys) === 'string') keys = [keys];
+        for(var k in keys) {
+            if(this.containsEntry(keys[k])) {
+                delete this.entries[keys[k]];
+            }
+        }
     }
 
     getEntry(idx) {
@@ -813,6 +826,14 @@ class ImageBrowser {
         this._fire_event('viewChange', type)
     }
 
+    containsEntry(key) {
+        if(this.activeView === 'list') {
+            return this.listView.containsEntry(key);
+        } else {
+            return this.tileView.containsEntry(key);
+        }
+    }
+
     addImages(images) {
         this.data['images'] = {...this.data['images'], ...images};
         this.listView.addImages(images);
@@ -825,6 +846,14 @@ class ImageBrowser {
         this.tileView.setImages(images);
         if(images === undefined || images === null || images.length === 0) {
             this.setTrailingButton(false);
+        }
+    }
+
+    removeEntries(keys) {
+        if(this.activeView === 'list') {
+            return this.listView.removeEntries(keys);
+        } else {
+            return this.tileView.removeEntries(keys);
         }
     }
 

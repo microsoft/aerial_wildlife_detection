@@ -219,6 +219,33 @@
 
 
         // upload functions
+        function create_file_groups(files) {
+            /**
+             * Receives a FileList and scans all file names. Reorders and groups
+             * them so that files that belong together (e.g., only difference is
+             * the extension) are also uploaded together. This accounts e.g. for
+             * data types that consist of multiple files, such as a header and a
+             * data file.
+             */
+            if(!files.length) return [];
+            function _strip_name(fileName) {
+                let fnOut = fileName.substring(0, fileName.lastIndexOf('.'));
+                if(fnOut.startsWith('/')) fnOut = fnOut.substring(1);
+                return fnOut;
+            }
+            let fileGroups = {};
+            for(var f=0; f<files.length; f++) {
+                let fName = _strip_name(files[f].name);
+                if(fName.length === 0) continue;     // skip hidden files, such as ".DS_Store" from macOS
+                let fPath = _strip_name(files[f].webkitRelativePath);      //TODO: check compatibility with other browsers
+                if(!fileGroups.hasOwnProperty(fPath)) {
+                    fileGroups[fPath] = [];
+                }
+                fileGroups[fPath].push(files[f]);
+            }
+            return fileGroups;
+        }
+
         window.uploadedFiles = {};
         function startUploadFilesFromDisk() {
             var uploadRequests = [];
@@ -276,26 +303,36 @@
             $('#global-progress-bar').append(stopButton);
             $('#global-progress-bar').show();
 
-            // filter files according to MIME type and upload
-            var numComplete = 0;
-            for(var i=0; i<fileInput.files.length; i++) {
+            // group files by file name sans extension (account for data types consisting of multiple files)
+            let fileGroups = create_file_groups(fileInput.files);
+
+            let numComplete = 0;
+            for(var key in fileGroups) {
                 if(window.stopAction) {
                     // user aborted
                     break;
                 }
-                var nextItem = fileInput.files[i];
-                let extension = nextItem.name.substring(nextItem.name.lastIndexOf('.')).toLowerCase();
-                if(window.validImageExtensions.includes(extension)) {
-                    // upload
-                    var fileName = (nextItem.hasOwnProperty('webkitRelativePath')? nextItem['webkitRelativePath'] : nextItem['name']);
+                let nextFiles = fileGroups[key];
+
+                // prepare form data
+                let formData = new FormData();
+                formData.append('existingFiles', existingFiles);
+                formData.append('splitPatches', doSplitPatches);
+                formData.append('splitParams', JSON.stringify(splitParams));
+                
+                // prepare image browser entries and append to form data
+                let fileKeys = {};
+                for(var f in nextFiles) {
+                    let nextItem = nextFiles[f];
+
+                    let fileName = (nextItem.webkitRelativePath !== undefined ? nextItem.webkitRelativePath : nextItem.name);
                     if(fileName.startsWith('/')) {
                         fileName = fileName.slice(1)
                     }
-                    var key = fileName+'_'+i;
-                    var formData = new FormData();
-                    formData.append('existingFiles', existingFiles);
-                    formData.append('splitPatches', doSplitPatches);
-                    formData.append('splitParams', JSON.stringify(splitParams));
+                    let key = fileName+'_'+f;
+                    fileKeys[key] = {
+                        filename: fileName
+                    };
                     formData.append(key, nextItem);
                     window.imageBrowser.addImages({
                         key: {
@@ -305,103 +342,108 @@
                             'message': 'waiting...'
                         }
                     });
-                    window.imageBrowser.setProgressBar(key, true, 0);
-
-                    var uploadRequest = $.ajax({
-                        url: window.baseURL + 'uploadImages',
-                        method: 'POST',
-                        data: formData,
-                        cache: false,
-                        contentType: false,
-                        processData: false,
-                        xhr: function () {
-                            var customXhr = $.ajaxSettings.xhr();
-                            if(customXhr.upload) {
-                                customXhr.upload.addEventListener('progress', function(e) {
-                                    if(e.lengthComputable) {
-                                        window.imageBrowser.set('message', this, 'uploading...');
-                                        if(e.loaded < e.total) {
-                                            window.imageBrowser.setProgressBar(this, true, e.loaded, e.total);
-                                        } else {
-                                            window.imageBrowser.setProgressBar(this, false);
-                                        }
+                }
+                
+                // upload
+                for(var key in fileKeys) {
+                    window.imageBrowser.setProgressBar(fileKeys[key]['filename'], true, 0);
+                }
+                let uploadRequest = $.ajax({
+                    url: window.baseURL + 'uploadImages',
+                    method: 'POST',
+                    data: formData,
+                    cache: false,
+                    contentType: false,
+                    processData: false,
+                    xhr: function () {
+                        var customXhr = $.ajaxSettings.xhr();
+                        if(customXhr.upload) {
+                            customXhr.upload.addEventListener('progress', function(e) {
+                                if(e.lengthComputable) {
+                                    window.imageBrowser.set('message', this, 'uploading...');
+                                    if(e.loaded < e.total) {
+                                        window.imageBrowser.setProgressBar(this, true, e.loaded, e.total);
                                     } else {
                                         window.imageBrowser.setProgressBar(this, false);
-                                        window.imageBrowser.set('message', this, '');
                                     }
-                                }.bind(key), false);
-                            }
-                            return customXhr;
-                        },
-                        success: function(data) {
-                            // retrieve image URL for uploaded image
-                            try {
-                                if(typeof(data) === 'string') {
-                                    data = JSON.parse(data);
-                                }
-                                if(data['result']['imgPaths_valid'].length === 0) {
-                                    // something went wrong uploading the image
-                                    window.imageBrowser.set('imageURL', this, '/static/dataAdmin/img/error.png');
-                                    window.messager.addMessage('Image "'+fileName+'" could not be uploaded.', 'error', 0);
                                 } else {
-                                    var url = window.dataServerURI + window.project + '/files/' +
-                                        data['result']['imgPaths_valid'][0];
-                                    window.imageBrowser.set('imageURL', this, url);
-                                    window.imageBrowser.set('url', this, data['result']['imgPaths_valid'][0]);
-                                    window.imageBrowser.set('message', this, '<span style="color:green">upload successful</span>');
-                                    // add other entries for other tiles (if available)
-                                    for(var t=1; t<data['result']['imgPaths_valid'].length; t++) {
-                                        var key = data['result']['imgPaths_valid'][t];
-                                        var url = window.dataServerURI + window.project + '/files/' + key;
-                                        window.imageBrowser.addImages({
-                                            key: {
-                                                'id': key,
-                                                'url': key,
-                                                'imageURL': url,
-                                                'message': '<span style="color:green">upload successful</span>'
-                                            }
-                                        });
-                                    }
+                                    window.imageBrowser.setProgressBar(this, false);
+                                    window.imageBrowser.set('message', this, '');
                                 }
-                                // show messages
-                                if(this in data['result']['imgs_error']) {
-                                    var msg = '<span style="color:red">' + data['result']['imgs_error'][this] + '</span>';
-                                    window.imageBrowser.set('message', this, msg);
-                                    window.messager.addMessage('Image "'+fileName+'" could not be uploaded (message: "'+data['result']['imgs_error'][this]+'").', 'error', 0);
-                                } else if(this in data['result']['imgs_warn']) {
-                                    var msg = '<span style="color:yellow">' + data['result']['imgs_warn'][this] + '</span>';
-                                    window.imageBrowser.set('message', this, msg);
-                                    window.messager.addMessage('Warning(s) occurred while uploading image "'+fileName+'": "'+data['result']['imgs_warn'][this]+'".', 'warning', 0);
-                                }
+                            }.bind(key), false);
+                        }
+                        return customXhr;
+                    },
+                    success: function(data) {
+                        // retrieve image URL for uploaded images
+                        //TODO: make compatible with bulk upload
+                        // try {
+                            if(typeof(data) === 'string') {
+                                data = JSON.parse(data);
+                            }
 
-                                if(!(this in data['result']['imgs_error'])) {
+                            // combine all keys (original images plus potential new patches)
+                            let allKeys = {...fileKeys, ...data['result']};
+
+                            for(var key in allKeys) {
+                                let imgName = allKeys[key]['filename'];
+                                let url = window.dataServerURI + window.project + '/files/' + imgName;
+
+                                if(!window.imageBrowser.containsEntry(key)) {
+                                    // new image, e.g. due to splitting; add entry
+                                    window.imageBrowser.addImages({
+                                        key: {
+                                            'id': key,
+                                            'url': imgName,
+                                            'imageURL': url,
+                                            'message': '<span style="color:green">upload successful</span>'
+                                        }
+                                    });
+                                }
+                                let result = data['result'][key];
+                                let message = result['message'];
+                                if(result['status'] === 0) {
+                                    // valid image
+                                    // window.messager.addMessage('Image "'+imgName+'" uploaded successfully.', 'success');
+                                    message = '<span style="color:green">'+message+'</span>';
+                                } else if(result['status'] === 1) {
+                                    // image with warning
+                                    // window.messager.addMessage('Warning(s) occurred while uploading image "'+imgName+'": "'+message+'".', 'warning', 0);
+                                    message = '<span style="color:yellow">'+message+'</span>';
+                                } else if(result['status'] === 2) {
+                                    // failed upload
+                                    url = '/static/dataAdmin/img/error.png';
+                                    // window.messager.addMessage('Image "'+imgName+'" could not be uploaded (message: "'+message+'").', 'error', 0);
+                                    message = '<span style="color:red">'+message+'</span>';
+                                }
+                                window.imageBrowser.set('imageURL', key, url);
+                                window.imageBrowser.set('url', key, imgName);
+                                window.imageBrowser.set('message', key, message);
+
+                                // update progress bar
+                                if(result['status'] < 2) {
                                     pBar.set(true, pBar.getValue()+1);
-                                    numComplete++;
+                                    numComplete += Object.keys(fileKeys).length;
                                     infoBar.html('uploading... ('+numComplete+'/'+fileInput.files.length+' images uploaded)');
                                     if(numComplete >= fileInput.files.length) {
                                         pBar.set(false);
                                     }
-                                    window.uploadedFiles[this] = 1;
-                                    window.messager.addMessage('Image "'+fileName+'" uploaded successfully.', 'success');
+                                    window.uploadedFiles[key] = 1;
                                 }
-                            } catch(error) {
-                                console.log(error)
-                                window.imageBrowser.set('imageURL', this, '/static/dataAdmin/img/error.png');
-                                window.imageBrowser.set('message', this, '<span style="color:red">an unknown error occurred</span>');
-                                window.messager.addMessage('Image "'+fileName+'" could not be uploaded.', 'error', 0);
-                            }
-                            window.imageBrowser.setProgressBar(this, false);
-                        }.bind(key),
-                        error: function(xhr, status, error) {
-                            window.imageBrowser.set('imageURL', this, '/static/dataAdmin/img/error.png');
-                            pBar.set(true, pBar.getValue()+1);
-                        }.bind(key)
-                    });
+                            }                         
+                        // } catch(error) {
+                        //     //TODO
+                        //     console.log(error)
+                        // }
+                        window.imageBrowser.setProgressBar(this, false);
+                    }.bind(key),
+                    error: function(xhr, status, error) {
+                        window.imageBrowser.set('imageURL', this, '/static/dataAdmin/img/error.png');
+                        pBar.set(true, pBar.getValue()+1);
+                    }.bind(key)
+                });
 
-                    uploadRequests.push(uploadRequest);
-                } else {
-                    //TODO: add a fake entry showing that the file was not recognized
-                }
+                uploadRequests.push(uploadRequest);
             }
 
             // hide global progress bar once everything is done

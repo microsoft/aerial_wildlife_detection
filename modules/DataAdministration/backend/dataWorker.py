@@ -247,8 +247,26 @@ class DataWorker:
             and error messages for those that were not.
         '''
         # temp dir to save raw files to
-        tempRoot = os.path.join(self.tempDir, project, 'upload_' + slugify(current_time()))
+        tempRoot = os.path.join(self.tempDir, project, 'upload_' + slugify(current_time())) + os.sep
         os.makedirs(tempRoot, exist_ok=False)
+
+        # save all files to temp dir temporarily
+        tempFiles = {}
+        for key in images.keys():
+            nextUpload = images[key]
+            nextFileName = nextUpload.raw_filename
+            if nextFileName.startswith('/') or nextFileName.startswith('\\'):
+                nextFileName = nextFileName[1:]
+            
+            # save to disk
+            tempFileName = os.path.join(tempRoot, nextFileName)
+            parent, _ = os.path.split(tempFileName)
+            os.makedirs(parent, exist_ok=True)
+            nextUpload.save(open(tempFileName, 'wb'))
+            tempFiles[key] = {
+                'orig': nextFileName,
+                'temp': tempFileName
+            }
 
         # get band configuration for project
         bandConfig = self.dbConnector.execute(
@@ -263,180 +281,213 @@ class DataWorker:
             # of one (grayscale) or three (RGB)
             bandNum = set((1, 3))
 
-        imgPaths_valid = []
-        imgs_valid = []
+        # iterate over files and process them
+        imgs_valid = {}
         imgs_warn = {}
         imgs_error = {}
-        for key in images.keys():
-            try:
-                nextUpload = images[key]
-                nextFileName = nextUpload.raw_filename
-                if nextFileName.startswith('/') or nextFileName.startswith('\\'):
-                    nextFileName = nextFileName[1:]
-                #TODO: check if raw_filename is compatible with uploads made from Windows
+        files_aux = {}        # auxiliary files for multi-file datasets, such as image headers
 
-                # check if correct file suffix
-                targetMimeType = None       # if not None, file will be converted below
-                base, ext = os.path.splitext(nextFileName)
-                ext = ext.lower()
-                if ext not in drivers.VALID_IMAGE_EXTENSIONS:
-                    raise Exception(f'Invalid file type (*{ext})')
-                elif ext not in drivers.SUPPORTED_DATA_EXTENSIONS:
+        for key in tempFiles:
+            tempFileName = tempFiles[key]['temp']
+            originalFileName = tempFiles[key]['orig']
+            if os.path.isdir(tempFileName) or not os.path.exists(tempFileName):
+                continue
+
+            imgKey, ext = os.path.splitext(originalFileName)
+            ext = ext.lower()
+
+            # try to load file with drivers
+            try:
+                # pixelArray = drivers.load_from_disk(file)     
+                pixelArray = drivers.load_from_disk(tempFileName)       #TODO: load only small window once implemented to prevent out-of-memory errors
+                bandNum_current = pixelArray.shape[0]
+                if bandNum_current not in bandNum:
+                    raise Exception(f'Image "{originalFileName}" has invalid number of bands (expected: {str(bandNum)}, actual: {str(bandNum_current)}).')
+
+                # loading succeeded; move entries about potential header files from imgs_error to files_aux
+                if imgKey in imgs_error:
+                    files_aux[imgKey] = imgs_error[imgKey]
+                    del imgs_error[imgKey]
+
+                targetMimeType = None
+                if ext not in drivers.SUPPORTED_DATA_EXTENSIONS:
                     # file is supported by drivers but not by Web front end
                     if convertUnsupported:
                         # replace file name extension and add warning message
-                        nextFileName = base + drivers.DATA_EXTENSIONS_CONVERSION['image']
+                        ext = drivers.DATA_EXTENSIONS_CONVERSION['image']
+                        nextFileName = imgKey + ext
                         targetMimeType = drivers.DATA_MIME_TYPES_CONVERSION['image']
-                        imgs_warn[key] = f'Image "{nextUpload.raw_filename}" has been converted to {targetMimeType} and renamed to "{nextFileName}".'
+                        imgs_warn[key] = {
+                            'filename': nextFileName,
+                            'message': f'Image "{originalFileName}" has been converted to {targetMimeType} and renamed to "{nextFileName}".'
+                        }
                     else:
                         # skip and add error message
-                        raise Exception(f'Unsupported file type for image "{nextUpload.raw_filename}".')
-
-                # save to disk
-                tempFileName = os.path.join(tempRoot, nextFileName)
-                parent, _ = os.path.split(tempFileName)
-                os.makedirs(parent, exist_ok=True)
-                nextUpload.save(open(tempFileName, 'wb'))
-
-                # try to load file
-                try:
-                    pixelArray = drivers.load_from_disk(tempFileName)
-                    bandNum_current = pixelArray.shape[0]
-                    if bandNum_current not in bandNum:
-                        raise Exception(f'Image has invalid number of bands (expected: {str(bandNum)}, actual: {str(bandNum_current)}).')
-                    # image = Image.open(cache)
-                except Exception as e:
-                    raise Exception(f'File could not be added to project (message: "{str(e)}").')
-
-                # prepare image(s) to save to disk
-                parent, filename = os.path.split(nextFileName)
-                destFolder = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), project, parent)
-                os.makedirs(destFolder, exist_ok=True)
-
-                images = []
-                filenames = []
-
-                if not splitImages:
-                    # upload the single image directly
-                    if targetMimeType is None:
-                        # no conversion required; save directly
-                        images.append(tempFileName)
-                    else:
-                        # need to convert; append array instead
-                        images.append(pixelArray)
-                    filenames.append(filename)
-
-                else:
-                    # split image into patches instead
-                    images, coords = split_image(pixelArray,
+                        raise Exception(f'Unsupported file type for image "{originalFileName}".')
+                
+                # prepare to save image(s) into AIDE project folder
+                images_save = {}
+                if splitProperties is not None:
+                    # split image into patches
+                    images, coords = split_image(pixelArray,            #TODO: implement reading windows and splitting from file
                                             splitProperties['patchSize'],
                                             splitProperties['stride'],
                                             splitProperties.get('tight', False),
                                             splitProperties.get('discard_homogeneous_percentage', None),
                                             splitProperties.get('discard_homogeneous_quantization_value', 255))
-                    bareFileName, ext = os.path.splitext(filename)
+                    bareFileName, _ = os.path.splitext(originalFileName)
                     filenames = [f'{bareFileName}_{c[0]}_{c[1]}{ext}' for c in coords]
+                    for i in range(len(images)):
+                        subkey, _ = os.path.splitext(filenames[i])
+                        images_save[subkey] = {
+                            'image': images[i],
+                            'filename': filenames[i]
+                        }
+                
+                elif targetMimeType is not None:
+                    # no need to split, but need to convert image format
+                    images_save[key] = {
+                        'image': pixelArray,
+                        'filename': nextFileName
+                    }
 
-                # register and save all the images
-                for i in range(len(images)):
-                    subImage = images[i]
-                    subFilename = filenames[i]
+                else:
+                    # no split and no conversion required; move file directly
+                    images_save[key] = {
+                        'image': tempFileName,
+                        'filename': nextFileName
+                    }
 
-                    absFilePath = os.path.join(destFolder, subFilename)
+                # save data to project folder
+                destFolder = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), project) + os.sep
+                for subKey in images_save:
+                    img = images_save[subKey]['image']
+                    newFileName = images_save[subKey]['filename']
+                    try:
+                        destPath = os.path.join(destFolder, newFileName)
+                        parent, _ = os.path.split(destPath)
+                        if len(parent):
+                            os.makedirs(parent, exist_ok=True)
 
-                    # check if an image with the same name does not already exist
-                    newFileName = subFilename
-                    fileExists = os.path.exists(absFilePath)
-                    if fileExists:
-                        if existingFiles == 'keepExisting':
-                            # rename new file
-                            while(os.path.exists(absFilePath)):
-                                # rename file
-                                fn, ext = os.path.splitext(newFileName)
-                                match = self.countPattern.search(fn)
-                                if match is None:
-                                    newFileName = fn + '_1' + ext
-                                else:
-                                    # parse number
-                                    number = int(fn[match.span()[0]+1:match.span()[1]])
-                                    newFileName = fn[:match.span()[0]] + '_' + str(number+1) + ext
+                        if os.path.exists(destPath):
+                            # file already exists; check policy
+                            if existingFiles == 'keepExisting':
+                                # rename new file
+                                while(os.path.exists(destPath)):
+                                    # rename file
+                                    fn, ext = os.path.splitext(newFileName)
+                                    match = self.countPattern.search(fn)
+                                    if match is None:
+                                        newFileName = fn + '_1' + ext
+                                    else:
+                                        # parse number
+                                        number = int(fn[match.span()[0]+1:match.span()[1]])
+                                        newFileName = fn[:match.span()[0]] + '_' + str(number+1) + ext
 
-                                absFilePath = os.path.join(destFolder, newFileName)
-                                if not os.path.exists(absFilePath):
-                                    imgs_warn[key] = 'An image with name "{}" already exists under given path on disk. Image has been renamed to "{}".'.format(
-                                        subFilename, newFileName
-                                    )
-                        
-                        elif existingFiles == 'skipExisting':
-                            # ignore new file
-                            imgs_warn[key] = f'Image "{newFileName}" already exists on disk and has been skipped.'
-                            imgs_valid.append(key)
-                            imgPaths_valid.append(os.path.join(parent, newFileName))
-                            continue
+                                    destPath = os.path.join(destFolder, newFileName)
+                                    if not os.path.exists(destPath):
+                                        imgs_warn[key] = {
+                                            'filename': newFileName,
+                                            'message': 'An image with name "{}" already exists under given path on disk. Image has been renamed to "{}".'.format(
+                                                filenames[i], newFileName
+                                            )
+                                        }
+                            
+                            elif existingFiles == 'skipExisting':
+                                # ignore new file
+                                imgs_warn[key] = {
+                                    'filename': newFileName,
+                                    'message': f'Image "{newFileName}" already exists on disk and has been skipped.'
+                                }
+                                continue
 
-                        elif existingFiles == 'replaceExisting':
-                            # overwrite new file; first remove metadata
-                            queryStr = sql.SQL('''
-                                DELETE FROM {id_iu}
-                                WHERE image = (
-                                    SELECT id FROM {id_img}
-                                    WHERE filename = %s
-                                );
-                                DELETE FROM {id_anno}
-                                WHERE image = (
-                                    SELECT id FROM {id_img}
-                                    WHERE filename = %s
-                                );
-                                DELETE FROM {id_pred}
-                                WHERE image = (
-                                    SELECT id FROM {id_img}
-                                    WHERE filename = %s
-                                );
-                                DELETE FROM {id_img}
-                                WHERE filename = %s;
-                            ''').format(
-                                id_iu=sql.Identifier(project, 'image_user'),
-                                id_anno=sql.Identifier(project, 'annotation'),
-                                id_pred=sql.Identifier(project, 'prediction'),
-                                id_img=sql.Identifier(project, 'image')
-                            )
-                            self.dbConnector.execute(queryStr,
-                                tuple([nextFileName]*4), None)
+                            elif existingFiles == 'replaceExisting':
+                                # overwrite new file; first remove metadata
+                                queryStr = sql.SQL('''
+                                    DELETE FROM {id_iu}
+                                    WHERE image = (
+                                        SELECT id FROM {id_img}
+                                        WHERE filename = %s
+                                    );
+                                    DELETE FROM {id_anno}
+                                    WHERE image = (
+                                        SELECT id FROM {id_img}
+                                        WHERE filename = %s
+                                    );
+                                    DELETE FROM {id_pred}
+                                    WHERE image = (
+                                        SELECT id FROM {id_img}
+                                        WHERE filename = %s
+                                    );
+                                    DELETE FROM {id_img}
+                                    WHERE filename = %s;
+                                ''').format(
+                                    id_iu=sql.Identifier(project, 'image_user'),
+                                    id_anno=sql.Identifier(project, 'annotation'),
+                                    id_pred=sql.Identifier(project, 'prediction'),
+                                    id_img=sql.Identifier(project, 'image')
+                                )
+                                self.dbConnector.execute(queryStr,
+                                    tuple([newFileName]*4), None)
 
-                            # remove file
-                            try:
-                                os.remove(absFilePath)
-                                imgs_warn[key] = 'Image "{}" already existed on disk and has been overwritten.\n'.format(newFileName) + \
-                                                    'All metadata (views, annotations, predictions) have been removed from the database.'
-                            except:
-                                imgs_warn[key] = 'Image "{}" already existed on disk but could not be overwritten.\n'.format(newFileName) + \
-                                                    'All metadata (views, annotations, predictions) have been removed from the database.'
-                    
-                    # write to disk
-                    fileParent, _ = os.path.split(absFilePath)
-                    if len(fileParent):
-                        os.makedirs(fileParent, exist_ok=True)
-                    
-                    if isinstance(subImage, io.BytesIO):
-                        subImage.seek(0)
-                        with open(absFilePath, 'wb') as f:
-                            f.write(subImage.getbuffer())
-                    elif isinstance(subImage, str):
-                        # file name; copy directly
-                        shutil.copyfile(subImage, absFilePath)
-                    else:
-                        # NumPy array from tiling
-                        drivers.save_to_disk(subImage, absFilePath)
-                    # subImage.save(absFilePath)
+                                # remove file
+                                try:
+                                    os.remove(destPath)
+                                    imgs_warn[subKey] = {
+                                        'filename': newFileName,
+                                        'message': 'Image "{}" already existed on disk and has been overwritten.\n'.format(newFileName) + \
+                                                    'All metadata (views, annotations, predictions) has been removed from the database.'
+                                    }
+                                except:
+                                    imgs_warn[subKey] = {
+                                        'filename': newFileName,
+                                        'message': 'Image "{}" already existed on disk but could not be overwritten.\n'.format(newFileName) + \
+                                                    'All metadata (views, annotations, predictions) has been removed from the database.'
+                                    }
 
-                    imgs_valid.append(key)
-                    imgPaths_valid.append(os.path.join(parent, newFileName))
+                        if isinstance(img, str):
+                            # temp file name provided; copy file directly
+                            shutil.copyfile(img, destPath)
+                        else:
+                            drivers.save_to_disk(img, destPath)
+                        imgs_valid[subKey] = {
+                            'filename': newFileName,
+                            'message': 'upload successful'
+                        }
+                        # imgPaths_valid.append(newFileName)
+                    except Exception as e:
+                        imgs_error[subKey] = str(e)
+
+                if not key in imgs_valid:
+                    # add dummy entry for full image, even if it e.g. got split into patches
+                    imgs_valid[key] = {
+                        'filename': None,
+                        'message': 'file successfully split into patches'
+                    }
 
             except Exception as e:
-                imgs_error[key] = str(e)
+                # unable to load file - at this stage this could just be because the file is a header file.
+                # Hence, we add it to the error files but remove it again if we manage to parse the master
+                # file.
+                if imgKey in files_aux:
+                    files_aux[imgKey][key] = {
+                        'filename': originalFileName,
+                        'message': '(auxiliary file)',
+                        'status': 2
+                    }
+                elif not imgKey in imgs_error:
+                    imgs_error[imgKey] = {}
+                    imgs_error[imgKey][key] = {
+                        'filename': originalFileName,
+                        'message': str(e),
+                        'status': 2
+                    }
+
+        # remove temp files
+        shutil.rmtree(tempRoot)
 
         # register valid images in database
-        if len(imgPaths_valid):
+        if len(imgs_valid):
             queryStr = sql.SQL('''
                 INSERT INTO {id_img} (filename)
                 VALUES %s
@@ -444,17 +495,36 @@ class DataWorker:
             ''').format(
                 id_img=sql.Identifier(project, 'image')
             )
-            self.dbConnector.insert(queryStr, [(i,) for i in imgPaths_valid])
+            self.dbConnector.insert(queryStr, [(imgs_valid[key]['filename'],) for key in imgs_valid.keys() if imgs_valid[key]['filename'] is not None])
 
-        result = {
-            'imgs_valid': imgs_valid,
-            'imgPaths_valid': imgPaths_valid,
-            'imgs_warn': imgs_warn,
-            'imgs_error': imgs_error
-        }
+        result = {}
+        for key in imgs_valid:
+            result[key] = imgs_valid[key]
+            result[key]['status'] = 0
+        for key in imgs_warn:
+            result[key] = imgs_warn[key]
+            result[key]['status'] = 1
+        for key in imgs_error:
+            # we might need to flatten hierarchy of quarantined auxiliary files that actually turned out to be errors
+            nextErrors = imgs_error[key]
+            if nextErrors.get('status', None) is None:
+                # flatten
+                for subKey in nextErrors:
+                    result[subKey] = nextErrors[subKey]
+                    result[subKey]['status'] = 2
+            else:
+                # regular errors
+                result[key] = nextErrors
+                result[key]['status'] = 2
 
-        # remove temp files
-        shutil.rmtree(tempRoot)
+        # add auxiliary files as valid
+        for key in files_aux:
+            for subkey in files_aux[key]:
+                result[subkey] = {
+                    'status': 0,
+                    'filename': files_aux[key][subkey]['filename'],
+                    'message': '(auxiliary file)'
+                }
 
         return result
 

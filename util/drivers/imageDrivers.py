@@ -182,6 +182,8 @@ class GDALImageDriver(AbstractImageDriver):
         '.bmp',
         '.gif',
         '.gff',
+        '.gpkg',
+        '.grd',
         '.heic',
         '.img',
         '.jpg', '.jpeg',
