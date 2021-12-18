@@ -361,13 +361,19 @@ $(document).ready(function() {
             // $('.dropdown-toggle').hide();
         } else {
             window.onbeforeunload = async function() {
-                await window.dataHandler._submitAnnotations(true);
+                if(window.dataHandler.getNumInteractions()) {
+                    await window.dataHandler._submitAnnotations(true);
+                }
             };
     
             $('#logout').click(function() {
-                window.dataHandler._submitAnnotations(true).then(function() {
+                if(window.dataHandler.getNumInteractions()) {
+                    window.dataHandler._submitAnnotations(true).then(function() {
+                        window.location.href = '/logout';
+                    });
+                } else {
                     window.location.href = '/logout';
-                });
+                }
             });
         }
     });

@@ -8,6 +8,7 @@ class ImageViewport {
 
     constructor(canvas, disableInteractions) {
         this.canvas = canvas;
+        this.canvas.css('cursor', window.uiControlHandler.getDefaultCursor());
         this.disableInteractions = disableInteractions;
         this.loadingText = 'loading...';
         this.ctx = canvas[0].getContext('2d');
@@ -170,6 +171,15 @@ class ImageViewport {
         _do_shift();
     }
 
+    __update_cursor() {
+        let action = window.uiControlHandler.getAction();
+        if(action <= 6) {
+            this.canvas.css('cursor', CURSORS[action]);
+        } else {
+            this.canvas.css('cursor', 'crosshair');
+        }
+    }
+
     __mousemove_event(event) {
         event.preventDefault();
 
@@ -193,7 +203,8 @@ class ImageViewport {
             this.zoomRectangle._mousemove_event(event, this, true);
         }
         
-        if(this.mousePos != undefined && (this.mouseButton === 2 || (this.mouseButton != 0 && window.uiControlHandler.getAction() === ACTIONS.PAN))) {
+        let action = window.uiControlHandler.getAction();
+        if(this.mousePos != undefined && (this.mouseButton === 2 || (this.mouseButton != 0 && action === ACTIONS.PAN))) {
             // pan around if middle mouse button pressed or if the "pan" button is active
             let shift = this.transformCoordinates(
                 [event.originalEvent.movementX, event.originalEvent.movementY],
@@ -209,14 +220,14 @@ class ImageViewport {
             this.__shift_viewport_auto();
         }
 
-        // update cursor
-        this.canvas.css('cursor', window.uiControlHandler.getDefaultCursor());
+        this.__update_cursor();
 
         this.mousePos = newMousePos;
     }
 
 
     __mousewheel_event(event) {
+        if(event.shiftKey) return;      // shift is now used to adjust selection properties, e.g. paint brush size
         if(event.metaKey || event.altKey) {
             // zoom in or out
             let delta = event.originalEvent.deltaY;
@@ -261,11 +272,12 @@ class ImageViewport {
         this.mouseButton = 0;
 
         // zoom functionality
-        if(window.uiControlHandler.getAction() === ACTIONS.ZOOM_IN) {
+        let action = window.uiControlHandler.getAction();
+        if(action === ACTIONS.ZOOM_IN) {
             this._zoom(event, -0.2);
-        } else if(window.uiControlHandler.getAction() === ACTIONS.ZOOM_OUT) {
+        } else if(action === ACTIONS.ZOOM_OUT) {
             this._zoom(event, 0.2);
-        } else if(window.uiControlHandler.getAction() === ACTIONS.ZOOM_AREA) {
+        } else if(action === ACTIONS.ZOOM_AREA) {
             // zoom to area spanned by rectangle
             var ext = this.zoomRectangle.getExtent();
             if(ext[2] - ext[0] > 0 && ext[3] - ext[1] > 0) {
@@ -276,12 +288,17 @@ class ImageViewport {
             }
         }
 
-        this.canvas.css('cursor', window.uiControlHandler.getDefaultCursor());
+        this.__update_cursor();
 
         // destroy zoom rectangle
         this.zoomRectangle = null;
 
         this.mousePos = null;
+    }
+
+
+    __mouseenter_event(event) {
+        this.__update_cursor();
     }
 
 
@@ -316,6 +333,10 @@ class ImageViewport {
         } else if(type ==='mouseup') {
             return function(event) {
                 self.__mouseup_event(event);
+            };
+        } else if(type ==='mouseenter') {
+            return function(event) {
+                self.__mouseenterevent(event);
             };
         } else if(type ==='mouseleave') {
             return function(event) {

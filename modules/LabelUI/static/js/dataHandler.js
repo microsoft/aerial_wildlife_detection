@@ -57,6 +57,16 @@ class DataHandler {
     }
 
 
+    getNumInteractions() {
+        let num = 0;
+        for(var entry in this.dataEntries) {
+            let nextNum = this.dataEntries[entry].numInteractions;
+            if(!isNaN(nextNum)) num += nextNum;
+        }
+        return num;
+    }
+
+
     renderAll() {
         let promises = this.dataEntries.map((entry) => {
             return entry.render();
@@ -94,6 +104,25 @@ class DataHandler {
             numRemoved += this.dataEntries[i].removeAllAnnotations();
         }
         return numRemoved;
+    }
+
+    closeActiveSelectionElement() {
+        /**
+         * Completes an active selection element (e.g., polygon).
+         */
+        for(var i=0; i<this.dataEntries.length; i++) {
+            this.dataEntries[i].closeActiveSelectionElement();
+        }
+    }
+
+    removeActiveSelectionElements() {
+        /**
+         * Removes and discards all selection polygons that are active (clicked)
+         * if supported (e.g., for semantic segmentation).
+         */
+        for(var i=0; i<this.dataEntries.length; i++) {
+            this.dataEntries[i].removeActiveSelectionElements();
+        }
     }
 
     removeAllSelectionElements() {

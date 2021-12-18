@@ -197,6 +197,16 @@ class AreaSelector {
         }
     }
 
+    removeActiveSelectionElements() {
+        for(var s=this.selectionElements.length-1; s>=0; s--) {
+            if(this.selectionElements[s].isActive) {
+                this.selectionElements[s].setActive(false, this.dataEntry.viewport);
+                this.dataEntry.viewport.removeRenderElement(this.selectionElements[s]);
+            }
+        }
+        this._set_active_polygon(null);
+    }
+
     removeAllSelectionElements() {
         for(var s in this.selectionElements) {
             this.selectionElements[s].setActive(false, this.dataEntry.viewport);
@@ -204,6 +214,11 @@ class AreaSelector {
         }
         this.selectionElements = [];
         this._set_active_polygon(null);
+    }
+
+    closeActiveSelectionElement() {
+        if(this.activePolygon === null || !this.activePolygon.isCloseable()) return;
+        this.activePolygon.closePolygon();
     }
 
     _set_active_polygon(polygon) {
@@ -259,10 +274,14 @@ class AreaSelector {
             viewport.addCallback(this.id, 'mouseup', function(event) {
                 self._canvas_mouseup(event);
             });
+            viewport.addCallback(this.id, 'keyup', function(event) {
+                self._canvas_keyup(event);
+            });
         } else {
             viewport.removeCallback(this.id, 'mousedown');
             viewport.removeCallback(this.id, 'mousemove');
             viewport.removeCallback(this.id, 'mouseup');
+            viewport.removeCallback(this.id, 'keyup');
         }
     }
 
@@ -565,5 +584,10 @@ class AreaSelector {
         if(action !== ACTIONS.MAGIC_WAND) {
             this.dataEntry.viewport.removeRenderElement(this.magicWand_rectangle);  //TODO: store bool for better efficiency?
         }
+    }
+
+    _canvas_keyup(event) {
+        let ccode = String.fromCharCode(event.which);
+        console.log(ccode)
     }
 }

@@ -31,9 +31,9 @@ const CURSORS = [
     'pointer',
     'crosshair',
     'crosshair',
-    'zoom-in',      //TODO: doesn't work with Firefox and Chrome
-    'zoom-out',     //ditto
-    'zoom-in',      //ditto
+    'zoom-in',
+    'zoom-out',
+    'zoom-in',
     'grab'
 ]
 
@@ -137,6 +137,10 @@ class UIControlHandler {
             brushSize: 20,
             opacity: 0.75
         };
+
+        // flags for temporary hiding of annotations and/or predictions (e.g., on holding down shift)
+        this.hideAnnotations = false;
+        this.hidePredictions = false;
 
         this._setup_controls();
     }
@@ -670,15 +674,23 @@ class UIControlHandler {
         $(window).keyup(function(event) {
             if(window.uiBlocked || window.shortcutsDisabled || window.fieldInFocus()) return;
             
-            if(event.which === 16) {
-                // shift key
-                self.dataHandler.setPredictionsVisible(true);
-                self.dataHandler.setMinimapVisible(true);
+            if(event.which === 13) {
+                // enter key
+                if(window.annotationType === 'segmentationMasks') {
+                    self.dataHandler.closeActiveSelectionElement();
+                }
 
-            } else if(event.which === 17) {
-                // ctrl key
+            } else if(event.which === 16) {
+                // shift key
+                self.hidePredictions = false;
+                self.dataHandler.setPredictionsVisible(true);
+                self.dataHandler.setMinimapVisible(!(self.hideAnnotations && self.hidePredictions));
+
+            } else if([17, 18, 91].includes(event.which)) {
+                // ctrl, option or meta key
+                self.hideAnnotations = false;
                 self.dataHandler.setAnnotationsVisible(true);
-                self.dataHandler.setMinimapVisible(true);
+                self.dataHandler.setMinimapVisible(!(self.hideAnnotations && self.hidePredictions));
 
             } else if(event.which === 27) {
                 // esc key
@@ -693,8 +705,14 @@ class UIControlHandler {
                 nextBatchCallback();
 
             } else if(event.which === 46 || event.which === 8) {
-                // Del/backspace key; remove all active annotations
-                self.dataHandler.removeActiveAnnotations();
+                // Del/backspace key
+                if(window.annotationType === 'segmentationMasks') {
+                    // remove active selection elements
+                    self.removeActiveSelectionElements();
+                } else {
+                    //remove all active annotations
+                    self.dataHandler.removeActiveAnnotations();
+                }
 
             } else {
                 // decode char keys
@@ -758,9 +776,13 @@ class UIControlHandler {
         $(window).keydown(function(event) {
             if(window.uiBlocked || window.shortcutsDisabled) return;
             if(event.which === 16) {
+                // shift key
+                self.hidePredictions = true;
                 self.dataHandler.setPredictionsVisible(false);
                 self.dataHandler.setMinimapVisible(false);
-            } else if(event.which === 17) {
+            } else if([17, 18, 91].includes(event.which)) {
+                // ctrl, option or meta key
+                self.hideAnnotations = true;
                 self.dataHandler.setAnnotationsVisible(false);
                 self.dataHandler.setMinimapVisible(false);
             }
@@ -955,6 +977,10 @@ class UIControlHandler {
         $(this.segmentation_controls.brush_size).attr('value', size);
     }
 
+    removeActiveSelectionElements() {
+        this.dataHandler.removeActiveSelectionElements();
+    }
+
     removeAllSelectionElements() {
         this.dataHandler.removeAllSelectionElements();
     }
@@ -982,11 +1008,11 @@ class UIControlHandler {
     toggleLoupe() {
         this.showLoupe = !this.showLoupe;
         if(this.showLoupe) {
-            $('#loupe-button').removeClass('button-secondary');
-            $('#loupe-button').addClass('button-primary');
+            $('#loupe-button').removeClass('btn-secondary');
+            $('#loupe-button').addClass('btn-primary');
         } else {
-            $('#loupe-button').removeClass('button-primary');
-            $('#loupe-button').addClass('button-secondary');
+            $('#loupe-button').removeClass('btn-primary');
+            $('#loupe-button').addClass('btn-secondary');
         }
         this.renderAll();
     }

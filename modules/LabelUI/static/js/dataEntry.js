@@ -159,7 +159,6 @@ class AbstractDataEntry {
             this.canvas.ready(function() {
                 self.viewport.resetViewport();
             });
-            this.canvas.css('cursor', window.uiControlHandler.getDefaultCursor());
 
             this.viewport = new ImageViewport(this.canvas, this.disableInteractions);
 
@@ -632,6 +631,18 @@ class AbstractDataEntry {
         window.dataHandler.updatePresentClasses();
     }
 
+    closeActiveSelectionElement() {
+        if(this.areaSelector !== undefined) {
+            this.areaSelector.closeActiveSelectionElement();
+        }
+    }
+
+    removeActiveSelectionElements() {
+        if(this.areaSelector !== undefined) {
+            this.areaSelector.removeActiveSelectionElements();
+        }
+    }
+
     removeAllSelectionElements() {
         if(this.areaSelector !== undefined) {
             this.areaSelector.removeAllSelectionElements();
@@ -884,7 +895,6 @@ class ClassificationEntry extends AbstractDataEntry {
     _setup_markup() {
         var self = this;
         super._setup_markup();
-        $(this.canvas).css('cursor', window.uiControlHandler.getDefaultCursor());
 
         var htStyle = {
             fillColor: window.styles.hoverText.box.fill,
@@ -1103,7 +1113,6 @@ class PointAnnotationEntry extends AbstractDataEntry {
     _setup_markup() {
         var self = this;
         super._setup_markup();
-        this.canvas.css('cursor', window.uiControlHandler.getDefaultCursor());
 
         var htStyle = {
             fillColor: window.styles.hoverText.box.fill,
@@ -1392,7 +1401,6 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
     _setup_markup() {
         var self = this;
         super._setup_markup();
-        this.canvas.css('cursor', window.uiControlHandler.getDefaultCursor());
 
         var htStyle = {
             fillColor: window.styles.hoverText.box.fill,
@@ -1547,12 +1555,12 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
                 this.crosshairLines.elements[0].setProperty('endX', coords[0]);
                 this.crosshairLines.elements[1].setProperty('startY', coords[1]);
                 this.crosshairLines.elements[1].setProperty('endY', coords[1]);
-                this.canvas.css('cursor', 'crosshair');
+                // this.canvas.css('cursor', 'crosshair');
             } else {
                 // remove
                 this.viewport.removeRenderElement(this.crosshairLines);
                 this.crosshairLines = null;
-                this.canvas.css('cursor', window.uiControlHandler.getDefaultCursor());
+                // this.canvas.css('cursor', window.uiControlHandler.getDefaultCursor());
             }
         }
     }
@@ -1730,7 +1738,6 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
     _setup_markup() {
         let self = this;
         super._setup_markup();
-        this.canvas.css('cursor', window.uiControlHandler.getDefaultCursor());
         
         let htStyle = {
             fillColor: window.styles.hoverText.box.fill,
@@ -1912,7 +1919,7 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
                                 1);
             this.crosshairLines = new ElementGroup(this.entryID + '_crosshairLines', [vertLine, horzLine], 1);
             this.viewport.addRenderElement(this.crosshairLines);
-            this.canvas.css('cursor', 'crosshair');
+            // this.canvas.css('cursor', 'crosshair');
 
         } else if(this.crosshairLines !== null && this.crosshairLines !== undefined) {
             if(visible) {
@@ -1921,12 +1928,12 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
                 this.crosshairLines.elements[0].setProperty('endX', coords[0]);
                 this.crosshairLines.elements[1].setProperty('startY', coords[1]);
                 this.crosshairLines.elements[1].setProperty('endY', coords[1]);
-                this.canvas.css('cursor', 'crosshair');
+                // this.canvas.css('cursor', 'crosshair');
             } else {
                 // remove
                 this.viewport.removeRenderElement(this.crosshairLines);
                 this.crosshairLines = null;
-                this.canvas.css('cursor', window.uiControlHandler.getDefaultCursor());
+                // this.canvas.css('cursor', window.uiControlHandler.getDefaultCursor());
             }
         }
     }
@@ -2325,7 +2332,7 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
 
     setAnnotationsVisible(visible) {
         super.setAnnotationsVisible(visible);
-        this.annotation.setVisible(visible);
+        if(typeof(this.annotation) === 'object') this.annotation.setVisible(visible);
     }
 
     removeActiveAnnotations() {
@@ -2421,7 +2428,6 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
     _setup_markup() {
         var self = this;
         super._setup_markup();
-        this.canvas.css('cursor', window.uiControlHandler.getDefaultCursor());
 
         // brush symbol
         this.brush = new PaintbrushElement(this.id+'_brush', null, null, 5);
