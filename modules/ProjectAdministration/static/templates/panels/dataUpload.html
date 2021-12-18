@@ -404,16 +404,16 @@
                                 let message = result['message'];
                                 if(result['status'] === 0) {
                                     // valid image
-                                    // window.messager.addMessage('Image "'+imgName+'" uploaded successfully.', 'success');
                                     message = '<span style="color:green">'+message+'</span>';
                                 } else if(result['status'] === 1) {
-                                    // image with warning
-                                    // window.messager.addMessage('Warning(s) occurred while uploading image "'+imgName+'": "'+message+'".', 'warning', 0);
-                                    message = '<span style="color:yellow">'+message+'</span>';
+                                    // auxiliary file
+                                    message = '<span style="color:#4ca0ff">'+message+'</span>';
                                 } else if(result['status'] === 2) {
+                                    // image with warning
+                                    message = '<span style="color:yellow">'+message+'</span>';
+                                } else if(result['status'] === 3) {
                                     // failed upload
                                     url = '/static/dataAdmin/img/error.png';
-                                    // window.messager.addMessage('Image "'+imgName+'" could not be uploaded (message: "'+message+'").', 'error', 0);
                                     message = '<span style="color:red">'+message+'</span>';
                                 }
                                 window.imageBrowser.set('imageURL', key, url);
@@ -421,7 +421,7 @@
                                 window.imageBrowser.set('message', key, message);
 
                                 // update progress bar
-                                if(result['status'] < 2) {
+                                if(result['status'] < 3) {
                                     pBar.set(true, pBar.getValue()+1);
                                     numComplete += Object.keys(fileKeys).length;
                                     infoBar.html('uploading... ('+numComplete+'/'+fileInput.files.length+' images uploaded)');
@@ -628,10 +628,12 @@
                     $(this).prop('disabled', !checked);
                 });
                 $('#discard-empty-percentage').prop('disabled', !(checked & $('#discard-empty-chck').prop('checked')));
+                $('#discard-empty-quantization-value').prop('disabled', !(checked & $('#discard-empty-chck').prop('checked')));
             });
             $('#discard-empty-chck').on('input', function() {
                 let checked = $(this).prop('checked');
                 $('#discard-empty-percentage').prop('disabled', !checked);
+                $('#discard-empty-quantization-value').prop('disabled', !checked);
             });
             $('#upload-mode-select input:radio').on('change', function() {
                 if($(this).val() === 'browserUpload') {

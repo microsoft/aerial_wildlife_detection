@@ -15,6 +15,7 @@ import tempfile
 import zipfile
 import json
 import math
+import numpy as np
 from datetime import datetime
 import pytz
 from uuid import UUID
@@ -269,6 +270,7 @@ class DataWorker:
             }
 
         # get band configuration for project
+        hasCustomBandConfig = False
         bandConfig = self.dbConnector.execute(
             'SELECT band_config FROM "aide_admin".project WHERE shortname = %s;',
             (project,), 1
@@ -276,6 +278,7 @@ class DataWorker:
         try:
             bandConfig = json.loads(bandConfig[0]['band_config'])
             bandNum = set((len(bandConfig),))
+            hasCustomBandConfig = True
         except:
             # no custom render configuration specified; assume default no. bands
             # of one (grayscale) or three (RGB)
@@ -297,17 +300,25 @@ class DataWorker:
             ext = ext.lower()
 
             # try to load file with drivers
+            isLoadable = False
             try:
                 # pixelArray = drivers.load_from_disk(file)     
                 pixelArray = drivers.load_from_disk(tempFileName)       #TODO: load only small window once implemented to prevent out-of-memory errors
-                bandNum_current = pixelArray.shape[0]
-                if bandNum_current not in bandNum:
-                    raise Exception(f'Image "{originalFileName}" has invalid number of bands (expected: {str(bandNum)}, actual: {str(bandNum_current)}).')
 
                 # loading succeeded; move entries about potential header files from imgs_error to files_aux
+                isLoadable = True
+                forceConvert = False
                 if imgKey in imgs_error:
                     files_aux[imgKey] = imgs_error[imgKey]
                     del imgs_error[imgKey]
+                
+                bandNum_current = pixelArray.shape[0]
+                if bandNum_current not in bandNum:
+                    raise Exception(f'Image "{originalFileName}" has invalid number of bands (expected: {str(bandNum)}, actual: {str(bandNum_current)}).')
+                elif bandNum_current == 1 and not hasCustomBandConfig:
+                    # project expects RGB data but image is grayscale; replicate for maximum compatibility
+                    pixelArray = np.concatenate((pixelArray, pixelArray, pixelArray), -1)
+                    forceConvert = True         # set to True to force saving file to disk instead of simply copying it
 
                 targetMimeType = None
                 if ext not in drivers.SUPPORTED_DATA_EXTENSIONS:
@@ -344,7 +355,7 @@ class DataWorker:
                             'filename': filenames[i]
                         }
                 
-                elif targetMimeType is not None:
+                elif forceConvert or targetMimeType is not None:
                     # no need to split, but need to convert image format
                     images_save[key] = {
                         'image': pixelArray,
@@ -456,32 +467,46 @@ class DataWorker:
                         }
                         # imgPaths_valid.append(newFileName)
                     except Exception as e:
-                        imgs_error[subKey] = str(e)
+                        imgs_error[subKey] = {
+                            'filename': newFileName,
+                            'message': str(e),
+                            'status': 3
+                        }
 
                 if not key in imgs_valid:
                     # add dummy entry for full image, even if it e.g. got split into patches
                     imgs_valid[key] = {
                         'filename': None,
-                        'message': 'file successfully split into patches'
+                        'message': 'file successfully split into patches',
+                        'status': 0
                     }
 
             except Exception as e:
-                # unable to load file - at this stage this could just be because the file is a header file.
-                # Hence, we add it to the error files but remove it again if we manage to parse the master
-                # file.
-                if imgKey in files_aux:
-                    files_aux[imgKey][key] = {
-                        'filename': originalFileName,
-                        'message': '(auxiliary file)',
-                        'status': 2
-                    }
-                elif not imgKey in imgs_error:
-                    imgs_error[imgKey] = {}
-                    imgs_error[imgKey][key] = {
+                if isLoadable:
+                    # file is loadable but cannot be imported to project (e.g., due to band configuration error)
+                    imgs_error[key] = {
                         'filename': originalFileName,
                         'message': str(e),
-                        'status': 2
+                        'status': 3
                     }
+                else:
+                    # file is not loadable
+                    if imgKey in files_aux:
+                        # file is definitely another auxiliary file
+                        files_aux[imgKey][key] = {
+                            'filename': originalFileName,
+                            'message': '(auxiliary file)',
+                            'status': 1
+                        }
+                    else:
+                        # file might be an auxiliary file; we don't know yet
+                        if not imgKey in imgs_error:
+                            imgs_error[imgKey] = {}
+                        imgs_error[imgKey][key] = {
+                            'filename': originalFileName,
+                            'message': str(e),
+                            'status': 3
+                        }
 
         # remove temp files
         shutil.rmtree(tempRoot)
@@ -503,7 +528,7 @@ class DataWorker:
             result[key]['status'] = 0
         for key in imgs_warn:
             result[key] = imgs_warn[key]
-            result[key]['status'] = 1
+            result[key]['status'] = 2
         for key in imgs_error:
             # we might need to flatten hierarchy of quarantined auxiliary files that actually turned out to be errors
             nextErrors = imgs_error[key]
@@ -511,17 +536,17 @@ class DataWorker:
                 # flatten
                 for subKey in nextErrors:
                     result[subKey] = nextErrors[subKey]
-                    result[subKey]['status'] = 2
+                    result[subKey]['status'] = 3
             else:
                 # regular errors
                 result[key] = nextErrors
-                result[key]['status'] = 2
+                result[key]['status'] = 3
 
         # add auxiliary files as valid
         for key in files_aux:
             for subkey in files_aux[key]:
                 result[subkey] = {
-                    'status': 0,
+                    'status': 1,
                     'filename': files_aux[key][subkey]['filename'],
                     'message': '(auxiliary file)'
                 }
@@ -529,13 +554,35 @@ class DataWorker:
         return result
 
 
-    def scanForImages(self, project):
+    def scanForImages(self, project, convertSemiSupported=False, convertToRGBifPossible=False):
         '''
-            Searches the project image folder on disk for
-            files that are valid, but have not (yet) been added
-            to the database.
-            Returns a list of paths with files.
+            Searches the project image folder on disk for files that are valid,
+            but have not (yet) been added to the database. Returns a list of
+            paths with files that are valid.
+
+            If "convertSemiSupported" is True, images that can be read by
+            drivers but need to be converted for full support will be saved
+            under the same name with appropriate extension. Note that this may
+            result in overwriting of the original file.
+
+            If "convertToRGBifPossible" is True, and if no custom band
+            configuration has been defined in this project, any grayscale images
+            will be converted to RGB and overwritten.
         '''
+        # get band configuration for project
+        hasCustomBandConfig = False
+        bandConfig = self.dbConnector.execute(
+            'SELECT band_config FROM "aide_admin".project WHERE shortname = %s;',
+            (project,), 1
+        )
+        try:
+            bandConfig = json.loads(bandConfig[0]['band_config'])
+            bandNum = set((len(bandConfig),))
+            hasCustomBandConfig = True
+        except:
+            # no custom render configuration specified; assume default no. bands
+            # of one (grayscale) or three (RGB)
+            bandNum = set((1, 3))
 
         # scan disk for files
         projectFolder = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), project)
@@ -558,14 +605,47 @@ class DataWorker:
         # filter
         imgs_candidates = imgs_disk.difference(imgs_database)
         imgs_candidates = list(imgs_candidates)
+        imgs_valid = []
         for i in range(len(imgs_candidates)):
             if imgs_candidates[i].startswith('/'):
                 imgs_candidates[i] = imgs_candidates[i][1:]
-            #TODO: (i.) try to load images to see if they are valid; (ii.) auto-convert semi-supported images
-        return imgs_candidates
+            
+            # try to load images and check for validity
+            try:
+                pixelArray = drivers.load_from_disk(os.path.join(projectFolder, imgs_candidates[i]))
+
+                # check file extension
+                convertImage = False
+                fname, ext = os.path.splitext(imgs_candidates[i])
+                ext = ext.lower()
+                if ext not in drivers.SUPPORTED_DATA_EXTENSIONS:
+                    # semi-supported file
+                    if not convertSemiSupported:
+                        continue
+                    else:
+                        imgs_candidates[i] = fname + drivers.DATA_EXTENSIONS_CONVERSION['image']
+                        convertImage = True
+
+                # check band config
+                bandNum_current = pixelArray.shape[0]
+                if bandNum_current not in bandNum:
+                    # invalid number of bands
+                    continue
+                elif convertToRGBifPossible and bandNum_current == 1 and not hasCustomBandConfig:
+                    # project expects RGB data but image is grayscale; replicate for maximum compatibility
+                    pixelArray = np.concatenate((pixelArray, pixelArray, pixelArray), -1)
+                    convertImage = True
+                
+                if convertImage:
+                    drivers.save_to_disk(pixelArray, os.path.join(projectFolder, imgs_candidates[i]))
+                imgs_valid.append(imgs_candidates[i])
+            except:
+                # unloadable; not a valid image
+                continue
+        return imgs_valid
 
 
-    def addExistingImages(self, project, imageList=None):
+    def addExistingImages(self, project, imageList=None, convertSemiSupported=False, convertToRGBifPossible=False):
         '''
             Scans the project folder on the file system
             for images that are physically saved, but not
@@ -582,7 +662,7 @@ class DataWorker:
             were eventually added to the project database schema.
         '''
         # get all images on disk that are not in database
-        imgs_candidates = self.scanForImages(project)
+        imgs_candidates = self.scanForImages(project, convertSemiSupported, convertToRGBifPossible)
 
         if imageList is None or (isinstance(imageList, str) and imageList.lower() == 'all'):
             imgs_add = imgs_candidates
