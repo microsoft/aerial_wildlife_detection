@@ -174,7 +174,7 @@ def assemble_server(verbose_start=True, check_v1_config=True, migrate_database=T
         pass
 
     # load drivers
-    drivers.init_drivers(True)
+    drivers.init_drivers(verbose_start)
 
     # prepare bottle
     app = Bottle()

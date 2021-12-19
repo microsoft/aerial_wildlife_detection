@@ -95,7 +95,7 @@ class ImageEntry {
     _create_image() {
         if(this.image === undefined) {
             var self = this;
-            this.image = $('<img>');
+            this.image = $('<img src="/static/dataAdmin/img/loading.png" />');
             this.image.on('error', function() {
                 if(this.src !== '/static/dataAdmin/img/error.png')
                     this.src = '/static/dataAdmin/img/error.png';
@@ -107,7 +107,6 @@ class ImageEntry {
             if(typeof(getParserByExtension) === 'function') {
                 let parserClass = getParserByExtension(this.imageURL.substring(this.imageURL.lastIndexOf('.')));
                 if(parserClass !== undefined) {
-                    this.image.attr('src', '/static/dataAdmin/img/loading.png');
                     let parser = new parserClass(fullImagePath);
                     parser.get_image_array([0,1,2], false).then((arr) => {          //TODO: get bands from render config
                         // create canvas to put image data to

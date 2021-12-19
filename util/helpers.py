@@ -282,7 +282,7 @@ def listDirectory(baseDir, recursive=False):
         from the files returned.
     '''
     if not len(drivers.VALID_IMAGE_EXTENSIONS):
-        drivers.init_drivers()      # should not be required
+        drivers.init_drivers(False)      # should not be required
     files_disk = set()
     if not baseDir.endswith(os.sep):
         baseDir += os.sep

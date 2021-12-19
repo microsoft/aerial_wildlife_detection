@@ -58,7 +58,9 @@ class Watchdog(Thread):
                 None, 'all'
             )
         except Exception as e:
-            print(e)
+            # couldn't query database anymore, assume project is dead and kill watchdog
+            self.stop()
+            return
         if queryResult is not None:
             for task in queryResult:
                 #TODO: fields to choose?

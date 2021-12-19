@@ -338,7 +338,7 @@ class DataWorker:
                 
                 # prepare to save image(s) into AIDE project folder
                 images_save = {}
-                if splitProperties is not None:
+                if splitImages and splitProperties is not None:
                     # split image into patches
                     images, coords = split_image(pixelArray,            #TODO: implement reading windows and splitting from file
                                             splitProperties['patchSize'],
@@ -397,7 +397,7 @@ class DataWorker:
 
                                     destPath = os.path.join(destFolder, newFileName)
                                     if not os.path.exists(destPath):
-                                        imgs_warn[key] = {
+                                        imgs_warn[subKey] = {
                                             'filename': newFileName,
                                             'message': 'An image with name "{}" already exists under given path on disk. Image has been renamed to "{}".'.format(
                                                 filenames[i], newFileName
@@ -406,7 +406,7 @@ class DataWorker:
                             
                             elif existingFiles == 'skipExisting':
                                 # ignore new file
-                                imgs_warn[key] = {
+                                imgs_warn[subKey] = {
                                     'filename': newFileName,
                                     'message': f'Image "{newFileName}" already exists on disk and has been skipped.'
                                 }
