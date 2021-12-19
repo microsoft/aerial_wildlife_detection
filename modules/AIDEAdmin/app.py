@@ -8,7 +8,6 @@
 
 import os
 import html
-from threading import Thread
 from bottle import SimpleTemplate, request, redirect, abort
 from constants.version import AIDE_VERSION
 from .backend.middleware import AdminMiddleware

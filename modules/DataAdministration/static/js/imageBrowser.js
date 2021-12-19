@@ -100,7 +100,33 @@ class ImageEntry {
                 if(this.src !== '/static/dataAdmin/img/error.png')
                     this.src = '/static/dataAdmin/img/error.png';
             });
-            this.image.attr('src', this.baseURL+this.imageURL);
+
+            // get ImageRenderer to create canvas from source
+            //TODO: slow and expensive - calculate preview thumbnails instead after image import
+            let fullImagePath = this.baseURL+this.imageURL;
+            if(typeof(getParserByExtension) === 'function') {
+                let parserClass = getParserByExtension(this.imageURL.substring(this.imageURL.lastIndexOf('.')));
+                if(parserClass !== undefined) {
+                    this.image.attr('src', '/static/dataAdmin/img/loading.png');
+                    let parser = new parserClass(fullImagePath);
+                    parser.get_image_array([0,1,2], false).then((arr) => {          //TODO: get bands from render config
+                        // create canvas to put image data to
+                        let canvas = document.createElement('canvas');
+                        canvas.width = parser.getWidth();
+                        canvas.height = parser.getHeight();
+                        let imageData = new ImageData(new Uint8ClampedArray(arr), canvas.width, canvas.height);
+                        canvas.getContext('2d').putImageData(imageData, 0, 0);
+                        self.image.attr('src', canvas.toDataURL());
+                    });
+                } else {
+                    // no parser found; fallback to Web image
+                    this.image.attr('src', fullImagePath);
+                }
+
+            } else {
+                // no ImageRenderer available; fallback to Web image
+                this.image.attr('src', fullImagePath);
+            }
             this.image.on('click', function(event) {
                 self.parent._on_entry_click(event, self);
             });

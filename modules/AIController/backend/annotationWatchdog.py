@@ -45,7 +45,6 @@ class Watchdog(Thread):
 
     def _check_ongoing_tasks(self):
         #TODO: limit to AIModel tasks
-        #TODO 2: terminate if project doesn't exist anymore
         self.runningTasks = []
         tasksRunning_db = {}
         queryResult = None
@@ -238,6 +237,19 @@ class Watchdog(Thread):
 
         while True:
             if self.stopped():
+                return
+
+            # check if project still exists (TODO: less expensive alternative?)
+            projectExists = self.dbConnector.execute('''
+                    SELECT EXISTS (
+                        SELECT FROM information_schema.tables 
+                        WHERE table_schema = %s
+                        AND table_name = 'workflowhistory'
+                    );
+                ''', (self.project,), 1)
+            if not projectExists[0]['exists']:
+                # project doesn't exist anymore; terminate process
+                self.stop()
                 return
 
             taskOngoing = (len(self.getOngoingTasks()) > 0)

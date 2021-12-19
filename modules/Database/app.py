@@ -91,7 +91,7 @@ class Database():
         try:
             yield conn
         finally:
-            self.connectionPool.putconn(conn, close=False)
+            self.connectionPool.putconn(conn)       #, close=False)
 
 
 
@@ -103,32 +103,14 @@ class Database():
             try:
                 cursor.execute(query, arguments)
                 conn.commit()
-            except Exception as e:
-                if not conn.closed:
-                    conn.rollback()
-                # self.connectionPool.putconn(conn, close=False)    #TODO: this still causes connection to close
-                conn = self.connectionPool.getconn()
 
-                # retry execution
-                try:
-                    cursor = conn.cursor(cursor_factory=RealDictCursor)
-                    cursor.execute(query, arguments)
-                    conn.commit()
-                except:
-                    if not conn.closed:
-                        conn.rollback()
-                    print(e)
-
-            # get results
-            try:
+                # get results
                 returnValues = []
                 if numReturn is None:
-                    # cursor.close()
-                    return
+                    return None
                 
                 elif numReturn == 'all':
                     returnValues = cursor.fetchall()
-                    # cursor.close()
                     return returnValues
 
                 else:
@@ -137,11 +119,50 @@ class Database():
                         if rv is None:
                             return returnValues
                         returnValues.append(rv)
-        
-                    # cursor.close()
                     return returnValues
+
             except Exception as e:
                 print(e)
+                if not conn.closed:
+                    conn.rollback()
+            
+            return None
+                # # self.connectionPool.putconn(conn, close=False)    #TODO: this still causes connection to close
+                # conn = self.connectionPool.getconn()
+
+                # # retry execution
+                # try:
+                #     cursor = conn.cursor(cursor_factory=RealDictCursor)
+                #     cursor.execute(query, arguments)
+                #     conn.commit()
+                # except:
+                #     if not conn.closed:
+                #         conn.rollback()
+                #     print(e)
+
+            # # get results
+            # try:
+            #     returnValues = []
+            #     if numReturn is None:
+            #         # cursor.close()
+            #         return
+                
+            #     elif numReturn == 'all':
+            #         returnValues = cursor.fetchall()
+            #         # cursor.close()
+            #         return returnValues
+
+            #     else:
+            #         for _ in range(numReturn):
+            #             rv = cursor.fetchone()
+            #             if rv is None:
+            #                 return returnValues
+            #             returnValues.append(rv)
+        
+            #         # cursor.close()
+            #         return returnValues
+            # except Exception as e:
+            #     print(e)
     
 
 
@@ -151,32 +172,15 @@ class Database():
             try:
                 execute_values(cursor, query, values)
                 conn.commit()
-            except Exception as e:
-                if not conn.closed:
-                    conn.rollback()
-                # cursor.close()
 
-                # retry execution
-                conn = self.connectionPool.getconn()
-                try:
-                    cursor = conn.cursor(cursor_factory=RealDictCursor)
-                    execute_values(cursor, query, values)
-                    conn.commit()
-                except Exception as e:
-                    if not conn.closed:
-                        conn.rollback()
-                    print(e)
-            
-            # get results
-            try:
+                # get results
                 returnValues = []
                 if numReturn is None:
                     # cursor.close()
-                    return
+                    return None
                 
                 elif numReturn == 'all':
                     returnValues = cursor.fetchall()
-                    # cursor.close()
                     return returnValues
 
                 else:
@@ -185,8 +189,45 @@ class Database():
                         if rv is None:
                             return returnValues
                         returnValues.append(rv)
-        
-                    # cursor.close()
                     return returnValues
+
             except Exception as e:
                 print(e)
+                if not conn.closed:
+                    conn.rollback()
+                # cursor.close()
+
+                # # retry execution
+                # conn = self.connectionPool.getconn()
+                # try:
+                #     cursor = conn.cursor(cursor_factory=RealDictCursor)
+                #     execute_values(cursor, query, values)
+                #     conn.commit()
+                # except Exception as e:
+                #     if not conn.closed:
+                #         conn.rollback()
+                #     print(e)
+            
+            # # get results
+            # try:
+            #     returnValues = []
+            #     if numReturn is None:
+            #         # cursor.close()
+            #         return
+                
+            #     elif numReturn == 'all':
+            #         returnValues = cursor.fetchall()
+            #         # cursor.close()
+            #         return returnValues
+
+            #     else:
+            #         for _ in range(numReturn):
+            #             rv = cursor.fetchone()
+            #             if rv is None:
+            #                 return returnValues
+            #             returnValues.append(rv)
+        
+            #         # cursor.close()
+            #         return returnValues
+            # except Exception as e:
+            #     print(e)

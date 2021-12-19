@@ -6,13 +6,10 @@
 '''
 
 from threading import Thread
-from modules.Database.app import Database
-import psycopg2
 from psycopg2 import sql
 from datetime import timedelta
 from util.helpers import current_time, checkDemoMode
 import secrets
-import hashlib
 import bcrypt
 from .exceptions import *
 
