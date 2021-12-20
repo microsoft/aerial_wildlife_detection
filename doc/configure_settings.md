@@ -66,7 +66,7 @@ This section contains parameters for all the individual instances' addresses.
 |-|-|-|-|-|
 | staticfiles_dir | (path) |  | YES | Root directory on the local disk of the file server to serve files from. |
 | staticfiles_uri_addendum | (URI string) |  | NO | Optional snippet to append after the file server's host name. For example, if set to `aide`, the file server provides files through `http(s)://host:port/aide`. |
-| tempfiles_dir | (path) | OS temp dir | NO | Directory where files like data download request results are stored. Defaults to the OS' temporary files directory (i.e., `/tmp` on Unix or Linux, `~/APPDATA/Local/Temp` on Windows, or others). |
+| tempfiles_dir | (path) | OS temp dir | NO | Directory where files like data download request results are stored. Defaults to a folder named "aide" in the OS' temporary files directory (i.e., `/tmp/aide` on Unix or Linux, `~/APPDATA/Local/Temp/aide` on Windows, or others). The temp folder will be automatically created during startup. Make sure the user accounts from which AIDE and the Celery processes are spawned have write access to this directory. |
 | watch_folder_interval | (float) | 60 | NO | Interval (in seconds) for periodic project folder watch functionality. If project are configured to automatically watch their image folder for changes, those tasks will be carried out on the file server in a combined way every number of seconds specified here. Set to 0 (zero) or a negative value to globally disable folder watching for all projects. Default is 60 (one minute). |
 
 

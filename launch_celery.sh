@@ -4,7 +4,7 @@
 # Requires pwd to be the root of the project and the correct Python
 # env to be loaded.
 #
-# 2019-20 Benjamin Kellenberger
+# 2019-21 Benjamin Kellenberger
 
 launchCeleryBeat=false
 
