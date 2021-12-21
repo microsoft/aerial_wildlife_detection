@@ -17,7 +17,7 @@ However, for the database operation, this is not required. If you wish to skip t
     dbName=$(python util/configDef.py --section=Database --parameter=name)
     dbUser=$(python util/configDef.py --section=Database --parameter=user)
     dbPassword=$(python util/configDef.py --section=Database --parameter=password)
-    dbPort=$(python util/configDef.py --section=Database --parameter=port)
+    dbPort=$(python util/configDef.py --section=Database --parameter=port --fallback=5432)
 ```
 
 
@@ -71,13 +71,13 @@ However, for the database operation, this is not required. If you wish to skip t
 This needs to be done from the installation root of AIDE, with the correct environment activated.
 
 ```bash
-    sudo -u postgres psql -c "CREATE USER $dbUser WITH PASSWORD '$dbPassword';"
-    sudo -u postgres psql -c "CREATE DATABASE $dbName WITH OWNER $dbUser CONNECTION LIMIT -1;"
-    sudo -u postgres psql -c "GRANT CREATE, CONNECT ON DATABASE $dbName TO $dbUser;"
-    sudo -u postgres psql -d $dbName -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
+    sudo -u postgres psql -p $dbPort -c "CREATE USER $dbUser WITH PASSWORD '$dbPassword';"
+    sudo -u postgres psql -p $dbPort -c "CREATE DATABASE $dbName WITH OWNER $dbUser CONNECTION LIMIT -1;"
+    sudo -u postgres psql -p $dbPort -c "GRANT CREATE, CONNECT ON DATABASE $dbName TO $dbUser;"
+    sudo -u postgres psql -p $dbPort -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
 
     # NOTE: needs to be run after init
-    sudo -u postgres psql -d $dbName -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO $dbUser;"
+    sudo -u postgres psql -d $dbName -p $dbPort -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO $dbUser;"
 ```
 
 

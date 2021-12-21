@@ -45,8 +45,9 @@ class UserMiddleware():
         return bcrypt.checkpw(providedPass, hashedTargetPass)
     
 
-    def _create_hash(self, password):
-        hash = bcrypt.hashpw(password, bcrypt.gensalt(self.SALT_NUM_ROUNDS))
+    @classmethod
+    def _create_hash(cls, password):
+        hash = bcrypt.hashpw(password, bcrypt.gensalt(cls.SALT_NUM_ROUNDS))
         return hash
 
 

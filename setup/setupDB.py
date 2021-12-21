@@ -18,6 +18,7 @@ import bcrypt
 from constants.version import AIDE_VERSION
 from util.configDef import Config
 from modules import Database
+from modules.UserHandling.backend.middleware import UserMiddleware
 from setup.migrate_aide import migrate_aide
 
 
@@ -59,13 +60,14 @@ def add_update_superuser(config, dbConn):
             changes['adminPassword'] = True
 
     if isNewAccount or len(changes):
+        hash = UserMiddleware._create_hash(adminPass.encode('utf8'))
         sql = '''
             INSERT INTO aide_admin.user (name, email, hash, issuperuser)
             VALUES (%s, %s, %s, %s)
             ON CONFLICT (name) DO UPDATE
             SET email=EXCLUDED.email, hash=EXCLUDED.hash;
         '''
-        values = (adminName, adminEmail, adminPass, True,)
+        values = (adminName, adminEmail, hash, True,)
         dbConn.execute(sql, values, None)
 
     return {

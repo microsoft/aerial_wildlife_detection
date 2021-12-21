@@ -59,7 +59,7 @@ WORKDIR /home/$USERNAME/app
 COPY docker/requirements.txt docker/requirements.txt
 # COPY docker/lib/librabbitmq-2.0.0-cp37-cp37m-linux_x86_64.whl lib/librabbitmq-2.0.0-cp37-cp37m-linux_x86_64.whl
 
-RUN pip install -U -r docker/requirements.txt
+RUN pip install -r docker/requirements.txt
 # RUN pip install lib/librabbitmq-2.0.0-cp37-cp37m-linux_x86_64.whl
 
 # Detectron2: we can now install it directly through the requirements.txt file
