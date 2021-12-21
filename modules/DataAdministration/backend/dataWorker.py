@@ -19,6 +19,7 @@ import numpy as np
 from datetime import datetime
 import pytz
 from uuid import UUID
+from tqdm import tqdm
 from PIL import Image
 from psycopg2 import sql
 from modules.LabelUI.backend.annotation_sql_tokens import QueryStrings_annotation, QueryStrings_prediction
@@ -606,7 +607,7 @@ class DataWorker:
         imgs_candidates = imgs_disk.difference(imgs_database)
         imgs_candidates = list(imgs_candidates)
         imgs_valid = []
-        for i in range(len(imgs_candidates)):
+        for i in tqdm(range(len(imgs_candidates))):
             if imgs_candidates[i].startswith('/'):
                 imgs_candidates[i] = imgs_candidates[i][1:]
             

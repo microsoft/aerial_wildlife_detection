@@ -35,7 +35,6 @@ if __name__ == '__main__':
     import numpy as np
     from PIL import Image
     import base64
-    from io import BytesIO
     from util.configDef import Config
     from modules import Database
     drivers.init_drivers()
@@ -56,7 +55,7 @@ if __name__ == '__main__':
 
 
     # check if running on file server
-    imgBaseDir = config.getProperty('FileServer', 'staticfiles_dir')
+    imgBaseDir = os.path.join(config.getProperty('FileServer', 'staticfiles_dir'), args.project)
     if not os.path.isdir(imgBaseDir):
         raise Exception('"{}" is not a valid directory on this machine. Are you running the script from the file server?'.format(imgBaseDir))
 
