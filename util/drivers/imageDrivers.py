@@ -202,6 +202,10 @@ class GDALImageDriver(AbstractImageDriver):
         cls.driver = rasterio
         from rasterio.io import MemoryFile
         cls.memfile = MemoryFile
+
+        # filter "NotGeoreferencedWarning"      #TODO: test
+        import warnings
+        warnings.filterwarnings("ignore", category=rasterio.errors.NotGeoreferencedWarning)
         return True
     
     @classmethod
@@ -231,6 +235,9 @@ class GDALImageDriver(AbstractImageDriver):
             out_meta['count'] = array.shape[0]
         if 'dtype' not in out_meta:
             out_meta['dtype'] = str(array.dtype)
+        if 'transform' not in out_meta:
+            # add identity transform to suppress "NotGeoreferencedWarning"
+            out_meta['transform'] = cls.driver.Affine.identity()
         with cls.driver.open(filePath, 'w', **out_meta) as dest_img:
             dest_img.write(array)
 
