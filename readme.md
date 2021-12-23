@@ -22,6 +22,8 @@ Exciting news: AIDE version 3.0 is on the way! This is the **nightly** build of 
 
 More functionality might come and will be added to this list as implementations progress.
 
+A demo instance of AIDE v3.0 preview can be found **[here](http://aidedemo.westeurope.cloudapp.azure.com:8088/)**.
+
 
 ### Current issues
 
