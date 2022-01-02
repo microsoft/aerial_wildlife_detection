@@ -1,7 +1,7 @@
 /*
     Sets up the frontend and loads all required parameters in correct order.
 
-    2019-21 Benjamin Kellenberger
+    2019-22 Benjamin Kellenberger
 */
 
 $(document).ready(function() {
@@ -10,6 +10,7 @@ $(document).ready(function() {
     if($('#navbar-user-dropdown').html() === '') {
         $('#navbar-dropdown').hide();
         $('#login-button').show();
+        $('#navbar-config-dropdown').hide();
     }
 
     // block UI until loaded
@@ -353,28 +354,23 @@ $(document).ready(function() {
             });
         }
 
-
-
         // logout and reload functionality
-        if(window.demoMode) {
-            $('.dropdown-menu').hide();
-            // $('.dropdown-toggle').hide();
-        } else {
+        $('#logout').on('click', function() {
+            if(window.dataHandler.getNumInteractions()) {
+                window.dataHandler._submitAnnotations(true).then(function() {
+                    window.location.href = '/logout';
+                });
+            } else {
+                window.location.href = '/logout';
+            }
+        });
+
+        if(!window.demoMode) {
             window.onbeforeunload = async function() {
                 if(window.dataHandler.getNumInteractions()) {
                     await window.dataHandler._submitAnnotations(true);
                 }
             };
-    
-            $('#logout').click(function() {
-                if(window.dataHandler.getNumInteractions()) {
-                    window.dataHandler._submitAnnotations(true).then(function() {
-                        window.location.href = '/logout';
-                    });
-                } else {
-                    window.location.href = '/logout';
-                }
-            });
         }
     });
 

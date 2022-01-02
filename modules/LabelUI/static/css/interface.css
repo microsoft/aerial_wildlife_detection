@@ -1,3 +1,9 @@
+/*
+    Main interface stylesheet.
+
+    2019-2022 Benjamin Kellenberger
+*/
+
 body {
     overflow: hidden;
     background: #333333 !important;
@@ -79,13 +85,15 @@ h3 {
     height: 40px;
 }
 #gallery-container {
-    margin: auto;
+    /* margin: auto; */
+    padding-top: 10px;
+    
     width: 100%;
-    height: calc(100vh - 260px);
+    /* height: calc(100vh - 260px); */
     text-align: center;
 }
 #gallery {
-    height: 100%;
+    height: calc(100vh - 210px);
     overflow: auto;
 }
 .widescreen {

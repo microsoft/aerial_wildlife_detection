@@ -7,10 +7,10 @@
     An optional suffix like "b" might be provided in
     case of multiple builds per day.
 
-    2020-21 Benjamin Kellenberger
+    2020-22 Benjamin Kellenberger
 '''
 
-AIDE_VERSION = '2.2.211223'
+AIDE_VERSION = '2.2.220102'
 
 
 MIN_FILESERVER_VERSION = '2.0.210225'       # minimum required version for FileServer, due to recent changes
