@@ -1,12 +1,13 @@
 '''
     Main Bottle and routings for the UserHandling module.
 
-    2019-21 Benjamin Kellenberger
+    2019-22 Benjamin Kellenberger
 '''
 
 import os
 import html
-from bottle import request, response, static_file, abort, redirect
+from bottle import request, response, static_file, abort, redirect, SimpleTemplate
+from constants.version import AIDE_VERSION
 from .backend.middleware import UserMiddleware
 from .backend.exceptions import *
 
@@ -32,14 +33,30 @@ class UserHandler():
 
     def _initBottle(self):
 
+        # read templates
+        with open(os.path.abspath(os.path.join(self.staticDir, 'templates/loginScreen.html')), 'r', encoding='utf-8') as f:
+            self.loginScreen_template = SimpleTemplate(f.read())
+        
+        with open(os.path.abspath(os.path.join(self.staticDir, 'templates/newAccountScreen.html')), 'r', encoding='utf-8') as f:
+            self.newAccountScreen_template = SimpleTemplate(f.read())
+
+
         @self.app.route('/login')
+        @self.app.route('/loginScreen')
+        @self.middleware.csrf_token
         def show_login_page():
-            return static_file('loginScreen.html', root=os.path.join(self.staticDir, 'templates'))
+            return self.loginScreen_template.render(
+                version=AIDE_VERSION,
+                _csrf_token=request.csrf_token
+            )
+            # return static_file('loginScreen.html', root=os.path.join(self.staticDir, 'templates'))
 
         
         @self.app.route('/doLogin', method='POST')
         @self.app.route('/<project>/doLogin', method='POST')
         def do_login(project=None):
+            self.middleware.csrf_check(request.forms.get('_csrf_token'))
+
             # check provided credentials
             try:
                 username = html.escape(self._parse_parameter(request.forms, 'username'))
@@ -152,6 +169,8 @@ class UserHandler():
 
         @self.app.route('/doCreateAccount', method='POST')
         def createAccount():
+            self.middleware.csrf_check(request.forms.get('_csrf_token'), regenerate=False)
+
             #TODO: make secret token match
             try:
                 username = html.escape(self._parse_parameter(request.forms, 'username'))
@@ -174,6 +193,7 @@ class UserHandler():
 
 
         @self.app.route('/createAccount')
+        @self.middleware.csrf_token
         def showNewAccountPage():
             # check if token is required; if it is and wrong token provided, show login screen instead
             try:
@@ -185,25 +205,30 @@ class UserHandler():
                 try:
                     providedToken = html.escape(request.query['t'])
                     if providedToken == targetToken:
-                        response = static_file('templates/newAccountScreen.html', root=self.staticDir)
+                        page = self.newAccountScreen_template.render(
+                            version=AIDE_VERSION,
+                            _csrf_token=request.csrf_token
+                        )
+                        # response = static_file('templates/newAccountScreen.html', root=self.staticDir)
                     else:
-                        response = redirect('/login')
+                        page = redirect('/login')
                 except:
-                    response = redirect('/login')
+                    page = redirect('/login')
             else:
                 # no token required
-                response = static_file('templates/newAccountScreen.html', root=self.staticDir)
+                page = self.newAccountScreen_template.render(
+                    version=AIDE_VERSION,
+                    _csrf_token=request.csrf_token
+                )
+                # response = static_file('templates/newAccountScreen.html', root=self.staticDir)
             response.set_header('Cache-Control', 'public, max-age=0')
-            return response
+            return page
 
-
-        @self.app.route('/loginScreen')
-        def showLoginPage():
-            return static_file('templates/loginScreen.html', root=self.staticDir)
 
 
         @self.app.route('/accountExists', method='POST')
         def checkAccountExists():
+            self.middleware.csrf_check(request.forms.get('_csrf_token'), regenerate=False)
             username = ''
             email = ''
             try:

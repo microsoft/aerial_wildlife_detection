@@ -104,6 +104,9 @@
     </script>
     <script type="text/javascript">
         $(document).ready(function() {
+
+            let csrf = '{{ _csrf_token }}';
+
             var checkOK = function checkOK() {
                 // check password
                 var password = $('#account-create-form').find('[name=password]').val();
@@ -122,7 +125,8 @@
                     url: 'accountExists',
                     method: 'post',
                     data: {
-                        'username': currName
+                        'username': currName,
+                        '_csrf_token': csrf
                     },
                     success: function(data) {
                         return (data['response'] !== true);
@@ -144,7 +148,8 @@
                         method: 'post',
                         data: {
                             'username': currName,
-                            'email': currEmail
+                            'email': currEmail,
+                            '_csrf_token': csrf
                         },
                         success: function(data) {
                             var msg = '';
@@ -244,7 +249,8 @@
                     data: {
                         'username': username,
                         'password': password,
-                        'email': email
+                        'email': email,
+                        '_csrf_token': csrf
                     },
                     success: function(data) {
                         //TODO: data parsing needed?

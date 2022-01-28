@@ -102,6 +102,8 @@
     <script type="text/javascript">
         $(document).ready(function() {
 
+            let csrf = '{{ _csrf_token }}';
+
             function parseURLparameter(name) {
                 let url = new URL(window.location.href);
                 return url.searchParams.get(name);
@@ -118,7 +120,8 @@
                     method: 'POST',
                     data: {
                         'username': $('form').find('[name=username]').val(),
-                        'password': $('form').find('[name=password]').val()
+                        'password': $('form').find('[name=password]').val(),
+                        '_csrf_token': csrf
                     },
                     success: function(data) {
                         if(typeof(redirect) === 'string' && redirect.length > 0) {

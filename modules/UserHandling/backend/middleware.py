@@ -2,15 +2,19 @@
     Provides functionality for checking login details,
     session validity, and the like.
 
-    2019-21 Benjamin Kellenberger
+    2019-22 Benjamin Kellenberger
 '''
 
+import os
+import functools
+import hashlib
 from threading import Thread
 from psycopg2 import sql
 from datetime import timedelta
 from util.helpers import current_time, checkDemoMode
 import secrets
 import bcrypt
+from bottle import request, response, abort
 from .exceptions import *
 
 
@@ -19,6 +23,10 @@ class UserMiddleware():
     TOKEN_NUM_BYTES = 64
     SALT_NUM_ROUNDS = 12
 
+    CSRF_TOKEN_NAME = '_csrf_token'
+    CSRF_TOKEN_AGE = 600
+    CSRF_SECRET_FALLBACK = '!ftU$_4FnJ6eA2uN'   # fallback for CSRF secret; used if not defined in config
+
 
     def __init__(self, config, dbConnector):
         self.config = config
@@ -26,6 +34,8 @@ class UserMiddleware():
 
         self.usersLoggedIn = {}    # username -> {timestamp, sessionToken}
     
+        self.csrfSecret = self.config.getProperty('UserHandler', 'csrf_secret', type=str, fallback=self.CSRF_SECRET_FALLBACK)
+
 
     def _current_time(self):
         return current_time()
@@ -583,3 +593,84 @@ class UserMiddleware():
                 'success': False,
                 'message': f'User with name "{username}" does not exist.'
             }
+    
+
+    # CSRF prevention functionality
+    # adapted from https://github.com/Othernet-Project/bottle-utils-csrf/blob/master/bottle_utils/csrf.py
+
+    def generate_csrf_token(self):
+        '''
+            Generate and set new CSRF token in cookie. The generated token is set to
+            ``request.csrf_token`` attribute for easier access by other functions.
+
+            .. warning::
+
+            This function uses ``os.urandom()`` call to obtain 8 random bytes when
+            generating the token. It is possible to deplete the randomness pool and
+            make the random token predictable.
+        '''
+        sha256 = hashlib.sha256()
+        sha256.update(os.urandom(8))
+        token = sha256.hexdigest().encode('utf8')
+        response.set_cookie(self.CSRF_TOKEN_NAME, token, path='/',
+                            secret=self.csrfSecret, max_age=self.CSRF_TOKEN_AGE)
+        request.csrf_token = token.decode('utf8')
+    
+
+    def csrf_token(self, func):
+        '''
+            Create and set CSRF token in preparation for subsequent POST request. This
+            decorator is used to set the token. It also sets the ``'Cache-Control'``
+            header in order to prevent caching of the page on which the token appears.
+            When an existing token cookie is found, it is reused. The existing token is
+            reset so that the expiration time is extended each time it is reused.
+            The POST handler must use the :py:func:`~bottle_utils.csrf.csrf_protect`
+            decotrator for the token to be used in any way.
+            The token is available in the ``bottle.request`` object as ``csrf_token``
+            attribute::
+                @app.get('/')
+                @bottle.view('myform')
+                @csrf_token
+                def put_token_in_form():
+                    return dict(token=request.csrf_token)
+            In a view, you can render this token as a hidden field inside the form. The
+            hidden field must have a name ``_csrf_token``::
+                <form method="POST">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                    ....
+                </form>
+        '''
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            token = request.get_cookie(self.CSRF_TOKEN_NAME, secret=self.csrfSecret)
+            if token:
+                # We will reuse existing tokens
+                response.set_cookie(self.CSRF_TOKEN_NAME, token, path='/',
+                                    secret=self.csrfSecret, max_age=self.CSRF_TOKEN_AGE)
+                request.csrf_token = token.decode('utf8')
+            else:
+                self.generate_csrf_token()
+            # Pages with CSRF tokens should not be cached
+            response.headers[str('Cache-Control')] = ('no-cache, max-age=0, '
+                                                    'must-revalidate, no-store')
+            return func(*args, **kwargs)
+        return wrapper
+
+
+    def csrf_check(self, token, regenerate=True):
+        '''
+            Perform CSRF protection checks. Performs checks to determine if
+            submitted token matches the token in the cookie.
+            If "regenerate" is False the current CSRF token will be reused.
+        '''
+        if isinstance(token, bytes):
+            token = token.decode('utf8')
+        token_cookie = request.get_cookie(self.CSRF_TOKEN_NAME, secret=self.csrfSecret)
+        if isinstance(token_cookie, bytes):
+            token_cookie = token_cookie.decode('utf8')
+        if token != token_cookie:
+            response.delete_cookie(self.CSRF_TOKEN_NAME, path='/', secret=self.csrfSecret,
+                                max_age=self.CSRF_TOKEN_AGE)
+            abort(403, 'Request is invalid or has expired.')
+        if regenerate:
+            self.generate_csrf_token()
