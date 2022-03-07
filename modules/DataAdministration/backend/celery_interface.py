@@ -8,7 +8,7 @@
     Function "init_celery_dispatcher" is to be initia-
     lized at launch time with a Celery app instance.
 
-    2020-21 Benjamin Kellenberger
+    2020-22 Benjamin Kellenberger
 '''
 
 import os
@@ -38,8 +38,8 @@ def listImages(project, folder=None, imageAddedRange=None, lastViewedRange=None,
 
 
 @current_app.task(name='DataAdministration.scan_for_images')
-def scanForImages(project):
-    return worker.scanForImages(project)
+def scanForImages(project, skipIntegrityCheck=False):
+    return worker.scanForImages(project, skipIntegrityCheck=skipIntegrityCheck)
 
 
 @current_app.task(name='DataAdministration.add_existing_images')

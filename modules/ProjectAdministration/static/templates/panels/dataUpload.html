@@ -1,3 +1,4 @@
+<!-- 2020-22 Benjamin Kellenberger -->
 <div>
     <h2>Data upload</h2>
     <div id="controls">
@@ -76,41 +77,53 @@
 
         // untracked functions
         function _update_browser_scanUntracked(data) {
-            var imgs = [];
-            for(var i=0; i<data.length; i++) {
-                imgs.push({
-                    url: data[i],
-                    imageURL: window.dataServerURI + window.project + '/files/' + data[i]
-                });
-            }
-            
-            window.untrackedFiles = imgs;
+            if(typeof(data) === 'object' && data.hasOwnProperty('response')) {
+                data = data['response'];
+                if(data.hasOwnProperty('meta') && data['meta'].hasOwnProperty('done')) {
+                    // task still ongoing; update progress bar
+                    let progressStr = 'checking images (' + data['meta']['done'] + '/' + data['meta']['total'] + ') ...'
+                    window.imageBrowser.setLoadingOverlay(true, progressStr, data['meta']['done'], data['meta']['total']);
+                }
 
-            // add them in chunks
-            var chunk = window.untrackedFiles.splice(0, 100);
-            window.imageBrowser.setImages(chunk);
-            if(chunk.length < window.untrackedFiles.length) {
-                window.imageBrowser.setTrailingButton(true, false);
-            }
-            updateUntrackedCount();
-            window.imageBrowser.setLoadingOverlay(false);
+            } else if(Array.isArray(data)) {
+                // task finished
+                var imgs = [];
+                for(var i=0; i<data.length; i++) {
+                    imgs.push({
+                        url: data[i],
+                        imageURL: window.dataServerURI + window.project + '/files/' + data[i]
+                    });
+                }
+                
+                window.untrackedFiles = imgs;
 
-            if(data.length) {
-                window.messager.addMessage('Found ' + data.length + ' untracked images on file server.', 'success');
-            } else {
-                window.messager.addMessage('No untracked images have been found.');
+                // add them in chunks
+                var chunk = window.untrackedFiles.splice(0, 100);
+                window.imageBrowser.setImages(chunk);
+                if(chunk.length < window.untrackedFiles.length) {
+                    window.imageBrowser.setTrailingButton(true, false);
+                }
+                updateUntrackedCount();
+                window.imageBrowser.setLoadingOverlay(false);
+
+                if(data.length) {
+                    window.messager.addMessage('Found ' + data.length + ' untracked images on file server.', 'success');
+                } else {
+                    window.messager.addMessage('No untracked images have been found.');
+                }
             }
         }
 
         function scanUntracked() {
             window.imageBrowser.setLoadingOverlay(true, 'loading...');
+            let skipIntegrityCheck = +!$('#image-integrity-check').prop('checked');
             return $.ajax({
-                url: window.baseURL + 'scanForImages',
+                url: window.baseURL + 'scanForImages?skipIntegrityCheck=' + skipIntegrityCheck,
                 method: 'GET',
                 success: function(data) {
                     // set interval for result polling
                     var taskID = data['response'];
-                    poll_status(taskID, _update_browser_scanUntracked, undefined, 1000);
+                    poll_status(taskID, _update_browser_scanUntracked, _update_browser_scanUntracked, _update_browser_scanUntracked, 1000);
                 },
                 error: function(xhr, status, error) {
                     console.error(error);
@@ -172,7 +185,7 @@
                 success: function(response) {
                     if(response['status'] === 0 && response['response'] !== undefined) {
                         let taskID = response['response'];
-                        poll_status(taskID, _poll_add_untracked, _poll_add_untracked, 1000);
+                        poll_status(taskID, _poll_add_untracked, _poll_add_untracked, undefined, 1000);
                         // //TODO
                         // window.messager.addMessage(imgList.length + ' images added successfully.', 'success');
                     } else {
@@ -562,6 +575,9 @@
             serverInfoTable.append(folderRow);
             infoMessage.append(serverInfoTable);
             window.actionPanel_scan.append(infoMessage);
+            let integrityChck = $('<input type="checkbox" id="image-integrity-check" checked />');
+            window.actionPanel_scan.append(integrityChck);
+            window.actionPanel_scan.append($('<label for="image-integrity-check">Perform image integrity check (slower, but safer)</label><br />'));
             var scanUntrackedButton = $('<button id="scan-button" class="btn btn-sm btn-primary" style="margin-bottom:10px">Scan untracked</button>');
             scanUntrackedButton.on('click', function() {
                 scanUntracked();

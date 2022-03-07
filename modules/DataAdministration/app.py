@@ -5,7 +5,7 @@
     Needs to be run from instance responsible
     for serving files (i.e., FileServer module).
 
-    2020-21 Benjamin Kellenberger
+    2020-22 Benjamin Kellenberger
 '''
 
 import os
@@ -233,7 +233,8 @@ class DataAdministrator:
                 abort(401, 'forbidden')
 
             username = html.escape(request.get_cookie('username'))
-            result = self.middleware.scanForImages(project, username)
+            skipIntegrityCheck = helpers.parse_boolean(request.params.get('skipIntegrityCheck', False))
+            result = self.middleware.scanForImages(project, username, skipIntegrityCheck)
             return {'response': result}
 
 

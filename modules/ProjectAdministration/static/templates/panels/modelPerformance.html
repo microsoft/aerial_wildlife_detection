@@ -1,3 +1,4 @@
+<!-- 2020-22 Benjamin Kellenberger -->
 <div>
     <div id="options-header" style="cursor:pointer">
         <!-- TODO: Triangle -->
@@ -670,7 +671,7 @@
                         },
                         function(data) {
                             _on_message(selModels.length, data);
-                        }, 1000);
+                        }, undefined, 1000);
                     } else {
                         if(data.hasOwnProperty('message')) {
                             window.messager.addMessage('An error occurred while trying to delete model states (message: "'+data['message']+'").', 'error', 0);

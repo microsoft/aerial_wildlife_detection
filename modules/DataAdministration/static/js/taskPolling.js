@@ -2,19 +2,20 @@
     Helper functions to poll for tasks dispatched
     through Celery.
 
-    2020 Benjamin Kellenberger
+    2020-22 Benjamin Kellenberger
 */
 
 if(window.baseURL === undefined) window.baseURL = '';
 
 
-function poll_status(taskID, successHandle, errorHandle, timeout) {
+function poll_status(taskID, successHandle, errorHandle, progressHandle, timeout) {
     /**
-     * Polls the main server for tasks dispatched through Celery
-     * by the "DataAdministration" module. Executes either the
-     * function specified under "successHandle" or "errorHandle"
-     * (if provided). Repeats polling if the result is not (yet)
-     * ready, and if the task has not failed.
+     * Polls the main server for tasks dispatched through Celery by the
+     * "DataAdministration" module. Executes either the function specified under
+     * "successHandle" or "errorHandle" (if provided). Repeats polling if the
+     * result is not (yet) ready, and if the task has not failed. If
+     * "progressHandle" is a function, it will be called upon any status polling
+     * result that has neither finished nor failed.
      */
     var tHandle = undefined;
     function __do_poll() {
@@ -40,6 +41,10 @@ function poll_status(taskID, successHandle, errorHandle, timeout) {
                             return errorHandle(data);
                         } catch {}
                     }
+                } else if(typeof(progressHandle) === 'function') {
+                    try {
+                        return progressHandle(data);
+                    } catch {}
                 }
             },
             error: function(data) {

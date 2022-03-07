@@ -98,6 +98,7 @@
 .loading-overlay {
     z-index: 100;
     background-color: #606060de;
+    padding: 20px;
 }
 
 .loading-overlay-decoration, .loading-overlay-text {

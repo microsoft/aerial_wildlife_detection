@@ -1,3 +1,4 @@
+<!-- 2020-22 Benjamin Kellenberger -->
 <div>
     <h2>Data download</h2>
     <div class="option-box">
@@ -256,7 +257,7 @@
                     },
                     function(data) {
                         _setDownloadEntry(data, taskID);
-                    }, 1000);
+                    }, undefined, 1000);
                 },
                 error: function(xhr, status, error) {
                     console.error(error);

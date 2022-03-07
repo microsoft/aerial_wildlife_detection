@@ -6,7 +6,7 @@
     - annotation and prediction management: up- and download
       of annotations and model predictions
 
-    2020-21 Benjamin Kellenberger
+    2020-22 Benjamin Kellenberger
 '''
 
 import html
@@ -107,7 +107,7 @@ class DataAdministrationMiddleware:
 
 
 
-    def scanForImages(self, project, username):
+    def scanForImages(self, project, username, skipIntegrityCheck=False):
         '''
             #TODO: update description
             Searches the project image folder on disk for
@@ -117,7 +117,7 @@ class DataAdministrationMiddleware:
         '''
 
         # submit job
-        process = celery_interface.scanForImages.si(project)
+        process = celery_interface.scanForImages.si(project, skipIntegrityCheck)
 
         task_id = self._submit_job(project, username, process)
         return task_id

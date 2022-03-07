@@ -2,7 +2,7 @@
     JS module for displaying a given list of images,
     either in list view, or with thumbnails.
 
-    2020 Benjamin Kellenberger
+    2020-22 Benjamin Kellenberger
 */
 
 var randomUID = function() {
@@ -364,24 +364,44 @@ class AbstractImageView {
         }
     }
 
-    setLoadingOverlay(visible, text) {
+    setLoadingOverlay(visible, text, value, max) {
+        /**
+         * Either displays loading dots (if no value, min and max are provided)
+         * or shows a progress bar with given parameters.
+         */
+        let showPbar = (typeof(value) === 'number');
         if(this.loadingOverlay === undefined) {
             this.loadingOverlay = $('<div class="loading-overlay"></div>');
-            var loDecoration = $('<div class="loading-overlay-decoration"></div>');
-            var loadingDots = $('<div class="azure-loadingdots">' +
-                                    '<div></div>' +
-                                    '<div></div>' +
-                                    '<div></div>' +
-                                    '<div></div>' +
-                                    '<div></div>' +
-                                    '</div>');
-            loDecoration.append(loadingDots);
+            let loDecoration = $('<div class="loading-overlay-decoration"></div>');
+            this.loadingPbar = new IBProgressBar(showPbar, value, max);
+            loDecoration.append(this.loadingPbar.getMarkup());
+            this.loadingDots = $('<div class="azure-loadingdots">' +
+                                        '<div></div>' +
+                                        '<div></div>' +
+                                        '<div></div>' +
+                                        '<div></div>' +
+                                        '<div></div>' +
+                                        '</div>');
+            this.loadingDots.css('visibility', (showPbar? 'hidden' : 'visible'));
+            loDecoration.append(this.loadingDots);
             this.loadingOverlayText = $('<div class="loading-overlay-text"></div>');
             loDecoration.append(this.loadingOverlayText);
             this.loadingOverlay.append(loDecoration);
             this.div.append(this.loadingOverlay);
         }
-        if(visible !== undefined) this.loadingOverlay.css('visibility', (visible? 'visible' : 'hidden'));
+        if(visible) {
+            if(showPbar) {
+                this.loadingDots.css('visibility', 'hidden');
+                this.loadingPbar.set(true, value, max);
+            } else {
+                this.loadingDots.css('visibility', 'visible');
+                this.loadingPbar.set(false);
+            }
+        } else if(visible !== undefined) {
+            this.loadingDots.css('visibility', 'hidden');
+            this.loadingPbar.set(false);
+            this.loadingOverlay.css('visibility', (visible? 'visible' : 'hidden'));
+        }
         if(text !== undefined) this.loadingOverlayText.html(text === null? '' : text);
     }
 
@@ -928,12 +948,12 @@ class ImageBrowser {
         this.tileView.setTrailingButton(visible, disabled, buttonText, callback);
     }
 
-    setLoadingOverlay(visible, text) {
+    setLoadingOverlay(visible, text, value, max) {
         /*
             Semi-transparent overlay over the image browser views.
         */
-        this.listView.setLoadingOverlay(visible, text);
-        this.tileView.setLoadingOverlay(visible, text);
+        this.listView.setLoadingOverlay(visible, text, value, max);
+        this.tileView.setLoadingOverlay(visible, text, value, max);
     }
 
     setProgressBar(entryID, visible, value, max) {

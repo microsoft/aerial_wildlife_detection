@@ -1,3 +1,4 @@
+<!-- 2020-22 Benjamin Kellenberger -->
 <div style="height:100%">
     <h2>Images</h2>
     <div id="controls">
@@ -320,7 +321,7 @@
                 success: function(data) {
                     // set interval for result polling
                     var taskID = data['response'];
-                    poll_status(taskID, _update_browser_populate, undefined, 1000);
+                    poll_status(taskID, _update_browser_populate, undefined, undefined, 1000);
                 },
                 error: function(xhr, status, error) {
                     console.error(error);

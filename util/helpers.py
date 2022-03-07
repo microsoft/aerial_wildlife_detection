@@ -1,7 +1,7 @@
 '''
     Miscellaneous helper functions.
 
-    2019-21 Benjamin Kellenberger
+    2019-22 Benjamin Kellenberger
 '''
 
 import os
@@ -9,6 +9,7 @@ import sys
 import importlib
 import unicodedata
 import re
+from collections.abc import Iterable
 from datetime import datetime
 import pytz
 import socket
@@ -306,6 +307,58 @@ def listDirectory(baseDir, recursive=False):
     for f in files_scanned:
         files_disk.add(f.replace(baseDir, ''))
     return files_disk
+
+
+
+def fileListToHierarchy(fileList):
+    '''
+        Receives an Iterable of file names and converts it into a nested dict of
+        dicts, corresponding to the folder hierarchy.
+    '''
+    assert isinstance(fileList, Iterable), 'Provided input is not an iterable list of files.'
+
+    def _embed_file(tree, tokens, isDir):
+        if not isinstance(tree, dict):
+            return
+        if isinstance(tokens, str):
+            if isDir:
+                tree[tokens] = {}
+            else:
+                tree[tokens] = None
+        elif len(tokens) == 1:
+            if isDir:
+                tree[tokens[0]] = {}
+            else:
+                tree[tokens[0]] = None
+        else:
+            if tokens[0] not in tree:
+                tree[tokens[0]] = {}
+            _embed_file(tree[tokens[0]], tokens[1:], isDir)
+
+    hierarchy = {}
+    for file in fileList:
+        tokens = file.split(os.sep)
+        _embed_file(hierarchy, tokens, os.path.isdir(file))
+    return hierarchy
+
+
+
+def fileHierarchyToList(hierarchy):
+    '''
+        Receives a dict of dicts of files and returns a flattened list of files
+        accordingly.
+    '''
+    assert isinstance(hierarchy, dict), 'Provided input is not a hierarchy of files.'
+
+    fileList = []
+    def _flatten_tree(tree, dirBase):
+        if isinstance(tree, dict):
+            for key in tree.keys():
+                _flatten_tree(tree[key], os.path.join(dirBase, key))
+        else:
+            fileList.append(dirBase)
+    _flatten_tree(hierarchy, '')
+    return fileList
 
 
 

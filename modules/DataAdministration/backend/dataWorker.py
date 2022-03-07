@@ -4,7 +4,7 @@
     for downloading, or scanning directories for
     untracked images.
 
-    2020-21 Benjamin Kellenberger
+    2020-22 Benjamin Kellenberger
 '''
 
 import os
@@ -22,6 +22,7 @@ from uuid import UUID
 from tqdm import tqdm
 from PIL import Image
 from psycopg2 import sql
+from celery import current_task
 from modules.LabelUI.backend.annotation_sql_tokens import QueryStrings_annotation, QueryStrings_prediction
 from util.helpers import FILENAMES_PROHIBITED_CHARS, listDirectory, base64ToImage, hexToRGB, slugify, current_time
 from util.imageSharding import split_image
@@ -32,6 +33,7 @@ class DataWorker:
 
     NUM_IMAGES_LIMIT = 4096         # maximum number of images that can be queried at once (to avoid bottlenecks)
 
+    CELERY_UPDATE_INTERVAL = 100    # number of images to wait until Celery task status gets updated
 
 
     def __init__(self, config, dbConnector, passiveMode=False):
@@ -555,7 +557,7 @@ class DataWorker:
         return result
 
 
-    def scanForImages(self, project, convertSemiSupported=False, convertToRGBifPossible=False):
+    def scanForImages(self, project, convertSemiSupported=False, convertToRGBifPossible=False, skipIntegrityCheck=False):
         '''
             Searches the project image folder on disk for files that are valid,
             but have not (yet) been added to the database. Returns a list of
@@ -569,6 +571,10 @@ class DataWorker:
             If "convertToRGBifPossible" is True, and if no custom band
             configuration has been defined in this project, any grayscale images
             will be converted to RGB and overwritten.
+
+            If "skipIntegrityCheck" is True, images will be identified solely
+            based on their file extension and assumed not to be corrupt. Also,
+            no band number checks will be performed.
         '''
         # get band configuration for project
         hasCustomBandConfig = False
@@ -607,16 +613,12 @@ class DataWorker:
         imgs_candidates = imgs_disk.difference(imgs_database)
         imgs_candidates = list(imgs_candidates)
         imgs_valid = []
-        for i in tqdm(range(len(imgs_candidates))):
+        for idx, i in enumerate(tqdm(range(len(imgs_candidates)))):
             if imgs_candidates[i].startswith('/'):
                 imgs_candidates[i] = imgs_candidates[i][1:]
             
-            # try to load images and check for validity
-            try:
-                pixelArray = drivers.load_from_disk(os.path.join(projectFolder, imgs_candidates[i]))
-
-                # check file extension
-                convertImage = False
+            if skipIntegrityCheck:
+                # do not perform any validity check on images; just verify that file extension is right
                 fname, ext = os.path.splitext(imgs_candidates[i])
                 ext = ext.lower()
                 if ext not in drivers.SUPPORTED_DATA_EXTENSIONS:
@@ -624,25 +626,60 @@ class DataWorker:
                     if not convertSemiSupported:
                         continue
                     else:
-                        imgs_candidates[i] = fname + drivers.DATA_EXTENSIONS_CONVERSION['image']
-                        convertImage = True
+                        # load, convert image and save to disk
+                        try:
+                            imgs_candidates[i] = fname + drivers.DATA_EXTENSIONS_CONVERSION['image']
+                            pixelArray = drivers.load_from_disk(os.path.join(projectFolder, imgs_candidates[i]))
+                            drivers.save_to_disk(pixelArray, os.path.join(projectFolder, imgs_candidates[i]))
+                            imgs_valid.append(imgs_candidates[i])
+                        except:
+                            # unloadable, not a valid image
+                            continue
+                else:
+                    # extension matches; assume image is valid
+                    imgs_valid.append(imgs_candidates[i])
+            else:
+                # try to load images and check for validity
+                try:
+                    pixelArray = drivers.load_from_disk(os.path.join(projectFolder, imgs_candidates[i]))
 
-                # check band config
-                bandNum_current = pixelArray.shape[0]
-                if bandNum_current not in bandNum:
-                    # invalid number of bands
+                    # check file extension
+                    convertImage = False
+                    fname, ext = os.path.splitext(imgs_candidates[i])
+                    ext = ext.lower()
+                    if ext not in drivers.SUPPORTED_DATA_EXTENSIONS:
+                        # semi-supported file
+                        if not convertSemiSupported:
+                            continue
+                        else:
+                            imgs_candidates[i] = fname + drivers.DATA_EXTENSIONS_CONVERSION['image']
+                            convertImage = True
+
+                    # check band config
+                    bandNum_current = pixelArray.shape[0]
+                    if bandNum_current not in bandNum:
+                        # invalid number of bands
+                        continue
+                    elif convertToRGBifPossible and bandNum_current == 1 and not hasCustomBandConfig:
+                        # project expects RGB data but image is grayscale; replicate for maximum compatibility
+                        pixelArray = np.concatenate((pixelArray, pixelArray, pixelArray), -1)
+                        convertImage = True
+                    
+                    if convertImage:
+                        drivers.save_to_disk(pixelArray, os.path.join(projectFolder, imgs_candidates[i]))
+                    imgs_valid.append(imgs_candidates[i])
+                except:
+                    # unloadable; not a valid image
                     continue
-                elif convertToRGBifPossible and bandNum_current == 1 and not hasCustomBandConfig:
-                    # project expects RGB data but image is grayscale; replicate for maximum compatibility
-                    pixelArray = np.concatenate((pixelArray, pixelArray, pixelArray), -1)
-                    convertImage = True
-                
-                if convertImage:
-                    drivers.save_to_disk(pixelArray, os.path.join(projectFolder, imgs_candidates[i]))
-                imgs_valid.append(imgs_candidates[i])
-            except:
-                # unloadable; not a valid image
-                continue
+            
+            # update Celery status
+            if not idx % self.CELERY_UPDATE_INTERVAL:
+                current_task.update_state(
+                    meta={
+                        'done': len(imgs_valid),
+                        'total': len(imgs_candidates)
+                    }
+                )
         return imgs_valid
 
 

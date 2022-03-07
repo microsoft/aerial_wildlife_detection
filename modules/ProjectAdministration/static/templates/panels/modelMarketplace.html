@@ -1,3 +1,4 @@
+<!-- 2020-22 Benjamin Kellenberger -->
 <div style="height:calc(100% - 65px)">
     <h2>Model Marketplace</h2>
     
@@ -865,7 +866,7 @@
                         },
                         function(data) {
                             _pollShare(data);
-                        }, 1000);
+                        }, undefined, 1000);
                     }
                 },
                 error: function(xhr, status, error) {
@@ -961,7 +962,7 @@
                         },
                         function(data) {
                             _pollReshare(data);
-                        }, 1000);
+                        }, undefined, 1000);
                     }
                 },
                 error: function(xhr, status, error) {
@@ -1083,7 +1084,7 @@
                         },
                         function(data) {
                             _on_message(data);
-                        }, 1000);
+                        }, undefined, 1000);
                     } else {
                         if(data.hasOwnProperty('message')) {
                             window.messager.addMessage('An error occurred while trying to delete model state (message: "'+data['message']+'").', 'error', 0);
@@ -1146,7 +1147,7 @@
                         },
                         function(data) {
                             _on_message(data);
-                        }, 1000);
+                        }, undefined, 1000);
                     } else {
                         if(data.hasOwnProperty('message')) {
                             window.messager.addMessage('An error occurred while trying to set model state as current (message: "'+data['message']+'").', 'error', 0);
@@ -1291,7 +1292,7 @@
                     },
                     function(data) {
                         pollImport(data);
-                    }, 1000);
+                    }, undefined, 1000);
                 } else {
                     let errorMessage = 'An error occurred while trying to import model "'+modelName+'" to project';
                     if(typeof(data['message']) === 'string') {
@@ -1418,7 +1419,7 @@
                     },
                     function(data) {
                         _pollForDownloadLink(data, taskID, false);
-                    }, 1000);
+                    }, undefined, 1000);
                 } else {
                     console.error(error);
                     let errorMessage = 'An error occurred while trying to request model download';
