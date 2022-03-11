@@ -410,18 +410,21 @@ class AbstractDataEntry {
             this.predictions_raw = {};
         }
         
-        // convert predictions into annotations where possible and allowed
-        this.convertPredictions();
-        
-        // add annotations
-        if(hasAnnotations) {
-            for(var key in properties['annotations']) {
-                //TODO: make more failsafe?
-                var annotation = new Annotation(key, properties['annotations'][key], geometryType_anno, 'annotation');
-                // Only add annotation if it is of the correct type.
-                // if(annotation.getAnnotationType() ===this.getAnnotationType()) {     //TODO: disabled for debugging purposes
-                this._addElement(annotation);
-                // }
+        // deal with existing annotations, but only if not in quiz mode
+        if(!window.quizMode) {
+            // convert predictions into annotations where possible and allowed
+            this.convertPredictions();
+            
+            // add annotations
+            if(hasAnnotations) {
+                for(var key in properties['annotations']) {
+                    //TODO: make more failsafe?
+                    var annotation = new Annotation(key, properties['annotations'][key], geometryType_anno, 'annotation');
+                    // Only add annotation if it is of the correct type.
+                    // if(annotation.getAnnotationType() ===this.getAnnotationType()) {     //TODO: disabled for debugging purposes
+                    this._addElement(annotation);
+                    // }
+                }
             }
         }
     }

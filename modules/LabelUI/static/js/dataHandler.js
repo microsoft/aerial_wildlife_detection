@@ -1,7 +1,7 @@
 /*
     Maintains the data entries currently on display.
 
-    2019-21 Benjamin Kellenberger
+    2019-22 Benjamin Kellenberger
 */
 
 class DataHandler {
@@ -323,7 +323,7 @@ class DataHandler {
                     // append
                     self.parentDiv.append(entry.markup);
                     self.dataEntries.push(entry);
-                    
+
                     imgIDs += d + ','
                 }
 
@@ -466,15 +466,16 @@ class DataHandler {
 
 
 
-    _entriesToJSON(minimal, onlyUserAnnotations) {
+    getEntryDetails(minimal, onlyUserAnnotations) {
         // assemble entries
-        var entries = {};
+        let entries = {};
         for(var e=0; e<this.dataEntries.length; e++) {
             entries[this.dataEntries[e].entryID] = this.dataEntries[e].getProperties(minimal, onlyUserAnnotations);
+            entries[this.dataEntries[e].entryID]['position'] = e;       // dirty hack for quiz handler to remember where entry is shown on display
         }
 
         // also append client statistics
-        var meta = {
+        let meta = {
             browser: this._navigator,
             windowSize: [$(window).width(), $(window).height()],
             uiControls: {
@@ -482,10 +483,10 @@ class DataHandler {
             }
         };
 
-        return JSON.stringify({
+        return {
             'entries': entries,
             'meta': meta
-        })
+        }
     }
 
 
@@ -495,7 +496,7 @@ class DataHandler {
         }
 
         var self = this;
-        var entries = this._entriesToJSON(true, false);
+        var entries = JSON.stringify(this.getEntryDetails(true, false));
         return $.ajax({
             url: 'submitAnnotations',
             type: 'POST',
@@ -636,10 +637,10 @@ class DataHandler {
     nextBatch() {
         if(window.uiBlocked) return;
 
-        var self = this;
+        let self = this;
 
         if(window.demoMode) {
-            var _next_batch = function() {
+            let _next_batch = function() {
                 // in demo mode we add the entire objects to the history
                 for(var e=0; e<self.dataEntries.length; e++) {
                     self.dataEntries[e].markup.detach();
@@ -656,9 +657,10 @@ class DataHandler {
                     self._loadNextBatch();
                 }
             }
+            this._showConfirmationDialog((_next_batch).bind(this));
 
         } else {
-            var _next_batch = function() {
+            let _next_batch = function() {
                 // add current image IDs to history
                 var historyEntry = [];
                 for(var i=0; i<this.dataEntries.length; i++) {
@@ -693,13 +695,13 @@ class DataHandler {
                     callback();
                 }
             }
+            this._showConfirmationDialog((_next_batch).bind(this));
         }
-        this._showConfirmationDialog((_next_batch).bind(this));
     }
 
 
     previousBatch() {
-        if(window.uiBlocked || this.undoStack.length === 0) return;
+        if(window.uiBlocked || this.undoStack.length === 0 || window.quizMode) return;
         
         var self = this;
 

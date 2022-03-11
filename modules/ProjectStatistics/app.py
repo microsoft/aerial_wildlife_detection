@@ -2,7 +2,7 @@
     Bottle routings for labeling statistics of project,
     including per-user analyses and progress.
 
-    2019-21 Benjamin Kellenberger
+    2019-22 Benjamin Kellenberger
 '''
 
 import html
@@ -125,19 +125,27 @@ class ProjectStatistics:
                 abort(401, 'forbidden')
             
             try:
-                try:
-                    type = request.query['type']
-                except:
-                    type = 'image'
-                try:
-                    numDaysMax = request.query['num_days']
-                except:
-                    numDaysMax = 31
-                try:
-                    perUser = parse_boolean(request.query['per_user'])
-                except:
-                    perUser = False
+                type = request.query.get('type', 'image')
+                numDaysMax = request.query.get('num_days', 31)
+                perUser = parse_boolean(request.query.get('per_user', False))
                 stats = self.middleware.getTimeActivity(project, type, numDaysMax, perUser)
                 return {'result': stats}
             except Exception as e:
                 abort(401, str(e))
+
+        
+        @self.app.post('/<project>/getAccuracy')
+        def get_accuracy(project):
+            '''
+                Used for quizgame functionality: annotations get submitted and
+                compared to existing ground truth in the database. Then,
+                accuracy statistics are returned.
+            '''
+            try:
+                entries = request.json.get('entries', {})
+                result = self.middleware.getAccuracy(project, entries)
+                return {'result': result}
+
+            except Exception as e:
+                abort(401, str(e))
+            

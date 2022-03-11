@@ -2,7 +2,7 @@
     Manages functionalities around the UI/viewport/canvas,
     such as control buttons (select, add, zoom, etc.).
 
-    2019-21 Benjamin Kellenberger
+    2019-22 Benjamin Kellenberger
 */
 
 
@@ -358,82 +358,84 @@ class UIControlHandler {
             dtControls.append(unsureBtn);
 
             // prediction threshold controls
-            let predThreshContainer = $('<div class="inline-control" id="prediction-threshold-container"></div>');
-            predThreshContainer.append($('<div style="margin:5px">AI</div>'));
-            let predThreshRangeContainer = $('<table id="pred-thresh-ranges"></table>');
-            let ptrc_vis = $('<tr class="prediction-range-container"></tr>');
-            ptrc_vis.append($('<td>Visibility</td>'));
-            let predThreshRange_vis = $('<input type="range" id="pred-thresh-vis" min="0" max="100" value="50" />');
-            predThreshRange_vis.on({
-                'input': function() {
-                    let value = 1 - parseFloat($(this).val() / 100.0);
-                    if(isNaN(value)) {
-                        value = 0.5;
-                        $(this).val(value);
-                    }
-                    window.showPredictions = (value > 0);
-                    window.showPredictions_minConf = value;
+            if(!window.quizMode) {
+                let predThreshContainer = $('<div class="inline-control" id="prediction-threshold-container"></div>');
+                predThreshContainer.append($('<div style="margin:5px">AI</div>'));
+                let predThreshRangeContainer = $('<table id="pred-thresh-ranges"></table>');
+                let ptrc_vis = $('<tr class="prediction-range-container"></tr>');
+                ptrc_vis.append($('<td>Visibility</td>'));
+                let predThreshRange_vis = $('<input type="range" id="pred-thresh-vis" min="0" max="100" value="50" />');
+                predThreshRange_vis.on({
+                    'input': function() {
+                        let value = 1 - parseFloat($(this).val() / 100.0);
+                        if(isNaN(value)) {
+                            value = 0.5;
+                            $(this).val(value);
+                        }
+                        window.showPredictions = (value > 0);
+                        window.showPredictions_minConf = value;
 
-                    self.dataHandler.setPredictionsVisible(window.showPredictions_minConf);
-                },
-                'change': function () {
-                    let value = parseFloat($(this).val());
-                    let cookieVals = window.getCookie('predThreshVis', true);
-                    if(cookieVals === null || typeof(cookieVals) !== 'object') {
-                        cookieVals = {};
+                        self.dataHandler.setPredictionsVisible(window.showPredictions_minConf);
+                    },
+                    'change': function () {
+                        let value = parseFloat($(this).val());
+                        let cookieVals = window.getCookie('predThreshVis', true);
+                        if(cookieVals === null || typeof(cookieVals) !== 'object') {
+                            cookieVals = {};
+                        }
+                        cookieVals[window.projectShortname] = value;
+                        window.setCookie('predThreshVis', cookieVals);
                     }
-                    cookieVals[window.projectShortname] = value;
-                    window.setCookie('predThreshVis', cookieVals);
+                });
+                try {
+                    let value = window.getCookie('predThreshVis', true)[window.projectShortname];
+                    predThreshRange_vis.val(value);
+                } catch {
+                    predThreshRange_vis.val(100 - window.showPredictions_minConf * 100);
                 }
-            });
-            try {
-                let value = window.getCookie('predThreshVis', true)[window.projectShortname];
-                predThreshRange_vis.val(value);
-            } catch {
-                predThreshRange_vis.val(100 - window.showPredictions_minConf * 100);
-            }
-            let rangeTd_vis = $('<td></td>');
-            rangeTd_vis.append(predThreshRange_vis);
-            ptrc_vis.append(rangeTd_vis);
-            predThreshRangeContainer.append(ptrc_vis);
-            let ptrc_convert = $('<tr class="prediction-range-container"></tr>');
-            ptrc_convert.append($('<td>Conversion</td>'));
-            let predThreshRange_convert = $('<input type="range" id="pred-thresh-convert" min="0" max="100" value="95" />');
-            predThreshRange_convert.on({
-                'input': function() {
-                    let value = 1 - parseFloat($(this).val() / 100.0);
-                    if(isNaN(value)) {
-                        value = 0.05;
-                        $(this).val(value);
-                    }
-                    window.carryOverPredictions = (value > 0);
-                    window.carryOverPredictions_minConf = value;
+                let rangeTd_vis = $('<td></td>');
+                rangeTd_vis.append(predThreshRange_vis);
+                ptrc_vis.append(rangeTd_vis);
+                predThreshRangeContainer.append(ptrc_vis);
+                let ptrc_convert = $('<tr class="prediction-range-container"></tr>');
+                ptrc_convert.append($('<td>Conversion</td>'));
+                let predThreshRange_convert = $('<input type="range" id="pred-thresh-convert" min="0" max="100" value="95" />');
+                predThreshRange_convert.on({
+                    'input': function() {
+                        let value = 1 - parseFloat($(this).val() / 100.0);
+                        if(isNaN(value)) {
+                            value = 0.05;
+                            $(this).val(value);
+                        }
+                        window.carryOverPredictions = (value > 0);
+                        window.carryOverPredictions_minConf = value;
 
-                    // re-convert predictions into annotations
-                    self.dataHandler.convertPredictions();
-                },
-                'change': function() {
-                    let value = parseFloat($(this).val());
-                    let cookieVals = window.getCookie('predThreshConv', true);
-                    if(cookieVals === null || typeof(cookieVals) !== 'object') {
-                        cookieVals = {};
+                        // re-convert predictions into annotations
+                        self.dataHandler.convertPredictions();
+                    },
+                    'change': function() {
+                        let value = parseFloat($(this).val());
+                        let cookieVals = window.getCookie('predThreshConv', true);
+                        if(cookieVals === null || typeof(cookieVals) !== 'object') {
+                            cookieVals = {};
+                        }
+                        cookieVals[window.projectShortname] = value;
+                        window.setCookie('predThreshConv', cookieVals);
                     }
-                    cookieVals[window.projectShortname] = value;
-                    window.setCookie('predThreshConv', cookieVals);
+                });
+                try {
+                    let value = window.getCookie('predThreshConv', true)[window.projectShortname];
+                    predThreshRange_convert.val(value);
+                } catch {
+                    predThreshRange_convert.val(100 - window.carryOverPredictions_minConf * 100);
                 }
-            });
-            try {
-                let value = window.getCookie('predThreshConv', true)[window.projectShortname];
-                predThreshRange_convert.val(value);
-            } catch {
-                predThreshRange_convert.val(100 - window.carryOverPredictions_minConf * 100);
+                let rangeTd_convert = $('<td></td>');
+                rangeTd_convert.append(predThreshRange_convert);
+                ptrc_convert.append(rangeTd_convert);
+                predThreshRangeContainer.append(ptrc_convert);
+                predThreshContainer.append(predThreshRangeContainer);
+                dtControls.append(predThreshContainer);
             }
-            let rangeTd_convert = $('<td></td>');
-            rangeTd_convert.append(predThreshRange_convert);
-            ptrc_convert.append(rangeTd_convert);
-            predThreshRangeContainer.append(ptrc_convert);
-            predThreshContainer.append(predThreshRangeContainer);
-            dtControls.append(predThreshContainer);
         }
 
         // semantic segmentation controls
@@ -648,7 +650,13 @@ class UIControlHandler {
 
         // next and previous batch buttons
         var nextBatchCallback = function() {
-            self.dataHandler.nextBatch();
+            if(window.quizMode) {
+                window.quizHandler.step().then(function() {
+                    return self.dataHandler.nextBatch();
+                });
+            } else {
+                self.dataHandler.nextBatch();
+            }
         }
         var prevBatchCallback = function() {
             self.dataHandler.previousBatch();
@@ -656,9 +664,11 @@ class UIControlHandler {
 
         let interfaceControls = $('#interface-controls');
         
-        let prevBatchBtn = $('<button id="previous-button" class="btn btn-sm btn-primary float-left">Previous</button>');
-        prevBatchBtn.click(prevBatchCallback);
-        interfaceControls.append(prevBatchBtn);
+        if(!window.quizMode) {
+            let prevBatchBtn = $('<button id="previous-button" class="btn btn-sm btn-primary float-left">Previous</button>');
+            prevBatchBtn.click(prevBatchCallback);
+            interfaceControls.append(prevBatchBtn);
+        }
         
         interfaceControls.append(dtControls);
         

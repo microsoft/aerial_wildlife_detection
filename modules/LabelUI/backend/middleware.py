@@ -1,7 +1,7 @@
 '''
     Definition of the layer between the UI frontend and the database.
 
-    2019-21 Benjamin Kellenberger
+    2019-22 Benjamin Kellenberger
 '''
 
 import os
@@ -226,7 +226,7 @@ class DBMiddleware():
             (i.e., users don't need to be part of the project to see these data).
         '''
         queryStr = '''
-            SELECT shortname, name, description, demoMode,
+            SELECT shortname, name, description, demoMode, quizMode, quiz_properties,
             interface_enabled, archived, ai_model_enabled,
             ai_model_library, ai_alcriterion_library,
             segmentation_ignore_unlabeled
@@ -247,6 +247,8 @@ class DBMiddleware():
             'projectName': result['name'],
             'projectDescription': result['description'],
             'demoMode': result['demomode'],
+            'quizMode': result['quizmode'],
+            'quiz_properties': result['quiz_properties'],
             'interface_enabled': result['interface_enabled'] and not result['archived'],
             'ai_model_available': aiModelAvailable,
             'ai_model_autotraining_enabled': aiModelAutotrainingEnabled,

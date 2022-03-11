@@ -2,7 +2,7 @@
     Factory that creates SQL strings for querying and submission,
     adjusted to the arguments specified.
 
-    2019-20 Benjamin Kellenberger
+    2019-22 Benjamin Kellenberger
 '''
 
 from psycopg2 import sql
@@ -159,7 +159,7 @@ class SQLStringBuilder:
             orderSpec_a = 'ORDER BY viewcount DESC NULLS LAST, isgoldenquestion DESC NULLS LAST, score DESC NULLS LAST'
             orderSpec_b = 'ORDER BY viewcount DESC NULLS LAST, isgoldenquestion DESC NULLS LAST, score DESC NULLS LAST'
         elif order == 'random':
-            orderSpec_a = 'ORDER BY RANDOM()'
+            orderSpec_a = 'ORDER BY last_checked ASC, RANDOM()'
             orderSpec_b = 'ORDER BY RANDOM()'
         orderSpec_a += ', timeCreated DESC'
         orderSpec_b += ', timeCreated DESC'
@@ -167,7 +167,7 @@ class SQLStringBuilder:
         usernameString = 'WHERE username = %s'
         if demoMode:
             usernameString = ''
-            orderSpec_a = ''
+            orderSpec_a = 'ORDER BY last_checked ASC, RANDOM()'
             orderSpec_b = 'ORDER BY RANDOM()'
             gq_user = sql.SQL('')
         else:
@@ -181,31 +181,33 @@ class SQLStringBuilder:
         queryStr = sql.SQL('''
             SELECT id, image, cType, viewcount, EXTRACT(epoch FROM last_checked) as last_checked, filename, isGoldenQuestion,
             COALESCE(bookmark, false) AS isBookmarked, {allCols} FROM (
-            SELECT id AS image, filename, 0 AS viewcount, 0 AS annoCount, NULL AS last_checked, 1E9 AS score, NULL AS timeCreated, isGoldenQuestion FROM {id_img} AS img
-            WHERE isGoldenQuestion = TRUE
-            {gq_user}
-            UNION ALL
-            SELECT id AS image, filename, viewcount, annoCount, last_checked, score, timeCreated, isGoldenQuestion FROM {id_img} AS img
-            LEFT OUTER JOIN (
-                SELECT * FROM {id_iu}
-            ) AS iu ON img.id = iu.image
-            LEFT OUTER JOIN (
-                SELECT image, SUM(confidence)/COUNT(confidence) AS score, timeCreated
-                FROM {id_pred}
-                WHERE cnnstate = (
-                    SELECT id FROM {id_cnnstate}
-                    ORDER BY timeCreated DESC
-                    LIMIT 1
-                )
-                GROUP BY image, timeCreated
-            ) AS img_score ON img.id = img_score.image
-            LEFT OUTER JOIN (
-				SELECT image, COUNT(*) AS annoCount
-				FROM {id_anno}
-				{usernameString}
-				GROUP BY image
-			) AS anno_score ON img.id = anno_score.image
-            {subset}
+            SELECT * FROM (
+                SELECT id AS image, filename, 0 AS viewcount, 0 AS annoCount, NULL AS last_checked, 1E9 AS score, NULL AS timeCreated, isGoldenQuestion FROM {id_img} AS img
+                WHERE isGoldenQuestion = TRUE
+                {gq_user}
+                UNION ALL
+                SELECT id AS image, filename, viewcount, annoCount, last_checked, score, timeCreated, isGoldenQuestion FROM {id_img} AS img
+                LEFT OUTER JOIN (
+                    SELECT * FROM {id_iu}
+                ) AS iu ON img.id = iu.image
+                LEFT OUTER JOIN (
+                    SELECT image, SUM(confidence)/COUNT(confidence) AS score, timeCreated
+                    FROM {id_pred}
+                    WHERE cnnstate = (
+                        SELECT id FROM {id_cnnstate}
+                        ORDER BY timeCreated DESC
+                        LIMIT 1
+                    )
+                    GROUP BY image, timeCreated
+                ) AS img_score ON img.id = img_score.image
+                LEFT OUTER JOIN (
+                    SELECT image, COUNT(*) AS annoCount
+                    FROM {id_anno}
+                    {usernameString}
+                    GROUP BY image
+                ) AS anno_score ON img.id = anno_score.image
+                {subset}
+            ) AS imgQ
             {order_a}
             LIMIT %s
             ) AS img_query

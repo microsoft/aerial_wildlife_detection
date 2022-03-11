@@ -55,6 +55,14 @@ $(document).ready(function() {
                 } catch {
                     window.demoMode = false;
                 }
+
+                // quiz mode
+                try {
+                    window.quizMode = parseBoolean(data['info']['quizMode']) && window.demoMode;
+                    window.quizProperties = JSON.parse(data['info']['quiz_properties']);
+                } catch {
+                    window.quizMode = false;
+                }
             }
         },
         error: function() {
@@ -97,6 +105,15 @@ $(document).ready(function() {
 
     promise = promise.then(function() {
         return window.getProjectSettings();
+    });
+
+    // quiz handler
+    promise = promise.done(function() {
+        if(window.quizMode) {
+            // need to init here, since QuizHandler depends on window.annotationType being defined
+            window.quizHandler = new QuizHandler();
+            $('#quiz-container').show();
+        }
     });
 
     // set up label class handler

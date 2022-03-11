@@ -1,0 +1,39 @@
+.quiz-meter-container {
+    margin-bottom: 10px;
+}
+
+.quiz-meter-panel {
+    display: flex;
+    flex-direction: row;
+}
+
+.quiz-meter-bar-container {
+    width: 80%;
+    height: 28px;
+    border: 1px solid white;
+    border-radius: 2px;
+    margin-right: 5px;
+}
+
+.quiz-meter-bar {
+    width: 0%;
+    height: 100%;
+    background: rgb(109,179,242); /* Old browsers */
+    background: -moz-linear-gradient(left,  rgba(109,179,242,1) 0%, rgba(84,163,238,1) 50%, rgba(54,144,240,1) 51%, rgba(30,105,222,1) 100%); /* FF3.6-15 */
+    background: -webkit-linear-gradient(left,  rgba(109,179,242,1) 0%,rgba(84,163,238,1) 50%,rgba(54,144,240,1) 51%,rgba(30,105,222,1) 100%); /* Chrome10-25,Safari5.1-6 */
+    background: linear-gradient(to right,  rgba(109,179,242,1) 0%,rgba(84,163,238,1) 50%,rgba(54,144,240,1) 51%,rgba(30,105,222,1) 100%); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
+    filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#6db3f2', endColorstr='#1e69de',GradientType=1 ); /* IE6-9 */
+    
+    background-size: 400% 400%;
+    
+    -webkit-animation: progressbar-animation 2s ease infinite;
+    -moz-animation: progressbar-animation 2s ease infinite;
+    -o-animation: progressbar-animation 2s ease infinite;
+    animation: progressbar-animation 2s ease infinite;
+}
+
+#quiz-container-panel-result {
+    background: #e5e5e5;
+    padding: 20px;
+    margin-bottom: 20px;
+}

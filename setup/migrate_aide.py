@@ -2,7 +2,7 @@
     Run this file whenever you update AIDE to bring your existing project setup up-to-date
     with respect to changes due to newer versions.
     
-    2019-21 Benjamin Kellenberger
+    2019-22 Benjamin Kellenberger
 '''
 
 import os
@@ -332,7 +332,11 @@ MODIFICATIONS_sql = [
   'ALTER TABLE "aide_admin".project ADD COLUMN IF NOT EXISTS render_config VARCHAR;',
   'ALTER TYPE labelType ADD VALUE IF NOT EXISTS \'polygons\';',
   'ALTER TABLE "aide_admin".modelMarketplace DROP COLUMN IF EXISTS annotationType;',
-  'ALTER TABLE "aide_admin".modelMarketplace DROP COLUMN IF EXISTS predictionType;'
+  'ALTER TABLE "aide_admin".modelMarketplace DROP COLUMN IF EXISTS predictionType;',
+
+  # quiz mode
+  'ALTER TABLE "aide_admin".project ADD COLUMN IF NOT EXISTS quizMode BOOLEAN DEFAULT FALSE;'
+  'ALTER TABLE "aide_admin".project ADD COLUMN IF NOT EXISTS quiz_properties VARCHAR;'
 ]
 
 

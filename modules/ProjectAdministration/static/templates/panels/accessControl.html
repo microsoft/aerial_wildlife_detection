@@ -19,6 +19,27 @@
         and disables saving annotations and the AI model, if configured.
         Existing annotations will be retained as they are.</p>
 
+        <div id="quiz-properties" style="display:none">
+            <!-- quiz game properties -->
+            <input type="checkbox" id="quizgame-enabled-checkbox" />
+            <label for="quizgame-enabled-checkbox">Quiz mode</label>
+            <p style="font-style:italic">In quiz mode, users can label a
+            predefined number of images; provided labels get compared to
+            existing labels and the current user obtains a score.<br />
+            Quiz mode requires the project to be in demo mode.</p>
+
+            <label for="quizgame-num-images-per-run">Number of images per run:</label>
+            <input id="quizgame-num-images-per-run" type="number" min="1" max="8192" value="10" />
+            <br />
+            <div id="quizgame-threshold-properties">
+                <label id="quizgame-threshold-label" for="quizgame-threshold-range">Threshold for correct annotations:</label>
+                <input id="quizgame-threshold-range" type="range" min="1" max="100" value="50" />
+                <span id="quizgame-threshold-val">0.5</span>
+            </div>
+
+            <!-- TODO: add target user account? -->
+        </div>
+
         <!-- <div>
             <button id="proj-settings-save-button" class="btn btn-primary" style="float:right">Save</button>
         </div> -->
@@ -183,6 +204,12 @@
     }
 
     window.save = function() {
+        // get quiz properties first
+        let quizProperties = {
+            num_images: parseInt($('#quizgame-num-images-per-run').val()),
+            threshold: parseFloat($('#quizgame-threshold-range').val()) / 100.0
+        }
+
         return $.ajax({
             url: window.baseURL + 'saveProjectConfiguration',
             method: 'POST',
@@ -190,7 +217,9 @@
             dataType: 'json',
             data: JSON.stringify({
                 'demoMode': $('#demo-checkbox').prop('checked'),
-                'isPublic': $('#public-checkbox').prop('checked')
+                'isPublic': $('#public-checkbox').prop('checked'),
+                'quizMode': $('#quizgame-enabled-checkbox').prop('checked') && $('#demo-checkbox').prop('checked'),
+                'quiz_properties': quizProperties
             }),
             success: function(data) {
                 if(data['success']) {
@@ -283,6 +312,60 @@
         })
     }
 
+    // quiz game
+    window.quizProperties = {   // defaults
+        enabled: false,
+        num_images: 10,
+        threshold: 0.5
+    }
+    function getQuizgameProperties() {
+        return $.ajax({
+            url: window.baseURL + 'getProjectImmutables',
+            method: 'GET',
+            success: function(data) {
+                window.projectImmutables = data['immutables'];
+                window.annotationType = window.projectImmutables['predictionType'];
+                window.predictionType = window.projectImmutables['predictionType'];
+
+                // adjust quizgame properties based on annotation type
+                if(window.annotationType === 'labels') {
+                    $('#quizgame-threshold-properties').hide();     // label is either correct or wrong
+                } else if(window.annotationType === 'points') {
+                    $('#quizgame-threshold-label').html('Maximum relative distance to closest point:');
+                } else if(window.annotationType === 'boundingBoxes') {
+                    $('#quizgame-threshold-label').html('Minimum intersection-over-union with closest bounding box:');
+                } else if(window.annotationType === 'segmentationMasks') {
+                    $('#quizgame-threshold-properties').hide();     // accuracy can directly be calculated in percentages
+                }
+
+                // populate quiz property controls
+                $('#quizgame-enabled-checkbox').prop('checked', window.quizProperties['enabled']);
+                $('#quizgame-num-images-per-run').val(window.quizProperties['num_images']);
+                if(typeof(window.quizProperties['threshold']) === 'number') {
+                    $('#quizgame-threshold-range').val(100 * window.quizProperties['threshold']);
+                    $('#quizgame-threshold-val').html(100 * window.quizProperties['threshold']);
+                }
+
+                $('#quiz-properties').show();
+                $('#demo-checkbox').trigger('change');              // enable or disable quiz mode
+                $('#quizgame-threshold-range').trigger('input');
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+                if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                    window.messager.addMessage('An error occurred while trying to load project properties (message: "' + error + '").', 'error', 0);
+                }
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return getQuizgameProperties();
+                    });
+                }
+            }
+        });
+    }
+
     $(document).ready(function() {
         // table column widths
         window.adjustTableWidth(
@@ -299,14 +382,16 @@
         );
 
         // general settings
-        var promise = $.ajax({
+        let promise = $.ajax({
             url: window.baseURL + 'getConfig',
             method: 'POST',
             data: JSON.stringify({
                 'parameters': [
                     'ispublic',
                     'secret_token',
-                    'demomode'
+                    'demomode',
+                    'quizmode',
+                    'quiz_properties'
                 ]
             }),
             contentType: 'application/json; charset=utf-8',
@@ -316,6 +401,12 @@
                 $('#public-checkbox').prop('checked', settings['ispublic']);
                 $('#field-secret-token').val(window.location.host + '/' + window.project + '/enroll/'+settings['secret_token']);
                 $('#demo-checkbox').prop('checked', settings['demomode']);
+
+                if(settings.hasOwnProperty('quiz_properties') &&
+                    typeof(settings['quiz_properties']) === 'object' && settings['quiz_properties'] !== null) {
+                    window.quizProperties = settings['quiz_properties'];
+                    window.quizProperties['enabled'] = settings['quizmode'];
+                }
             },
             error: function(xhr, status, error) {
                 console.log('ERROR:');
@@ -388,6 +479,22 @@
         // $('#proj-settings-save-button').click(function() {
         //     window.save();      //TODO
         // });
+
+        // quiz game
+        $('#demo-checkbox').on('change', function() {
+            let demoMode = $(this).prop('checked');
+            let quizMode = $('#quizgame-enabled-checkbox').prop('checked');
+            $('#quizgame-enabled-checkbox').prop('checked', demoMode && quizMode);
+            $('#quiz-properties').find('input').each(function() {
+                $(this).prop('disabled', !demoMode);
+            });
+        });
+        $('#quizgame-threshold-range').on('input', function() {
+            $('#quizgame-threshold-val').html(parseInt($(this).val()) / 100.0);
+        });
+        promise = promise.done(function() {
+            return getQuizgameProperties(quizProperties);
+        });
         
         promise.done(function() {
             window.showLoadingOverlay(false);

@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="/static/general/css/messaging.css?v={{ version }}" />
     <link rel="stylesheet" href="/static/interface/css/taskMonitor.css?v={{ version }}"></script>
     <link rel="stylesheet" href="/static/aiController/css/workflowMonitor.css?v={{ version }}" />
+    <link rel="stylesheet" href="/static/interface/css/quizHandler.css?v={{ version }}" />
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
     <script src="https://unpkg.com/mathjs@9.5.1/lib/browser/math.js"></script>
     <script type="text/javascript" src="/static/general/libs/geotiff.js/geotiff.js?v={{ version }}"></script>
@@ -33,6 +34,7 @@
     <script type="text/javascript" src="/static/interface/js/areaSelection.js?v={{ version }}"></script>
     <script type="text/javascript" src="/static/interface/js/dataEntry.js?v={{ version }}"></script>
     <script type="text/javascript" src="/static/interface/js/dataHandler.js?v={{ version }}"></script>
+    <script type="text/javascript" src="/static/interface/js/quizHandler.js?v={{ version }}"></script>
     <!-- <script type="text/javascript" src="/static/interface/js/aiWorkerHandler.js?v={{ version }}"></script> -->
     <script src="/static/general/js/overlay.js?v={{ version }}"></script>
     <script src="/static/general/js/progressbar.js?v={{ version }}"></script>
@@ -196,6 +198,12 @@
                             </div>
                         </div>
                     </div> -->
+
+                    <!-- Quiz progress meter -->
+                    <div id="quiz-container" style="display:none">
+                        <h2>Performance</h2>
+                        <div id="quiz-container-panel"></div>
+                    </div>
                 </div>
             </div>
         </div>

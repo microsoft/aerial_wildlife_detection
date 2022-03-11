@@ -2,7 +2,7 @@
     Middleware layer between the project configuration front-end
     and the database.
 
-    2019-21 Benjamin Kellenberger
+    2019-22 Benjamin Kellenberger
 '''
 
 import os
@@ -219,6 +219,8 @@ class ProjectConfigMiddleware:
             'ispublic',
             'secret_token',
             'demomode',
+            'quizmode',
+            'quiz_properties',
             'interface_enabled',
             'archived',
             'ui_settings',
@@ -270,6 +272,8 @@ class ProjectConfigMiddleware:
 
                 # auto-complete with defaults where missing
                 value = check_args(value, self.defaultUIsettings)
+            elif param == 'quiz_properties':
+                value = json.loads(value)   #TODO: check with defaults
             elif param == 'interface_enabled':
                 value = value and not result['archived']
             elif param in ('band_config', 'render_config'):
@@ -576,6 +580,13 @@ class ProjectConfigMiddleware:
 
             projectSettings['ui_settings'] = json.dumps(uiSettings)
 
+        # check quiz mode settings
+        if 'quiz_properties' in projectSettings:
+            if isinstance(projectSettings['quiz_properties'], str):
+                projectSettings['quiz_properties'] = json.loads(projectSettings['quiz_properties'])
+            # quizModeEnabled = projectSettings['quiz_properties'].get('enabled', False)          #TODO: compare with demoMode flag
+            # quizNum
+            projectSettings['quiz_properties'] = json.dumps(projectSettings['quiz_properties'])     #TODO
 
         # parse remaining parameters
         fieldNames = [
@@ -583,6 +594,8 @@ class ProjectConfigMiddleware:
             ('isPublic', bool),
             ('secret_token', str),
             ('demoMode', bool),
+            ('quizMode', bool),
+            ('quiz_properties', str),
             ('ui_settings', str),
             ('interface_enabled', bool),
             ('watch_folder_enabled', bool),

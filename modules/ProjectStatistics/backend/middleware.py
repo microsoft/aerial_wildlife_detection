@@ -1,14 +1,19 @@
 '''
     Middleware layer for project statistics calculations.
 
-    2019-21 Benjamin Kellenberger
+    2019-22 Benjamin Kellenberger
 '''
 
 import copy
+import uuid
+from datetime import datetime
+from collections import defaultdict
 from psycopg2 import sql
 import numpy as np
 from .statisticalFormulas import StatisticalFormulas_user, StatisticalFormulas_model
 from modules.Database.app import Database
+from modules.LabelUI.backend.annotation_sql_tokens import QueryStrings_annotation, AnnotationTypeTokens
+from . import accuracy
 from util.helpers import base64ToImage
 
 
@@ -17,6 +22,8 @@ class ProjectStatisticsMiddleware:
     def __init__(self, config, dbConnector):
         self.config = config
         self.dbConnector = dbConnector
+
+        self.annotationTypes = {}       # for quizgame: dict of annotation types per project
     
 
     def getProjectStatistics(self, project):
@@ -520,3 +527,71 @@ class ProjectStatisticsMiddleware:
                 response['timestamps'].append(row['date_of_day'].timestamp())
                 response['labels'].append(row['month_day'])
         return response
+
+
+    def getAccuracy(self, project, entries):
+        '''
+            For quizgame functionality: compares dict of entries and contained
+            annotations with existing annotations in project and returns
+            accuracy scores depending on the annotation type.
+        '''
+        # get project's annotation type
+        if project not in self.annotationTypes:
+            annoType = self.dbConnector.execute(sql.SQL('''
+                SELECT annotationType FROM "aide_admin".project
+                WHERE shortname = %s;
+            '''), (project,), 1)
+            self.annotationTypes[project] = annoType[0]['annotationtype']
+        annoType = self.annotationTypes[project]
+
+        # get existing annotations for entries
+        imageIDs = [uuid.UUID(key) for key in entries.keys()]
+        colnames = getattr(QueryStrings_annotation, annoType)
+        target_anno = self.dbConnector.execute(sql.SQL('''
+            SELECT {colnames}, i.filename
+            FROM {id_anno} AS a
+            JOIN {id_img} AS i
+            ON a.image = i.id
+            WHERE image IN %s
+        ''').format(
+            colnames=sql.SQL(','.join([f'a.{c}' for c in colnames.value])),
+            id_anno=sql.Identifier(project, 'annotation'),
+            id_img=sql.Identifier(project, 'image')
+        ), tuple((i,) for i in imageIDs), 'all')
+        targets = defaultdict(dict)     # used for accuracy evaluation
+        targets_out = {}                # sent back to the user as a solution
+        for row in target_anno:
+            imgID = str(row['image'])
+            if 'annotations' not in targets[imgID]:
+                targets[imgID]['annotations'] = []
+            targets[imgID]['annotations'].append(row)
+            
+            if imgID not in targets_out:
+                targets_out[imgID] = {
+                    'fileName': row['filename'],
+                    'predictions': {},
+                    'annotations': {},
+                    'last_checked': None
+                }
+            entry = {}
+            for c in colnames.value:
+                if c not in row:
+                    entry[c] = None
+                    continue
+                value = row[c]
+                if isinstance(value, datetime):
+                    value = value.timestamp()
+                elif isinstance(value, uuid.UUID):
+                    value = str(value)
+                entry[c] = value
+            annoID = str(row['id']) + str(datetime.now())       # modify ID to avoid conflicts in UI
+            targets_out[imgID]['annotations'][annoID] = entry
+
+        # calculate statistics
+        #TODO
+        stats = accuracy.statistics_boundingBoxes(entries, targets)
+
+        # append targets for comparison in viewer
+        stats['targets'] = targets_out
+
+        return stats

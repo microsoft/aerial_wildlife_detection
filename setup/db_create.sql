@@ -4,7 +4,7 @@
     schemata, but only the administrative environment of the Postgres database.
     For project creation, see modules.ProjectAdministration.static.sql.create_schema.sql.
 
-    2019-21 Benjamin Kellenberger
+    2019-22 Benjamin Kellenberger
 */
 
 
@@ -35,6 +35,8 @@ CREATE TABLE IF NOT EXISTS aide_admin.project (
     secret_token VARCHAR,
     interface_enabled BOOLEAN DEFAULT FALSE,
     demoMode BOOLEAN DEFAULT FALSE,
+    quizMode BOOLEAN DEFAULT FALSE,
+    quiz_properties VARCHAR,
     annotationType labelType NOT NULL,
     predictionType labelType,
     ui_settings VARCHAR,

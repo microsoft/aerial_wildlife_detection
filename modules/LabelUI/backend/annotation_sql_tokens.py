@@ -2,7 +2,7 @@
     Contains SQL fragments for retrieval and submission of data
     for each of the annotation types.
 
-    2019-21 Benjamin Kellenberger
+    2019-22 Benjamin Kellenberger
 '''
 
 #BIG TODO: MERGE WITH sql_string_builder.py
@@ -27,6 +27,13 @@ class QueryStrings_annotation(Enum):
     polygons = ['id', 'image', 'meta', 'coordinates', 'label', 'username', 'autoConverted', 'timeCreated', 'timeRequired', 'unsure']
     segmentationMasks = ['id', 'image', 'meta', 'segmentationMask', 'width', 'height', 'username', 'timeCreated', 'timeRequired']
 
+
+class AnnotationTypeTokens(Enum):
+    labels = []
+    points = ['x', 'y']
+    boundingBoxes = ['x', 'y', 'width', 'height']
+    polygons = ['coordinates']
+    segmentationMasks = ['segmentationMask']
 
 
 
