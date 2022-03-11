@@ -273,7 +273,10 @@ class ProjectConfigMiddleware:
                 # auto-complete with defaults where missing
                 value = check_args(value, self.defaultUIsettings)
             elif param == 'quiz_properties':
-                value = json.loads(value)   #TODO: check with defaults
+                try:
+                    value = json.loads(value)   #TODO: check with defaults
+                except:
+                    value = None
             elif param == 'interface_enabled':
                 value = value and not result['archived']
             elif param in ('band_config', 'render_config'):
