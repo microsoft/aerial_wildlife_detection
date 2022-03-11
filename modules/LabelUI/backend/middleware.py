@@ -174,13 +174,12 @@ class DBMiddleware():
 
     def get_project_immutables(self, project):
         if project not in self.project_immutables:
-            queryStr = 'SELECT annotationType, predictionType, demoMode FROM aide_admin.project WHERE shortname = %s;'
+            queryStr = 'SELECT annotationType, predictionType FROM aide_admin.project WHERE shortname = %s;'
             result = self.dbConnector.execute(queryStr, (project,), 1)
             if result and len(result):
                 self.project_immutables[project] = {
                     'annotationType': result[0]['annotationtype'],
-                    'predictionType': result[0]['predictiontype'],
-                    'demoMode': helpers.checkDemoMode(project, self.dbConnector)
+                    'predictionType': result[0]['predictiontype']
                 }
             else:
                 return None
@@ -347,7 +346,8 @@ class DBMiddleware():
 
         # query
         projImmutables = self.get_project_immutables(project)
-        queryStr = self.sqlBuilder.getFixedImagesQueryString(project, projImmutables['annotationType'], projImmutables['predictionType'], projImmutables['demoMode'])
+        demoMode = helpers.checkDemoMode(project, self.dbConnector)
+        queryStr = self.sqlBuilder.getFixedImagesQueryString(project, projImmutables['annotationType'], projImmutables['predictionType'], demoMode)
 
         # verify provided UUIDs
         uuids = []
@@ -366,7 +366,7 @@ class DBMiddleware():
             }
 
         # parse results
-        if projImmutables['demoMode']:
+        if demoMode:
             queryVals = (uuids,)
         else:
             queryVals = (uuids, username, username,)
@@ -398,7 +398,8 @@ class DBMiddleware():
         '''
         # query
         projImmutables = self.get_project_immutables(project)
-        queryStr = self.sqlBuilder.getNextBatchQueryString(project, projImmutables['annotationType'], projImmutables['predictionType'], order, subset, projImmutables['demoMode'])
+        demoMode = helpers.checkDemoMode(project, self.dbConnector)
+        queryStr = self.sqlBuilder.getNextBatchQueryString(project, projImmutables['annotationType'], projImmutables['predictionType'], order, subset, demoMode)
 
         # limit (TODO: make 128 a hyperparameter)
         if limit is None:
@@ -408,7 +409,7 @@ class DBMiddleware():
 
         # parse results
         queryVals = (username,username,limit,username,)
-        if projImmutables['demoMode']:      #TODO: demoMode can now change dynamically
+        if demoMode:
             queryVals = (limit,)
 
         annoResult = self.dbConnector.execute(queryStr, queryVals, 'all')
@@ -541,9 +542,10 @@ class DBMiddleware():
         '''
             Sends user-provided annotations to the database.
         '''
-        projImmutables = self.get_project_immutables(project)
-        if projImmutables['demoMode']:
+        if helpers.checkDemoMode(project, self.dbConnector):
             return 1
+
+        projImmutables = self.get_project_immutables(project)
 
         # assemble values
         colnames = getattr(QueryStrings_annotation, projImmutables['annotationType']).value
@@ -721,12 +723,13 @@ class DBMiddleware():
             Receives an iterable of tuples (uuid, bool) and updates the
             property "isGoldenQuestion" of the images accordingly.
         '''
-        projImmutables = self.get_project_immutables(project)
-        if projImmutables['demoMode']:
+        if helpers.checkDemoMode(project, self.dbConnector):
             return {
                 'status': 2,
                 'message': 'Not allowed in demo mode.'
             }
+            
+        projImmutables = self.get_project_immutables(project)
         
         queryStr = sql.SQL('''
             UPDATE {id_img} AS img SET isGoldenQuestion = c.isGoldenQuestion
