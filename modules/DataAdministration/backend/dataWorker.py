@@ -683,7 +683,7 @@ class DataWorker:
         return imgs_valid
 
 
-    def addExistingImages(self, project, imageList=None, convertSemiSupported=False, convertToRGBifPossible=False):
+    def addExistingImages(self, project, imageList=None, convertSemiSupported=False, convertToRGBifPossible=False, skipIntegrityCheck=False):
         '''
             Scans the project folder on the file system
             for images that are physically saved, but not
@@ -698,9 +698,13 @@ class DataWorker:
 
             Returns a list of image IDs and file names that
             were eventually added to the project database schema.
+
+            If "skipIntegrityCheck" is True, images will be identified solely
+            based on their file extension and assumed not to be corrupt. Also,
+            no band number checks will be performed.
         '''
         # get all images on disk that are not in database
-        imgs_candidates = self.scanForImages(project, convertSemiSupported, convertToRGBifPossible)
+        imgs_candidates = self.scanForImages(project, convertSemiSupported, convertToRGBifPossible, skipIntegrityCheck)
 
         if imageList is None or (isinstance(imageList, str) and imageList.lower() == 'all'):
             imgs_add = imgs_candidates

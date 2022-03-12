@@ -250,6 +250,7 @@ class DataAdministrator:
 
             try:
                 username = html.escape(request.get_cookie('username'))
+                skipIntegrityCheck = helpers.parse_boolean(request.params.get('skipIntegrityCheck', False))
                 imageNames = request.json
                 if isinstance(imageNames, dict) and 'images' in imageNames:
                     imageNames = imageNames['images']
@@ -257,7 +258,7 @@ class DataAdministrator:
                     pass
                 else:
                     return {'status': 2, 'message': 'Invalid parameters provided.'}
-                result = self.middleware.addExistingImages(project, username, imageNames)
+                result = self.middleware.addExistingImages(project, username, imageNames, skipIntegrityCheck)
                 return {'status': 0, 'response': result}
             except Exception as e:
                 return {'status': 1, 'message': str(e)}

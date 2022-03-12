@@ -124,7 +124,7 @@ class DataAdministrationMiddleware:
 
 
 
-    def addExistingImages(self, project, username, imageList=None):
+    def addExistingImages(self, project, username, imageList=None, skipIntegrityCheck=False):
         '''
             #TODO: update description
             Scans the project folder on the file system
@@ -142,7 +142,7 @@ class DataAdministrationMiddleware:
         '''
 
         # submit job
-        process = celery_interface.addExistingImages.si(project, imageList)
+        process = celery_interface.addExistingImages.si(project, imageList, skipIntegrityCheck)
 
         task_id = self._submit_job(project, username, process)
         return task_id

@@ -165,7 +165,6 @@
         }
 
         function _do_add_untracked(imgList) {
-            let params = {};
             if(Array.isArray(imgList) && imgList.length === 0) return;
 
             function _poll_add_untracked(data) {
@@ -176,10 +175,15 @@
                 }
             }
 
+            let params = {
+                images: imgList,
+                skipIntegrityCheck: +!$('#image-integrity-check').prop('checked')
+            };
+
             return $.ajax({
                 url: window.baseURL + 'addExistingImages',
                 method: 'POST',
-                data: JSON.stringify({images:imgList}),
+                data: JSON.stringify(params),
                 contentType: 'application/json; charset=utf-8',
                 dataType: 'json',
                 success: function(response) {
@@ -219,14 +223,8 @@
             return _do_add_untracked(imgList);
         }
 
-        function addAllUntracked() {
-            if(window.untrackedFiles === undefined) return;
-            // var imgList = [];
-            // let entries = window.imageBrowser.getEntries();
-            // for(var key in entries) {
-            //     imgList.push(entries[key].data['url']);
-            // }
-            // imgList = imgList.concat(window.untrackedFiles);
+        function addAllUntracked(skip_scan) {
+            if(!skip_scan && window.untrackedFiles === undefined) return;
             return _do_add_untracked('all');
         }
 
@@ -591,11 +589,16 @@
                 addSelectedUntracked();
             });
             actionButtons.append(addChecked);
-            var addAll = $('<button id="add-all" class="btn btn-sm btn-danger" disabled>Add all</button>');
+            let addAll = $('<button id="add-all" class="btn btn-sm btn-danger" disabled>Add all</button>');
             addAll.on('click', function() {
                 addAllUntracked();
             });
             actionButtons.append(addAll);
+            let addAll_noScan = $('<button class="btn btn-sm btn-danger">Scan and add all</button>');
+            addAll_noScan.on('click', function() {
+                addAllUntracked(true);
+            });
+            actionButtons.append(addAll_noScan);
             window.actionPanel_scan.append(actionButtons);
 
 
