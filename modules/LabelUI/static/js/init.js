@@ -116,6 +116,8 @@ $(document).ready(function() {
 
             //TODO: hack for quiz mode only
             $('#labelclass-search-box').hide();     // assume no keyboard present for quiz
+            $('#help-button').hide();
+            $('#navbar-config-dropdown').hide();
         }
     });
 
