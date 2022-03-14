@@ -657,7 +657,11 @@ class DataHandler {
                     self._loadNextBatch();
                 }
             }
-            this._showConfirmationDialog((_next_batch).bind(this));
+            if(window.quizMode) {
+                (_next_batch).bind(this)();
+            } else {
+                this._showConfirmationDialog((_next_batch).bind(this));
+            }
 
         } else {
             let _next_batch = function() {
