@@ -113,6 +113,9 @@ $(document).ready(function() {
             // need to init here, since QuizHandler depends on window.annotationType being defined
             window.quizHandler = new QuizHandler();
             $('#quiz-container').show();
+
+            //TODO: hack for quiz mode only
+            $('#labelclass-search-box').hide();     // assume no keyboard present for quiz
         }
     });
 

@@ -12,17 +12,18 @@ $(document).ready(function() {
         } catch {}
     })
 
-    let showCookieMessage = true;
-    try {
-        let cookiesSuppressed = window.parseBoolean(window.getCookie('cookieMsgSuppressed', false));
-        if(typeof(cookiesSuppressed) === 'boolean') {
-            showCookieMessage = !cookiesSuppressed;
-        }
-    } catch {
-        showCookieMessage = true;
-    }
+    //TODO: disabled for quizgame branch
+    // let showCookieMessage = true;
+    // try {
+    //     let cookiesSuppressed = window.parseBoolean(window.getCookie('cookieMsgSuppressed', false));
+    //     if(typeof(cookiesSuppressed) === 'boolean') {
+    //         showCookieMessage = !cookiesSuppressed;
+    //     }
+    // } catch {
+    //     showCookieMessage = true;
+    // }
 
-    if(showCookieMessage) {
-        $('#cookie-message').slideDown();
-    }
+    // if(showCookieMessage) {
+    //     $('#cookie-message').slideDown();
+    // }
 });

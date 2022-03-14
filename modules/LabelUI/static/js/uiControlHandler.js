@@ -123,7 +123,7 @@ class UIControlHandler {
 
         this.default_cursor = 'pointer';    // changes depending on action
 
-        this.burstMode = window.getCookie('burstModeEnabled');             // if true, add and remove annotation buttons stay active upon user interaction
+        this.burstMode = true;  //TODO: hack for quiz version only      //window.getCookie('burstModeEnabled');             // if true, add and remove annotation buttons stay active upon user interaction
         if(this.burstMode === undefined || this.burstMode === null) this.burstMode = false;
         else this.burstMode = window.parseBoolean(this.burstMode);
 
@@ -350,12 +350,16 @@ class UIControlHandler {
             var unsureCallback = function() {
                 self.dataHandler.toggleActiveAnnotationsUnsure();
             }
-            var labelAllBtn = $('<button class="btn btn-sm btn-primary" id="labelAll-button" title="Assign label to all Annotations (A)">Label All</button>');
-            labelAllBtn.click(labelAllCallback);
-            dtControls.append(labelAllBtn);
-            var unsureBtn = $('<button class="btn btn-sm btn-warning" id="unsure-button" title="Toggle Unsure flag for Annotation (U)">Unsure</button>');
-            unsureBtn.click(unsureCallback);
-            dtControls.append(unsureBtn);
+
+            //TODO: hack for quizgame
+            if(!window.quizMode) {
+                var labelAllBtn = $('<button class="btn btn-sm btn-primary" id="labelAll-button" title="Assign label to all Annotations (A)">Label All</button>');
+                labelAllBtn.click(labelAllCallback);
+                dtControls.append(labelAllBtn);
+                var unsureBtn = $('<button class="btn btn-sm btn-warning" id="unsure-button" title="Toggle Unsure flag for Annotation (U)">Unsure</button>');
+                unsureBtn.click(unsureCallback);
+                dtControls.append(unsureBtn);
+            }
 
             // prediction threshold controls
             if(!window.quizMode) {
