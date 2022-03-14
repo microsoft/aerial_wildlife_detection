@@ -118,7 +118,7 @@ class UIControlHandler {
 
     constructor(dataHandler) {
         this.dataHandler = dataHandler;
-        this.action = ACTIONS.DO_NOTHING;
+        this.action = ACTIONS.ADD_ANNOTATION;       //TODO: hack for quiz version
         this.showLoupe = false;
 
         this.default_cursor = 'pointer';    // changes depending on action
