@@ -118,6 +118,8 @@ $(document).ready(function() {
             $('#labelclass-search-box').hide();     // assume no keyboard present for quiz
             $('#help-button').hide();
             $('#navbar-config-dropdown').hide();
+            $('#toolbox-tab-container').hide();
+            $('#login-button').hide();
         }
     });
 
@@ -431,7 +433,7 @@ $(document).ready(function() {
 
     // show interface tutorial
     promise.then(function() {
-        if(!(window.getCookie('skipTutorial')) && !(window.annotationType === 'segmentationMasks'))     //TODO: implement tutorial for segmentation
+        if(!window.quizMode && !(window.getCookie('skipTutorial')) && !(window.annotationType === 'segmentationMasks'))     //TODO: implement tutorial for segmentation
             window.showTutorial(true);
     });
 });

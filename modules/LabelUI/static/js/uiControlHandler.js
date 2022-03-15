@@ -313,21 +313,23 @@ class UIControlHandler {
         }
 
         // burst mode checkbox
-        var burstModeCallback = function() {
-            var chkbx = $('#burst-mode-check');
-            self.burstMode = !self.burstMode;
-            chkbx.prop('checked', self.burstMode);
-            window.setCookie('burstModeEnabled', self.burstMode);
-        };
-        let burstModeCheck = $('<input type="checkbox" id="burst-mode-check" class="custom-control-input inline-control" style="margin-right:2px" title="Enable burst mode (M)" />');
-        burstModeCheck.change(burstModeCallback);
-        burstModeCheck.prop('checked', this.burstMode);
-        let burstModeCheckContainer = $('<div class="custom-control custom-switch inline-control"></div>');
-        burstModeCheckContainer.append(burstModeCheck);
-        burstModeCheckContainer.append($('<label for="burst-mode-check" class="custom-control-label inline-control" style="margin-left:0px;margin-right:10px;color:white;cursor:pointer;" title="Enable burst mode (M)">burst mode</label>'));
-        let burstModeWrapper = $('<div class="toolset-options-container"></div>');
-        burstModeWrapper.append(burstModeCheckContainer);
-        dtControls.append(burstModeWrapper);
+        if(!window.quizMode) {
+            var burstModeCallback = function() {
+                var chkbx = $('#burst-mode-check');
+                self.burstMode = !self.burstMode;
+                chkbx.prop('checked', self.burstMode);
+                window.setCookie('burstModeEnabled', self.burstMode);
+            };
+            let burstModeCheck = $('<input type="checkbox" id="burst-mode-check" class="custom-control-input inline-control" style="margin-right:2px" title="Enable burst mode (M)" />');
+            burstModeCheck.change(burstModeCallback);
+            burstModeCheck.prop('checked', this.burstMode);
+            let burstModeCheckContainer = $('<div class="custom-control custom-switch inline-control"></div>');
+            burstModeCheckContainer.append(burstModeCheck);
+            burstModeCheckContainer.append($('<label for="burst-mode-check" class="custom-control-label inline-control" style="margin-left:0px;margin-right:10px;color:white;cursor:pointer;" title="Enable burst mode (M)">burst mode</label>'));
+            let burstModeWrapper = $('<div class="toolset-options-container"></div>');
+            burstModeWrapper.append(burstModeCheckContainer);
+            dtControls.append(burstModeWrapper);
+        }
 
         if(window.enableEmptyClass) {
             let clearAllCallback = function() {

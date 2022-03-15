@@ -106,9 +106,9 @@ class QuizHandler {
             'num_tp': ['# correct (true positives)', 0, 0, 1.0, '', true],      // we'll dynamically update the maximum as we move along
             'num_fp': ['# errors (false positives)', 0, null, 1.0, ''],         // no max for FP, so no meter bar
             'num_fn': ['# missed (false negatives)', 0, 0, 1.0, '', true],      // same as for TP                                                     
-            'precision': ['Correctness score (precision)', 0, 1, 100.0, '%', false],
-            'recall': ['Completeness score (recall)', 0, 1, 100.0, '%', false],
-            'avg_iou_correct': ['Geometrical precision (Intersection-over-Union)', 0, 1, 100.0, '%', false],
+            'precision': ['Exactness (precision)', 0, 1, 100.0, '%', false],
+            'recall': ['Completeness (recall)', 0, 1, 100.0, '%', false],
+            'avg_iou_correct': ['Geometrical accuracy (Intersection-over-Union)', 0, 1, 100.0, '%', false],
             'num_imgs_match': null
         }
     }
@@ -286,8 +286,8 @@ class QuizHandler {
                 let numObj = stats_current['num_tp'] + stats_current['num_fn'];
                 let iou = (100.0 * stats_current['avg_iou_correct']).toFixed(2);
                 let recall = (100.0 * stats_current['recall']).toFixed(2);
-                resultText += 'and found ' + stats_current['num_tp'] + ' out of ' + numObj + ' objects (' + recall + '%) with a geometric accuracy of ' + iou + '%.<br />';
-                resultText += 'You mistakenly identified ' + stats_current['num_fp'] + ' regions as objects.';
+                resultText += 'and found ' + stats_current['num_tp'] + ' out of ' + numObj + ' animals (' + recall + '%) with a geometric accuracy of ' + iou + '%.<br />';
+                resultText += 'You mistakenly identified ' + stats_current['num_fp'] + ' regions as animals.';
                 // F1 score for scoring value
                 scoringVal = 100.0 * 2 * stats_current['precision'] * stats_current['recall'] / (stats_current['precision'] + stats_current['recall']); //TODO: add IoU?
                 if(!isFinite(scoringVal)) scoringVal = 0;
