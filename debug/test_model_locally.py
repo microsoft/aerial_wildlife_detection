@@ -13,7 +13,7 @@
           testing
         - "mode": one of {'train', 'inference', 'TODO'}
 
-    2020-21 Benjamin Kellenberger
+    2020-22 Benjamin Kellenberger
 '''
 
 import os
@@ -28,8 +28,6 @@ elif not 'labelui' in os.environ['AIDE_MODULES'].lower():
     os.environ['AIDE_MODULES'] += ',LabelUI'
 
 import argparse
-import importlib
-
 from constants.version import AIDE_VERSION
 from util import helpers
 from util.configDef import Config

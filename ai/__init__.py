@@ -74,7 +74,7 @@
         }
 
 
-    2019-21 Benjamin Kellenberger
+    2019-22 Benjamin Kellenberger
 '''
 
 
@@ -82,6 +82,17 @@
 PREDICTION_MODELS = {
 
     # built-ins
+
+    # YOLOv5
+    'ai.models.yolov5.YOLOv5': {
+                                            'name': 'YOLOv5',
+                                            'author': '(built-in)',
+                                            'description': 'TODO',
+                                            'annotationType': 'boundingBoxes',
+                                            'predictionType': 'boundingBoxes',
+                                            'canAddLabelclasses': True,
+                                            'canRemoveLabelclasses': True
+    },
 
     # Detectron2
     'ai.models.detectron2.AlexNet': {
