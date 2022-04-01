@@ -985,7 +985,7 @@ if [[ $install_database == true ]]; then
         echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
         wget --quiet -O - https://www.postgresql.org/media/keys/$PG_KEY | sudo apt-key add -
         wget --quiet -O - https://www.postgresql.org/repos/apt/$PG_KEY | sudo apt-key add -
-        sudo apt-get update && apt-get install -y postgresql-$pg_version | tee -a $log;
+        sudo apt-get update && sudo apt-get install -y postgresql-$pg_version | tee -a $log;
 
         # modify authentication
         dbAuth=$dbUser
