@@ -985,7 +985,7 @@ if [[ $install_database == true ]]; then
         # install and configure PostgreSQL
         echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
         wget --quiet -O - https://www.postgresql.org/media/keys/$PG_KEY | sudo apt-key add -
-        wget --quiet -O - https://www.postgresql.org/repos/apt/$PG_KEY | sudo apt-key add -
+        # wget --quiet -O - https://www.postgresql.org/repos/apt/$PG_KEY | sudo apt-key add -
         sudo apt-get update && sudo apt-get install -y postgresql-$pg_version | tee -a $log;
 
         # modify authentication
@@ -1027,15 +1027,15 @@ if [[ $install_database == true ]]; then
     # setup database
     if ! $test_only ; then
         log "Creating user..."
-        sudo -u postgres psql -c "CREATE USER $dbUser WITH PASSWORD '$dbPassword';" | tee -a $logFile
+        sudo -u postgres psql -c "CREATE USER \"$dbUser\" WITH PASSWORD '$dbPassword';" | tee -a $logFile
         log "Creating database..."
-        sudo -u postgres psql -c "CREATE DATABASE $dbName WITH OWNER $dbUser CONNECTION LIMIT -1;" | tee -a $logFile
+        sudo -u postgres psql -c "CREATE DATABASE \"$dbName\" WITH OWNER \"$dbUser\" CONNECTION LIMIT -1;" | tee -a $logFile
         log "Granting connection to database..."
-        sudo -u postgres psql -c "GRANT CREATE, CONNECT ON DATABASE $dbName TO $dbUser;" | tee -a $logFile
+        sudo -u postgres psql -c "GRANT CREATE, CONNECT ON DATABASE \"$dbName\" TO \"$dbUser\";" | tee -a $logFile
         log "Creating UUID extension..."
         sudo -u postgres psql -d $dbName -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";" | tee -a $logFile
         log "Granting table privileges..."
-        sudo -u postgres psql -d $dbName -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO $dbUser;" | tee -a $logFile
+        sudo -u postgres psql -d $dbName -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO \"$dbUser\";" | tee -a $logFile
 
         log "Initializing AIDE database schema..."
         python $aide_root/setup/setupDB.py | tee -a $logFile
