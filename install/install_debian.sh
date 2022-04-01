@@ -514,7 +514,7 @@ assembleURL() {
 
 isLocalhost() {
     # machine's IP addresses
-    ips=($(ifconfig | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*'))
+    ips=($(curl -s -4 ifconfig.co))
     for i in "${ips[@]}"
     do
         if [[ "$i" == "$1" ]]; then
