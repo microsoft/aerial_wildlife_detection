@@ -2,7 +2,7 @@
 
 # Installation routine for AIDE on Debian/Ubuntu systems.
 #
-# 2021 Benjamin Kellenberger
+# 2021-22 Benjamin Kellenberger
 
 
 # -----------------------------------------------------------------------------
