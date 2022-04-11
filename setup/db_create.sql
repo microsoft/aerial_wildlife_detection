@@ -10,7 +10,7 @@
 
 /* administrative schema */
 CREATE SCHEMA IF NOT EXISTS aide_admin
-    AUTHORIZATION &user;
+    AUTHORIZATION \"&user\";
 
 DO $$
 BEGIN

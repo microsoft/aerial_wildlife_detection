@@ -10,7 +10,7 @@
 
 /* base schema */
 CREATE SCHEMA {id_schema}
-    AUTHORIZATION {id_auth};
+    AUTHORIZATION \"{id_auth}\";
 
 
 /* base tables */
