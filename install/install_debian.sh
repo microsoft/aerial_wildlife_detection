@@ -2,7 +2,7 @@
 
 # Installation routine for AIDE on Debian/Ubuntu systems.
 #
-# 2021 Benjamin Kellenberger
+# 2021-22 Benjamin Kellenberger
 
 
 # -----------------------------------------------------------------------------
@@ -514,7 +514,7 @@ assembleURL() {
 
 isLocalhost() {
     # machine's IP addresses
-    ips=($(ifconfig | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*'))
+    ips=($(curl -s -4 ifconfig.co))
     for i in "${ips[@]}"
     do
         if [[ "$i" == "$1" ]]; then
@@ -1030,7 +1030,11 @@ if [[ $install_database == true ]]; then
         log "Creating database..."
         sudo -u postgres psql -c "CREATE DATABASE \"$dbName\" WITH OWNER \"$dbUser\" CONNECTION LIMIT -1;" | tee -a $logFile
         log "Granting connection to database..."
+<<<<<<< HEAD
         sudo -u postgres psql -c "GRANT CREATE, CONNECT ON DATABASE \"$dbName\" TO \"$dbUser\";" | tee -a $logFile
+=======
+        sudo -u postgres psql -c "GRANT CREATE, CONNECT ON DATABASE $dbName TO \"$dbUser\";" | tee -a $logFile
+>>>>>>> 0deb8c9fde8802b350419a92e8f29301edacb8d9
         log "Creating UUID extension..."
         sudo -u postgres psql -d $dbName -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";" | tee -a $logFile
         log "Granting table privileges..."
