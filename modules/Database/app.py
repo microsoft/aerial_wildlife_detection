@@ -46,7 +46,7 @@ class Database():
                             elif field == 'password':
                                 self.password = line[idx:]
 
-            self.user = self.user.lower()
+            # self.user = self.user.lower()
         except Exception as e:
             if verbose_start:
                 LogDecorator.print_status('fail')
