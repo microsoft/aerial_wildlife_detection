@@ -20,7 +20,7 @@ sudo -u postgres psql -tc "SELECT 1 FROM pg_roles WHERE pg_roles.rolname='$dbUse
 sudo -u postgres psql -tc "SELECT 1 FROM pg_database WHERE datname = '$dbName'" | grep -q 1 || sudo -u postgres psql -c "CREATE DATABASE \"$dbName\" WITH OWNER \"$dbUser\" CONNECTION LIMIT -1;"
 sudo -u postgres psql -c "GRANT CREATE, CONNECT ON DATABASE \"$dbName\" TO \"$dbUser\";"
 sudo -u postgres psql -d $dbName -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
-sudo -u postgres psql -d $dbName -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO $dbUser;"
+sudo -u postgres psql -d $dbName -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO \"$dbUser\";"
 
 # Create DB schema
 python setup/setupDB.py
