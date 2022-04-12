@@ -1,3 +1,9 @@
+#
+# AIDE main Dockerfile.
+#
+# 2020-22 Jaroslaw Szczegielniak, Benjamin Kellenberger
+#
+
 FROM pytorch/pytorch:1.7.1-cuda11.0-cudnn8-devel
 
 # Avoid warnings by switching to noninteractive
@@ -12,6 +18,7 @@ ARG USER_UID=1000
 ARG USER_GID=$USER_UID
 
 # Setup basic packages, environment and user
+RUN apt-get -y install software-properties-common
 RUN apt-get update \
     && apt-get -y install --no-install-recommends apt-utils dialog 2>&1 \
     #
