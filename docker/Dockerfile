@@ -18,7 +18,7 @@ ARG USER_UID=1000
 ARG USER_GID=$USER_UID
 
 # Setup basic packages, environment and user
-RUN apt-get -y install software-properties-common
+RUN apt-get update && apt-get -y install software-properties-common
 RUN apt-get update \
     && apt-get -y install --no-install-recommends apt-utils dialog 2>&1 \
     #
