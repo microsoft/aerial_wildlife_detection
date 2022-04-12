@@ -69,3 +69,7 @@ else
     sed -i "s/^\s*net.ipv4.tcp_keepalive_probes.*/net.ipv4.tcp_keepalive_probes = 20 /g" /etc/sysctl.conf
 fi
 sysctl -p
+
+# file server: static files directory
+fsDir=$(python util/configDef.py --section=FileServer --parameter=staticfiles_dir) 
+mkdir -p $fsDir
