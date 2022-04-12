@@ -254,6 +254,7 @@ while [[ $# -gt 0 ]]; do
     \e[1m8\e[0m Remote PostgreSQL server cannot be contacted. Make sure current machine and account have access permissions to database and server.
 
 \e[1mHISTORY\e[0m
+    Apr 12, 2022: Various bug fixes on PostgreSQL installation and daemonization routines; made installer compatible with exotic account and machine names.
     Aug 4, 2021: Initial installer release by Benjamin Kellenberger (benjamin.kellenberger@epfl.ch)
 
 $INSTALLER_VERSION                  https://github.com/microsoft/aerial_wildlife_detection              
@@ -980,7 +981,7 @@ if [[ $install_database == true ]]; then
     pgConfFile="/etc/postgresql/$pg_version/main/postgresql.conf"
 
     if [[ $test_only == false && $install_database == true ]]; then
-        log "Installing PostgreSQL server version $psqlV..."
+        log "Installing PostgreSQL server version $pg_version..."
 
         # install and configure PostgreSQL
         echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
@@ -1423,7 +1424,7 @@ install_daemon=$(getBool $install_daemon)
 if [[ $test_only == false && $install_daemon == true && ( $install_labelUI == true || $install_aicontroller == true ) ]]; then
 
     # AIDE service group
-    if grep -q $aide_group /etc/group; then
+    if [ $(getent group $aide_group) ]; then
         log "Group '$aide_group' found."
     else
         sudo groupadd "$aide_group"
@@ -1440,6 +1441,7 @@ if [[ $test_only == false && $install_daemon == true && ( $install_labelUI == tr
     if id "$aide_daemon_user" &>/dev/null; then
         # user for daemon script already exists; issue warning
         warn "Specified user for AIDE daemon processes ('$aide_daemon_user') already exists.\nAIDE environment variables will be appended to file '$aide_daemon_user/.profile'."
+        homedir=$( getent passwd "$aide_daemon_user" | cut -d: -f6 )
     else
         sudo useradd --shell /bin/bash $aide_daemon_user >> /dev/null
         sudo passwd -l $aide_daemon_user >> /dev/null
