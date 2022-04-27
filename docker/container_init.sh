@@ -11,6 +11,7 @@ sudo service redis-server start
 echo "============================="
 echo "Setup of database IS STARTING"
 echo "============================="
+pgVersion=10
 dbName=$(python util/configDef.py --section=Database --parameter=name) 
 dbUser=$(python util/configDef.py --section=Database --parameter=user)
 dbPassword=$(python util/configDef.py --section=Database --parameter=password)
