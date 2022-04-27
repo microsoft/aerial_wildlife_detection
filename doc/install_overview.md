@@ -49,9 +49,10 @@ If you wish to install AIDE in a self-contained environment instead of the host 
 5. Install:
     ```bash
         cd docker
-        sudo docker-compose build
+        sudo docker compose build
         cd ..
     ```
+    _Note:_ on older versions, you might have to issue `sudo docker-compose build` (with a hyphen) instead.
 6. Launch:
     * With Docker:
     ```bash
