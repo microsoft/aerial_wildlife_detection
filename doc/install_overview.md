@@ -36,7 +36,7 @@ __Tip:__ the installer also supports more advanced configurations; you can check
 If you wish to install AIDE in a self-contained environment instead of the host operating system, you can do so with Docker:
 
 1. Download and install [Docker](https://docs.docker.com/engine/install) as well as [Docker Compose](https://docs.docker.com/compose/install)
-2. If you want to use a GPU (and only then), you have to install the NVIDIA container toolkit:
+2. If you want to use a GPU, you have to install the NVIDIA container toolkit:
 ```bash
     distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
     curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
@@ -49,9 +49,10 @@ If you wish to install AIDE in a self-contained environment instead of the host 
 5. Install:
     ```bash
         cd docker
-        sudo docker-compose build
+        sudo docker compose build
         cd ..
     ```
+    _Note:_ on older versions, you might have to issue `sudo docker-compose build` (with a hyphen) instead.
 6. Launch:
     * With Docker:
     ```bash
