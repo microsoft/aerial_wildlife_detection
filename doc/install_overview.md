@@ -52,7 +52,7 @@ If you wish to install AIDE in a self-contained environment instead of the host 
         sudo docker compose build
         cd ..
     ```
-    _Note:_ on older versions, you might have to issue `sudo docker-compose build` (with a hyphen) instead.
+    _Note:_ for older versions, you might have to issue `sudo docker-compose build` (with a hyphen) instead.
 6. Launch:
     * With Docker:
     ```bash
