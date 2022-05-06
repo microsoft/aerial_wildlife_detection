@@ -14,9 +14,9 @@ celery[redis,auth,msgpack]  #==4.4.7
 # for the AI backend
 opencv-python
 --find-links https://download.pytorch.org/whl/torch_stable.html
-torch>=1.6.0
-torchvision>=0.7.0
+torch==1.9.0+cu111
+torchvision==0.10.0+cu111
 
 # Detectron2
---find-links https://dl.fbaipublicfiles.com/detectron2/wheels/cu111/torch1.8/index.html
+--find-links https://dl.fbaipublicfiles.com/detectron2/wheels/cu111/torch1.9/index.html
 detectron2
