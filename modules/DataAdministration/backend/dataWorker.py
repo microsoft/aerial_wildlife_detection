@@ -673,7 +673,7 @@ class DataWorker:
                     continue
             
             # update Celery status
-            if not idx % self.CELERY_UPDATE_INTERVAL:
+            if not idx % self.CELERY_UPDATE_INTERVAL and hasattr(current_task, 'update_state'):
                 current_task.update_state(
                     meta={
                         'done': len(imgs_valid),

@@ -1,7 +1,7 @@
 '''
     Definition of the layer between the UI frontend and the database.
 
-    2019-21 Benjamin Kellenberger
+    2019-22 Benjamin Kellenberger
 '''
 
 import os
@@ -425,7 +425,7 @@ class DBMiddleware():
         return { 'entries': response }
 
 
-    def getBatch_timeRange(self, project, minTimestamp, maxTimestamp, userList, skipEmptyImages=False, limit=None, goldenQuestionsOnly=False, hideGoldenQuestionInfo=True):
+    def getBatch_timeRange(self, project, minTimestamp, maxTimestamp, userList, skipEmptyImages=False, limit=None, goldenQuestionsOnly=False, hideGoldenQuestionInfo=True, lastImageUUID=None):
         '''
             Returns images that have been annotated within the given time range and/or
             by the given user(s). All arguments are optional.
@@ -433,7 +433,9 @@ class DBMiddleware():
         '''
         # query string
         projImmutables = self.get_project_immutables(project)
-        queryStr = self.sqlBuilder.getDateQueryString(project, projImmutables['annotationType'], minTimestamp, maxTimestamp, userList, skipEmptyImages, goldenQuestionsOnly)
+        if isinstance(lastImageUUID, str):
+            lastImageUUID = UUID(lastImageUUID)
+        queryStr = self.sqlBuilder.getDateQueryString(project, projImmutables['annotationType'], minTimestamp, maxTimestamp, userList, skipEmptyImages, goldenQuestionsOnly, lastImageUUID)
 
         # check validity and provide arguments
         queryVals = []
@@ -443,6 +445,8 @@ class DBMiddleware():
             queryVals.append(minTimestamp)
         if maxTimestamp is not None:
             queryVals.append(maxTimestamp)
+        if lastImageUUID is not None:
+            queryVals.append(lastImageUUID)
         if skipEmptyImages and userList is not None:
             queryVals.append(tuple(userList))
 

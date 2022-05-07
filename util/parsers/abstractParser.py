@@ -18,6 +18,8 @@ class AbstractAnnotationParser:
         self.dbConnector = dbConnector
         self.project = project
 
+        self.projectRoot = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), self.project)
+
         self._init_labelclasses()
 
 
@@ -87,31 +89,45 @@ class AbstractAnnotationParser:
         raise NotImplementedError('Not implemented for abstract base class.')
     
     
-    def match_filenames(self, fileNames):
+    def match_filenames(self, fileNames, bidirectional=False):
         '''
             Receives an Iterable of file names (e.g., 'folder/file.jpg') and
             returns a list of equivalent image IDs and full file names as found
-            in the database. Matching is performed with bidirectional wildcard
-            prefix search - for example, the following file names would match:
+            in the database.
+            "bidirectional" determines how the matching is performed:
+            - if False, file names must match exactly
+            - if True, matching is performed with bidirectional wildcard
+                prefix search - for example, the following file names would match:
 
-                query: 'train/folder/file.jpg'
-                database: 'folder/file.jpg'
-            
-            as would the inverse case:
+                    query: 'train/folder/file.jpg'
+                    database: 'folder/file.jpg'
+                
+                as would the inverse case:
 
-                query: 'folder/file.jpg'
-                database: 'train/folder/file.jpg'
+                    query: 'folder/file.jpg'
+                    database: 'train/folder/file.jpg'
+                Note that this is extremely slow.
             
             Any unidentifiable pattern will result in a value of None.
         '''
-        result = self.dbConnector.insert(sql.SQL('''
-            SELECT img.id AS id, img.filename AS filename, m.pat AS pat
-            FROM {} AS img
-            JOIN (VALUES %s) AS m(pat)
-            ON m.pat LIKE CONCAT('%%', img.filename) OR img.filename LIKE CONCAT('%%', m.pat);
-        ''').format(sql.Identifier(self.project, 'image')),
-        [(f,) for f in fileNames], 'all')
-        result = dict(zip([r[2] for r in result], [(r[0], r[1]) for r in result]))
+        if bidirectional:
+            result = self.dbConnector.insert(sql.SQL('''
+                SELECT img.id AS id, img.filename AS filename, m.pat AS pat
+                FROM {} AS img
+                JOIN (VALUES %s) AS m(pat)
+                ON m.pat LIKE CONCAT('%%', img.filename) OR img.filename LIKE CONCAT('%%', m.pat);
+            ''').format(sql.Identifier(self.project, 'image')),
+            [(f,) for f in fileNames], 'all')
+            result = dict(zip([r[2] for r in result], [(r[0], r[1]) for r in result]))
+        
+        else:
+            result = self.dbConnector.insert(sql.SQL('''
+                SELECT img.id AS id, img.filename AS filename
+                FROM {} AS img
+                WHERE filename IN %s;
+            ''').format(sql.Identifier(self.project, 'image')),
+            (fileNames,), 'all')
+            result = dict(zip([r[1] for r in result], [(r[0], r[1]) for r in result]))
 
         response = []
         for f in fileNames:

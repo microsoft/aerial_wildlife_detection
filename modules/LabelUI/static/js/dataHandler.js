@@ -1,7 +1,7 @@
 /*
     Maintains the data entries currently on display.
 
-    2019-21 Benjamin Kellenberger
+    2019-22 Benjamin Kellenberger
 */
 
 class DataHandler {
@@ -369,7 +369,7 @@ class DataHandler {
         var self = this;
 
         // get properties
-        var minTimestamp = parseFloat($('#review-timerange').val());  ///1000;
+        var minTimestamp = parseFloat($('#review-timerange').val());
         var skipEmptyImgs = $('#review-skip-empty').prop('checked');
         var goldenQuestionsOnly = $('#review-golden-questions-only').prop('checked');
         var userNames = [];
@@ -383,18 +383,27 @@ class DataHandler {
             })
         }
 
-        var url = 'getImages_timestamp';
+        // get lexicographically newest entry UUID
+        let newestEntry = null;
+        for(var e=0; e<this.dataEntries.length; e++) {
+            if(newestEntry === null || this.dataEntries[e].entryID > newestEntry) {
+                newestEntry = this.dataEntries[e].entryID;
+            }
+        }
+
+        let url = 'getImages_timestamp';
         return $.ajax({
             url: url,
             method: 'POST',
             contentType: "application/json; charset=utf-8",
             dataType: 'json',
             data: JSON.stringify({
-                minTimestamp: minTimestamp,
+                minTimestamp: minTimestamp / 1000.0,
                 users: userNames,
                 skipEmpty: skipEmptyImgs,
                 goldenQuestionsOnly: goldenQuestionsOnly,
-                limit: this.numImagesPerBatch
+                limit: this.numImagesPerBatch,
+                lastImageUUID: newestEntry
             }),
             success: function(data) {
                 // clear current entries
@@ -427,8 +436,8 @@ class DataHandler {
                     self.dataEntries.push(entry);
 
                     // update min and max timestamp
-                    var nextTimestamp = data['entries'][d]['last_checked'];
-                    minTimestamp = Math.max(minTimestamp, nextTimestamp+1);
+                    var nextTimestamp = data['entries'][d]['last_checked'] * 1000;
+                    minTimestamp = Math.max(minTimestamp, nextTimestamp);
 
                     imgIDs += d + ',';
                 }
@@ -441,8 +450,8 @@ class DataHandler {
                 self.convertPredictions();
 
                 // update slider and date text
-                $('#review-timerange').val(Math.min($('#review-timerange').prop('max'), minTimestamp));
-                $('#review-time-text').html(new Date(minTimestamp * 1000).toLocaleString());
+                $('#review-timerange').val(Math.min(parseFloat($('#review-timerange').prop('max')), minTimestamp));
+                $('#review-time-text').html(new Date(minTimestamp).toLocaleString());
 
                 // adjust width of entries
                 window.windowResized();

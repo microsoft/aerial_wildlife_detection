@@ -814,12 +814,12 @@ class UIControlHandler {
                             slider.prop('disabled', false);
 
                             if(data.hasOwnProperty('minTimestamp')) {
-                                slider.prop('min', parseInt(data['minTimestamp'])-1);
-                                slider.val(parseInt(data['minTimestamp'])-1);
+                                slider.prop('min', parseInt(data['minTimestamp'])*1000-1);
+                                slider.val(parseInt(data['minTimestamp'])*1000-1);
                                 dateSpan.html(new Date(data['minTimestamp']*1000 - 1).toLocaleString());
                             }
                             if(data.hasOwnProperty('maxTimestamp')) {
-                                slider.prop('max', parseInt(data['maxTimestamp'])+1);
+                                slider.prop('max', parseInt(data['maxTimestamp'])*1000+1);
                             }
                         }
                     }
@@ -844,7 +844,7 @@ class UIControlHandler {
             $('#review-timerange').on({
                 'input': function() {
                     var timestamp = parseInt($('#review-timerange').val());
-                    $('#review-time-text').html(new Date(timestamp * 1000).toLocaleString());
+                    $('#review-time-text').html(new Date(timestamp).toLocaleString());
                 },
                 'change': function() {
                     if($('#imorder-review').prop('checked')) {

@@ -5,6 +5,7 @@
     2019-22 Benjamin Kellenberger
 '''
 
+import uuid
 from psycopg2 import sql
 from constants.dbFieldNames import FieldNames_annotation, FieldNames_prediction
 
@@ -289,7 +290,7 @@ class SQLStringBuilder:
         return queryStr
 
 
-    def getDateQueryString(self, project, annotationType, minAge, maxAge, userNames, skipEmptyImages, goldenQuestionsOnly):
+    def getDateQueryString(self, project, annotationType, minAge, maxAge, userNames, skipEmptyImages, goldenQuestionsOnly, lastImageUUID=None):
         '''
             Assembles a DB query string that returns images between a time range.
             Useful for reviewing existing annotations.
@@ -304,6 +305,9 @@ class SQLStringBuilder:
             - skipEmptyImages: if True, images without an annotation will be ignored.
             - goldenQuestionsOnly: if True, images without flag isGoldenQuestion =
                                    True will be ignored.
+            - lastImageUUID: if UUID, only images after this one in alphabetical order
+                             will be queried. Useful to review images that have been
+                             batch-imported and hence have identical timestamps added.
         '''
 
         # column names
@@ -323,10 +327,15 @@ class SQLStringBuilder:
         timestampString = None
         if minAge is not None:
             prefix = ('WHERE' if usernameString == '' else 'AND')
-            timestampString = '{} last_checked::TIMESTAMP > TO_TIMESTAMP(%s)'.format(prefix)
+            timestampString = '{} last_checked::TIMESTAMP >= TO_TIMESTAMP(%s)'.format(prefix)
         if maxAge is not None:
             prefix = ('WHERE' if (usernameString == '' and timestampString == '') else 'AND')
             timestampString += ' {} last_checked::TIMESTAMP <= TO_TIMESTAMP(%s)'.format(prefix)
+
+        # min image UUID
+        lastUUIDstring = ''
+        if isinstance(lastImageUUID, uuid.UUID):
+            lastUUIDstring = 'AND image > %s'
 
         # empty images
         if skipEmptyImages:
@@ -355,8 +364,9 @@ class SQLStringBuilder:
             JOIN (SELECT image AS iu_image, viewcount, last_checked, username FROM {id_iu}
             {usernameString}
             {timestampString}
+            {lastUUIDstring}
             {skipEmptyString}
-            ORDER BY last_checked ASC
+            ORDER BY last_checked ASC, image ASC
             LIMIT %s) AS iu ON img.image = iu.iu_image
             LEFT OUTER JOIN (
                 SELECT id, image AS imID, 'annotation' AS cType, {annoCols} FROM {id_anno} AS anno
@@ -374,6 +384,7 @@ class SQLStringBuilder:
             id_bookmark=sql.Identifier(project, 'bookmark'),
             usernameString=sql.SQL(usernameString),
             timestampString=sql.SQL(timestampString),
+            lastUUIDstring=sql.SQL(lastUUIDstring),
             skipEmptyString=skipEmptyString,
             goldenQuestionsString=goldenQuestionsString
         )

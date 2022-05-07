@@ -219,30 +219,16 @@ class LabelUI():
 
             else:
                 hideGoldenQuestionInfo = False
-                
-            try:
-                minTimestamp = request.json['minTimestamp']
-            except:
-                minTimestamp = None
-            try:
-                maxTimestamp = request.json['maxTimestamp']
-            except:
-                maxTimestamp = None
-            try:
-                skipEmpty = request.json['skipEmpty']
-            except:
-                skipEmpty = False
-            try:
-                limit = request.json['limit']
-            except:
-                limit = None
-            try:
-                goldenQuestionsOnly = request.json['goldenQuestionsOnly']
-            except:
-                goldenQuestionsOnly = False
+            
+            minTimestamp = request.json.get('minTimestamp', None)
+            maxTimestamp = request.json.get('maxTimestamp', None)
+            skipEmpty = request.json.get('skipEmpty', False)
+            limit = request.json.get('limit', None)
+            goldenQuestionsOnly = request.json.get('goldenQuestionsOnly', False)
+            lastImageUUID = request.json.get('lastImageUUID', None)
 
             # query and return
-            json = self.middleware.getBatch_timeRange(project, minTimestamp, maxTimestamp, users, skipEmpty, limit, goldenQuestionsOnly, hideGoldenQuestionInfo)
+            json = self.middleware.getBatch_timeRange(project, minTimestamp, maxTimestamp, users, skipEmpty, limit, goldenQuestionsOnly, hideGoldenQuestionInfo, lastImageUUID)
             return json
 
 
