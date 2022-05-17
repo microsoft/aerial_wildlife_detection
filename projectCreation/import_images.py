@@ -30,7 +30,7 @@ from util.imageSharding import split_image
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Import images into database.')
-    parser.add_argument('--project', type=str, default="kuzikus",
+    parser.add_argument('--project', type=str,
                     help='Shortname of the project to insert the images into.')
     parser.add_argument('--settings_filepath', type=str, default='config/settings.ini', const=1, nargs='?',
                     help='Manual specification of the directory of the settings.ini file; only considered if environment variable unset (default: "config/settings.ini").')
