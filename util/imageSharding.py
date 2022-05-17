@@ -2,11 +2,10 @@
     Contains functionality to split a (PIL) image into
     shards (patches) on a regular grid.
 
-    2020 Benjamin Kellenberger
+    2020-22 Benjamin Kellenberger
 '''
 
 from PIL import Image
-import numpy as np
 
 
 def split_image(image, patchSize, stride=None, tight=True):
