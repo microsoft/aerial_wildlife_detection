@@ -38,9 +38,9 @@ if __name__ == '__main__':
                     help='Optional directory to import images from. If not specified, the project folder within AIDE is parsed. Must be specified and a distinct folder when image splitting into patches is enabled.')
     parser.add_argument('--split', type=int, default=0,
                     help='Set to 1 to enable splitting of images into patches (default: 0 = do not split)')
-    parser.add_argument('--patch-size', type=int, nargs='?',
+    parser.add_argument('--patch-size', type=int, nargs='*',
                     help='Image patch size in pixels. Image is split into square patches when one value is provided, or else a tuple of (width, height) can be given. Ignored when "--split" is 0.')
-    parser.add_argument('--stride', type=int, nargs='?',
+    parser.add_argument('--stride', type=int, nargs='*',
                     help='Image patch stride (offset w.r.t. previous, i.e., left and/or top patch). Can be one value (equal stride in horizontal and vertical direction), two values (horizontal, vertical), or omitted (stride equal to "--patch-size"). Ignored when "--split" is 0.')
     parser.add_argument('--tight', type=int, default=1,
                     help='Set to 1 to not exceed patches beyond image bounds (default: 1 = true)')
@@ -129,7 +129,7 @@ if __name__ == '__main__':
     else:
         imgs_existing = set()
 
-    imgs = list(imgs.difference(imgs_existing))
+    imgs = list(set(imgs.keys()).difference(imgs_existing))
 
     if not len(imgs):
         print('WARNING: no images found, or else all images are already registered in database. Aborting...')
@@ -182,7 +182,7 @@ if __name__ == '__main__':
                     logFile.write(f'{img};;{str(e)}\n')
 
             if len(imgs_final):
-                print(f'Split {len(imgs)} into {len(imgs_final)} patches; importing to database...')
+                print(f'Split {len(imgs)} images into {len(imgs_final)} patches; importing to database...')
                 dbConn.insert(sql.SQL('''
                     INSERT INTO {} (filename)
                     VALUES %s;
