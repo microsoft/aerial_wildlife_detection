@@ -182,7 +182,7 @@ if __name__ == '__main__':
             
             queryStr = sql.SQL('''
                 SELECT filename FROM {id_iu} AS iu
-                JOIN (SELECT id AS imID, filename FROM {id_img}) AS img
+                JOIN (SELECT id AS imID, filename, isGoldenQuestion FROM {id_img}) AS img
                 ON iu.image = img.imID
                 WHERE image NOT IN (
                     SELECT image FROM {id_anno}
