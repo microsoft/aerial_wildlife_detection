@@ -219,8 +219,11 @@ class UserMiddleware():
                     self.usersLoggedIn[username]['sessionToken'] = result['session_token']
                     self.usersLoggedIn[username]['timestamp'] = now
 
-            if time_login <= 0 or (now - self.usersLoggedIn[username]['timestamp']).total_seconds() <= time_login:
-                # user still logged in
+            time_diff = (now - self.usersLoggedIn[username]['timestamp']).total_seconds()
+            if time_login <= 0 or time_diff <= time_login:
+                # user still logged in; extend user session (commit to DB) if needed
+                if time_login > 0 and time_diff >= 0.75 * time_login:
+                    self._extend_session_database(username, sessionToken)
                 return True
 
             else:

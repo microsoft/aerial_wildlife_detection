@@ -3,15 +3,113 @@
     <h2>Data upload</h2>
     <div id="controls">
         <div id="upload-mode">
-            <h3>Upload mode</h3>
             <fieldset id="upload-mode-select">
                 <input type="radio" id="radio-browserupload" name="upload-mode-select" value="browserUpload" checked>
-                <label for="radio-browserupload">Upload images</label><br />
+                <label for="radio-browserupload">Upload images and/or annotations</label><br />
                 <input type="radio" id="radio-scandisk" name="upload-mode-select" value="scanDisk">
                 <label for="radio-scandisk">Scan file server disk for untracked images</label>
             </fieldset>
         </div>
-        <div id="actions-panel"></div>
+        <div id="actions-panel">
+            <div id="upload-data-panel">
+                <input id="file-upload-select" type="file" webkitdirectory directory multiple />
+                <br />
+                <div class="custom-control custom-switch" style="margin-top:20px">
+                    <input type="checkbox" class="custom-control-input" id="image-import-enabled" checked="checked">
+                    <label class="custom-control-label" for="image-import-enabled">Import images</label>
+                </div>
+
+                <div id="image-import-options">
+                    <div style="display:flex;flex-direction:row;">
+                        <div>
+                            <div>Existing files with the same name:</div>
+                            <fieldset id="existing-files">
+                                <input type="radio" id="radio-keep-existing" name="existing-files" value="keepExisting" checked />
+                                <label for="radio-keep-existing">keep and rename new files</label><br />
+                                <input type="radio" id="radio-skip-existing" name="existing-files" value="skipExisting" />
+                                <label for="radio-skip-existing">skip</label><br />
+                                <input type="radio" id="radio-replace-existing" name="existing-files" value="replaceExisting" />
+                                <label for="radio-replace-existing">overwrite</label><br />
+                            </fieldset>
+                        </div>
+
+                        <div style="margin-left:20px"><input type="checkbox" id="split-patches-chck" />
+                            <label for="split-patches-chck">Split images into tiles:</label><br />
+                            <div id="split-patches-properties" style="margin-left:20px">
+                            <table><thead><tr><th></th><th>Horizontal</th><th>Vertical</th></tr></thead><tbody>
+                            <tr><td>Patch size:</td>
+                            <td><input type="number" id="patch-size-width" min="16" max="4096" value="800" disabled="disabled" /></td>
+                            <td><input type="number" id="patch-size-height" min="16" max="4096" value="600" disabled="disabled" /></td></tr>
+                            <tr><td>Stride:</td>
+                            <td><input type="number" id="patch-stride-width" min="16" max="4096" value="800" disabled="disabled" /></td>
+                            <td><input type="number" id="patch-stride-height" min="16" max="4096" value="600" disabled="disabled" /></td></tr></tbody></table>
+                            <input type="checkbox" id="patch-tight-chck" checked="checked" disabled="disabled" /><label for="patch-tight-chck">Do not exceed image boundaries</label><br />
+                            <input type="checkbox" id="discard-empty-chck" disabled="disabled" /><label for="discard-empty-chck"><span>Discard patches with</span>
+                            <input type="number" min="1" max="99" value="5" id="discard-empty-percentage" disabled="disabled" /><span>% or more homogeneous pixels</span></label>
+                            <div style="margin-left:10px"><span>Quantization value:</span><input type="number" min="1" max="255" value="255" id="discard-empty-quantization-value" disabled="disabled" />
+                            <div style="font-style:italic">Determines the color variation between pixels during homogeneity evaluation. Smaller quantization values (>0) result in more diverse pixels being considered homogeneous.</div></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <input type="checkbox" id="convert-unsupported-images" checked="checked" />
+                    <label for="convert-unsupported-images">Convert unsupported images into TIFFs</label>
+                </div>
+
+                <!-- annotation import -->
+                <div class="custom-control custom-switch">
+                    <input type="checkbox" class="custom-control-input" id="parse-annotations-enabled">
+                    <label class="custom-control-label" for="parse-annotations-enabled">Import annotations</label>
+                    <span id="image-split-annotation-notice" style="display:none;margin-left:10px;color:orange;font-style:italic">cannot import annotations with image splitting enabled</span>
+                </div>
+                <div id="annotation-options-panel" style="display:none">
+                    <input type="checkbox" id="skip-unknown-classes" />
+                    <label for="skip-unknown-classes">Skip label classes not present in project</label><br />
+                    <input type="checkbox" id="mark-golden-questions" />
+                    <label for="mark-golden-questions">Mark annotated images as golden questions</label><br />
+                    <label for="annotation-format">Annotation format:</label>
+                    <select id="annotation-format">
+                        <option value="auto-detect">auto-detect</option>
+                    </select>
+        
+                    <div id="annotation-format-info" style="margin-left:20px"></div>
+        
+                    <div id="annotation-parser-options-container" style="display:none">
+                        <b>Format options</b><br />
+                        <div id="annotation-parser-options" style="margin-left:20px"></div>
+                    </div>
+                </div>
+
+                <button class="btn btn-sm btn-primary" id="upload-button" style="margin-top:20px">Upload</button>
+            </div>
+
+            <div id="scan-dir-panel" style="display:none">
+                <div>
+                    <div>You can manually upload your images to the file server and then import them to the database here.</div>
+                    <table>
+                        <tr>
+                            <td style="width:150px;min-width:150px;">Server address:</td>
+                            <td style="font-family:monospace" id="data-server-uri-cell"></td>
+                        </tr>
+                        <tr>
+                            <td style="width:150px;min-width:150px;">Image folder:</td>
+                            <td style="font-family:monospace" id="server-folder-cell">(loading...)</td>
+                        </tr>
+                    </table>
+                </div>
+                <input type="checkbox" id="image-integrity-check" checked />
+                <label for="image-integrity-check">Perform image integrity check (slower, but safer)</label>
+                <br />
+
+                <button id="scan-button" class="btn btn-sm btn-primary" style="margin-bottom:10px">Scan untracked</button>
+                <div id="untracked-count"></div>
+                <div>
+                    <button id="add-checked" class="btn btn-sm btn-success" disabled>Add checked</button>
+                    <button id="add-all" class="btn btn-sm btn-danger" disabled>Add all</button>
+                    <button id="add-all-untracked" class="btn btn-sm btn-danger">Scan and add all</button>
+                </div>
+            </div>
+        </div>
     </div>
     <div id="global-progress-bar"></div>
     <div id="image-browser"></div>
@@ -24,6 +122,13 @@
         padding: 10px;
         margin-bottom: 20px;
         overflow-x: auto;
+    }
+
+    #annotation-options-panel, #image-import-options {
+        border-radius: 5px;
+        background: #4d4d4d;
+        padding: 10px;
+        margin-bottom: 20px;
     }
 
     #global-progress-bar {
@@ -248,7 +353,9 @@
             for(var f=0; f<files.length; f++) {
                 let fName = _strip_name(files[f].name);
                 if(fName.length === 0) continue;     // skip hidden files, such as ".DS_Store" from macOS
-                let fPath = _strip_name(files[f].webkitRelativePath);      //TODO: check compatibility with other browsers
+                // let fPath = _strip_name(files[f].webkitRelativePath);      //TODO: check compatibility with other browsers
+                //TODO
+                let fPath = 'files'
                 if(!fileGroups.hasOwnProperty(fPath)) {
                     fileGroups[fPath] = [];
                 }
@@ -259,14 +366,27 @@
 
         window.uploadedFiles = {};
         function startUploadFilesFromDisk() {
-            var uploadRequests = [];
-            var fileInput = $('#file-upload-select')[0];
+            //TODO: rewrite to incorporate upload session concept
 
-            var existingFiles = $('#existing-files [name=existing-files]:checked').val();
+            let uploadImages = $('#image-import-enabled').prop('checked');
+            let parseAnnotations = $('#parse-annotations-enabled').prop('checked');
+            if(!uploadImages && !parseAnnotations) return;
+
+            let doSplitPatches = uploadImages && $('#split-patches-chck').prop('checked');
+            if(parseAnnotations && doSplitPatches) {
+                window.messager.addMessage('Cannot split images into patches and parse annotations', 'error', 0);
+                return;
+            }
+
+            let uploadRequests = [];
+            let fileInput = $('#file-upload-select')[0];
+            
+            let existingFiles = $('#existing-files [name=existing-files]:checked').val();
+
+            let convertUnsupported = $('#convert-unsupported-images').prop('checked');
 
             // properties for patch splitting
-            var doSplitPatches = $('#split-patches-chck').prop('checked');
-            var splitParams = {
+            let splitParams = {
                 'patchSize': [parseInt($('#patch-size-width').val()), parseInt($('#patch-size-height').val())],
                 'stride': [parseInt($('#patch-stride-width').val()), parseInt($('#patch-stride-height').val())],
                 'tight': $('#patch-tight-chck').prop('checked')
@@ -318,19 +438,53 @@
             let fileGroups = create_file_groups(fileInput.files);
 
             let numComplete = 0;
-            for(var key in fileGroups) {
+            for(var fgkey in fileGroups) {
                 if(window.stopAction) {
                     // user aborted
                     break;
                 }
-                let nextFiles = fileGroups[key];
+                let nextFiles = fileGroups[fgkey];
 
                 // prepare form data
                 let formData = new FormData();
-                formData.append('existingFiles', existingFiles);
-                formData.append('splitPatches', doSplitPatches);
-                formData.append('splitParams', JSON.stringify(splitParams));
-                
+
+                // image upload properties
+                formData.append('uploadImages', uploadImages);
+                if(uploadImages) {
+                    formData.append('existingFiles', existingFiles);
+                    formData.append('splitPatches', doSplitPatches);
+                    formData.append('splitParams', JSON.stringify(splitParams));
+                    formData.append('convertUnsupported', convertUnsupported);
+                }
+
+                // append annotation parsing information if available
+                formData.append('parseAnnotations', parseAnnotations);
+                if(parseAnnotations) {
+                    formData.append('skipUnknownClasses', $('#skip-unknown-classes').prop('checked'));
+                    formData.append('markAsGoldenQuestions', $('#mark-golden-questions').prop('checked'));
+
+                    let parserID = $('#annotation-format').val();
+                    formData.append('parserID', (parserID === 'auto-detect' ? null : parserID));
+
+                    if(parserID !== 'auto-detect') {
+                        // append parser args
+                        let parserKwargs = {};
+                        $('#annotation-parser-options').find(':input').each(function() {
+                            let id = $(this).attr('id');
+                            let checked = $(this).prop('checked');
+                            if(checked !== undefined) {
+                                parserKwargs[id] = checked;
+                            } else {
+                                let value = $(this).val();
+                                if(val !== undefined) {
+                                    parserKwargs[id] = val;
+                                }
+                            }
+                        });
+                        formData.append('parserArgs', parserKwargs);
+                    }
+                }
+
                 // prepare image browser entries and append to form data
                 let fileKeys = {};
                 for(var f in nextFiles) {
@@ -360,7 +514,7 @@
                     window.imageBrowser.setProgressBar(fileKeys[key]['filename'], true, 0);
                 }
                 let uploadRequest = $.ajax({
-                    url: window.baseURL + 'uploadImages',
+                    url: window.baseURL + 'uploadData',
                     method: 'POST',
                     data: formData,
                     cache: false,
@@ -393,6 +547,17 @@
                                 data = JSON.parse(data);
                             }
 
+                            if(!data.hasOwnProperty('result')) {
+                                // error
+                                let msg = 'Data upload failed';
+                                if(data.hasOwnProperty('message')) {
+                                    msg += ' (message: "' + data['message'] + '")';
+                                }
+                                msg += '.';
+                                window.messager.addMessage(msg, 'error', 0);
+                                return;
+                            }
+
                             // combine all keys (original images plus potential new patches)
                             let allKeys = {...fileKeys, ...data['result']};
 
@@ -411,7 +576,13 @@
                                         }
                                     });
                                 }
-                                let result = data['result'][key];
+                                let result = {
+                                    'status': 3,
+                                    'message': 'unknown error'
+                                }
+                                if(data['result'].hasOwnProperty(key)) {
+                                    result = data['result'][key];
+                                }
                                 let message = result['message'];
                                 if(result['status'] === 0) {
                                     // valid image
@@ -497,6 +668,53 @@
         }
 
 
+        // annotation import controls
+        function _loadParsers() {
+            let parserSel = $('#annotation-format');
+            return $.ajax({
+                url: window.baseURL + 'getSupportedAnnotationFormats?method=import',
+                method: 'GET',
+                success: function(data) {
+                    window.formats = data['formats']['annotation'];
+                    
+                    // populate dropdown menu
+                    for(var fkey in window.formats) {
+                        let fspec = window.formats[fkey];
+                        let option = $('<option value="' + fkey + '">' + fspec['name'] + '</option>');
+                        parserSel.append(option);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error(data);
+                    window.messager.addMessage('Supported data formats could not be loaded (message: "'+error+'").', 'error', 0);
+                },
+                statusCode: {
+                    401: function(xhr) {
+                        return window.renewSessionRequest(xhr, function() {
+                            return _loadParsers();
+                        });
+                    }
+                }
+            });
+        }
+        function setSelectedParser(parserKey) {
+            $('#annotation-parser-options').empty();
+            if(typeof(parserKey) !== 'string' || !window.formats.hasOwnProperty(parserKey)) {
+                $('#annotation-parser-options-container').hide();
+                $('#annotation-format-info').html('');
+            } else {
+                $('#annotation-format-info').html(window.formats[parserKey]['info']);
+                let parserOptions = window.formats[parserKey]['options'];
+                if(parserOptions !== undefined && parserOptions !== null && parserOptions.length > 0) {
+                    $('#annotation-parser-options').append($(parserOptions));
+                    $('#annotation-parser-options-container').show();
+                } else {
+                    $('#annotation-parser-options').empty();
+                    $('#annotation-parser-options-container').hide();
+                }
+            }
+        }
+
         // get data server URI
         var promise = $.get(window.baseURL + 'getProjectSettings', function(data) {
             window.dataServerURI = data['settings']['dataServerURI'];
@@ -527,6 +745,10 @@
 
         // setup
         promise = promise.done(function() {
+            return _loadParsers();
+        });
+
+        promise = promise.done(function() {
 
             // setup image browser
             window.imageBrowser = new ImageBrowser($('#image-browser'), {
@@ -553,95 +775,10 @@
                 setImageBrowserSize();
             });
 
-            // setup action panel markups
-            window.actionPanel_scan = $('<div></div>');
-            var infoMessage = $('<div></div>');
-            var serverFolderCell = $('<td style="font-family:monospace">(loading...)</td>');
-            $.ajax({
-                url: window.baseURL + 'getPlatformInfo',
-                method: 'GET',
-                success: function(data) {
-                    if(data.hasOwnProperty('settings')) {
-                        serverFolderCell.html(data['settings']['server_dir']); 
-                    }
-                }
-            });
-            infoMessage.append($('<div>You can manually upload your images to the file server and then import them to the database here.</div>'));
-            var serverInfoTable = $('<table><tr><td style="width:150px;min-width:150px;">Server address:</td><td style="font-family:monospace">' + window.dataServerURI + '</td></tr></table>');
-            var folderRow = $('<tr><td style="width:150px;min-width:150px;">Image folder:</td></tr>');
-            folderRow.append(serverFolderCell);
-            serverInfoTable.append(folderRow);
-            infoMessage.append(serverInfoTable);
-            window.actionPanel_scan.append(infoMessage);
-            let integrityChck = $('<input type="checkbox" id="image-integrity-check" checked />');
-            window.actionPanel_scan.append(integrityChck);
-            window.actionPanel_scan.append($('<label for="image-integrity-check">Perform image integrity check (slower, but safer)</label><br />'));
-            var scanUntrackedButton = $('<button id="scan-button" class="btn btn-sm btn-primary" style="margin-bottom:10px">Scan untracked</button>');
-            scanUntrackedButton.on('click', function() {
-                scanUntracked();
-            });
-            window.actionPanel_scan.append(scanUntrackedButton);
-            var actionButtons = $('<div></div>');
-            var checkCount = $('<div id="untracked-count"></div>');
-            actionButtons.append(checkCount);
-            var addChecked = $('<button id="add-checked" class="btn btn-sm btn-success" disabled>Add checked</button>');
-            addChecked.on('click', function() {
-                addSelectedUntracked();
-            });
-            actionButtons.append(addChecked);
-            let addAll = $('<button id="add-all" class="btn btn-sm btn-danger" disabled>Add all</button>');
-            addAll.on('click', function() {
-                addAllUntracked();
-            });
-            actionButtons.append(addAll);
-            let addAll_noScan = $('<button class="btn btn-sm btn-danger">Scan and add all</button>');
-            addAll_noScan.on('click', function() {
-                addAllUntracked(true);
-            });
-            actionButtons.append(addAll_noScan);
-            window.actionPanel_scan.append(actionButtons);
-
-
-            window.actionPanel_upload = $('<div></div>');
-            var fileUploadSelect = $('<input id="file-upload-select" type="file" webkitdirectory directory multiple /><br />');
-            window.actionPanel_upload.append(fileUploadSelect);
-            var optionsPanel = $('<div style="display:flex;flex-direction:row;"></div>');
-            window.actionPanel_upload.append(optionsPanel);
-            var existingFiles = $('<div><div>Existing files with the same name:</div><fieldset id="existing-files">' +
-                    '<input type="radio" id="radio-keep-existing" name="existing-files" value="keepExisting" checked />' +
-                    '<label for="radio-keep-existing">keep existing and rename new files</label><br />' +
-                    '<input type="radio" id="radio-skip-existing" name="existing-files" value="skipExisting" />' +
-                    '<label for="radio-skip-existing">skip</label><br />' +
-                    '<input type="radio" id="radio-replace-existing" name="existing-files" value="replaceExisting" />' +
-                    '<label for="radio-replace-existing">overwrite</label><br />' +
-                    '</fieldset></div>');
-            optionsPanel.append(existingFiles);
-
-            // split options (TODO: add description on how this works...)
-            var splitOptions = $('<div style="margin-left:20px"><input type="checkbox" id="split-patches-chck" />' +
-                    '<label for="split-patches-chck">Split images into tiles:</label><br />' +
-                    '<div id="split-patches-properties" style="margin-left:20px">' +
-                    '<table><thead><tr><th></th><th>Horizontal</th><th>Vertical</th></tr></thead><tbody>' +
-                    '<tr><td>Patch size:</td>' +
-                    '<td><input type="number" id="patch-size-width" min="16" max="4096" value="800" disabled="disabled" /></td>' +
-                    '<td><input type="number" id="patch-size-height" min="16" max="4096" value="600" disabled="disabled" /></td></tr>' +
-                    '<tr><td>Stride:</td>' +
-                    '<td><input type="number" id="patch-stride-width" min="16" max="4096" value="800" disabled="disabled" /></td>' +
-                    '<td><input type="number" id="patch-stride-height" min="16" max="4096" value="600" disabled="disabled" /></td></tr></tbody></table>' +
-                    '<input type="checkbox" id="patch-tight-chck" checked="checked" disabled="disabled" /><label for="patch-tight-chck">Do not exceed image boundaries</label><br />' +
-                    '<input type="checkbox" id="discard-empty-chck" disabled="disabled" /><label for="discard-empty-chck"><span>Discard patches with</span>' +
-                    '<input type="number" min="1" max="99" value="5" id="discard-empty-percentage" disabled="disabled" /><span>% or more homogeneous pixels</span></label>' +
-                    '<div style="margin-left:10px"><span>Quantization value:</span><input type="number" min="1" max="255" value="255" id="discard-empty-quantization-value" disabled="disabled" />' +
-                    '<div style="font-style:italic">Determines the color variation between pixels during homogeneity evaluation. Smaller quantization values (>0) result in more diverse pixels being considered homogeneous.</div></div>' +
-                    '</div></div>');
-            optionsPanel.append(splitOptions);
-
-            var startFileUpload = $('<button class="btn btn-sm btn-primary" id="upload-button">Upload</button>');
-            startFileUpload.on('click', function() {
+            // data upload action panel
+            $('#upload-button').on('click', function() {
                 startUploadFilesFromDisk();
             });
-            window.actionPanel_upload.append(startFileUpload);
-            $('#actions-panel').append(window.actionPanel_upload);
             $('#split-patches-chck').on('input', function() {
                 let checked = $(this).prop('checked');
                 $('#split-patches-properties').find('input').each(function() {
@@ -649,26 +786,218 @@
                 });
                 $('#discard-empty-percentage').prop('disabled', !(checked & $('#discard-empty-chck').prop('checked')));
                 $('#discard-empty-quantization-value').prop('disabled', !(checked & $('#discard-empty-chck').prop('checked')));
+
+                //TODO: disable annotation import on image splitting; not yet implemented
+                if(checked) {
+                    $('#parse-annotations-enabled').prop('checked', false);
+                    $('#parse-annotations-enabled').prop('disabled', true);
+                    $('#annotation-options-panel').slideUp();
+                    $('#image-split-annotation-notice').show();
+                } else {
+                    $('#parse-annotations-enabled').prop('disabled', false);
+                    $('#image-split-annotation-notice').hide();
+                }
             });
             $('#discard-empty-chck').on('input', function() {
                 let checked = $(this).prop('checked');
                 $('#discard-empty-percentage').prop('disabled', !checked);
                 $('#discard-empty-quantization-value').prop('disabled', !checked);
             });
+            $('#image-import-enabled').on('input', function() {
+                if($(this).prop('checked')) {
+                    $('#image-import-options').slideDown();
+                } else {
+                    $('#image-import-options').slideUp();
+                }
+
+                let btnEnabled = $(this).prop('checked') || $('#parse-annotations-enabled').prop('checked');
+                $('#upload-button').prop('disabled', !btnEnabled);
+            });
+
+            // annotation parsing
+            $('#parse-annotations-enabled').on('input', function() {
+                if($(this).prop('checked')) {
+                    $('#annotation-options-panel').slideDown();
+                } else {
+                    $('#annotation-options-panel').slideUp();
+                }
+
+                let btnEnabled = $(this).prop('checked') || $('#image-import-enabled').prop('checked');
+                $('#upload-button').prop('disabled', !btnEnabled);
+            });
+            $('#annotation-format').on('input', function() {
+                setSelectedParser($(this).val());
+            });
+
+            // folder scan action panel
+            $('#data-server-uri-cell').html(window.dataServerURI);
+            $.ajax({
+                url: window.baseURL + 'getPlatformInfo',
+                method: 'GET',
+                success: function(data) {
+                    if(data.hasOwnProperty('settings')) {
+                        $('#server-folder-cell').html(data['settings']['server_dir']); 
+                    }
+                }
+            });
+            $('#scan-button').on('click', function() {
+                scanUntracked();
+            });
+            $('#add-checked').on('click', function() {
+                addSelectedUntracked();
+            });
+            $('#add-all').on('click', function() {
+                addAllUntracked();
+            });
+            $('#add-all-untracked').on('click', function() {
+                addAllUntracked(true);
+            });
+
+            // // setup action panel markups
+            // window.actionPanel_scan = $('<div></div>');
+            // var infoMessage = $('<div></div>');
+            // var serverFolderCell = $('<td style="font-family:monospace">(loading...)</td>');
+            // $.ajax({
+            //     url: window.baseURL + 'getPlatformInfo',
+            //     method: 'GET',
+            //     success: function(data) {
+            //         if(data.hasOwnProperty('settings')) {
+            //             serverFolderCell.html(data['settings']['server_dir']); 
+            //         }
+            //     }
+            // });
+            // infoMessage.append($('<div>You can manually upload your images to the file server and then import them to the database here.</div>'));
+            // var serverInfoTable = $('<table><tr><td style="width:150px;min-width:150px;">Server address:</td><td style="font-family:monospace">' + window.dataServerURI + '</td></tr></table>');
+            // var folderRow = $('<tr><td style="width:150px;min-width:150px;">Image folder:</td></tr>');
+            // folderRow.append(serverFolderCell);
+            // serverInfoTable.append(folderRow);
+            // infoMessage.append(serverInfoTable);
+            // window.actionPanel_scan.append(infoMessage);
+            // let integrityChck = $('<input type="checkbox" id="image-integrity-check" checked />');
+            // window.actionPanel_scan.append(integrityChck);
+            // window.actionPanel_scan.append($('<label for="image-integrity-check">Perform image integrity check (slower, but safer)</label><br />'));
+            // var scanUntrackedButton = $('<button id="scan-button" class="btn btn-sm btn-primary" style="margin-bottom:10px">Scan untracked</button>');
+            // scanUntrackedButton.on('click', function() {
+            //     scanUntracked();
+            // });
+            // window.actionPanel_scan.append(scanUntrackedButton);
+            // var actionButtons = $('<div></div>');
+            // var checkCount = $('<div id="untracked-count"></div>');
+            // actionButtons.append(checkCount);
+            // var addChecked = $('<button id="add-checked" class="btn btn-sm btn-success" disabled>Add checked</button>');
+            // addChecked.on('click', function() {
+            //     addSelectedUntracked();
+            // });
+            // actionButtons.append(addChecked);
+            // let addAll = $('<button id="add-all" class="btn btn-sm btn-danger" disabled>Add all</button>');
+            // addAll.on('click', function() {
+            //     addAllUntracked();
+            // });
+            // actionButtons.append(addAll);
+            // let addAll_noScan = $('<button class="btn btn-sm btn-danger">Scan and add all</button>');
+            // addAll_noScan.on('click', function() {
+            //     addAllUntracked(true);
+            // });
+            // actionButtons.append(addAll_noScan);
+            // window.actionPanel_scan.append(actionButtons);
+
+
+            // window.actionPanel_upload = $('<div></div>');
+            // var fileUploadSelect = $('<input id="file-upload-select" type="file" webkitdirectory directory multiple /><br />');
+            // window.actionPanel_upload.append(fileUploadSelect);
+            // var optionsPanel = $('<div style="display:flex;flex-direction:row;"></div>');
+            // window.actionPanel_upload.append(optionsPanel);
+            // var existingFiles = $('<div><div>Existing files with the same name:</div><fieldset id="existing-files">' +
+            //         '<input type="radio" id="radio-keep-existing" name="existing-files" value="keepExisting" checked />' +
+            //         '<label for="radio-keep-existing">keep existing and rename new files</label><br />' +
+            //         '<input type="radio" id="radio-skip-existing" name="existing-files" value="skipExisting" />' +
+            //         '<label for="radio-skip-existing">skip</label><br />' +
+            //         '<input type="radio" id="radio-replace-existing" name="existing-files" value="replaceExisting" />' +
+            //         '<label for="radio-replace-existing">overwrite</label><br />' +
+            //         '</fieldset></div>');
+            // optionsPanel.append(existingFiles);
+
+            // // split options (TODO: add description on how this works...)
+            // var splitOptions = $('<div style="margin-left:20px"><input type="checkbox" id="split-patches-chck" />' +
+            //         '<label for="split-patches-chck">Split images into tiles:</label><br />' +
+            //         '<div id="split-patches-properties" style="margin-left:20px">' +
+            //         '<table><thead><tr><th></th><th>Horizontal</th><th>Vertical</th></tr></thead><tbody>' +
+            //         '<tr><td>Patch size:</td>' +
+            //         '<td><input type="number" id="patch-size-width" min="16" max="4096" value="800" disabled="disabled" /></td>' +
+            //         '<td><input type="number" id="patch-size-height" min="16" max="4096" value="600" disabled="disabled" /></td></tr>' +
+            //         '<tr><td>Stride:</td>' +
+            //         '<td><input type="number" id="patch-stride-width" min="16" max="4096" value="800" disabled="disabled" /></td>' +
+            //         '<td><input type="number" id="patch-stride-height" min="16" max="4096" value="600" disabled="disabled" /></td></tr></tbody></table>' +
+            //         '<input type="checkbox" id="patch-tight-chck" checked="checked" disabled="disabled" /><label for="patch-tight-chck">Do not exceed image boundaries</label><br />' +
+            //         '<input type="checkbox" id="discard-empty-chck" disabled="disabled" /><label for="discard-empty-chck"><span>Discard patches with</span>' +
+            //         '<input type="number" min="1" max="99" value="5" id="discard-empty-percentage" disabled="disabled" /><span>% or more homogeneous pixels</span></label>' +
+            //         '<div style="margin-left:10px"><span>Quantization value:</span><input type="number" min="1" max="255" value="255" id="discard-empty-quantization-value" disabled="disabled" />' +
+            //         '<div style="font-style:italic">Determines the color variation between pixels during homogeneity evaluation. Smaller quantization values (>0) result in more diverse pixels being considered homogeneous.</div></div>' +
+            //         '</div></div>');
+            // optionsPanel.append(splitOptions);
+
+            // var startFileUpload = $('<button class="btn btn-sm btn-primary" id="upload-button">Upload</button>');
+            // startFileUpload.on('click', function() {
+            //     startUploadFilesFromDisk();
+            // });
+            // window.actionPanel_upload.append(startFileUpload);
+            // $('#actions-panel').append(window.actionPanel_upload);
+            // $('#split-patches-chck').on('input', function() {
+            //     let checked = $(this).prop('checked');
+            //     $('#split-patches-properties').find('input').each(function() {
+            //         $(this).prop('disabled', !checked);
+            //     });
+            //     $('#discard-empty-percentage').prop('disabled', !(checked & $('#discard-empty-chck').prop('checked')));
+            //     $('#discard-empty-quantization-value').prop('disabled', !(checked & $('#discard-empty-chck').prop('checked')));
+            // });
+            // $('#discard-empty-chck').on('input', function() {
+            //     let checked = $(this).prop('checked');
+            //     $('#discard-empty-percentage').prop('disabled', !checked);
+            //     $('#discard-empty-quantization-value').prop('disabled', !checked);
+            // });
+            // $('#upload-mode-select input:radio').on('change', function() {
+            //     if($(this).val() === 'browserUpload') {
+            //         window.actionPanel_scan.detach();
+            //         $('#actions-panel').append(window.actionPanel_upload);
+
+            //     } else if($(this).val() === 'scanDisk') {
+            //         window.actionPanel_upload.detach();
+            //         $('#actions-panel').append(window.actionPanel_scan);
+            //     }
+            //     window.imageBrowser.setImages([]);
+            //     window.untrackedFiles = undefined;
+            //     setImageBrowserSize();
+            // });
+
+            // // annotation parsing
+            // $('#parse-annotations-enabled').on('input', function() {
+            //     if($(this).prop('checked')) {
+            //         $('#annotation-options-panel').slideDown();
+            //     } else {
+            //         $('#annotation-options-panel').slideUp();
+            //     }
+            // });
+            // $('#annotation-format').on('input', function() {
+            //     setSelectedParser($(this).val());
+            // });
+
             $('#upload-mode-select input:radio').on('change', function() {
                 if($(this).val() === 'browserUpload') {
-                    window.actionPanel_scan.detach();
-                    $('#actions-panel').append(window.actionPanel_upload);
+                    $('#scan-dir-panel').hide();
+                    $('#upload-data-panel').show();
+                    // window.actionPanel_scan.detach();
+                    // $('#actions-panel').append(window.actionPanel_upload);
 
                 } else if($(this).val() === 'scanDisk') {
-                    window.actionPanel_upload.detach();
-                    $('#actions-panel').append(window.actionPanel_scan);
+                    $('#scan-dir-panel').show();
+                    $('#upload-data-panel').hide();
+                    // window.actionPanel_upload.detach();
+                    // $('#actions-panel').append(window.actionPanel_scan);
                 }
                 window.imageBrowser.setImages([]);
                 window.untrackedFiles = undefined;
                 setImageBrowserSize();
             });
-
 
             setImageBrowserSize();
             window.showLoadingOverlay(false);

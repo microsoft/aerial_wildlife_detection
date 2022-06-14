@@ -332,7 +332,9 @@ MODIFICATIONS_sql = [
   'ALTER TABLE "aide_admin".project ADD COLUMN IF NOT EXISTS render_config VARCHAR;',
   'ALTER TYPE labelType ADD VALUE IF NOT EXISTS \'polygons\';',
   'ALTER TABLE "aide_admin".modelMarketplace DROP COLUMN IF EXISTS annotationType;',
-  'ALTER TABLE "aide_admin".modelMarketplace DROP COLUMN IF EXISTS predictionType;'
+  'ALTER TABLE "aide_admin".modelMarketplace DROP COLUMN IF EXISTS predictionType;',
+  'ALTER TABLE "{schema}".image ADD COLUMN IF NOT EXISTS width INTEGER;',
+  'ALTER TABLE "{schema}".image ADD COLUMN IF NOT EXISTS height INTEGER;'
 ]
 
 

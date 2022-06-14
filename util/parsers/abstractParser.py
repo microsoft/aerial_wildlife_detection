@@ -5,20 +5,30 @@
 '''
 
 import os
+import tempfile
 from psycopg2 import sql
 
 
 
 class AbstractAnnotationParser:
 
+    NAME = '(abstract parser)'  # format name
+    INFO = ''                   # HTML-formatted info text about format
     ANNOTATION_TYPES = ()       # annotation types supported by parser
 
-    def __init__(self, config, dbConnector, project):
+    def __init__(self, config, dbConnector, project, user, annotationType):
         self.config = config
         self.dbConnector = dbConnector
         self.project = project
+        self.user = user
+        self.annotationType = annotationType
+        assert annotationType in self.ANNOTATION_TYPES, f'unsupported annotation type "{annotationType}"'
 
         self.projectRoot = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), self.project)
+        self.tempDir = os.path.join(
+            self.config.getProperty('FileServer', 'tempfiles_dir', type=str, fallback=tempfile.gettempdir()),
+            self.project
+        )
 
         self._init_labelclasses()
 
@@ -35,9 +45,26 @@ class AbstractAnnotationParser:
         ''').format(sql.Identifier(self.project, 'labelclass')),
         None, 'all')
         self.labelClasses = dict([[l['name'], l['id']] for l in lcIDs])
+    
+
+    @classmethod
+    def get_html_options(cls, method):
+        '''
+            Returns a string for a HTML block containing elements for
+            parser-specific properties (if available, else just returns an empty
+            string).
+            Parameter "method" can be one of {'import', 'export'} and determines
+            the mode (label import or export) for which the HTML options string
+            should be prepared.
+            During parsing, only "input" HTML elements (all types) will be checked
+            within the block returned here and a JSON object with "input" elements'
+            id as key and value will be provided to the parser.
+        '''
+        return ''
 
 
-    def is_parseable(self, fileList):
+    @classmethod
+    def is_parseable(cls, fileList):
         '''
             Receives an Iterable of strings of files and determines whether the
             provided files correspond to the format expected by the parser.
@@ -67,7 +94,7 @@ class AbstractAnnotationParser:
 
             Returns a dict with entries as follows:
                 {
-                    'ids': Iterable of UUIDs of successfully imported annotations,
+                    'result': Dict of <image UUID> : Iterable of successfully imported annotation UUIDs
                     'warnings': Iterable of strings denoting warnings that occurred
                                 during import,
                     'errors': Iterable of strings denoting errors/unparsable
@@ -75,7 +102,7 @@ class AbstractAnnotationParser:
                 }
             
             * note that this will only include annotations that are, in principle,
-              parsable, but could not be imported due to unforeseen reasons. It
+              parseable, but could not be imported due to unforeseen reasons. It
               does NOT include data (files, etc.) that are unreadable by the cur-
               rent parser.
         '''
@@ -84,7 +111,27 @@ class AbstractAnnotationParser:
     
     def export_annotations(self, annotations, destination, **kwargs):
         '''
-            TODO
+            Inputs:
+            - "annotations":    Dict as follows:
+                                {
+                                    "labelclasses": [],
+                                    "images": [],
+                                    "annotations": [
+                                        {
+                                            "id": <UUID>,
+                                            "labelclass": <UUID>,
+                                            # any other, annotation type-specific fields
+                                        }
+                                    ]
+                                }
+            - "destination":    Zipfile handle to write files in. The exact file(s)
+                                created therein is up to the parser subclass.
+            Parsers may accept any custom keyword arguments for options.
+
+            Returns a dict with entries as follows:
+                {
+                    'files':    Iterable of files created in the "destination"
+                }
         '''
         raise NotImplementedError('Not implemented for abstract base class.')
     

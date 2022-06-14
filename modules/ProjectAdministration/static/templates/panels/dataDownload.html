@@ -2,12 +2,35 @@
 <div>
     <h2>Data download</h2>
     <div class="option-box">
-        <label for="data-type">Data type:</label>
+        <table>
+            <tr>
+                <td>Data type:</td>
+                <td>
+                    <select id="data-type">
+                        <option value="annotation">User annotations</option>
+                        <option value="prediction">Model predictions</option>
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <td>Export format:</td>
+                <td>
+                    <select id="export-format"></select>
+                </td>
+            </tr>
+        </table>
+
+        <div style="margin-left:20px">
+            <h3>Format info</h3>
+            <div id="export-format-info">(none)</div>
+        </div>
+
+        <!-- <label for="data-type">Data type:</label>
         <select id="data-type">
             <option value="annotation">User annotations</option>
             <option value="prediction">Model predictions</option>
         </select>
-        <br />
+        <br /> -->
 
         <input type="checkbox" id="enable-date-range" />
         <label for="enable-date-range">Limit to date and time range:</label>
@@ -19,9 +42,9 @@
         </div>
         <br />
         
-        <input type="checkbox" id="enable-users-list" />
-        <label for="enable-users-list">Limit to specific users:</label>
-        <table id="users-table" style="display:none">
+        <input type="checkbox" id="enable-authors-list" />
+        <label for="enable-authors-list" id="enable-authors-list-label">Limit to specific users:</label>
+        <table id="users-table" class="authors-table" style="display:none">
             <thead>
                 <tr>
                     <th><input type="checkbox" id="select-all-users" /></th>
@@ -30,8 +53,28 @@
             </thead>
             <tbody id="users-list"></tbody>
         </table>
+        <table id="models-table" class="authors-table" style="display:none">
+            <thead>
+                <tr>
+                    <th><input type="checkbox" id="select-all-models" /></th>
+                    <th>Date</th>
+                    <th>Model</th>
+                    <th>Author</th>
+                    <th># predictions</th>
+                </tr>
+            </thead>
+            <tbody id="models-list"></tbody>
+        </table>
+        <br />
+        <input type="checkbox" id="ignore-imported" checked="checked" />
+        <label for="ignore-imported">Ignore imported (non user-/model-created) annotations</label>
 
-        <div>Include extra fields:</div>
+        <div id="custom-parser-options-container" style="display:none">
+            <h3>Format options</h3>
+            <div id="custom-parser-options" style="margin-left:20px"></div>
+        </div>
+
+        <!-- <div>Include extra fields:</div>
         <input type="checkbox" id="field-browser-meta" />
         <label for="field-browser-meta">Browser metadata</label>
 
@@ -69,7 +112,7 @@
                 "Indexed colors" assigns the label classes' actual index number to the pixels and defines their colors
                 in a lookup table. These images are easier to parse, but may not render properly in conventional image viewers.
             </div>
-        </div>
+        </div> -->
     </div>
     <button class="btn btn-sm btn-primary" id="request-download">Request Download</button>
     <br />
@@ -100,6 +143,10 @@
         margin-top: 30px;
     }
 
+    .authors-table {
+        border: 1px solid #aaa;
+    }
+
     #downloads-table {
         width: 100%;
         border: 1px solid #aaa;
@@ -107,7 +154,7 @@
         min-height: 200px;
     }
 
-    #downloads-table thead {
+    #downloads-table thead, .authors-table thead {
         display: block;
         background-color:#606060;
         font-weight: bold;
@@ -193,48 +240,70 @@
             }
         }
 
-        function requestDownload() {
-            // parse parameters
-            var params = {
-                dataType: $('#data-type').val()
-            };
-            if($('#enable-date-range').prop('checked')) {
-                var startDate = Date.parse($('#date-start').val());
-                var endDate = Date.parse($('#date-end').val());
-                params['dateRange'] = {
-                    start: startDate,
-                    end: endDate
+        function requestDownload(params) {
+            if(params === undefined) {
+                // parse parameters
+                let dataType = $('#data-type').val();
+                params = {
+                    exportFormat: $('#export-format').val(),
+                    dataType: dataType,
+                    ignoreImported: $('#ignore-imported').prop('checked')
+                };
+                if($('#enable-date-range').prop('checked')) {
+                    var startDate = Date.parse($('#date-start').val());
+                    var endDate = Date.parse($('#date-end').val());
+                    params['dateRange'] = {
+                        start: startDate,
+                        end: endDate
+                    }
                 }
-            }
-            if($('#enable-users-list').prop('checked')) {
-                var usersList = [];
-                $.each($('#users-list').children(), function() {
-                    let chckbx = $('#'+$(this).attr('id')+'__select');
-                    if(chckbx.prop('checked')) {
-                        usersList.push($(this).attr('id'));
+                if($('#enable-authors-list').prop('checked')) {
+                    let authorList = [];
+                    let listID = (dataType === 'annotation') ? '#users-list' : '#models-list';
+                    $.each($(listID).children(), function() {
+                        let chckbx = $('#'+$(this).attr('id')+'__select');
+                        if(chckbx.prop('checked')) {
+                            authorList.push($(this).attr('id'));
+                        }
+                    });
+                    params['authorList'] = authorList;
+                }
+
+                // parser-specific arguments
+                let parserKwargs = {};
+                $('#custom-parser-options').find(':input').each(function() {
+                    let id = $(this).attr('id');
+                    let checked = $(this).prop('checked');
+                    if(checked !== undefined) {
+                        parserKwargs[id] = checked;
+                    } else {
+                        let value = $(this).val();
+                        if(val !== undefined) {
+                            parserKwargs[id] = val;
+                        }
                     }
                 });
-                params['users'] = usersList;
+                params['parserArgs'] = parserKwargs;
             }
 
-            // additional query fields
-            params['extra_fields'] = {
-                'meta': $('#field-browser-meta').prop('checked')
-            }
+            // // additional query fields
+            // params['extra_fields'] = {
+            //     'meta': $('#field-browser-meta').prop('checked')
+            // }
 
-            // extra parameters for segmentation masks
-            if(window.annotationType === 'segmentationMasks') {
-                params['segmask_encoding'] = $('#segmask-encoding').val();
-                params['segmask_filename'] = {
-                    'baseName': $('#segmask-filename').val(),
-                    'prefix': $('#segmask-filename-prefix').val(),
-                    'suffix': $('#segmask-filename-suffix').val()
-                };
-            }
+            // // extra parameters for segmentation masks
+            // if(window.annotationType === 'segmentationMasks') {
+            //     params['segmask_encoding'] = $('#segmask-encoding').val();
+            //     params['segmask_filename'] = {
+            //         'baseName': $('#segmask-filename').val(),
+            //         'prefix': $('#segmask-filename-prefix').val(),
+            //         'suffix': $('#segmask-filename-suffix').val()
+            //     };
+            // }
 
             // make request
             return $.ajax({
-                url: window.baseURL + 'requestDownload',
+                url: window.baseURL + 'requestAnnotations',
                 method: 'POST',
                 data: JSON.stringify(params),
                 contentType: 'application/json; charset=utf-8',
@@ -274,7 +343,7 @@
                 statusCode: {
                     401: function(xhr) {
                         return window.renewSessionRequest(xhr, function() {
-                            return requestDownload();
+                            return requestDownload(params);
                         });
                     }
                 }
@@ -290,7 +359,7 @@
             }
         });
 
-        // load users list
+        // load users and model states list
         function _loadUsers() {
             let uList = $('#users-list');
             return $.ajax({
@@ -322,11 +391,66 @@
                 }
             });
         }
+        function _loadModels() {
+            let mList = $('#models-list');
+            return $.ajax({
+                url: window.baseURL + 'listModelStates',
+                method: 'GET',
+                success: function(data) {
+                    modelsProject = data['modelStates'];
+                    for(var m=0; m<modelsProject.length; m++) {
+                        let model = modelsProject[m];
+                        let mid = model['id'];
+                        let markup = $('<tr id="' + mid + '"></tr>');
+                        markup.append($('<td><input type="checkbox" id="'+mid+'__select" /></td>'));
+                        markup.append($('<td>' + new Date(model['time_created']*1000).toLocaleString() + '</td>'));
+                        markup.append($('<td>' + model['model_library']['name'] + '</td>'));
+                        markup.append($('<td>' + model['model_library']['author'] + '</td>'));
+                        markup.append($('<td>' + model['num_pred'] + '</td>'));
+                        mList.append(markup);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error(data);
+                    window.messager.addMessage('Models could not be loaded (message: "'+error+'").', 'error', 0);
+                },
+                statusCode: {
+                    401: function(xhr) {
+                        return window.renewSessionRequest(xhr, function() {
+                            return _loadModels();
+                        });
+                    }
+                }
+            });
+        }
+        function _loadParsers() {
+            return $.ajax({
+                url: window.baseURL + 'getSupportedAnnotationFormats?method=export',
+                method: 'GET',
+                success: function(data) {
+                    window.formats = data['formats'];
+
+                    // populate select dropdown menu
+                    updateAvailableParsers();
+                },
+                error: function(xhr, status, error) {
+                    console.error(data);
+                    window.messager.addMessage('Supported data formats could not be loaded (message: "'+error+'").', 'error', 0);
+                },
+                statusCode: {
+                    401: function(xhr) {
+                        return window.renewSessionRequest(xhr, function() {
+                            return _loadParsers();
+                        });
+                    }
+                }
+            });
+        }
         promise = promise.done(function() {
-            return _loadUsers();
+            return Promise.all([_loadUsers(), _loadModels(), _loadParsers()]);
         });
 
-        var now = new Date();
+        let now = new Date();
         $('#date-start').datetimepicker({
             maxDateTime: now
         });
@@ -343,9 +467,30 @@
             }
         });
 
-        $('#enable-users-list').click(function() {
+        $('#data-type').on('input', function() {
+            let authorsListEnabled = $('#enable-authors-list').prop('checked') ? 'block' : 'none';
+            if($(this).val() === 'annotation') {
+                $('#enable-authors-list-label').html('Limit to specific users:');
+                $('#users-table').css('display', authorsListEnabled);
+                $('#models-table').hide();
+            } else {
+                $('#enable-authors-list-label').html('Limit to specific models:');
+                $('#users-table').hide();
+                $('#models-table').css('display', authorsListEnabled);
+            }
+        });
+
+        $('#enable-authors-list').click(function() {
             if($(this).prop('checked')) {
-                $('#users-table').show();
+                let dataType = $('#data-type').val();
+                if(dataType === 'annotation') {
+                    $('#users-table').show();
+                    $('#models-table').hide();
+                } else {
+                    $('#users-table').hide();
+                    $('#models-table').show();
+                }
+                
             } else {
                 $('#users-table').hide();
             }
@@ -358,6 +503,43 @@
                 let chckbx = $('#'+$(this).attr('id')+'__select');
                 chckbx.prop('checked', isChecked);
             });
+        });
+        $('#select-all-models').click(function() {
+            let isChecked = $(this).prop('checked');
+            let mList = $('#models-list');
+            $.each(mList.children(), function() {
+                let chckbx = $('#'+$(this).attr('id')+'__select');
+                chckbx.prop('checked', isChecked);
+            });
+        });
+
+        // handle available parsers and their custom options
+        function updateAvailableParsers() {
+            let exportFormatSel = $('#export-format');
+            exportFormatSel.empty();
+            let dataType = $('#data-type').val();
+            for(var fkey in window.formats[dataType]) {
+                let fspec = window.formats[dataType][fkey];
+                let option = $('<option value="' + fkey + '">' + fspec['name'] + '</option>');
+                exportFormatSel.append(option);
+            }
+            setSelectedParser();
+        }
+        function setSelectedParser() {
+            let dataType = $('#data-type').val();
+            let parserKey = $('#export-format').val();
+            $('#export-format-info').html(window.formats[dataType][parserKey]['info']);
+            let parserOptions = window.formats[dataType][parserKey]['options'];
+            if(parserOptions !== undefined && parserOptions !== null && parserOptions.length > 0) {
+                $('#custom-parser-options').append($(parserOptions));
+                $('#custom-parser-options-container').show();
+            } else {
+                $('#custom-parser-options').empty();
+                $('#custom-parser-options-container').hide();
+            }
+        }
+        $('#export-format').on('input', function() {
+            setSelectedParser();
         });
 
         // enable extra settings for certain annotation types

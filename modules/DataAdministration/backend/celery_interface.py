@@ -28,6 +28,11 @@ def aide_internal_notify(message):
     return worker.aide_internal_notify(message)
 
 
+@current_app.task(name='DataAdministration.verify_images', rate_limit=1)
+def verifyImages(projects, quickCheck=True):
+    return worker.verifyImages(projects, quickCheck)
+
+
 @current_app.task(name='DataAdministration.list_images')
 def listImages(project, folder=None, imageAddedRange=None, lastViewedRange=None,
         viewcountRange=None, numAnnoRange=None, numPredRange=None,
@@ -51,7 +56,11 @@ def addExistingImages(project, imageList=None, skipIntegrityCheck=False):
 def removeImages(project, imageList, forceRemove=False, deleteFromDisk=False):
     return worker.removeImages(project, imageList, forceRemove, deleteFromDisk)
 
+@current_app.task(name='DataAdministration.request_annotations')
+def requestAnnotations(project, username, exportFormat, dataType='annotation', authorList=None, dateRange=None, ignoreImported=False, parserArgs={}):
+    return worker.requestAnnotations(project, username, exportFormat, dataType, authorList, dateRange, ignoreImported, parserArgs)
 
+# deprecated
 @current_app.task(name='DataAdministration.prepare_data_download')
 def prepareDataDownload(project, dataType='annotation', userList=None, dateRange=None, extraFields=None, segmaskFilenameOptions=None, segmaskEncoding='rgb'):
     return worker.prepareDataDownload(project, dataType, userList, dateRange, extraFields, segmaskFilenameOptions, segmaskEncoding)

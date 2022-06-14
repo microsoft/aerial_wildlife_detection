@@ -3,11 +3,12 @@
     - AIController
     - AIWorker
     - DataManagement
+    - FileServer
 
     depending on the "AIDE_MODULES" environment
     variable.
 
-    2020-21 Benjamin Kellenberger
+    2020-22 Benjamin Kellenberger
 '''
 
 import os
@@ -116,6 +117,10 @@ app.conf.update(
             'queue': 'AIWorker',
             'routing_key': 'call_inference'
         },
+        'DataAdministration.verify_images': {
+            'queue': 'FileServer',
+            'routing_key': 'verify_images'
+        },
         'DataAdministration.list_images': {
             'queue': 'FileServer',
             'routing_key': 'list_images'
@@ -132,6 +137,11 @@ app.conf.update(
             'queue': 'FileServer',
             'routing_key': 'remove_images'
         },
+        'DataAdministration.request_annotations': {
+            'queue': 'FileServer',
+            'routing_key': 'request_annotations'
+        },
+        # deprecated
         'DataAdministration.prepare_data_download': {
             'queue': 'FileServer',
             'routing_key': 'prepare_data_download'

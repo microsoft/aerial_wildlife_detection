@@ -99,11 +99,11 @@ class AbstractImageDriver:
         return False
 
     @classmethod
-    def load_from_disk(cls, filePath):
+    def load_from_disk(cls, filePath, **kwargs):
         raise NotImplementedError('Not implemented for abstract base class.')
     
     @classmethod
-    def load_from_bytes(cls, bytea):
+    def load_from_bytes(cls, bytea, **kwargs):
         raise NotImplementedError('Not implemented for abstract base class.')
     
     @classmethod
@@ -147,16 +147,24 @@ class PILImageDriver(AbstractImageDriver):
         return True
 
     @classmethod
-    def load_from_disk(cls, filePath):
-        arr = np.array(cls.loader.open(filePath))
+    def load_from_disk(cls, filePath, **kwargs):
+        img = cls.loader.open(filePath)
+        if 'window' in kwargs:
+            # crop
+            img = img.crop(*kwargs['window'])
+        arr = np.array(img)
         if arr.ndim == 2:
             return arr[np.newaxis,...]
         else:
             return arr.transpose((2,0,1))
     
     @classmethod
-    def load_from_bytes(cls, bytea):
-        arr = np.array(cls.loader.open(bytea_to_bytesio(bytea)))
+    def load_from_bytes(cls, bytea, **kwargs):
+        img = cls.loader.open(bytea_to_bytesio(bytea))
+        if 'window' in kwargs:
+            # crop
+            img = img.crop(*kwargs['window'])
+        arr = np.array(img)
         if arr.ndim == 2:
             return arr[np.newaxis,...]
         else:
@@ -202,6 +210,8 @@ class GDALImageDriver(AbstractImageDriver):
         cls.driver = rasterio
         from rasterio.io import MemoryFile
         cls.memfile = MemoryFile
+        from rasterio.windows import Window
+        cls.window = Window
 
         # filter "NotGeoreferencedWarning"      #TODO: test
         import warnings
@@ -209,16 +219,26 @@ class GDALImageDriver(AbstractImageDriver):
         return True
     
     @classmethod
-    def load_from_disk(cls, filePath):
+    def load_from_disk(cls, filePath, **kwargs):
+        if 'window' in kwargs:
+            # crop
+            window = cls.window(**kwargs['window'])
+        else:
+            window = None
         with cls.driver.open(filePath, 'r') as f:
-            raster = f.read()
+            raster = f.read(window=window)
         return raster
     
     @classmethod
-    def load_from_bytes(cls, bytea):
+    def load_from_bytes(cls, bytea, **kwargs):
+        if 'window' in kwargs:
+            # crop
+            window = cls.window(**kwargs['window'])
+        else:
+            window = None
         with cls.memfile(bytesio_to_bytea(bytea)) as memfile:
             with memfile.open() as f:
-                raster = f.read()
+                raster = f.read(window=window)
         return raster
 
     @classmethod
@@ -262,7 +282,7 @@ class DICOMImageDriver(AbstractImageDriver):
         return True
     
     @classmethod
-    def load_from_disk(cls, filePath):
+    def load_from_disk(cls, filePath, **kwargs):
         data = cls.loader(filePath)
         raster = data.pixel_array
         if raster.ndim == 2:
@@ -270,7 +290,7 @@ class DICOMImageDriver(AbstractImageDriver):
         return raster
     
     @classmethod
-    def load_from_bytes(cls, bytea):
+    def load_from_bytes(cls, bytea, **kwargs):
         bytesIO = bytea_to_bytesio(bytea)
         data = cls.loader(bytesIO)
         raster = data.pixel_array

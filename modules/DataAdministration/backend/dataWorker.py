@@ -11,10 +11,12 @@ import os
 import io
 import re
 import shutil
+import glob
 import tempfile
 import zipfile
 import json
 import math
+import hashlib
 import numpy as np
 from datetime import datetime
 import pytz
@@ -24,9 +26,9 @@ from PIL import Image
 from psycopg2 import sql
 from celery import current_task
 from modules.LabelUI.backend.annotation_sql_tokens import QueryStrings_annotation, QueryStrings_prediction
-from util.helpers import FILENAMES_PROHIBITED_CHARS, listDirectory, base64ToImage, hexToRGB, slugify, current_time
+from util.helpers import FILENAMES_PROHIBITED_CHARS, listDirectory, base64ToImage, hexToRGB, slugify, current_time, is_fileServer
 from util.imageSharding import split_image
-from util import drivers
+from util import drivers, parsers
 
 
 class DataWorker:
@@ -35,6 +37,7 @@ class DataWorker:
 
     CELERY_UPDATE_INTERVAL = 100    # number of images to wait until Celery task status gets updated
 
+    VERIFICATION_BATCH_SIZE = 1024  # number of images to verify at a time
 
     def __init__(self, config, dbConnector, passiveMode=False):
         self.config = config
@@ -42,7 +45,13 @@ class DataWorker:
         self.countPattern = re.compile('\_[0-9]+$')
         self.passiveMode = passiveMode
 
+        if not is_fileServer(self.config):
+            raise Exception('Not a FileServer instance.')
+
+        self.filesDir = self.config.getProperty('FileServer', 'staticfiles_dir')
         self.tempDir = self.config.getProperty('FileServer', 'tempfiles_dir', type=str, fallback=tempfile.gettempdir())
+
+        self.uploadSessions = {}
 
 
 
@@ -67,6 +76,87 @@ class DataWorker:
 
     
     ''' Image administration functionalities '''
+    def verifyImages(self, projects=None, quickCheck=True):
+        '''
+            Iterates through all provided project folders (all registered
+            projects if None specified) and checks all images registered in the
+            database for integrity:
+            1. Attempts to load image from disk
+            2. Checks number of bands and whether this corresponds to the
+               project settings
+            3. Retrieves image dimensions and registers that information in
+               the database (unless already there).
+            
+            If "quickCheck" is True (default), only images that have no
+            width or height registered will be checked.
+        '''
+        print('Starting image verification...')
+        allProjects = self.dbConnector.execute(sql.SQL('''
+            SELECT shortname FROM "aide_admin".project;
+        '''), None, 'all')
+        allProjects = set([p['shortname'] for p in allProjects])
+        if projects is None:
+            projects = allProjects
+        else:
+            projects = set(projects).intersection(allProjects)
+        
+        if not len(projects):
+            print('\tNo valid project(s) found.')
+            return
+
+        def _commit_updates(project, meta):
+            self.dbConnector.insert(sql.SQL('''
+                INSERT INTO {} (id, width, height, corrupt)
+                VALUES %s
+                ON CONFLICT(id) DO UPDATE
+                SET width=EXCLUDED.width, height=EXCLUDED.height,
+                    corrupt=EXCLUDED.corrupt;
+            ''').format(sql.Identifier(project, 'image')), meta)
+        
+        if quickCheck:
+            quickCheckStr = sql.SQL('WHERE width IS NULL OR height IS NULL')
+        else:
+            quickCheckStr = sql.SQL('')
+
+        for pIdx, project in projects:
+            print(f'[{pIdx+1}/{len(projects)}] Project "{project}"...')
+
+            # get all registered images
+            with self.dbConnector.execute_cursor(sql.SQL('''
+                    SELECT id, filename, width, height
+                    FROM {}
+                    {};
+                ''').format(sql.Identifier(project, 'image'), quickCheckStr), None) as cursor:
+                metadata = []
+                while True:
+                    nextImg = cursor.fetchone()
+                    if nextImg is None:
+                        break
+
+                    # integrity checks
+                    try:
+                        # attempt to load image from disk
+                        img = drivers.load_from_disk(os.path.join(self.filesDir, project, nextImg['filename']))
+                        width, height = img.shape[2], img.shape[1]
+                        if nextImg['width'] is None or nextImg['height'] is None or \
+                            nextImg['width'] != width or nextImg['height'] != height:
+                            # update database record
+                            metadata.append((nextImg['id'], width, height, False))
+
+                    except:
+                        # error; mark image as corrupt
+                        metadata.append((nextImg['id'], None, None, True))
+
+                    if len(metadata) >= self.VERIFICATION_BATCH_SIZE:
+                        # commit to database
+                        _commit_updates(project, metadata)
+                        metadata = []
+                
+                if len(metadata):
+                    _commit_updates(project, metadata)
+
+
+
     def listImages(self, project, folder=None, imageAddedRange=None, lastViewedRange=None,
             viewcountRange=None, numAnnoRange=None, numPredRange=None,
             orderBy=None, order='desc', startFrom=None, limit=None):
@@ -191,14 +281,130 @@ class DataWorker:
         return result
 
 
-    def uploadImages(self, project, images, existingFiles='keepExisting',
-        splitImages=False, splitProperties=None, convertUnsupported=True):
+
+    def createUploadSession(self, project, user, numFiles, uploadImages=True,
+        existingFiles='keepExisting', splitImages=False, splitProperties=None,
+        convertUnsupported=True,
+        parseAnnotations=False,
+        skipUnknownClasses=False, markAsGoldenQuestions=False,
+        parserID=None, parserKwargs={}):
+        '''
+            Creates a new session of image and/or label files upload.
+            Receives metadata regarding the upload (whether to import
+            images, annotations; parameters; number of expected files) and
+            creates a new session id. Then, the session's metadata gets
+            stored in the "<temp folder>/aide_admin/<project>/<session id>"
+            directory in a JSON file.
+
+            The idea behind sessions is to inform the server about the
+            expected number of files to be uploaded. Basically, we want to
+            only parse annotations once every single file has been uploaded
+            and parsed, to make sure we have no data loss.
+
+            Returns the session ID as a response.
+        '''
+        now = current_time()
+        sessionName = f'upload_{slugify(now)}_{user}'
+        sessionID = hashlib.md5(bytes(sessionName, 'utf-8')).hexdigest()
+
+        # create temporary file structures and save metadata file
+        tempDir_session = os.path.join(self.tempDir, project, 'upload_sessions', sessionID)
+        os.makedirs(os.path.join(tempDir_session, 'files'), exist_ok=False)             # temporary location of uploaded files
+        os.makedirs(os.path.join(tempDir_session, 'uploads'), exist_ok=False)           # location to store lists of uploaded files and corresponding AIDE imports
+
+        # cache project-specific properties
+        projectProps = self.dbConnector.execute('''
+            SELECT annotationType, band_config
+            FROM "aide_admin".project
+            WHERE shortname = %s;
+        ''', (project,), 1)[0]
+
+        # assertions of session meta parameters
+        assert uploadImages or parseAnnotations, \
+            'either image upload or annotation parsing (or both) must be enabled'
+        assert not (parseAnnotations and (uploadImages and splitImages)), \
+            'cannot both split images into patches and parse annotations'           #TODO: implement
+        if parseAnnotations:
+            annotationType = projectProps['annotationtype']
+            assert annotationType in parsers.PARSERS and \
+                (parserID is None or parserID in parsers.PARSERS[annotationType]), \
+                f'unsupported annotation parser "{parserID}"'
+
+        try:
+            bandConfig = json.loads(projectProps['band_config'])
+            bandNum = set((len(bandConfig),))
+            customBandConfig = True         # for non-RGB images
+        except:
+            bandNum = (1,3)
+            customBandConfig = False
+
+        sessionMeta = {
+            'project': project,
+            'sessionID': sessionID,
+            'sessionName': sessionName,
+            'sessionDir': tempDir_session,
+            'user': user,
+            'numFiles': numFiles,
+            'uploadImages': uploadImages,
+            'existingFiles': existingFiles,
+            'splitImages': splitImages,
+            'splitProperties': splitProperties,
+            'convertUnsupported': convertUnsupported,
+            'parseAnnotations': parseAnnotations,
+            'skipUnknownClasses': skipUnknownClasses,
+            'markAsGoldenQuestions': markAsGoldenQuestions,
+            'parserID': parserID,
+            'parserKwargs': parserKwargs,
+
+            'annotationType': projectProps['annotationtype'],
+            'bandNum': bandNum,
+            'customBandConfig': customBandConfig
+        }
+        tempDir_metaFile = os.path.join(self.tempDir, project, 'upload_sessions')
+        os.makedirs(tempDir_metaFile, exist_ok=True)
+        json.dump(sessionMeta, open(os.path.join(tempDir_metaFile, sessionID+'.json'), 'w'))
+       
+        # cache for faster access
+        self.uploadSessions[sessionID] = sessionMeta
+
+        return sessionID
+
+    
+
+    def verifySessionAccess(self, project, user, sessionID):
+        '''
+            Returns True if a user has access to a given upload session ID
+            (i.e., they initiated it) and False if not or if the session with
+            given ID does not exist.
+        '''
+        if sessionID not in self.uploadSessions:
+            # check if on disk
+            tempDir_metaFile = os.path.join(self.tempDir, project, 'upload_sessions', sessionID+'.json')
+            if not os.path.isfile(tempDir_metaFile):
+                return False
+            try:
+                meta = json.load(open(tempDir_metaFile, 'r'))
+                self.uploadSessions[sessionID] = meta    
+            except:
+                return False
+        try:
+            assert self.uploadSessions[sessionID]['project'] == project
+            assert self.uploadSessions[sessionID]['user'] == user
+            return True
+        except:
+            return False
+
+
+
+    def uploadData(self, project, username, sessionID, files):
         '''
             Receives a dict of files (bottle.py file format), verifies their
             file extension and checks if they are loadable by PIL. If they are,
             they are saved to disk in the project's image folder, and registered
-            in the database. Parameter "existingFiles" can be set as follows:
-            - "keepExisting" (default): if an image already exists on disk with
+            in the database. Upload parameters will be queried from the
+            session's metadata as stored in JSON format in the FileServer's temp
+            directory. Parameter "existingFiles" can be set as follows: -
+            "keepExisting" (default): if an image already exists on disk with
               the same path/file name, the new image will be renamed with an
               underscore and trailing number.
             - "skipExisting": do not save images that already exist on disk
@@ -213,10 +419,8 @@ class DataWorker:
             defined in "splitProperties". For example, the following definition:
 
                 splitProperties = {
-                    'patchSize': (800, 600),
-                    'stride': (400, 300),
-                    'tight': True,
-                    'discard_homogeneous_percentage': 5,
+                    'patchSize': (800, 600), 'stride': (400, 300), 'tight':
+                    True, 'discard_homogeneous_percentage': 5,
                     'discard_homogeneous_quantization_value': 255
                 }
 
@@ -247,17 +451,41 @@ class DataWorker:
             issued for each converted image. Otherwise those images will be
             discarded and an error message will be appended.
 
+            If "parseAnnotations" is True, uploaded files will be given to a
+            parser to check for annotations to be uploaded to the project, too.
+            Parsing will take place after all images have been imported. TODO:
+            "splitImages" and "parseAnnotations" currently cannot both be True
+            (not implemented yet); setting both that way will raise an
+            Exception.
+
+            "parserID" is the key of the parser to be used (see
+            util.parsers.PARSERS). If it is set to None (default), an attempt
+            will be made to automatically determine the most appropriate parser,
+            based on the files uploaded.
+
+            "parserKwargs" is a dict of keyword arguments given to the parser at
+            runtime. This only works if "parserID" is set explicitly, otherwise
+            it will be ignored.
+
             Returns image keys for images that were successfully saved, and keys
             and error messages for those that were not.
         '''
+        # verify access
+        assert self.middleware.verifySessionAccess(project, username, sessionID), \
+                    'Upload session does not exist or user has no access to it'
+        
+        # load session metadata
+        meta = self.uploadSessions[sessionID]
+
+        now = slugify(current_time())
+
         # temp dir to save raw files to
-        tempRoot = os.path.join(self.tempDir, project, 'upload_' + slugify(current_time())) + os.sep
-        os.makedirs(tempRoot, exist_ok=False)
+        tempRoot = os.path.join(meta['sessionDir'], 'files')
 
         # save all files to temp dir temporarily
         tempFiles = {}
-        for key in images.keys():
-            nextUpload = images[key]
+        for key in files.keys():
+            nextUpload = files[key]
             nextFileName = nextUpload.raw_filename
             if nextFileName.startswith('/') or nextFileName.startswith('\\'):
                 nextFileName = nextFileName[1:]
@@ -272,287 +500,346 @@ class DataWorker:
                 'temp': tempFileName
             }
 
-        # get band configuration for project
-        hasCustomBandConfig = False
-        bandConfig = self.dbConnector.execute(
-            'SELECT band_config FROM "aide_admin".project WHERE shortname = %s;',
-            (project,), 1
-        )
-        try:
-            bandConfig = json.loads(bandConfig[0]['band_config'])
-            bandNum = set((len(bandConfig),))
-            hasCustomBandConfig = True
-        except:
-            # no custom render configuration specified; assume default no. bands
-            # of one (grayscale) or three (RGB)
-            bandNum = set((1, 3))
-
-        # iterate over files and process them
+        result = {}
         imgs_valid = {}
         imgs_warn = {}
         imgs_error = {}
         files_aux = {}        # auxiliary files for multi-file datasets, such as image headers
 
-        for key in tempFiles:
-            tempFileName = tempFiles[key]['temp']
-            originalFileName = tempFiles[key]['orig']
-            if os.path.isdir(tempFileName) or not os.path.exists(tempFileName):
-                continue
+        # image upload
+        if meta['uploadImages']:
+            bandNum = meta['bandNum']
+            hasCustomBandConfig = meta['customBandConfig']
 
-            imgKey, ext = os.path.splitext(originalFileName)
-            ext = ext.lower()
+            # iterate over files and process them
+            for key in tempFiles:
+                tempFileName = tempFiles[key]['temp']
+                originalFileName = tempFiles[key]['orig']
+                if os.path.isdir(tempFileName) or not os.path.exists(tempFileName):
+                    continue
 
-            # try to load file with drivers
-            isLoadable = False
-            try:
-                # pixelArray = drivers.load_from_disk(file)     
-                pixelArray = drivers.load_from_disk(tempFileName)       #TODO: load only small window once implemented to prevent out-of-memory errors
+                imgKey, ext = os.path.splitext(originalFileName)
+                ext = ext.lower()
 
-                # loading succeeded; move entries about potential header files from imgs_error to files_aux
-                isLoadable = True
-                forceConvert = False
-                if imgKey in imgs_error:
-                    files_aux[imgKey] = imgs_error[imgKey]
-                    del imgs_error[imgKey]
-                
-                bandNum_current = pixelArray.shape[0]
-                if bandNum_current not in bandNum:
-                    raise Exception(f'Image "{originalFileName}" has invalid number of bands (expected: {str(bandNum)}, actual: {str(bandNum_current)}).')
-                elif bandNum_current == 1 and not hasCustomBandConfig:
-                    # project expects RGB data but image is grayscale; replicate for maximum compatibility
-                    pixelArray = np.concatenate((pixelArray, pixelArray, pixelArray), -1)
-                    forceConvert = True         # set to True to force saving file to disk instead of simply copying it
+                # try to load file with drivers
+                isLoadable = False
+                try:
+                    # pixelArray = drivers.load_from_disk(file)     
+                    pixelArray = drivers.load_from_disk(tempFileName)       #TODO: load only small window once implemented to prevent out-of-memory errors
 
-                targetMimeType = None
-                if ext not in drivers.SUPPORTED_DATA_EXTENSIONS:
-                    # file is supported by drivers but not by Web front end
-                    if convertUnsupported:
-                        # replace file name extension and add warning message
-                        ext = drivers.DATA_EXTENSIONS_CONVERSION['image']
-                        nextFileName = imgKey + ext
-                        targetMimeType = drivers.DATA_MIME_TYPES_CONVERSION['image']
-                        imgs_warn[key] = {
-                            'filename': nextFileName,
-                            'message': f'Image "{originalFileName}" has been converted to {targetMimeType} and renamed to "{nextFileName}".'
+                    # loading succeeded; move entries about potential header files from imgs_error to files_aux
+                    isLoadable = True
+                    forceConvert = False
+                    if imgKey in imgs_error:
+                        files_aux[imgKey] = imgs_error[imgKey]
+                        del imgs_error[imgKey]
+                    
+                    bandNum_current = pixelArray.shape[0]
+                    if bandNum_current not in bandNum:
+                        raise Exception(f'Image "{originalFileName}" has invalid number of bands (expected: {str(bandNum)}, actual: {str(bandNum_current)}).')
+                    elif bandNum_current == 1 and not hasCustomBandConfig:
+                        # project expects RGB data but image is grayscale; replicate for maximum compatibility
+                        pixelArray = np.concatenate((pixelArray, pixelArray, pixelArray), -1)
+                        forceConvert = True         # set to True to force saving file to disk instead of simply copying it
+
+                    targetMimeType = None
+                    if ext not in drivers.SUPPORTED_DATA_EXTENSIONS:
+                        # file is supported by drivers but not by Web front end
+                        if meta['convertUnsupported']:
+                            # replace file name extension and add warning message
+                            ext = drivers.DATA_EXTENSIONS_CONVERSION['image']
+                            nextFileName = imgKey + ext
+                            targetMimeType = drivers.DATA_MIME_TYPES_CONVERSION['image']
+                            imgs_warn[key] = {
+                                'filename': nextFileName,
+                                'message': f'Image "{originalFileName}" has been converted to {targetMimeType} and renamed to "{nextFileName}".'
+                            }
+                        else:
+                            # skip and add error message
+                            raise Exception(f'Unsupported file type for image "{originalFileName}".')
+                    
+                    # prepare to save image(s) into AIDE project folder
+                    images_save = {}
+                    if meta['splitImages'] and meta['splitProperties'] is not None:
+                        # split image into patches
+                        splitProperties = meta['splitProperties']
+                        images, coords = split_image(pixelArray,            #TODO: implement reading windows and splitting from file
+                                                splitProperties['patchSize'],
+                                                splitProperties['stride'],
+                                                splitProperties.get('tight', False),
+                                                splitProperties.get('discard_homogeneous_percentage', None),
+                                                splitProperties.get('discard_homogeneous_quantization_value', 255))
+                        bareFileName, _ = os.path.splitext(originalFileName)
+                        filenames = [f'{bareFileName}_{c[0]}_{c[1]}{ext}' for c in coords]
+                        for i in range(len(images)):
+                            subkey, _ = os.path.splitext(filenames[i])
+                            images_save[subkey] = {
+                                'image': images[i],
+                                'filename': filenames[i]
+                            }
+                    
+                    elif forceConvert or targetMimeType is not None:
+                        # no need to split, but need to convert image format
+                        images_save[key] = {
+                            'image': pixelArray,
+                            'filename': nextFileName
                         }
+
                     else:
-                        # skip and add error message
-                        raise Exception(f'Unsupported file type for image "{originalFileName}".')
-                
-                # prepare to save image(s) into AIDE project folder
-                images_save = {}
-                if splitImages and splitProperties is not None:
-                    # split image into patches
-                    images, coords = split_image(pixelArray,            #TODO: implement reading windows and splitting from file
-                                            splitProperties['patchSize'],
-                                            splitProperties['stride'],
-                                            splitProperties.get('tight', False),
-                                            splitProperties.get('discard_homogeneous_percentage', None),
-                                            splitProperties.get('discard_homogeneous_quantization_value', 255))
-                    bareFileName, _ = os.path.splitext(originalFileName)
-                    filenames = [f'{bareFileName}_{c[0]}_{c[1]}{ext}' for c in coords]
-                    for i in range(len(images)):
-                        subkey, _ = os.path.splitext(filenames[i])
-                        images_save[subkey] = {
-                            'image': images[i],
-                            'filename': filenames[i]
+                        # no split and no conversion required; move file directly
+                        images_save[key] = {
+                            'image': tempFileName,
+                            'filename': nextFileName
                         }
-                
-                elif forceConvert or targetMimeType is not None:
-                    # no need to split, but need to convert image format
-                    images_save[key] = {
-                        'image': pixelArray,
-                        'filename': nextFileName
-                    }
 
-                else:
-                    # no split and no conversion required; move file directly
-                    images_save[key] = {
-                        'image': tempFileName,
-                        'filename': nextFileName
-                    }
+                    # save data to project folder
+                    destFolder = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), project) + os.sep
+                    for subKey in images_save:
+                        img = images_save[subKey]['image']
+                        newFileName = images_save[subKey]['filename']
+                        try:
+                            destPath = os.path.join(destFolder, newFileName)
+                            parent, _ = os.path.split(destPath)
+                            if len(parent):
+                                os.makedirs(parent, exist_ok=True)
 
-                # save data to project folder
-                destFolder = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), project) + os.sep
-                for subKey in images_save:
-                    img = images_save[subKey]['image']
-                    newFileName = images_save[subKey]['filename']
-                    try:
-                        destPath = os.path.join(destFolder, newFileName)
-                        parent, _ = os.path.split(destPath)
-                        if len(parent):
-                            os.makedirs(parent, exist_ok=True)
+                            if os.path.exists(destPath):
+                                # file already exists; check policy
+                                if meta['existingFiles'] == 'keepExisting':
+                                    # rename new file
+                                    while(os.path.exists(destPath)):
+                                        # rename file
+                                        fn, ext = os.path.splitext(newFileName)
+                                        match = self.countPattern.search(fn)
+                                        if match is None:
+                                            newFileName = fn + '_1' + ext
+                                        else:
+                                            # parse number
+                                            number = int(fn[match.span()[0]+1:match.span()[1]])
+                                            newFileName = fn[:match.span()[0]] + '_' + str(number+1) + ext
 
-                        if os.path.exists(destPath):
-                            # file already exists; check policy
-                            if existingFiles == 'keepExisting':
-                                # rename new file
-                                while(os.path.exists(destPath)):
-                                    # rename file
-                                    fn, ext = os.path.splitext(newFileName)
-                                    match = self.countPattern.search(fn)
-                                    if match is None:
-                                        newFileName = fn + '_1' + ext
-                                    else:
-                                        # parse number
-                                        number = int(fn[match.span()[0]+1:match.span()[1]])
-                                        newFileName = fn[:match.span()[0]] + '_' + str(number+1) + ext
+                                        destPath = os.path.join(destFolder, newFileName)
+                                        if not os.path.exists(destPath):
+                                            imgs_warn[subKey] = {
+                                                'filename': newFileName,
+                                                'message': 'An image with name "{}" already exists under given path on disk. Image has been renamed to "{}".'.format(
+                                                    filenames[i], newFileName
+                                                )
+                                            }
+                                
+                                elif meta['existingFiles'] == 'skipExisting':
+                                    # ignore new file
+                                    imgs_warn[subKey] = {
+                                        'filename': newFileName,
+                                        'message': f'Image "{newFileName}" already exists on disk and has been skipped.'
+                                    }
+                                    continue
 
-                                    destPath = os.path.join(destFolder, newFileName)
-                                    if not os.path.exists(destPath):
+                                elif meta['existingFiles'] == 'replaceExisting':
+                                    # overwrite new file; first remove metadata
+                                    queryStr = sql.SQL('''
+                                        DELETE FROM {id_iu}
+                                        WHERE image = (
+                                            SELECT id FROM {id_img}
+                                            WHERE filename = %s
+                                        );
+                                        DELETE FROM {id_anno}
+                                        WHERE image = (
+                                            SELECT id FROM {id_img}
+                                            WHERE filename = %s
+                                        );
+                                        DELETE FROM {id_pred}
+                                        WHERE image = (
+                                            SELECT id FROM {id_img}
+                                            WHERE filename = %s
+                                        );
+                                        DELETE FROM {id_img}
+                                        WHERE filename = %s;
+                                    ''').format(
+                                        id_iu=sql.Identifier(project, 'image_user'),
+                                        id_anno=sql.Identifier(project, 'annotation'),
+                                        id_pred=sql.Identifier(project, 'prediction'),
+                                        id_img=sql.Identifier(project, 'image')
+                                    )
+                                    self.dbConnector.execute(queryStr,
+                                        tuple([newFileName]*4), None)
+
+                                    # remove file
+                                    try:
+                                        os.remove(destPath)
                                         imgs_warn[subKey] = {
                                             'filename': newFileName,
-                                            'message': 'An image with name "{}" already exists under given path on disk. Image has been renamed to "{}".'.format(
-                                                filenames[i], newFileName
-                                            )
+                                            'message': 'Image "{}" already existed on disk and has been overwritten.\n'.format(newFileName) + \
+                                                        'All metadata (views, annotations, predictions) has been removed from the database.'
                                         }
-                            
-                            elif existingFiles == 'skipExisting':
-                                # ignore new file
-                                imgs_warn[subKey] = {
-                                    'filename': newFileName,
-                                    'message': f'Image "{newFileName}" already exists on disk and has been skipped.'
-                                }
-                                continue
+                                    except:
+                                        imgs_warn[subKey] = {
+                                            'filename': newFileName,
+                                            'message': 'Image "{}" already existed on disk but could not be overwritten.\n'.format(newFileName) + \
+                                                        'All metadata (views, annotations, predictions) has been removed from the database.'
+                                        }
 
-                            elif existingFiles == 'replaceExisting':
-                                # overwrite new file; first remove metadata
-                                queryStr = sql.SQL('''
-                                    DELETE FROM {id_iu}
-                                    WHERE image = (
-                                        SELECT id FROM {id_img}
-                                        WHERE filename = %s
-                                    );
-                                    DELETE FROM {id_anno}
-                                    WHERE image = (
-                                        SELECT id FROM {id_img}
-                                        WHERE filename = %s
-                                    );
-                                    DELETE FROM {id_pred}
-                                    WHERE image = (
-                                        SELECT id FROM {id_img}
-                                        WHERE filename = %s
-                                    );
-                                    DELETE FROM {id_img}
-                                    WHERE filename = %s;
-                                ''').format(
-                                    id_iu=sql.Identifier(project, 'image_user'),
-                                    id_anno=sql.Identifier(project, 'annotation'),
-                                    id_pred=sql.Identifier(project, 'prediction'),
-                                    id_img=sql.Identifier(project, 'image')
-                                )
-                                self.dbConnector.execute(queryStr,
-                                    tuple([newFileName]*4), None)
+                            if isinstance(img, str):
+                                # temp file name provided; copy file directly
+                                shutil.copyfile(img, destPath)
+                            else:
+                                drivers.save_to_disk(img, destPath)
+                            imgs_valid[subKey] = {
+                                'filename': newFileName,
+                                'message': 'upload successful'
+                            }
+                            # imgPaths_valid.append(newFileName)
+                        except Exception as e:
+                            imgs_error[subKey] = {
+                                'filename': newFileName,
+                                'message': str(e),
+                                'status': 3
+                            }
 
-                                # remove file
-                                try:
-                                    os.remove(destPath)
-                                    imgs_warn[subKey] = {
-                                        'filename': newFileName,
-                                        'message': 'Image "{}" already existed on disk and has been overwritten.\n'.format(newFileName) + \
-                                                    'All metadata (views, annotations, predictions) has been removed from the database.'
-                                    }
-                                except:
-                                    imgs_warn[subKey] = {
-                                        'filename': newFileName,
-                                        'message': 'Image "{}" already existed on disk but could not be overwritten.\n'.format(newFileName) + \
-                                                    'All metadata (views, annotations, predictions) has been removed from the database.'
-                                    }
-
-                        if isinstance(img, str):
-                            # temp file name provided; copy file directly
-                            shutil.copyfile(img, destPath)
-                        else:
-                            drivers.save_to_disk(img, destPath)
-                        imgs_valid[subKey] = {
-                            'filename': newFileName,
-                            'message': 'upload successful'
+                    if not key in imgs_valid:
+                        # add dummy entry for full image, even if it e.g. got split into patches
+                        imgs_valid[key] = {
+                            'filename': None,
+                            'message': 'file successfully split into patches',
+                            'status': 0
                         }
-                        # imgPaths_valid.append(newFileName)
-                    except Exception as e:
-                        imgs_error[subKey] = {
-                            'filename': newFileName,
+
+                except Exception as e:
+                    if isLoadable:
+                        # file is loadable but cannot be imported to project (e.g., due to band configuration error)
+                        imgs_error[key] = {
+                            'filename': originalFileName,
                             'message': str(e),
                             'status': 3
-                        }
-
-                if not key in imgs_valid:
-                    # add dummy entry for full image, even if it e.g. got split into patches
-                    imgs_valid[key] = {
-                        'filename': None,
-                        'message': 'file successfully split into patches',
-                        'status': 0
-                    }
-
-            except Exception as e:
-                if isLoadable:
-                    # file is loadable but cannot be imported to project (e.g., due to band configuration error)
-                    imgs_error[key] = {
-                        'filename': originalFileName,
-                        'message': str(e),
-                        'status': 3
-                    }
-                else:
-                    # file is not loadable
-                    if imgKey in files_aux:
-                        # file is definitely another auxiliary file
-                        files_aux[imgKey][key] = {
-                            'filename': originalFileName,
-                            'message': '(auxiliary file)',
-                            'status': 1
                         }
                     else:
-                        # file might be an auxiliary file; we don't know yet
-                        if not imgKey in imgs_error:
-                            imgs_error[imgKey] = {}
-                        imgs_error[imgKey][key] = {
-                            'filename': originalFileName,
-                            'message': str(e),
-                            'status': 3
-                        }
+                        # file is not loadable
+                        if imgKey in files_aux:
+                            # file is definitely another auxiliary file
+                            files_aux[imgKey][key] = {
+                                'filename': originalFileName,
+                                'message': '(auxiliary file)',
+                                'status': 1
+                            }
+                        else:
+                            # file might be an auxiliary file; we don't know yet
+                            if not imgKey in imgs_error:
+                                imgs_error[imgKey] = {}
+                            imgs_error[imgKey][key] = {
+                                'filename': originalFileName,
+                                'message': str(e),
+                                'status': 3
+                            }
 
-        # remove temp files
-        shutil.rmtree(tempRoot)
+            # register valid images in database
+            if len(imgs_valid):
+                queryStr = sql.SQL('''
+                    INSERT INTO {id_img} (filename)
+                    VALUES %s
+                    ON CONFLICT (filename) DO NOTHING;
+                ''').format(
+                    id_img=sql.Identifier(project, 'image')
+                )
+                self.dbConnector.insert(queryStr, [(imgs_valid[key]['filename'],) for key in imgs_valid.keys() if imgs_valid[key]['filename'] is not None])
 
-        # register valid images in database
-        if len(imgs_valid):
-            queryStr = sql.SQL('''
-                INSERT INTO {id_img} (filename)
-                VALUES %s
-                ON CONFLICT (filename) DO NOTHING;
-            ''').format(
-                id_img=sql.Identifier(project, 'image')
-            )
-            self.dbConnector.insert(queryStr, [(imgs_valid[key]['filename'],) for key in imgs_valid.keys() if imgs_valid[key]['filename'] is not None])
+            for key in imgs_valid:
+                result[key] = imgs_valid[key]
+                result[key]['status'] = 0
+            for key in imgs_warn:
+                result[key] = imgs_warn[key]
+                result[key]['status'] = 2
+            for key in imgs_error:
+                # we might need to flatten hierarchy of quarantined auxiliary files that actually turned out to be errors
+                nextErrors = imgs_error[key]
+                if nextErrors.get('status', None) is None:
+                    # flatten
+                    for subKey in nextErrors:
+                        result[subKey] = nextErrors[subKey]
+                        result[subKey]['status'] = 3
+                else:
+                    # regular errors
+                    result[key] = nextErrors
+                    result[key]['status'] = 3
 
-        result = {}
-        for key in imgs_valid:
-            result[key] = imgs_valid[key]
-            result[key]['status'] = 0
-        for key in imgs_warn:
-            result[key] = imgs_warn[key]
-            result[key]['status'] = 2
-        for key in imgs_error:
-            # we might need to flatten hierarchy of quarantined auxiliary files that actually turned out to be errors
-            nextErrors = imgs_error[key]
-            if nextErrors.get('status', None) is None:
-                # flatten
-                for subKey in nextErrors:
-                    result[subKey] = nextErrors[subKey]
-                    result[subKey]['status'] = 3
-            else:
-                # regular errors
-                result[key] = nextErrors
-                result[key]['status'] = 3
+            # add auxiliary files as valid
+            for key in files_aux:
+                for subkey in files_aux[key]:
+                    result[subkey] = {
+                        'status': 1,
+                        'filename': files_aux[key][subkey]['filename'],
+                        'message': '(auxiliary file)'
+                    }
+        
+        # dump list of uploaded and imported images to temporary file
+        with open(os.path.join(meta['sessionDir'], 'uploads', now+'.txt'), 'w') as f:
+            for key in tempFiles.keys():
+                dest = '-1'
+                if key in images_save:
+                    dest = images_save[key]['filename']
+                f.write('{};;{}\n'.format(
+                    tempFiles[key]['orig'],
+                    dest
+                ))
 
-        # add auxiliary files as valid
-        for key in files_aux:
-            for subkey in files_aux[key]:
-                result[subkey] = {
-                    'status': 1,
-                    'filename': files_aux[key][subkey]['filename'],
-                    'message': '(auxiliary file)'
-                }
+
+        # count number of files uploaded and check if it matches the expected number.
+        filesUploaded = {}
+        for file in glob.glob(os.path.join(meta['sessionDir'], 'uploads/*.txt')):
+            with open(file, 'r') as f:
+                lines = f.readlines()
+            for line in lines:
+                uploadFilename, projectFilename = line.strip().split(';;')
+                filesUploaded[uploadFilename] = projectFilename         #TODO: assert key isn't present already
+        
+        if len(filesUploaded) >= meta['numFiles']:
+            # all files seem to have been uploaded
+            if meta['parseAnnotations']:
+                fileList = list(filesUploaded.keys())       #TODO: provide file dict directly to parsers
+
+                if meta['parserID'] is None:
+                    parserID = parsers.auto_detect_parser(fileList, meta['annotationType'])
+                    if parserID is None:
+                        # no parser found
+                        msg = 'Files do not contain parseable annotations.'
+                        if meta['uploadImages']:
+                            msg += '\nImages may have been uploaded.'
+                        raise Exception(msg)
+                else:
+                    msg = f'Unknown annotation parser "{parserID}".'
+                    if meta['uploadImages']:
+                        msg += '\nImages may have been uploaded.'
+                    assert parserID in parsers.PARSERS[meta['annotationType']], msg
+
+                # parse
+                parserClass = parsers.PARSERS[meta['annotationType']][parserID]
+                parser = parserClass(self.config, self.dbConnector, project, meta['user'], meta['annotationType'])
+                parseResult = parser.import_annotations(fileList, meta['user'], meta['skipUnknownClasses'], meta['markAsGoldenQuestions'], **meta['parserKwargs'])
+
+                if len(parseResult['result']):
+                    # retrieve file names for images annotations were imported for and append messages
+                    fileNames = self.dbConnector.execute(sql.SQL('''
+                        SELECT id, filename FROM {}
+                        WHERE id IN %s;
+                    ''').format(sql.Identifier(project, 'image')),
+                    (tuple([(i,) for i in parseResult['result'].keys()]),),
+                    'all')
+                    for fn in fileNames:
+                        numAnno = len(parseResult['result'][fn['id']])
+                        fileName = fn['filename']
+                        if fileName not in result:
+                            result[fileName] = {
+                                'status': 0,
+                                'filename': fileName,
+                                'message': f'{numAnno} annotation(s) successfully imported.'
+                            }
+                        else:
+                            result[fileName]['message'] += f'\n{numAnno} annotation(s) successfully imported.'
+                    #TODO: parser warnings and errors
+
+            #TODO: create log file to download for user
+        
+            # remove temp files
+            shutil.rmtree(tempRoot)
 
         return result
 
@@ -895,6 +1182,133 @@ class DataWorker:
 
 
 
+    def requestAnnotations(self, project, username, exportFormat, dataType='annotation', authorList=None, dateRange=None, ignoreImported=False, parserKwargs={}):
+        '''
+            Initiates annotation or prediction export for a project.
+            Inputs:
+            - "project":        Shortname of the project to export data for
+            - "username":       Name of the user account that initiated export
+            - "exportFormat":   Name of format to export data in. See util.parsers.
+            - "dataType":       One of {'annotation', 'prediction'}
+            - "authorList":     Optional, list of usernames ('annotation') or UUIDs
+                                ('prediction') to limit export to
+            - "dateRange":      None (all dates) or two values for minimum and
+                                maximum timestamp
+            - "ignoreImported": If True, annotations imported automatically will
+                                not be exported (identifiable by negative "time_required"
+                                attribute)
+
+            First queries the database, then creates an util.parsers instance according
+            to the "exportFormat" chosen and leaves data export to the parser. Provides
+            a unique Zipfile folder in the set temp dir to this end and returns the
+            directory to it, or None if the result is empty.
+            Note that in some cases (esp. for semantic segmentation), the number of
+            queryable entries may be limited due to file size and free disk space
+            restrictions. An upper ceiling is specified in the configuration *.ini file.
+        '''
+        now = datetime.now(tz=pytz.utc)
+
+        # argument check
+        dataType = dataType.lower()
+        assert dataType in ('annotation', 'prediction')
+        annoType = self.dbConnector.execute(sql.SQL('''
+            SELECT annotationType, predictionType
+            FROM "aide_admin".project
+            WHERE shortname = %s;
+        '''), (project,), 1)
+        annoType = annoType[0][dataType+'type']
+        assert annoType in parsers.PARSERS, f'unsupported annotation type "{annoType}"'
+        assert exportFormat in parsers.PARSERS[annoType], f'unsupported annotation format "{exportFormat}"'
+        #TODO: implement access control to check if user has right to download data
+
+        queryArgs = []
+        if authorList is not None and len(authorList):
+            if isinstance(authorList, str):
+                authorList = [authorList]
+            else:
+                authorList = list(authorList)
+            if dataType == 'prediction':
+                authorList = [UUID(a) for a in authorList]
+            queryArgs.append(tuple(authorList))
+            authorStr = 'WHERE {} IN %s'.format('username' if dataType == 'annotation' else 'cnnstate')
+        else:
+            authorStr = ''
+        
+        if dateRange is not None and len(dateRange):
+            if len(dateRange) == 1:
+                dateRange = [dateRange, now]
+            else:
+                dateRange = dateRange[:2]
+            dateStr = '{} timecreated >= to_timestamp(%s) AND timecreated <= to_timestamp(%s)'.format('WHERE' if not len(authorStr) else ' AND')
+            queryArgs.extend(dateRange)
+        else:
+            dateStr = ''
+
+        if ignoreImported and dataType == 'annotation':
+            ignoreImportedStr = '{} timerequired >= 0'.format('WHERE' if not any([len(authorStr), len(dateStr)]) else ' AND')
+        else:
+            ignoreImportedStr = ''
+
+        # query database
+        queryStr = sql.SQL('''
+            SELECT * FROM {id_main} AS m
+            {authorStr}
+            {dateStr}
+            {ignoreImportedStr}
+        ''').format(
+            id_main=sql.Identifier(project, dataType),
+            authorStr=sql.SQL(authorStr),
+            dateStr=sql.SQL(dateStr),
+            ignoreImportedStr=sql.SQL(ignoreImportedStr)
+        )
+        query = self.dbConnector.execute(
+            queryStr,
+            tuple(queryArgs),
+            'all'
+        )
+        if not len(query):
+            return None
+        
+        # query image info
+        imgIDs = set([q['image'] for q in query])
+        images = self.dbConnector.execute(sql.SQL('''
+            SELECT * FROM {}
+            WHERE id IN %s;
+        ''').format(sql.Identifier(project, 'image')), (tuple((i,) for i in imgIDs),), 'all')
+
+        # also query label classes
+        labelclasses = self.dbConnector.execute(
+            sql.SQL('''
+                SELECT * FROM {id_lc};
+            ''').format(id_lc=sql.Identifier(project, 'labelclass')),
+            None, 'all'
+        )
+
+        annotations = {
+            'images': images,
+            'labelclasses': labelclasses,
+            'annotations': query
+        }
+
+        # create Zipfile in temporary folder
+        filename = 'aide_query_{}'.format(now.strftime('%Y-%m-%d_%H-%M-%S')) + '.zip'
+        destPath = os.path.join(self.tempDir, 'aide/downloadRequests', project)
+        os.makedirs(destPath, exist_ok=True)
+        destPath = os.path.join(destPath, filename)
+
+        mainFile = zipfile.ZipFile(destPath, 'w', zipfile.ZIP_DEFLATED)
+        try:
+            # create parser
+            parserClass = parsers.PARSERS[annoType][exportFormat]
+            parser = parserClass(self.config, self.dbConnector, project, username, annoType)
+            parser.export_annotations(annotations, mainFile, **parserKwargs)
+            return filename
+        finally:
+            mainFile.close()
+
+
+
+    #TODO: deprecated in favor of "exportData"
     def prepareDataDownload(self, project, dataType='annotation', userList=None, dateRange=None, extraFields=None, segmaskFilenameOptions=None, segmaskEncoding='rgb'):
         '''
             Polls the database for project data according to the

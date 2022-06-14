@@ -61,14 +61,14 @@
             });
 
             const PANEL_IDS = {
-                'labelClasses':0,
-                'dataUpload':1,
+                'dataUpload':0,
+                'labelClasses':1,
                 'modelMarketplace':2,
                 'userInterface':3
             }
             const PANEL_IDS_INV = {
-                0:'labelClasses',
-                1:'dataUpload',
+                0:'dataUpload',
+                1:'labelClasses',
                 2:'modelMarketplace',
                 3:'userInterface'
             }
@@ -134,7 +134,7 @@
 
                 if(selectedPanelNumber === null) {
                     let selectedPanelID = parseURLparameter('t');
-                    if(selectedPanelID === null) selectedPanelID = 'labelClasses';  // default
+                    if(selectedPanelID === null) selectedPanelID = 'dataUpload';  // default
                     setPanel(selectedPanelID);
                 }
 
@@ -217,20 +217,19 @@
                 <!-- setup navigation -->
                 <div id="setup-navigation-controls">
                     <button class="setup-navigation-step btn btn-outline-secondary" disabled="disabled">
-                        1 – New Project
-                    </button>
-                    <button id="labelClasses" class="setup-navigation-step btn btn-outline-secondary">
-                        2 – Label Classes
+                        1 - New Project
                     </button>
                     <button id="dataUpload" class="setup-navigation-step btn btn-outline-secondary">
-                        3 – Data Upload
+                        2 - Data Upload
                     </button>
-                    <!-- TODO: new page with Model Marketplace -->
+                    <button id="labelClasses" class="setup-navigation-step btn btn-outline-secondary">
+                        3 - Label Classes
+                    </button>
                     <button id="modelMarketplace" class="setup-navigation-step btn btn-outline-secondary">
-                        4 – AI model
+                        4 - AI model
                     </button>
                     <button id="userInterface" class="setup-navigation-step btn btn-outline-secondary">
-                        5 – Interface
+                        5 - Interface
                     </button>
                 </div>
                 

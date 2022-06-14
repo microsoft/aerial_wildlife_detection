@@ -7,36 +7,47 @@
     Using this script requires the following steps:
     1. Make sure your images are of common format and readable by the web
        server (i.e., convert camera RAW images first).
-    2. Copy your image folder into the FileServer's root file directory (i.e.,
-       corresponding to the path under "staticfiles_dir" in the configuration
-       *.ini file).
-    3. Call the script from the AIDE code base on the FileServer instance.
+    2. Call the script from the AIDE code base on the FileServer instance.
 
-    2019-21 Benjamin Kellenberger
+    2019-22 Benjamin Kellenberger
 '''
 
 import os
 import argparse
 from psycopg2 import sql
+
+from modules.DataAdministration.backend.dataWorker import DataWorker
 from util.helpers import listDirectory
 from util import drivers
 
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description='Import images into database.')
+    parser = argparse.ArgumentParser(description='Import images and/or annotations into database, with optional tiling.')
     parser.add_argument('--project', type=str,
                     help='Shortname of the project to insert the images into.')
-    parser.add_argument('--settings_filepath', type=str, default='config/settings.ini', const=1, nargs='?',
-                    help='Manual specification of the directory of the settings.ini file; only considered if environment variable unset (default: "config/settings.ini").')
+    parser.add_argument('--user', type=str,
+                    help='User account name to register imported data to.')
+    parser.add_argument('--image-folder', type=str,
+                    help='Base folder on the server of the images to import into the project.')
+    parser.add_argument('--split-images', type=int, default=0,
+                    help='Set to 1 to enable splitting of images into tiles (default: 0).')
+    parser.add_argument('--split-images', type=int, default=0,
+                    help='Set to 1 to enable splitting of images into tiles (default: 0).')
+    parser.add_argument('--patch-size', type=int, nargs='+',
+                    help='Size of split tiles in pixels. Can either be a single int (square patches) or two values for (width, height).')
+    parser.add_argument('--stride', type=int, nargs='+', default=-1,
+                    help='Stride of the tiles. Can be a single int (same stride in width and height), two values (width, height), or -1 (default: stride equal to patch size).')
+    parser.add_argument('--tight', type=int, default=0,
+                    help='Set to 1 to limit tiles to image bounds, affecting the stride of the rightmost column and bottommost row of patches (default: 0).')
+    parser.add_argument('--upload-images', type=int, default=1,
+                    help='Set to 0 to not import images, but just annotations (default: 1 = import images)')
+    parser.add_argument('--upload-annotations', type=int, default=1,
+                    help='Set to 0 to not import annotations (if available), but just images (default: 1 = import annotations)')
     args = parser.parse_args()
-    
 
     # setup
     print('Setup...')
-    if not 'AIDE_CONFIG_PATH' in os.environ:
-        os.environ['AIDE_CONFIG_PATH'] = str(args.settings_filepath)
-
     from tqdm import tqdm
     import datetime
     from util.configDef import Config
@@ -54,18 +65,29 @@ if __name__ == '__main__':
 
 
     # check if running on file server
-    imgBaseDir = config.getProperty('FileServer', 'staticfiles_dir')
+    imgBaseDir = os.path.join(config.getProperty('FileServer', 'staticfiles_dir'), args.project)
     if not os.path.isdir(imgBaseDir):
         raise Exception(f'"{imgBaseDir}" is not a valid directory on this machine. Are you running the script from the file server?')
 
-    if not imgBaseDir.endswith(os.sep):
-        imgBaseDir += os.sep
-
     
-    # locate all images and their base names
-    print('Locating image paths...')
+    assert not os.path.samefile(imgBaseDir, args.image_folder), \
+        'Error: "--image-folder" cannot be the same as AIDE\'s project folder'
+
+
+    # locate all files in folder
+    print('Locating files...')
+    files = list(listDirectory(args.image_folder, recursive=True, images_only=False))
+
+    print('Creating import session...')
+    dw = DataWorker(config, dbConn, True)
+    dw.createUploadSession(project,
+                            args.user,
+                            len(files),
+                            uploadImages=True
+                            )
+
     imgs = set()
-    imgFiles = listDirectory(imgBaseDir, recursive=True)    #glob.glob(os.path.join(imgBaseDir, '**'), recursive=True)  #TODO: check if correct
+    imgFiles = listDirectory(args.image_folder, recursive=True)
     imgFiles = list(imgFiles)
     for i in tqdm(imgFiles):
         if os.path.isdir(i):
@@ -76,6 +98,9 @@ if __name__ == '__main__':
             continue
 
         baseName = i.replace(imgBaseDir, '')
+
+        #TODO: check with tiling, file format conversion, etc.
+
         imgs.add(baseName)
 
     # ignore images that are already in database

@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS {id_image} (
     --fVec bytea,
     date_added TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     last_requested TIMESTAMPTZ,
+    width INTEGER,
+    height INTEGER,
     PRIMARY KEY (id)
 );
 

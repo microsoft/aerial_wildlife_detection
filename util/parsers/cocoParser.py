@@ -1,5 +1,5 @@
 '''
-    Label parser for geometric annotations in MS-COCO format:
+    Label parser for annotations in MS-COCO format:
     https://cocodataset.org/#format-data
 
     2022 Benjamin Kellenberger
@@ -7,32 +7,56 @@
 
 import os
 import json
+from datetime import datetime
+from collections import defaultdict
 from psycopg2 import sql
 
+from constants.version import AIDE_VERSION
+from modules.ImageQuerying.backend.regionProcessing import polygon_area     #TODO: make generally available?
 from util.parsers.abstractParser import AbstractAnnotationParser
 from util import helpers, drivers
 
 
 class COCOparser(AbstractAnnotationParser):
 
-    ANNOTATION_TYPES = ('labels', 'points', 'boundingBoxes')
+    NAME = 'MS-COCO'
+    INFO = '<p>Supports annotations of labels, bounding boxes, and polygons in the <a href="https://cocodataset.org/" target="_blank">MS-COCO</a> format.'
+    ANNOTATION_TYPES = ('labels', 'boundingBoxes', 'polygons')
 
-    def __init__(self, config, dbConnector, project):
-        super(COCOparser, self).__init__(config, dbConnector, project)
+    @classmethod
+    def get_html_options(cls, method):
+        '''
+            The COCOparser has various options to set during im- and export.
+        '''
+        if method == 'import':
+            return '''
+            <div>
+                <input type="checkbox" id="skip_empty_images" />
+                <label for="skip_empty_images">skip images without annotations</label>
+                <br />
+                <input type="checkbox" id="verify_image_size" />
+                <label for="verify_image_size">verify image size</label>
+                <p style="margin-left:10px;font-style:italic">
+                    If checked, images will be loaded from disk and checked for size
+                    instead of relying on the size attributes in the annotation files.
+                    This may be more accurate, but significantly slower.
+                </p>
+                <input type="checkbox" id="mark_iscrowd_as_unsure" />
+                <label for="mark_iscrowd_as_unsure">mark 'iscrowd' annotations as unsure</label>
+            </div>
+            '''
+        
+        else:
+            return '''
+            <div>
+                <input type="checkbox" id="mark_unsure_as_iscrowd" />
+                <label for="mark_unsure_as_iscrowd">mark unsure annotations as 'iscrowd'</label>
+            </div>
+            '''
 
-        # get project annotation and prediction types
-        labelTypes = self.dbConnector.execute(sql.SQL('''
-            SELECT annotationType, predictionType
-            FROM "aide_admin".project
-            WHERE shortname = %s;
-        '''), (self.project,), 1)
-        labelTypes = {
-            'annotations': labelTypes[0]['annotationtype'],
-            'predictions': labelTypes[0]['predictiontype']
-        }
 
-
-    def _get_coco_files(self, fileList):
+    @classmethod
+    def _get_coco_files(cls, fileList):
         '''
             Iterates through a provided list of file names and returns all those
             that appear to be valid MS-COCO JSON files.
@@ -65,12 +89,13 @@ class COCOparser(AbstractAnnotationParser):
         return cocoFiles
 
 
-    def is_parseable(self, fileList):
+    @classmethod
+    def is_parseable(cls, fileList):
         '''
             File list is parseable if at least one file is a proper MS-COCO JSON
             file.
         '''
-        return len(self._get_coco_files(fileList)) > 0
+        return len(cls._get_coco_files(fileList)) > 0
 
 
     def import_annotations(self, fileList, targetAccount, skipUnknownClasses, markAsGoldenQuestions, **kwargs):
@@ -82,7 +107,15 @@ class COCOparser(AbstractAnnotationParser):
 
         now = helpers.current_time()
 
-        ids, warnings, errors = [], [], []
+        dbFieldNames = []
+        if self.annotationType == 'boundingBoxes':
+            dbFieldNames = ['x', 'y', 'width', 'height']
+        elif self.annotationType == 'polygons':
+            dbFieldNames = ['coordinates']
+        elif self.annotationType == 'segmentationMasks':
+            dbFieldNames = ['segmentationmask', 'width', 'height']
+
+        importedAnnotations, warnings, errors = defaultdict(list), [], []
         imgIDs_added = set()
         imgs_valid = []
 
@@ -90,7 +123,7 @@ class COCOparser(AbstractAnnotationParser):
         cocoFiles = self._get_coco_files(fileList)
         if not len(cocoFiles):
             return {
-                'ids': [],
+                'result': {},
                 'warnings': [],
                 'errors': ['No valid MS-COCO annotation file found.']
             }
@@ -187,24 +220,50 @@ class COCOparser(AbstractAnnotationParser):
                         )
                         continue
 
-                    # scale annotations to relative [0,1) coordinates
+                    # extract annotation geometries and scale to relative [0,1) coordinates
                     for a in range(len(anno)):
                         try:
-                            bbox = [float(v) for v in anno[a]['bbox']]
-                            assert len(bbox) == 4, f'invalid number of bounding box coordinates ({len(bbox)} != 4)'
+                            if self.annotationType == 'labels':
+                                # label only
+                                annos_valid.append([anno[a]['category_id']])
 
-                            # make relative
-                            bbox[0] /= imageSize[1]
-                            bbox[1] /= imageSize[0]
-                            bbox[2] /= imageSize[1]
-                            bbox[3] /= imageSize[0]
-                            bbox[0] = min(1.0, bbox[0]+bbox[2]/2.0)
-                            bbox[1] = min(1.0, bbox[1]+bbox[3]/2.0)
+                            if self.annotationType == 'boundingBoxes':
+                                bbox = [float(v) for v in anno[a]['bbox']]
+                                assert len(bbox) == 4, f'invalid number of bounding box coordinates ({len(bbox)} != 4)'
 
-                            assert all([b > 0 and b <= 1.0 for b in bbox]), 'Invalid bounding box coordinates ({})'.format(bbox)
+                                # make relative
+                                bbox[0] /= imageSize[1]
+                                bbox[1] /= imageSize[0]
+                                bbox[2] /= imageSize[1]
+                                bbox[3] /= imageSize[0]
+                                bbox[0] = min(1.0, bbox[0]+bbox[2]/2.0)
+                                bbox[1] = min(1.0, bbox[1]+bbox[3]/2.0)
 
-                            # everything alright so far
-                            annos_valid.append([bbox, anno[a]['category_id']])
+                                assert all([b > 0 and b <= 1.0 for b in bbox]), 'Invalid bounding box coordinates ({})'.format(bbox)
+
+                                # add
+                                annos_valid.append([anno[a]['category_id'], *bbox])
+
+                            elif self.annotationType == 'polygons':
+                                # we parse the segmentation information for that
+                                seg = [float(v) for v in anno[a]['segmentation']]
+                                assert len(seg) % 2 == 0 and len(seg) >= 6, f'invalid number of coordinates for polygon encountered'
+                                
+                                # close polygon if needed
+                                if seg[0] != seg[-2] or seg[1] != seg[-1]:
+                                    seg.extend(seg[:2])
+
+                                # make relative
+                                for s in range(len(seg)):
+                                    seg[s] /= [imageSize[1], imageSize[0]][s%2]
+                                
+                                # add
+                                annos_valid.append([anno[a]['category_id'], seg])
+
+                            elif self.annotationType == 'segmentationMasks':
+                                #TODO: implement drawing segmasks from polygons
+                                raise NotImplementedError('To be implemented.')
+
                         except Exception as e:
                             warnings.append(
                                 f'Annotation {a} for image with ID {imgCOCOid} ({imgPath}) contained an error (reason: "{str(e)}" and was therefore skipped.'
@@ -254,21 +313,23 @@ class COCOparser(AbstractAnnotationParser):
                     continue
                 # replace label class names with IDs
                 for a in range(len(data['anno'])):
-                    catID = data['anno'][a][1]
+                    catID = data['anno'][a][0]
                     lcName = labelClasses[catID][0]
-                    data['anno'][a][1] = self.labelClasses[lcName]
+                    data['anno'][a][0] = self.labelClasses[lcName]
             
                 # finally, add annotations to database
                 result = self.dbConnector.insert(sql.SQL('''
-                    INSERT INTO {} (username, image, timeCreated, timeRequired, label, x, y, width, height, unsure)
+                    INSERT INTO {id_anno} (username, image, timeCreated, timeRequired, unsure, label, {annoFields})
                     VALUES %s
-                    RETURNING id;
-                ''').format(sql.Identifier(self.project, 'annotation')),
-                tuple([(targetAccount, data['img'], now, -1,
-                    anno[1],
-                    anno[0][0], anno[0][1],
-                    anno[0][2], anno[0][3], unsure) for anno in data['anno']]), 'all')
-                ids.extend([r[0] for r in result])
+                    RETURNING image, id;
+                ''').format(
+                    id_anno=sql.Identifier(self.project, 'annotation'),
+                    annoFields=sql.SQL(','.join(dbFieldNames))
+                ),
+                tuple([(targetAccount, data['img'], now, -1, unsure,
+                    *anno) for anno in data['anno']]), 'all')
+                for row in result:
+                    importedAnnotations[row[0]].append(row[1])
 
             # also set in image_user relation
             imgIDs = [i['img'] for i in imgs_valid]
@@ -290,11 +351,123 @@ class COCOparser(AbstractAnnotationParser):
             tuple([(i,) for i in list(imgIDs_added)]))
 
         return {
-            'ids': ids,
+            'result': importedAnnotations,
             'warnings': warnings,
             'errors': errors
         }
 
+
+
+    def export_annotations(self, annotations, destination, **kwargs):
+
+        # args
+        markUnsureAsIscrowd = kwargs.get('mark_unsure_as_iscrowd', False)       # if True, annotations marked as "unsure" in database will be marked as "iscrowd" in COCO output
+
+        # prepare COCO-formatted output
+        try:
+            url = self.config.getProperty('Server', 'host') + ':' + self.config.getProperty('Server', 'port') + f'/{self.project}'
+        except:
+            url = '(unknown)'
+        out = {
+            'info': {
+                'year': datetime.now().year,
+                'version': '1.0',
+                'description': f'AIDE version {AIDE_VERSION} export for project "{self.project}"',
+                'contributor': self.user,
+                'url': url,
+                'date_created': str(helpers.current_time())
+            },
+            'licenses': []      #TODO
+        }
+        categories = []
+        images = []
+        annotations_out = []
+
+        # get labelclass groups
+        lcGroups = self.dbConnector.execute(sql.SQL('''
+            SELECT * FROM {};
+        ''').format(sql.Identifier(self.project, 'labelclassgroup')), None, 'all')
+        lcGroups = dict([[l['id'], l['name']] for l in lcGroups])
+
+        # create new labelclass index for COCO format       #TODO: sort after labelclass name first?
+        categoryLookup = {}
+        for lc in annotations['labelclasses']:
+            catID = len(categories) + 1
+            categoryLookup[lc['id']] = catID
+            catInfo = {
+                'id': catID,
+                'name': lc['name']
+            }
+            if lc['labelclassgroup'] is not None and lc['labelclassgroup'] in lcGroups:
+                catInfo['supercategory'] = lcGroups[lc['labelclassgroup']]
+            categories.append(catInfo)
+        
+        # export images
+        imgIDLookup = {}
+        imgSizeLookup = {}
+        for img in annotations['images']:
+            #TODO: store information about image width/height in database
+            imsize = drivers.load_from_disk(os.path.join(self.projectRoot, img['filename'])).shape[1:]
+            imgID = len(images) + 1
+            imgIDLookup[img['id']] = imgID
+            imgSizeLookup[img['id']] = imsize
+            images.append({
+                'id': imgID,
+                'width': imsize[1],
+                'height': imsize[0],
+                'file_name': img['filename'],
+                #TODO: license & Co.: https://cocodataset.org/#format-data
+            })
+        
+        # export annotations
+        for anno in annotations['annotations']:
+            annoID = len(annotations) + 1
+            annoInfo = {
+                'id': annoID,
+                'image_id': imgIDLookup[anno['image']],
+                'category_id': categoryLookup[anno['label']],
+                'iscrowd': anno.get('unsure', False) if markUnsureAsIscrowd else False
+            }
+            if self.annotationType == 'boundingBoxes':
+                # convert bounding box back to absolute XYWH format
+                imsize = imgSizeLookup[anno['image']]
+                bbox = [
+                    anno['x']*imsize[1],
+                    anno['y']*imsize[0],
+                    anno['width']*imsize[1],
+                    anno['height']*imsize[0]
+                ]
+                bbox[0] -= bbox[2]/2.0
+                bbox[1] -= bbox[3]/2.0
+                annoInfo['bbox'] = bbox
+                annoInfo['area'] = bbox[2]*bbox[3]
+            
+            elif self.annotationType == 'polygons':
+                # convert coordinates to absolute format
+                imsize = imgSizeLookup[anno['image']]
+                coords = anno['coordinates']
+                for c in range(len(coords)):
+                    coords[c] *= imsize[(c+1)%2]
+                annoInfo['segmentation'] = coords
+                annoInfo['area'] = polygon_area(coords[1::2], coords[::2]).tolist()
+            
+            elif self.annotationType == 'segmentationMasks':
+                #TODO
+                raise NotImplementedError('To be implemented.')
+
+            annotations_out.append(annoInfo)
+
+        # assemble everything into JSON file
+        out['categories'] = categories
+        out['images'] = images
+        out['annotations'] = annotations_out
+
+        coco_dump = json.dumps(out, ensure_ascii=False, indent=4)
+        destination.writestr('annotations.json', data=coco_dump)
+
+        return {
+            'files': ('annotations.json',)
+        }
 
 
 
@@ -304,6 +477,7 @@ if __name__ == '__main__':
     project = 'cocotest'
     fileDir = '/data/datasets/Kuzikus/patches_800x600'
     targetAccount = 'bkellenb'
+    annotationType = 'boundingBoxes'
 
     from tqdm import tqdm
     import glob
@@ -316,29 +490,42 @@ if __name__ == '__main__':
     config = Config()
     dbConnector = Database(config)
 
-    # import images first: cheap way out by linking images into project
-    if not fileDir.endswith(os.sep):
-        fileDir += os.sep
-    projectDir = os.path.join(config.getProperty('FileServer', 'staticfiles_dir'), project)
-    for fname in tqdm(fileList):
-        if not os.path.isfile(fname) or not fname.lower().endswith('.jpg'):
-            continue
-        fname_dest = os.path.join(projectDir, fname.replace(fileDir, ''))
-        if os.path.exists(fname_dest):
-            continue
-        parent, _ = os.path.split(fname_dest)
-        os.makedirs(parent, exist_ok=True)
-        os.symlink(fname, fname_dest)
+
+    if True:
+        # annotation import
+
+        # import images first: cheap way out by linking images into project
+        if not fileDir.endswith(os.sep):
+            fileDir += os.sep
+        projectDir = os.path.join(config.getProperty('FileServer', 'staticfiles_dir'), project)
+        for fname in tqdm(fileList):
+            if not os.path.isfile(fname) or not fname.lower().endswith('.jpg'):
+                continue
+            fname_dest = os.path.join(projectDir, fname.replace(fileDir, ''))
+            if os.path.exists(fname_dest):
+                continue
+            parent, _ = os.path.split(fname_dest)
+            os.makedirs(parent, exist_ok=True)
+            os.symlink(fname, fname_dest)
+        
+        from modules.DataAdministration.backend.dataWorker import DataWorker
+        dw = DataWorker(config, dbConnector)
+        dw.addExistingImages(project, skipIntegrityCheck=True)
+
+        # then, parse and import annotations
+        parser = COCOparser(config, dbConnector, project, targetAccount, annotationType)
+
+        kwargs = {
+            'skip_empty_images': True
+        }
+
+        result = parser.import_annotations(fileList, targetAccount, skipUnknownClasses=False, markAsGoldenQuestions=True, **kwargs)
     
-    from modules.DataAdministration.backend.dataWorker import DataWorker
-    dw = DataWorker(config, dbConnector)
-    dw.addExistingImages(project, skipIntegrityCheck=True)
 
-    # then, parse and import annotations
-    parser = COCOparser(config, dbConnector, project)
+    else:
+        # annotation export
+        from modules.DataAdministration.backend.dataWorker import DataWorker
+        dw = DataWorker(config, dbConnector)
+        outFile = dw.requestAnnotations(project, targetAccount, 'mscoco', 'annotation')
 
-    kwargs = {
-        'skip_empty_images': True
-    }
-
-    result = parser.import_annotations(fileList, targetAccount, skipUnknownClasses=False, markAsGoldenQuestions=True, **kwargs)
+        print(outFile)

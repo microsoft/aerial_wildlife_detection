@@ -12,6 +12,7 @@
 import html
 from . import celery_interface
 from .dataWorker import DataWorker
+from util.parsers import PARSERS
 
 
 class DataAdministrationMiddleware:
@@ -96,14 +97,61 @@ class DataAdministrationMiddleware:
     
 
 
-    def uploadImages(self, project, images, existingFiles='keepExisting',
-        splitImages=False, splitProperties=None):
+    def createUploadSession(self, project, user, numFiles, uploadImages=True,
+        existingFiles='keepExisting', splitImages=False, splitProperties=None,
+        convertUnsupported=True,
+        parseAnnotations=False,
+        skipUnknownClasses=False, markAsGoldenQuestions=False,
+        parserID=None, parserKwargs={}):
         '''
-            Image upload is handled directly through the
-            dataWorker, without a Celery dispatching bridge.
+            Creates a new session of image and/or label files upload.
+            Receives metadata regarding the upload (whether to import
+            images, annotations; parameters; number of expected files) and
+            creates a new session id. Then, the session's metadata gets
+            stored in the "<temp folder>/aide_admin/<project>/<session id>"
+            directory in a JSON file.
+
+            The idea behind sessions is to inform the server about the
+            expected number of files to be uploaded. Basically, we want to
+            only parse annotations once every single file has been uploaded
+            and parsed, to make sure we have no data loss.
+
+            Returns the session ID as a response.
         '''
-        return self.dataWorker.uploadImages(project, images, existingFiles,
-                                            splitImages, splitProperties)
+        return self.dataWorker.createUploadSession(project, user, numFiles, uploadImages,
+                                            existingFiles, splitImages, splitProperties,
+                                            convertUnsupported,
+                                            parseAnnotations,
+                                            skipUnknownClasses, markAsGoldenQuestions,
+                                            parserID, parserKwargs)
+
+
+
+    def verifySessionAccess(self, project, user, sessionID):
+        '''
+            Returns True if a user has access to a given upload session ID
+            (i.e., they initiated it) and False if not or if the session with
+            given ID does not exist.
+        '''
+        return self.dataWorker.verifySessionAccess(project, user, sessionID)
+
+    
+
+    def uploadData(self, project, username, sessionID, files):
+        '''
+            Receives "files" (a Bottle.py files object) and uploads them to the
+            FileServer under a given "sessionID". If the session ID does not
+            exist or else the user has no access to it, an Exception is raised.
+
+            Otherwise, the raw files are uploaded to the temporary directory on
+            the FileServer as specified in the session's metadata. Depending on
+            the flags set in the metadata, the images are uploaded, converted,
+            split, etc. Upon completion (i.e., upload of the expected number of
+            images as per session metadata), and if the user specified to (also)
+            upload images, an extra Celery task is invoked that parses the
+            uploaded files and tries to import annotations accordingly.
+        '''
+        return self.dataWorker.uploadData(project, username, sessionID, files)
 
 
 
@@ -172,8 +220,74 @@ class DataAdministrationMiddleware:
         task_id = self._submit_job(project, username, process)
         return task_id
 
+    
+
+    def getParserInfo(self, project=None, method='import'):
+        '''
+            Assembles all available parsers of annotation/prediction formats
+            along with their HTML markup for custom options, if available. If a
+            project shortname is provided, parsers are filtered w.r.t. the
+            project's annotation and prediction types.
+        '''
+        # get annotation and prediction types if project provided
+        if project is not None:
+            query = self.dbConnector.execute('''
+                SELECT annotationType, predictionType
+                FROM "aide_admin".project
+                WHERE shortname = %s;
+            ''', (project,), 1)
+            annoType = (query[0]['annotationtype'],)
+            predType = (query[0]['predictiontype'],)
+        else:
+            annoType, predType = PARSERS.keys(), PARSERS.keys()
+
+        info = {
+            'annotation': {},
+            'prediction': {}
+        }
+
+        # get HTML options for each parser
+        for at in annoType:
+            for annoFormat in PARSERS[at].keys():
+                # we're at parser class level here
+                info['annotation'][annoFormat] = {
+                    'name': PARSERS[at][annoFormat].NAME,
+                    'info': PARSERS[at][annoFormat].INFO,
+                    'options': PARSERS[at][annoFormat].get_html_options(method)
+                }
+        for pt in predType:
+            for annoFormat in PARSERS[pt].keys():
+                # we're at parser class level here
+                info['prediction'][annoFormat] = {
+                    'name': PARSERS[pt][annoFormat].NAME,
+                    'info': PARSERS[pt][annoFormat].INFO,
+                    'options': PARSERS[pt][annoFormat].get_html_options(method)
+                }
+        return info
 
 
+    def requestAnnotations(self, project, username, exportFormat, dataType='annotation', authorList=None, dateRange=None, ignoreImported=True, parserArgs={}):
+        '''
+            Launches a Celery job that polls the database for project data
+            according to the options provided, and then initializes a parser
+            that exports annotations (or predictions) to a Zipfile on disk. The
+            task then returns the path to that Zipfile once completed.
+        '''
+        # submit job
+        process = celery_interface.requestAnnotations.si(project,
+                                                    username,
+                                                    exportFormat,
+                                                    dataType,
+                                                    authorList,
+                                                    dateRange,
+                                                    ignoreImported,
+                                                    parserArgs)
+
+        task_id = self._submit_job(project, username, process)
+        return task_id
+
+
+    # deprecated
     def prepareDataDownload(self, project, username, dataType='annotation', userList=None, dateRange=None, extraFields=None, segmaskFilenameOptions=None, segmaskEncoding='rgb'):
         '''
             #TODO: update description

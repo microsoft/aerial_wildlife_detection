@@ -1,7 +1,7 @@
 '''
     Enum for all column names in the database tables.
 
-    2019-21 Benjamin Kellenberger
+    2019-22 Benjamin Kellenberger
 '''
 
 from enum import Enum
@@ -19,3 +19,9 @@ class FieldNames_annotation(Enum):
     boundingBoxes = set(['meta', 'label', 'x', 'y', 'width', 'height', 'unsure'])
     polygons = set(['meta', 'label', 'coordinates', 'unsure'])
     segmentationMasks = set(['meta', 'segmentationmask', 'width', 'height'])
+
+
+FIELD_NAMES = {
+    'annotation': FieldNames_annotation,
+    'prediction': FieldNames_prediction
+}

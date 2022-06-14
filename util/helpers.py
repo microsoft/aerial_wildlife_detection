@@ -58,6 +58,16 @@ def current_time():
     return datetime.now(tz=pytz.utc)
 
 
+def is_binary(filePath):
+    '''
+        Returns True if the file is a binary file, False if it is a text file.
+        Raises an Exception if the file could not be found.
+        Source: https://stackoverflow.com/questions/898669/how-can-i-detect-if-a-file-is-binary-non-text-in-python
+    '''
+    textchars = bytearray({7,8,9,10,12,13,27} | set(range(0x20, 0x100)) - {0x7f})
+    with open(filePath, 'rb') as f:
+        return bool(f.read(1024).translate(None, textchars))
+
 
 def slugify(value, allow_unicode=False):
     '''
@@ -275,14 +285,14 @@ def isAItask(taskName):
 
 
 
-def listDirectory(baseDir, recursive=False):
+def listDirectory(baseDir, recursive=False, images_only=True):
     '''
         Similar to glob's recursive file listing, but
         implemented so that circular softlinks are avoided.
         Removes the baseDir part (with trailing separator)
         from the files returned.
     '''
-    if not len(drivers.VALID_IMAGE_EXTENSIONS):
+    if not images_only and not len(drivers.VALID_IMAGE_EXTENSIONS):
         drivers.init_drivers(False)      # should not be required
     files_disk = set()
     if not baseDir.endswith(os.sep):
@@ -291,7 +301,7 @@ def listDirectory(baseDir, recursive=False):
         files = os.listdir(fileDir)
         for f in files:
             path = os.path.join(fileDir, f)
-            if os.path.isfile(path) and os.path.splitext(f)[1].lower() in drivers.VALID_IMAGE_EXTENSIONS:
+            if os.path.isfile(path) and (not images_only or os.path.splitext(f)[1].lower() in drivers.VALID_IMAGE_EXTENSIONS):
                 imgs.add(path)
             elif os.path.islink(path):
                 if os.readlink(path) in baseDir:

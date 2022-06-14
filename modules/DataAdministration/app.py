@@ -187,26 +187,39 @@ class DataAdministrator:
 
 
         @enable_cors
-        @self.app.post('/<project>/uploadImages')
-        def uploadImages(project):
+        @self.app.post('/<project>/initiateUploadSession')
+        def initiateUploadSession(project):
             '''
-                Upload image files through UI.
+                Creates a new session of image and/or label files upload.
+                Receives metadata regarding the upload (whether to import
+                images, annotations; parameters; number of expected files) and
+                creates a new session id. Then, the session's metadata gets
+                stored in the "<temp folder>/aide_admin/<project>/<session id>"
+                directory in a JSON file.
+
+                The idea behind sessions is to inform the server about the
+                expected number of files to be uploaded. Basically, we want to
+                only parse annotations once every single file has been uploaded
+                and parsed, to make sure we have no data loss.
+
+                Returns the session ID as a response.
             '''
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
             
             if not self.is_fileServer:
-                return self.relay_request(project, 'uploadImages', 'post')
-
+                return self.relay_request(project, 'initiateUploadSession', 'post')
+            
+            # gather parameters
             try:
-                images = request.files
+                username = html.escape(request.get_cookie('username'))
+                numFiles = request.params.get('numFiles')
 
+                # images
+                uploadImages = helpers.parse_boolean(request.params.get('uploadImages', True))
+                existingFiles = request.params.get('existingFiles', 'keepExisting')
                 try:
-                    existingFiles = request.params.get('existingFiles')
-                except:
-                    existingFiles='keepExisting'
-                try:
-                    splitIntoPatches = helpers.parse_boolean(request.params.get('splitPatches'))
+                    splitIntoPatches = helpers.parse_boolean(request.params.get('splitPatches', False))
                     if splitIntoPatches:
                         splitProperties = json.loads(request.params.get('splitParams'))
                     else:
@@ -214,9 +227,65 @@ class DataAdministrator:
                 except:
                     splitIntoPatches = False
                     splitProperties = None
+                convertUnsupported = helpers.parse_boolean(request.params.get('convertUnsupported', True))
 
-                result = self.middleware.uploadImages(project, images, existingFiles,
-                                                    splitIntoPatches, splitProperties)
+                # annotations
+                parseAnnotations = helpers.parse_boolean(request.params.get('parseAnnotations', False))
+                assert not (parseAnnotations and (uploadImages and splitIntoPatches)), \
+                    'cannot both split images into patches and parse annotations'
+                skipUnknownClasses = helpers.parse_boolean(request.params.get('skipUnknownClasses', True))
+                markAsGoldenQuestions = helpers.parse_boolean(request.params.get('markAsGoldenQuestions', False))
+                parserID = request.params.get('parserID', None)
+                if isinstance(parserID, str) and parserID.lower() in ('null', 'none', 'undefined'):
+                    parserID = None
+                parserKwargs = request.params.get('parserArgs', {})
+            
+                # create session
+                sessionID = self.middleware.createUploadSession(project, username, numFiles,
+                                                                uploadImages, existingFiles,
+                                                                splitIntoPatches, splitProperties,
+                                                                convertUnsupported, parseAnnotations,
+                                                                skipUnknownClasses, markAsGoldenQuestions,
+                                                                parserID, parserKwargs)
+                return {'session_id': sessionID}
+
+            except Exception as e:
+                return {'status': 1, 'message': str(e)}
+
+
+        @enable_cors
+        @self.app.post('/<project>/uploadData')
+        def uploadData(project):
+            '''
+                Upload image files and/or annotations through UI. Requires a
+                session ID to be submitted as an argument along with one (or
+                more) file(s). Proceeds to upload the files and save them to the
+                session's temp dir, then parses the file and registers any
+                identified and parseable images in the project (if defined as
+                per session parameters). Appends uploaded file names and final
+                file names as registered in the DB to a text file in the temp
+                dir.
+
+                Once the number of files uploaded matches the expected number of
+                files ("numFiles" parameter in the session), and if annotation
+                import has been enabled as per session parameter, that process
+                will be started. Once this is done, all temporary files get
+                removed.
+            '''
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+            
+            if not self.is_fileServer:
+                return self.relay_request(project, 'uploadData', 'post')
+
+            try:
+                username = html.escape(request.get_cookie('username'))
+                sessionID = request.params.get('sessionID')
+
+                files = request.files
+
+                # upload data
+                result = self.middleware.uploadData(project, username, sessionID, files)
                 return {'result': result}
             except Exception as e:
                 return {'status': 1, 'message': str(e)}
@@ -323,6 +392,62 @@ class DataAdministrator:
         
         # data download
         @enable_cors
+        @self.app.get('/<project>/getSupportedAnnotationFormats')
+        def getAnnotationFormats(project=None):
+            '''
+                Returns all available annotation (prediction) parsers as well as
+                their HTML markup for custom parser options to be set during
+                annotation im- and export.
+                See util.parsers.PARSERS for more infos.
+            '''
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+
+            method = request.params.get('method', 'download')
+
+            formats = self.middleware.getParserInfo(project, method)
+            
+            return {'formats': formats}
+
+
+        @enable_cors
+        @self.app.post('/<project>/requestAnnotations')
+        def requestAnnotations(project):
+            '''
+                Parses request parameters and initiates a parser that prepares
+                annotations or predictions for download on the file server in a
+                temporary directory (in a Zip file).
+                Returns the Celery task ID accordingly.
+            '''
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+            # parse parameters
+            try:
+                username = html.escape(request.get_cookie('username'))
+                params = request.json
+                exportFormat = params['exportFormat']                       # one of the supported formats. See util.parsers.PARSERS
+                dataType = params['dataType']                               # {'annotation', 'prediction'}
+                authorList = params.get('authorList', None)                 # subset of users (or model states) to export annotations (or predictions) from
+                dateRange = params.get('dateRange', None)                   # optional start (+ optional end) date to export annotations/predictions from
+                ignoreImported = params.get('ignoreImported', False)        # if True, annotations not created through the interface but batch-imported will be skipped
+                parserArgs = params.get('parserArgs', {})                   # optional dict of arguments for the parser chosen
+
+                # initiate task
+                taskID = self.middleware.requestAnnotations(
+                    project, username,
+                    exportFormat, dataType,
+                    authorList, dateRange,
+                    ignoreImported, parserArgs
+                )
+                return {'response': taskID}
+
+            except Exception as e:
+                abort(401, str(e))
+            
+
+
+        # deprecated
+        @enable_cors
         @self.app.post('/<project>/requestDownload')
         def requestDownload(project):
             '''
@@ -362,7 +487,7 @@ class DataAdministrator:
                 if 'extra_fields' in params:
                     extraFields = params['extra_fields']
                 else:
-                    extra_fields = {
+                    extraFields = {
                         'meta': False
                     }
 
