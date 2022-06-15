@@ -6,7 +6,7 @@
     if present (relative coordinates are currently not supported in
     Detectron2).
 
-    2020-21 Benjamin Kellenberger
+    2020-22 Benjamin Kellenberger
 '''
 
 import copy
@@ -46,8 +46,9 @@ class Detectron2DatasetMapper(DatasetMapper):
         dataset_dict = copy.deepcopy(dataset_dict)  # it will be modified by code below
         # USER: Write your own image loading if it's not from a file
         try:
-            file = self.fileServer.getFile(dataset_dict["file_name"])
-            image = drivers.load_from_bytes(file)
+            image = self.fileServer.getImage(dataset_dict["file_name"])
+            # file = self.fileServer.getFile(dataset_dict["file_name"])
+            # image = drivers.load_from_bytes(file)
 
             # filter according to bands
             image = np.stack([image[min(b, image.shape[0]-1),...] for b in self.band_config], -1)

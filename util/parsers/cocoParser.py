@@ -209,7 +209,7 @@ class COCOparser(AbstractAnnotationParser):
                 if len(anno):
                     # retrieve image dimensions
                     try:
-                        if verifyImageSize or 'width' not in imgCOCOmeta or 'height' not in imgCOCOmeta:
+                        if verifyImageSize or 'width' not in imgCOCOmeta or 'height' not in imgCOCOmeta:                #TODO: deal with virtual views
                             imageSize = drivers.load_from_disk(os.path.join(self.projectRoot, imgPath)).shape[1:]
                         else:
                             imageSize = (imgCOCOmeta['height'], imgCOCOmeta['width'])

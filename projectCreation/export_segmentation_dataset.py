@@ -2,7 +2,7 @@
     Pulls segmentation masks from the database and exports them
     into folders with specifiable format (JPEG, TIFF, etc.).
 
-    2019-21 Benjamin Kellenberger
+    2019-22 Benjamin Kellenberger
 '''
 
 import os
@@ -14,7 +14,7 @@ from util import drivers
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Export segmentation map annotations from database to images.')
-    parser.add_argument('--project', type=str,
+    parser.add_argument('--project', type=str, default='segtest',
                     help='Project shortname for which to export annotations.')
     parser.add_argument('--settings_filepath', type=str, default='config/settings.ini', const=1, nargs='?',
                     help='Manual specification of the directory of the settings.ini file; only considered if environment variable unset (default: "config/settings.ini").')
@@ -57,9 +57,13 @@ if __name__ == '__main__':
         raise Exception('Error connecting to database.')
 
     # check if valid file format provided
+    fileFormat = args.file_format.lower().strip()
+    if not fileFormat.startswith('.'):
+        fileFormat = '.' + fileFormat
+
     valid_file_formats = list(drivers.VALID_IMAGE_EXTENSIONS)
     valid_file_formats.extend(['.tif', '.tiff'])
-    if args.file_format.lower().strip() not in drivers.VALID_IMAGE_EXTENSIONS:
+    if fileFormat not in valid_file_formats:
         raise Exception('Error: provided file format ("{}") is not valid.'.format(args.file_format))
 
     # check if correct type of annotations
@@ -136,13 +140,13 @@ if __name__ == '__main__':
                 # parse
                 imgName = nextItem['filename']
                 imgName, _ = os.path.splitext(imgName)
-                targetName = os.path.join(args.target_folder, imgName+'.'+args.file_format)
+                targetName = os.path.join(args.target_folder, imgName+fileFormat)
                 parent,_ = os.path.split(targetName)
                 os.makedirs(parent, exist_ok=True)
 
                 # convert base64 mask to image
-                width = nextItem['width']
-                height = nextItem['height']
+                width = int(nextItem['width'])
+                height = int(nextItem['height'])
                 raster = np.frombuffer(base64.b64decode(nextItem['segmentationmask']), dtype=np.uint8)
                 raster = np.reshape(raster, (height,width,))
                 img = Image.fromarray(raster)

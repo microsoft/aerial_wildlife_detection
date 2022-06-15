@@ -6,7 +6,7 @@
     An instance of this FileServer class may be provided to the AIModel instead,
     and serves as a gateway to the project's actual file server.
 
-    2019-21 Benjamin Kellenberger
+    2019-22 Benjamin Kellenberger
 '''
 
 import os
@@ -14,6 +14,8 @@ from urllib import request
 import urllib.parse
 from urllib.error import HTTPError
 from util.helpers import is_localhost
+from util import drivers
+drivers.init_drivers()
 
 
 class FileServer:
@@ -70,8 +72,10 @@ class FileServer:
 
             if self.isLocal:
                 # load file from disk
-                with open(queryPath, 'rb') as f:
-                    bytea = f.read()
+                driver = drivers.get_driver(queryPath)      #TODO: try-except?
+                bytea = driver.disk_to_bytes(queryPath)
+                # with open(queryPath, 'rb') as f:
+                #     bytea = f.read()
             else:
                 response = request.urlopen(queryPath)
                 bytea = response.read()
@@ -86,6 +90,47 @@ class FileServer:
             bytea = None
 
         return bytea
+    
+
+
+    def getImage(self, project, filename):
+        '''
+            Returns an image as a NumPy ndarray.
+            If FileServer module runs on same instance as AIWorker,
+            the file is directly loaded from the local disk.
+            Otherwise an HTTP request is being sent.
+        '''
+        img = None
+        try:
+            if not self.isLocal:
+                filename = urllib.parse.quote(filename)
+            localSpec = ('files' if not self.isLocal else '')
+            if project is not None:
+                queryPath = os.path.join(self.baseURI, project, localSpec, filename)
+            else:
+                queryPath = os.path.join(self.baseURI, filename)
+            
+            if '..' in queryPath or filename.startswith(os.sep):
+                # parent and absolute paths are not allowed (to protect the system and other projects)
+                raise Exception('Parent accessors ("..") and absolute paths ("{}path") are not allowed.'.format(os.sep))
+
+            if self.isLocal:
+                # load file from disk
+                driver = drivers.get_driver(queryPath)      #TODO: try-except?
+                img = driver.load_from_disk(queryPath)
+            else:
+                response = request.urlopen(queryPath)
+                bytea = response.read()
+                img = drivers.load_from_bytes(bytea)
+
+        except HTTPError as httpErr:
+            print('HTTP error')
+            print(httpErr)
+        except Exception as err:
+            print(err)  #TODO: don't throw an exception, but let worker handle it?
+
+        return img
+
 
 
     def putFile(self, project, bytea, filename):
@@ -108,6 +153,7 @@ class FileServer:
         print('Wrote file to disk: ' + filename)    #TODO
 
     
+
     def get_secure_instance(self, project):
         '''
             Returns a wrapper class to the "getFile" and "putFile"
@@ -118,6 +164,8 @@ class FileServer:
         class _secure_file_server:
             def getFile(self, filename):
                 return this.getFile(project, filename)
+            def getImage(self, filename):
+                return this.getImage(project, filename)
             def putFile(self, bytea, filename):
                 return this.putFile(project, bytea, filename)
         

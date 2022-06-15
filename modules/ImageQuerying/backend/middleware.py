@@ -1,5 +1,5 @@
 '''
-    2021 Benjamin Kellenberger
+    2021-22 Benjamin Kellenberger
 '''
 
 import json
@@ -38,8 +38,7 @@ class ImageQueryingMiddleware:
             Returns a NumPy ndarray of the image of size HxWxB
         '''
         assert isinstance(imgPath, str), f'Invalid image path provided ("{str(imgPath)}")'
-        imgBytes = self.fileServer.getFile(project, imgPath)
-        img = drivers.load_from_bytes(imgBytes)
+        img = self.fileServer.getImage(project, imgPath)
 
         if bands is None or bands == 'all':
             img = np.transpose(img, axes=(1,2,0))

@@ -3,7 +3,7 @@
     handling project setup, data import requests, etc.
     Also handles creation of new projects.
 
-    2019-21 Benjamin Kellenberger
+    2019-22 Benjamin Kellenberger
 '''
 
 import os
@@ -256,7 +256,7 @@ class ProjectConfigurator:
             try:
                 params = request.json
                 classdef = params['classes']
-                removeMissing = (params['remove_missing'] if 'remove_missing' in params else False)
+                removeMissing = params.get('remove_missing', False)
                 if isinstance(classdef, str):
                     # re-parse JSON (might happen in case of single quotes)
                     classdef = json.loads(classdef)

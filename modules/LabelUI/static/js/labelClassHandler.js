@@ -1,8 +1,14 @@
 /*
     Helper classes responsible for displaying the available label classes on the screen.
 
-    2019-20 Benjamin Kellenberger
+    2019-22 Benjamin Kellenberger
 */
+
+// for segmentation: avoid having duplicate colors
+window.usedColors = {
+    '#000000':1,
+    '#ffffff':1
+}
 
 window.parseClassdefEntry = function(id, entry, parent) {
     if(entry.hasOwnProperty('entries') && entry['entries'] != undefined) {
@@ -60,6 +66,15 @@ class LabelClass {
         this.name = (properties['name']===null || properties['name'] === undefined ? '[Label Class '+this.classID+']' : properties['name']);
         this.index = properties['index'];
         this.color = (properties['color']===null  || properties['color'] === undefined ? window.getDefaultColor(this.index) : properties['color']);
+        if('segmentationMasks'.includes([window.annotationType, window.predictionType])) {
+            // we disallow duplicate colors for segmentation masks
+            this.color = window.rgbToHex(this.color);
+            if(window.usedColors.hasOwnProperty(this.color)) {
+                this.color = window.getDefaultColor(this.index);    //TODO: this should work, but better use random color instead?
+            }
+            window.usedColors[this.color] = 1;
+        }
+
         this.colorValues = window.getColorValues(this.color);   // [R, G, B, A]
 
         this.keystroke = properties['keystroke'];

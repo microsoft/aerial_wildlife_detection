@@ -2,7 +2,7 @@
     Middleware layer between the project configuration front-end
     and the database.
 
-    2019-21 Benjamin Kellenberger
+    2019-22 Benjamin Kellenberger
 '''
 
 import os
@@ -10,6 +10,7 @@ import re
 import secrets
 import json
 import uuid
+import random
 from datetime import datetime
 from collections.abc import Iterable
 import requests
@@ -630,6 +631,20 @@ class ProjectConfigMiddleware:
         if is_segmentation:
             removeMissing = False
 
+            colors = self.dbConnector.execute(sql.SQL('''
+                SELECT id, color FROM {};
+            ''').format(sql.Identifier(project, 'labelclass')), None, 'all')
+            colors = dict([[c['color'].lower(), c['id']] for c in colors])
+        else:
+            colors = {}
+        
+        def _random_color():
+            # create unique random color
+            randomColor = '#{:06x}'.format(random.randint(10, 0xFFFFF0))
+            while randomColor in colors:
+                randomColor = '#{:06x}'.format(random.randint(0, 0xFFFFF0))
+            return randomColor
+
         # get current classes from database
         db_classes = {}
         db_groups = {}
@@ -674,15 +689,21 @@ class ProjectConfigMiddleware:
                     itemID = uuid.uuid1()
 
             color = item.get('color', None)
-            if isinstance(color, str) and is_segmentation:
-                # for segmentation we don't allow fully black or white (reserved for "no data")
-                rgb = list(int(color.strip('#')[i:i+2], 16) for i in (0, 2, 4))
-                if sum(rgb) < 15:
-                    rgb = [r+5 for r in rgb]
-                    color = '#{0:02x}{1:02x}{2:02x}'.format(*rgb)
-                elif sum(rgb) >= (3*255 - 15):
-                    rgb = [r-5 for r in rgb]
-                    color = '#{0:02x}{1:02x}{2:02x}'.format(*rgb)
+            if is_segmentation:
+                # for segmentation we don't allow fully black or white (reserved for "no data") and no duplicate colors
+                if isinstance(color, str):
+                    rgb = list(int(color.lower().strip('#')[i:i+2], 16) for i in (0, 2, 4))
+                    if sum(rgb) < 15:
+                        rgb = [r+5 for r in rgb]
+                        color = '#{0:02x}{1:02x}{2:02x}'.format(*rgb)
+                    elif sum(rgb) >= (3*255 - 15):
+                        rgb = [r-5 for r in rgb]
+                        color = '#{0:02x}{1:02x}{2:02x}'.format(*rgb)
+                
+                if not isinstance(color, str) or \
+                    (color.lower() in colors and colors[color] != itemID):
+                    # random color
+                    color = _random_color()
 
             entry = {
                 'id': itemID,
@@ -691,6 +712,7 @@ class ProjectConfigMiddleware:
                 'keystroke': None,
                 'labelclassgroup': parent
             }
+            colors[color] = itemID
             if 'children' in item:
                 # label class group
                 classgroups_update.append(entry)

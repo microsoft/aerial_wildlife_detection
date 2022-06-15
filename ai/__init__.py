@@ -277,47 +277,47 @@ PREDICTION_MODELS = {
                                             'canRemoveLabelclasses': True
                                        },
 
-    # PyTorch
-    'ai.models.pytorch.labels.ResNet': {
-                                            'name': 'ResNet (legacy)',
-                                            'author': '(built-in)',
-                                            'description': 'Deep classification model based on <a href="http://openaccess.thecvf.com/content_cvpr_2016/papers/He_Deep_Residual_Learning_CVPR_2016_paper.pdf" target="_blank">ResNet</a>.<br /><span style="color:red">NOTE: this model is deprecated and will be removed in the future; use the Detectron2 alternative for new projects instead.</span>',
-                                            'annotationType': 'labels',
-                                            'predictionType': 'labels',
-                                            'canAddLabelclasses': True,
-                                            'canRemoveLabelclasses': True,
-                                            'hidden': True
-                                        },
-    'ai.models.pytorch.points.WSODPointModel': {
-                                            'name': 'Weakly-supervised point detector',
-                                            'author': '(built-in)',
-                                            'description': '<a href="http://openaccess.thecvf.com/content_cvpr_2016/papers/He_Deep_Residual_Learning_CVPR_2016_paper.pdf" target="_blank">ResNet</a>-based point predictor also working on image-wide labels (presence/absence of classes) by weak supervision. Predicts a grid and extracts points from the grid cell centers. Weak supervision requires a fair mix of images with and without objects of the respective classes. See <a href="http://openaccess.thecvf.com/content_CVPRW_2019/papers/EarthVision/Kellenberger_When_a_Few_Clicks_Make_All_the_Difference_Improving_Weakly-Supervised_CVPRW_2019_paper.pdf">Kellenberger et al., 2019</a> for details.<br /><span style="color:red">NOTE: this model is deprecated and will be removed in the future.</span>',
-                                            'annotationType': ['labels', 'points'],
-                                            'predictionType': 'points',
-                                            'canAddLabelclasses': True,
-                                            'canRemoveLabelclasses': True,
-                                            'hidden': True
-                                        },
-    'ai.models.pytorch.boundingBoxes.RetinaNet': {
-                                            'name': 'RetinaNet (legacy)',
-                                            'author': '(built-in)',
-                                            'description': 'Implementation of the <a href="http://openaccess.thecvf.com/content_ICCV_2017/papers/Lin_Focal_Loss_for_ICCV_2017_paper.pdf" target="_blank">RetinaNet</a> object detector.<br /><span style="color:red">NOTE: this model is deprecated and will be removed in the future; use the Detectron2 alternative for new projects instead.</span>',
-                                            'annotationType': 'boundingBoxes',
-                                            'predictionType': 'boundingBoxes',
-                                            'canAddLabelclasses': True,
-                                            'canRemoveLabelclasses': True,
-                                            'hidden': True
-                                        },
-    'ai.models.pytorch.segmentationMasks.UNet': {
-                                            'name': 'U-Net',
-                                            'author': '(built-in)',
-                                            'description': '<div>Implementation of the <a href="https://arxiv.org/pdf/1505.04597.pdf" target="_blank">U-Net</a> model for semantic image segmentation.<br /><span style="color:red">NOTE: this model is deprecated and will be removed in the future.</span></div><img src="https://lmb.informatik.uni-freiburg.de/people/ronneber/u-net/u-net-architecture.png" height="400px" />',
-                                            'annotationType': 'segmentationMasks',
-                                            'predictionType': 'segmentationMasks',
-                                            'canAddLabelclasses': True,
-                                            'canRemoveLabelclasses': True,
-                                            'hidden': True
-                                        }
+    # # PyTorch: now disabled, since they cannot handle virtual views or multispectral data
+    # 'ai.models.pytorch.labels.ResNet': {
+    #                                         'name': 'ResNet (legacy)',
+    #                                         'author': '(built-in)',
+    #                                         'description': 'Deep classification model based on <a href="http://openaccess.thecvf.com/content_cvpr_2016/papers/He_Deep_Residual_Learning_CVPR_2016_paper.pdf" target="_blank">ResNet</a>.<br /><span style="color:red">NOTE: this model is deprecated and will be removed in the future; use the Detectron2 alternative for new projects instead.</span>',
+    #                                         'annotationType': 'labels',
+    #                                         'predictionType': 'labels',
+    #                                         'canAddLabelclasses': True,
+    #                                         'canRemoveLabelclasses': True,
+    #                                         'hidden': True
+    #                                     },
+    # 'ai.models.pytorch.points.WSODPointModel': {
+    #                                         'name': 'Weakly-supervised point detector',
+    #                                         'author': '(built-in)',
+    #                                         'description': '<a href="http://openaccess.thecvf.com/content_cvpr_2016/papers/He_Deep_Residual_Learning_CVPR_2016_paper.pdf" target="_blank">ResNet</a>-based point predictor also working on image-wide labels (presence/absence of classes) by weak supervision. Predicts a grid and extracts points from the grid cell centers. Weak supervision requires a fair mix of images with and without objects of the respective classes. See <a href="http://openaccess.thecvf.com/content_CVPRW_2019/papers/EarthVision/Kellenberger_When_a_Few_Clicks_Make_All_the_Difference_Improving_Weakly-Supervised_CVPRW_2019_paper.pdf">Kellenberger et al., 2019</a> for details.<br /><span style="color:red">NOTE: this model is deprecated and will be removed in the future.</span>',
+    #                                         'annotationType': ['labels', 'points'],
+    #                                         'predictionType': 'points',
+    #                                         'canAddLabelclasses': True,
+    #                                         'canRemoveLabelclasses': True,
+    #                                         'hidden': True
+    #                                     },
+    # 'ai.models.pytorch.boundingBoxes.RetinaNet': {
+    #                                         'name': 'RetinaNet (legacy)',
+    #                                         'author': '(built-in)',
+    #                                         'description': 'Implementation of the <a href="http://openaccess.thecvf.com/content_ICCV_2017/papers/Lin_Focal_Loss_for_ICCV_2017_paper.pdf" target="_blank">RetinaNet</a> object detector.<br /><span style="color:red">NOTE: this model is deprecated and will be removed in the future; use the Detectron2 alternative for new projects instead.</span>',
+    #                                         'annotationType': 'boundingBoxes',
+    #                                         'predictionType': 'boundingBoxes',
+    #                                         'canAddLabelclasses': True,
+    #                                         'canRemoveLabelclasses': True,
+    #                                         'hidden': True
+    #                                     },
+    # 'ai.models.pytorch.segmentationMasks.UNet': {
+    #                                         'name': 'U-Net',
+    #                                         'author': '(built-in)',
+    #                                         'description': '<div>Implementation of the <a href="https://arxiv.org/pdf/1505.04597.pdf" target="_blank">U-Net</a> model for semantic image segmentation.<br /><span style="color:red">NOTE: this model is deprecated and will be removed in the future.</span></div><img src="https://lmb.informatik.uni-freiburg.de/people/ronneber/u-net/u-net-architecture.png" height="400px" />',
+    #                                         'annotationType': 'segmentationMasks',
+    #                                         'predictionType': 'segmentationMasks',
+    #                                         'canAddLabelclasses': True,
+    #                                         'canRemoveLabelclasses': True,
+    #                                         'hidden': True
+    #                                     }
 
     # define your own here
 }
