@@ -333,8 +333,29 @@ MODIFICATIONS_sql = [
   'ALTER TYPE labelType ADD VALUE IF NOT EXISTS \'polygons\';',
   'ALTER TABLE "aide_admin".modelMarketplace DROP COLUMN IF EXISTS annotationType;',
   'ALTER TABLE "aide_admin".modelMarketplace DROP COLUMN IF EXISTS predictionType;',
+
   'ALTER TABLE "{schema}".image ADD COLUMN IF NOT EXISTS width INTEGER;',
-  'ALTER TABLE "{schema}".image ADD COLUMN IF NOT EXISTS height INTEGER;'
+  'ALTER TABLE "{schema}".image ADD COLUMN IF NOT EXISTS height INTEGER;',
+  'ALTER TABLE "{schema}".image ADD COLUMN IF NOT EXISTS x INTEGER;',
+  'ALTER TABLE "{schema}".image ADD COLUMN IF NOT EXISTS y INTEGER;',
+
+  '''
+    DO $$
+    BEGIN
+        BEGIN
+            IF NOT EXISTS (
+                SELECT constraint_name 
+            FROM information_schema.constraint_column_usage
+            WHERE table_schema = '{schema}'
+            AND table_name = 'image' AND constraint_name = 'image_filename_unique'
+            )
+            THEN
+                ALTER TABLE "{schema}".image DROP CONSTRAINT IF EXISTS image_filename_key;
+                ALTER TABLE "{schema}".image ADD CONSTRAINT image_filename_unique  UNIQUE (filename,x,y,width,height);
+            END IF;
+        END;
+    END $$;
+  '''
 ]
 
 

@@ -36,18 +36,22 @@
                         <div style="margin-left:20px"><input type="checkbox" id="split-patches-chck" />
                             <label for="split-patches-chck">Split images into tiles:</label><br />
                             <div id="split-patches-properties" style="margin-left:20px">
-                            <table><thead><tr><th></th><th>Horizontal</th><th>Vertical</th></tr></thead><tbody>
-                            <tr><td>Patch size:</td>
-                            <td><input type="number" id="patch-size-width" min="16" max="4096" value="800" disabled="disabled" /></td>
-                            <td><input type="number" id="patch-size-height" min="16" max="4096" value="600" disabled="disabled" /></td></tr>
-                            <tr><td>Stride:</td>
-                            <td><input type="number" id="patch-stride-width" min="16" max="4096" value="800" disabled="disabled" /></td>
-                            <td><input type="number" id="patch-stride-height" min="16" max="4096" value="600" disabled="disabled" /></td></tr></tbody></table>
-                            <input type="checkbox" id="patch-tight-chck" checked="checked" disabled="disabled" /><label for="patch-tight-chck">Do not exceed image boundaries</label><br />
-                            <input type="checkbox" id="discard-empty-chck" disabled="disabled" /><label for="discard-empty-chck"><span>Discard patches with</span>
-                            <input type="number" min="1" max="99" value="5" id="discard-empty-percentage" disabled="disabled" /><span>% or more homogeneous pixels</span></label>
-                            <div style="margin-left:10px"><span>Quantization value:</span><input type="number" min="1" max="255" value="255" id="discard-empty-quantization-value" disabled="disabled" />
-                            <div style="font-style:italic">Determines the color variation between pixels during homogeneity evaluation. Smaller quantization values (>0) result in more diverse pixels being considered homogeneous.</div></div>
+                                <table><thead><tr><th></th><th>Horizontal</th><th>Vertical</th></tr></thead><tbody>
+                                <tr><td>Patch size:</td>
+                                <td><input type="number" id="patch-size-width" min="16" max="4096" value="800" disabled="disabled" /></td>
+                                <td><input type="number" id="patch-size-height" min="16" max="4096" value="600" disabled="disabled" /></td></tr>
+                                <tr><td>Stride:</td>
+                                <td><input type="number" id="patch-stride-width" min="16" max="4096" value="800" disabled="disabled" /></td>
+                                <td><input type="number" id="patch-stride-height" min="16" max="4096" value="600" disabled="disabled" /></td></tr></tbody></table>
+                                <input type="checkbox" id="patch-tight-chck" checked="checked" disabled="disabled" /><label for="patch-tight-chck">Do not exceed image boundaries</label><br />
+                                <input type="checkbox" id="discard-empty-chck" disabled="disabled" /><label for="discard-empty-chck"><span>Discard tiles with</span>
+                                <input type="number" min="1" max="99" value="5" id="discard-empty-percentage" disabled="disabled" /><span>% or more homogeneous pixels</span></label>
+                                <div style="margin-left:10px"><span>Quantization value:</span><input type="number" min="1" max="255" value="255" id="discard-empty-quantization-value" disabled="disabled" />
+                                <div style="font-style:italic">Determines the color variation between pixels during homogeneity evaluation. Smaller quantization values (>0) result in more diverse pixels being considered homogeneous.</div></div>
+
+                                <input type="checkbox" id="disable-virtual-splitting" disabled="disabled" />
+                                <label for="disable-virtual-splitting">Create actual images (deprecated)</label><br />
+                                <div style="margin-left:10px;font-style:italic">If checked, images tiles will be stored as new files instead of registered as virtual views.</div>
                             </div>
                         </div>
                     </div>
@@ -366,268 +370,288 @@
 
         window.uploadedFiles = {};
         function startUploadFilesFromDisk() {
-            //TODO: rewrite to incorporate upload session concept
-
             let uploadImages = $('#image-import-enabled').prop('checked');
             let parseAnnotations = $('#parse-annotations-enabled').prop('checked');
             if(!uploadImages && !parseAnnotations) return;
 
             let doSplitPatches = uploadImages && $('#split-patches-chck').prop('checked');
-            if(parseAnnotations && doSplitPatches) {
+            if(parseAnnotations && doSplitPatches) {    //TODO
                 window.messager.addMessage('Cannot split images into patches and parse annotations', 'error', 0);
                 return;
             }
 
-            let uploadRequests = [];
             let fileInput = $('#file-upload-select')[0];
-            
-            let existingFiles = $('#existing-files [name=existing-files]:checked').val();
-
-            let convertUnsupported = $('#convert-unsupported-images').prop('checked');
-
-            // properties for patch splitting
-            let splitParams = {
-                'patchSize': [parseInt($('#patch-size-width').val()), parseInt($('#patch-size-height').val())],
-                'stride': [parseInt($('#patch-stride-width').val()), parseInt($('#patch-stride-height').val())],
-                'tight': $('#patch-tight-chck').prop('checked')
-            };
-            if($('#discard-empty-chck').prop('checked')) {
-                let perc = parseFloat($('#discard-empty-percentage').val());
-                if(!isNaN(perc) && perc > 0 && perc < 100) {
-                    splitParams['discard_homogeneous_percentage'] = perc;
-                }
-                let quantVal = parseFloat($('#discard-empty-quantization-value').val());
-                if(!isNaN(quantVal)) {
-                    quantVal = Math.max(1, Math.min(255, quantVal));
-                    splitParams['discard_homogeneous_quantization_value'] = quantVal;
-                }
-            }
-
-            // global progress bar, status message, and stop button
-            $('#global-progress-bar').empty();
-            var pBar = new ProgressBar(true, 0, fileInput.files.length, false);
-            $('#global-progress-bar').append(pBar.getMarkup());
-            var infoBar = $('<span style="flex-shrink:0;font-size:small;">uploading... (0/0 images uploaded)</span>');
-            $('#global-progress-bar').append(infoBar);
-            window.stopAction = false;
-            var stopButton = $('<button class="btn btn-sm btn-danger" id="cancel-button">Cancel</button>');
-            stopButton.on('click', function() {
-                window.stopAction = true;
-                $(this).attr('disabled', true);
-                // abort uploads
-                for(var i=0; i<uploadRequests.length; i++) {
-                    uploadRequests[i].abort();
-                }
-                // set message for unset elements
-                for(var entryKey in window.imageBrowser.getEntries()) {
-                    if(!window.uploadedFiles.hasOwnProperty(entryKey)) {
-                        window.imageBrowser.set('message', entryKey, 'aborted.');
-                        window.imageBrowser.set('imageURL', entryKey, '/static/dataAdmin/img/forbidden.png');
-                    }
-                }
-                // hide progress bar
-                $('#global-progress-bar').hide();
-                $('#global-progress-bar').empty();
-                setControlsDisabled(false);
-                window.messager.addMessage('Upload aborted.');
-            });
-            $('#global-progress-bar').append(stopButton);
-            $('#global-progress-bar').show();
 
             // group files by file name sans extension (account for data types consisting of multiple files)
             let fileGroups = create_file_groups(fileInput.files);
+            let numFiles = 0;
+            for(var key in fileGroups) {
+                numFiles += fileGroups[key].length;
+            }
 
-            let numComplete = 0;
-            for(var fgkey in fileGroups) {
-                if(window.stopAction) {
-                    // user aborted
-                    break;
+            // gather params
+            let formData = new FormData();
+            formData.append('uploadImages', uploadImages);
+            formData.append('parseAnnotations', parseAnnotations);
+            formData.append('numFiles', numFiles);
+            formData.append('existingFiles', $('#existing-files [name=existing-files]:checked').val());
+            formData.append('convertUnsupported', $('#convert-unsupported-images').prop('checked'));
+            formData.append('splitPatches', doSplitPatches);
+            if(doSplitPatches) {
+                let splitParams = {
+                    'patchSize': [parseInt($('#patch-size-width').val()), parseInt($('#patch-size-height').val())],
+                    'stride': [parseInt($('#patch-stride-width').val()), parseInt($('#patch-stride-height').val())],
+                    'tight': $('#patch-tight-chck').prop('checked'),
+                    'virtualSplit': !$('#disable-virtual-splitting').prop('checked')
                 }
-                let nextFiles = fileGroups[fgkey];
-
-                // prepare form data
-                let formData = new FormData();
-
-                // image upload properties
-                formData.append('uploadImages', uploadImages);
-                if(uploadImages) {
-                    formData.append('existingFiles', existingFiles);
-                    formData.append('splitPatches', doSplitPatches);
-                    formData.append('splitParams', JSON.stringify(splitParams));
-                    formData.append('convertUnsupported', convertUnsupported);
+                if($('#discard-empty-chck').prop('checked')) {
+                    let perc = parseFloat($('#discard-empty-percentage').val());
+                    if(!isNaN(perc) && perc > 0 && perc < 100) {
+                        splitParams['discard_homogeneous_percentage'] = perc;
+                    }
+                    let quantVal = parseFloat($('#discard-empty-quantization-value').val());
+                    if(!isNaN(quantVal)) {
+                        quantVal = Math.max(1, Math.min(255, quantVal));
+                        splitParams['discard_homogeneous_quantization_value'] = quantVal;
+                    }
                 }
-
-                // append annotation parsing information if available
-                formData.append('parseAnnotations', parseAnnotations);
-                if(parseAnnotations) {
-                    formData.append('skipUnknownClasses', $('#skip-unknown-classes').prop('checked'));
-                    formData.append('markAsGoldenQuestions', $('#mark-golden-questions').prop('checked'));
-
-                    let parserID = $('#annotation-format').val();
-                    formData.append('parserID', (parserID === 'auto-detect' ? null : parserID));
-
-                    if(parserID !== 'auto-detect') {
-                        // append parser args
-                        let parserKwargs = {};
-                        $('#annotation-parser-options').find(':input').each(function() {
-                            let id = $(this).attr('id');
-                            let checked = $(this).prop('checked');
-                            if(checked !== undefined) {
-                                parserKwargs[id] = checked;
-                            } else {
-                                let value = $(this).val();
-                                if(val !== undefined) {
-                                    parserKwargs[id] = val;
-                                }
+                formData.append('splitParams', JSON.stringify(splitParams));
+            }
+            if(parseAnnotations) {
+                formData.append('skipUnknownClasses', $('#skip-unknown-classes').prop('checked'));
+                formData.append('markAsGoldenQuestions', $('#mark-golden-questions').prop('checked'));
+                let parserID = $('#annotation-format').val();
+                formData.append('parserID', (parserID === 'auto-detect' ? null : parserID));
+                if(parserID !== 'auto-detect') {
+                    // append parser args
+                    let parserKwargs = {};
+                    $('#annotation-parser-options').find(':input').each(function() {
+                        let id = $(this).attr('id');
+                        let checked = $(this).prop('checked');
+                        if(checked !== undefined) {
+                            parserKwargs[id] = checked;
+                        } else {
+                            let value = $(this).val();
+                            if(val !== undefined) {
+                                parserKwargs[id] = val;
                             }
-                        });
-                        formData.append('parserArgs', parserKwargs);
-                    }
-                }
-
-                // prepare image browser entries and append to form data
-                let fileKeys = {};
-                for(var f in nextFiles) {
-                    let nextItem = nextFiles[f];
-
-                    let fileName = (nextItem.webkitRelativePath !== undefined ? nextItem.webkitRelativePath : nextItem.name);
-                    if(fileName.startsWith('/')) {
-                        fileName = fileName.slice(1)
-                    }
-                    let key = fileName+'_'+f;
-                    fileKeys[key] = {
-                        filename: fileName
-                    };
-                    formData.append(key, nextItem);
-                    window.imageBrowser.addImages({
-                        key: {
-                            'id': key,
-                            'url': fileName,
-                            'imageURL': '/static/dataAdmin/img/loading.png',
-                            'message': 'waiting...'
                         }
                     });
+                    formData.append('parserArgs', parserKwargs);
                 }
-                
-                // upload
-                for(var key in fileKeys) {
-                    window.imageBrowser.setProgressBar(fileKeys[key]['filename'], true, 0);
-                }
-                let uploadRequest = $.ajax({
-                    url: window.baseURL + 'uploadData',
+            }
+
+            // initiate upload session and upload images
+            function _init_upload_session() {
+                return $.ajax({
+                    url: window.baseURL + 'initiateUploadSession',
                     method: 'POST',
                     data: formData,
                     cache: false,
                     contentType: false,
-                    processData: false,
-                    xhr: function () {
-                        var customXhr = $.ajaxSettings.xhr();
-                        if(customXhr.upload) {
-                            customXhr.upload.addEventListener('progress', function(e) {
-                                if(e.lengthComputable) {
-                                    window.imageBrowser.set('message', this, 'uploading...');
-                                    if(e.loaded < e.total) {
-                                        window.imageBrowser.setProgressBar(this, true, e.loaded, e.total);
+                    processData: false
+                });
+            }
+
+            return _init_upload_session().then((response) => {
+                let sessionID = response['session_id'];
+                let uploadRequests = [];
+
+                // global progress bar, status message, and stop button
+                $('#global-progress-bar').empty();
+                var pBar = new ProgressBar(true, 0, numFiles, false);
+                $('#global-progress-bar').append(pBar.getMarkup());
+                var infoBar = $('<span style="flex-shrink:0;font-size:small;">uploading... (0/0 images uploaded)</span>');
+                $('#global-progress-bar').append(infoBar);
+                window.stopAction = false;
+                var stopButton = $('<button class="btn btn-sm btn-danger" id="cancel-button">Cancel</button>');
+                stopButton.on('click', function() {
+                    window.stopAction = true;
+                    $(this).attr('disabled', true);
+                    // abort uploads
+                    for(var i=0; i<uploadRequests.length; i++) {
+                        uploadRequests[i].abort();
+                    }
+                    // set message for unset elements
+                    for(var entryKey in window.imageBrowser.getEntries()) {
+                        if(!window.uploadedFiles.hasOwnProperty(entryKey)) {
+                            window.imageBrowser.set('message', entryKey, 'aborted.');
+                            window.imageBrowser.set('imageURL', entryKey, '/static/dataAdmin/img/forbidden.png');
+                        }
+                    }
+                    // hide progress bar
+                    $('#global-progress-bar').hide();
+                    $('#global-progress-bar').empty();
+                    setControlsDisabled(false);
+                    window.messager.addMessage('Upload aborted.');
+                });
+                $('#global-progress-bar').append(stopButton);
+                $('#global-progress-bar').show();
+
+                let numComplete = 0;
+                for(var fgkey in fileGroups) {
+                    if(window.stopAction) {
+                        // user aborted
+                        break;
+                    }
+                    let nextFiles = fileGroups[fgkey];
+
+                    // prepare form data
+                    let formData = new FormData();
+                    formData.append('sessionID', sessionID);
+
+                    // prepare image browser entries and append to form data
+                    let fileKeys = {};
+                    for(var f in nextFiles) {
+                        let nextItem = nextFiles[f];
+
+                        let fileName = (nextItem.webkitRelativePath !== undefined ? nextItem.webkitRelativePath : nextItem.name);
+                        if(fileName.startsWith('/')) {
+                            fileName = fileName.slice(1)
+                        }
+                        let key = fileName+'_'+f;
+                        fileKeys[key] = {
+                            filename: fileName
+                        };
+                        formData.append(key, nextItem);
+                        window.imageBrowser.addImages({
+                            key: {
+                                'id': key,
+                                'url': fileName,
+                                'imageURL': '/static/dataAdmin/img/loading.png',
+                                'message': 'waiting...'
+                            }
+                        });
+                    }
+                    
+                    // upload
+                    for(var key in fileKeys) {
+                        window.imageBrowser.setProgressBar(fileKeys[key]['filename'], true, 0);
+                    }
+                    let uploadRequest = $.ajax({
+                        url: window.baseURL + 'uploadData',
+                        method: 'POST',
+                        data: formData,
+                        cache: false,
+                        contentType: false,
+                        processData: false,
+                        xhr: function () {
+                            var customXhr = $.ajaxSettings.xhr();
+                            if(customXhr.upload) {
+                                customXhr.upload.addEventListener('progress', function(e) {
+                                    if(e.lengthComputable) {
+                                        window.imageBrowser.set('message', this, 'uploading...');
+                                        if(e.loaded < e.total) {
+                                            window.imageBrowser.setProgressBar(this, true, e.loaded, e.total);
+                                        } else {
+                                            window.imageBrowser.setProgressBar(this, false);
+                                        }
                                     } else {
                                         window.imageBrowser.setProgressBar(this, false);
+                                        window.imageBrowser.set('message', this, '');
                                     }
-                                } else {
-                                    window.imageBrowser.setProgressBar(this, false);
-                                    window.imageBrowser.set('message', this, '');
-                                }
-                            }.bind(key), false);
-                        }
-                        return customXhr;
-                    },
-                    success: function(data) {
-                        // retrieve image URL for uploaded images
-                        //TODO: make compatible with bulk upload
-                        // try {
-                            if(typeof(data) === 'string') {
-                                data = JSON.parse(data);
+                                }.bind(key), false);
                             }
-
-                            if(!data.hasOwnProperty('result')) {
-                                // error
-                                let msg = 'Data upload failed';
-                                if(data.hasOwnProperty('message')) {
-                                    msg += ' (message: "' + data['message'] + '")';
+                            return customXhr;
+                        },
+                        success: function(data) {
+                            // retrieve image URL for uploaded images
+                            //TODO: make compatible with bulk upload
+                            // try {
+                                if(typeof(data) === 'string') {
+                                    data = JSON.parse(data);
                                 }
-                                msg += '.';
-                                window.messager.addMessage(msg, 'error', 0);
-                                return;
-                            }
 
-                            // combine all keys (original images plus potential new patches)
-                            let allKeys = {...fileKeys, ...data['result']};
+                                if(!data.hasOwnProperty('result')) {
+                                    // error
+                                    let msg = 'Data upload failed';
+                                    if(data.hasOwnProperty('message')) {
+                                        msg += ' (message: "' + data['message'] + '")';
+                                    }
+                                    msg += '.';
+                                    window.messager.addMessage(msg, 'error', 0);
+                                    return;
+                                }
 
-                            for(var key in allKeys) {
-                                let imgName = allKeys[key]['filename'];
-                                let url = window.dataServerURI + window.project + '/files/' + imgName;
+                                // combine all keys (original images plus potential new patches)
+                                let allKeys = {...fileKeys, ...data['result']};
 
-                                if(!window.imageBrowser.containsEntry(key)) {
-                                    // new image, e.g. due to splitting; add entry
-                                    window.imageBrowser.addImages({
-                                        key: {
-                                            'id': key,
-                                            'url': imgName,
-                                            'imageURL': url,
-                                            'message': '<span style="color:green">upload successful</span>'
+                                for(var key in allKeys) {
+                                    let imgName = allKeys[key]['filename'];
+                                    let url = window.dataServerURI + window.project + '/files/' + imgName;
+
+                                    let window_box = [
+                                        allKeys[key]['x'], allKeys[key]['y'],
+                                        allKeys[key]['width'], allKeys[key]['height']
+                                    ];
+                                    if(window_box.every(function(x){return Number.isInteger(x)})) {
+                                        url += '?window=' + window_box;
+                                    }
+
+                                    if(!window.imageBrowser.containsEntry(key)) {
+                                        // new image, e.g. due to splitting; add entry
+                                        window.imageBrowser.addImages({
+                                            key: {
+                                                'id': key,
+                                                'url': imgName,
+                                                'imageURL': url,
+                                                'message': '<span style="color:green">upload successful</span>'
+                                            }
+                                        });
+                                    }
+                                    let result = {
+                                        'status': 3,
+                                        'message': 'unknown error'
+                                    }
+                                    if(data['result'].hasOwnProperty(key)) {
+                                        result = data['result'][key];
+                                    }
+                                    let message = result['message'];
+                                    if(result['status'] === 0) {
+                                        // valid image
+                                        message = '<span style="color:green">'+message+'</span>';
+                                    } else if(result['status'] === 1) {
+                                        // auxiliary file
+                                        url = '/static/dataAdmin/img/auxiliary.png';
+                                        message = '<span style="color:#4ca0ff">'+message+'</span>';
+                                    } else if(result['status'] === 2) {
+                                        // image with warning
+                                        message = '<span style="color:yellow">'+message+'</span>';
+                                    } else if(result['status'] === 3) {
+                                        // failed upload
+                                        url = '/static/dataAdmin/img/error.png';
+                                        message = '<span style="color:red">'+message+'</span>';
+                                    }
+                                    window.imageBrowser.set('imageURL', key, url);
+                                    window.imageBrowser.set('url', key, imgName);
+                                    window.imageBrowser.set('message', key, message);
+
+                                    // update progress bar
+                                    if(result['status'] < 3) {
+                                        pBar.set(true, pBar.getValue()+1);
+                                        numComplete += Object.keys(fileKeys).length;
+                                        infoBar.html('uploading... ('+numComplete+'/'+fileInput.files.length+' images uploaded)');
+                                        if(numComplete >= numFiles) {
+                                            pBar.set(false);
                                         }
-                                    });
-                                }
-                                let result = {
-                                    'status': 3,
-                                    'message': 'unknown error'
-                                }
-                                if(data['result'].hasOwnProperty(key)) {
-                                    result = data['result'][key];
-                                }
-                                let message = result['message'];
-                                if(result['status'] === 0) {
-                                    // valid image
-                                    message = '<span style="color:green">'+message+'</span>';
-                                } else if(result['status'] === 1) {
-                                    // auxiliary file
-                                    url = '/static/dataAdmin/img/auxiliary.png';
-                                    message = '<span style="color:#4ca0ff">'+message+'</span>';
-                                } else if(result['status'] === 2) {
-                                    // image with warning
-                                    message = '<span style="color:yellow">'+message+'</span>';
-                                } else if(result['status'] === 3) {
-                                    // failed upload
-                                    url = '/static/dataAdmin/img/error.png';
-                                    message = '<span style="color:red">'+message+'</span>';
-                                }
-                                window.imageBrowser.set('imageURL', key, url);
-                                window.imageBrowser.set('url', key, imgName);
-                                window.imageBrowser.set('message', key, message);
-
-                                // update progress bar
-                                if(result['status'] < 3) {
-                                    pBar.set(true, pBar.getValue()+1);
-                                    numComplete += Object.keys(fileKeys).length;
-                                    infoBar.html('uploading... ('+numComplete+'/'+fileInput.files.length+' images uploaded)');
-                                    if(numComplete >= fileInput.files.length) {
-                                        pBar.set(false);
+                                        window.uploadedFiles[key] = 1;
                                     }
-                                    window.uploadedFiles[key] = 1;
-                                }
-                            }                         
-                        // } catch(error) {
-                        //     //TODO
-                        //     console.log(error)
-                        // }
-                        window.imageBrowser.setProgressBar(this, false);
-                    }.bind(key),
-                    error: function(xhr, status, error) {
-                        window.imageBrowser.set('imageURL', this, '/static/dataAdmin/img/error.png');
-                        pBar.set(true, pBar.getValue()+1);
-                    }.bind(key)
-                });
+                                }                         
+                            // } catch(error) {
+                            //     //TODO
+                            //     console.log(error)
+                            // }
+                            window.imageBrowser.setProgressBar(this, false);
+                        }.bind(key),
+                        error: function(xhr, status, error) {
+                            window.imageBrowser.set('imageURL', this, '/static/dataAdmin/img/error.png');
+                            pBar.set(true, pBar.getValue()+1);
+                        }.bind(key)
+                    });
 
-                uploadRequests.push(uploadRequest);
-            }
+                    uploadRequests.push(uploadRequest);
+                }
+            });
 
             // hide global progress bar once everything is done
             $(document).ajaxStop(function() {

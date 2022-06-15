@@ -213,7 +213,7 @@ class DataAdministrator:
             # gather parameters
             try:
                 username = html.escape(request.get_cookie('username'))
-                numFiles = request.params.get('numFiles')
+                numFiles = int(request.params.get('numFiles'))
 
                 # images
                 uploadImages = helpers.parse_boolean(request.params.get('uploadImages', True))

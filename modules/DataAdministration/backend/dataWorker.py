@@ -27,7 +27,7 @@ from psycopg2 import sql
 from celery import current_task
 from modules.LabelUI.backend.annotation_sql_tokens import QueryStrings_annotation, QueryStrings_prediction
 from util.helpers import FILENAMES_PROHIBITED_CHARS, listDirectory, base64ToImage, hexToRGB, slugify, current_time, is_fileServer
-from util.imageSharding import split_image
+from util.imageSharding import get_split_positions, split_image
 from util import drivers, parsers
 
 
@@ -237,7 +237,9 @@ class DataWorker:
         queryArgs.append(limit)
         
         queryStr = sql.SQL('''
-            SELECT img.id, filename, EXTRACT(epoch FROM date_added) AS date_added,
+            SELECT img.id, filename,
+                img.x AS w_x, img.y AS w_y, img.width AS w_width, img.height AS w_height,
+                EXTRACT(epoch FROM date_added) AS date_added,
                 COALESCE(viewcount, 0) AS viewcount,
                 EXTRACT(epoch FROM last_viewed) AS last_viewed,
                 COALESCE(num_anno, 0) AS num_anno,
@@ -332,7 +334,7 @@ class DataWorker:
 
         try:
             bandConfig = json.loads(projectProps['band_config'])
-            bandNum = set((len(bandConfig),))
+            bandNum = tuple(set((len(bandConfig),)))
             customBandConfig = True         # for non-RGB images
         except:
             bandNum = (1,3)
@@ -421,7 +423,8 @@ class DataWorker:
                 splitProperties = {
                     'patchSize': (800, 600), 'stride': (400, 300), 'tight':
                     True, 'discard_homogeneous_percentage': 5,
-                    'discard_homogeneous_quantization_value': 255
+                    'discard_homogeneous_quantization_value': 255,
+                    'virtualSplit': True
                 }
 
             would divide the images into patches of size 800x600, with overlap
@@ -439,8 +442,10 @@ class DataWorker:
             (up to 255) define more diverse bins and thus require pixels to be
             more similar in colors to be considered identical.
 
-            Instead of the full images, the patches are stored on disk and re-
-            ferenced through the database. The name format for patches is
+            Property "virtualSplit" determines whether the patches are to be
+            stored as new images (deprecated) or just split virtually (default).
+            If set to False, the patches are stored on disk and referenced
+            through the database. The name format for patches is
             "imageName_x_y.jpg", with "imageName" denoting the name of the ori-
             ginal image, and "x" and "y" the left and top position of the patch
             inside the original image.
@@ -471,7 +476,7 @@ class DataWorker:
             and error messages for those that were not.
         '''
         # verify access
-        assert self.middleware.verifySessionAccess(project, username, sessionID), \
+        assert self.verifySessionAccess(project, username, sessionID), \
                     'Upload session does not exist or user has no access to it'
         
         # load session metadata
@@ -481,6 +486,8 @@ class DataWorker:
 
         # temp dir to save raw files to
         tempRoot = os.path.join(meta['sessionDir'], 'files')
+
+        destFolder = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), project) + os.sep
 
         # save all files to temp dir temporarily
         tempFiles = {}
@@ -520,12 +527,14 @@ class DataWorker:
 
                 imgKey, ext = os.path.splitext(originalFileName)
                 ext = ext.lower()
+                nextFileName = originalFileName
 
                 # try to load file with drivers
                 isLoadable = False
                 try:
-                    # pixelArray = drivers.load_from_disk(file)     
-                    pixelArray = drivers.load_from_disk(tempFileName)       #TODO: load only small window once implemented to prevent out-of-memory errors
+                    pixelArray = None       # only load image if absolutely necessary
+                    driver = drivers.get_driver(tempFileName)
+                    sz = driver.size(tempFileName)
 
                     # loading succeeded; move entries about potential header files from imgs_error to files_aux
                     isLoadable = True
@@ -534,12 +543,13 @@ class DataWorker:
                         files_aux[imgKey] = imgs_error[imgKey]
                         del imgs_error[imgKey]
                     
-                    bandNum_current = pixelArray.shape[0]
+                    bandNum_current = sz[0]
                     if bandNum_current not in bandNum:
                         raise Exception(f'Image "{originalFileName}" has invalid number of bands (expected: {str(bandNum)}, actual: {str(bandNum_current)}).')
                     elif bandNum_current == 1 and not hasCustomBandConfig:
                         # project expects RGB data but image is grayscale; replicate for maximum compatibility
-                        pixelArray = np.concatenate((pixelArray, pixelArray, pixelArray), -1)
+                        pixelArray = drivers.load_from_disk(tempFileName)
+                        pixelArray = np.concatenate((pixelArray, pixelArray, pixelArray), 0)
                         forceConvert = True         # set to True to force saving file to disk instead of simply copying it
 
                     targetMimeType = None
@@ -550,6 +560,8 @@ class DataWorker:
                             ext = drivers.DATA_EXTENSIONS_CONVERSION['image']
                             nextFileName = imgKey + ext
                             targetMimeType = drivers.DATA_MIME_TYPES_CONVERSION['image']
+                            if pixelArray is None:
+                                pixelArray = drivers.load_from_disk(tempFileName)
                             imgs_warn[key] = {
                                 'filename': nextFileName,
                                 'message': f'Image "{originalFileName}" has been converted to {targetMimeType} and renamed to "{nextFileName}".'
@@ -561,22 +573,79 @@ class DataWorker:
                     # prepare to save image(s) into AIDE project folder
                     images_save = {}
                     if meta['splitImages'] and meta['splitProperties'] is not None:
-                        # split image into patches
                         splitProperties = meta['splitProperties']
-                        images, coords = split_image(pixelArray,            #TODO: implement reading windows and splitting from file
+                        if splitProperties.get('virtualSplit', True):
+                            # obtain xy coordinates of patches
+                            coords = get_split_positions(tempFileName,
                                                 splitProperties['patchSize'],
                                                 splitProperties['stride'],
                                                 splitProperties.get('tight', False),
                                                 splitProperties.get('discard_homogeneous_percentage', None),
                                                 splitProperties.get('discard_homogeneous_quantization_value', 255))
-                        bareFileName, _ = os.path.splitext(originalFileName)
-                        filenames = [f'{bareFileName}_{c[0]}_{c[1]}{ext}' for c in coords]
-                        for i in range(len(images)):
-                            subkey, _ = os.path.splitext(filenames[i])
-                            images_save[subkey] = {
-                                'image': images[i],
-                                'filename': filenames[i]
-                            }
+                            
+                            if len(coords) == 1:
+                                # only a single view; don't register x, y
+                                imgs_valid[key] = {
+                                    'filename': nextFileName,
+                                    'message': 'Image was too small to be split into tiles and hence registered as a whole',
+                                    'status': 0,
+                                    'width': coord[2],
+                                    'height': coord[3]
+                                }
+
+                            else:
+                                for coord in coords:
+                                    imgs_valid[f'{key}_{coord[0]}_{coord[1]}'] = {
+                                        'filename': nextFileName,
+                                        'message': f'created virtual split at position ({coord[0], coord[1]})',
+                                        'status': 0,
+                                        'x': coord[0],
+                                        'y': coord[1],
+                                        'width': coord[2],
+                                        'height': coord[3]
+                                    }
+                                imgs_valid[key] = {
+                                    'filename': None,       # avoid main image being registered in database
+                                    'message': f'Image split into {len(coords)} tiles',
+                                    'status': 0
+                                }
+                            if forceConvert or targetMimeType is not None:
+                                # no need to split, but need to convert image format
+                                images_save[key] = {
+                                    'image': pixelArray,
+                                    'filename': nextFileName
+                                }
+
+                            else:
+                                # no split and no conversion required; move file directly
+                                images_save[key] = {
+                                    'image': tempFileName,
+                                    'filename': nextFileName
+                                }
+
+                        else:
+                            # split image into new patches
+                            splitProperties = meta['splitProperties']
+                            coords, filenames = split_image(tempFileName,
+                                                    splitProperties['patchSize'],
+                                                    splitProperties['stride'],
+                                                    splitProperties.get('tight', False),
+                                                    splitProperties.get('discard_homogeneous_percentage', None),
+                                                    splitProperties.get('discard_homogeneous_quantization_value', 255),
+                                                    os.path.join(destFolder, originalFileName),
+                                                    return_patches=False
+                                                    )
+                            for f in range(len(filenames)):
+                                fn = filenames[f].replace(destFolder, '')
+                                imgs_valid[fn] = {
+                                    'filename': fn,
+                                    'message': f'created tile at position ({coords[f][0], coords[f][1]})',
+                                    'status': 0,
+                                    'x': None,
+                                    'y': None,
+                                    'width': coords[f][2],
+                                    'height': coords[f][3]
+                                }
                     
                     elif forceConvert or targetMimeType is not None:
                         # no need to split, but need to convert image format
@@ -593,7 +662,6 @@ class DataWorker:
                         }
 
                     # save data to project folder
-                    destFolder = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), project) + os.sep
                     for subKey in images_save:
                         img = images_save[subKey]['image']
                         newFileName = images_save[subKey]['filename']
@@ -623,7 +691,7 @@ class DataWorker:
                                             imgs_warn[subKey] = {
                                                 'filename': newFileName,
                                                 'message': 'An image with name "{}" already exists under given path on disk. Image has been renamed to "{}".'.format(
-                                                    filenames[i], newFileName
+                                                    img, newFileName
                                                 )
                                             }
                                 
@@ -639,17 +707,17 @@ class DataWorker:
                                     # overwrite new file; first remove metadata
                                     queryStr = sql.SQL('''
                                         DELETE FROM {id_iu}
-                                        WHERE image = (
+                                        WHERE image IN (
                                             SELECT id FROM {id_img}
                                             WHERE filename = %s
                                         );
                                         DELETE FROM {id_anno}
-                                        WHERE image = (
+                                        WHERE image IN (
                                             SELECT id FROM {id_img}
                                             WHERE filename = %s
                                         );
                                         DELETE FROM {id_pred}
-                                        WHERE image = (
+                                        WHERE image IN (
                                             SELECT id FROM {id_img}
                                             WHERE filename = %s
                                         );
@@ -684,11 +752,11 @@ class DataWorker:
                                 shutil.copyfile(img, destPath)
                             else:
                                 drivers.save_to_disk(img, destPath)
-                            imgs_valid[subKey] = {
-                                'filename': newFileName,
-                                'message': 'upload successful'
-                            }
-                            # imgPaths_valid.append(newFileName)
+                            if subKey not in imgs_valid:
+                                imgs_valid[subKey] = {
+                                    'filename': newFileName,
+                                    'message': 'upload successful'
+                                }
                         except Exception as e:
                             imgs_error[subKey] = {
                                 'filename': newFileName,
@@ -699,7 +767,8 @@ class DataWorker:
                     if not key in imgs_valid:
                         # add dummy entry for full image, even if it e.g. got split into patches
                         imgs_valid[key] = {
-                            'filename': None,
+                            'filename': originalFileName,
+                            'register': False,
                             'message': 'file successfully split into patches',
                             'status': 0
                         }
@@ -734,13 +803,26 @@ class DataWorker:
             # register valid images in database
             if len(imgs_valid):
                 queryStr = sql.SQL('''
-                    INSERT INTO {id_img} (filename)
+                    INSERT INTO {id_img} (filename, x, y, width, height)
                     VALUES %s
-                    ON CONFLICT (filename) DO NOTHING;
+                    ON CONFLICT (filename, x, y, width, height) DO NOTHING;
                 ''').format(
                     id_img=sql.Identifier(project, 'image')
                 )
-                self.dbConnector.insert(queryStr, [(imgs_valid[key]['filename'],) for key in imgs_valid.keys() if imgs_valid[key]['filename'] is not None])
+                self.dbConnector.insert(queryStr,
+                    [
+                        (
+                            imgs_valid[key]['filename'],
+                            imgs_valid[key].get('x', None),
+                            imgs_valid[key].get('y', None),
+                            imgs_valid[key].get('width', None),
+                            imgs_valid[key].get('height', None)
+                        )
+                        for key in imgs_valid.keys()
+                        if imgs_valid[key]['filename'] is not None \
+                            and imgs_valid[key].get('register', True)
+                    ]
+                )
 
             for key in imgs_valid:
                 result[key] = imgs_valid[key]
@@ -818,7 +900,7 @@ class DataWorker:
                 if len(parseResult['result']):
                     # retrieve file names for images annotations were imported for and append messages
                     fileNames = self.dbConnector.execute(sql.SQL('''
-                        SELECT id, filename FROM {}
+                        SELECT id, filename, x, y, width, height FROM {}
                         WHERE id IN %s;
                     ''').format(sql.Identifier(project, 'image')),
                     (tuple([(i,) for i in parseResult['result'].keys()]),),
@@ -826,6 +908,9 @@ class DataWorker:
                     for fn in fileNames:
                         numAnno = len(parseResult['result'][fn['id']])
                         fileName = fn['filename']
+                        window = [fn['x'], fn['y'], fn['width'], fn['height']]
+                        if all([w is not None for w in window]):
+                            fileName += '?window={},{},{},{}'.format(*window)
                         if fileName not in result:
                             result[fileName] = {
                                 'status': 0,

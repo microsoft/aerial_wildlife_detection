@@ -143,7 +143,7 @@ def get_drivers_by_extension(ext, omit_fallback=False):
     if not len(DRIVERS['extension']):
         init_drivers(False)
     try:
-        return DRIVERS['extension'][ext]
+        return DRIVERS['extension'][ext.lower()]
     except:
         return FALLBACK_DRIVERS
 
@@ -176,7 +176,32 @@ def bytesio_to_bytea(bytesio):
 
 
 
-def load_from_disk(filePath, override_extension=None, return_driver=False):
+def get_driver(object):
+    '''
+        Tries to guess the driver from the object (either a str for the file
+        name or a bytes or BytesIO object containing image data) and returns it.
+    '''
+    if isinstance(object, str):
+        # load from disk
+        _, ext = os.path.splitext(object)
+        ext = ext.lower()
+        drivers = get_drivers_by_extension(ext)
+        for driver in drivers:
+            if driver.is_loadable(object):
+                return driver
+    else:
+        # load from bytes
+        mimeType = magic.from_buffer(bytesio_to_bytea(object), mime=True).lower()      #TODO: workaround if libmagic fails?
+        drivers = get_drivers_by_mime_type(mimeType)
+        for driver in drivers:
+            if driver.is_loadable(object):
+                return driver
+
+    return None
+
+
+
+def load_from_disk(filePath, override_extension=None, return_driver=False, window=None):
     '''
         Tries to guess the driver from the file name's extension. Iterates
         through available drivers, sorted by priority, and tries to load the
@@ -188,16 +213,15 @@ def load_from_disk(filePath, override_extension=None, return_driver=False):
     '''
     ext = override_extension
     if isinstance(ext, str):
-        ext = ext.lower()
         if not ext[0] == '.':
             ext = '.' + ext
     else:
         _, ext = os.path.splitext(filePath)
-    
+    ext = ext.lower()
     drivers = get_drivers_by_extension(ext)
     for driver in drivers:
         try:
-            result = [driver.load_from_disk(filePath)]
+            result = [driver.load_from_disk(filePath, kwargs={'window':window})]
             if return_driver:
                 result.append(driver)
             return tuple(result) if len(result) > 1 else result[0]
@@ -208,7 +232,7 @@ def load_from_disk(filePath, override_extension=None, return_driver=False):
 
 
 
-def load_from_bytes(bytea, return_mime_type=False, return_driver=False):
+def load_from_bytes(bytea, return_mime_type=False, return_driver=False, window=None):
     '''
         Guesses the MIME type from the provided byte array using the libmagic
         library. Then, parses the byte array using an appropriate driver, if
@@ -218,7 +242,7 @@ def load_from_bytes(bytea, return_mime_type=False, return_driver=False):
     drivers = get_drivers_by_mime_type(mimeType)
     for driver in drivers:
         try:
-            result = [driver.load_from_bytes(bytea)]
+            result = [driver.load_from_bytes(bytea, kwargs={'window':window})]
             if return_mime_type:
                 result.append(mimeType)
             if return_driver:

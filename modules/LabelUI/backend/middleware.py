@@ -56,14 +56,14 @@ class DBMiddleware():
     def _assemble_annotations(self, project, queryData, hideGoldenQuestionInfo):
         response = {}
         for b in queryData:
-            # b = cursor.fetchone()
-            # if b is None:
-            #     break
-
             imgID = str(b['image'])
             if not imgID in response:
                 response[imgID] = {
                     'fileName': b['filename'],
+                    'w_x': b.get('w_x', None),
+                    'w_y': b.get('w_y', None),
+                    'w_width': b.get('w_width', None),
+                    'w_height': b.get('w_height', None),
                     'predictions': {},
                     'annotations': {},
                     'last_checked': None

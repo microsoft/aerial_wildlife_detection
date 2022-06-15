@@ -556,7 +556,6 @@ class DataHandler {
             data: JSON.stringify({'imageIDs':batch}),
             type: 'POST',
             success: function(data) {
-
                 let imgIDs = '';    // for updating URL in case of errors
                 let errors = '';
 

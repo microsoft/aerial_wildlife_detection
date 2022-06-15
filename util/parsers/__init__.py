@@ -15,10 +15,14 @@ __all__ = (
 
 # organize by annotation type and annotation format
 PARSERS = {
+    'labels': {},
+    'points': {},
     'boundingBoxes': {
         'mscoco': COCOparser,
         'yolo': YOLOparser
-    }
+    },
+    'polygons': {},
+    'segmentationMasks': {}
 }
 
 

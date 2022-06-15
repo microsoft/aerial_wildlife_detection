@@ -75,9 +75,10 @@ class SQLStringBuilder:
             usernameString = ''
 
         queryStr = sql.SQL('''
-            SELECT id, image, cType, viewcount, EXTRACT(epoch FROM last_checked) as last_checked, filename, isGoldenQuestion,
+            SELECT id, image, cType, viewcount, EXTRACT(epoch FROM last_checked) as last_checked, filename, w_x, w_y, w_width, w_height, isGoldenQuestion,
             COALESCE(bookmark, false) AS isBookmarked, {allCols} FROM (
-                SELECT id AS image, filename, isGoldenQuestion FROM {id_img}
+                SELECT id AS image, filename, x AS w_x, y AS w_y, width AS w_width, height AS w_height, isGoldenQuestion
+                FROM {id_img}
                 WHERE id IN %s
             ) AS img
             LEFT OUTER JOIN (
@@ -180,14 +181,16 @@ class SQLStringBuilder:
             )
 
         queryStr = sql.SQL('''
-            SELECT id, image, cType, viewcount, EXTRACT(epoch FROM last_checked) as last_checked, filename, isGoldenQuestion,
+            SELECT id, image, cType, viewcount, EXTRACT(epoch FROM last_checked) as last_checked, filename, w_x, w_y, w_width, w_height, isGoldenQuestion,
             COALESCE(bookmark, false) AS isBookmarked, {allCols} FROM (
             SELECT * FROM (
-                SELECT id AS image, filename, 0 AS viewcount, 0 AS annoCount, NULL AS last_checked, 1E9 AS score, NULL AS timeCreated, isGoldenQuestion FROM {id_img} AS img
+                SELECT id AS image, filename, x AS w_x, y AS w_y, width AS w_width, height AS w_height, 0 AS viewcount,
+                    0 AS annoCount, NULL AS last_checked, 1E9 AS score, NULL AS timeCreated, isGoldenQuestion FROM {id_img} AS img
                 WHERE isGoldenQuestion = TRUE
                 {gq_user}
                 UNION ALL
-                SELECT id AS image, filename, viewcount, annoCount, last_checked, score, timeCreated, isGoldenQuestion FROM {id_img} AS img
+                SELECT id AS image, filename, x AS w_x, y AS w_y, width AS w_width, height AS w_height,
+                    viewcount, annoCount, last_checked, score, timeCreated, isGoldenQuestion FROM {id_img} AS img
                 LEFT OUTER JOIN (
                     SELECT * FROM {id_iu}
                 ) AS iu ON img.id = iu.image
@@ -255,9 +258,10 @@ class SQLStringBuilder:
         fields_anno, fields_pred, fields_union = self._assemble_colnames(annotationType, predictionType)
 
         queryStr = sql.SQL('''
-            SELECT id, image, cType, 1 AS viewcount, NULL AS last_checked, NULL AS username, filename, isGoldenQuestion,
+            SELECT id, image, cType, 1 AS viewcount, NULL AS last_checked, NULL AS username, filename, w_x, w_y, w_width, w_height, isGoldenQuestion,
             COALESCE(bookmark, false) AS isBookmarked, {allCols} FROM (
-                SELECT id AS image, filename, isGoldenQuestion FROM {id_img}
+                SELECT id AS image, filename, x AS w_x, y AS w_y, width AS w_width, height AS w_height, isGoldenQuestion
+                FROM {id_img}
                 WHERE COALESCE(corrupt,false) IS FALSE
                 AND id IN (
                     SELECT anno.image FROM {id_anno} AS anno
@@ -356,9 +360,10 @@ class SQLStringBuilder:
             goldenQuestionsString = sql.SQL('')
 
         queryStr = sql.SQL('''
-            SELECT id, image, cType, username, viewcount, EXTRACT(epoch FROM last_checked) as last_checked, filename, isGoldenQuestion,
+            SELECT id, image, cType, username, viewcount, EXTRACT(epoch FROM last_checked) as last_checked, filename, w_x, w_y, w_width, w_height, isGoldenQuestion,
             COALESCE(bookmark, false) AS isBookmarked, {annoCols} FROM (
-                SELECT id AS image, filename, isGoldenQuestion FROM {id_image}
+                SELECT id AS image, filename, x AS w_x, y AS w_y, width AS w_width, height AS w_height, isGoldenQuestion
+                FROM {id_image}
                 {goldenQuestionsString}
             ) AS img
             JOIN (SELECT image AS iu_image, viewcount, last_checked, username FROM {id_iu}

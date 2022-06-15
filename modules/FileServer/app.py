@@ -1,13 +1,15 @@
 '''
     Serves files, such as images, from a local directory.
 
-    2019-21 Benjamin Kellenberger
+    2019-22 Benjamin Kellenberger
 '''
 
 import os
-from bottle import static_file, abort
+from io import BytesIO
+from bottle import static_file, request, abort, _file_iter_range, parse_range_header, HTTPResponse
 from util.cors import enable_cors
 from util import helpers
+from util.drivers import GDALImageDriver        #TODO
 
 
 class FileServer():
@@ -28,6 +30,8 @@ class FileServer():
         try:
             self.staticDir = self.config.getProperty('FileServer', 'staticfiles_dir')
             self.staticAddressSuffix = self.config.getProperty('FileServer', 'staticfiles_uri_addendum', type=str, fallback='').strip()
+
+            assert GDALImageDriver.init_is_available()  #TODO
 
             self._initBottle()
         except Exception as e:
@@ -53,7 +57,34 @@ class FileServer():
         @enable_cors
         @self.app.route(os.path.join('/', self.staticAddressSuffix, '/<project>/files/<path:path>'))
         def send_file(project, path):
-            return static_file(path, root=os.path.join(self.staticDir, project))
+            window = request.params.get('window', None)
+            if window is not None:
+                # load from disk and crop
+                if isinstance(window, str):
+                    window = [int(w) for w in window.strip().split(',')]
+                filePath = os.path.join(self.staticDir, project, path)
+                bytes = GDALImageDriver.disk_to_bytes(filePath, window=window)
+                clen = len(bytes)
+
+                headers = {}
+                # headers['Content-type'] = 'image/tiff'        #TODO
+                
+                ranges = request.environ.get('HTTP_RANGE')
+                if 'HTTP_RANGE' in request.environ:
+                    # need to send bytes in chunks
+                    fhandle = BytesIO(bytes)
+                    ranges = list(parse_range_header(request.environ['HTTP_RANGE'], clen))
+                    offset, end = ranges[0]
+                    headers['Content-Range'] = f'bytes {offset}-{end-1}/{clen}'
+                    headers['Content-Length'] = str(end-offset)
+                    fhandle = _file_iter_range(fhandle, offset, end-offset)
+                    return HTTPResponse(fhandle, status=206, **headers)
+
+                return bytes
+
+            else:
+                # full image; return static file directly
+                return static_file(path, root=os.path.join(self.staticDir, project))
 
 
         @enable_cors

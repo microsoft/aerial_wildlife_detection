@@ -284,9 +284,17 @@
                     if(data[idx]['last_viewed'] != undefined && data[idx]['last_viewed'] != null) {
                         var lastViewed = new Date(data[idx]['last_viewed']*1000 - 1).toLocaleString();
                     }
+                    let url = data[idx]['filename'];
+                    let window_box = [
+                        data[idx]['w_x'], data[idx]['w_y'],
+                        data[idx]['w_width'], data[idx]['w_height']
+                    ];
+                    if(window_box.every(function(x){return Number.isInteger(x)})) {
+                        url += '?window=' + window_box;
+                    }
                     images.push({
-                        'id': data[idx]['id'],
-                        'url': data[idx]['filename'],
+                        'id': id,
+                        'url': url,
                         'date_added': dateAdded,
                         'last_viewed': lastViewed,
                         'num_anno': data[idx]['num_anno'],

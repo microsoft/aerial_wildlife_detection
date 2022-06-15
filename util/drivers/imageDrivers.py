@@ -1,7 +1,7 @@
 '''
     Utilities to load images of various formats.
 
-    2021 Benjamin Kellenberger
+    2021-22 Benjamin Kellenberger
 '''
 
 import mimetypes
@@ -97,6 +97,21 @@ class AbstractImageDriver:
     @classmethod
     def init_is_available(cls):
         return False
+    
+    @classmethod
+    def is_loadable(cls, object):
+        return False
+
+    @classmethod
+    def size(cls, object):
+        raise NotImplementedError('Not implemented for abstract base class.')
+
+    @classmethod
+    def load(cls, object, **kwargs):
+        if isinstance(object, str):
+            return cls.load_from_disk(object, **kwargs)
+        else:
+            return cls.load_from_bytes(object, **kwargs)
 
     @classmethod
     def load_from_disk(cls, filePath, **kwargs):
@@ -108,6 +123,14 @@ class AbstractImageDriver:
     
     @classmethod
     def save_to_disk(cls, array, filePath, **kwargs):
+        raise NotImplementedError('Not implemented for abstract base class.')
+    
+    @classmethod
+    def save_to_bytes(cls, array, format, **kwargs):
+        raise NotImplementedError('Not implemented for abstract base class.')
+    
+    @classmethod
+    def disk_to_bytes(cls, filePath, **kwargs):
         raise NotImplementedError('Not implemented for abstract base class.')
 
     @classmethod
@@ -147,9 +170,34 @@ class PILImageDriver(AbstractImageDriver):
         return True
 
     @classmethod
+    def is_loadable(cls, object):
+        try:
+            if isinstance(object, str):
+                img = cls.loader.open(object)
+            else:
+                img = cls.loader.open(bytea_to_bytesio(object))
+            img.verify()
+            img.close()     #TODO: needed?
+            return True
+        except:
+            return False
+        finally:
+            img.close()
+    
+    @classmethod
+    def size(cls, object):
+        if isinstance(object, str):
+            img = cls.loader.open(object)
+        else:
+            img = cls.loader.open(bytea_to_bytesio(object))
+        sz = [len(img.getbands()), img.height, img.width]
+        img.close()
+        return sz
+
+    @classmethod
     def load_from_disk(cls, filePath, **kwargs):
         img = cls.loader.open(filePath)
-        if 'window' in kwargs:
+        if 'window' in kwargs and kwargs['window'] is not None:
             # crop
             img = img.crop(*kwargs['window'])
         arr = np.array(img)
@@ -161,7 +209,7 @@ class PILImageDriver(AbstractImageDriver):
     @classmethod
     def load_from_bytes(cls, bytea, **kwargs):
         img = cls.loader.open(bytea_to_bytesio(bytea))
-        if 'window' in kwargs:
+        if 'window' in kwargs and kwargs['window'] is not None:
             # crop
             img = img.crop(*kwargs['window'])
         arr = np.array(img)
@@ -174,7 +222,24 @@ class PILImageDriver(AbstractImageDriver):
     def save_to_disk(cls, array, filePath, **kwargs):
         img = cls.loader.fromarray(array)
         img.save(filePath)
-
+    
+    @classmethod
+    def save_to_bytes(cls, array, format, **kwargs):
+        bio = BytesIO()
+        img = cls.loader.fromarray(array)
+        img.save(bio, format=format)
+        return bio
+    
+    @classmethod
+    def disk_to_bytes(cls, filePath, **kwargs):
+        img = cls.loader.open(filePath)
+        if 'window' in kwargs:
+            # crop
+            img = img.crop(*kwargs['window'])
+        bio = BytesIO()
+        img.save(bio, format=img.format)
+        return bio
+        
 
 
 class GDALImageDriver(AbstractImageDriver):
@@ -219,26 +284,51 @@ class GDALImageDriver(AbstractImageDriver):
         return True
     
     @classmethod
+    def is_loadable(cls, object):
+        try:
+            if isinstance(object, str):
+                with cls.driver.open(object, 'r'):
+                    valid = True    #TODO
+            else:
+                with cls.memfile(bytesio_to_bytea(object)) as memfile:
+                    with memfile.open():
+                        valid = True
+            return valid
+        except:
+            return False
+    
+    @classmethod
+    def size(cls, object):
+        if isinstance(object, str):
+            with cls.driver.open(object, 'r') as f:
+                sz = [f.count, f.height, f.width]
+        else:
+            with cls.memfile(bytesio_to_bytea(object)) as memfile:
+                with memfile.open() as f:
+                    sz = [f.count, f.height, f.width]
+        return sz
+    
+    @classmethod
     def load_from_disk(cls, filePath, **kwargs):
-        if 'window' in kwargs:
+        if 'window' in kwargs and kwargs['window'] is not None:
             # crop
-            window = cls.window(**kwargs['window'])
+            window = cls.window(*kwargs['window'])
         else:
             window = None
         with cls.driver.open(filePath, 'r') as f:
-            raster = f.read(window=window)
+            raster = f.read(window=window, boundless=True)
         return raster
     
     @classmethod
     def load_from_bytes(cls, bytea, **kwargs):
-        if 'window' in kwargs:
+        if 'window' in kwargs and kwargs['window'] is not None:
             # crop
-            window = cls.window(**kwargs['window'])
+            window = cls.window(*kwargs['window'])
         else:
             window = None
         with cls.memfile(bytesio_to_bytea(bytea)) as memfile:
             with memfile.open() as f:
-                raster = f.read(window=window)
+                raster = f.read(window=window, boundless=True)
         return raster
 
     @classmethod
@@ -261,6 +351,45 @@ class GDALImageDriver(AbstractImageDriver):
         with cls.driver.open(filePath, 'w', **out_meta) as dest_img:
             dest_img.write(array)
 
+    @classmethod
+    def save_to_bytes(cls, array, format, **kwargs):        #TODO: format
+        if isinstance(kwargs, dict):
+            out_meta = kwargs
+        else:
+            out_meta = {}
+        if 'width' not in out_meta:
+            out_meta['width'] = array.shape[2]
+        if 'height' not in out_meta:
+            out_meta['height'] = array.shape[1]
+        if 'count' not in out_meta:
+            out_meta['count'] = array.shape[0]
+        if 'dtype' not in out_meta:
+            out_meta['dtype'] = str(array.dtype)
+        if 'transform' not in out_meta:
+            # add identity transform to suppress "NotGeoreferencedWarning"
+            out_meta['transform'] = cls.driver.Affine.identity()
+        with cls.memfile() as memfile:
+            memfile.write(array)
+        return memfile
+    
+    @classmethod
+    def disk_to_bytes(cls, filePath, **kwargs):
+        if 'window' in kwargs and kwargs['window'] is not None:
+            # crop
+            window = cls.window(*kwargs['window'])
+        else:
+            window = None
+        with cls.driver.open(filePath, 'r') as f:
+            data = f.read(window=window, boundless=True)
+            profile = f.profile
+
+        with cls.memfile() as memfile:
+            with memfile.open(**profile) as rst:
+                rst.write(data)
+            memfile.seek(0)
+            bytes = memfile.read()
+        return bytes
+
 
 
 class DICOMImageDriver(AbstractImageDriver):
@@ -281,6 +410,27 @@ class DICOMImageDriver(AbstractImageDriver):
         cls.loader = dcmread
         return True
     
+    @classmethod
+    def is_loadable(cls, object):
+        #TODO: check if optimizable
+        try:
+            if isinstance(object, str):
+                img = cls.load_from_disk(object)
+            else:
+                img = cls.load_from_bytes(object)
+            return isinstance(img, np.ndarray)
+        except:
+            return False
+    
+    @classmethod
+    def size(cls, object):
+        #TODO: check if optimizable
+        if isinstance(object, str):
+            img = cls.load_from_disk(object)
+        else:
+            img = cls.load_from_bytes(object)
+        return list(img.shape)
+
     @classmethod
     def load_from_disk(cls, filePath, **kwargs):
         data = cls.loader(filePath)

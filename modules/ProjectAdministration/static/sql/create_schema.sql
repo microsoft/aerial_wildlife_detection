@@ -4,7 +4,7 @@
     Requires substitutions for identifiers and annotation/prediction
     type fields.
 
-    2019-21 Benjamin Kellenberger
+    2019-22 Benjamin Kellenberger
 */
 
 
@@ -16,16 +16,19 @@ CREATE SCHEMA {id_schema}
 /* base tables */
 CREATE TABLE IF NOT EXISTS {id_image} (      
     id uuid DEFAULT uuid_generate_v4(),
-    filename VARCHAR UNIQUE NOT NULL,
+    filename VARCHAR NOT NULL,
     corrupt BOOLEAN,
     isGoldenQuestion BOOLEAN NOT NULL DEFAULT FALSE,
     --exif VARCHAR,
     --fVec bytea,
     date_added TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     last_requested TIMESTAMPTZ,
+    x INTEGER,
+    y INTEGER,
     width INTEGER,
     height INTEGER,
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    UNIQUE (filename,x,y,width,height)
 );
 
 CREATE TABLE IF NOT EXISTS {id_iu} (
