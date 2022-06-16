@@ -912,7 +912,7 @@ class DataWorker:
                     (tuple([(i,) for i in parseResult['result'].keys()]),),
                     'all')
                     for fn in fileNames:
-                        numAnno = len(parseResult['result'][str(fn['id'])])
+                        numAnno = len(parseResult['result'][fn['id']])
                         fileName = fn['filename']
                         window = [fn['x'], fn['y'], fn['width'], fn['height']]
                         if all([w is not None for w in window]):

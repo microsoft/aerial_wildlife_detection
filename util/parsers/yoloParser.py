@@ -342,7 +342,7 @@ class YOLOparser(AbstractAnnotationParser):
                 tuple(insertVals),
                 'all')
                 for row in result:
-                    importedAnnotations[str(row[0])].append(str(row[1]))
+                    importedAnnotations[row[0]].append(row[1])
 
         # also set in image_user relation
         if len(imgIDs_added):

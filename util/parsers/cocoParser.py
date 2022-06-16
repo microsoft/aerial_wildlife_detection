@@ -9,6 +9,8 @@ import os
 import json
 from datetime import datetime
 from collections import defaultdict
+import re
+import difflib
 from psycopg2 import sql
 
 from constants.version import AIDE_VERSION
@@ -22,6 +24,8 @@ class COCOparser(AbstractAnnotationParser):
     NAME = 'MS-COCO'
     INFO = '<p>Supports annotations of labels, bounding boxes, and polygons in the <a href="https://cocodataset.org/" target="_blank">MS-COCO</a> format.'
     ANNOTATION_TYPES = ('labels', 'boundingBoxes', 'polygons')
+
+    FILE_SUB_PATTERN = '(\/|\\\\)*.*\/*(images|labels|annotations)(\/|\\\\)*'           # pattern that attempts to identify image file name from label file name
 
     @classmethod
     def get_html_options(cls, method):
@@ -111,6 +115,8 @@ class COCOparser(AbstractAnnotationParser):
 
         now = helpers.current_time()
 
+        uploadedImages = set([f for f in fileDict.keys() if fileDict[f] != '-1'])
+
         dbFieldNames = []
         if self.annotationType == 'boundingBoxes':
             dbFieldNames = ['x', 'y', 'width', 'height']
@@ -157,37 +163,71 @@ class COCOparser(AbstractAnnotationParser):
             for anno in meta['annotations']:
                 try:
                     if anno['image_id'] in annotations:
-                        assert all([a > 0.0 for a in anno['bbox']])
+                        assert all([a >= 0.0 for a in anno['bbox']])
                         annotations[anno['image_id']].append(anno)
                 except:
                     # corrupt annotation; ignore
                     pass
 
             # find intersection with project images
-            imgs_match = self.match_filenames(list(images.keys()))
+            imgCandidates = {}
+            for key in list(images.keys()):
+                # file key to match the annotation file with the image(s) present in the database
+                fKey = key
+                if fKey.startswith(os.sep) or fKey.startswith('/'):
+                    fKey = fKey[1:]
+                fKey = re.sub(self.FILE_SUB_PATTERN, '', fKey, flags=re.IGNORECASE)        # replace "<base folder>/(labels|annotations)/*" with "%/*" for search in database with "LIKE" expression
+                fKey = os.path.splitext(fKey)[0]
 
-            # blacklist images where annotations had already been imported before (identifiable by a negative "timeRequired" attribute)
-            imgs_blacklisted = self.dbConnector.execute(sql.SQL('''
-                SELECT image
-                FROM {}
-                WHERE timeRequired < 0
-            ''').format(sql.Identifier(self.project, 'annotation')), None, 'all')
-            imgs_blacklisted = set([i['image'] for i in imgs_blacklisted])
+                if len(uploadedImages):
+                    candidates = difflib.get_close_matches(fKey, uploadedImages, n=1)
+                    if len(candidates):
+                        fKey = fileDict[candidates[0]]      # use new, potentially overwritten file name
+                imgCandidates[key] = fKey
+
+            # find corresponding images in database, blacklisting those that had annotations imported before
+            dbQuery = self.dbConnector.execute(sql.SQL('''
+                WITH labelquery(labelname) AS (
+                    VALUES {pl}
+                )
+                SELECT id, filename, COALESCE(x,0) AS x, COALESCE(y,0) AS y, width, height, labelname
+                FROM (
+                    SELECT id, filename, x, y, width, height
+                    FROM {id_img}
+                    WHERE id NOT IN (
+                        SELECT image
+                        FROM {id_iu}
+                        WHERE last_time_required < 0
+                    )
+                ) AS q
+                JOIN labelquery
+                ON filename ILIKE CONCAT('%%', labelname, '%%');
+            ''').format(
+                pl=sql.SQL(','.join(['%s' for _ in imgCandidates.keys()])),
+                id_img=sql.Identifier(self.project, 'image'),
+                id_iu=sql.Identifier(self.project, 'image_user')
+            ),
+            tuple((v,) for v in imgCandidates.values()), 'all')
+            img_lut = defaultdict(list)
+            for row in dbQuery:
+                if verifyImageSize or row['width'] is None or row['height'] is None:
+                    fname = os.path.join(self.projectRoot, row['filename'])
+                    driver = drivers.get_driver(fname)
+                    imsize = driver.size(fname)
+                    row['width'] = imsize[2]
+                    row['height'] = imsize[1]
+                img_lut[row['labelname']].append(row)
 
             # filter valid images: found in database, with valid annotation, and not blacklisted
-            for img in imgs_match:
-                imgUUID, imgPath = img[0], img[1]
-                if imgUUID in imgs_blacklisted:
-                    warnings.append(
-                        f'Annotations for image with ID {imgCOCOid} ({imgPath}) had already been imported before and are skipped in this import.'
-                    )
-                    continue
-
-                imgCOCOmeta = images[imgPath]
+            for key in images.keys():
+                imgCOCOmeta = images[key]
                 imgCOCOid = imgCOCOmeta['id']
-                if img is None:
+
+                candidateKey = imgCandidates[key]
+                if candidateKey not in img_lut:
+                    # image got blacklisted or has not been found in database
                     warnings.append(
-                        f'Image with ID {imgCOCOid} ({imgPath}) could not be found in project.'
+                        f'Image with ID {imgCOCOid} ({key}) could not be found or contains previously imported annotations; skipped.'
                     )
                     continue
                 
@@ -195,7 +235,7 @@ class COCOparser(AbstractAnnotationParser):
                 anno = annotations.get(imgCOCOid, None)
                 if anno is None or not len(anno):
                     warnings.append(
-                        f'Image with ID {imgCOCOid} ({imgPath}): no annotations registered.'
+                        f'Image with ID {imgCOCOid} ({key}): no annotations registered.'
                     )
                     if skipEmptyImages:
                         continue
@@ -205,75 +245,78 @@ class COCOparser(AbstractAnnotationParser):
                     anno = [a for a in anno if a['category_id'] in labelClasses]
                     if not len(anno):
                         warnings.append(
-                            f'"Image with ID {imgCOCOid} ({imgPath}): annotations contain label classes that are not registered in project.'
+                            f'"Image with ID {imgCOCOid} ({key}): annotations contain label classes that are not registered in project.'
                         )
                         continue
                 
+                img_candidates = img_lut[candidateKey]
                 annos_valid = []
-                if len(anno):
-                    # retrieve image dimensions
-                    try:
-                        if verifyImageSize or 'width' not in imgCOCOmeta or 'height' not in imgCOCOmeta:                #TODO: deal with virtual views
-                            imageSize = drivers.load_from_disk(os.path.join(self.projectRoot, imgPath)).shape[1:]
+                for a in range(len(anno)):
+                    isUnsure = anno[a].get('iscrowd', False) and unsure
+                    if self.annotationType == 'boundingBoxes':
+                        bbox = [float(v) for v in anno[a]['bbox']]
+                        assert len(bbox) == 4, f'invalid number of bounding box coordinates ({len(bbox)} != 4)'
+                    
+                    elif self.annotationType == 'polygons':
+                        # we parse the segmentation information for that
+                        seg = [float(v) for v in anno[a]['segmentation']]
+                        assert len(seg) % 2 == 0 and len(seg) >= 6, f'invalid number of coordinates for polygon encountered'
+                        
+                        # close polygon if needed
+                        if seg[0] != seg[-2] or seg[1] != seg[-1]:
+                            seg.extend(seg[:2])
+                    
+                    # identify correct images (resp. virtual views) for annotation
+                    for i in range(len(img_candidates)):
+                        imgID = img_candidates[i]['id']
+                        if self.annotationType == 'labels':
+                            # labels apply for every virtual view anyway
+                            annos_valid.append([
+                                imgID,
+                                isUnsure,
+                                anno[a]['category_id']
+                            ])
                         else:
-                            imageSize = (imgCOCOmeta['height'], imgCOCOmeta['width'])
-                    except:
-                        # image could not be loaded
-                        errors.append(
-                            f'"Image with ID {imgCOCOid} ({imgPath}) could not be loaded.'
-                        )
-                        continue
-
-                    # extract annotation geometries and scale to relative [0,1) coordinates
-                    for a in range(len(anno)):
-                        try:
-                            if self.annotationType == 'labels':
-                                # label only
-                                annos_valid.append([anno[a]['category_id']])
+                            # check if img encompasses annotation
+                            window = [
+                                img_candidates[i]['y'],
+                                img_candidates[i]['x'],
+                                img_candidates[i]['height'],
+                                img_candidates[i]['width']
+                            ]
 
                             if self.annotationType == 'boundingBoxes':
-                                bbox = [float(v) for v in anno[a]['bbox']]
-                                assert len(bbox) == 4, f'invalid number of bounding box coordinates ({len(bbox)} != 4)'
+                                if bbox[0] < window[1]+window[3] and \
+                                    bbox[1] < window[0]+window[2] and \
+                                        bbox[0]+bbox[2] > window[1] and \
+                                            bbox[1]+bbox[3] > window[0]:
+                                    # matching image (view) found; adjust bbox if needed, convert and append
+                                    bbox_target = [
+                                        (bbox[0] - window[1]) / window[3],
+                                        (bbox[1] - window[0]) / window[2],
+                                        bbox[2] / window[3],
+                                        bbox[3] / window[2]
+                                    ]
+                                    bbox_target[0] += bbox_target[2]/2.0
+                                    bbox_target[1] += bbox_target[3]/2.0
 
-                                # make relative
-                                bbox[0] /= imageSize[1]
-                                bbox[1] /= imageSize[0]
-                                bbox[2] /= imageSize[1]
-                                bbox[3] /= imageSize[0]
-                                bbox[0] = min(1.0, bbox[0]+bbox[2]/2.0)
-                                bbox[1] = min(1.0, bbox[1]+bbox[3]/2.0)
-
-                                assert all([b > 0 and b <= 1.0 for b in bbox]), 'Invalid bounding box coordinates ({})'.format(bbox)
-
-                                # add
-                                annos_valid.append([anno[a]['category_id'], *bbox])
-
+                                    annos_valid.append([
+                                        imgID,
+                                        isUnsure,
+                                        anno[a]['category_id'],
+                                        *bbox_target
+                                    ])
+                            
                             elif self.annotationType == 'polygons':
-                                # we parse the segmentation information for that
-                                seg = [float(v) for v in anno[a]['segmentation']]
-                                assert len(seg) % 2 == 0 and len(seg) >= 6, f'invalid number of coordinates for polygon encountered'
-                                
-                                # close polygon if needed
-                                if seg[0] != seg[-2] or seg[1] != seg[-1]:
-                                    seg.extend(seg[:2])
-
-                                # make relative
-                                for s in range(len(seg)):
-                                    seg[s] /= [imageSize[1], imageSize[0]][s%2]
-                                
-                                # add
-                                annos_valid.append([anno[a]['category_id'], seg])
-
+                                #TODO
+                                print('not yet implemented')
+                            
                             elif self.annotationType == 'segmentationMasks':
                                 #TODO: implement drawing segmasks from polygons
                                 raise NotImplementedError('To be implemented.')
-
-                        except Exception as e:
-                            warnings.append(
-                                f'Annotation {a} for image with ID {imgCOCOid} ({imgPath}) contained an error (reason: "{str(e)}" and was therefore skipped.'
-                            )
+               
                 if len(annos_valid) or not skipEmptyImages:
-                    imgs_valid.append({'img': imgUUID, 'anno': annos_valid})
+                    imgs_valid.extend(annos_valid)
 
             # add new label classes
             if not skipUnknownClasses:
@@ -308,19 +351,16 @@ class COCOparser(AbstractAnnotationParser):
                     ''').format(sql.Identifier(self.project, 'labelclass')),
                     [(l,labelclassGroups.get(l, None)) for l in lcDifference])
 
-                    # update LUT
-                    self._init_labelclasses()
-            
-        if len(imgs_valid):
-            for data in imgs_valid:
-                if not len(data['anno']):
-                    continue
-                # replace label class names with IDs
-                for a in range(len(data['anno'])):
-                    catID = data['anno'][a][0]
-                    lcName = labelClasses[catID][0]
-                    data['anno'][a][0] = self.labelClasses[lcName]
-            
+            # update LUT
+            self._init_labelclasses()
+                
+            if len(imgs_valid):
+                for i in range(len(imgs_valid)):
+                    # replace label class names with UUIDs
+                    labelName = labelClasses[imgs_valid[i][2]][0]
+                    labelUUID = self.labelClasses[labelName]
+                    imgs_valid[i][2] = labelUUID
+                
                 # finally, add annotations to database
                 result = self.dbConnector.insert(sql.SQL('''
                     INSERT INTO {id_anno} (username, image, timeCreated, timeRequired, unsure, label, {annoFields})
@@ -330,29 +370,28 @@ class COCOparser(AbstractAnnotationParser):
                     id_anno=sql.Identifier(self.project, 'annotation'),
                     annoFields=sql.SQL(','.join(dbFieldNames))
                 ),
-                tuple([(targetAccount, data['img'], now, -1, unsure,
-                    *anno) for anno in data['anno']]), 'all')
+                tuple([(targetAccount, i[0], now, -1, i[1],
+                    *i[2:]) for i in imgs_valid]), 'all')
                 for row in result:
                     importedAnnotations[row[0]].append(row[1])
 
-            # also set in image_user relation
-            imgIDs = [i['img'] for i in imgs_valid]
-            self.dbConnector.insert(sql.SQL('''
-                INSERT INTO {} (username, image, last_checked, last_time_required)
-                VALUES %s
-                ON CONFLICT (username, image) DO UPDATE
-                SET last_time_required = -1;
-            ''').format(sql.Identifier(self.project, 'image_user')),
-            tuple([(targetAccount, i, now, -1) for i in imgIDs]))
-            imgIDs_added = set(imgIDs)
-        
-        if markAsGoldenQuestions and len(imgIDs_added):
-            self.dbConnector.insert(sql.SQL('''
-                UPDATE {}
-                SET isGoldenQuestion = TRUE
-                WHERE id IN (%s);
-            ''').format(sql.Identifier(self.project, 'image')),
-            tuple([(i,) for i in list(imgIDs_added)]))
+                # also set in image_user relation
+                imgIDs = set(i[0] for i in imgs_valid)
+                self.dbConnector.insert(sql.SQL('''
+                    INSERT INTO {} (username, image, last_checked, last_time_required)
+                    VALUES %s
+                    ON CONFLICT (username, image) DO UPDATE
+                    SET last_time_required = -1;
+                ''').format(sql.Identifier(self.project, 'image_user')),
+                tuple([(targetAccount, i, now, -1) for i in imgIDs]))
+            
+            if markAsGoldenQuestions and len(imgIDs):
+                self.dbConnector.insert(sql.SQL('''
+                    UPDATE {}
+                    SET isGoldenQuestion = TRUE
+                    WHERE id IN (%s);
+                ''').format(sql.Identifier(self.project, 'image')),
+                tuple([(i,) for i in list(imgIDs)]))
 
         return {
             'result': importedAnnotations,
@@ -410,11 +449,18 @@ class COCOparser(AbstractAnnotationParser):
         imgIDLookup = {}
         imgSizeLookup = {}
         for img in annotations['images']:
-            #TODO: store information about image width/height in database
-            imsize = drivers.load_from_disk(os.path.join(self.projectRoot, img['filename'])).shape[1:]
+            imsize = [img.get('height', None), img.get('width', None)]
+            if not all([i is not None for i in imsize]):
+                try:
+                    fname = os.path.join(self.projectRoot, img['filename'])
+                    driver = drivers.get_driver(fname)
+                    imsize = driver.size(fname)[1:]
+                except:
+                    continue        #TODO
+            
             imgID = len(images) + 1
             imgIDLookup[img['id']] = imgID
-            imgSizeLookup[img['id']] = imsize
+            imgSizeLookup[img['id']] = [img.get('y', None), img.get('x', None), *imsize]
             images.append({
                 'id': imgID,
                 'width': imsize[1],
@@ -436,22 +482,33 @@ class COCOparser(AbstractAnnotationParser):
                 # convert bounding box back to absolute XYWH format
                 imsize = imgSizeLookup[anno['image']]
                 bbox = [
-                    anno['x']*imsize[1],
-                    anno['y']*imsize[0],
-                    anno['width']*imsize[1],
-                    anno['height']*imsize[0]
+                    anno['x']*imsize[3],
+                    anno['y']*imsize[2],
+                    anno['width']*imsize[3],
+                    anno['height']*imsize[2]
                 ]
                 bbox[0] -= bbox[2]/2.0
                 bbox[1] -= bbox[3]/2.0
+
+                if imsize[0] is not None and imsize[1] is not None:
+                    # virtual view; shift bbox
+                    bbox[0] += imsize[1]
+                    bbox[1] += imsize[0]
+
                 annoInfo['bbox'] = bbox
                 annoInfo['area'] = bbox[2]*bbox[3]
             
             elif self.annotationType == 'polygons':
                 # convert coordinates to absolute format
                 imsize = imgSizeLookup[anno['image']]
+                isView = imsize[0] is not None and imsize[1] is not None
                 coords = anno['coordinates']
                 for c in range(len(coords)):
-                    coords[c] *= imsize[(c+1)%2]
+                    coords[c] *= imsize[2+(c+1)%2]
+                    if isView:
+                        # virtual view; shift coordinates
+                        coords[c] += imsize[(c+1)%2]
+
                 annoInfo['segmentation'] = coords
                 annoInfo['area'] = polygon_area(coords[1::2], coords[::2]).tolist()
             

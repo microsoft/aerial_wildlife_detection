@@ -171,6 +171,7 @@ class PILImageDriver(AbstractImageDriver):
 
     @classmethod
     def is_loadable(cls, object):
+        img = None
         try:
             if isinstance(object, str):
                 img = cls.loader.open(object)
@@ -182,7 +183,8 @@ class PILImageDriver(AbstractImageDriver):
         except:
             return False
         finally:
-            img.close()
+            if hasattr(img, 'close'):
+                img.close()
     
     @classmethod
     def size(cls, object):
