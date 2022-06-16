@@ -23,6 +23,13 @@ from util import helpers, drivers
 
 class DataAdministrator:
 
+    DEFAULT_SPLIT_PROPERTIES = {
+        'patchSize': [800, 600],
+        'stride': [800, 600],
+        'tight': True,
+        'virtualSplit': True
+    }
+
     def __init__(self, config, app, dbConnector, taskCoordinator, verbose_start=False):
         self.config = config
         self.app = app
@@ -219,9 +226,10 @@ class DataAdministrator:
                 uploadImages = helpers.parse_boolean(request.params.get('uploadImages', True))
                 existingFiles = request.params.get('existingFiles', 'keepExisting')
                 try:
-                    splitIntoPatches = helpers.parse_boolean(request.params.get('splitPatches', False))
+                    splitIntoPatches = helpers.parse_boolean(request.params.get('splitImages', False))
                     if splitIntoPatches:
-                        splitProperties = json.loads(request.params.get('splitParams'))
+                        splitProperties = self.DEFAULT_SPLIT_PROPERTIES.copy()
+                        splitProperties.update(json.loads(request.params.get('splitParams')))
                     else:
                         splitProperties = None
                 except:
@@ -231,14 +239,14 @@ class DataAdministrator:
 
                 # annotations
                 parseAnnotations = helpers.parse_boolean(request.params.get('parseAnnotations', False))
-                assert not (parseAnnotations and (uploadImages and splitIntoPatches)), \
+                assert not (parseAnnotations and (uploadImages and splitIntoPatches and not splitProperties.get('virtualSplit', True))), \
                     'cannot both split images into patches and parse annotations'
                 skipUnknownClasses = helpers.parse_boolean(request.params.get('skipUnknownClasses', True))
                 markAsGoldenQuestions = helpers.parse_boolean(request.params.get('markAsGoldenQuestions', False))
                 parserID = request.params.get('parserID', None)
                 if isinstance(parserID, str) and parserID.lower() in ('null', 'none', 'undefined'):
                     parserID = None
-                parserKwargs = request.params.get('parserArgs', {})
+                parserKwargs = json.loads(request.params.get('parserArgs', '{}'))
             
                 # create session
                 sessionID = self.middleware.createUploadSession(project, username, numFiles,

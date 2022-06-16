@@ -8,11 +8,13 @@
 import os
 from collections import defaultdict
 import re
+import difflib
 import yaml
 from psycopg2 import sql
 
 from util.parsers.abstractParser import AbstractAnnotationParser
-from util import helpers
+from util import helpers, drivers
+drivers.init_drivers()
 
 
 class YOLOparser(AbstractAnnotationParser):
@@ -21,7 +23,7 @@ class YOLOparser(AbstractAnnotationParser):
     INFO = '<p>Supports annotations of labels, bounding boxes, and polygons in the YOLO format.'
     ANNOTATION_TYPES = ('boundingBoxes',)
 
-    FILE_SUB_PATTERN = '(\/|\\\\)*.*\/*(labels|annotations)(\/|\\\\)*'           # pattern that attempts to identify image file name from label file name
+    FILE_SUB_PATTERN = '(\/|\\\\)*.*\/*(images|labels|annotations)(\/|\\\\)*'           # pattern that attempts to identify image file name from label file name
 
 
     '''
@@ -43,10 +45,10 @@ class YOLOparser(AbstractAnnotationParser):
 
 
     @classmethod
-    def _get_yolo_files(cls, fileList):
+    def _get_yolo_files(cls, fileDict, folderPrefix=''):
         '''
-            Iterates through a provided list of file names and returns all those
-            that appear to be in YOLO format:
+            Iterates through a provided dict of file names (original: actual)
+            and returns all those that appear to be in YOLO format:
             - text files, one per image
             - file name corresponds to image name (apart from top-level folder)
             - contents are lines with five white space-separated values:
@@ -54,31 +56,35 @@ class YOLOparser(AbstractAnnotationParser):
               <class idx> is an int, the rest are floats in [0, 1]
         '''
         yoloFiles = {
-            'annotation': [],
+            'annotation': {},
             'meta': []              # meta files, such as YAML-formatted definitions of datasets as in YOLOv5 (example: https://github.com/ultralytics/yolov5/blob/master/data/coco128.yaml)
         }
-        for file in fileList:
-            if not os.path.isfile(file) and not os.path.islink(file):
+        for file_orig, file_new in fileDict.items():
+            if isinstance(folderPrefix, str):
+                filePath = os.path.join(folderPrefix, file_orig)
+            else:
+                filePath = file_orig
+            if not os.path.isfile(filePath) and not os.path.islink(filePath):
                 continue
-            if helpers.is_binary(file):
+            if helpers.is_binary(filePath):
                 continue
 
             # check if YOLOv5 YAML file
             try:
-                meta = yaml.safe_load(open(file, 'r'))
+                meta = yaml.safe_load(open(filePath, 'r'))
                 assert isinstance(meta, dict)
                 assert 'nc' in meta     # number of classes
                 assert 'names' in meta  # labelclass names
 
                 # valid YOLOv5 YAML file
-                yoloFiles['meta'].append(file)
+                yoloFiles['meta'].append(filePath)
                 continue
             except:
                 # no YAML file; try next
                 pass
 
             try:
-                with open(file, 'r') as f:
+                with open(filePath, 'r') as f:
                     lines = f.readlines()
                 for line in lines:
                     tokens = line.strip().split(' ')
@@ -87,7 +93,7 @@ class YOLOparser(AbstractAnnotationParser):
                     assert all([isinstance(float(t), float) for t in tokens[1:]])      # bbox
 
                 # no errors encountered; this is a YOLO file
-                yoloFiles['annotation'].append(file)
+                yoloFiles['annotation'][file_orig] = file_new
 
             except:
                 # unparseable or erroneous format
@@ -97,15 +103,15 @@ class YOLOparser(AbstractAnnotationParser):
 
 
     @classmethod
-    def is_parseable(cls, fileList):
+    def is_parseable(cls, fileDict, folderPrefix=''):
         '''
             File list is parseable if at least one file is a proper YOLO
             annotation file.
         '''
-        return len(cls._get_yolo_files(fileList)['annotation']) > 0     #TODO: we could parse the YAML file and download the data from there, but this requires importing images, too
+        return len(cls._get_yolo_files(fileDict, folderPrefix)['annotation']) > 0     #TODO: we could parse the YAML file and download the data from there, but this requires importing images, too
 
 
-    def import_annotations(self, fileList, targetAccount, skipUnknownClasses, markAsGoldenQuestions, **kwargs):
+    def import_annotations(self, fileDict, targetAccount, skipUnknownClasses, markAsGoldenQuestions, **kwargs):
 
         # args setup
         skipEmptyImages = kwargs.get('skip_empty_images', False)    # if True, images with zero annotations will not be added to the "image_user" relation
@@ -115,8 +121,10 @@ class YOLOparser(AbstractAnnotationParser):
         importedAnnotations, warnings, errors = defaultdict(list), [], []
         imgIDs_added = set()
 
+        uploadedImages = set([f for f in fileDict.keys() if fileDict[f] != '-1'])
+
         # get valid YOLO files
-        yoloFiles = self._get_yolo_files(fileList)
+        yoloFiles = self._get_yolo_files(fileDict, self.tempDir)
         if not len(yoloFiles['annotation']):
             return {
                 'result': {},
@@ -137,16 +145,29 @@ class YOLOparser(AbstractAnnotationParser):
         
         # iterate over identified YOLO files
         meta = {}
-        for file in yoloFiles['annotation']:
+        for fpath in yoloFiles['annotation'].keys():
             # file key to match the annotation file with the image(s) present in the database
-            fpath = file.replace(self.tempDir, '')       #TODO
             if fpath.startswith(os.sep) or fpath.startswith('/'):
                 fpath = fpath[1:]
-            fKey = re.sub(self.FILE_SUB_PATTERN, '', fpath, flags=re.IGNORECASE)        # replace "<base folder>/(labels|annotations)/*" with "%/*" for search in database with "LIKE" expression
+            
+            fbody = re.sub(self.FILE_SUB_PATTERN, '', fpath, flags=re.IGNORECASE)        # replace "<base folder>/(labels|annotations)/*" with "%/*" for search in database with "LIKE" expression
+            fbody = os.path.splitext(fbody)[0]
+
+            # check if YOLO annotation file name can be matched with an image uploaded in the same session
+            if len(uploadedImages):
+                candidates = difflib.get_close_matches(fbody, uploadedImages, n=1)
+                if len(candidates):
+                    fKey = fileDict[candidates[0]]      # use new, potentially overwritten file name
+                else:
+                    # no exact match; check database by using fbody directly
+                    fKey = fbody
+            else:
+                # only annotations uploaded; check database by using fbody directly
+                fKey = fbody
 
             # load bboxes
             labels, bboxes = [], []
-            with open(file, 'r') as f:
+            with open(os.path.join(self.tempDir, fpath), 'r') as f:      # load newly saved file
                 lines = f.readlines()
             if not len(lines):
                 warnings.append(
@@ -192,11 +213,11 @@ class YOLOparser(AbstractAnnotationParser):
         # find corresponding images in database, blacklisting those that had annotations imported before
         dbQuery = self.dbConnector.execute(sql.SQL('''
             WITH labelquery(labelname) AS (
-                VALUES %s
+                VALUES {pl}
             )
-            SELECT id, filename, labelname
+            SELECT id, filename, x, y, width, height, labelname
             FROM (
-                SELECT id, filename
+                SELECT id, filename, x, y, width, height
                 FROM {id_img}
                 WHERE id NOT IN (
                     SELECT image
@@ -204,21 +225,51 @@ class YOLOparser(AbstractAnnotationParser):
                     WHERE last_time_required < 0
                 )
             ) AS q
-            CROSS JOIN labelquery
-            WHERE filename LIKE CONCAT('%%', labelname);
+            JOIN labelquery
+            ON filename ILIKE CONCAT('%%', labelname, '%%');
         ''').format(
+            pl=sql.SQL(','.join(['%s' for _ in meta.keys()])),
             id_img=sql.Identifier(self.project, 'image'),
             id_iu=sql.Identifier(self.project, 'image_user')
         ),
-        (tuple([tuple([(l,) for l in meta.keys()])]),), 'all')
+        tuple((m,) for m in meta.keys()), 'all')
 
-        img_lut = dict([[d['labelname'], d['id']] for d in dbQuery])
+        # create image lookup table: also factor in multiple virtual views of same image
+        img_lut = defaultdict(list)
+        imgSizes = {}
+        for d in dbQuery:
+            # get original image size (pre-virtual views); this also checks for image readability
+            filename = d['filename']
+            if filename not in imgSizes:
+                try:
+                    filePath = os.path.join(self.projectRoot, filename)
+                    driver = drivers.get_driver(filePath)
+                    imgSize = driver.size(filePath)
+                    imgSizes[filename] = imgSize
+                except:
+                    # image is not loadable     #TODO: mark as corrupt in database
+                    warnings.append(
+                        f'Image "{filename}" could not be loaded; affected annotations skipped.'
+                    )
+                    imgSizes[filename] = None
+
+            imgSize = imgSizes[filename]
+            if imgSize is None:
+                # unloadable image; skip annotation
+                continue
+
+            img_lut[d['labelname']].append({
+                'id': d['id'],
+                'window': [d['y'], d['x'], d['height'], d['width']],
+                'full_img_size': imgSize
+            })
 
         # register label classes
+        num_annotations_skipped = 0
         if not skipUnknownClasses:
-            lcs_new = set(labelclasses.keys()).difference(set(self.labelClasses.keys()))
+            lcs_new = set(labelclasses.values()).difference(set(self.labelClasses.keys()))
             if len(lcs_new):
-                self.dbConnector.execute(sql.SQL('''
+                self.dbConnector.insert(sql.SQL('''
                     INSERT INTO {} (name)
                     VALUES %s;
                 ''').format(sql.Identifier(self.project, 'labelclass')),
@@ -228,46 +279,92 @@ class YOLOparser(AbstractAnnotationParser):
                 self._init_labelclasses()
         
         # substitute YOLO labelclass numbers with UUIDs and append image ID
+        imgIDs_added = set()
         for fkey in meta.keys():
-            imgID = img_lut[fkey]
+            insertVals = []
+            if fkey not in img_lut:
+                num_annotations_skipped += len(meta[fkey]['labels'])
+                continue
+            imgs = img_lut[fkey]
             annoData = meta[fkey]
             for l in range(len(annoData['labels'])):
-                annoData['labels'][l] = self.labelClasses[annoData['labels'][l]]
+                label = labelclasses[annoData['labels'][l]]
+                if label not in self.labelClasses:
+                    num_annotations_skipped += 1
+                    continue
+                label = self.labelClasses[label]
+                bbox = annoData['bboxes'][l]
+
+                # find matching target image entry
+                if len(imgs) == 1:
+                    # only one image (no virtual views)
+                    imgID = imgs[0]['id']
+                else:
+                    # virtual views generated; find the one encompassing the annotation
+                    fullImageSize = imgs[0]['full_img_size']
+                    bbox_abs = [
+                        bbox[0]*fullImageSize[2],
+                        bbox[1]*fullImageSize[1],
+                        bbox[2]*fullImageSize[2],
+                        bbox[3]*fullImageSize[1]
+                    ]
+                    bbox_abs[0] -= bbox_abs[2]/2.0
+                    bbox_abs[1] -= bbox_abs[3]/2.0
+                    for imgView in imgs:
+                        imgWindow = imgView['window']
+                        if bbox_abs[0] < imgWindow[0]+imgWindow[2] and \
+                            bbox_abs[1] < imgWindow[1]+imgWindow[3] and \
+                                bbox_abs[0]+bbox_abs[2] > imgWindow[0] and \
+                                    bbox_abs[1]+bbox_abs[3] > imgWindow[1]:
+                            # correct virtual view found; adjust bbox           #TODO: currently no cropping, only shifting
+                            bbox = [
+                                (bbox_abs[0] - imgWindow[0] + bbox_abs[2]/2.0) / imgWindow[2],
+                                (bbox_abs[1] - imgWindow[1] + bbox_abs[3]/2.0) / imgWindow[3],
+                                bbox_abs[2] / imgWindow[2],
+                                bbox_abs[3] / imgWindow[3]
+                            ]
+                            imgID = imgView['id']
+                            break
+                
+                insertVals.append((
+                    targetAccount, imgID, now, -1, False,
+                    label, *bbox
+                ))
+                imgIDs_added.add(imgID)
 
             # add annotations to database
-            if len(annoData['labels']):
+            if len(insertVals):
                 result = self.dbConnector.insert(sql.SQL('''
                     INSERT INTO {} (username, image, timeCreated, timeRequired, unsure, label, x, y, width, height)
                     VALUES %s
                     RETURNING image, id;
                 ''').format(sql.Identifier(self.project, 'annotation')),
-                tuple([(targetAccount, imgID, now, -1, False,
-                    annoData['labels'][l], *annoData['bboxes'][l]) for l in range(len(annoData['labels']))]),
+                tuple(insertVals),
                 'all')
                 for row in result:
-                    importedAnnotations[row[0]].append(row[1])
+                    importedAnnotations[str(row[0])].append(str(row[1]))
 
         # also set in image_user relation
-        imgIDs = [img_lut[i] for i in meta.keys()]
-        self.dbConnector.insert(sql.SQL('''
-            INSERT INTO {} (username, image, last_checked, last_time_required)
-            VALUES %s
-            ON CONFLICT (username, image) DO UPDATE
-            SET last_time_required = -1;
-        ''').format(sql.Identifier(self.project, 'image_user')),
-        tuple([(targetAccount, i, now, -1) for i in imgIDs]))
-        imgIDs_added = set(imgIDs)
-
-        if markAsGoldenQuestions and len(imgIDs_added):
+        if len(imgIDs_added):
+            imgIDs_added = list(imgIDs_added)
             self.dbConnector.insert(sql.SQL('''
-                UPDATE {}
-                SET isGoldenQuestion = TRUE
-                WHERE id IN (%s);
-            ''').format(sql.Identifier(self.project, 'image')),
-            tuple([(i,) for i in list(imgIDs_added)]))
+                INSERT INTO {} (username, image, last_checked, last_time_required)
+                VALUES %s
+                ON CONFLICT (username, image) DO UPDATE
+                SET last_time_required = -1;
+            ''').format(sql.Identifier(self.project, 'image_user')),
+            tuple([(targetAccount, i, now, -1) for i in imgIDs_added]))
+
+            if markAsGoldenQuestions:
+                self.dbConnector.insert(sql.SQL('''
+                    UPDATE {}
+                    SET isGoldenQuestion = TRUE
+                    WHERE id IN (%s);
+                ''').format(sql.Identifier(self.project, 'image')),
+                tuple([(i,) for i in imgIDs_added]))
 
         return {
-            'result': importedAnnotations,
+            'result': dict(importedAnnotations),
             'warnings': warnings,
             'errors': errors
         }
@@ -278,8 +375,23 @@ class YOLOparser(AbstractAnnotationParser):
         # create new labelclass index for YOLO format       #TODO: sort after labelclass name first?
         categoryLookup = dict([[annotations['labelclasses'][l]['id'], l] for l in range(len(annotations['labelclasses']))])
         
-        # create image LUT
-        imgIDLookup = dict([[i['id'], i['filename']] for i in annotations['images']])
+        # query image window sizes and create LUT
+        imgSizeLookup = {}
+        imgLookup = {}
+        for anno in annotations['images']:
+            filename = anno['filename']
+            window = [anno['x'], anno['y'], anno['width'], anno['height']]
+            if all([w is not None for w in window]) and filename not in imgSizeLookup:
+                # virtual window: get original image size
+                fPath = os.path.join(self.projectRoot, filename)
+                driver = drivers.get_driver(fPath)
+                sz = driver.size(fPath)
+                imgSizeLookup[filename] = [float(s) for s in sz]
+
+            imgLookup[anno['id']] = {
+                'filename': filename,
+                'window': window
+            }
      
         # export annotations
         export = {}
@@ -291,7 +403,18 @@ class YOLOparser(AbstractAnnotationParser):
                     'bboxes': []
                 }
             export[imgID]['labels'].append(categoryLookup[anno['label']])
-            export[imgID]['bboxes'].append([anno['x'], anno['y'], anno['width'], anno['height']])
+
+            # check if bbox is to be shifted
+            bbox = [anno['x'], anno['y'], anno['width'], anno['height']]
+            window = imgLookup[imgID]['window']
+            if all([w is not None for w in window]):
+                # virtual view; shift bbox
+                fullImgSize = imgSizeLookup[imgLookup[imgID]['filename']]
+                bbox[0] = (bbox[0]*window[3] + window[1])/fullImgSize[2]
+                bbox[1] = (bbox[1]*window[2] + window[0])/fullImgSize[1]
+                bbox[2] *= window[3]/fullImgSize[2]
+                bbox[3] *= window[2]/fullImgSize[1]
+            export[imgID]['bboxes'].append(bbox)
         
         # export
         files_exported = []
@@ -303,7 +426,7 @@ class YOLOparser(AbstractAnnotationParser):
         files_exported.append('classes.txt')
 
         for imgID in export.keys():
-            imgFilename = imgIDLookup[imgID]
+            imgFilename = imgLookup[imgID]['filename']
             baseFilename, _ = os.path.splitext(imgFilename)
             labelFilename = baseFilename + '.txt'
 

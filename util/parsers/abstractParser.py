@@ -16,7 +16,7 @@ class AbstractAnnotationParser:
     INFO = ''                   # HTML-formatted info text about format
     ANNOTATION_TYPES = ()       # annotation types supported by parser
 
-    def __init__(self, config, dbConnector, project, user, annotationType):
+    def __init__(self, config, dbConnector, project, tempDir, user, annotationType):
         self.config = config
         self.dbConnector = dbConnector
         self.project = project
@@ -25,10 +25,9 @@ class AbstractAnnotationParser:
         assert annotationType in self.ANNOTATION_TYPES, f'unsupported annotation type "{annotationType}"'
 
         self.projectRoot = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), self.project)
-        self.tempDir = os.path.join(
-            self.config.getProperty('FileServer', 'tempfiles_dir', type=str, fallback=tempfile.gettempdir()),
-            self.project
-        )
+        self.tempDir = tempDir
+        if not self.tempDir.endswith(os.sep):
+            self.tempDir += os.sep
 
         self._init_labelclasses()
 
@@ -64,7 +63,7 @@ class AbstractAnnotationParser:
 
 
     @classmethod
-    def is_parseable(cls, fileList):
+    def is_parseable(cls, fileDict, folderPrefix):
         '''
             Receives an Iterable of strings of files and determines whether the
             provided files correspond to the format expected by the parser.

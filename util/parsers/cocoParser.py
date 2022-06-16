@@ -56,20 +56,24 @@ class COCOparser(AbstractAnnotationParser):
 
 
     @classmethod
-    def _get_coco_files(cls, fileList):
+    def _get_coco_files(cls, fileDict, folderPrefix):
         '''
             Iterates through a provided list of file names and returns all those
             that appear to be valid MS-COCO JSON files.
         '''
         cocoFiles = []
-        for f in fileList:
-            if not os.path.isfile(f) and not os.path.islink(f):
+        for file_orig, file_new in fileDict.items():
+            if isinstance(folderPrefix, str):
+                filePath = os.path.join(folderPrefix, file_orig)
+            else:
+                filePath = file_orig
+            if not os.path.isfile(filePath) and not os.path.islink(filePath):
                 continue
-            _, ext = os.path.splitext(f.lower())
+            _, ext = os.path.splitext(filePath.lower())
             if not ext in ('.json', '.txt', ''):
                 continue
             try:
-                meta = json.load(open(f, 'r'))
+                meta = json.load(open(filePath, 'r'))
 
                 # valid JSON file; check for required fields
                 assert 'images' in meta
@@ -80,7 +84,7 @@ class COCOparser(AbstractAnnotationParser):
                 assert isinstance(meta['annotations'], list) or isinstance(meta['annotations'], tuple)
 
                 # basic supercategories are present; we assume this is indeed a valid COCO file
-                cocoFiles.append(f)
+                cocoFiles.append(filePath)
 
             except:
                 # unparseable or erroneous format
@@ -90,15 +94,15 @@ class COCOparser(AbstractAnnotationParser):
 
 
     @classmethod
-    def is_parseable(cls, fileList):
+    def is_parseable(cls, fileDict, folderPrefix):
         '''
             File list is parseable if at least one file is a proper MS-COCO JSON
             file.
         '''
-        return len(cls._get_coco_files(fileList)) > 0
+        return len(cls._get_coco_files(fileDict, folderPrefix)) > 0
 
 
-    def import_annotations(self, fileList, targetAccount, skipUnknownClasses, markAsGoldenQuestions, **kwargs):
+    def import_annotations(self, fileDict, targetAccount, skipUnknownClasses, markAsGoldenQuestions, **kwargs):
 
         # args setup
         skipEmptyImages = kwargs.get('skip_empty_images', False)    # if True, images with zero annotations will not be added to the "image_user" relation
@@ -120,7 +124,7 @@ class COCOparser(AbstractAnnotationParser):
         imgs_valid = []
 
         # get valid COCO files
-        cocoFiles = self._get_coco_files(fileList)
+        cocoFiles = self._get_coco_files(fileDict, self.tempDir)
         if not len(cocoFiles):
             return {
                 'result': {},

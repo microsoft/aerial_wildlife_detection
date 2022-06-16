@@ -324,7 +324,7 @@ class DataWorker:
         # assertions of session meta parameters
         assert uploadImages or parseAnnotations, \
             'either image upload or annotation parsing (or both) must be enabled'
-        assert not (parseAnnotations and (uploadImages and splitImages)), \
+        assert not (parseAnnotations and (uploadImages and splitImages and not splitProperties.get('virtualSplit', True))), \
             'cannot both split images into patches and parse annotations'           #TODO: implement
         if parseAnnotations:
             annotationType = projectProps['annotationtype']
@@ -513,6 +513,9 @@ class DataWorker:
         imgs_error = {}
         files_aux = {}        # auxiliary files for multi-file datasets, such as image headers
 
+        # prepare to save image(s) into AIDE project folder
+        images_save = {}
+
         # image upload
         if meta['uploadImages']:
             bandNum = meta['bandNum']
@@ -529,12 +532,49 @@ class DataWorker:
                 ext = ext.lower()
                 nextFileName = originalFileName
 
+                # check if image already exists and act according to session options
+                destPath = os.path.join(destFolder, nextFileName)
+                if os.path.exists(destPath):
+                    # file already exists; check policy
+                    if meta['existingFiles'] == 'keepExisting':
+                        # rename new file
+                        while(os.path.exists(destPath)):
+                            # rename file
+                            fn, ext = os.path.splitext(nextFileName)
+                            match = self.countPattern.search(fn)
+                            if match is None:
+                                nextFileName = fn + '_1' + ext
+                            else:
+                                # parse number
+                                number = int(fn[match.span()[0]+1:match.span()[1]])
+                                nextFileName = fn[:match.span()[0]] + '_' + str(number+1) + ext
+
+                            destPath = os.path.join(destFolder, nextFileName)
+                            if not os.path.exists(destPath):
+                                imgs_warn[key] = {
+                                    'filename': nextFileName,
+                                    'message': 'An image with name "{}" already exists under given path on disk. Image has been renamed to "{}".'.format(
+                                        originalFileName, nextFileName
+                                    )
+                                }
+                    
+                    elif meta['existingFiles'] == 'skipExisting':
+                        # ignore new file
+                        imgs_warn[key] = {
+                            'filename': nextFileName,
+                            'message': f'Image "{nextFileName}" already exists on disk and has been skipped.'
+                        }
+                        continue
+
                 # try to load file with drivers
                 isLoadable = False
                 try:
                     pixelArray = None       # only load image if absolutely necessary
-                    driver = drivers.get_driver(tempFileName)
-                    sz = driver.size(tempFileName)
+                    try:
+                        driver = drivers.get_driver(tempFileName)
+                        sz = driver.size(tempFileName)
+                    except:
+                        raise Exception(f'"{originalFileName}" does not appear to be a valid image file.')
 
                     # loading succeeded; move entries about potential header files from imgs_error to files_aux
                     isLoadable = True
@@ -570,8 +610,6 @@ class DataWorker:
                             # skip and add error message
                             raise Exception(f'Unsupported file type for image "{originalFileName}".')
                     
-                    # prepare to save image(s) into AIDE project folder
-                    images_save = {}
                     if meta['splitImages'] and meta['splitProperties'] is not None:
                         splitProperties = meta['splitProperties']
                         if splitProperties.get('virtualSplit', True):
@@ -589,8 +627,8 @@ class DataWorker:
                                     'filename': nextFileName,
                                     'message': 'Image was too small to be split into tiles and hence registered as a whole',
                                     'status': 0,
-                                    'width': coord[2],
-                                    'height': coord[3]
+                                    'width': coords[0][2],
+                                    'height': coords[0][3]
                                 }
 
                             else:
@@ -646,6 +684,14 @@ class DataWorker:
                                     'width': coords[f][2],
                                     'height': coords[f][3]
                                 }
+                            
+                            # add entry for general image
+                            imgs_valid[key] = {
+                                'filename': originalFileName,
+                                'register': False,
+                                'message': 'file successfully split into patches',
+                                'status': 0
+                            }
                     
                     elif forceConvert or targetMimeType is not None:
                         # no need to split, but need to convert image format
@@ -659,118 +705,6 @@ class DataWorker:
                         images_save[key] = {
                             'image': tempFileName,
                             'filename': nextFileName
-                        }
-
-                    # save data to project folder
-                    for subKey in images_save:
-                        img = images_save[subKey]['image']
-                        newFileName = images_save[subKey]['filename']
-                        try:
-                            destPath = os.path.join(destFolder, newFileName)
-                            parent, _ = os.path.split(destPath)
-                            if len(parent):
-                                os.makedirs(parent, exist_ok=True)
-
-                            if os.path.exists(destPath):
-                                # file already exists; check policy
-                                if meta['existingFiles'] == 'keepExisting':
-                                    # rename new file
-                                    while(os.path.exists(destPath)):
-                                        # rename file
-                                        fn, ext = os.path.splitext(newFileName)
-                                        match = self.countPattern.search(fn)
-                                        if match is None:
-                                            newFileName = fn + '_1' + ext
-                                        else:
-                                            # parse number
-                                            number = int(fn[match.span()[0]+1:match.span()[1]])
-                                            newFileName = fn[:match.span()[0]] + '_' + str(number+1) + ext
-
-                                        destPath = os.path.join(destFolder, newFileName)
-                                        if not os.path.exists(destPath):
-                                            imgs_warn[subKey] = {
-                                                'filename': newFileName,
-                                                'message': 'An image with name "{}" already exists under given path on disk. Image has been renamed to "{}".'.format(
-                                                    img, newFileName
-                                                )
-                                            }
-                                
-                                elif meta['existingFiles'] == 'skipExisting':
-                                    # ignore new file
-                                    imgs_warn[subKey] = {
-                                        'filename': newFileName,
-                                        'message': f'Image "{newFileName}" already exists on disk and has been skipped.'
-                                    }
-                                    continue
-
-                                elif meta['existingFiles'] == 'replaceExisting':
-                                    # overwrite new file; first remove metadata
-                                    queryStr = sql.SQL('''
-                                        DELETE FROM {id_iu}
-                                        WHERE image IN (
-                                            SELECT id FROM {id_img}
-                                            WHERE filename = %s
-                                        );
-                                        DELETE FROM {id_anno}
-                                        WHERE image IN (
-                                            SELECT id FROM {id_img}
-                                            WHERE filename = %s
-                                        );
-                                        DELETE FROM {id_pred}
-                                        WHERE image IN (
-                                            SELECT id FROM {id_img}
-                                            WHERE filename = %s
-                                        );
-                                        DELETE FROM {id_img}
-                                        WHERE filename = %s;
-                                    ''').format(
-                                        id_iu=sql.Identifier(project, 'image_user'),
-                                        id_anno=sql.Identifier(project, 'annotation'),
-                                        id_pred=sql.Identifier(project, 'prediction'),
-                                        id_img=sql.Identifier(project, 'image')
-                                    )
-                                    self.dbConnector.execute(queryStr,
-                                        tuple([newFileName]*4), None)
-
-                                    # remove file
-                                    try:
-                                        os.remove(destPath)
-                                        imgs_warn[subKey] = {
-                                            'filename': newFileName,
-                                            'message': 'Image "{}" already existed on disk and has been overwritten.\n'.format(newFileName) + \
-                                                        'All metadata (views, annotations, predictions) has been removed from the database.'
-                                        }
-                                    except:
-                                        imgs_warn[subKey] = {
-                                            'filename': newFileName,
-                                            'message': 'Image "{}" already existed on disk but could not be overwritten.\n'.format(newFileName) + \
-                                                        'All metadata (views, annotations, predictions) has been removed from the database.'
-                                        }
-
-                            if isinstance(img, str):
-                                # temp file name provided; copy file directly
-                                shutil.copyfile(img, destPath)
-                            else:
-                                drivers.save_to_disk(img, destPath)
-                            if subKey not in imgs_valid:
-                                imgs_valid[subKey] = {
-                                    'filename': newFileName,
-                                    'message': 'upload successful'
-                                }
-                        except Exception as e:
-                            imgs_error[subKey] = {
-                                'filename': newFileName,
-                                'message': str(e),
-                                'status': 3
-                            }
-
-                    if not key in imgs_valid:
-                        # add dummy entry for full image, even if it e.g. got split into patches
-                        imgs_valid[key] = {
-                            'filename': originalFileName,
-                            'register': False,
-                            'message': 'file successfully split into patches',
-                            'status': 0
                         }
 
                 except Exception as e:
@@ -799,6 +733,79 @@ class DataWorker:
                                 'message': str(e),
                                 'status': 3
                             }
+            
+            # save data to project folder
+            for subKey in images_save:
+                img = images_save[subKey]['image']
+                newFileName = images_save[subKey]['filename']
+                try:
+                    destPath = os.path.join(destFolder, newFileName)
+                    parent, _ = os.path.split(destPath)
+                    if len(parent):
+                        os.makedirs(parent, exist_ok=True)
+
+                    if os.path.exists(destPath):
+                        # file already exists; check policy
+                        if meta['existingFiles'] == 'replaceExisting':
+                            # overwrite new file; first remove metadata
+                            queryStr = sql.SQL('''
+                                DELETE FROM {id_iu}
+                                WHERE image IN (
+                                    SELECT id FROM {id_img}
+                                    WHERE filename = %s
+                                );
+                                DELETE FROM {id_anno}
+                                WHERE image IN (
+                                    SELECT id FROM {id_img}
+                                    WHERE filename = %s
+                                );
+                                DELETE FROM {id_pred}
+                                WHERE image IN (
+                                    SELECT id FROM {id_img}
+                                    WHERE filename = %s
+                                );
+                                DELETE FROM {id_img}
+                                WHERE filename = %s;
+                            ''').format(
+                                id_iu=sql.Identifier(project, 'image_user'),
+                                id_anno=sql.Identifier(project, 'annotation'),
+                                id_pred=sql.Identifier(project, 'prediction'),
+                                id_img=sql.Identifier(project, 'image')
+                            )
+                            self.dbConnector.execute(queryStr,
+                                tuple([newFileName]*4), None)
+
+                            # remove file
+                            try:
+                                os.remove(destPath)
+                                imgs_warn[subKey] = {
+                                    'filename': newFileName,
+                                    'message': 'Image "{}" already existed on disk and has been overwritten.\n'.format(newFileName) + \
+                                                'All metadata (views, annotations, predictions) has been removed from the database.'
+                                }
+                            except:
+                                imgs_warn[subKey] = {
+                                    'filename': newFileName,
+                                    'message': 'Image "{}" already existed on disk but could not be overwritten.\n'.format(newFileName) + \
+                                                'All metadata (views, annotations, predictions) has been removed from the database.'
+                                }
+
+                    if isinstance(img, str):
+                        # temp file name provided; copy file directly
+                        shutil.copyfile(img, destPath)
+                    else:
+                        drivers.save_to_disk(img, destPath)
+                    if subKey not in imgs_valid:
+                        imgs_valid[subKey] = {
+                            'filename': newFileName,
+                            'message': 'upload successful'
+                        }
+                except Exception as e:
+                    imgs_error[subKey] = {
+                        'filename': newFileName,
+                        'message': str(e),
+                        'status': 3
+                    }
 
             # register valid images in database
             if len(imgs_valid):
@@ -876,10 +883,8 @@ class DataWorker:
         if len(filesUploaded) >= meta['numFiles']:
             # all files seem to have been uploaded
             if meta['parseAnnotations']:
-                fileList = list(filesUploaded.keys())       #TODO: provide file dict directly to parsers
-
                 if meta['parserID'] is None:
-                    parserID = parsers.auto_detect_parser(fileList, meta['annotationType'])
+                    parserID = parsers.auto_detect_parser(filesUploaded, meta['annotationType'], tempRoot)
                     if parserID is None:
                         # no parser found
                         msg = 'Files do not contain parseable annotations.'
@@ -887,6 +892,7 @@ class DataWorker:
                             msg += '\nImages may have been uploaded.'
                         raise Exception(msg)
                 else:
+                    parserID = meta['parserID']
                     msg = f'Unknown annotation parser "{parserID}".'
                     if meta['uploadImages']:
                         msg += '\nImages may have been uploaded.'
@@ -894,8 +900,8 @@ class DataWorker:
 
                 # parse
                 parserClass = parsers.PARSERS[meta['annotationType']][parserID]
-                parser = parserClass(self.config, self.dbConnector, project, meta['user'], meta['annotationType'])
-                parseResult = parser.import_annotations(fileList, meta['user'], meta['skipUnknownClasses'], meta['markAsGoldenQuestions'], **meta['parserKwargs'])
+                parser = parserClass(self.config, self.dbConnector, project, tempRoot, meta['user'], meta['annotationType'])
+                parseResult = parser.import_annotations(filesUploaded, meta['user'], meta['skipUnknownClasses'], meta['markAsGoldenQuestions'], **meta['parserKwargs'])
 
                 if len(parseResult['result']):
                     # retrieve file names for images annotations were imported for and append messages
@@ -906,7 +912,7 @@ class DataWorker:
                     (tuple([(i,) for i in parseResult['result'].keys()]),),
                     'all')
                     for fn in fileNames:
-                        numAnno = len(parseResult['result'][fn['id']])
+                        numAnno = len(parseResult['result'][str(fn['id'])])
                         fileName = fn['filename']
                         window = [fn['x'], fn['y'], fn['width'], fn['height']]
                         if all([w is not None for w in window]):
@@ -1385,7 +1391,7 @@ class DataWorker:
         try:
             # create parser
             parserClass = parsers.PARSERS[annoType][exportFormat]
-            parser = parserClass(self.config, self.dbConnector, project, username, annoType)
+            parser = parserClass(self.config, self.dbConnector, project, self.tempDir, username, annoType)
             parser.export_annotations(annotations, mainFile, **parserKwargs)
             return filename
         finally:

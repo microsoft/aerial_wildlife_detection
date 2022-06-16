@@ -273,6 +273,16 @@ class DataAdministrationMiddleware:
             that exports annotations (or predictions) to a Zipfile on disk. The
             task then returns the path to that Zipfile once completed.
         '''
+        # #TODO: for debugging
+        # celery_interface.requestAnnotations(project,
+        #                                             username,
+        #                                             exportFormat,
+        #                                             dataType,
+        #                                             authorList,
+        #                                             dateRange,
+        #                                             ignoreImported,
+        #                                             parserArgs)
+
         # submit job
         process = celery_interface.requestAnnotations.si(project,
                                                     username,

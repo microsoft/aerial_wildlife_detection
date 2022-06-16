@@ -375,7 +375,8 @@
             if(!uploadImages && !parseAnnotations) return;
 
             let doSplitPatches = uploadImages && $('#split-patches-chck').prop('checked');
-            if(parseAnnotations && doSplitPatches) {    //TODO
+            let virtualSplit = !$('#disable-virtual-splitting').prop('checked');
+            if(parseAnnotations && doSplitPatches && !virtualSplit) {
                 window.messager.addMessage('Cannot split images into patches and parse annotations', 'error', 0);
                 return;
             }
@@ -396,13 +397,13 @@
             formData.append('numFiles', numFiles);
             formData.append('existingFiles', $('#existing-files [name=existing-files]:checked').val());
             formData.append('convertUnsupported', $('#convert-unsupported-images').prop('checked'));
-            formData.append('splitPatches', doSplitPatches);
+            formData.append('splitImages', doSplitPatches);
             if(doSplitPatches) {
                 let splitParams = {
                     'patchSize': [parseInt($('#patch-size-width').val()), parseInt($('#patch-size-height').val())],
                     'stride': [parseInt($('#patch-stride-width').val()), parseInt($('#patch-stride-height').val())],
                     'tight': $('#patch-tight-chck').prop('checked'),
-                    'virtualSplit': !$('#disable-virtual-splitting').prop('checked')
+                    'virtualSplit': virtualSplit
                 }
                 if($('#discard-empty-chck').prop('checked')) {
                     let perc = parseFloat($('#discard-empty-percentage').val());
@@ -437,7 +438,7 @@
                             }
                         }
                     });
-                    formData.append('parserArgs', parserKwargs);
+                    formData.append('parserArgs', JSON.stringify(parserKwargs));
                 }
             }
 
@@ -514,20 +515,20 @@
                             filename: fileName
                         };
                         formData.append(key, nextItem);
-                        window.imageBrowser.addImages({
-                            key: {
-                                'id': key,
-                                'url': fileName,
-                                'imageURL': '/static/dataAdmin/img/loading.png',
-                                'message': 'waiting...'
-                            }
-                        });
+                        // window.imageBrowser.addImages({
+                        //     key: {
+                        //         'id': key,
+                        //         'url': fileName,
+                        //         'imageURL': '/static/dataAdmin/img/loading.png',
+                        //         'message': 'waiting...'
+                        //     }
+                        // });
                     }
                     
                     // upload
-                    for(var key in fileKeys) {
-                        window.imageBrowser.setProgressBar(fileKeys[key]['filename'], true, 0);
-                    }
+                    // for(var key in fileKeys) {
+                    //     window.imageBrowser.setProgressBar(fileKeys[key]['filename'], true, 0);
+                    // }
                     let uploadRequest = $.ajax({
                         url: window.baseURL + 'uploadData',
                         method: 'POST',
@@ -574,7 +575,7 @@
                                 }
 
                                 // combine all keys (original images plus potential new patches)
-                                let allKeys = {...fileKeys, ...data['result']};
+                                let allKeys = data['result'];   //{...fileKeys, ...data['result']};
 
                                 for(var key in allKeys) {
                                     let imgName = allKeys[key]['filename'];
@@ -629,8 +630,8 @@
                                     // update progress bar
                                     if(result['status'] < 3) {
                                         pBar.set(true, pBar.getValue()+1);
-                                        numComplete += Object.keys(fileKeys).length;
-                                        infoBar.html('uploading... ('+numComplete+'/'+fileInput.files.length+' images uploaded)');
+                                        numComplete += 1;   //Object.keys(fileKeys).length;
+                                        infoBar.html('uploading... ('+numComplete+'/'+fileInput.files.length+' files uploaded)');
                                         if(numComplete >= numFiles) {
                                             pBar.set(false);
                                         }
@@ -810,9 +811,10 @@
                 });
                 $('#discard-empty-percentage').prop('disabled', !(checked & $('#discard-empty-chck').prop('checked')));
                 $('#discard-empty-quantization-value').prop('disabled', !(checked & $('#discard-empty-chck').prop('checked')));
-
-                //TODO: disable annotation import on image splitting; not yet implemented
-                if(checked) {
+            });
+            $('#disable-virtual-splitting').on('input', function() {
+                //TODO: disable annotation import on "physical" image splitting; not yet implemented
+                if($(this).prop('checked') && $('#split-patches-chck').prop('checked')) {
                     $('#parse-annotations-enabled').prop('checked', false);
                     $('#parse-annotations-enabled').prop('disabled', true);
                     $('#annotation-options-panel').slideUp();

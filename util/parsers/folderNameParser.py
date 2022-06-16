@@ -90,20 +90,20 @@ class FolderNameParser(AbstractAnnotationParser):
             return bestLevel, classNames
 
 
-    def is_parseable(self, fileList):
+    def is_parseable(self, fileDict, folderPrefix=''):
         '''
-            File list is parseable if a clear folder structure with sensible
+            File dict is parseable if a clear folder structure with sensible
             label class names can be found.
         '''
-        return self._determine_folder_level(fileList)[0] is not None
+        return self._determine_folder_level(list(fileDict.values()))[0] is not None
     
 
-    def import_annotations(self, fileList, targetAccount, skipUnknownClasses, markAsGoldenQuestions, **kwargs):
+    def import_annotations(self, fileDict, targetAccount, skipUnknownClasses, markAsGoldenQuestions, **kwargs):
         warnings = []
 
         # verify files for validity
         fileList_filtered = []
-        for f in fileList:
+        for f in fileDict.values():
             if os.path.isdir(f):
                 warnings.append(f'"{f}" is a directory.')
             elif not os.path.isfile(f) and not os.path.islink(f):

@@ -26,13 +26,13 @@ PARSERS = {
 }
 
 
-def auto_detect_parser(fileList, annotationType):
+def auto_detect_parser(fileDict, annotationType, folderPrefix):
     '''
-        Receives a list of files and tries all parsers for a given annotation
-        type on it. Returns the parser that was able to parse the files, or else
-        None if no suitable parser was found.
+        Receives a dict of files (original: actual file name) and tries all
+        parsers for a given annotation type on it. Returns the parser that was
+        able to parse the files, or else None if no suitable parser was found.
         TODO: implement parser priority system.
     '''
     for pkey in PARSERS[annotationType].keys():
-        if PARSERS[annotationType][pkey].is_parseable(fileList):
+        if PARSERS[annotationType][pkey].is_parseable(fileDict, folderPrefix):
             return pkey
