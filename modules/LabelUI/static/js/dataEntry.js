@@ -15,6 +15,9 @@ class AbstractDataEntry {
         this.window = [properties['w_y'], properties['w_x'], properties['w_height'], properties['w_width']];       // for virtual views
         if(!this.window.every(function(v){return Number.isInteger(v)})) {
             this.window = null;
+        } else {
+            // append window information to file name
+            this.fileName += '?window=' + this.window[0] + ',' + this.window[1] + ',' + this.window[2] + ',' + this.window[3];
         }
         this.isGoldenQuestion = ( typeof(properties['isGoldenQuestion']) === 'boolean' ? properties['isGoldenQuestion'] : false);
         this.isBookmarked = ( typeof(properties['isBookmarked']) === 'boolean' ? properties['isBookmarked'] : false);
@@ -510,12 +513,13 @@ class AbstractDataEntry {
     }
 
     getImageURI() {
-        let windowSuffix = (this.window === null ? '' : '?window='+this.window);
+        // window suffix is now included in file name automatically
+        // let windowSuffix = (this.window === null || !this.fileName.includes('?window=') ? '' : '?window='+this.window);
         if(this.fileName.startsWith('/')) {
             // static image; don't prepend data server URI & Co.
-            return this.fileName + windowSuffix;
+            return this.fileName;   // + windowSuffix;
         } else {
-            return window.dataServerURI + window.projectShortname + '/files/' + this.fileName + windowSuffix;
+            return window.dataServerURI + window.projectShortname + '/files/' + this.fileName;  // + windowSuffix;
         }
     }
 

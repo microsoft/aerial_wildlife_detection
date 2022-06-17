@@ -198,7 +198,9 @@
             ':'    // for macOS
         ];
 
+        //TODO: old
         function updateSegmaskNamePreview() {
+            return
             let nameType = $('#segmask-filename').val();
             let prefix = $('#segmask-filename-prefix').val();
             let suffix = $('#segmask-filename-suffix').val();
@@ -550,19 +552,19 @@
                 data = data['immutables'];
                 window.annotationType = data['annotationType'];
                 window.predictionType = data['predictionType'];
-                if(window.annotationType === 'segmentationMasks') {
-                    // advanced options for segmentation masks
-                    $('#segmentation-options').show();
-                    $('#segmask-filename').on('input', function() {
-                        updateSegmaskNamePreview();
-                    });
-                    $('#segmask-filename-modifier-fields').find('input').each(function() {
-                        $(this).on('input', function() {
-                            updateSegmaskNamePreview();
-                        });
-                    });
-                    updateSegmaskNamePreview();
-                }
+                // if(window.annotationType === 'segmentationMasks') {
+                //     // advanced options for segmentation masks
+                //     $('#segmentation-options').show();
+                //     $('#segmask-filename').on('input', function() {
+                //         updateSegmaskNamePreview();
+                //     });
+                //     $('#segmask-filename-modifier-fields').find('input').each(function() {
+                //         $(this).on('input', function() {
+                //             updateSegmaskNamePreview();
+                //         });
+                //     });
+                //     updateSegmaskNamePreview();
+                // }
             }
         });
 

@@ -1313,6 +1313,17 @@ class DataWorker:
         #TODO: implement access control to check if user has right to download data
 
         queryArgs = []
+        if annoType == 'segmentationMasks':
+            # we don't query the segmentation mask directly, as this would be too expensive
+            if dataType == 'annotation':
+                fieldList = getattr(QueryStrings_annotation, annoType).value
+            else:
+                fieldList = getattr(QueryStrings_prediction, annoType).value
+            fieldList.remove('segmentationMask')
+            queryFields = ','.join(fieldList)
+        else:
+            queryFields = '*'
+
         if authorList is not None and len(authorList):
             if isinstance(authorList, str):
                 authorList = [authorList]
@@ -1342,11 +1353,12 @@ class DataWorker:
 
         # query database
         queryStr = sql.SQL('''
-            SELECT * FROM {id_main} AS m
+            SELECT {queryFields} FROM {id_main} AS m
             {authorStr}
             {dateStr}
             {ignoreImportedStr}
         ''').format(
+            queryFields=sql.SQL(queryFields),
             id_main=sql.Identifier(project, dataType),
             authorStr=sql.SQL(authorStr),
             dateStr=sql.SQL(dateStr),
@@ -1376,6 +1388,7 @@ class DataWorker:
         )
 
         annotations = {
+            'data_type': dataType,
             'images': images,
             'labelclasses': labelclasses,
             'annotations': query

@@ -116,8 +116,9 @@ class FileServer:
 
             if self.isLocal:
                 # load file from disk
-                driver = drivers.get_driver(queryPath)      #TODO: try-except?
-                img = driver.load_from_disk(queryPath)
+                qpath_stripped, window = drivers.strip_window(queryPath)
+                driver = drivers.get_driver(qpath_stripped)      #TODO: try-except?
+                img = driver.load_from_disk(qpath_stripped, window=window)
             else:
                 response = request.urlopen(queryPath)
                 bytea = response.read()

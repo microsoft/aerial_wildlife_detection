@@ -90,7 +90,7 @@ window.msToTime = function(duration) {
 /* color functions */
 
 // source: https://stackoverflow.com/questions/1573053/javascript-function-to-convert-color-names-to-hex-codes/24390910
-let WEB_COLORS = {
+var WEB_COLORS = {
     "aliceblue":"#f0f8ff","antiquewhite":"#faebd7","aqua":"#00ffff","aquamarine":"#7fffd4","azure":"#f0ffff",
     "beige":"#f5f5dc","bisque":"#ffe4c4","black":"#000000","blanchedalmond":"#ffebcd","blue":"#0000ff","blueviolet":"#8a2be2","brown":"#a52a2a","burlywood":"#deb887",
     "cadetblue":"#5f9ea0","chartreuse":"#7fff00","chocolate":"#d2691e","coral":"#ff7f50","cornflowerblue":"#6495ed","cornsilk":"#fff8dc","crimson":"#dc143c","cyan":"#00ffff",
@@ -150,7 +150,8 @@ window.rgbToHex = function(rgb) {
             rgb = /rgba?\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(,\s*\d+[\.\d+]*)*\)/g.exec(rgb);
         }
     }
-    return "#" + componentToHex(rgb[1]) + componentToHex(rgb[2]) + componentToHex(rgb[3]);
+    let offset = rgb.length === 3 ? 0 : 1;
+    return "#" + componentToHex(rgb[offset]) + componentToHex(rgb[offset+1]) + componentToHex(rgb[offset+2]);
 }
 
 window.hexToRgb = function(hex, as_array) {

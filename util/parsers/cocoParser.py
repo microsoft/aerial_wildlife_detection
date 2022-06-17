@@ -17,6 +17,7 @@ from constants.version import AIDE_VERSION
 from modules.ImageQuerying.backend.regionProcessing import polygon_area     #TODO: make generally available?
 from util.parsers.abstractParser import AbstractAnnotationParser
 from util import helpers, drivers
+drivers.init_drivers()
 
 
 class COCOparser(AbstractAnnotationParser):
@@ -62,11 +63,11 @@ class COCOparser(AbstractAnnotationParser):
     @classmethod
     def _get_coco_files(cls, fileDict, folderPrefix):
         '''
-            Iterates through a provided list of file names and returns all those
-            that appear to be valid MS-COCO JSON files.
+            Iterates through keys of a provided dict of file names and returns
+            all those that appear to be valid MS-COCO JSON files.
         '''
         cocoFiles = []
-        for file_orig, file_new in fileDict.items():
+        for file_orig in fileDict.keys():
             if isinstance(folderPrefix, str):
                 filePath = os.path.join(folderPrefix, file_orig)
             else:
@@ -100,7 +101,7 @@ class COCOparser(AbstractAnnotationParser):
     @classmethod
     def is_parseable(cls, fileDict, folderPrefix):
         '''
-            File list is parseable if at least one file is a proper MS-COCO JSON
+            File dict is parseable if at least one file is a proper MS-COCO JSON
             file.
         '''
         return len(cls._get_coco_files(fileDict, folderPrefix)) > 0
@@ -126,7 +127,6 @@ class COCOparser(AbstractAnnotationParser):
             dbFieldNames = ['segmentationmask', 'width', 'height']
 
         importedAnnotations, warnings, errors = defaultdict(list), [], []
-        imgIDs_added = set()
         imgs_valid = []
 
         # get valid COCO files
@@ -398,7 +398,6 @@ class COCOparser(AbstractAnnotationParser):
             'warnings': warnings,
             'errors': errors
         }
-
 
 
     def export_annotations(self, annotations, destination, **kwargs):

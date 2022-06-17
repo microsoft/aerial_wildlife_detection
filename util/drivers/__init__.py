@@ -4,6 +4,9 @@
     2021 Benjamin Kellenberger
 '''
 
+import re
+import urllib
+
 from util.drivers.imageDrivers import (
     PILImageDriver,
     GDALImageDriver,
@@ -174,6 +177,22 @@ def bytesio_to_bytea(bytesio):
     else:
         return bytesio
 
+
+def strip_window(fileURL):
+    '''
+        Receives a URL-like image path, with possible window appended
+        ("?window=...") and strips that from the file name. Returns the bare
+        file URL and separate window (if present, else None).
+    '''
+    urlComponents = urllib.parse.urlparse(fileURL)
+    fileURL_stripped = fileURL.replace('?'+urlComponents.query, '')
+    window = re.findall('window=[0-9]+,[0-9]+,[0-9]+,[0-9]+', urlComponents.query, re.IGNORECASE)
+    if len(window):
+        window = window[0].lower().replace('window=', '')
+        window = [int(w) for w in window.split(',')]
+    else:
+        window = None
+    return fileURL_stripped, window
 
 
 def get_driver(object):

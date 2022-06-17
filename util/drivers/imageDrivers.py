@@ -384,6 +384,9 @@ class GDALImageDriver(AbstractImageDriver):
         with cls.driver.open(filePath, 'r') as f:
             data = f.read(window=window, boundless=True)
             profile = f.profile
+        if window is not None:
+            profile['width'] = window.width
+            profile['height'] = window.height
 
         with cls.memfile() as memfile:
             with memfile.open(**profile) as rst:

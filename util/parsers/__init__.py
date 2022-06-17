@@ -6,10 +6,12 @@
 
 from .cocoParser import COCOparser
 from .yoloParser import YOLOparser
+from .segmentationParser import SegmentationFileParser
 
 __all__ = (
     COCOparser,
-    YOLOparser
+    YOLOparser,
+    SegmentationFileParser
 )
 
 
@@ -22,7 +24,9 @@ PARSERS = {
         'yolo': YOLOparser
     },
     'polygons': {},
-    'segmentationMasks': {}
+    'segmentationMasks': {
+        'image_files': SegmentationFileParser
+    }
 }
 
 
