@@ -619,6 +619,8 @@ class ProjectConfigMiddleware:
             in the case of segmentation masks.
         '''
 
+        warnings = []
+
         # check if project contains segmentation masks
         metaType = self.dbConnector.execute('''
                 SELECT annotationType, predictionType FROM aide_admin.project
@@ -629,14 +631,18 @@ class ProjectConfigMiddleware:
         )[0]
         is_segmentation = any(['segmentationmasks' in m.lower() for m in metaType.values()])
         if is_segmentation:
+            # segmentation: we disallow deletion and serial idx > 255
+            if removeMissing:
+                warnings.append('Pixel-wise segmentation projects disallow removing label classes.')
             removeMissing = False
-
-            colors = self.dbConnector.execute(sql.SQL('''
-                SELECT id, color FROM {};
+            lcQuery = self.dbConnector.execute(sql.SQL('''
+                SELECT id, idx, color FROM {};
             ''').format(sql.Identifier(project, 'labelclass')), None, 'all')
-            colors = dict([[c['color'].lower(), c['id']] for c in colors])
+            colors = dict([[c['color'].lower(), c['id']] for c in lcQuery])
+            maxIdx = 0 if not len(lcQuery) else max([l['idx'] for l in lcQuery])
         else:
             colors = {}
+            maxIdx = 0
         
         def _random_color():
             # create unique random color
@@ -648,35 +654,35 @@ class ProjectConfigMiddleware:
         # get current classes from database
         db_classes = {}
         db_groups = {}
-        if removeMissing:
-            queryStr = sql.SQL('''
-                SELECT * FROM {id_lc} AS lc
-                FULL OUTER JOIN (
-                    SELECT id AS lcgid, name AS lcgname, parent, color
-                    FROM {id_lcg}
-                ) AS lcg
-                ON lc.labelclassgroup = lcg.lcgid
-            ''').format(
-                id_lc=sql.Identifier(project, 'labelclass'),
-                id_lcg=sql.Identifier(project, 'labelclassgroup')
-            )
-            result = self.dbConnector.execute(queryStr, None, 'all')
-            for r in result:
-                if r['id'] is not None:
-                    db_classes[r['id']] = r
-                if r['lcgid'] is not None:
-                    if not r['lcgid'] in db_groups:
-                        db_groups[r['lcgid']] = {**r, **{'num_children':0}}
-                    elif not 'lcgid' in db_groups[r['lcgid']]:
-                        db_groups[r['lcgid']] = {**db_groups[r['lcgid']], **r}
-                if r['labelclassgroup'] is not None:
-                    if not r['labelclassgroup'] in db_groups:
-                        db_groups[r['labelclassgroup']] = {'num_children':1}
-                    else:
-                        db_groups[r['labelclassgroup']]['num_children'] += 1
+        queryStr = sql.SQL('''
+            SELECT * FROM {id_lc} AS lc
+            FULL OUTER JOIN (
+                SELECT id AS lcgid, name AS lcgname, parent, color
+                FROM {id_lcg}
+            ) AS lcg
+            ON lc.labelclassgroup = lcg.lcgid
+        ''').format(
+            id_lc=sql.Identifier(project, 'labelclass'),
+            id_lcg=sql.Identifier(project, 'labelclassgroup')
+        )
+        result = self.dbConnector.execute(queryStr, None, 'all')
+        for r in result:
+            if r['id'] is not None:
+                db_classes[r['id']] = r
+            if r['lcgid'] is not None:
+                if not r['lcgid'] in db_groups:
+                    db_groups[r['lcgid']] = {**r, **{'num_children':0}}
+                elif not 'lcgid' in db_groups[r['lcgid']]:
+                    db_groups[r['lcgid']] = {**db_groups[r['lcgid']], **r}
+            if r['labelclassgroup'] is not None:
+                if not r['labelclassgroup'] in db_groups:
+                    db_groups[r['labelclassgroup']] = {'num_children':1}
+                else:
+                    db_groups[r['labelclassgroup']]['num_children'] += 1
 
         # parse provided class definitions list
         unique_keystrokes = set()
+        classes_new = []
         classes_update = []
         classgroups_update = []
         def _parse_item(item, parent=None):
@@ -688,7 +694,7 @@ class ProjectConfigMiddleware:
                 while itemID in classes_update or itemID in classgroups_update:
                     itemID = uuid.uuid1()
 
-            color = item.get('color', None)
+            color = item.get('color', None).lower()
             if is_segmentation:
                 # for segmentation we don't allow fully black or white (reserved for "no data") and no duplicate colors
                 if isinstance(color, str):
@@ -701,7 +707,7 @@ class ProjectConfigMiddleware:
                         color = '#{0:02x}{1:02x}{2:02x}'.format(*rgb)
                 
                 if not isinstance(color, str) or \
-                    (color.lower() in colors and colors[color] != itemID):
+                    (color in colors and colors[color] != itemID):
                     # random color
                     color = _random_color()
 
@@ -723,7 +729,10 @@ class ProjectConfigMiddleware:
                 if 'keystroke' in item and not item['keystroke'] in unique_keystrokes:
                     entry['keystroke'] = item['keystroke']
                     unique_keystrokes.add(item['keystroke'])
-                classes_update.append(entry)
+                if entry.get('id', None) in db_classes:
+                    classes_update.append(entry)
+                else:
+                    classes_new.append(entry)
 
         for item in classdef:
             _parse_item(item, None)
@@ -783,7 +792,17 @@ class ProjectConfigMiddleware:
         )
         self.dbConnector.insert(queryStr, groups_parents)
 
-        # insert/update label classes
+        # update existing label classes
+        if is_segmentation and maxIdx >= 255 and len(classes_new):
+            # segmentation and maximum labelclass idx serial reached: cannot add new classes
+            warnings.append('Maximum class index ordinal 255 reached. The following new classes had to be discarded: {}.'.format(
+                ','.join(['"{}"'.format(c['name']) for c in classes_new])
+            ))
+            classes_new = []
+        else:
+            # do updates and insertions in one go
+            classes_update.extend(classes_new)
+
         lcdata = [(l['id'], l['name'], l['color'], l['keystroke'], l['labelclassgroup'],) for l in classes_update]
         queryStr = sql.SQL('''
             INSERT INTO {id_lc} (id, name, color, keystroke, labelclassgroup)
@@ -798,7 +817,7 @@ class ProjectConfigMiddleware:
         )
         self.dbConnector.insert(queryStr, lcdata)
 
-        return True
+        return warnings
 
     
 

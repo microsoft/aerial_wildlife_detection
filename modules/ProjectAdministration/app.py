@@ -260,11 +260,8 @@ class ProjectConfigurator:
                 if isinstance(classdef, str):
                     # re-parse JSON (might happen in case of single quotes)
                     classdef = json.loads(classdef)
-                success = self.middleware.updateClassDefinitions(project, classdef, removeMissing)
-                if success:
-                    return {'success': success}
-                else:
-                    abort(400, 'bad request')
+                warnings = self.middleware.updateClassDefinitions(project, classdef, removeMissing)
+                return {'status': 0, 'warnings': warnings}
             except Exception as e:
                 abort(400, str(e))
 

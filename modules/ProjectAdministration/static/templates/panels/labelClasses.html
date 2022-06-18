@@ -778,16 +778,13 @@
             contentType: 'application/json; charset=utf-8',
             dataType: 'json',
             success: function(data) {
-                if(data.hasOwnProperty('success') && data['success']) {
-                    // re-load label classes
-                    loadLabelClasses().done(function() {
-                        window.messager.addMessage('Label class definition saved successfully.', 'success');
-                    });
-                } else {
-                    // something went wrong...
-                    window.messager.addMessage('An unknown error occurred when trying to save label classes.', 'error', 0);
-                    console.error(data);
+                if(data.hasOwnProperty('warnings') && data['warnings'].length>0) {
+                    for(var w=0; w<data['warnings'].length; w++) {
+                        window.messager.addMessage(data['warnings'][w], 'warning', 0);
+                    }
                 }
+                // re-load label classes
+                return loadLabelClasses();
             },
             error: function(xhr, status, error) {
                 console.error(error);

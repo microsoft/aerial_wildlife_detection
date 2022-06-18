@@ -40,13 +40,20 @@ class SegmentationFileParser(AbstractAnnotationParser):
         ''').format(sql.Identifier(self.project, 'labelclass')),
         None, 'all')
         self.labelClasses = dict([[l['id'], {'name':l['name'], 'idx': l['idx'], 'color': l['color']}] for l in lcIDs])
+        self.maxIdx = 0 if not len(lcIDs) else max([l['idx'] for l in lcIDs])           # current max label class ordinal idx; cannot go beyond 255
 
 
     @classmethod
     def get_html_options(cls, method):
         if method == 'import':
             return '''
-            
+            <input type="checkbox" id="verify_image_size" />
+            <label for="verify_image_size">verify image size</label>
+            <p style="margin-left:10px;font-style:italic">
+                If checked, segmentation maps will be checked for size
+                and compared against target image sizes.
+                This may be more accurate, but significantly slower.
+            </p>
             '''
         
         else:
