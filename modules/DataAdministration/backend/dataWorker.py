@@ -1394,8 +1394,15 @@ class DataWorker:
             'annotations': query
         }
 
+        parserClass = parsers.PARSERS[annoType][exportFormat]
+
         # create Zipfile in temporary folder
-        filename = 'aide_query_{}'.format(now.strftime('%Y-%m-%d_%H-%M-%S')) + '.zip'
+        filename = '{}_{}_{}_{}.zip'.format(
+            project,
+            dataType,
+            slugify(parserClass.NAME),
+            now.strftime('%Y-%m-%d_%H-%M-%S')
+        )
         destPath = os.path.join(self.tempDir, 'aide/downloadRequests', project)
         os.makedirs(destPath, exist_ok=True)
         destPath = os.path.join(destPath, filename)
@@ -1403,7 +1410,6 @@ class DataWorker:
         mainFile = zipfile.ZipFile(destPath, 'w', zipfile.ZIP_DEFLATED)
         try:
             # create parser
-            parserClass = parsers.PARSERS[annoType][exportFormat]
             parser = parserClass(self.config, self.dbConnector, project, self.tempDir, username, annoType)
             parser.export_annotations(annotations, mainFile, **parserKwargs)
             return filename

@@ -10,10 +10,10 @@
     2020-22 Benjamin Kellenberger
 '''
 
-AIDE_VERSION = '2.2.220617'
+AIDE_VERSION = '2.2.220618'
 
 
-MIN_FILESERVER_VERSION = '2.2.220617'       # minimum required version for FileServer, due to recent changes
+MIN_FILESERVER_VERSION = '2.2.220618'       # minimum required version for FileServer, due to recent changes
 
 
 import datetime

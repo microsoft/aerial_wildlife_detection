@@ -51,7 +51,16 @@ class SegmentationFileParser(AbstractAnnotationParser):
         
         else:
             return '''
-            
+            <div>
+                <fieldset>
+                    <legend>Label class encoding:</legend>
+                    <input type="radio" id="export_indices" name="export_colors" checked="checked" />
+                    <label for="export_indices">single-band images with label class indices</label>
+                    <br />
+                    <input type="radio" id="export_colors" name="export_colors" />
+                    <label for="export_colors">RGB images with label class colors</label>
+                </fieldset>
+            </div>
             '''
     
 
@@ -176,6 +185,18 @@ class SegmentationFileParser(AbstractAnnotationParser):
             )
         destination.writestr('classes.txt', data=lcStr)
 
+        # create labelclass color lookup table if needed
+        if exportColors:
+            colorLUT = {}
+            for lcDef in self.labelClasses.values():
+                idx = lcDef['idx']
+                try:
+                    color = helpers.hexToRGB(lcDef['color'])
+                except:
+                    # error parsing color; this should never happen
+                    color = 0
+                colorLUT[idx] = color
+
         # create annotation lookup table
         anno_lut = defaultdict(list)
         for row in annotations['annotations']:
@@ -201,20 +222,24 @@ class SegmentationFileParser(AbstractAnnotationParser):
                 sz = [src.count, src.height, src.width]
                 transform = src.transform
                 crs = src.crs
+            
+            destFiles = {}      # username: file name
 
-            #TODO: illogical ordering as is... also, exported images are all no data
             for imgView in img_lut[filename]:
                 imgID = imgView['id']
                 fname, _ = os.path.splitext(filename)
 
                 for anno in anno_lut[imgID]:
                     # put potentially multiple segmentation masks into different subfolders
-                    destFilename = os.path.join('segmentation', str(anno.get('username', 'cnnstate')), fname+'.tif')
-                    #TODO: write directly to zip file?
-
-                    tempDest = os.path.join(self.tempDir, 'segmentation_export', now, destFilename)
-                    parent, _ = os.path.split(tempDest)
-                    os.makedirs(parent, exist_ok=True)
+                    username = str(anno.get('username', 'cnnstate'))
+                    if username not in destFiles:
+                        destFilename = os.path.join('segmentation', username, fname+'.tif')
+                        destFiles[username] = destFilename
+                        tempDest = os.path.join(self.tempDir, 'segmentation_export', now, destFilename)
+                        parent, _ = os.path.split(tempDest)
+                        os.makedirs(parent, exist_ok=True)
+                    else:
+                        destFilename = destFiles[username]
 
                     # load segmap
                     segmap = self.dbConnector.execute(sql.SQL('''
@@ -225,8 +250,23 @@ class SegmentationFileParser(AbstractAnnotationParser):
                     (anno['id'],), 1)
 
                     # convert base64 mask to image
-                    raster = np.frombuffer(base64.b64decode(segmap[0]['segmentationmask']), dtype=np.uint8)
-                    raster = np.reshape(raster, (1, int(anno['height']),int(anno['width']),))
+                    raster_raw = np.frombuffer(base64.b64decode(segmap[0]['segmentationmask']), dtype=rasterio.ubyte)
+                    raster_raw = np.reshape(raster_raw, (1, int(anno['height']),int(anno['width']),))
+
+                    # convert to RGB image if needed
+                    if exportColors:
+                        raster_raw = raster_raw.squeeze()
+                        raster = np.zeros((3, *raster_raw.shape[:2]), dtype=rasterio.ubyte)
+                        lcIdx = np.unique(raster_raw).tolist()
+                        for lc in lcIdx:
+                            if lc not in colorLUT:
+                                continue
+                            val = colorLUT[lc]
+                            valid = (raster_raw == lc)
+                            for v in range(3):
+                                raster[v,valid] = val[v]
+                    else:
+                        raster = raster_raw
 
                     # window where to write segmask part into
                     window = Window(
@@ -239,12 +279,16 @@ class SegmentationFileParser(AbstractAnnotationParser):
                     with rasterio.open(
                         tempDest, 'w',
                         driver='GTiff',
+                        nodata=0,
                         width=sz[2], height=sz[1], count=3 if exportColors else 1,
                         transform=transform, crs=crs,
-                        dtype=rasterio.uint8) as dst:
-                        dst.write(raster, window=window)
+                        dtype=rasterio.ubyte) as dst:
+                        dst.write(raster, window=window, indexes=list(range(1,len(raster)+1)))
                     
-                # move temp file into zipfile
+            # move all temp files into zipfile
+            for key in destFiles:
+                destFilename = destFiles[key]
+                tempDest = os.path.join(self.tempDir, 'segmentation_export', now, destFilename)
                 destination.write(tempDest, destFilename)
                 os.remove(tempDest)
                 files_exported.append(destFilename)
