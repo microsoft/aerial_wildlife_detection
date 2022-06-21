@@ -7,6 +7,8 @@
 
 import os
 import numpy as np
+from tqdm import tqdm
+from celery import current_task
 
 from util import drivers
 drivers.init_drivers()
@@ -14,7 +16,7 @@ from util.drivers.imageDrivers import normalize_image
 
 
 
-def get_split_positions(array, patchSize, stride=None, tight=True, discard_homogeneous_percentage=None, discard_homogeneous_quantization_value=255):
+def get_split_positions(array, patchSize, stride=None, tight=True, discard_homogeneous_percentage=None, discard_homogeneous_quantization_value=255, celeryUpdateInterval=-1):
     '''
         Receives one of:
             - a NumPy ndarray of size (BxWxH)
@@ -87,14 +89,20 @@ def get_split_positions(array, patchSize, stride=None, tight=True, discard_homog
         # ditto for stride
         stride = (max(1,min(stride[1], sz[1])), max(1,min(stride[0], sz[2])))
     if isinstance(discard_homogeneous_percentage, float) or isinstance(discard_homogeneous_percentage, int):
-        if discard_homogeneous_percentage <= 0 or discard_homogeneous_percentage >= 100:
-            discard_homogeneous_percentage = None
+        discard_homogeneous_percentage = max(0.001, min(100, discard_homogeneous_percentage))
     else:
         discard_homogeneous_percentage = None
     if not isinstance(discard_homogeneous_quantization_value, int) and not isinstance(discard_homogeneous_quantization_value, float):
         discard_homogeneous_quantization_value = 255
     else:
         discard_homogeneous_quantization_value = max(1, min(255, discard_homogeneous_quantization_value))
+
+    if not hasattr(current_task, 'update_state'):
+        celeryUpdateInterval = -1
+    elif celeryUpdateInterval >= 0:
+        celeryUpdateMsg = 'determining view locations'
+        if isinstance(array, str):
+            celeryUpdateMsg += f' ("{array}")'
 
     # define crop locations
     xLoc = list(range(0, sz[1], stride[0]))
@@ -117,9 +125,23 @@ def get_split_positions(array, patchSize, stride=None, tight=True, discard_homog
         return [(0, 0, sz[1], sz[2])]
     
     # do the cropping
+    numCoords = len(xLoc)*len(yLoc)
+    if discard_homogeneous_percentage is not None:
+        print('Locating split positions, discarding empty patches...')
+        tbar = tqdm(range(numCoords))
     coords = []
+    count = 0
     for x in range(len(xLoc)):
         for y in range(len(yLoc)):
+            if celeryUpdateInterval >= 0 and not count % celeryUpdateInterval:
+                current_task.update_state(
+                    meta={
+                        'message': celeryUpdateMsg,
+                        'done': count,
+                        'total': numCoords
+                    }
+                )
+            count += 1
             pos = (int(xLoc[x]), int(yLoc[y]))
             end = (min(pos[0]+patchSize[0], sz[1]), min(pos[1]+patchSize[1], sz[2]))
             if discard_homogeneous_percentage is not None:
@@ -128,19 +150,32 @@ def get_split_positions(array, patchSize, stride=None, tight=True, discard_homog
                     arr_patch = array[:,pos[0]:end[0],pos[1]:end[1]]
                 else:
                     arr_patch = driver.load(array, window=[pos[1], pos[0], end[1]-pos[1], end[0]-pos[0]])
-                psz = arr_patch.shape
-                arr_patch_int = normalize_image(arr_patch, color_range=discard_homogeneous_quantization_value)
-                _, counts = np.unique(np.reshape(arr_patch_int, (psz[0], -1)), axis=1, return_counts=True)
-                if np.max(counts) > discard_homogeneous_percentage/100.0*(psz[1]*psz[2]):
-                    continue
+                if discard_homogeneous_percentage > 99.999999:
+                    # looking for a single value in images only; speed up process
+                    if all([len(np.unique(arr_patch[a,...]))==1 for a in range(len(arr_patch))]):
+                        tbar.update(1)
+                        continue
+
+                else:
+                    psz = arr_patch.shape
+                    arr_patch_int = normalize_image(arr_patch, color_range=discard_homogeneous_quantization_value)
+                    _, counts = np.unique(np.reshape(arr_patch_int, (psz[0], -1)), axis=1, return_counts=True)
+                    if np.max(counts) > discard_homogeneous_percentage/100.0*(psz[1]*psz[2]):
+                        tbar.update(1)
+                        continue
             coord = (pos[0], pos[1], end[0]-pos[0], end[1]-pos[1])
             coords.append(coord)
+            tbar.update(1)
     
+    if discard_homogeneous_percentage is not None:
+        tbar.close()
+
     return coords
 
 
 
-def split_image(array, patchSize, stride=None, tight=True, discard_homogeneous_percentage=None, discard_homogeneous_quantization_value=255, save_root=None, return_patches=True):
+def split_image(array, patchSize, stride=None, tight=True, discard_homogeneous_percentage=None, discard_homogeneous_quantization_value=255, save_root=None, return_patches=True,
+    celeryUpdateInterval=-1):
     '''
         Receives one of:
             - a NumPy ndarray of size (BxWxH)
@@ -194,9 +229,17 @@ def split_image(array, patchSize, stride=None, tight=True, discard_homogeneous_p
     '''
     assert (isinstance(save_root, str) and isinstance(array, str)) or return_patches, \
         'either "return_patches" must be True or "save_root" defined'
+    
+    if not hasattr(current_task, 'update_state'):
+        celeryUpdateInterval = -1
+    elif celeryUpdateInterval >= 0:
+        celeryUpdateMsg = 'splitting image'
+        if isinstance(array, str):
+            celeryUpdateMsg += f' ("{array}")'
 
     coords = get_split_positions(array, patchSize, stride, tight,
-                                discard_homogeneous_percentage, discard_homogeneous_quantization_value)
+                                discard_homogeneous_percentage, discard_homogeneous_quantization_value,
+                                celeryUpdateInterval=celeryUpdateInterval)
     
     if not isinstance(array, np.ndarray):
         # get image size from disk or bytes
@@ -213,20 +256,9 @@ def split_image(array, patchSize, stride=None, tight=True, discard_homogeneous_p
     # do the cropping
     patches = []
     filenames = []
-    for pos in coords:
+    for idx, pos in enumerate(tqdm(coords)):
         end = (min(pos[0]+patchSize[0], sz[1]), min(pos[1]+patchSize[1], sz[2]))
         arr_patch = driver.load(array, window=[pos[1], pos[0], end[1]-pos[1], end[0]-pos[0]])
-        # arr_patch = array[:,pos[0]:end[0],pos[1]:end[1]]
-        if discard_homogeneous_percentage is not None:
-            # get most frequent pixel value across bands and check percentage of it
-            psz = arr_patch.shape
-            arr_patch_int = normalize_image(arr_patch, color_range=discard_homogeneous_quantization_value)
-            _, counts = np.unique(np.reshape(arr_patch_int, (psz[0], -1)), axis=1, return_counts=True)
-            if np.max(counts) > discard_homogeneous_percentage/100.0*(psz[1]*psz[2]):
-                continue
-        # patch = np.zeros(shape=(sz[0], *patchSize), dtype=array.dtype)
-        # patch[:,:(end[0]-pos[0]),:(end[1]-pos[1])] = arr_patch
-        # patches.append(patch)
         if return_patches:
             patches.append(arr_patch)       #TODO: save to disk already here to prevent memory overflow with large images
         if save_root is not None:
@@ -234,6 +266,15 @@ def split_image(array, patchSize, stride=None, tight=True, discard_homogeneous_p
             fname = f'{rootFilename}_{pos[0]}_{pos[1]}{ext}'
             driver.save_to_disk(arr_patch, fname)
             filenames.append(fname)
+        
+        if celeryUpdateInterval >= 0 and not idx+1 % celeryUpdateInterval:
+            current_task.update_state(
+                meta={
+                    'message': celeryUpdateMsg,
+                    'done': idx+1,
+                    'total': len(coords)
+                }
+            )
 
     returnArgs = [coords]
     if return_patches:

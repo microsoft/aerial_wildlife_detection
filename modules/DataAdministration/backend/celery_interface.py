@@ -48,8 +48,10 @@ def scanForImages(project, skipIntegrityCheck=False):
 
 
 @current_app.task(name='DataAdministration.add_existing_images')
-def addExistingImages(project, imageList=None, skipIntegrityCheck=False):
-    return worker.addExistingImages(project, imageList, skipIntegrityCheck=skipIntegrityCheck)
+def addExistingImages(project, imageList=None, skipIntegrityCheck=False,
+        createVirtualViews=False, viewParameters=None):
+    return worker.addExistingImages(project, imageList, skipIntegrityCheck=skipIntegrityCheck,
+        createVirtualViews=createVirtualViews, viewParameters=viewParameters)
 
 
 @current_app.task(name='DataAdministration.remove_images')

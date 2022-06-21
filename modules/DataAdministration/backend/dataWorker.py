@@ -619,7 +619,8 @@ class DataWorker:
                                                 splitProperties['stride'],
                                                 splitProperties.get('tight', False),
                                                 splitProperties.get('discard_homogeneous_percentage', None),
-                                                splitProperties.get('discard_homogeneous_quantization_value', 255))
+                                                splitProperties.get('discard_homogeneous_quantization_value', 255),
+                                                celeryUpdateInterval=self.CELERY_UPDATE_INTERVAL)
                             
                             if len(coords) == 1:
                                 # only a single view; don't register x, y
@@ -671,7 +672,8 @@ class DataWorker:
                                                     splitProperties.get('discard_homogeneous_percentage', None),
                                                     splitProperties.get('discard_homogeneous_quantization_value', 255),
                                                     os.path.join(destFolder, originalFileName),
-                                                    return_patches=False
+                                                    return_patches=False,
+                                                    celeryUpdateInterval=self.CELERY_UPDATE_INTERVAL
                                                     )
                             for f in range(len(filenames)):
                                 fn = filenames[f].replace(destFolder, '')
@@ -1019,7 +1021,9 @@ class DataWorker:
             else:
                 # try to load images and check for validity
                 try:
-                    pixelArray = drivers.load_from_disk(os.path.join(projectFolder, imgs_candidates[i]))
+                    fpath = os.path.join(projectFolder, imgs_candidates[i])
+                    driver = drivers.get_driver(fpath)
+                    sz = driver.size(fpath)
 
                     # check file extension
                     convertImage = False
@@ -1034,17 +1038,19 @@ class DataWorker:
                             convertImage = True
 
                     # check band config
-                    bandNum_current = pixelArray.shape[0]
+                    bandNum_current = sz[0]
                     if bandNum_current not in bandNum:
                         # invalid number of bands
                         continue
-                    elif convertToRGBifPossible and bandNum_current == 1 and not hasCustomBandConfig:
-                        # project expects RGB data but image is grayscale; replicate for maximum compatibility
-                        pixelArray = np.concatenate((pixelArray, pixelArray, pixelArray), -1)
-                        convertImage = True
-                    
+                    #TODO: implement, but keep huge images in mind
                     if convertImage:
-                        drivers.save_to_disk(pixelArray, os.path.join(projectFolder, imgs_candidates[i]))
+                        continue
+                    # elif convertToRGBifPossible and bandNum_current == 1 and not hasCustomBandConfig:
+                    #     # project expects RGB data but image is grayscale; replicate for maximum compatibility
+                    #     pixelArray = np.concatenate((pixelArray, pixelArray, pixelArray), -1)
+                    #     convertImage = True
+                    # if convertImage:
+                    #     drivers.save_to_disk(pixelArray, os.path.join(projectFolder, imgs_candidates[i]))
                     imgs_valid.append(imgs_candidates[i])
                 except:
                     # unloadable; not a valid image
@@ -1061,26 +1067,31 @@ class DataWorker:
         return imgs_valid
 
 
-    def addExistingImages(self, project, imageList=None, convertSemiSupported=False, convertToRGBifPossible=False, skipIntegrityCheck=False):
+    def addExistingImages(self, project, imageList=None, convertSemiSupported=False, convertToRGBifPossible=False, skipIntegrityCheck=False,
+         createVirtualViews=False, viewParameters=None):
         '''
-            Scans the project folder on the file system
-            for images that are physically saved, but not
-            (yet) added to the database.
-            Adds them to the project's database schema.
-            If an imageList iterable is provided, only
-            the intersection between identified images on
-            disk and in the iterable are added.
+            Scans the project folder on the file system for images that are
+            physically saved, but not (yet) added to the database. Adds them to
+            the project's database schema. If an imageList iterable is provided,
+            only the intersection between identified images on disk and in the
+            iterable are added.
 
-            If 'imageList' is a string with contents 'all',
-            all untracked images will be added.
+            If 'imageList' is a string with contents 'all', all untracked images
+            will be added.
 
-            Returns a list of image IDs and file names that
-            were eventually added to the project database schema.
+            Returns a list of image IDs and file names that were eventually
+            added to the project database schema.
 
             If "skipIntegrityCheck" is True, images will be identified solely
             based on their file extension and assumed not to be corrupt. Also,
             no band number checks will be performed.
+
+            Parameter "createVirtualViews" determines whether to register
+            sub-windows of the image(s) in AIDE. "viewParameters" then provides
+            the properties for doing so.
         '''
+        current_task.update_state(meta={'message': 'locating images...'})
+
         # get all images on disk that are not in database
         imgs_candidates = self.scanForImages(project, convertSemiSupported, convertToRGBifPossible, skipIntegrityCheck)
 
@@ -1097,16 +1108,70 @@ class DataWorker:
         if not len(imgs_add):
             return 0, []
 
+        dbValues = []
+        if createVirtualViews:
+            # split each image into virtual views
+            current_task.update_state(meta={'message': 'creating virtual views...'})
+            projectFolder = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), project)
+            for img in imgs_add:
+                try:
+                    fpath = os.path.join(projectFolder, img)
+                    driver = drivers.get_driver(fpath)
+                    sz = driver.size(fpath)
+
+                    # create virtual views
+                    coords = get_split_positions(fpath,
+                                        viewParameters['patchSize'],
+                                        viewParameters['stride'],
+                                        viewParameters.get('tight', False),
+                                        viewParameters.get('discard_homogeneous_percentage', None),
+                                        viewParameters.get('discard_homogeneous_quantization_value', 255),
+                                        celeryUpdateInterval=self.CELERY_UPDATE_INTERVAL)
+                    
+                    if len(coords) == 1:
+                        # only a single view; don't register x, y
+                        dbValues.append((
+                            img, None, None, sz[1], sz[2]
+                        ))
+
+                    else:
+                        for coord in coords:
+                            dbValues.append((
+                                img,
+                                coord[0], coord[1],
+                                coord[2], coord[3]
+                            ))
+
+                except:
+                    # could not determine image size
+                    continue        #TODO: error log?
+
+        else:
+            # determine image size
+            current_task.update_state(meta={'message': 'verifying images...'})
+            for img in imgs_add:
+                try:
+                    fpath = os.path.join(projectFolder, img)
+                    driver = drivers.get_driver(fpath)
+                    sz = driver.size(fpath)
+                    dbValues.append((
+                        img, None, None, sz[1], sz[2]
+                    ))
+                except:
+                    # could not determine image size
+                    continue        #TODO: error log?
+
         # add to database
+        current_task.update_state(meta={'message': 'registering images...'})
         queryStr = sql.SQL('''
-            INSERT INTO {id_img} (filename)
+            INSERT INTO {id_img} (filename, x, y, width, height)
             VALUES %s;
         ''').format(
             id_img=sql.Identifier(project, 'image')
         )
-        self.dbConnector.insert(queryStr, tuple([(i,) for i in imgs_add]))
+        self.dbConnector.insert(queryStr, tuple(dbValues))
 
-        # get IDs of newly added images
+        # get IDs of newly added images     #TODO: virtual views?
         queryStr = sql.SQL('''
             SELECT id, filename FROM {id_img}
             WHERE filename IN %s;

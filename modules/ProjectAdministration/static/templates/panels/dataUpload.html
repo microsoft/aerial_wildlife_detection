@@ -45,9 +45,12 @@
                                 <td><input type="number" id="patch-stride-height" min="16" max="4096" value="600" disabled="disabled" /></td></tr></tbody></table>
                                 <input type="checkbox" id="patch-tight-chck" checked="checked" disabled="disabled" /><label for="patch-tight-chck">Do not exceed image boundaries</label><br />
                                 <input type="checkbox" id="discard-empty-chck" disabled="disabled" /><label for="discard-empty-chck"><span>Discard tiles with</span>
-                                <input type="number" min="1" max="99" value="5" id="discard-empty-percentage" disabled="disabled" /><span>% or more homogeneous pixels</span></label>
+                                <input type="number" min="1" max="99" value="100" id="discard-empty-percentage" disabled="disabled" /><span>% or more homogeneous pixels</span></label>
                                 <div style="margin-left:10px"><span>Quantization value:</span><input type="number" min="1" max="255" value="255" id="discard-empty-quantization-value" disabled="disabled" />
-                                <div style="font-style:italic">Determines the color variation between pixels during homogeneity evaluation. Smaller quantization values (>0) result in more diverse pixels being considered homogeneous.</div></div>
+                                <div style="font-style:italic">
+                                    Determines the color variation between pixels during homogeneity evaluation. Smaller quantization values (>0) result in more diverse pixels being considered homogeneous.<br />
+                                    This requires loading images from disk and checking pixels, which can be expensive. Set percentage of homogeneous pixels to 100% (discard fully homogeneous image parts) to speed up process.
+                                </div></div>
 
                                 <input type="checkbox" id="disable-virtual-splitting" disabled="disabled" />
                                 <label for="disable-virtual-splitting">Create actual images (deprecated)</label><br />
@@ -104,6 +107,28 @@
                 <input type="checkbox" id="image-integrity-check" checked />
                 <label for="image-integrity-check">Perform image integrity check (slower, but safer)</label>
                 <br />
+
+                <div>
+                    <input type="checkbox" id="scandir-split-patches-chck" />
+                    <label for="scandir-split-patches-chck">Create virtual views:</label><br />
+                    <div id="scandir-split-patches-properties" style="margin-left:20px">
+                        <table><thead><tr><th></th><th>Horizontal</th><th>Vertical</th></tr></thead><tbody>
+                        <tr><td>View size:</td>
+                        <td><input type="number" id="scandir-patch-size-width" min="16" max="4096" value="800" disabled="disabled" /></td>
+                        <td><input type="number" id="scandir-patch-size-height" min="16" max="4096" value="600" disabled="disabled" /></td></tr>
+                        <tr><td>Stride:</td>
+                        <td><input type="number" id="scandir-patch-stride-width" min="16" max="4096" value="800" disabled="disabled" /></td>
+                        <td><input type="number" id="scandir-patch-stride-height" min="16" max="4096" value="600" disabled="disabled" /></td></tr></tbody></table>
+                        <input type="checkbox" id="scandir-patch-tight-chck" checked="checked" disabled="disabled" /><label for="scandir-patch-tight-chck">Do not exceed image boundaries</label><br />
+                        <input type="checkbox" id="scandir-discard-empty-chck" disabled="disabled" /><label for="scandir-discard-empty-chck"><span>Discard tiles with</span>
+                        <input type="number" min="1" max="99" value="100" id="scandir-discard-empty-percentage" disabled="disabled" /><span>% or more homogeneous pixels</span></label>
+                        <div style="margin-left:10px"><span>Quantization value:</span><input type="number" min="1" max="255" value="255" id="scandir-discard-empty-quantization-value" disabled="disabled" />
+                        <div style="font-style:italic">
+                            Determines the color variation between pixels during homogeneity evaluation. Smaller quantization values (>0) result in more diverse pixels being considered homogeneous.<br />
+                            This requires loading images from disk and checking pixels, which can be expensive. Set percentage of homogeneous pixels to 100% (discard fully homogeneous image parts) to speed up process.
+                        </div></div>
+                    </div>
+                </div>
 
                 <button id="scan-button" class="btn btn-sm btn-primary" style="margin-bottom:10px">Scan untracked</button>
                 <div id="untracked-count"></div>
@@ -250,6 +275,7 @@
         }
 
         function updateUntrackedCount() {
+            if(window.untrackedFiles === undefined) return;     // for "scan and add all" function
             var numChecked = window.imageBrowser.getChecked().length;
             var numShown = window.imageBrowser.getNumEntries();
             var numTotal = numShown + window.untrackedFiles.length;
@@ -276,6 +302,33 @@
         function _do_add_untracked(imgList) {
             if(Array.isArray(imgList) && imgList.length === 0) return;
 
+            $('#global-progress-bar').empty();
+            let pBar = new ProgressBar(true, 0, 0, true);
+            $('#global-progress-bar').append(pBar.getMarkup());
+            let infoBar = $('<span style="flex-shrink:0;font-size:small;">scanning...</span>');
+            $('#global-progress-bar').append(infoBar);
+
+            function _poll_scan_progress(data) {
+                let msg = 'scanning...';
+                if(data.hasOwnProperty('response')) {
+                    if(data['response'].hasOwnProperty('meta')) {
+                        let meta = data['response']['meta'];
+                        if(typeof(meta['message']) === 'string') {
+                            msg = meta['message'];
+                        }
+                        let done = meta['done'];
+                        let total = meta['total'];
+                        if(typeof(done) === 'number' && typeof(total) === 'number') {
+                            msg += ' (' + done.toString() + '/' + total.toString() + ')';
+                            pBar.set(true, done, total, false);
+                        } else {
+                            pBar.set(true, null, null, true);
+                        }
+                    }
+                }
+                infoBar.html(msg);
+            }
+
             function _poll_add_untracked(data) {
                 //TODO: temporary buggy solution:
                 if(Array.isArray(data) && data.length > 1 && data[1].length > 0) {
@@ -289,6 +342,29 @@
                 skipIntegrityCheck: +!$('#image-integrity-check').prop('checked')
             };
 
+            // virtual view parameters
+            let doSplitPatches = $('#scandir-split-patches-chck').prop('checked');
+            params['splitImages'] = doSplitPatches;
+            if(doSplitPatches) {
+                let splitParams = {
+                    'patchSize': [parseInt($('#scandir-patch-size-width').val()), parseInt($('#scandir-patch-size-height').val())],
+                    'stride': [parseInt($('#scandir-patch-stride-width').val()), parseInt($('#scandir-patch-stride-height').val())],
+                    'tight': $('#scandir-patch-tight-chck').prop('checked')
+                }
+                if($('#scandir-discard-empty-chck').prop('checked')) {
+                    let perc = parseFloat($('#scandir-discard-empty-percentage').val());
+                    if(!isNaN(perc)) {
+                        splitParams['discard_homogeneous_percentage'] = Math.max(0.01, Math.min(100, perc));
+                    }
+                    let quantVal = parseFloat($('#scandir-discard-empty-quantization-value').val());
+                    if(!isNaN(quantVal)) {
+                        quantVal = Math.max(1, Math.min(255, quantVal));
+                        splitParams['discard_homogeneous_quantization_value'] = quantVal;
+                    }
+                }
+                params['splitParams'] = JSON.stringify(splitParams);
+            }
+
             return $.ajax({
                 url: window.baseURL + 'addExistingImages',
                 method: 'POST',
@@ -298,7 +374,7 @@
                 success: function(response) {
                     if(response['status'] === 0 && response['response'] !== undefined) {
                         let taskID = response['response'];
-                        poll_status(taskID, _poll_add_untracked, _poll_add_untracked, undefined, 1000);
+                        poll_status(taskID, _poll_add_untracked, _poll_add_untracked, _poll_scan_progress, 1000);
                         // //TODO
                         // window.messager.addMessage(imgList.length + ' images added successfully.', 'success');
                     } else {
@@ -818,6 +894,19 @@
                 $('#discard-empty-percentage').prop('disabled', !(checked & $('#discard-empty-chck').prop('checked')));
                 $('#discard-empty-quantization-value').prop('disabled', !(checked & $('#discard-empty-chck').prop('checked')));
             });
+            $('#scandir-split-patches-chck').on('input', function() {
+                let checked = $(this).prop('checked');
+                $('#scandir-split-patches-properties').find('input').each(function() {
+                    $(this).prop('disabled', !checked);
+                });
+                $('#scandir-discard-empty-percentage').prop('disabled', !(checked & $('#scandir-discard-empty-chck').prop('checked')));
+                $('#scandir-discard-empty-quantization-value').prop('disabled', !(checked & $('#scandir-discard-empty-chck').prop('checked')));
+            });
+            $('#scandir-discard-empty-chck').on('input', function() {
+                let checked = $(this).prop('checked');
+                $('#scandir-discard-empty-percentage').prop('disabled', !checked);
+                $('#scandir-discard-empty-quantization-value').prop('disabled', !checked);
+            });
             $('#disable-virtual-splitting').on('input', function() {
                 //TODO: disable annotation import on "physical" image splitting; not yet implemented
                 if($(this).prop('checked') && $('#split-patches-chck').prop('checked')) {
@@ -907,146 +996,14 @@
                 addAllUntracked(true);
             });
 
-            // // setup action panel markups
-            // window.actionPanel_scan = $('<div></div>');
-            // var infoMessage = $('<div></div>');
-            // var serverFolderCell = $('<td style="font-family:monospace">(loading...)</td>');
-            // $.ajax({
-            //     url: window.baseURL + 'getPlatformInfo',
-            //     method: 'GET',
-            //     success: function(data) {
-            //         if(data.hasOwnProperty('settings')) {
-            //             serverFolderCell.html(data['settings']['server_dir']); 
-            //         }
-            //     }
-            // });
-            // infoMessage.append($('<div>You can manually upload your images to the file server and then import them to the database here.</div>'));
-            // var serverInfoTable = $('<table><tr><td style="width:150px;min-width:150px;">Server address:</td><td style="font-family:monospace">' + window.dataServerURI + '</td></tr></table>');
-            // var folderRow = $('<tr><td style="width:150px;min-width:150px;">Image folder:</td></tr>');
-            // folderRow.append(serverFolderCell);
-            // serverInfoTable.append(folderRow);
-            // infoMessage.append(serverInfoTable);
-            // window.actionPanel_scan.append(infoMessage);
-            // let integrityChck = $('<input type="checkbox" id="image-integrity-check" checked />');
-            // window.actionPanel_scan.append(integrityChck);
-            // window.actionPanel_scan.append($('<label for="image-integrity-check">Perform image integrity check (slower, but safer)</label><br />'));
-            // var scanUntrackedButton = $('<button id="scan-button" class="btn btn-sm btn-primary" style="margin-bottom:10px">Scan untracked</button>');
-            // scanUntrackedButton.on('click', function() {
-            //     scanUntracked();
-            // });
-            // window.actionPanel_scan.append(scanUntrackedButton);
-            // var actionButtons = $('<div></div>');
-            // var checkCount = $('<div id="untracked-count"></div>');
-            // actionButtons.append(checkCount);
-            // var addChecked = $('<button id="add-checked" class="btn btn-sm btn-success" disabled>Add checked</button>');
-            // addChecked.on('click', function() {
-            //     addSelectedUntracked();
-            // });
-            // actionButtons.append(addChecked);
-            // let addAll = $('<button id="add-all" class="btn btn-sm btn-danger" disabled>Add all</button>');
-            // addAll.on('click', function() {
-            //     addAllUntracked();
-            // });
-            // actionButtons.append(addAll);
-            // let addAll_noScan = $('<button class="btn btn-sm btn-danger">Scan and add all</button>');
-            // addAll_noScan.on('click', function() {
-            //     addAllUntracked(true);
-            // });
-            // actionButtons.append(addAll_noScan);
-            // window.actionPanel_scan.append(actionButtons);
-
-
-            // window.actionPanel_upload = $('<div></div>');
-            // var fileUploadSelect = $('<input id="file-upload-select" type="file" webkitdirectory directory multiple /><br />');
-            // window.actionPanel_upload.append(fileUploadSelect);
-            // var optionsPanel = $('<div style="display:flex;flex-direction:row;"></div>');
-            // window.actionPanel_upload.append(optionsPanel);
-            // var existingFiles = $('<div><div>Existing files with the same name:</div><fieldset id="existing-files">' +
-            //         '<input type="radio" id="radio-keep-existing" name="existing-files" value="keepExisting" checked />' +
-            //         '<label for="radio-keep-existing">keep existing and rename new files</label><br />' +
-            //         '<input type="radio" id="radio-skip-existing" name="existing-files" value="skipExisting" />' +
-            //         '<label for="radio-skip-existing">skip</label><br />' +
-            //         '<input type="radio" id="radio-replace-existing" name="existing-files" value="replaceExisting" />' +
-            //         '<label for="radio-replace-existing">overwrite</label><br />' +
-            //         '</fieldset></div>');
-            // optionsPanel.append(existingFiles);
-
-            // // split options (TODO: add description on how this works...)
-            // var splitOptions = $('<div style="margin-left:20px"><input type="checkbox" id="split-patches-chck" />' +
-            //         '<label for="split-patches-chck">Split images into tiles:</label><br />' +
-            //         '<div id="split-patches-properties" style="margin-left:20px">' +
-            //         '<table><thead><tr><th></th><th>Horizontal</th><th>Vertical</th></tr></thead><tbody>' +
-            //         '<tr><td>Patch size:</td>' +
-            //         '<td><input type="number" id="patch-size-width" min="16" max="4096" value="800" disabled="disabled" /></td>' +
-            //         '<td><input type="number" id="patch-size-height" min="16" max="4096" value="600" disabled="disabled" /></td></tr>' +
-            //         '<tr><td>Stride:</td>' +
-            //         '<td><input type="number" id="patch-stride-width" min="16" max="4096" value="800" disabled="disabled" /></td>' +
-            //         '<td><input type="number" id="patch-stride-height" min="16" max="4096" value="600" disabled="disabled" /></td></tr></tbody></table>' +
-            //         '<input type="checkbox" id="patch-tight-chck" checked="checked" disabled="disabled" /><label for="patch-tight-chck">Do not exceed image boundaries</label><br />' +
-            //         '<input type="checkbox" id="discard-empty-chck" disabled="disabled" /><label for="discard-empty-chck"><span>Discard patches with</span>' +
-            //         '<input type="number" min="1" max="99" value="5" id="discard-empty-percentage" disabled="disabled" /><span>% or more homogeneous pixels</span></label>' +
-            //         '<div style="margin-left:10px"><span>Quantization value:</span><input type="number" min="1" max="255" value="255" id="discard-empty-quantization-value" disabled="disabled" />' +
-            //         '<div style="font-style:italic">Determines the color variation between pixels during homogeneity evaluation. Smaller quantization values (>0) result in more diverse pixels being considered homogeneous.</div></div>' +
-            //         '</div></div>');
-            // optionsPanel.append(splitOptions);
-
-            // var startFileUpload = $('<button class="btn btn-sm btn-primary" id="upload-button">Upload</button>');
-            // startFileUpload.on('click', function() {
-            //     startUploadFilesFromDisk();
-            // });
-            // window.actionPanel_upload.append(startFileUpload);
-            // $('#actions-panel').append(window.actionPanel_upload);
-            // $('#split-patches-chck').on('input', function() {
-            //     let checked = $(this).prop('checked');
-            //     $('#split-patches-properties').find('input').each(function() {
-            //         $(this).prop('disabled', !checked);
-            //     });
-            //     $('#discard-empty-percentage').prop('disabled', !(checked & $('#discard-empty-chck').prop('checked')));
-            //     $('#discard-empty-quantization-value').prop('disabled', !(checked & $('#discard-empty-chck').prop('checked')));
-            // });
-            // $('#discard-empty-chck').on('input', function() {
-            //     let checked = $(this).prop('checked');
-            //     $('#discard-empty-percentage').prop('disabled', !checked);
-            //     $('#discard-empty-quantization-value').prop('disabled', !checked);
-            // });
-            // $('#upload-mode-select input:radio').on('change', function() {
-            //     if($(this).val() === 'browserUpload') {
-            //         window.actionPanel_scan.detach();
-            //         $('#actions-panel').append(window.actionPanel_upload);
-
-            //     } else if($(this).val() === 'scanDisk') {
-            //         window.actionPanel_upload.detach();
-            //         $('#actions-panel').append(window.actionPanel_scan);
-            //     }
-            //     window.imageBrowser.setImages([]);
-            //     window.untrackedFiles = undefined;
-            //     setImageBrowserSize();
-            // });
-
-            // // annotation parsing
-            // $('#parse-annotations-enabled').on('input', function() {
-            //     if($(this).prop('checked')) {
-            //         $('#annotation-options-panel').slideDown();
-            //     } else {
-            //         $('#annotation-options-panel').slideUp();
-            //     }
-            // });
-            // $('#annotation-format').on('input', function() {
-            //     setSelectedParser($(this).val());
-            // });
-
             $('#upload-mode-select input:radio').on('change', function() {
                 if($(this).val() === 'browserUpload') {
                     $('#scan-dir-panel').hide();
                     $('#upload-data-panel').show();
-                    // window.actionPanel_scan.detach();
-                    // $('#actions-panel').append(window.actionPanel_upload);
 
                 } else if($(this).val() === 'scanDisk') {
                     $('#scan-dir-panel').show();
                     $('#upload-data-panel').hide();
-                    // window.actionPanel_upload.detach();
-                    // $('#actions-panel').append(window.actionPanel_scan);
                 }
                 window.imageBrowser.setImages([]);
                 window.untrackedFiles = undefined;

@@ -328,14 +328,29 @@ class DataAdministrator:
             try:
                 username = html.escape(request.get_cookie('username'))
                 skipIntegrityCheck = helpers.parse_boolean(request.params.get('skipIntegrityCheck', False))
-                imageNames = request.json
-                if isinstance(imageNames, dict) and 'images' in imageNames:
-                    imageNames = imageNames['images']
-                elif isinstance(imageNames, str) and imageNames.lower() == 'all':
-                    pass
+                props = request.json
+                if isinstance(props, dict) and 'images' in props:
+                    imageNames = props['images']
+                elif isinstance(props, str) and props.lower() == 'all':
+                    imageNames = 'all'
+                    props = {}
                 else:
                     return {'status': 2, 'message': 'Invalid parameters provided.'}
-                result = self.middleware.addExistingImages(project, username, imageNames, skipIntegrityCheck)
+
+                # virtual view split parameters
+                try:
+                    splitIntoPatches = helpers.parse_boolean(props.get('splitImages', False))
+                    if splitIntoPatches:
+                        splitProperties = self.DEFAULT_SPLIT_PROPERTIES.copy()
+                        splitProperties.update(json.loads(props.get('splitParams', '{}')))
+                    else:
+                        splitProperties = None
+                except:
+                    splitIntoPatches = False
+                    splitProperties = None
+
+                result = self.middleware.addExistingImages(project, username, imageNames, skipIntegrityCheck,
+                                                            splitIntoPatches, splitProperties)
                 return {'status': 0, 'response': result}
             except Exception as e:
                 return {'status': 1, 'message': str(e)}
