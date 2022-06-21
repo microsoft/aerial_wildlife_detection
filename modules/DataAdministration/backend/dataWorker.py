@@ -916,7 +916,7 @@ class DataWorker:
                     for fn in fileNames:
                         numAnno = len(parseResult['result'][fn['id']])
                         fileName = fn['filename']
-                        window = [fn['x'], fn['y'], fn['width'], fn['height']]
+                        window = [fn['y'], fn['x'], fn['height'], fn['width']]
                         if all([w is not None for w in window]):
                             fileName += '?window={},{},{},{}'.format(*window)
                         if fileName not in result:

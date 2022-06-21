@@ -127,12 +127,6 @@ def main():
         stateDict = None
         modelOriginID = None
 
-    # get data
-    data = aicw.get_training_images(
-        project=args.project,
-        maxNumImages=512)
-    data = __load_metadata(args.project, dbConnector, data[0], (mode == 'train'), modelOriginID)
-
     # helper functions
     def updateStateFun(state, message, done=None, total=None):
         print(message, end='')
@@ -140,15 +134,24 @@ def main():
             print(f': {done}/{total}')
         else:
             print('')
-        
 
     # launch task
     if mode == 'train':
+        data = aicw.get_training_images(
+            project=args.project,
+            maxNumImages=512)
+        data = __load_metadata(args.project, dbConnector, data[0], True, modelOriginID)
+
         result = modelTrainer.train(stateDict, data, updateStateFun)
         if result is None:
             raise Exception('Training function must return an object (i.e., trained model state) to be stored in the database.')
         
     elif mode == 'inference':
+        data = aicw.get_inference_images(
+            project=args.project,
+            maxNumImages=512)
+        data = __load_metadata(args.project, dbConnector, data[0], False, modelOriginID)
+
         result = modelTrainer.inference(stateDict, data, updateStateFun)
         #TODO: check result for validity
 
