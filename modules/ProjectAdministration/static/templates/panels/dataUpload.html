@@ -381,6 +381,8 @@
                 return;
             }
 
+            $('#upload-button').prop('disabled', true);
+
             let fileInput = $('#file-upload-select')[0];
 
             // group files by file name sans extension (account for data types consisting of multiple files)
@@ -485,6 +487,7 @@
                     $('#global-progress-bar').empty();
                     setControlsDisabled(false);
                     window.messager.addMessage('Upload aborted.');
+                    $('#upload-button').prop('disabled', false);
                 });
                 $('#global-progress-bar').append(stopButton);
                 $('#global-progress-bar').show();
@@ -652,6 +655,8 @@
 
                     uploadRequests.push(uploadRequest);
                 }
+            }).then(() => {
+                $('#upload-button').prop('disabled', false);
             });
 
             // hide global progress bar once everything is done
@@ -740,8 +745,9 @@
             }
         }
 
-        // get data server URI
+        // get project details
         var promise = $.get(window.baseURL + 'getProjectSettings', function(data) {
+            window.annotationType = data['settings']['annotationType'];
             window.dataServerURI = data['settings']['dataServerURI'];
             if(!window.dataServerURI.endsWith('/')) {
                 window.dataServerURI += '/';
@@ -836,6 +842,17 @@
                     $('#image-import-options').slideUp();
                 }
 
+                if(window.annotationType === 'segmentationMasks') {
+                    // we disallow both image and annotation import for
+                    // segmentation masks (non-distinguishable)
+                    $('#parse-annotations-enabled').prop('checked', !$(this).prop('checked'));
+                    if($(this).prop('checked')) {
+                        $('#annotation-options-panel').slideUp();
+                    } else {
+                        $('#annotation-options-panel').slideDown();
+                    }
+                }
+
                 let btnEnabled = $(this).prop('checked') || $('#parse-annotations-enabled').prop('checked');
                 $('#upload-button').prop('disabled', !btnEnabled);
             });
@@ -846,6 +863,17 @@
                     $('#annotation-options-panel').slideDown();
                 } else {
                     $('#annotation-options-panel').slideUp();
+                }
+
+                if(window.annotationType === 'segmentationMasks') {
+                    // we disallow both image and annotation import for
+                    // segmentation masks (non-distinguishable)
+                    $('#image-import-enabled').prop('checked', !$(this).prop('checked'));
+                    if($(this).prop('checked')) {
+                        $('#image-import-options').slideUp();
+                    } else {
+                        $('#image-import-options').slideDown();
+                    }
                 }
 
                 let btnEnabled = $(this).prop('checked') || $('#image-import-enabled').prop('checked');

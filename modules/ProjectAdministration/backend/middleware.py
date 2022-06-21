@@ -20,7 +20,7 @@ from bottle import request
 from modules.DataAdministration.backend import celery_interface as fileServer_interface
 from modules.TaskCoordinator.backend.middleware import TaskCoordinatorMiddleware
 from .db_fields import Fields_annotation, Fields_prediction
-from util.helpers import parse_parameters, check_args, is_localhost, DEFAULT_BAND_CONFIG, DEFAULT_RENDER_CONFIG
+from util import helpers
 
 
 class ProjectConfigMiddleware:
@@ -167,7 +167,7 @@ class ProjectConfigMiddleware:
         # check if FileServer needs to be contacted
         serverURI = self.config.getProperty('Server', 'dataServer_uri')
         serverDir = self.config.getProperty('FileServer', 'staticfiles_dir')
-        if 'server_dir' in parameters and not is_localhost(serverURI):
+        if 'server_dir' in parameters and not helpers.is_localhost(serverURI):
             # FileServer is remote instance; get info via URL query
             try:
                 cookies = request.cookies.dict
@@ -270,7 +270,7 @@ class ProjectConfigMiddleware:
                 value = json.loads(value)
 
                 # auto-complete with defaults where missing
-                value = check_args(value, self.defaultUIsettings)
+                value = helpers.check_args(value, self.defaultUIsettings)
             elif param == 'interface_enabled':
                 value = value and not result['archived']
             elif param in ('band_config', 'render_config'):
@@ -420,17 +420,17 @@ class ProjectConfigMiddleware:
         # custom band configuration
         bandConfig = properties.get('band_config', None)
         if not (isinstance(bandConfig, list) or isinstance(bandConfig, tuple)):
-            bandConfig = DEFAULT_BAND_CONFIG
+            bandConfig = helpers.DEFAULT_BAND_CONFIG
         bandConfig = json.dumps(bandConfig)
 
         # custom render configuration
         renderConfig = properties.get('render_config', None)
         if isinstance(renderConfig, dict):
             # verify entries
-            renderConfig = check_args(renderConfig, DEFAULT_RENDER_CONFIG)
+            renderConfig = helpers.check_args(renderConfig, helpers.DEFAULT_RENDER_CONFIG)
         else:
             # set to default
-            renderConfig = DEFAULT_RENDER_CONFIG
+            renderConfig = helpers.DEFAULT_RENDER_CONFIG
         renderConfig = json.dumps(renderConfig)
 
         # create project schema
@@ -556,7 +556,7 @@ class ProjectConfigMiddleware:
                 ('showImageNames', bool),
                 ('showImageURIs', bool)
             ]
-            uiSettings_new, uiSettingsKeys_new = parse_parameters(projectSettings['ui_settings'], fieldNames, absent_ok=True, escape=True)   #TODO: escape
+            uiSettings_new, uiSettingsKeys_new = helpers.parse_parameters(projectSettings['ui_settings'], fieldNames, absent_ok=True, escape=True)   #TODO: escape
             
             # adopt current settings and replace values accordingly
             uiSettings = self.dbConnector.execute('''SELECT ui_settings
@@ -573,7 +573,7 @@ class ProjectConfigMiddleware:
                     uiSettings[uiSettingsKeys_new[kIdx]] = uiSettings_new[kIdx]
 
             # auto-complete with defaults where missing
-            uiSettings = check_args(uiSettings, self.defaultUIsettings)
+            uiSettings = helpers.check_args(uiSettings, self.defaultUIsettings)
 
             projectSettings['ui_settings'] = json.dumps(uiSettings)
 
@@ -590,7 +590,7 @@ class ProjectConfigMiddleware:
             ('watch_folder_remove_missing_enabled', bool)
         ]
 
-        vals, params = parse_parameters(projectSettings, fieldNames, absent_ok=True, escape=False)
+        vals, params = helpers.parse_parameters(projectSettings, fieldNames, absent_ok=True, escape=False)
         vals.append(project)
 
         # commit to DB
@@ -643,13 +643,6 @@ class ProjectConfigMiddleware:
         else:
             colors = {}
             maxIdx = 0
-        
-        def _random_color():
-            # create unique random color
-            randomColor = '#{:06x}'.format(random.randint(10, 0xFFFFF0))
-            while randomColor in colors:
-                randomColor = '#{:06x}'.format(random.randint(0, 0xFFFFF0))
-            return randomColor
 
         # get current classes from database
         db_classes = {}
@@ -709,7 +702,7 @@ class ProjectConfigMiddleware:
                 if not isinstance(color, str) or \
                     (color in colors and colors[color] != itemID):
                     # random color
-                    color = _random_color()
+                    color = helpers.randomHexColor(colors)
 
             entry = {
                 'id': itemID,

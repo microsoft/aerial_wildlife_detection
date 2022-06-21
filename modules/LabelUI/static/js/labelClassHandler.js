@@ -121,6 +121,8 @@ class LabelClass {
         } else {
             var markup = $('<div class="label-class-legend ' + legendInactive + '" id="' + id + '" style="'+foregroundStyle + colorStyle + '"><span class="label-text">'+name+'</span></div>');
         }
+        let colorDot = $('<div class="label-class-color-dot" style="background:'+this.color+'"></div>');
+        markup.prepend(colorDot);
         
         // setup click handler to activate label class
         markup.click(function() {

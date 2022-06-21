@@ -8,6 +8,7 @@ import os
 import sys
 import importlib
 import unicodedata
+import random
 import re
 from collections.abc import Iterable
 from datetime import datetime
@@ -387,6 +388,21 @@ def hexToRGB(hexString):
     assert len(hexString)>1, f'ERROR: the provided string is empty.'
 
     return ImageColor.getrgb(hexString)
+
+
+
+def randomHexColor(excluded=set()):
+    '''
+        Creates a random HTML/CSS-compliant hex color string that is not already
+        in the optional set/dict/list/tuple of "excluded" colors.
+
+        #TODO: spacing between colors for HTML canvas inaccuracy.
+    '''
+    # create unique random color
+    randomColor = '#{:06x}'.format(random.randint(10, 0xFFFFF0))
+    while randomColor in excluded:
+        randomColor = '#{:06x}'.format(random.randint(0, 0xFFFFF0))
+    return randomColor
 
 
 

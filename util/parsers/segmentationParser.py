@@ -13,7 +13,6 @@ import numpy as np
 from psycopg2 import sql
 import rasterio
 from rasterio.windows import Window
-from util.drivers.imageDrivers import GDALImageDriver
 
 from util.parsers.abstractParser import AbstractAnnotationParser
 from util import helpers, drivers
@@ -108,8 +107,11 @@ class SegmentationFileParser(AbstractAnnotationParser):
 
         # args setup
         verifyImageSize = kwargs.get('verify_image_size', False)    # if True, image sizes will be retrieved from files, not just from COCO metadata
+        skipEmptyImages = kwargs.get('skip_empty_images', False)    # if True, empty segmentation masks will be skipped
 
         now = helpers.current_time()
+
+        importedAnnotations, warnings, errors = defaultdict(list), [], []
 
         # get potentially valid segmentation files
         segFiles = self._get_segmentation_images(fileDict, self.tempDir)
@@ -120,7 +122,21 @@ class SegmentationFileParser(AbstractAnnotationParser):
                 'errors': ['No valid segmentation images found.']
             }
         
-        labelclasses_new = []
+        # project labelclass look-up tables
+        labelclasses_new = set()
+        labelclasses_dropped = set()        # label classes that could not be considered, either due to max idx ordinal being reached or skipping
+
+        lcSet_idx = set(l['idx'] for l in self.labelClasses.values())
+        lcLUT_color = {}
+        labelclasses_update = set()
+        for lcID in self.labelClasses.keys():
+            color = self.labelClasses[lcID].get('color', None)
+            if color is None:
+                # we don't allow empty colors for segmentation projects anymore; flag for update
+                labelclasses_update.add(lcID)
+            else:
+                color = helpers.hexToRGB(color)
+                lcLUT_color[color] = self.labelClasses[lcID]['idx']
 
         # find segmentation files that have a corresponding image registered
         fKeys = {}
@@ -168,13 +184,185 @@ class SegmentationFileParser(AbstractAnnotationParser):
 
         # filter valid images: found in database, with valid annotation, and not blacklisted
         for file in segFiles:
+            if file not in fKeys or fKeys[file] not in img_lut:
+                warnings.append(
+                    f'Annotation file "{file}": no equivalent image found in AIDE project.'
+                )
+                continue
+
             # load map
-            arr = drivers.load_from_disk(file)
+            arr = drivers.load_from_disk(os.path.join(self.tempDir, file))
 
             # get unique classes across channel dimension
-            arrClasses = np.unique(np.reshape(arr, (arr.shape[0], -1)), 0)
+            numBands = arr.shape[0]
+            if numBands == 1:
+                # segmask is already index-based
+                arr_out = np.copy(arr).squeeze().astype(np.uint8)
 
-            print('debug')
+                # check for non-existing classes
+                classIdx_new = lcSet_idx.difference(set(np.unique(arr)))
+                labelclasses_new.add(classIdx_new)
+
+                if skipUnknownClasses:
+                    # set new classes to zero
+                    for cl in classIdx_new:
+                        arr_out[arr_out==cl] = 0
+                else:
+                    # check if new classes still allowed as per max idx ordinal serial
+                    for cl in classIdx_new:
+                        if cl not in labelclasses_new:
+                            if self.maxIdx >= 255:
+                                # maximum reached
+                                labelclasses_dropped.add(cl)
+                                arr_out[arr_out==cl] = 0
+                            else:
+                                # still capacity; add
+                                self.maxIdx = max(self.maxIdx, cl)
+            
+            else:
+                # RGB; convert from colors
+                arr_flat = np.reshape(arr, (arr.shape[0], -1))
+                arr_colors = np.unique(arr_flat, axis=1)
+                arr_colors = set(tuple(a) for a in arr_colors.T.tolist())
+
+                arr_out = np.zeros(shape=arr.shape[1:3], dtype=np.uint8)
+
+                # check for non-existing classes
+                colors_new = set(lcLUT_color.keys()).difference(arr_colors)
+
+                for rgb in arr_colors:
+                    if skipUnknownClasses and rgb in colors_new:
+                        # skip in-painting
+                        continue
+                    else:
+                        if rgb not in lcLUT_color:
+                            # new color detected; check if capacity available as per max idx ordinal serial
+                            if self.maxIdx >= 255:
+                                # maximum reached
+                                labelclasses_dropped.add(rgb)
+                                continue
+                            else:
+                                # still capacity; add
+                                idx = self.maxIdx + 1
+                                labelclasses_new.add(idx)
+                                lcLUT_color[rgb] = idx
+                                self.maxIdx += 1
+
+                        idx = lcLUT_color[rgb]
+                        valid = (arr[0,...] == rgb[0]) * (arr[1,...] == rgb[1]) * (arr[2,...] == rgb[2])
+                        arr_out[valid] = idx
+
+            if not np.sum(arr_out):
+                warnings.append(
+                    f'Annotation file "{file}": empty annotations or no valid label classes found.'
+                )
+                if skipEmptyImages:
+                    continue
+            
+            # register in database, accounting for virtual views
+            imgs_insert = []
+            imgEntries = img_lut[fKeys[file]]
+            for entry in imgEntries:
+                if entry.get('x', None) is not None and entry.get('y', None) is not None:
+                    # virtual view; crop segmentation mask at given position
+                    arr_crop = np.zeros(shape=(entry['width'], entry['height']), dtype=np.uint8)
+                    bounds = (
+                        min(arr_out.shape[0]-1, max(0, entry['x'])),        # left
+                        min(arr_out.shape[1]-1, max(0, entry['y'])),        # top
+                        min(arr_out.shape[0], entry['x']+entry['width']),   # right
+                        min(arr_out.shape[1], entry['y']+entry['height']),  # bottom
+                    )
+                    arr_crop[:bounds[2]-bounds[0],:bounds[3]-bounds[1]] = arr_out[bounds[0]:bounds[2], bounds[1]:bounds[3]]
+                    b64str = base64.b64encode(arr_crop.ravel()).decode('utf-8')
+                    imgs_insert.append((
+                        targetAccount,
+                        entry['id'],
+                        now,
+                        -1,
+                        False,
+                        b64str,
+                        arr_crop.shape[0],      #TODO: order
+                        arr_crop.shape[1]
+                    ))
+                else:
+                    # no virtual view
+                    b64str = base64.b64encode(arr_out.ravel()).decode('utf-8')
+                    imgs_insert.append((
+                        targetAccount,
+                        entry['id'],
+                        now,
+                        -1,
+                        False,
+                        b64str,
+                        arr_out.shape[0],       #TODO: order
+                        arr_out.shape[1]
+                    ))
+                
+            # insert
+            if len(imgs_insert):
+                dbInsert = self.dbConnector.insert(sql.SQL('''
+                    INSERT INTO {} (username, image, timeCreated, timeRequired, unsure, segmentationMask, width, height)
+                    VALUES %s
+                    RETURNING image, id;
+                ''').format(sql.Identifier(self.project, 'annotation')),
+                tuple(imgs_insert), 'all')
+                for row in dbInsert:
+                    importedAnnotations[row[0]].append(row[1])
+
+        # register new / update existing label classes
+        if (not skipUnknownClasses and len(labelclasses_new)) or len(labelclasses_update):
+            lcColors = set(lcLUT_color.keys())
+            lcVals = []
+            if not skipUnknownClasses:
+                for l in labelclasses_new:
+                    color = helpers.randomHexColor(lcColors)
+                    lcColors.add(color)
+                    lcVals.append((f'Class {l}', l, color))
+                
+            # add color for existing classes to be updated
+            for lcID in labelclasses_update:
+                color = helpers.randomHexColor(lcColors)
+                lcColors.add(color)
+                lcName = self.labelClasses[lcID]['name']
+                lcIdx = self.labelClasses[lcID]['idx']
+                lcVals.append((lcName, lcIdx, color))
+            self.dbConnector.insert(sql.SQL('''
+                INSERT INTO {} (name, idx, color)
+                VALUES %s
+                ON CONFLICT (idx) DO
+                UPDATE SET color = EXCLUDED.color;
+            ''').format(sql.Identifier(self.project, 'labelclass')),
+            tuple(lcVals))
+
+        if len(labelclasses_dropped):
+            warnings.append('The following label class indices and/or RGB colors were identified but could not be added to the project: {}.\nPixels annotated with those classes were set to zero.'.format(
+                ', '.join(str(l) for l in labelclasses_dropped)
+            ))
+
+        # also set in image_user relation
+        if len(importedAnnotations):
+            imgIDs_added = list(importedAnnotations.keys())
+            self.dbConnector.insert(sql.SQL('''
+                INSERT INTO {} (username, image, last_checked, last_time_required)
+                VALUES %s
+                ON CONFLICT (username, image) DO UPDATE
+                SET last_time_required = -1;
+            ''').format(sql.Identifier(self.project, 'image_user')),
+            tuple([(targetAccount, i, now, -1) for i in imgIDs_added]))
+
+            if markAsGoldenQuestions:
+                self.dbConnector.insert(sql.SQL('''
+                    UPDATE {}
+                    SET isGoldenQuestion = TRUE
+                    WHERE id IN (%s);
+                ''').format(sql.Identifier(self.project, 'image')),
+                tuple([(i,) for i in imgIDs_added]))
+
+        return {
+            'result': dict(importedAnnotations),
+            'warnings': warnings,
+            'errors': errors
+        }
     
 
     def export_annotations(self, annotations, destination, **kwargs):

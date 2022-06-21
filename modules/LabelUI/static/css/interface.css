@@ -280,6 +280,15 @@ canvas {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+.label-class-color-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 8px;
+    float: left;
+    margin-right: 10px;
+    margin-top: 5px;
+    border: 1px solid white;
+}
 .label-text {
     font-size: 14px;
 }
