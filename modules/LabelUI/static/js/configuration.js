@@ -62,6 +62,19 @@ window.getProjectSettings = function() {
         if(window.annotationType === 'segmentationMasks' && window.predictionType === 'segmentationMasks') {
             window.segmentation_ignoreUnlabeled = data['settings']['segmentation_ignore_unlabeled'];
         }
+        if(window.annotationType === 'segmentationMasks' || window.predictionType === 'segmentationMasks') {
+            // add an (invisible) SVG element that performs somewhat better
+            // filtering of aliasing artifacts when in-painting segmentation
+            $('body').append($(`<svg width="0" height="0" style="position:absolute;z-index:-1;">
+                <defs>
+                <filter id="remove-alpha" x="0" y="0" width="100%" height="100%">
+                    <feComponentTransfer>
+                    <feFuncA type="discrete" tableValues="0 1"></feFuncA>
+                    </feComponentTransfer>
+                    </filter>
+                </defs>
+            </svg>`));
+        }
         window.showImageNames = data['settings']['showImageNames'];
         window.showImageURIs = data['settings']['showImageURIs'];
 

@@ -113,6 +113,10 @@ class ProjectConfigMiddleware:
         '\\'
     ]
 
+    # absolute RGB component sum distance required between colors. In principle,
+    # this is only important for segmentation (due to anti-aliasing effects of
+    # the HTML canvas, but we apply it everywhere anyway)
+    MINIMAL_COLOR_OFFSET = 9
     
     def __init__(self, config, dbConnector):
         self.config = config
@@ -639,6 +643,11 @@ class ProjectConfigMiddleware:
                 SELECT id, idx, color FROM {};
             ''').format(sql.Identifier(project, 'labelclass')), None, 'all')
             colors = dict([[c['color'].lower(), c['id']] for c in lcQuery])
+            colors.update({         # we disallow fully black or white colors for segmentation, too
+                '#000000': -1,
+                '#ffffff': -1
+            })
+
             maxIdx = 0 if not len(lcQuery) else max([l['idx'] for l in lcQuery])
         else:
             colors = {}
@@ -687,22 +696,15 @@ class ProjectConfigMiddleware:
                 while itemID in classes_update or itemID in classgroups_update:
                     itemID = uuid.uuid1()
 
-            color = item.get('color', None).lower()
-            if is_segmentation:
-                # for segmentation we don't allow fully black or white (reserved for "no data") and no duplicate colors
-                if isinstance(color, str):
-                    rgb = list(int(color.lower().strip('#')[i:i+2], 16) for i in (0, 2, 4))
-                    if sum(rgb) < 15:
-                        rgb = [r+5 for r in rgb]
-                        color = '#{0:02x}{1:02x}{2:02x}'.format(*rgb)
-                    elif sum(rgb) >= (3*255 - 15):
-                        rgb = [r-5 for r in rgb]
-                        color = '#{0:02x}{1:02x}{2:02x}'.format(*rgb)
-                
-                if not isinstance(color, str) or \
-                    (color in colors and colors[color] != itemID):
-                    # random color
-                    color = helpers.randomHexColor(colors)
+            color = item.get('color', None)
+            
+            # resolve potentially duplicate/too similar color values
+            if isinstance(color, str) and (color not in colors or colors[color] != itemID):
+                color = helpers.offsetColor(color.lower(), colors.keys(), self.MINIMAL_COLOR_OFFSET)
+            elif not isinstance(color, str):
+                color = helpers.randomHexColor(colors.keys(), self.MINIMAL_COLOR_OFFSET)
+
+            color = color.lower()
 
             entry = {
                 'id': itemID,

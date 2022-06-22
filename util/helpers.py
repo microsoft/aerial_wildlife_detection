@@ -373,6 +373,19 @@ def fileHierarchyToList(hierarchy):
 
 
 
+def rgbToHex(rgb):
+    '''
+        Receives a tuple/list with three int values and returns an
+        HTML/CSS-compliant hex color string in format:
+            "#RRGGBB"
+    '''
+    def clamp(x): 
+        return max(0, min(x, 255))
+
+    return '#{0:02x}{1:02x}{2:02x}'.format(clamp(rgb[0]), clamp(rgb[1]), clamp(rgb[2]))
+
+
+
 def hexToRGB(hexString):
     '''
         Receives a HTML/CSS-compliant hex color string
@@ -391,17 +404,59 @@ def hexToRGB(hexString):
 
 
 
-def randomHexColor(excluded=set()):
+def offsetColor(color, excluded=set(), distance=0):
+    '''
+        Receives a "color" (hex string) and a set of "excluded" color hex
+        strings. Adjusts the color value up or down until its sum of absolute
+        differences of RGB uint8 color values is larger than "distance" to the
+        closest color in "excluded". Returns the modified color value as hex
+        string accordingly.
+
+        Used to adjust colors for segmentation projects (required due to
+        anti-aliasing effects of HTML canvas).
+
+        #TODO: offsetting colors slightly could bring them too close to the next one
+        again...
+    '''
+    color_rgb = np.array(hexToRGB(color))
+    excluded_rgb = set()
+    for ex in excluded:
+        excluded_rgb.add(hexToRGB(ex))
+    excluded_rgb = np.array(list(excluded_rgb))
+
+    dists = np.sum(np.abs(excluded_rgb - color_rgb), 1)
+    if np.all(dists > distance):
+        # color is already sufficiently spaced apart
+        return color
+    else:
+        # need to offset; get closest
+        closest = np.argmin(dists)
+        componentDiffs = excluded_rgb[closest,:] - color_rgb
+
+        # adjust in direction of difference
+        diffPos = np.where(componentDiffs != 0)[0]
+        if not len(diffPos):
+            diffPos = np.array([0,1,2])
+
+        color_rgb[diffPos] += (np.sign(componentDiffs[diffPos]) * componentDiffs[diffPos] * max(1, distance/len(diffPos))).astype(color_rgb.dtype)
+        return rgbToHex(color_rgb.astype(np.uint8).tolist())
+
+
+
+def randomHexColor(excluded=set(), distance=0):
     '''
         Creates a random HTML/CSS-compliant hex color string that is not already
         in the optional set/dict/list/tuple of "excluded" colors.
 
-        #TODO: spacing between colors for HTML canvas inaccuracy.
+        If "distance" is an int or float, colors must be spaced apart by more
+        than this value in terms of absolute summed numerical RGB differences.
     '''
     # create unique random color
     randomColor = '#{:06x}'.format(random.randint(10, 0xFFFFF0))
-    while randomColor in excluded:
-        randomColor = '#{:06x}'.format(random.randint(0, 0xFFFFF0))
+    
+    #offset if needed
+    if distance > 0 and len(excluded):
+        randomColor = offsetColor(randomColor, excluded, distance)
     return randomColor
 
 

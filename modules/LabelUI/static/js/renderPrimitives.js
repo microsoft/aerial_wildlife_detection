@@ -2128,6 +2128,7 @@ class SegmentationElement extends AbstractRenderElement {
         }
         this.ctx = this.canvas.getContext('2d');
         this.ctx.imageSmoothingEnabled = false;
+        this.ctx.filter = 'url(#remove-alpha)';
         
         // add image data to canvas if available
         if(annotationMap !== undefined && annotationMap !== null) {
