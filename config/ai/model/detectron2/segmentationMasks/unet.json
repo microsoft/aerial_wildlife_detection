@@ -1,12 +1,4 @@
-'''
-    Detectron2-compliant adaptation of the following U-net implementation:
-    https://github.com/milesial/Pytorch-UNet
-
-    2022 Benjamin Kellenberger
-'''
-
-# default options for the model, may be overridden in the custom configuration loaded at runtime
-DEFAULT_OPTIONS = {
+{
 	"defs": {
 		"transforms": {
 			"RandomBrightness": {
@@ -79,11 +71,11 @@ DEFAULT_OPTIONS = {
 				},
 				"horizontal": {
 					"name": "Horizontal",
-					"value": True
+					"value": true
 				},
 				"vertical": {
 					"name": "Vertical",
-					"value": False
+					"value": false
 				}
 			},
 			"RandomRotation": {
@@ -113,7 +105,7 @@ DEFAULT_OPTIONS = {
 				"expand": {
 					"name": "Expand image",
 					"description": "Choose if the image should be resized to fit the whole rotated image (ticked; default), or simply cropped (unticked).",
-					"value": True
+					"value": true
 				}
 			},
 			"RandomCrop": {
@@ -222,7 +214,7 @@ DEFAULT_OPTIONS = {
 				},
 				"value": "cuda",
 				"style": {
-					"inline": True
+					"inline": true
 				}
 			},
 			"DETECTRON2.SEED": {
@@ -237,12 +229,12 @@ DEFAULT_OPTIONS = {
 				"add_missing": {
 					"name": "Add new label classes",
 					"description": "If checked, neurons for newly added label classes will be added to the model.<br />Note that these new classes need extra training.",
-					"value": True
+					"value": true
 				},
 				"remove_obsolete": {
 					"name": "Remove obsolete label classes",
 					"description": "If checked, neurons from label classes not present in this project will be removed during next model training.",
-					"value": False
+					"value": false
 				}
 			}
 		},
@@ -262,7 +254,7 @@ DEFAULT_OPTIONS = {
 			},
 			"force": {
 				"name": "Force new model",
-				"value": False
+				"value": false
 			}
 		},
 		"train": {
@@ -317,16 +309,16 @@ DEFAULT_OPTIONS = {
 				},
 				"DETECTRON2.SOLVER.MOMENTUM": {
 					"name": "Enable momentum",
-					"value": False	
+					"value": false	
 				},
 				"DETECTRON2.SOLVER.NESTEROV": {
 					"name": "Enable Nesterov momentum",
-					"value": False
+					"value": false
 				},
 				"clip_gradients": {
 					"DETECTRON2.SOLVER.CLIP_GRADIENTS.ENABLED": {
 						"name": "Enable gradient clipping",
-						"value": False
+						"value": false
 					},
 					"DETECTRON2.SOLVER.CLIP_GRADIENTS.CLIP_VALUE": {
 						"name": "Clip value",
@@ -357,7 +349,7 @@ DEFAULT_OPTIONS = {
 			},
 			"ignore_unsure": {
 				"name": "Ignore (discard) annotations marked as \"unsure\"",
-				"value": True
+				"value": true
 			}
 		},
 		"inference": {
