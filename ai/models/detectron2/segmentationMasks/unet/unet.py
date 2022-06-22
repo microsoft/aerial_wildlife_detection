@@ -1,52 +1,46 @@
 '''
-    DeepLabV3+ specifier for Detectron2 model trainer in AIDE.
+    U-net specifier for Detectron2 model trainer in AIDE.
 
-    2020-22 Benjamin Kellenberger
+    2022 Benjamin Kellenberger
 '''
 
 import os
 import math
 import torch
 from detectron2.config import get_cfg
-import detectron2.utils.comm as comm
-from detectron2.projects.deeplab import add_deeplab_config, build_lr_scheduler
 
 from ai.models.detectron2.genericDetectronModel import GenericDetectron2Model
 from ai.models.detectron2.segmentationMasks.genericDetectronSegmentationModel import GenericDetectron2SegmentationModel
-from ai.models.detectron2.segmentationMasks.deeplabv3plus import DEFAULT_OPTIONS
+from ai.models.detectron2.segmentationMasks.unet import DEFAULT_OPTIONS, unet_parts
 from util import optionsHelper
 
 
-class DeepLabV3Plus(GenericDetectron2SegmentationModel):
+class Unet(GenericDetectron2SegmentationModel):
 
     @classmethod
     def getDefaultOptions(cls):
         return GenericDetectron2Model._load_default_options(
-            'config/ai/model/detectron2/segmentationMasks/deeplabv3plus.json',
+            'config/ai/model/detectron2/segmentationMasks/unet.json',
             DEFAULT_OPTIONS
         )
 
+    
+    @staticmethod
+    def _add_unet_config(cfg):
+        cfg.MODEL.BACKBONE.NAME = 'UnetEncoder'
+        cfg.MODEL.BACKBONE.NUM_CHANNELS = 3
+        cfg.MODEL.SEM_SEG_HEAD.NAME = 'UnetDecoder'
+        cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES = 2
+        cfg.MODEL.BILINEAR = True
 
 
     def _get_config(self):
         cfg = get_cfg()
-        add_deeplab_config(cfg)
+        self._add_unet_config(cfg)
         defaultConfig = optionsHelper.get_hierarchical_value(self.options, ['options', 'model', 'config', 'value', 'id'])
         configFile = os.path.join(os.getcwd(), 'ai/models/detectron2/_functional/configs', defaultConfig)
         cfg.merge_from_file(configFile)
-
-        # disable SyncBatchNorm if not running on distributed system
-        if comm.get_world_size() <= 1:
-            cfg.MODEL.RESNETS.NORM = 'BN'
-            cfg.MODEL.SEM_SEG_HEAD.NORM = 'BN'
-
         return cfg
-
-
-
-    def _build_lr_scheduler(self, cfg, optimizer):
-        return build_lr_scheduler(cfg, optimizer)
-
 
 
     def loadAndAdaptModel(self, stateDict, data, updateStateFun):
@@ -65,7 +59,6 @@ class DeepLabV3Plus(GenericDetectron2SegmentationModel):
             and duplicated.
         '''
         model, stateDict, newClasses, _ = self.initializeModel(stateDict, data)
-        
         # modify model weights to accept new label classes
         if len(newClasses):
 
@@ -74,8 +67,8 @@ class DeepLabV3Plus(GenericDetectron2SegmentationModel):
             for (key, index) in zip(stateDict['labelclassMap'].keys(), stateDict['labelclassMap'].values()):
                 classVector[index] = key
 
-            weights = model.sem_seg_head.predictor.weight
-            biases = model.sem_seg_head.predictor.bias
+            weights = model.sem_seg_head.outc.conv.weight
+            biases = model.sem_seg_head.outc.conv.bias
             numClasses_orig = len(biases)
 
             # create weights and biases for new classes
@@ -117,12 +110,13 @@ class DeepLabV3Plus(GenericDetectron2SegmentationModel):
             # biases = biases[valid,...]
 
             # apply updated weights and biases
-            model.sem_seg_head.predictor.weight = torch.nn.Parameter(weights)
-            model.sem_seg_head.predictor.bias = torch.nn.Parameter(biases)
+            model.sem_seg_head.outc.conv.weight = torch.nn.Parameter(weights)
+            model.sem_seg_head.outc.conv.bias = torch.nn.Parameter(biases)
+            model.sem_seg_head.outc.conv.out_channels = len(biases)
 
             stateDict['labelclassMap'] = classMap_updated
                 
-            print(f'Neurons for {len(newClasses)} new label classes added to DeepLabV3+ model.')
+            print(f'Neurons for {len(newClasses)} new label classes added to U-net model.')
 
         # finally, update model and config
         stateDict['detectron2cfg'].MODEL.SEM_SEG_HEAD.NUM_CLASSES = len(stateDict['labelclassMap'])

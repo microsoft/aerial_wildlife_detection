@@ -48,6 +48,9 @@ def main():
                         help='Project shortname to draw sample data from.')
     parser.add_argument('--mode', type=str, required=True,
                         help='Evaluation mode (function to call). One of {"train", "inference"}.')
+    parser.add_argument('--update-model', type=int, default=1,
+                        help='Set to 1 (default) to perform a model update step prior to training or inference. ' + \
+                            'This is required to e.g. adapt the model to new label classes in the project.')
     parser.add_argument('--modelLibrary', type=str, required=False,
                         help='Optional AI model library override. Provide a dot-separated Python import path here.')
     parser.add_argument('--modelSettings', type=str, required=False,
@@ -135,12 +138,15 @@ def main():
         else:
             print('')
 
-    # launch task
+    # launch task(s)
     if mode == 'train':
         data = aicw.get_training_images(
             project=args.project,
             maxNumImages=512)
         data = __load_metadata(args.project, dbConnector, data[0], True, modelOriginID)
+
+        if bool(args.update_model):
+            stateDict = modelTrainer.update_model(stateDict, data, updateStateFun)
 
         result = modelTrainer.train(stateDict, data, updateStateFun)
         if result is None:
@@ -151,6 +157,9 @@ def main():
             project=args.project,
             maxNumImages=512)
         data = __load_metadata(args.project, dbConnector, data[0], False, modelOriginID)
+
+        if bool(args.update_model):
+            stateDict = modelTrainer.update_model(stateDict, data, updateStateFun)
 
         result = modelTrainer.inference(stateDict, data, updateStateFun)
         #TODO: check result for validity

@@ -259,7 +259,7 @@ PREDICTION_MODELS = {
                                             'canRemoveLabelclasses': True
                                        },
     'ai.models.detectron2.TridentNet': {
-                                            'name': 'TridentNet (beta)',
+                                            'name': 'TridentNet',
                                             'author': '(built-in)',
                                             'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of the <a href="https://github.com/facebookresearch/detectron2/tree/master/projects/TridentNet" target="_blank">TridentNet</a> object detector.',
                                             'annotationType': ['boundingBoxes', 'polygons'],
@@ -271,6 +271,15 @@ PREDICTION_MODELS = {
                                             'name': 'DeepLabV3+',
                                             'author': '(built-in)',
                                             'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of the <a href="https://openaccess.thecvf.com/content_ECCV_2018/papers/Liang-Chieh_Chen_Encoder-Decoder_with_Atrous_ECCV_2018_paper.pdf" target="_blank">DeepLabV3+</a> semantic segmentation network.',
+                                            'annotationType': 'segmentationMasks',
+                                            'predictionType': 'segmentationMasks',
+                                            'canAddLabelclasses': True,
+                                            'canRemoveLabelclasses': True
+                                       },
+     'ai.models.detectron2.Unet': {
+                                            'name': 'U-net (beta)',
+                                            'author': '(built-in)',
+                                            'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of the <a href="https://link.springer.com/content/pdf/10.1007/978-3-319-24574-4_28.pdf" target="_blank">U-net</a> semantic segmentation network.',
                                             'annotationType': 'segmentationMasks',
                                             'predictionType': 'segmentationMasks',
                                             'canAddLabelclasses': True,

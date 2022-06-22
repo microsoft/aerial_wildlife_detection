@@ -1,0 +1,27 @@
+{
+    "aide_model_version": 1.1,
+    "name": "U-net",
+    "description": "<a href=\"https://link.springer.com/chapter/10.1007/978-3-319-24574-4_28\" target=\"_blank\">U-net</a> semantic segmentation model (untrained).",
+    "author": "(built-in)",
+    "time_created": 1611918642,
+    "tags": [
+        "U-net",
+        "skip connections"
+    ],
+    "labelclasses": [
+        "foreground"
+    ],
+    "annotation_type": "segmentationMasks",
+    "prediction_type": "segmentationMasks",
+    "ai_model_library": "ai.models.detectron2.Unet",
+    "ai_model_settings": {
+        "options": {
+            "model": {
+                "config": {
+                    "value": "segmentationMasks/unet/base-unet.yaml"
+                }
+            }
+        }
+    },
+    "citation_info": "U-net:<br /><p class=\"citation\">Ronneberger, O., Fischer, P. and Brox, T., 2015, October. U-net: Convolutional networks for biomedical image segmentation. In International Conference on Medical image computing and computer-assisted intervention (pp. 234-241). Springer, Cham.</p>"
+}

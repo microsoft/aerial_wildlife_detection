@@ -2,7 +2,7 @@
     Base model trainer for models implemented towards the Detectron2 library
     (https://github.com/facebookresearch/detectron2).
 
-    2020-21 Benjamin Kellenberger
+    2020-22 Benjamin Kellenberger
 '''
 
 import os
@@ -241,7 +241,7 @@ class GenericDetectron2Model(AIModel):
             # add existing label classes; any non-UUID entry will be discarded during prediction
             try:
                 pretrainedDataset = self.detectron2cfg.DATASETS.TRAIN
-                if isinstance(pretrainedDataset, list) or isinstance(pretrainedDataset, tuple):
+                if isinstance(pretrainedDataset, list) or isinstance(pretrainedDataset, tuple) and len(pretrainedDataset):
                     pretrainedDataset = pretrainedDataset[0]
                 pretrainedMeta = MetadataCatalog.get(pretrainedDataset)
                 for idx, cID in enumerate(pretrainedMeta.thing_classes):

@@ -1,0 +1,10 @@
+VERSION: 2
+MODEL:
+  META_ARCHITECTURE: "SemanticSegmentor"
+  BACKBONE:
+    NAME: "UnetEncoder"
+    NUM_CHANNELS: 3
+  SEM_SEG_HEAD:
+    NAME: "UnetDecoder"
+    NUM_CLASSES: 2
+  BILINEAR: true
