@@ -1,0 +1,34 @@
+{
+	"aide_model_version": 1.0,
+	"name": "MegaDetector v5b",
+	"description": "<a href=\"https://github.com/microsoft/CameraTraps/releases/tag/v5.0\" target=\"_blank\">MegaDetector</a> v5b (YOLOv5)",
+	"author": "Microsoft Corporation",
+	"time_created": 1607964812,
+	"tags": [
+		"MegaDetector",
+		"Camera Traps",
+		"Wildlife Conservation",
+		"Animal Detection",
+		"YOLO",
+		"You Only Look Once",
+		"detectron2"
+	],
+	"labelclasses": [
+        "animal",
+		"person",
+		"vehicle"
+	],
+	"annotation_type": "boundingBoxes",
+	"prediction_type": "boundingBoxes",
+	"ai_model_library": "ai.models.detectron2.YOLOv5",
+	"ai_model_settings": {
+        "options": {
+            "model": {
+                "config": {
+                    "value": "boundingBoxes/yolov5/megadetector_v5b.yaml"
+                }
+            }
+        }
+    },
+	"citation_info": "<p class=\"citation\">Beery, S., Morris, D. and Yang, S., 2019. Efficient pipeline for camera trap image review. arXiv preprint arXiv:1907.06772.</p><br /><a href=\"https://github.com/microsoft/CameraTraps/blob/main/megadetector.md\" target=\"_blank\">MegaDetector project page</a> &mdash; <a href=\"https://github.com/ultralytics/yolov5\" target=\"_blank\">YOLOv5 GitHub page</a>"
+}

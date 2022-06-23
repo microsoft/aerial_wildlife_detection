@@ -74,7 +74,7 @@ class RetinaNet(GenericDetectron2BoundingBoxModel):
             biases = model.head.cls_score.bias
 
             numNeurons = len(biases)
-            numClasses_orig = len(stateDict['labelclassMap'].keys()) - len(newClasses)
+            numClasses_orig = len(stateDict['labelclassMap'].keys())    #TODO: figure out why this was added: - len(newClasses)
             numAnchors = numNeurons // numClasses_orig
 
 

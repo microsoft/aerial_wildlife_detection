@@ -26,6 +26,8 @@ from .boundingBoxes.retinanet.retinanet import RetinaNet
 
 from .boundingBoxes.tridentnet.tridentnet import TridentNet
 
+from .boundingBoxes.yolov5.yolo import YOLOv5
+
 from .segmentationMasks.deeplabv3plus.deeplabv3plus import DeepLabV3Plus
 
 from .segmentationMasks.unet.unet import Unet

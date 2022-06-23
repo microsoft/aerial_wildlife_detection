@@ -28,3 +28,6 @@ torchvision==0.11.1+cu113
 # Detectron2
 --find-links https://dl.fbaipublicfiles.com/detectron2/wheels/cu113/torch1.10/index.html
 detectron2
+
+# YOLOv5
+yolov5>=6.1.3

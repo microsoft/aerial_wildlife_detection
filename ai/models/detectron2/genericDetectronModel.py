@@ -172,6 +172,16 @@ class GenericDetectron2Model(AIModel):
                 'errors': [f'An error occurred trying to verify options (message: {str(e)}).']
             }
     
+
+    def loadModelWeights(self, model, stateDict, forceNewModel):
+        checkpointer = DetectionCheckpointerInMem(model)
+        if 'model' in stateDict and not forceNewModel:
+            # trained weights available
+            checkpointer.loadFromObject(stateDict)
+        else:
+            # fresh model; initialize from Detectron2 weights
+            checkpointer.load(self.detectron2cfg.MODEL.WEIGHTS)
+    
     
 
     def initializeModel(self, stateDict, data, revertProjectToStateMap=False):
@@ -203,7 +213,7 @@ class GenericDetectron2Model(AIModel):
         # load state dict
         if stateDict is not None and not forceNewModel:
             if not isinstance(stateDict, dict):
-                stateDict = torch.load(io.BytesIO(stateDict), map_location=lambda storage, loc: storage)
+                stateDict = torch.load(io.BytesIO(stateDict), map_location='cpu')
         else:
             stateDict = {}
 
@@ -224,13 +234,7 @@ class GenericDetectron2Model(AIModel):
 
         # construct model and load state
         model = detectron2.modeling.build_model(self.detectron2cfg)
-        checkpointer = DetectionCheckpointerInMem(model)
-        if 'model' in stateDict and not forceNewModel:
-            # trained weights available
-            checkpointer.loadFromObject(stateDict)
-        else:
-            # fresh model; initialize from Detectron2 weights
-            checkpointer.load(self.detectron2cfg.MODEL.WEIGHTS)
+        self.loadModelWeights(model, stateDict, forceNewModel)
         
         # load or create labelclass map
         if 'labelclassMap' in stateDict and not forceNewModel:
@@ -248,6 +252,11 @@ class GenericDetectron2Model(AIModel):
                     labelclassMap[cID] = idx
             except:
                 pass
+            
+            if hasattr(model, 'names'):
+                # YOLOv5 format; get names from there
+                for idx, cID in enumerate(model.names):
+                    labelclassMap[cID] = idx
 
         # check data for new label classes
         projectToStateMap = {}
@@ -627,14 +636,20 @@ class GenericDetectron2Model(AIModel):
                 if 'instances' in outputs:
                     outputs = outputs['instances']
 
-                    labels = outputs.pred_classes.cpu()
+                    labels = outputs.pred_classes.cpu().int()
                     scores = outputs.scores.cpu()
 
                     # export bboxes if predicted
                     if hasattr(outputs, 'pred_boxes'):
                         bboxes = outputs.pred_boxes.tensor.cpu()
                         
-                        # convert bboxes to relative XYWH format
+                        # convert bboxes to relative XYWH format; rescale if needed
+                        scaleFactor = torch.tensor([
+                            float(batch[0]['width']) / outputs.image_size[1],
+                            float(batch[0]['height']) / outputs.image_size[0]
+                        ]).repeat(2)
+                        bboxes *= scaleFactor
+
                         bboxes[:,2] -= bboxes[:,0]
                         bboxes[:,3] -= bboxes[:,1]
                         bboxes[:,0] += bboxes[:,2]/2

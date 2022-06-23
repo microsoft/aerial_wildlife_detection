@@ -418,6 +418,9 @@ def offsetColor(color, excluded=set(), distance=0):
         #TODO: offsetting colors slightly could bring them too close to the next one
         again...
     '''
+    if not len(excluded):
+        return color
+
     color_rgb = np.array(hexToRGB(color))
     excluded_rgb = set()
     for ex in excluded:

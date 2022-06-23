@@ -11,23 +11,24 @@ Exciting news: AIDE version 3.0 is on the way! This is the **nightly** build of 
 (:red_circle: = development not started yet; :clock3: = work in progress; :ballot_box_with_check: = first version working, needs testing; :white_check_mark: = completed)
 
 * :clock3: Support for new image formats:
-  * :clock3: TIFF image parsing: :clock3: Web frontend works (needs testing with exotic TIFFs); :clock3: backend works but needs failsafety
+  * :white_check_mark: TIFF image parsing: :white_check_mark: Web frontend works (might need testing with exotic TIFFs); :white_check_mark: backend works
   * :clock3: DICOM image parsing: :red_circle: Web frontend to be implemented (Daikon library); :clock3: backend prototype works (cannot save images; no metadata is kept)
-* :clock3: Support for auto-conversion of semi-supported image formats. In AIDE v3.0 and above, some image formats may be supported by the new ImageDriver framework but not by the Web front-end. These are denoted as "semi-supported" and will be automatically renamed and converted upon upload to a fully supported format (currently TIFF). First tests work for e.g. ERDAS Imagine files (*.img), as well as formats consisting of multiple files like headers, but more tests are needed.
-* :clock3: Image rendering adjustments for Web frontend (grayscale render configuration might needs minor UI adjustments)
+* :white_check_mark: Support for auto-conversion of semi-supported image formats. In AIDE v3.0 and above, some image formats may be supported by the new ImageDriver framework but not by the Web front-end. These are denoted as "semi-supported" and will be automatically renamed and converted upon upload to a fully supported format (currently TIFF). First tests work for e.g. ERDAS Imagine files (*.img), as well as formats consisting of multiple files like headers, but more tests are needed.
+* :white_check_mark: Image rendering adjustments for Web frontend (grayscale render configuration might needs minor UI adjustments)
 * :ballot_box_with_check: Support for polygons (to be implemented: polygon union, individual vertex selection and deletion, general minor bug fixes)
 * :clock3: New models for polygons: Detectron2 detectors (Faster R-CNN & Co.) work with polygons as input; dedicated models to be implemented
-* :clock3: Advanced segmentation labeling tools: :white_check_mark: paint bucket; :red_circle: rectangle, :ballot_box_with_check: polygon (might need improvements); :white_check_mark: magnetic polygon; :white_check_mark: magic wand; :white_check_mark: Grab Cut; :white_check_mark: polygon simplification and convex hull; :clock3: select similar (still not working as it should)
+* :ballot_box_with_check: Advanced segmentation labeling tools: :white_check_mark: paint bucket; :red_circle: rectangle, :ballot_box_with_check: polygon (might need improvements); :white_check_mark: magnetic polygon; :white_check_mark: magic wand; :white_check_mark: Grab Cut; :white_check_mark: polygon simplification and convex hull; :clock3: select similar (still not working as it should)
 * :red_circle: New design for annotation interface
+* :clock3: New Models:
+  * :ballot_box_with_check: YOLOv5 for Detectron2 (first prototype working; expansion towards new model weights still missing; settings/hyperparams need GUI impl.). :white_check_mark: MegaDetector v5 configs implemented.
+  * :ballot_box_with_check: U-net for Detectron2 (first prototype working; currently no pre-trained model states)
+* :white_check_mark: Virtual views for images implemented
+* :ballot_box_with_check: Annotation im-/export: basic functionality and some parsers implemented; need more testing. More parsers (e.g., PASCAL VOC, ESRI ShapeFile, GeoJSON) to be coded.
+* :red_circle: Mapservers (WMS, WMTS, VectorTiles): to be implemented; need convention on how to store CRS, geotransform and GPS coordinates in database
 
 More functionality might come and will be added to this list as implementations progress.
 
 A demo instance of AIDE v3.0 preview can be found **[here](http://aidedemo.westeurope.cloudapp.azure.com:8088/)**.
-
-
-### Current issues
-
-* Poor rendering performance for polygons with high vertex counts (need dropping intermediate adjustment handles if too short segments; multi-threaded proximity checks; etc.)
 
 
 ***

@@ -1,5 +1,5 @@
 '''
-    2020 Benjamin Kellenberger
+    2020-22 Benjamin Kellenberger
 '''
 
 from psycopg2 import sql
@@ -15,7 +15,6 @@ from ai.models.detectron2._functional.dataset import getDetectron2Data
 
 
 class GenericDetectron2BoundingBoxModel(GenericDetectron2Model):
-
 
     def calculateClassCorrelations(self, stateDict, model, labelclassMap, modelClasses, targetClasses, updateStateFun, maxNumImages=None):
         '''
@@ -37,7 +36,7 @@ class GenericDetectron2BoundingBoxModel(GenericDetectron2Model):
             limitStr = sql.SQL('')
 
         queryStr = sql.SQL('''
-            SELECT image, filename, label, x, y, width, height
+            SELECT image, filename, label, a.x, a.y, a.width, a.height
             FROM {id_anno} AS a
             JOIN {id_img} AS img
             ON a.image = img.id

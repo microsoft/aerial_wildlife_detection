@@ -1,7 +1,7 @@
 '''
     TridentNet specifier for Detectron2 model trainer in AIDE.
 
-    2021 Benjamin Kellenberger
+    2021-22 Benjamin Kellenberger
 '''
 
 import os
@@ -188,7 +188,7 @@ class TridentNet(GenericDetectron2BoundingBoxModel):
 
             stateDict['labelclassMap'] = classMap_updated
 
-            print(f'[{self.project}] Neurons for {len(newClasses)} new label classes added to Faster R-CNN model.')
+            print(f'[{self.project}] Neurons for {len(newClasses)} new label classes added to TridentNet model.')
         
         #TODO: remove superfluous?
 
