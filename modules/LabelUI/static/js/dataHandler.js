@@ -9,10 +9,14 @@ class DataHandler {
     constructor(parentDiv) {
         this.parentDiv = parentDiv;
         this.dataEntries = [];
+        this.dataEntryLUT = {};     // entry ID : entry position ordinal
         this.numImagesPerBatch = window.numImagesPerBatch;
 
-        this.undoStack = [];
-        this.redoStack = [];
+        this.actionUndoStack = [];      //TODO: implement DataHandler as action listener and let DataEntry inform handler on user input
+        this.actionRedoStack = [];      //TODO: then, implement alternative to _entriesToJSON(false, false) and _jsonToEntries() to only update data entries that have actually changed
+
+        this.prevBatchStack = [];
+        this.nextBatchStack = [];
 
         this.skipConfirmationDialog = window.getCookie('skipAnnotationConfirmation');
 
@@ -327,6 +331,8 @@ class DataHandler {
                     imgIDs += d + ','
                 }
 
+                self._rebuild_entry_lut();
+
                 // update present classes list
                 self.updatePresentClasses();
 
@@ -442,6 +448,8 @@ class DataHandler {
                     imgIDs += d + ',';
                 }
 
+                self._rebuild_entry_lut();
+
                 // update present classes list
                 self.updatePresentClasses();
 
@@ -494,7 +502,21 @@ class DataHandler {
         return JSON.stringify({
             'entries': entries,
             'meta': meta
-        })
+        });
+    }
+
+
+    _jsonToEntries(entries) {
+        /**
+         * Used to restore previous states e.g. in undo/redo function.
+         */
+        if(typeof(entries) === 'string') {
+            entries = JSON.parse(entries);
+        }
+        for(var key in entries['entries']) {
+            this.dataEntries[this.dataEntryLUT[key]].setProperties(entries['entries'][key]);
+        }
+        this.renderAll();
     }
 
 
@@ -599,6 +621,8 @@ class DataHandler {
                     imgIDs += entryID + ',';
                 }
 
+                self._rebuild_entry_lut();
+
                 // update present classes list
                 self.updatePresentClasses();
 
@@ -640,6 +664,12 @@ class DataHandler {
         });
     }
 
+    _rebuild_entry_lut() {
+        this.dataEntryLUT = {};
+        for(var e=0; e<this.dataEntries.length; e++) {
+            this.dataEntryLUT[this.dataEntries[e].entryID] = e;
+        }
+    }
 
     nextBatch() {
         if(window.uiBlocked) return;
@@ -652,14 +682,15 @@ class DataHandler {
                 for(var e=0; e<self.dataEntries.length; e++) {
                     self.dataEntries[e].markup.detach();
                 }
-                self.undoStack.push(self.dataEntries.slice());
-                if(self.redoStack.length > 0) {
+                self.prevBatchStack.push(self.dataEntries.slice());
+                if(self.nextBatchStack.length > 0) {
                     // re-initialize stored data entries
-                    var entries = self.redoStack.pop();
+                    var entries = self.nextBatchStack.pop();
                     self.dataEntries = entries;
                     for(var e=0; e<self.dataEntries.length; e++) {
                         self.parentDiv.append(self.dataEntries[e].markup);
                     }
+                    self._rebuild_entry_lut();
                 } else {
                     self._loadNextBatch();
                 }
@@ -672,11 +703,11 @@ class DataHandler {
                 for(var i=0; i<this.dataEntries.length; i++) {
                     historyEntry.push(this.dataEntries[i]['entryID']);
                 }
-                this.undoStack.push(historyEntry);
+                this.prevBatchStack.push(historyEntry);
 
                 var callback = function() {
-                    if(self.redoStack.length > 0) {
-                        var nb = self.redoStack.pop();
+                    if(self.nextBatchStack.length > 0) {
+                        var nb = self.nextBatchStack.pop();
                         self._loadFixedBatch(nb.slice(), false);
                     } else {
                         //TODO: temporary mode to ensure compatibility with running instances
@@ -707,7 +738,7 @@ class DataHandler {
 
 
     previousBatch() {
-        if(window.uiBlocked || this.undoStack.length === 0) return;
+        if(window.uiBlocked || this.prevBatchStack.length === 0) return;
         
         var self = this;
 
@@ -716,14 +747,15 @@ class DataHandler {
                 for(var e=0; e<self.dataEntries.length; e++) {
                     self.dataEntries[e].markup.detach();
                 }
-                self.redoStack.push(self.dataEntries.slice());
+                self.nextBatchStack.push(self.dataEntries.slice());
 
                 // re-initialize stored data entries
-                var entries = self.undoStack.pop();
+                var entries = self.prevBatchStack.pop();
                 self.dataEntries = entries;
                 for(var e=0; e<self.dataEntries.length; e++) {
                     self.parentDiv.append(self.dataEntries[e].markup);
                 }
+                self._rebuild_entry_lut();
             }
         } else {
             var _previous_batch = function() {
@@ -732,9 +764,9 @@ class DataHandler {
                 for(var i=0; i<this.dataEntries.length; i++) {
                     historyEntry.push(this.dataEntries[i]['entryID']);
                 }
-                this.redoStack.push(historyEntry);
+                this.nextBatchStack.push(historyEntry);
     
-                var pb = this.undoStack.pop();
+                var pb = this.prevBatchStack.pop();
 
                 // check if annotation commitment is enabled
                 var doSubmit = $('#imorder-auto').prop('checked') || $('#review-enable-editing').prop('checked');

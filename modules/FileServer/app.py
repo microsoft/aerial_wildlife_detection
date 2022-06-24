@@ -67,7 +67,8 @@ class FileServer():
                 clen = len(bytes)
 
                 headers = {}
-                # headers['Content-type'] = 'image/tiff'        #TODO
+                headers['Content-type'] = 'image/tiff'        #TODO
+                headers['Content-Disposition'] = f'attachment; filename="{path}"'
                 
                 ranges = request.environ.get('HTTP_RANGE')
                 if 'HTTP_RANGE' in request.environ:
@@ -80,7 +81,7 @@ class FileServer():
                     fhandle = _file_iter_range(fhandle, offset, end-offset)
                     return HTTPResponse(fhandle, status=206, **headers)
 
-                return bytes
+                return HTTPResponse(bytes, status=200, **headers)
 
             else:
                 # full image; return static file directly

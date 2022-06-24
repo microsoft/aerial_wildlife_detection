@@ -1,3 +1,7 @@
+/**
+ * 2019-22 Benjamin Kellenberger
+ */
+
 class Annotation {
 
     constructor(annotationID, properties, geometryType, type, autoConverted) {
@@ -29,6 +33,13 @@ class Annotation {
             this.confidence = properties['confidence'];
         } else {
             this.confidence = null;
+        }
+
+        if(properties.hasOwnProperty('geometry')) {
+            // properties created from e.g. JSON export; expand to property root level
+            for(var key in properties['geometry']) {
+                properties[key.toLowerCase()] = properties['geometry'][key];
+            }
         }
 
         // drawing styles
@@ -151,6 +162,18 @@ class Annotation {
             return this[propertyName];
         }
         return this.geometry.getProperty(propertyName);
+    }
+
+    setProperties(properties) {
+        if(properties.hasOwnProperty('geometry')) {
+            // properties created from e.g. JSON export; expand to property root level
+            for(var key in properties['geometry']) {
+                properties[key.toLowerCase()] = properties['geometry'][key];
+            }
+        }
+        for(var key in properties) {
+            this.setProperty(properties[key]);
+        }
     }
 
     setProperty(propertyName, value) {

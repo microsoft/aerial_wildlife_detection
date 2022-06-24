@@ -555,6 +555,33 @@ class AbstractDataEntry {
         return props;
     }
 
+    setProperties(properties) {
+        /**
+         * Completely replaces properties, including annotations and
+         * predictions, for the data entry.
+         */
+        for(var key in this.annotations) {
+            this.annotations[key].setActive(false, this.viewport);
+            this._removeElement(this.annotations[key]);
+        }
+        for(var key in this.predictions) {
+            this._removeElement(this.predictions[key]);
+        }
+
+        for(var key in properties) {
+            if(!['annotations', 'predictions'].includes(key)) {
+                this.setProperty(key, properties[key]);
+            }
+        }
+        this._parseLabels(properties);
+    }
+
+    setProperty(propertyName, value) {
+        if(this.hasOwnProperty(propertyName)) {
+            this[propertyName] = value;
+        }
+    }
+
     getImageEntry() {
         return this.imageEntry;
     }
@@ -2432,6 +2459,8 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
     _parseLabels(properties) {
         this.predictions = {};
         this.annotations = {};
+        if(typeof(this.annotation) !== 'object') return;
+        this._init_data(properties);
     }
 
     _setup_markup() {
