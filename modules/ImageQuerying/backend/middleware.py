@@ -2,6 +2,7 @@
     2021-22 Benjamin Kellenberger
 '''
 
+from io import BytesIO
 import json
 import numpy as np
 import cv2
@@ -319,3 +320,21 @@ class ImageQueryingMiddleware:
             result.append(poly.ravel().tolist())
         
         return result
+    
+
+
+    def getBandConfiguration(self, upload):
+        '''
+            Receives a Bottle.py upload of a single file and tries to parse it
+            as an image. If it is parseable, returns a list of image band names;
+            else returns None.
+        '''
+        try:
+            file = iter(upload.values()).__next__()
+            bio = BytesIO(file.file.read())
+            driver = drivers.get_driver(bio)
+            sz = driver.size(bio)
+            return [f'Band {s+1}' for s in range(sz[0])]    #TODO: get band names from image metadata if available
+
+        except:
+            return None

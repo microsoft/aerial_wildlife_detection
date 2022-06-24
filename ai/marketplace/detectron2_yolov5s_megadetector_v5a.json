@@ -27,7 +27,23 @@
                 "config": {
                     "value": "boundingBoxes/yolov5/megadetector_v5a.yaml"
                 }
-            }
+            },
+			"DETECTRON2.INPUT.IMAGE_SIZE": {
+				"value": 1280
+			},
+			"train": {
+				"criterion": {
+					"DETECTRON2.MODEL.YOLO.HYP.box": {
+						"value": 0.037500000000000006
+					},
+					"DETECTRON2.MODEL.YOLO.HYP.obj": {
+						"value": 3.0
+					},
+					"DETECTRON2.MODEL.YOLO.HYP.cls": {
+						"value": 0.014062499999999999
+					}
+				}
+			}
         }
     },
 	"citation_info": "<p class=\"citation\">Beery, S., Morris, D. and Yang, S., 2019. Efficient pipeline for camera trap image review. arXiv preprint arXiv:1907.06772.</p><br /><a href=\"https://github.com/microsoft/CameraTraps/blob/main/megadetector.md\" target=\"_blank\">MegaDetector project page</a> &mdash; <a href=\"https://github.com/ultralytics/yolov5\" target=\"_blank\">YOLOv5 GitHub page</a>"

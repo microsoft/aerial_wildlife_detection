@@ -92,7 +92,7 @@ class RetinaNet(GenericDetectron2BoundingBoxModel):
                 randomIdx = torch.randperm(int(len(biases_copy)/numAnchors))
                 if len(randomIdx) < len(newClasses):
                     # source model has fewer classes than target model; repeat
-                    randomIdx = randomIdx.repeat(int(len(newClasses)/len(biases)+1))
+                    randomIdx = randomIdx.repeat(int(len(newClasses)+1))
 
                 for cl in range(len(newClasses)):
 

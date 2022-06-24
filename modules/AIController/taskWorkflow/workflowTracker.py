@@ -120,7 +120,8 @@ class WorkflowTracker:
     @staticmethod
     def _revoke_task(tasks):
         if isinstance(tasks, dict) and 'id' in tasks:
-            celery.task.control.revoke(tasks['id'], terminate=True)
+            AsyncResult(tasks['id']).revoke(terminate=True)
+            # celery.task.control.revoke(tasks['id'], terminate=True)
         elif isinstance(tasks, Iterable):
             for task in tasks:
                 WorkflowTracker._revoke_task(task)

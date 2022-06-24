@@ -61,6 +61,8 @@ MODEL:
       nms_iou_thres: 0.45
       nms_single_cls: false
       nms_max_det: 300
+INPUT:
+  IMAGE_SIZE: 1280    # see https://github.com/microsoft/CameraTraps/blob/6b623eb4c846b00e1bc1bbd7b85e5718db753060/detection/pytorch_detector.py#L29
 DATASETS:
   TRAIN: ()
   TEST: ()

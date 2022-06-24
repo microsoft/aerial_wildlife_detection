@@ -2,7 +2,7 @@
     Performs immediate image querying operations, such as area selection
     (GrabCut, etc.).
 
-    2021 Benjamin Kellenberger
+    2021-22 Benjamin Kellenberger
 '''
 
 from bottle import request, abort
@@ -109,3 +109,16 @@ class ImageQuerier:
                     'status': 1,
                     'message': str(e)
                 }
+        
+
+        @self.app.post('/getBandConfiguration')
+        def getBandConfiguration():
+            if not self.loginCheck(canCreateProjects=True):
+                abort(401, 'forbidden')
+            
+            try:
+                files = request.files
+                bandConfig = self.middleware.getBandConfiguration(files)
+                return {'status': 0, 'image_bands': bandConfig}
+            except Exception as e:
+                return {'status': 1, 'message': str(e)}

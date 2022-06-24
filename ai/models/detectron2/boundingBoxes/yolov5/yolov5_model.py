@@ -38,8 +38,9 @@ class YOLOv5(nn.Module):
         self.nms_iou_thres = self.model.hyp.get('nms_iou_thres', 0.45)
         self.nms_single_cls = self.model.hyp.get('nms_single_cls', False)
         self.nms_max_det = self.model.hyp.get('nms_max_det', 300)
+        self.autobalance = self.model.hyp.get('loss_autobalance', False)
 
-        self.loss = ComputeLoss(self.model)
+        self.loss = ComputeLoss(self.model, autobalance=self.autobalance)
 
         # current label class names; required for model-to-project mapping
         self.names = cfg.get('LABELCLASS_NAMES', [])

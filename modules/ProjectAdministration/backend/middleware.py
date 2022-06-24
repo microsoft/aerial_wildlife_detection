@@ -10,7 +10,6 @@ import re
 import secrets
 import json
 import uuid
-import random
 from datetime import datetime
 from collections.abc import Iterable
 import requests
@@ -84,7 +83,8 @@ class ProjectConfigMiddleware:
         'getuserdetails',
         'setpassword',
         'exec',
-        'v'
+        'v',
+        'getBandConfiguration'
     ]
 
     # prohibited name prefixes

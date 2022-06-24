@@ -126,9 +126,9 @@ def get_split_positions(array, patchSize, stride=None, tight=True, discard_homog
     
     # do the cropping
     numCoords = len(xLoc)*len(yLoc)
+    tbar = tqdm(range(numCoords))
     if discard_homogeneous_percentage is not None:
         print('Locating split positions, discarding empty patches...')
-        tbar = tqdm(range(numCoords))
     coords = []
     count = 0
     for x in range(len(xLoc)):

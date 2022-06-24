@@ -359,30 +359,71 @@
                  *  bands the image has as well as the band labels. Populates
                  *  the band label table accordingly.
                  */
+                if(typeof(file) !== 'object' || !file.hasOwnProperty('name')) return;
+
                 $('#file-parsing-progress').show();
                 let tbody = $('#band-assignment-tbody');
+
+                let _query_server = function() {
+                    let formData = new FormData();
+                    formData.append(file.name, file);
+                    return $.ajax({
+                        url: '/getBandConfiguration',
+                        method: 'POST',
+                        data: formData,
+                        cache: false,
+                        contentType: false,
+                        processData: false,
+                        success: function(response) {
+                            let bands = response['image_bands'];
+                            if(Array.isArray(bands) && bands.length > 0) {
+                                tbody.empty();
+                                for(var b=0; b<bands.length; b++) {
+                                    addBand(bands[b]);
+                                }
+                                updateDefaultBandSelectors();
+                            } else {
+                                window.messager.addMessage('Selected file(s) appear to be unsupported by AIDE.', 'error', 0);
+                            }
+                            $('#file-parsing-progress').hide();
+                        },
+                        error: function(xhr, status, error) {
+                            return window.renewSessionRequest(xhr, function() {
+                                _query_server();
+                            });
+                        }
+                    });
+                }
                 
                 // get renderer according to MIME type
-                let rendererClass = getParserByMIMEtype(file.type);
-                let renderer = new rendererClass(file);
-                renderer.load_image().then(() => {
-                    let numBands = renderer.getNumBands(true);
-                    if(typeof(numBands) === 'number') {
-                        tbody.empty();
-                        if(numBands >= 3) {
-                            for(var b=1; b<=numBands; b++) {
-                                addBand('Band ' + b);
+                try {
+                    let rendererClass = getParserByMIMEtype(file.type);
+                    let renderer = new rendererClass(file);
+                    renderer.load_image().then(() => {
+                        let numBands = renderer.getNumBands(true);
+                        if(typeof(numBands) === 'number') {
+                            tbody.empty();
+                            if(numBands >= 3) {
+                                for(var b=1; b<=numBands; b++) {
+                                    addBand('Band ' + b);
+                                }
+                            } else {
+                                // less than three bands; assign first as grayscale
+                                addBand(0, 'Grayscale');
                             }
+                            updateDefaultBandSelectors();
                         } else {
-                            // less than three bands; assign first as grayscale
-                            addBand(0, 'Grayscale');
+                            // image could not be parsed; see if it is
+                            // semi-supported (send to server for parsing)
+                            return _query_server();
                         }
-                        updateDefaultBandSelectors();
-                    } else {
-                        //TODO: image could not be parsed
-                    }
-                    $('#file-parsing-progress').hide();
-                });
+                        $('#file-parsing-progress').hide();
+                    });
+
+                } catch {
+                    // file could not be loaded locally; try via server
+                    _query_server();
+                }
             }
 
             function _getSelectorID(band) {
