@@ -6,6 +6,8 @@
 
 class DataHandler {
 
+    UNDO_STACK_SIZE_LIMIT = 32;     // number of actions to store in undo and redo stacks
+
     constructor(parentDiv) {
         this.parentDiv = parentDiv;
         this.dataEntries = [];
@@ -60,6 +62,58 @@ class DataHandler {
         })
     }
 
+    resetActionStack() {
+        this.actionUndoStack = [];
+        this.actionRedoStack = [];
+    }
+
+    onAction(entries, actionName) {
+        /**
+         * To be called by DataEntry instances. Receives an entry instance or a
+         * list of instances and an action name, serializes the entry's/entries'
+         * properties and registers them in the action undo stack.
+         */
+        let actionEntries = {};
+        if(Array.isArray(entries)) {
+            for(var e=0; e<entries.length; e++) {
+                let entry = entries[e];
+                actionEntries[entry.entryID] = entry.getProperties(false, false);
+            }
+        } else {
+            // single entry
+            actionEntries[entries.entryID] = entries.getProperties(false, false);
+        }
+        this.actionUndoStack.push({'action': actionName,
+                                    'dataEntries': JSON.stringify(actionEntries)});
+    }
+
+    undo() {
+        if(this.actionUndoStack.length === 0) return;
+        let action = this.actionUndoStack.pop();
+        let dataEntries = JSON.parse(action['dataEntries']);
+        for(var key in dataEntries) {
+            let entryIdx = this.dataEntryLUT[key];
+            if(entryIdx !== undefined) {
+                this.dataEntries[entryIdx].setProperties(dataEntries[key]);
+            }
+        }
+        this.renderAll();
+        this.actionRedoStack.push(action);
+    }
+
+    redo() {
+        if(this.actionRedoStack.length === 0) return;
+        let action = this.actionRedoStack.pop();
+        let dataEntries = JSON.parse(action['dataEntries']);
+        for(var key in dataEntries) {
+            let entryIdx = this.dataEntryLUT[key];
+            if(entryIdx !== undefined) {
+                this.dataEntries[entryIdx].setProperties(dataEntries[key]);
+            }
+        }
+        this.renderAll();
+        this.actionUndoStack.push(action);
+    }
 
     getNumInteractions() {
         let num = 0;
@@ -93,8 +147,9 @@ class DataHandler {
             to all data entries.
         */
         if(window.uiBlocked) return;
+        this.onAction(this.dataEntries, 'label all');
         for(var i=0; i<this.dataEntries.length; i++) {
-            this.dataEntries[i].setLabel(window.labelClassHandler.getActiveClassID());
+            this.dataEntries[i].setLabel(window.labelClassHandler.getActiveClassID(), true);
         }
     }
 
@@ -103,9 +158,10 @@ class DataHandler {
             Remove all assigned labels (if 'enableEmptyClass' is true).
         */
         if(window.uiBlocked || !window.enableEmptyClass) return 0;
+        this.onAction(this.dataEntries, 'clear all labels');
         var numRemoved = 0;
         for(var i=0; i<this.dataEntries.length; i++) {
-            numRemoved += this.dataEntries[i].removeAllAnnotations();
+            numRemoved += this.dataEntries[i].removeAllAnnotations(true);
         }
         return numRemoved;
     }
@@ -124,8 +180,9 @@ class DataHandler {
          * Removes and discards all selection polygons that are active (clicked)
          * if supported (e.g., for semantic segmentation).
          */
+        this.onAction(this.dataEntries, 'remove selected');
         for(var i=0; i<this.dataEntries.length; i++) {
-            this.dataEntries[i].removeActiveSelectionElements();
+            this.dataEntries[i].removeActiveSelectionElements(true);
         }
     }
 
@@ -134,8 +191,9 @@ class DataHandler {
          * Removes and discards all selection polygons if supported (e.g., for
          * semantic segmentation).
          */
+        this.onAction(this.dataEntries, 'remove all selected');
         for(var i=0; i<this.dataEntries.length; i++) {
-            this.dataEntries[i].removeAllSelectionElements();
+            this.dataEntries[i].removeAllSelectionElements(true);
         }
     }
 
@@ -158,9 +216,10 @@ class DataHandler {
          *   one annotation is selected: perform GrabCut on it
          * - otherwise, does nothing
          */
+        this.onAction(this.dataEntries, 'Grab Cut');
         let promises = [];
         for(var i=0; i<this.dataEntries.length; i++) {
-            promises.push(this.dataEntries[i].grabCutOnActiveAnnotations());
+            promises.push(this.dataEntries[i].grabCutOnActiveAnnotations(true));
             // this.dataEntries[i].grabCutOnActiveAnnotations();
         }
         return Promise.all(promises);
@@ -181,12 +240,13 @@ class DataHandler {
 
     removeActiveAnnotations() {
         if(window.uiBlocked) return 0;
+        this.onAction(this.dataEntries, 'remove active');
         var numRemoved = 0;
         if(window.annotationType === 'labels') {
             return this.clearLabelInAll();
         } else {
             for(var i=0; i<this.dataEntries.length; i++) {
-                numRemoved += this.dataEntries[i].removeActiveAnnotations();
+                numRemoved += this.dataEntries[i].removeActiveAnnotations(true);
             }
         }
         return numRemoved;
@@ -194,20 +254,21 @@ class DataHandler {
 
     toggleActiveAnnotationsUnsure() {
         if(window.uiBlocked) return;
+        this.onAction(this.dataEntries, 'toggle unsure');
         window.unsureButtonActive = true;   // for classification entries
         var annotationsActive = false;
         for(var i=0; i<this.dataEntries.length; i++) {
-            var response = this.dataEntries[i].toggleActiveAnnotationsUnsure();
+            var response = this.dataEntries[i].toggleActiveAnnotationsUnsure(true);
             if(response) annotationsActive = true;
         }
-
         if(annotationsActive) window.unsureButtonActive = false;
     }
 
     convertPredictions() {
         if(window.uiBlocked) return;
+        this.onAction(this.dataEntries, 'convert predictions');
         for(var i=0; i<this.dataEntries.length; i++) {
-            this.dataEntries[i].convertPredictions();
+            this.dataEntries[i].convertPredictions(true);
         }
     }
 
@@ -332,6 +393,7 @@ class DataHandler {
                 }
 
                 self._rebuild_entry_lut();
+                self.resetActionStack();
 
                 // update present classes list
                 self.updatePresentClasses();
@@ -449,6 +511,7 @@ class DataHandler {
                 }
 
                 self._rebuild_entry_lut();
+                self.resetActionStack();
 
                 // update present classes list
                 self.updatePresentClasses();
@@ -480,7 +543,6 @@ class DataHandler {
             }
         });
     }
-
 
 
     _entriesToJSON(minimal, onlyUserAnnotations) {
@@ -622,6 +684,7 @@ class DataHandler {
                 }
 
                 self._rebuild_entry_lut();
+                self.resetActionStack();
 
                 // update present classes list
                 self.updatePresentClasses();
@@ -691,6 +754,7 @@ class DataHandler {
                         self.parentDiv.append(self.dataEntries[e].markup);
                     }
                     self._rebuild_entry_lut();
+                    self.resetActionStack();
                 } else {
                     self._loadNextBatch();
                 }
@@ -756,6 +820,7 @@ class DataHandler {
                     self.parentDiv.append(self.dataEntries[e].markup);
                 }
                 self._rebuild_entry_lut();
+                self.resetActionStack();
             }
         } else {
             var _previous_batch = function() {

@@ -153,9 +153,23 @@ class UIControlHandler {
         this.toggleButtons = new ButtonGroup(); // buttons that can be switched on or off one at a time
 
         /*
+            action controls (undo and redo)
+        */
+        let vpControls = $('#viewport-controls');
+        let undoButton = $('<button id="undo-button" class="btn btn-sm btn-secondary title="Undo">U</button>');
+        undoButton.on('click', function() {
+            window.dataHandler.undo();
+        });
+        vpControls.append(undoButton);
+        let redoButton = $('<button id="redo-button" class="btn btn-sm btn-secondary title="Redo" style="margin-bottom:20px">R</button>');
+        redoButton.on('click', function() {
+            window.dataHandler.redo();
+        });
+        vpControls.append(redoButton);
+
+        /*
             viewport controls
         */
-        var vpControls = $('#viewport-controls');
 
         // select
         var selectButton = $('<button id="select-button" class="btn btn-sm btn-secondary active" title="Select (S)"><img src="/static/interface/img/controls/select.svg" style="height:18px" /></button>');

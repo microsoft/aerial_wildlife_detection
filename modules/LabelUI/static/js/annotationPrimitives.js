@@ -4,11 +4,12 @@
 
 class Annotation {
 
-    constructor(annotationID, properties, geometryType, type, autoConverted) {
+    constructor(annotationID, properties, geometryType, type, autoConverted, parent) {
         this.annotationID = annotationID;
         this.geometryType = geometryType;
         this.type = type;
         this.autoConverted = autoConverted;
+        this.parent = parent;
         this._parse_properties(properties);
     }
 
@@ -61,7 +62,10 @@ class Annotation {
                 properties['segmentationmask'],
                 properties['segmentationmask_predicted'],
                 properties['width'],
-                properties['height']
+                properties['height'],
+                null,
+                false,
+                this.parent
             );
 
         } else if(this.geometryType === 'polygons') {
@@ -74,7 +78,10 @@ class Annotation {
                         edgeMap,
                         properties['coordinates'],
                         style,
-                        unsure
+                        unsure,
+                        null,
+                        false,
+                        this.parent
                     );
                 });
             } else {
@@ -82,7 +89,10 @@ class Annotation {
                     this.annotationID + '_geom',
                     properties['coordinates'],
                     style,
-                    unsure
+                    unsure,
+                    null,
+                    false,
+                    this.parent
                 );
             }
 
@@ -93,7 +103,10 @@ class Annotation {
                 properties['x'], properties['y'],
                 properties['width'], properties['height'],
                 style,
-                unsure
+                unsure,
+                null,
+                false,
+                this.parent
             );
 
         } else if(this.geometryType === 'points') {
@@ -102,7 +115,10 @@ class Annotation {
                 this.annotationID + '_geom',
                 properties['x'], properties['y'],
                 style,
-                unsure
+                unsure,
+                null,
+                false,
+                this.parent
             );
 
         } else if(this.geometryType === 'labels') {
@@ -115,7 +131,10 @@ class Annotation {
                 this.annotationID + '_geom',
                 borderText,
                 style,
-                unsure
+                unsure,
+                null,
+                false,
+                this.parent
             );
             
         } else {

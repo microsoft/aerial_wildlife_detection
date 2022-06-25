@@ -10,6 +10,7 @@ Exciting news: AIDE version 3.0 is on the way! This is the **nightly** build of 
 
 (:red_circle: = development not started yet; :clock3: = work in progress; :ballot_box_with_check: = first version working, needs testing; :white_check_mark: = completed)
 
+* :clock3: Undo/redo functionality: work in progress; requires re-organizing action listeners from render elements to annotation entries
 * :clock3: Support for new image formats:
   * :white_check_mark: TIFF image parsing: :white_check_mark: Web frontend works (might need testing with exotic TIFFs); :white_check_mark: backend works
   * :clock3: DICOM image parsing: :red_circle: Web frontend to be implemented (Daikon library); :clock3: backend prototype works (cannot save images; no metadata is kept)

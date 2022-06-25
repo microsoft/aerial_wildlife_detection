@@ -216,8 +216,10 @@ class AbstractDataEntry {
         throw Error('Not implemented.');
     }
 
-    convertPredictions() {
+    convertPredictions(silent) {
         if(typeof(this.predictions_raw) !== 'object' || Object.keys(this.predictions_raw).length === 0) return;
+
+        if(!silent) window.dataHandler.onAction(this, 'convert predictions');
 
         // remove current annotations that had been converted from predictions
         for(var key in this.annotations) {
@@ -264,13 +266,13 @@ class AbstractDataEntry {
                         // construct new classification entry
                         let id = this.predictions_raw[key]['id'];
                         let label = this.predictions_raw[key]['label'];
-                        let anno = new Annotation(window.getRandomID(), {'id':id, 'label':label, 'confidence':maxConf}, geometryType_anno, 'annotation', true);
+                        let anno = new Annotation(window.getRandomID(), {'id':id, 'label':label, 'confidence':maxConf}, geometryType_anno, 'annotation', true, this);
                         this._addElement(anno);
                     }
                 } else if(window.carryOverRule === 'mode') {
                     var counts = {};
                     for(var key in this.predictions_raw) {
-                        let prediction = new Annotation(window.getRandomID(), this.predictions_raw[key], geometryType_anno, 'prediction');
+                        let prediction = new Annotation(window.getRandomID(), this.predictions_raw[key], geometryType_anno, 'prediction', false, this);
                         if(!(counts.hasOwnProperty(prediction.label))) {
                             counts[label] = 0;
                         }
@@ -287,7 +289,7 @@ class AbstractDataEntry {
                     }
                     // add new label annotation
                     if(argMax != null) {
-                        let anno = new Annotation(window.getRandomID(), {'label':argMax}, geometryType_anno, 'annotation', true);
+                        let anno = new Annotation(window.getRandomID(), {'label':argMax}, geometryType_anno, 'annotation', true, this);
                         this._addElement(anno);
                     }
                 }
@@ -297,7 +299,7 @@ class AbstractDataEntry {
             for(var key in this.predictions_raw) {
                 let props = this.predictions_raw[key];
                 if(props['confidence'] >= window.carryOverPredictions_minConf) {
-                    let anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation', true);
+                    let anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation', true, this);
                     this._addElement(anno);
                 }
             }
@@ -309,7 +311,7 @@ class AbstractDataEntry {
                     if(props['confidence'] >= window.carryOverPredictions_minConf) {
                         delete props['width'];
                         delete props['height'];
-                        let anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation', true);
+                        let anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation', true, this);
                         this._addElement(anno);
                     }
                 }
@@ -322,7 +324,7 @@ class AbstractDataEntry {
                         if(center !== undefined) {
                             props['x'] = center[0];
                             props['y'] = center[1];
-                            let anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation', true);
+                            let anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation', true, this);
                             this._addElement(anno);
                         }
                     }
@@ -336,7 +338,7 @@ class AbstractDataEntry {
                     if(props['confidence'] >= window.carryOverPredictions_minConf) {
                         props['width'] = window.defaultBoxSize_w;
                         props['height'] = window.defaultBoxSize_h;
-                        let anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation', true);
+                        let anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation', true, this);
                         this._addElement(anno);
                     }
                 }
@@ -351,7 +353,7 @@ class AbstractDataEntry {
                             props['y'] = mbr[1] + mbr[3]/2.0;
                             props['width'] = mbr[2];
                             props['height'] = mbr[3];
-                            let anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation', true);
+                            let anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation', true, this);
                             this._addElement(anno);
                         }
                     }
@@ -380,7 +382,7 @@ class AbstractDataEntry {
                         delete props['y'];
                         delete props['width'];
                         delete props['height'];
-                        let anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation', true);
+                        let anno = new Annotation(window.getRandomID(), props, geometryType_anno, 'annotation', true, this);
                         this._addElement(anno);
                     }
                 }
@@ -404,7 +406,7 @@ class AbstractDataEntry {
 
         // add predictions as static, immutable objects
         for(var key in properties['predictions']) {
-            let prediction = new Annotation(key, properties['predictions'][key], geometryType_pred, 'prediction');
+            let prediction = new Annotation(key, properties['predictions'][key], geometryType_pred, 'prediction', false, this);
             if(prediction.confidence < window.showPredictions_minConf) {
                 prediction.setProperty('visible', false);
             }
@@ -418,13 +420,13 @@ class AbstractDataEntry {
         }
         
         // convert predictions into annotations where possible and allowed
-        this.convertPredictions();
+        this.convertPredictions(true);
         
         // add annotations
         if(hasAnnotations) {
             for(var key in properties['annotations']) {
                 //TODO: make more failsafe?
-                var annotation = new Annotation(key, properties['annotations'][key], geometryType_anno, 'annotation');
+                var annotation = new Annotation(key, properties['annotations'][key], geometryType_anno, 'annotation', false, this);
                 // Only add annotation if it is of the correct type.
                 // if(annotation.getAnnotationType() ===this.getAnnotationType()) {     //TODO: disabled for debugging purposes
                 this._addElement(annotation);
@@ -442,7 +444,7 @@ class AbstractDataEntry {
     }
 
     _createImageEntry(imageRenderer) {
-        this.imageEntry = new ImageElement(this.entryID + '_image', imageRenderer, this.viewport);
+        this.imageEntry = new ImageElement(this.entryID + '_image', imageRenderer, this.viewport, this);
         let self = this;
         return this.imageEntry.loadImage().then(() => {
             self.viewport.addRenderElement(self.imageEntry);
@@ -597,7 +599,9 @@ class AbstractDataEntry {
         return new Date() - this.startTime;
     }
 
-    setLabel(label) {
+    setLabel(label, silent) {
+        if(!silent) window.dataHandler.onAction(this, 'set label');
+
         for(var key in this.annotations) {
             this.annotations[key].setProperty('label', label);
         }
@@ -642,22 +646,25 @@ class AbstractDataEntry {
         this.render();
     }
 
-    removeActiveAnnotations() {
-            var numRemoved = 0;
-            for(var key in this.annotations) {
-                if(this.annotations[key].isActive()) {
-                    this.annotations[key].setActive(false, this.viewport);
-                    this._removeElement(this.annotations[key]);
-                    numRemoved++;
-                }
+    removeActiveAnnotations(silent) {
+        if(!silent) window.dataHandler.onAction(this, 'remove active');
+
+        var numRemoved = 0;
+        for(var key in this.annotations) {
+            if(this.annotations[key].isActive()) {
+                this.annotations[key].setActive(false, this.viewport);
+                this._removeElement(this.annotations[key]);
+                numRemoved++;
             }
-            this.render();
-            this.numInteractions++;
-            window.dataHandler.updatePresentClasses();
-            return numRemoved;
+        }
+        this.render();
+        this.numInteractions++;
+        window.dataHandler.updatePresentClasses();
+        return numRemoved;
     }
 
-    removeAllAnnotations() {
+    removeAllAnnotations(silent) {
+        if(!silent) window.dataHandler.onAction(this, 'remove active');
         for(var key in this.annotations) {
             this.annotations[key].setActive(false, this.viewport);
             this._removeElement(this.annotations[key]);
@@ -673,19 +680,22 @@ class AbstractDataEntry {
         }
     }
 
-    removeActiveSelectionElements() {
+    removeActiveSelectionElements(silent) {
         if(this.areaSelector !== undefined) {
+            if(!silent) window.dataHandler.onAction(this, 'remove selected');
             this.areaSelector.removeActiveSelectionElements();
         }
     }
 
-    removeAllSelectionElements() {
+    removeAllSelectionElements(silent) {
         if(this.areaSelector !== undefined) {
+            window.dataHandler.onAction(this, 'remove all selected');
             this.areaSelector.removeAllSelectionElements();
         }
     }
 
-    toggleActiveAnnotationsUnsure() {
+    toggleActiveAnnotationsUnsure(silent) {
+        if(!silent) window.dataHandler.onAction(this, 'toggle unsure');
         var active = false;
         for(var key in this.annotations) {
             if(this.annotations[key].isActive()) {
@@ -788,12 +798,13 @@ class AbstractDataEntry {
         });
     }
 
-    grabCutOnActiveAnnotations() {
+    grabCutOnActiveAnnotations(silent) {
         /**
          * Performs GrabCut on all active annotations.
          * Currently supports boundingBoxes and polygons as annotation types.
          */
         if(!['boundingBoxes', 'polygons'].includes(this.getAnnotationType())) return null;
+        if(!silent) window.dataHandler.onAction(this, 'Grab Cut');
         let polygons = [];
         let annoKeys_all = Object.keys(this.annotations);
         let annoKeys = [];
@@ -880,7 +891,7 @@ class ClassificationEntry extends AbstractDataEntry {
             if(this.labelInstance ===null) {
                 // add a default, blank instance if nothing has been predicted or annotated yet
                 var label = (window.enableEmptyClass ? null : window.labelClassHandler.getActiveClassID());
-                this._addElement(new Annotation(window.getRandomID(), {'label':label}, 'labels', 'annotation'));
+                this._addElement(new Annotation(window.getRandomID(), {'label':label}, 'labels', 'annotation', false, this));
             }
         });
     }
@@ -907,7 +918,7 @@ class ClassificationEntry extends AbstractDataEntry {
 
             // add new annotation from existing
             var unsure = element['geometry']['unsure'];
-            var anno = new Annotation(key, {'label':element['label'], 'unsure':unsure}, 'labels', element['type']);
+            var anno = new Annotation(key, {'label':element['label'], 'unsure':unsure}, 'labels', element['type'], false, this);
             this.annotations[key] = anno;
             this.viewport.addRenderElement(anno.getRenderElement());
             this.labelInstance = anno;
@@ -940,7 +951,7 @@ class ClassificationEntry extends AbstractDataEntry {
         };
         this.hoverTextElement = new HoverTextElement(this.entryID + '_hoverText', null, null, 'validArea',
             htStyle,
-            5);
+            5, false, this);
         this.viewport.addRenderElement(this.hoverTextElement);
 
         if(!this.disableInteractions) {
@@ -1031,10 +1042,11 @@ class ClassificationEntry extends AbstractDataEntry {
         return this.annotations[entryKey[0]].getProperty('label');
     }
 
-    setLabel(label) {
+    setLabel(label, silent) {
+        if(!silent) window.dataHandler.onAction(this, 'set label');
         if(typeof(this.labelInstance) !== 'object') {
             // add new annotation
-            var anno = new Annotation(window.getRandomID(), {'label':label}, 'labels', 'annotation');
+            var anno = new Annotation(window.getRandomID(), {'label':label}, 'labels', 'annotation', false, this);
             this._addElement(anno);
 
         } else {
@@ -1079,7 +1091,7 @@ class ClassificationEntry extends AbstractDataEntry {
             var activeLabel = window.labelClassHandler.getActiveClassID();
             if(typeof(this.labelInstance) !== 'object') {
                 // add new annotation
-                var anno = new Annotation(window.getRandomID(), {'label':activeLabel}, 'labels', 'annotation');
+                var anno = new Annotation(window.getRandomID(), {'label':activeLabel}, 'labels', 'annotation', false, this);
                 this._addElement(anno);
 
             } else {
@@ -1133,7 +1145,8 @@ class PointAnnotationEntry extends AbstractDataEntry {
         return 'points';
     }
 
-    setLabel(label) {
+    setLabel(label, silent) {
+        if(!silent) window.dataHandler.onAction(this, 'set label');
         for(var key in this.annotations) {
             if(label ===null) {
                 this._removeElement(this.annotations[key]);
@@ -1159,7 +1172,7 @@ class PointAnnotationEntry extends AbstractDataEntry {
         };
         this.hoverTextElement = new HoverTextElement(this.entryID + '_hoverText', null, [0, 0.99], 'canvas',
             htStyle,
-            5);
+            5, false, this);
         this.viewport.addRenderElement(this.hoverTextElement);
 
         // interaction handlers
@@ -1231,7 +1244,7 @@ class PointAnnotationEntry extends AbstractDataEntry {
             'y': coords[1],
             'label': window.labelClassHandler.getActiveClassID()
         };
-        var anno = new Annotation(window.getRandomID(), props, 'points', 'annotation');
+        var anno = new Annotation(window.getRandomID(), props, 'points', 'annotation', false, this);
         this._addElement(anno);
         anno.getRenderElement().registerAsCallback(this.viewport);
         anno.getRenderElement().setActive(true, this.viewport);
@@ -1274,6 +1287,8 @@ class PointAnnotationEntry extends AbstractDataEntry {
 
         // check functionality
         if(window.uiControlHandler.getAction() === ACTIONS.ADD_ANNOTATION) {
+            window.dataHandler.onAction(this, 'add point');
+
             // set all currently active points inactive
             for(var key in this.annotations) {
                 if(this.annotations[key].isVisible()) {
@@ -1421,7 +1436,8 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
         return 'boundingBoxes';
     }
 
-    setLabel(label) {
+    setLabel(label, silent) {
+        if(!silent) window.dataHandler.onAction(this, 'set label');
         for(var key in this.annotations) {
             if(label === null || label === undefined) {
                 this._removeElement(this.annotations[key]);
@@ -1447,7 +1463,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
         };
         this.hoverTextElement = new HoverTextElement(this.entryID + '_hoverText', null, [0, 0.99], 'canvas',
             htStyle,
-            5);
+            5, false, this);
         this.viewport.addRenderElement(this.hoverTextElement);
 
         // interaction handlers
@@ -1533,7 +1549,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
             'height': 0,
             'label': window.labelClassHandler.getActiveClassID()
         };
-        var anno = new Annotation(window.getRandomID(), props, 'boundingBoxes', 'annotation');
+        var anno = new Annotation(window.getRandomID(), props, 'boundingBoxes', 'annotation', false, this);
         this._addElement(anno);
         anno.getRenderElement().registerAsCallback(this.viewport);
         anno.getRenderElement().setActive(true, this.viewport);
@@ -1580,7 +1596,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
                                 window.styles.crosshairLines,
                                 false,
                                 1);
-            this.crosshairLines = new ElementGroup(this.entryID + '_crosshairLines', [vertLine, horzLine], 1);
+            this.crosshairLines = new ElementGroup(this.entryID + '_crosshairLines', [vertLine, horzLine], 1, this);
             this.viewport.addRenderElement(this.crosshairLines);
             this.canvas.css('cursor', 'crosshair');
 
@@ -1607,6 +1623,8 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
 
         // check functionality
         if(window.uiControlHandler.getAction() ===ACTIONS.ADD_ANNOTATION) {
+            window.dataHandler.onAction(this, 'add bounding box');
+
             // set all currently active boxes inactive
             for(var key in this.annotations) {
                 if(this.annotations[key].isVisible()) {
@@ -1758,7 +1776,8 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
         return 'polygons';
     }
 
-    setLabel(label) {
+    setLabel(label, silent) {
+        if(!silent) window.dataHandler.onAction(this, 'set label');
         for(var key in this.annotations) {
             if(label ===null) {
                 this._removeElement(this.annotations[key]);
@@ -1784,7 +1803,7 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
         };
         this.hoverTextElement = new HoverTextElement(this.entryID + '_hoverText', null, [0, 0.99], 'canvas',
             htStyle,
-            5);
+            5, false, this);
         this.viewport.addRenderElement(this.hoverTextElement);
 
         // interaction handlers
@@ -1860,7 +1879,7 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
             'edge_map': (magneticPolygon? this.renderer.get_edge_image(true) : null)                  // for magnetic polygon
         };
         let annoID = window.getRandomID();
-        let anno = new Annotation(annoID, props, 'polygons', 'annotation');
+        let anno = new Annotation(annoID, props, 'polygons', 'annotation', false, this);
         let self = this;
         return anno.loadingPromise.then(() => {                         // required for loading of edge map (for magnetic polygon)
             self._addElement(anno);
@@ -1953,7 +1972,7 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
                                 window.styles.crosshairLines,
                                 false,
                                 1);
-            this.crosshairLines = new ElementGroup(this.entryID + '_crosshairLines', [vertLine, horzLine], 1);
+            this.crosshairLines = new ElementGroup(this.entryID + '_crosshairLines', [vertLine, horzLine], 1, this);
             this.viewport.addRenderElement(this.crosshairLines);
             // this.canvas.css('cursor', 'crosshair');
 
@@ -2155,6 +2174,7 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
             }
 
         } else if(window.uiControlHandler.getAction() === ACTIONS.MAGIC_WAND) {
+            window.dataHandler.onAction(this, 'Magic Wand');
             window.taskMonitor.addTask('magicWand', 'magic wand');
             window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
             try {
@@ -2186,6 +2206,8 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
             }
 
         } else if(window.uiControlHandler.getAction() === ACTIONS.GRAB_CUT) {
+            window.dataHandler.onAction(this, 'Grab Cut');
+
             // find clicked polygon
             let numClicked = 0;
             for(var key in this.annotations) {
@@ -2256,6 +2278,8 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
             }
 
         } else if(window.uiControlHandler.getAction() === ACTIONS.CONVEX_HULL) {
+            window.dataHandler.onAction(this, 'convex hull');
+
             // find clicked polygon
             let numClicked = 0;
             for(var key in this.annotations) {
@@ -2276,6 +2300,8 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
             }
 
         } else if(window.uiControlHandler.getAction() === ACTIONS.SIMPLIFY_POLYGON) {
+            window.dataHandler.onAction(this, 'simplify polygon');
+
             // find clicked polygon
             let numClicked = 0;
             for(var key in this.annotations) {
@@ -2311,12 +2337,13 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
         this.render();
     }
 
-    removeActiveAnnotations() {
+    removeActiveAnnotations(silent) {
         /**
          * For polygons, we only remove active annotations if there's more than
          * one. Otherwise, we assume the user might want to just delete polygon
          * vertices.
          */
+        if(!silent) window.dataHandler.onAction(this, 'remove active');
         let numRemoved = 0;
         let active = [];
         for(var key in this.annotations) {
@@ -2449,7 +2476,8 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
         if(properties.hasOwnProperty('height')) {
             entryProps['height'] = properties['height'];
         }
-        this.annotation = new Annotation(window.getRandomID(), entryProps, 'segmentationMasks', 'annotation');
+        let annoID = entryProps.hasOwnProperty('id') ? entryProps['id'] : window.getRandomID();
+        this.annotation = new Annotation(annoID, entryProps, 'segmentationMasks', 'annotation', false, this);
         this._addElement(this.annotation);
         this.segMap = this.annotation.geometry;
         this.segMap.setActive(true);
@@ -2548,6 +2576,7 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
          * Assigns all so far unassigned pixels in the segmentation mask to the
          * indicated class.
          */
+        window.dataHandler.onAction(this, 'fill unlabeled');
         let color = window.labelClassHandler.getColor(labelClass);
         this.segMap.fill_unlabeled(color);
     }
@@ -2556,6 +2585,13 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
     // callbacks
     _canvas_mousedown(event) {
         if(window.uiBlocked) return;
+        if(this.segMap.isActive) {
+            let action = window.uiControlHandler.getAction();
+            let actionText = null;
+            if(action === ACTIONS.ADD_ANNOTATION) actionText = 'paint';
+            else if(action === ACTIONS.REMOVE_ANNOTATIONS) actionText = 'erase';
+            if(actionText !== null) window.dataHandler.onAction(this, actionText);
+        } 
         this.mouseDown = true;
         this.__paint(event);
     }
