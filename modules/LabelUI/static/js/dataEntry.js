@@ -453,7 +453,7 @@ class AbstractDataEntry {
         };
         props['annotations'] = [];
         for(var key in this.annotations) {
-            if(!onlyUserAnnotations || this.annotations[key].getChanged())
+            if(!onlyUserAnnotations || this.annotations[key].getChanged()) {
                 var annoProps = this.annotations[key].getProperties(minimal);
                 
                 // append time created and time required
@@ -461,6 +461,7 @@ class AbstractDataEntry {
                 var timeRequired = Math.max(0, this.annotations[key].getTimeChanged() - this.getTimeCreated());
                 annoProps['timeRequired'] = timeRequired;
                 props['annotations'].push(annoProps);
+            }
         }
         if(!minimal) {
             props['fileName'] = this.fileName;
