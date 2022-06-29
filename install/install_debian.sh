@@ -1504,7 +1504,7 @@ EOF
         # Celery services
         tempfile_path=$TMPFILES_VOLATILE_DIR/celery_aide.conf
         servicePath="/etc/systemd/system/$SYSTEMD_TARGET_WORKER.service"
-        servicePath_celerybeat="/etc/systemd/ssytem/$SYSTEMD_TARGET_WORKER_BEAT.service"
+        servicePath_celerybeat="/etc/systemd/system/$SYSTEMD_TARGET_WORKER_BEAT.service"
 
         # temp file creation
         if [ -f "$tempfile_path" ]; then
