@@ -27,6 +27,9 @@ class GenericDetectron2BoundingBoxModel(GenericDetectron2Model):
         #TODO: safety checks; update state fun; etc.
         correlations = torch.zeros(len(targetClasses), len(modelClasses))
 
+        #TODO
+        return correlations
+
         # query data
         queryArgs = [tuple((l,) for l in targetClasses)]
         if isinstance(maxNumImages, int):
@@ -98,6 +101,8 @@ class GenericDetectron2BoundingBoxModel(GenericDetectron2Model):
                     break
 
                 outputs = model(batch)
+                if not len(outputs) or 'instances' not in outputs[0]:
+                    continue
                 outputs = outputs[0]['instances']
 
                 # calc. correlation per target instance and label class
@@ -124,5 +129,6 @@ class GenericDetectron2BoundingBoxModel(GenericDetectron2Model):
 
             # normalize
             correlations /= correlations.sum(1, keepdim=True)
+            correlations[~torch.isfinite(correlations)] = 0.0
             
             return correlations

@@ -11,7 +11,7 @@
     left: 0;
     top: 0;
     width: 100%;
-    height: 100%;
+    height: calc(100% - 25px);
     overflow-x: hidden;
 }
 
@@ -130,4 +130,17 @@
 #tile-view-button {
     border-top-left-radius: 0px;
     border-bottom-left-radius: 0px;
+}
+
+.image-browser-thumbs-container {
+    overflow-y: auto;
+    height: calc(100% - 25px);
+}
+
+.image-browser-size-panel {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    background: #515050;
+    padding-left: 10px;
 }

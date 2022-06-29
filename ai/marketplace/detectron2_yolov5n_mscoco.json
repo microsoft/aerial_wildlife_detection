@@ -1,12 +1,12 @@
 {
 	"aide_model_version": 1.0,
-	"name": "MS-COCO (YOLOv5s)",
-	"description": "YOLOv5s (small) object detector, trained on <a href=\"https://cocodataset.org\" target=\"_blank\">MS-COCO</a>.<br />See <a href=\"https://github.com/ultralytics/yolov5/releases\" target=\"_blank\">here</a> for more information.",
+	"name": "MS-COCO (YOLOv5n)",
+	"description": "YOLOv5n (Nano) object detector, trained on <a href=\"https://cocodataset.org\" target=\"_blank\">MS-COCO</a>.<br />See <a href=\"https://github.com/ultralytics/yolov5/releases\" target=\"_blank\">here</a> for more information.",
 	"author": "Ultralytics",
 	"time_created": 1607964812,
 	"tags": [
 		"YOLO",
-		"YOLOv5s",
+		"YOLOv5n",
 		"You Only Look Once",
 		"MS-COCO",
 		"detectron2"
@@ -100,7 +100,7 @@
 		"options": {
 			"model": {
 				"config": {
-					"value": "boundingBoxes/yolov5/yolov5s.yaml"
+					"value": "boundingBoxes/yolov5/yolov5n.yaml"
 				}
 			}
 		}

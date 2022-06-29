@@ -114,6 +114,7 @@ venv.bak/
 
 /*.ini
 *.pth
+*.pt
 /*.json
 
 # logs and traces

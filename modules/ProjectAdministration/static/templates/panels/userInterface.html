@@ -53,6 +53,21 @@
         </table>
     </div>
 
+    <div id="bbox-special-settings" class="settings-group" style="display:none">
+        <h3>Bounding box settings</h3>
+        <div>Minimum bounding box size (pixels):</div>
+        <table>
+            <tr>
+                <td>Width:</td>
+                <td><input id="min-bbox-size-w" type="number" min="1" max="1024" /></td>
+            </tr>
+            <tr>
+                <td>Height:</td>
+                <td><input id="min-bbox-size-h" type="number" min="1" max="1024" /></td>
+            </tr>
+        </table>
+    </div>
+
     <h3>AI model predictions</h3>
     <div class="settings-group">
         <!-- <input type="checkbox" id="show-predictions-checkbox" /> -->
@@ -313,7 +328,11 @@
         'ui_settings/styles/predictions/lineOpacity': {id: 'line-opacity-predictions', type: 'value', dtype: 'float'},
         'ui_settings/styles/annotations/fillOpacity': {id: 'fill-opacity-annotations', type: 'value', dtype: 'float'},
         'ui_settings/styles/annotations_converted/fillOpacity': {id: 'fill-opacity-annotations-converted', type: 'value', dtype: 'float'},
-        'ui_settings/styles/predictions/fillOpacity': {id: 'fill-opacity-predictions', type: 'value', dtype: 'float'}
+        'ui_settings/styles/predictions/fillOpacity': {id: 'fill-opacity-predictions', type: 'value', dtype: 'float'},
+
+        // special bbox styles
+        'ui_settings/minBoxSize_w': {id: 'min-bbox-size-w', type: 'value', dtype: 'int'},
+        'ui_settings/minBoxSize_h': {id: 'min-bbox-size-h', type: 'value', dtype: 'int'}
     };
 
     function _parse_config_value(data, key) {
@@ -636,6 +655,10 @@
                     $('#styles-lines').show();
                 } else if(window.annotationType === 'segmentationMasks') {
                     $('#display-styles-group').hide();
+                }
+
+                if(window.annotationType === 'boundingBoxes') {
+                    $('#bbox-special-settings').show();
                 }
             },
             error: function(xhr, status, error) {

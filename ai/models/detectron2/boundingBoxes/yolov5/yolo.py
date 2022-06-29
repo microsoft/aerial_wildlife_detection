@@ -105,7 +105,7 @@ class YOLOv5(GenericDetectron2BoundingBoxModel):
         '''
         model, stateDict, newClasses, _ = self.initializeModel(stateDict, data)
         # modify model weights to accept new label classes
-        if False:       #TODO: adaptlen(newClasses):
+        if True:       #TODO: adaptlen(newClasses):
             
             # create temporary labelclassMap for new classes
             lcMap_new = dict(zip(newClasses, list(range(len(newClasses)))))
@@ -115,59 +115,61 @@ class YOLOv5(GenericDetectron2BoundingBoxModel):
             for (key, index) in zip(stateDict['labelclassMap'].keys(), stateDict['labelclassMap'].values()):
                 classVector[index] = key
 
-            layers = model.model.model[24].m        # layers with a anchors x (n classes + 5 outputs) #TODO: check if this applies to all YOLOv5 model sizes
+            layers = model.model.model[-1].m        # layers with a anchors x (n classes + 5 outputs) #TODO: check if this applies to all YOLOv5 model sizes
             
             numNeurons = len(layers[0].bias)
             numAnchors = len(model.model.yaml['anchors'])
             numClasses_model = len(model.model.names)
-
-            # numClasses_orig = len(stateDict['labelclassMap'].keys()) - len(newClasses)
-            # numAnchors = numNeurons // (numClasses_orig)
 
             # create weights and biases for new classes
             if True:        #TODO: add flags in config file about strategy
                 modelClasses = range(len(model.model.names))
                 correlations = self.calculateClassCorrelations(stateDict, model, lcMap_new, modelClasses, newClasses, updateStateFun, 128)    #TODO: num images
 
-                for l in range(len(layers)):
-                    weights_copy = layers[l].weight.clone()
-                    biases_copy = layers[l].bias.clone()
+                existingIdx = torch.tensor(range(0, numNeurons-(numAnchors*5), numAnchors))        # starting indices of existing class weights
+                randomIdx = torch.randperm(len(existingIdx))
+                if len(randomIdx) < len(newClasses):
+                    # source model has fewer classes than target model; repeat
+                    randomIdx = randomIdx.repeat(int(len(newClasses)/len(randomIdx)+1))     #TODO
 
-                    correlations_expanded = correlations.repeat(1,numAnchors).to(weights_copy.device)
+                for lIdx, l in enumerate(range(len(layers))):
+                    weights = layers[l].weight
+                    biases = layers[l].bias
+
+                    weights_copy = weights.clone()
+                    biases_copy = biases.clone()
 
                     classMatches = (correlations.sum(1) > 0)            #TODO: calculate alternative strategies (e.g. class name similarities)
-
-                    randomIdx = torch.randperm(int(len(biases_copy)/numAnchors))
-                    if len(randomIdx) < len(newClasses):
-                        # source model has fewer classes than target model; repeat
-                        randomIdx = randomIdx.repeat(int(len(newClasses)/len(biases)+1))
 
                     for cl in range(len(newClasses)):
 
                         if classMatches[cl].item():
-                            newWeight = weights_copy * correlations_expanded[cl,:].view(-1,1,1,1)
-                            newBias = biases_copy * correlations_expanded[cl,:]
+                            #TODO: not correct yet
+                            newWeight = weights_copy[:numClasses_model*numAnchors,...]
+                            newBias = biases_copy[:numClasses_model*numAnchors]
 
-                            _, C, W, H = newWeight.size()
-                            newWeight = newWeight.view(numAnchors, -1, C, W, H)
-                            newBias = newBias.view(numAnchors, -1)
-                            corr = correlations_expanded[cl,:].view(numAnchors, -1)
+                            corr = correlations[cl,:]
                             valid = (corr > 0)
 
                             # average
-                            newWeight = newWeight.sum(1) / valid.sum(1).view(-1, 1, 1, 1)
-                            newBias = newBias.sum(1) / valid.sum(1)
+                            newWeight = torch.zeros((5, *weights_copy.size()[1:]), dtype=weights_copy.dtype, device=weights_copy.device)
+                            newBias = torch.zeros((5,), dtype=biases_copy.dtype, device=biases_copy.device)
+                            for v in torch.where(valid)[0]:
+                                newWeight += weights_copy[v*numAnchors:(v+1)*numAnchors,...]
+                                newBias += biases_copy[v*numAnchors:(v+1)*numAnchors]
+                            
+                            newWeight /= corr[valid].sum()
+                            newBias /= corr[valid].sum()
                         
                         else:
                             # class has no match; use alternative solution
 
                             #TODO: suboptimal alternative solution: choose random class
-                            _, C, W, H = weights_copy.size()
-                            newWeight = weights_copy.clone().view(numAnchors, -1, C, W, H)
-                            newBias = biases_copy.clone().view(numAnchors, -1)
-
-                            newWeight = newWeight[:,randomIdx[cl],...]
-                            newBias = newBias[:,randomIdx[cl]]
+                            newWeight = weights_copy.clone()
+                            newBias = biases_copy.clone()
+                            idx = existingIdx[randomIdx[cl]]
+                            newWeight = newWeight[idx:idx+numAnchors,...]
+                            newBias = newBias[idx:idx+numAnchors]
 
                             # add a bit of noise
                             newWeight += (0.5 - torch.rand_like(newWeight)) * 0.5 * torch.std(weights_copy)
@@ -176,10 +178,16 @@ class YOLOv5(GenericDetectron2BoundingBoxModel):
                         # prepend
                         weights = torch.cat((newWeight, weights), 0)
                         biases = torch.cat((newBias, biases), 0)
-                        classVector.insert(0, newClasses[cl])
+
+                        if lIdx == 0:
+                            classVector.insert(0, newClasses[cl])
             
-            # remove old classes
-            valid = torch.ones(len(biases), dtype=torch.bool)
+                    # apply updated weights and biases
+                    model.model.model[-1].m[lIdx].weight = torch.nn.Parameter(weights)
+                    model.model.model[-1].m[lIdx].bias = torch.nn.Parameter(biases)
+                    model.model.model[-1].m[lIdx].out_channels = len(biases)
+
+            # valid = torch.ones(len(biases), dtype=torch.bool)
             classMap_updated = {}
             index_updated = 0
             for idx, clName in enumerate(classVector):
@@ -192,14 +200,10 @@ class YOLOv5(GenericDetectron2BoundingBoxModel):
 
             # weights = weights[valid,...]
             # biases = biases[valid,...]
-
-            # apply updated weights and biases
-            model.head.cls_score.weight = torch.nn.Parameter(weights)
-            model.head.cls_score.bias = torch.nn.Parameter(biases)
             
             stateDict['labelclassMap'] = classMap_updated
 
-            print(f'Neurons for {len(newClasses)} new label classes added to RetinaNet model.')
+            print(f'Neurons for {len(newClasses)} new label classes added to YOLOv5 model.')
 
 
         # finally, update model and config
@@ -208,5 +212,6 @@ class YOLOv5(GenericDetectron2BoundingBoxModel):
             map_inv = dict([v,k] for k,v in stateDict['labelclassMap'].items())
             mapKeys = list(map_inv)
             mapKeys.sort()
-            model.model.names = [str(map_inv[key]) for key in mapKeys]
+            model.names = [str(map_inv[key]) for key in mapKeys]
+            model.model.names = model.names
         return model, stateDict

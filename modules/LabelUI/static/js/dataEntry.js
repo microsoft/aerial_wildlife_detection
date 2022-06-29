@@ -536,7 +536,7 @@ class AbstractDataEntry {
         };
         props['annotations'] = [];
         for(var key in this.annotations) {
-            if(!onlyUserAnnotations || this.annotations[key].getChanged())
+            if(!onlyUserAnnotations || this.annotations[key].getChanged()) {
                 var annoProps = this.annotations[key].getProperties(minimal);
                 
                 // append time created and time required
@@ -544,6 +544,7 @@ class AbstractDataEntry {
                 var timeRequired = Math.max(0, this.annotations[key].getTimeChanged() - this.getTimeCreated());
                 annoProps['timeRequired'] = timeRequired;
                 props['annotations'].push(annoProps);
+            }
         }
         if(!minimal) {
             props['fileName'] = this.fileName;
@@ -723,6 +724,36 @@ class AbstractDataEntry {
             if(label != null) classIDs[label] = 1;
         }
         return classIDs;
+    }
+
+    // undo/redo interface for child rendering elements
+    freezeActionState() {
+        /**
+         * Serializes the data entry, but does not commit it yet to the
+         * DataHandler for the undo/redo stack. This needs to be done with
+         * function "submitActionState" below.
+         */
+        this.actionState = this.getProperties(false, true); //TODO: only user annotations suffices?
+    }
+
+    submitActionState(actionName) {
+        /**
+         * Takes the frozen data entry serialization object and submits it to
+         * the DataHandler for the undo/redo stack (i.e., creates an undo
+         * entry).
+         */
+        if(this.actionState === undefined) return;
+        window.dataHandler.onAction(this, actionName);
+        this.clearActionState();
+    }
+
+    getActionState() {
+        if(this.actionState === undefined) return this.getProperties(false, true);  //TODO
+        else return this.actionState['properties'];
+    }
+
+    clearActionState() {
+        this.actionState = undefined;
     }
 
     //TODO: this and next two functions are doubly-defined (also in areaSelection.js)
@@ -1284,6 +1315,8 @@ class PointAnnotationEntry extends AbstractDataEntry {
     _canvas_mousedown(event) {
         if(window.uiBlocked) return;
         this.mouseDown = true;
+
+        this.freezeActionState();
 
         // check functionality
         if(window.uiControlHandler.getAction() === ACTIONS.ADD_ANNOTATION) {

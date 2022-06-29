@@ -28,7 +28,7 @@ test_only=FALSE                     # skip installation and only do checks and t
 # -----------------------------------------------------------------------------
 
 # constants
-INSTALLER_VERSION=2.2.211221
+INSTALLER_VERSION=2.2.220629
 MIN_PG_VERSION=9.5
 PG_KEY=ACCC4CF8.asc
 DEFAULT_PORT_RABBITMQ=5672
@@ -1505,7 +1505,7 @@ EOF
         # Celery services
         tempfile_path=$TMPFILES_VOLATILE_DIR/celery_aide.conf
         servicePath="/etc/systemd/system/$SYSTEMD_TARGET_WORKER.service"
-        servicePath_celerybeat="/etc/systemd/ssytem/$SYSTEMD_TARGET_WORKER_BEAT.service"
+        servicePath_celerybeat="/etc/systemd/system/$SYSTEMD_TARGET_WORKER_BEAT.service"
 
         # temp file creation
         if [ -f "$tempfile_path" ]; then

@@ -114,7 +114,7 @@ function simplifyPolygon(coordinates, tolerance, highQuality) {
 
 class AbstractRenderElement {
 
-    constructor(id, style, zIndex, disableInteractions, parent) {
+    constructor(id, style, zIndex, disableInteractions) {
         this.id = id;
         this.style = style;
         if(this.style === null || this.style === undefined) {
@@ -122,7 +122,6 @@ class AbstractRenderElement {
         }
         this.zIndex = (zIndex == null? 0 : zIndex);
         this.disableInteractions = disableInteractions;
-        this.parent = parent;
         this.isActive = false;
         this.changed = false;   // will be set to true if user modifies the initial geometry
         this.lastUpdated = new Date();  // timestamp of last update
@@ -420,8 +419,7 @@ class PointElement extends AbstractRenderElement {
     _mousedown_event(event, viewport, force) {
         if(!this.visible ||
             !force && (!([ACTIONS.DO_NOTHING, ACTIONS.ADD_ANNOTATION].includes(window.uiControlHandler.getAction())))) return;
-        
-        //TODO: pre-record data entry state for undo actions
+                
         this.mousePos_current = viewport.getRelativeCoordinates(event, 'validArea');
         this.mouseDrag = (event.which === 1);
         var tolerance = viewport.transformCoordinates([0,0,window.annotationProximityTolerance,0], 'canvas', true)[2];
@@ -603,8 +601,8 @@ class PointElement extends AbstractRenderElement {
 
 class LineElement extends AbstractRenderElement {
 
-    constructor(id, startX, startY, endX, endY, style, unsure, zIndex, disableInteractions, parent) {
-        super(id, style, zIndex, disableInteractions, parent);
+    constructor(id, startX, startY, endX, endY, style, unsure, zIndex, disableInteractions) {
+        super(id, style, zIndex, disableInteractions);
         if(!this.style.hasOwnProperty('strokeColor') && this.style.hasOwnProperty('color')) {
             this.style['strokeColor'] = window.addAlpha(this.style.color, this.style.lineOpacity);
         }
@@ -658,8 +656,8 @@ class LineElement extends AbstractRenderElement {
 
 class PolygonElement extends AbstractRenderElement {
 
-    constructor(id, coordinates, style, unsure, zIndex, disableInteractions, parent) {
-        super(id, style, zIndex, disableInteractions, parent);
+    constructor(id, coordinates, style, unsure, zIndex, disableInteractions) {
+        super(id, style, zIndex, disableInteractions);
         if(this.style.fillOpacity === undefined) this.style.fillOpacity = 0;
 
         if(this.style.hasOwnProperty('color')) {
@@ -794,6 +792,7 @@ class PolygonElement extends AbstractRenderElement {
          * Removes a vertex at given index in the polygon.
          * Negative indices count from the end.
          */
+        this
         this.coordinates.splice(index, 1);
         this.coordinates.splice(index, 1);
         if(this.coordinates.length < 6) {
@@ -1221,8 +1220,8 @@ class PolygonElement extends AbstractRenderElement {
  */
 class MagneticPolygonElement extends PolygonElement {
     
-    constructor(id, edgeMap, coordinates, style, unsure, zIndex, disableInteractions, parent) {
-        super(id, coordinates, style, unsure, zIndex, disableInteractions, parent);
+    constructor(id, edgeMap, coordinates, style, unsure, zIndex, disableInteractions) {
+        super(id, coordinates, style, unsure, zIndex, disableInteractions);
         this.edgeMap = edgeMap;
     }
 
@@ -1300,8 +1299,8 @@ class MagneticPolygonElement extends PolygonElement {
 
 class RectangleElement extends PointElement {
 
-    constructor(id, x, y, width, height, style, unsure, zIndex, disableInteractions, parent) {
-        super(id, x, y, style, unsure, zIndex, disableInteractions, parent);
+    constructor(id, x, y, width, height, style, unsure, zIndex, disableInteractions) {
+        super(id, x, y, style, unsure, zIndex, disableInteractions);
         if(!this.style.hasOwnProperty('strokeColor') && this.style.hasOwnProperty('color')) {
             this.style['strokeColor'] = window.addAlpha(this.style.color, this.style.lineOpacity);
         }
@@ -1688,8 +1687,8 @@ class BorderStrokeElement extends AbstractRenderElement {
         Draws a border around the viewport.
         Specifically intended for classification tasks.
     */
-    constructor(id, text, style, unsure, zIndex, disableInteractions, parent) {
-        super(id, style, zIndex, disableInteractions, parent);
+    constructor(id, text, style, unsure, zIndex, disableInteractions) {
+        super(id, style, zIndex, disableInteractions);
         if(this.style.textColor == null || this.style.textColor == undefined) {
             this.style['textColor'] = window.styles.hoverText.text.color;
         }
@@ -1757,8 +1756,8 @@ class ResizeHandle extends AbstractRenderElement {
         Draws a small square at a given position that is fixed in size
         (but not in position), irrespective of scale.
     */
-    constructor(id, x, y, zIndex, disableInteractions, parent) {
-        super(id, null, zIndex, disableInteractions, parent);
+    constructor(id, x, y, zIndex, disableInteractions) {
+        super(id, null, zIndex, disableInteractions);
         this.x = x;
         this.y = y;
     }
@@ -1800,8 +1799,8 @@ class PaintbrushElement extends AbstractRenderElement {
         Convenience class that either displays a square or circle,
         depending on the global setting, over the mouse position.
     */
-    constructor(id, x, y, zIndex, disableInteractions, sizeOverride, typeOverride, parent) {
-        super(id, null, zIndex, disableInteractions, parent);
+    constructor(id, x, y, zIndex, disableInteractions, sizeOverride, typeOverride) {
+        super(id, null, zIndex, disableInteractions);
         this.x = x;
         this.y = y;
         this.hasSizeOverride = (typeof(sizeOverride) === 'number');
@@ -1851,8 +1850,8 @@ class MiniViewport extends AbstractRenderElement {
         and position on the parent viewport.
         Useful when only a sub-part of the viewport's area is to be shown.
     */
-    constructor(id, parentViewport, parentExtent, x, y, size, zIndex, disableInteractions, parent) {
-        super(id, null, zIndex, disableInteractions, parent);
+    constructor(id, parentViewport, parentExtent, x, y, size, zIndex, disableInteractions) {
+        super(id, null, zIndex, disableInteractions);
         this.parentViewport = parentViewport;
         this.parentExtent = parentExtent;
         this.position = null;
@@ -1904,8 +1903,8 @@ class MiniMap extends AbstractRenderElement {
         canvas elements and also offers an interactive rectangle, showing
         the position of the parent viewport's current extent.
     */
-    constructor(id, parentViewport, x, y, size, interactive, zIndex, disableInteractions, parent) {
-        super(id, null, zIndex, disableInteractions, parent);
+    constructor(id, parentViewport, x, y, size, interactive, zIndex, disableInteractions) {
+        super(id, null, zIndex, disableInteractions);
         this.parentViewport = parentViewport;
 
         this.position = null;
@@ -2119,8 +2118,8 @@ class MiniMap extends AbstractRenderElement {
 
 class SegmentationElement extends AbstractRenderElement {
 
-    constructor(id, annotationMap, predictionMap, width, height, zIndex, disableInteractions, parent) {
-        super(id, null, zIndex, disableInteractions, parent);
+    constructor(id, annotationMap, predictionMap, width, height, zIndex, disableInteractions) {
+        super(id, null, zIndex, disableInteractions);
         this._create_canvas(annotationMap, predictionMap, width, height);
     }
 

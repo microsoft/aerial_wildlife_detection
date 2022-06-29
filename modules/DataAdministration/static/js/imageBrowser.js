@@ -92,41 +92,57 @@ class ImageEntry {
         return this.progressBar.getMarkup();
     }
 
+    _load_image_contents() {
+        if(this.imageLoaded || this.image === undefined) return;
+
+        this.image.attr('src', '/static/dataAdmin/img/loading.png');
+
+        // get ImageRenderer to create canvas from source
+        let fullImagePath = this.baseURL+this.imageURL;
+        if(typeof(getParserByExtension) === 'function') {
+            let parserClass = getParserByExtension(this.imageURL.substring(this.imageURL.lastIndexOf('.')));
+            if(parserClass !== undefined) {
+                let parser = new parserClass(fullImagePath);
+                let self = this;
+                parser.get_image_array([0,1,2], false).then((arr) => {          //TODO: get bands from render config
+                    // create canvas to put image data to
+                    let canvas = document.createElement('canvas');
+                    canvas.width = parser.getWidth();
+                    canvas.height = parser.getHeight();
+                    let imageData = new ImageData(new Uint8ClampedArray(arr), canvas.width, canvas.height);
+                    canvas.getContext('2d').putImageData(imageData, 0, 0);
+                    self.image.attr('src', canvas.toDataURL());
+                    self.imageLoaded = true;
+                });
+            } else {
+                // no parser found; fallback to Web image
+                //TODO: test to load image only on click
+                this.image.attr('src', fullImagePath);
+                this.imageLoaded = true;
+            }
+
+        } else {
+            // no ImageRenderer available; fallback to Web image
+            //TODO: test to load image only on click
+            this.image.attr('src', fullImagePath);
+            this.imageLoaded = true;
+        }
+        // this.image.on('click', function(event) {
+        //     self.parent._on_entry_click(event, self);
+        // });
+    }
+
     _create_image() {
         if(this.image === undefined) {
-            var self = this;
-            this.image = $('<img src="/static/dataAdmin/img/loading.png" />');
+            let self = this;
+            this.image = $('<img src="/static/dataAdmin/img/clicktoload.png" />');
             this.image.on('error', function() {
                 if(this.src !== '/static/dataAdmin/img/error.png')
                     this.src = '/static/dataAdmin/img/error.png';
             });
 
-            // get ImageRenderer to create canvas from source
-            //TODO: slow and expensive - calculate preview thumbnails instead after image import
-            let fullImagePath = this.baseURL+this.imageURL;
-            if(typeof(getParserByExtension) === 'function') {
-                let parserClass = getParserByExtension(this.imageURL.substring(this.imageURL.lastIndexOf('.')));
-                if(parserClass !== undefined) {
-                    let parser = new parserClass(fullImagePath);
-                    parser.get_image_array([0,1,2], false).then((arr) => {          //TODO: get bands from render config
-                        // create canvas to put image data to
-                        let canvas = document.createElement('canvas');
-                        canvas.width = parser.getWidth();
-                        canvas.height = parser.getHeight();
-                        let imageData = new ImageData(new Uint8ClampedArray(arr), canvas.width, canvas.height);
-                        canvas.getContext('2d').putImageData(imageData, 0, 0);
-                        self.image.attr('src', canvas.toDataURL());
-                    });
-                } else {
-                    // no parser found; fallback to Web image
-                    this.image.attr('src', fullImagePath);
-                }
-
-            } else {
-                // no ImageRenderer available; fallback to Web image
-                this.image.attr('src', fullImagePath);
-            }
             this.image.on('click', function(event) {
+                self._load_image_contents();
                 self.parent._on_entry_click(event, self);
             });
         }
@@ -241,7 +257,8 @@ class ImageEntry {
 
     setImageURL(url) {
         this.imageURL = url;
-        this.image.attr('src', this.imageURL);
+        // this.image.attr('src', this.imageURL);       // on click only
+
     }
 
     set(varName, value) {
@@ -521,8 +538,21 @@ class ThumbnailView extends AbstractImageView {
 
     _setup_markup() {
         if(this.thumbsContainer === undefined) {
-            this.thumbsContainer = $('<div></div>');
+            this.thumbsContainer = $('<div class="image-browser-thumbs-container"></div>');
             this.div.append(this.thumbsContainer);
+
+            // image size slider
+            let iszrange = $('<input type="range" min="24" max="1024" value="128" />');
+            iszrange.on('input', function() {
+                let height = $(this).val();
+                let ratio = $('.thumbnail').width() / $('.thumbnail').height();
+                let width = height * ratio;
+                $('.thumbnail').css('height', height.toString()+'px');
+                $('.thumbnail').css('width', width.toString()+'px');
+            });
+            let iszrangeCont = $('<div class="image-browser-size-panel">image size:</div>');
+            iszrangeCont.append(iszrange);
+            this.div.append(iszrangeCont);
         }
         this.thumbsContainer.empty();
         this.order = {};
@@ -688,6 +718,16 @@ class ListView extends AbstractImageView {
             this.tbody = $('<tbody class="list-body"></tbody>');
             table.append(this.tbody);
             this.div.append(table);
+
+            // image size slider
+            let iszrange = $('<input type="range" min="24" max="256" value="50" />');
+            iszrange.on('input', function() {
+                let height = $(this).val();
+                $('.list-entry-thumb').css('height', height.toString()+'px');
+            });
+            let iszrangeCont = $('<div class="image-browser-size-panel">image size:</div>');
+            iszrangeCont.append(iszrange);
+            this.div.append(iszrangeCont);
         }
 
         this.tbody.empty();

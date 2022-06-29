@@ -65,6 +65,9 @@ class DataHandler {
     resetActionStack() {
         this.actionUndoStack = [];
         this.actionRedoStack = [];
+        for(var e=0; e<this.dataEntries.length; e++) {
+            this.dataEntries[e].clearActionState();
+        }
     }
 
     onAction(entries, actionName) {
@@ -77,11 +80,11 @@ class DataHandler {
         if(Array.isArray(entries)) {
             for(var e=0; e<entries.length; e++) {
                 let entry = entries[e];
-                actionEntries[entry.entryID] = entry.getProperties(false, false);
+                actionEntries[entry.entryID] = entry.getActionState();
             }
         } else {
             // single entry
-            actionEntries[entries.entryID] = entries.getProperties(false, false);
+            actionEntries[entries.entryID] = entries.getActionState();
         }
         this.actionUndoStack.push({'action': actionName,
                                     'dataEntries': JSON.stringify(actionEntries)});
