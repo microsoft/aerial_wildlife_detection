@@ -15,7 +15,7 @@ from psycopg2 import sql
 import torch
 from torch.nn.parallel import DistributedDataParallel
 import detectron2
-from detectron2.config import get_cfg
+from detectron2.config import get_cfg, CfgNode
 from detectron2.data import MetadataCatalog, build_detection_train_loader, build_detection_test_loader
 from detectron2.data import transforms as T
 from detectron2.solver import build_lr_scheduler, build_optimizer
@@ -66,9 +66,11 @@ class GenericDetectron2Model(AIModel):
 
 
     @classmethod
-    def parse_aide_config(cls, config, detectron2cfg=None):
-        if detectron2cfg is None:
-            detectron2cfg = get_cfg()
+    def parse_aide_config(cls, config, overrideDetectron2cfg=None):
+        detectron2cfg = get_cfg()
+        detectron2cfg.set_new_allowed(True)
+        if overrideDetectron2cfg is not None:
+            detectron2cfg.update(overrideDetectron2cfg)
         if isinstance(config, dict):
             for key in config.keys():
                 if isinstance(key, str) and key.startswith('DETECTRON2.'):
@@ -221,7 +223,7 @@ class GenericDetectron2Model(AIModel):
         if 'detectron2cfg' in stateDict and not forceNewModel:
             # medium priority: model overrides
             self.detectron2cfg.set_new_allowed(True)
-            self.detectron2cfg.update(stateDict['detectron2cfg'])
+            self.detectron2cfg.update(CfgNode(stateDict['detectron2cfg']))
 
         # top priority: AIDE config overrides
         self.detectron2cfg = self.parse_aide_config(self.options, self.detectron2cfg)

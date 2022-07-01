@@ -51,6 +51,21 @@ class YOLOv5(nn.Module):
     def load_weights(self, weights, strict=False):
         return self.model.load_state_dict(weights, strict)
 
+
+    def load_state_dict(self, state_dict: 'OrderedDict[str, Tensor]', strict: bool = True):
+        try:
+            status = super(YOLOv5, self).load_state_dict(state_dict, strict=False)
+            if len(status['missing_keys']) or len(status['unexpected_keys']):
+                # try loading within model
+                status_model = self.model.load_state_dict(state_dict, strict=False)
+
+                if len(status['missing_keys'] < status_model['missing_keys']):
+                    return super(YOLOv5, self).load_state_dict(state_dict, strict=False)
+                else:
+                    return status_model
+        except:
+            return self.model.load_state_dict(state_dict, strict=False)
+
     
     def to(self, device):
         '''
