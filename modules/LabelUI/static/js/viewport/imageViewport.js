@@ -126,7 +126,7 @@ class ImageViewport {
                     lineDash: [3, 1]
                 };
                 this.zoomRectangle = new RectangleElement(
-                    'zoomRect', this.mousePos[0], this.mousePos[1], 0, 0, style, false, 100
+                    'zoomRect', this.mousePos[0], this.mousePos[1], 0, 0, style, false, 100, false, null
                 );
 
                 this.zoomRectangle._mousedown_event(event, this, true);

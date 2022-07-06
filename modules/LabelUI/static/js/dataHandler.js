@@ -59,7 +59,13 @@ class DataHandler {
                     self.numBatchesSeen = 0;
                 }
             }
-        })
+        });
+    }
+
+    freezeActionState() {
+        for(var e=0; e<this.dataEntries.length; e++) {
+            this.dataEntries[e].freezeActionState();
+        }
     }
 
     resetActionStack() {
@@ -93,29 +99,42 @@ class DataHandler {
     undo() {
         if(this.actionUndoStack.length === 0) return;
         let action = this.actionUndoStack.pop();
+        let redoActionEntries = {};
         let dataEntries = JSON.parse(action['dataEntries']);
         for(var key in dataEntries) {
             let entryIdx = this.dataEntryLUT[key];
             if(entryIdx !== undefined) {
+                redoActionEntries[key] = this.dataEntries[entryIdx].getActionState();
                 this.dataEntries[entryIdx].setProperties(dataEntries[key]);
             }
         }
         this.renderAll();
-        this.actionRedoStack.push(action);
+        this.actionRedoStack.push({'action': action['action'],
+                                    'dataEntries': JSON.stringify(redoActionEntries)});
     }
 
     redo() {
         if(this.actionRedoStack.length === 0) return;
         let action = this.actionRedoStack.pop();
+        let undoActionEntries = {};
         let dataEntries = JSON.parse(action['dataEntries']);
         for(var key in dataEntries) {
             let entryIdx = this.dataEntryLUT[key];
             if(entryIdx !== undefined) {
+                undoActionEntries[key] = this.dataEntries[entryIdx].getActionState();
                 this.dataEntries[entryIdx].setProperties(dataEntries[key]);
             }
         }
         this.renderAll();
-        this.actionUndoStack.push(action);
+        this.actionUndoStack.push({'action': action['action'],
+                                    'dataEntries': JSON.stringify(undoActionEntries)});
+    }
+
+    get_undo_redo_stats() {
+        return {
+            'next_undo': this.actionUndoStack.length > 0 ? this.actionUndoStack[this.actionUndoStack.length-1]['action'] : undefined,
+            'next_redo': this.actionRedoStack.length > 0 ? this.actionRedoStack[this.actionRedoStack.length-1]['action'] : undefined
+        }
     }
 
     getNumInteractions() {
@@ -219,13 +238,16 @@ class DataHandler {
          *   one annotation is selected: perform GrabCut on it
          * - otherwise, does nothing
          */
-        this.onAction(this.dataEntries, 'Grab Cut');
+        this.freezeActionState();
         let promises = [];
+        let self = this;
         for(var i=0; i<this.dataEntries.length; i++) {
             promises.push(this.dataEntries[i].grabCutOnActiveAnnotations(true));
             // this.dataEntries[i].grabCutOnActiveAnnotations();
         }
-        return Promise.all(promises);
+        return Promise.all(promises).then(() => {
+            self.onAction(this.dataEntries, 'Grab Cut');
+        });
     }
 
     refreshActiveAnnotations() {

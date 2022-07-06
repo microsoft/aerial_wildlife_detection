@@ -114,7 +114,7 @@ function simplifyPolygon(coordinates, tolerance, highQuality) {
 
 class AbstractRenderElement {
 
-    constructor(id, style, zIndex, disableInteractions) {
+    constructor(id, style, zIndex, disableInteractions, parent) {
         this.id = id;
         this.style = style;
         if(this.style === null || this.style === undefined) {
@@ -122,6 +122,7 @@ class AbstractRenderElement {
         }
         this.zIndex = (zIndex == null? 0 : zIndex);
         this.disableInteractions = disableInteractions;
+        this.parent = parent;
         this.isActive = false;
         this.changed = false;   // will be set to true if user modifies the initial geometry
         this.lastUpdated = new Date();  // timestamp of last update
@@ -136,6 +137,9 @@ class AbstractRenderElement {
         } catch {
             this.refreshRate = 0;
         }
+
+        // for undo/redo stack
+        this.actionName = 'add annotation';
     }
 
     getProperty(propertyName) {
@@ -451,6 +455,8 @@ class PointElement extends AbstractRenderElement {
 
             // update cursor
             viewport.canvas.css('cursor', 'move');
+
+            this.actionName = 'move point';
         }
 
         // update current mouse pos
@@ -475,6 +481,11 @@ class PointElement extends AbstractRenderElement {
             this.setActive(true, viewport);
         } else {
             this.setActive(false, viewport);
+        }
+
+        if(typeof(this.actionName) === 'string' && this.parent !== undefined) {
+            this.parent.submitActionState(this.actionName);
+            this.actionName = undefined;
         }
     }
 
@@ -601,8 +612,8 @@ class PointElement extends AbstractRenderElement {
 
 class LineElement extends AbstractRenderElement {
 
-    constructor(id, startX, startY, endX, endY, style, unsure, zIndex, disableInteractions) {
-        super(id, style, zIndex, disableInteractions);
+    constructor(id, startX, startY, endX, endY, style, unsure, zIndex, disableInteractions, parent) {
+        super(id, style, zIndex, disableInteractions, parent);
         if(!this.style.hasOwnProperty('strokeColor') && this.style.hasOwnProperty('color')) {
             this.style['strokeColor'] = window.addAlpha(this.style.color, this.style.lineOpacity);
         }
@@ -656,8 +667,8 @@ class LineElement extends AbstractRenderElement {
 
 class PolygonElement extends AbstractRenderElement {
 
-    constructor(id, coordinates, style, unsure, zIndex, disableInteractions) {
-        super(id, style, zIndex, disableInteractions);
+    constructor(id, coordinates, style, unsure, zIndex, disableInteractions, parent) {
+        super(id, style, zIndex, disableInteractions, parent);
         if(this.style.fillOpacity === undefined) this.style.fillOpacity = 0;
 
         if(this.style.hasOwnProperty('color')) {
@@ -769,6 +780,8 @@ class PolygonElement extends AbstractRenderElement {
         if(this.isClosed() || this.coordinates.length < 6) return;
         this.closed = true;
         this.adjustmentHandles_dirty = true;        //TODO: dirty hack to redraw handles upon next viewport availability
+
+        if(this.parent !== undefined) this.parent.submitActionState('create polygon');
     }
 
     addVertex(coordinates, index) {
@@ -1055,11 +1068,13 @@ class PolygonElement extends AbstractRenderElement {
                     (coords[1] - this.mousePos_current[1])
                 ]
                 this._translatePolygon(shift);
+                this.actionName = 'move polygon';
 
             } else if(this.activeHandle !== null) {
                 // move vertex
                 this.coordinates[this.activeHandle] = coords[0];
                 this.coordinates[this.activeHandle+1] = coords[1];
+                this.actionName = 'move polygon vertex';
             } else if(!this.isClosed()) {
                 // click and drag on unclosed polygon: freehand
                 let tolerance = 0.0001; //TODO: make general parameter; also solve performance problems
@@ -1120,6 +1135,10 @@ class PolygonElement extends AbstractRenderElement {
                     this.setActive(true, viewport);
                 }
             }
+            if(typeof(this.actionName) === 'string' && this.parent !== undefined) {
+                this.parent.submitActionState(this.actionName);
+                this.actionName = undefined;
+            }
         } else {
             // check if mouse position is close to first vertex
             let tolerance = viewport.transformCoordinates([0,0,window.annotationProximityTolerance,0], 'canvas', true)[2];
@@ -1130,6 +1149,7 @@ class PolygonElement extends AbstractRenderElement {
             } else {
                 // clicked somewhere else; add new vertex
                 this.addVertex(mousePos, -1);
+                if(this.parent !== undefined && this.actionName === undefined) this.parent.submitActionState('add polygon vertex');
             }
             this._createAdjustmentHandles(viewport, true);
         }
@@ -1220,8 +1240,8 @@ class PolygonElement extends AbstractRenderElement {
  */
 class MagneticPolygonElement extends PolygonElement {
     
-    constructor(id, edgeMap, coordinates, style, unsure, zIndex, disableInteractions) {
-        super(id, coordinates, style, unsure, zIndex, disableInteractions);
+    constructor(id, edgeMap, coordinates, style, unsure, zIndex, disableInteractions, parent) {
+        super(id, coordinates, style, unsure, zIndex, disableInteractions, parent);
         this.edgeMap = edgeMap;
     }
 
@@ -1289,6 +1309,7 @@ class MagneticPolygonElement extends PolygonElement {
                 if(edge_argmax !== undefined) {
                     this.addVertex(edge_argmax, -1);
                     this._createAdjustmentHandles(viewport, true);
+                    if(this.actionName === undefined) this.actionName = 'add polygon vertex';
                 }
             }
             this.lastUpdated = new Date();
@@ -1299,8 +1320,8 @@ class MagneticPolygonElement extends PolygonElement {
 
 class RectangleElement extends PointElement {
 
-    constructor(id, x, y, width, height, style, unsure, zIndex, disableInteractions) {
-        super(id, x, y, style, unsure, zIndex, disableInteractions);
+    constructor(id, x, y, width, height, style, unsure, zIndex, disableInteractions, parent) {
+        super(id, x, y, style, unsure, zIndex, disableInteractions, parent);
         if(!this.style.hasOwnProperty('strokeColor') && this.style.hasOwnProperty('color')) {
             this.style['strokeColor'] = window.addAlpha(this.style.color, this.style.lineOpacity);
         }
@@ -1508,8 +1529,9 @@ class RectangleElement extends PointElement {
         //     this.lastUpdated = new Date();
 
         // } else
-        if(this.mouseDrag && this.activeHandle != null) {
+        if(this.mouseDrag && this.activeHandle !== null) {
             // move or resize rectangle
+            if(this.actionName === undefined) this.actionName = 'resize';
             if(this.activeHandle.includes('w')) {
                 var width = extent[2] - mpc[0];
                 if(width < 0) {
@@ -1549,6 +1571,7 @@ class RectangleElement extends PointElement {
             if(this.activeHandle.includes('c')) {
                 this.setProperty('x', this.x + coords[0] - mpc[0]);
                 this.setProperty('y', this.y + coords[1] - mpc[1]);
+                this.actionName = 'move';
             }
 
             // update timestamp
@@ -1592,6 +1615,11 @@ class RectangleElement extends PointElement {
         }
 
         this.mouseDrag = false;
+
+        if(typeof(this.actionName) === 'string' && this.parent !== undefined) {
+            this.parent.submitActionState(this.actionName);
+            this.actionName = undefined;
+        }
     }
 
 
@@ -1687,8 +1715,8 @@ class BorderStrokeElement extends AbstractRenderElement {
         Draws a border around the viewport.
         Specifically intended for classification tasks.
     */
-    constructor(id, text, style, unsure, zIndex, disableInteractions) {
-        super(id, style, zIndex, disableInteractions);
+    constructor(id, text, style, unsure, zIndex, disableInteractions, parent) {
+        super(id, style, zIndex, disableInteractions, parent);
         if(this.style.textColor == null || this.style.textColor == undefined) {
             this.style['textColor'] = window.styles.hoverText.text.color;
         }
@@ -1756,8 +1784,8 @@ class ResizeHandle extends AbstractRenderElement {
         Draws a small square at a given position that is fixed in size
         (but not in position), irrespective of scale.
     */
-    constructor(id, x, y, zIndex, disableInteractions) {
-        super(id, null, zIndex, disableInteractions);
+    constructor(id, x, y, zIndex, disableInteractions, parent) {
+        super(id, null, zIndex, disableInteractions, parent);
         this.x = x;
         this.y = y;
     }
@@ -1800,7 +1828,7 @@ class PaintbrushElement extends AbstractRenderElement {
         depending on the global setting, over the mouse position.
     */
     constructor(id, x, y, zIndex, disableInteractions, sizeOverride, typeOverride) {
-        super(id, null, zIndex, disableInteractions);
+        super(id, null, zIndex, disableInteractions, null);
         this.x = x;
         this.y = y;
         this.hasSizeOverride = (typeof(sizeOverride) === 'number');
@@ -1851,7 +1879,7 @@ class MiniViewport extends AbstractRenderElement {
         Useful when only a sub-part of the viewport's area is to be shown.
     */
     constructor(id, parentViewport, parentExtent, x, y, size, zIndex, disableInteractions) {
-        super(id, null, zIndex, disableInteractions);
+        super(id, null, zIndex, disableInteractions, null);
         this.parentViewport = parentViewport;
         this.parentExtent = parentExtent;
         this.position = null;
@@ -1904,7 +1932,7 @@ class MiniMap extends AbstractRenderElement {
         the position of the parent viewport's current extent.
     */
     constructor(id, parentViewport, x, y, size, interactive, zIndex, disableInteractions) {
-        super(id, null, zIndex, disableInteractions);
+        super(id, null, zIndex, disableInteractions, null);
         this.parentViewport = parentViewport;
 
         this.position = null;
@@ -2118,8 +2146,8 @@ class MiniMap extends AbstractRenderElement {
 
 class SegmentationElement extends AbstractRenderElement {
 
-    constructor(id, annotationMap, predictionMap, width, height, zIndex, disableInteractions) {
-        super(id, null, zIndex, disableInteractions);
+    constructor(id, annotationMap, predictionMap, width, height, zIndex, disableInteractions, parent) {
+        super(id, null, zIndex, disableInteractions, parent);
         this._create_canvas(annotationMap, predictionMap, width, height);
     }
 

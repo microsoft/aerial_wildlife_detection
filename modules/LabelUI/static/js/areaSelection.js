@@ -136,8 +136,7 @@ class AreaSelector {
                 startCoordinates,
                 SELECTION_STYLE,
                 false,
-                1000,
-                false
+                1000
             );
             promise = Promise.resolve(element);
         } else if(type === 'magnetic_polygon') {
@@ -150,8 +149,7 @@ class AreaSelector {
                     startCoordinates,
                     SELECTION_STYLE,
                     false,
-                    1000,
-                    false
+                    1000
                 );
                 window.taskMonitor.removeTask('edgeImage');
                 return element;
@@ -343,7 +341,7 @@ class AreaSelector {
                 if(window.paintbucket_paint_all || this.selectionElements[s].containsPoint(mousePos)) {
                     // fill it... (TODO: we assume the base class has a segMap property anyway)
                     let color = (action === ACTIONS.PAINT_BUCKET ? window.labelClassHandler.getActiveColor() : null);
-                    this.dataEntry.segMap.paint_bucket(
+                    this.dataEntry.paint_bucket(
                         this.selectionElements[s].getProperty('coordinates'),
                         color,
                         window.segmentIgnoreLabeled

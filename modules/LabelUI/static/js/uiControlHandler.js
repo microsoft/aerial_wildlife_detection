@@ -113,6 +113,30 @@ function _set_brushtype_fun(type) {
     }
 }
 
+function update_undo_redo_buttons() {
+    let urStats = window.dataHandler.get_undo_redo_stats();
+    if(urStats !== undefined) {
+        if(urStats['next_undo'] !== undefined) {
+            // $('#undo-button').prop('disabled', false);
+            $('#undo-button').prop('title', 'undo ' + urStats['next_undo']);
+        } else {
+            // $('#undo-button').prop('disabled', true);
+            $('#undo-button').prop('title', 'nothing to undo');
+        }
+        if(urStats['next_redo'] !== undefined) {
+            // $('#redo-button').prop('disabled', false);
+            $('#redo-button').prop('title', 'redo ' + urStats['next_redo']);
+        } else {
+            // $('#redo-button').prop('disabled', true);
+            $('#redo-button').prop('title', 'nothing to redo');
+        }
+    } else {
+        // $('#undo-button').prop('disabled', true);
+        $('#undo-button').prop('title', 'nothing to undo');
+        // $('#redo-button').prop('disabled', true);
+        $('#redo-button').prop('title', 'nothing to redo');
+    }
+}
 
 class UIControlHandler {
 
@@ -145,7 +169,6 @@ class UIControlHandler {
         this._setup_controls();
     }
 
-
     _setup_controls() {
 
         let self = this;
@@ -155,15 +178,18 @@ class UIControlHandler {
         /*
             action controls (undo and redo)
         */
+
         let vpControls = $('#viewport-controls');
-        let undoButton = $('<button id="undo-button" class="btn btn-sm btn-secondary title="Undo">U</button>');
+        let undoButton = $('<button id="undo-button" class="btn btn-sm btn-secondary title="nothing to undo"><img src="/static/interface/img/controls/undo.svg" style="height:18px" /></button>');
         undoButton.on('click', function() {
             window.dataHandler.undo();
+            update_undo_redo_buttons();
         });
         vpControls.append(undoButton);
-        let redoButton = $('<button id="redo-button" class="btn btn-sm btn-secondary title="Redo" style="margin-bottom:20px">R</button>');
+        let redoButton = $('<button id="redo-button" class="btn btn-sm btn-secondary title="nothing to redo" style="margin-bottom:20px"><img src="/static/interface/img/controls/redo.svg" style="height:18px" /></button>');
         redoButton.on('click', function() {
             window.dataHandler.redo();
+            update_undo_redo_buttons();
         });
         vpControls.append(redoButton);
 
@@ -663,9 +689,11 @@ class UIControlHandler {
         // next and previous batch buttons
         var nextBatchCallback = function() {
             self.dataHandler.nextBatch();
+            update_undo_redo_buttons();
         }
         var prevBatchCallback = function() {
             self.dataHandler.previousBatch();
+            update_undo_redo_buttons();
         }
 
         let interfaceControls = $('#interface-controls');
@@ -843,11 +871,11 @@ class UIControlHandler {
                 if($('#imorder-review').prop('checked')) {
                     $('#review-controls').slideDown();
                     initSliderRange().done(function() {
-                        window.dataHandler.nextBatch();
+                        nextBatchCallback();
                     });
                 } else {
                     $('#review-controls').slideUp();
-                    window.dataHandler.nextBatch();
+                    nextBatchCallback();
                 }
             }
             $('#imorder-auto').change(onChange);
@@ -862,7 +890,7 @@ class UIControlHandler {
                 },
                 'change': function() {
                     if($('#imorder-review').prop('checked')) {
-                        window.dataHandler.nextBatch();
+                        nextBatchCallback();
                     }
                 }
             });

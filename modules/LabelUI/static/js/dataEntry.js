@@ -175,6 +175,38 @@ class AbstractDataEntry {
         }
     }
 
+    // callbacks
+    _canvas_mousedown(event) {
+        if(this.disableInteractions) return;
+        this.freezeActionState();
+    }
+
+    _canvas_mousemove(event) {
+        return;
+    }
+
+    _canvas_mouseup(event) {
+        if(this.disableInteractions) return;
+        if(typeof(this.actionName) === 'string') {
+            this.submitActionState(this.actionName);
+            this.actionName = undefined;
+        }
+    }
+
+    _canvas_mouseleave(event) {
+        return;
+    }
+
+    _setup_callbacks() {
+        if(!this.disableInteractions) {
+            let self = this;
+            this.viewport.addCallback(this.entryID, 'mousedown', (self._canvas_mousedown).bind(self));
+            this.viewport.addCallback(this.entryID, 'mousemove', (self._canvas_mousemove).bind(self));
+            this.viewport.addCallback(this.entryID, 'mouseup', (self._canvas_mouseup).bind(self));
+            this.viewport.addCallback(this.entryID, 'mouseleave', (self._canvas_mouseleave).bind(self));
+        }
+    }
+
     _addElement(element) {
         if(typeof(this.annotations) !== 'object') {
             // not yet initialized; abort
@@ -444,7 +476,7 @@ class AbstractDataEntry {
     }
 
     _createImageEntry(imageRenderer) {
-        this.imageEntry = new ImageElement(this.entryID + '_image', imageRenderer, this.viewport, this);
+        this.imageEntry = new ImageElement(this.entryID + '_image', imageRenderer, this.viewport, 0, this);
         let self = this;
         return this.imageEntry.loadImage().then(() => {
             self.viewport.addRenderElement(self.imageEntry);
@@ -733,7 +765,7 @@ class AbstractDataEntry {
          * DataHandler for the undo/redo stack. This needs to be done with
          * function "submitActionState" below.
          */
-        this.actionState = this.getProperties(false, true); //TODO: only user annotations suffices?
+        this.actionState = this.getProperties(false, false); //TODO: only user annotations suffices?
     }
 
     submitActionState(actionName) {
@@ -748,8 +780,8 @@ class AbstractDataEntry {
     }
 
     getActionState() {
-        if(this.actionState === undefined) return this.getProperties(false, true);  //TODO
-        else return this.actionState['properties'];
+        if(this.actionState === undefined) return this.getProperties(false, false);
+        else return this.actionState;
     }
 
     clearActionState() {
@@ -835,7 +867,7 @@ class AbstractDataEntry {
          * Currently supports boundingBoxes and polygons as annotation types.
          */
         if(!['boundingBoxes', 'polygons'].includes(this.getAnnotationType())) return null;
-        if(!silent) window.dataHandler.onAction(this, 'Grab Cut');
+        if(!silent) this.freezeActionState();
         let polygons = [];
         let annoKeys_all = Object.keys(this.annotations);
         let annoKeys = [];
@@ -863,6 +895,7 @@ class AbstractDataEntry {
                             self.annotations[annoKeys[x]].geometry._createAdjustmentHandles(self.viewport, true);
                         }
                     }
+                    if(!silent) window.dataHandler.onAction(self, 'Grab Cut');
                     self.render();
                 } else {
                     if(typeof(data['message']) === 'string') {
@@ -970,11 +1003,83 @@ class ClassificationEntry extends AbstractDataEntry {
         window.dataHandler.updatePresentClasses();
     }
 
+    _canvas_mouseup(event) {
+        if(window.uiBlocked) return;
+        else if(window.uiControlHandler.getAction() === ACTIONS.DO_NOTHING) {
+            if(window.unsureButtonActive) {
+                this.labelInstance.setProperty('unsure', !this.labelInstance.getProperty('unsure'));
+                window.unsureButtonActive = false;
+                this.render();
+            } else {
+                this.toggleUserLabel(event.altKey);
+            }
+        }
+        this.numInteractions++;
+        window.dataHandler.updatePresentClasses();
+        super._canvas_mouseup(event);
+    }
+
+    _canvas_mousemove(event) {
+        if(window.uiBlocked) return;
+        let pos = this.viewport.getRelativeCoordinates(event, 'validArea');
+
+        // offset tooltip position if loupe is active
+        if(window.uiControlHandler.showLoupe) {
+            pos[0] += 0.2;  //TODO: does not account for zooming in
+        }
+
+        this.hoverTextElement.position = pos;
+        if(window.uiControlHandler.getAction() in [ACTIONS.DO_NOTHING,
+            ACTIONS.ADD_ANNOTATION,
+            ACTIONS.REMOVE_ANNOTATIONS]) {
+            if(event.altKey) {
+                this.hoverTextElement.setProperty('text', 'mark as unlabeled');
+                this.hoverTextElement.setProperty('fillColor', window.styles.hoverText.box.fill);
+            } else if(window.unsureButtonActive) {
+                this.hoverTextElement.setProperty('text', 'toggle unsure');
+                this.hoverTextElement.setProperty('fillColor', window.styles.hoverText.box.fill);
+            } else if(typeof(this.labelInstance) !== 'object') {
+                this.hoverTextElement.setProperty('text', 'set label to "' + window.labelClassHandler.getActiveClassName() + '"');
+                this.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getActiveColor());
+            } else if(this.labelInstance.label != window.labelClassHandler.getActiveClassID()) {
+                this.hoverTextElement.setProperty('text', 'change label to "' + window.labelClassHandler.getActiveClassName() + '"');
+                this.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getActiveColor());
+            } else {
+                this.hoverTextElement.setProperty('text', null);
+            }
+        } else {
+            this.hoverTextElement.setProperty('text', null);
+        }
+
+        // flip text color if needed
+        let htFill = this.hoverTextElement.getProperty('fillColor');
+        if(htFill != null && window.getBrightness(htFill) >= 92) {
+            this.hoverTextElement.setProperty('textColor', '#000000');
+        } else {
+            this.hoverTextElement.setProperty('textColor', '#FFFFFF');
+        }
+
+        // set active (for e.g. "unsure" functionality)
+        if(typeof(self.labelInstance) === 'object') {
+            this.labelInstance.setActive(true);
+        }
+
+        this.render();
+    }
+
+    _canvas_mouseleave(event) {
+        if(window.uiBlocked) return;
+        this.hoverTextElement.setProperty('text', null);
+        if(typeof(this.labelInstance) === 'object') {
+            this.labelInstance.setActive(false);
+        }
+        this.render();
+    }
+
     _setup_markup() {
-        var self = this;
         super._setup_markup();
 
-        var htStyle = {
+        let htStyle = {
             fillColor: window.styles.hoverText.box.fill,
             textColor: window.styles.hoverText.text.color,
             strokeColor: window.styles.hoverText.box.stroke.color,
@@ -982,86 +1087,10 @@ class ClassificationEntry extends AbstractDataEntry {
         };
         this.hoverTextElement = new HoverTextElement(this.entryID + '_hoverText', null, null, 'validArea',
             htStyle,
-            5, false, this);
+            500, false, this);
         this.viewport.addRenderElement(this.hoverTextElement);
 
-        if(!this.disableInteractions) {
-            // click handler
-            this.viewport.addCallback(this.entryID, 'mouseup', (function(event) {
-                if(window.uiBlocked) return;
-                else if(window.uiControlHandler.getAction() === ACTIONS.DO_NOTHING) {
-                    if(window.unsureButtonActive) {
-                        this.labelInstance.setProperty('unsure', !this.labelInstance.getProperty('unsure'));
-                        window.unsureButtonActive = false;
-                        this.render();
-                    } else {
-                        this.toggleUserLabel(event.altKey);
-                    }
-                }
-                this.numInteractions++;
-                window.dataHandler.updatePresentClasses();
-            }).bind(this));
-
-            // tooltip for label change
-            this.viewport.addCallback(this.entryID, 'mousemove', (function(event) {
-                if(window.uiBlocked) return;
-                var pos = this.viewport.getRelativeCoordinates(event, 'validArea');
-
-                // offset tooltip position if loupe is active
-                if(window.uiControlHandler.showLoupe) {
-                    pos[0] += 0.2;  //TODO: does not account for zooming in
-                }
-
-                this.hoverTextElement.position = pos;
-                if(window.uiControlHandler.getAction() in [ACTIONS.DO_NOTHING,
-                    ACTIONS.ADD_ANNOTATION,
-                    ACTIONS.REMOVE_ANNOTATIONS]) {
-                    if(event.altKey) {
-                        this.hoverTextElement.setProperty('text', 'mark as unlabeled');
-                        this.hoverTextElement.setProperty('fillColor', window.styles.hoverText.box.fill);
-                    } else if(window.unsureButtonActive) {
-                        this.hoverTextElement.setProperty('text', 'toggle unsure');
-                        this.hoverTextElement.setProperty('fillColor', window.styles.hoverText.box.fill);
-                    } else if(typeof(this.labelInstance) !== 'object') {
-                        this.hoverTextElement.setProperty('text', 'set label to "' + window.labelClassHandler.getActiveClassName() + '"');
-                        this.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getActiveColor());
-                    } else if(this.labelInstance.label != window.labelClassHandler.getActiveClassID()) {
-                        this.hoverTextElement.setProperty('text', 'change label to "' + window.labelClassHandler.getActiveClassName() + '"');
-                        this.hoverTextElement.setProperty('fillColor', window.labelClassHandler.getActiveColor());
-                    } else {
-                        this.hoverTextElement.setProperty('text', null);
-                    }
-                } else {
-                    this.hoverTextElement.setProperty('text', null);
-                }
-
-                // flip text color if needed
-                var htFill = this.hoverTextElement.getProperty('fillColor');
-                if(htFill != null && window.getBrightness(htFill) >= 92) {
-                    this.hoverTextElement.setProperty('textColor', '#000000');
-                } else {
-                    this.hoverTextElement.setProperty('textColor', '#FFFFFF');
-                }
-
-                // set active (for e.g. "unsure" functionality)
-                if(typeof(self.labelInstance) === 'object') {
-                    this.labelInstance.setActive(true);
-                }
-
-                this.render();
-            }).bind(this));
-            // this.canvas.mousemove(function(event) {
-                
-            // });
-            this.markup.mouseout(function(event) {
-                if(window.uiBlocked) return;
-                self.hoverTextElement.setProperty('text', null);
-                if(typeof(self.labelInstance) === 'object') {
-                    self.labelInstance.setActive(false);
-                }
-                self.render();
-            });
-        }
+        this._setup_callbacks();
     }
 
     getLabel() {
@@ -1194,7 +1223,7 @@ class PointAnnotationEntry extends AbstractDataEntry {
         var self = this;
         super._setup_markup();
 
-        var htStyle = {
+        let htStyle = {
             fillColor: window.styles.hoverText.box.fill,
             textColor: window.styles.hoverText.text.color,
             strokeColor: window.styles.hoverText.box.stroke.color,
@@ -1206,13 +1235,14 @@ class PointAnnotationEntry extends AbstractDataEntry {
             5, false, this);
         this.viewport.addRenderElement(this.hoverTextElement);
 
-        // interaction handlers
-        if(!this.disableInteractions) {
-            this.viewport.addCallback(this.entryID, 'mousedown', (self._canvas_mousedown).bind(self));
-            this.viewport.addCallback(this.entryID, 'mousemove', (self._canvas_mousemove).bind(self));
-            this.viewport.addCallback(this.entryID, 'mouseup', (self._canvas_mouseup).bind(self));
-            this.viewport.addCallback(this.entryID, 'mouseleave', (self._canvas_mouseleave).bind(self));
-        }
+        super._setup_callbacks();
+        // // interaction handlers
+        // if(!this.disableInteractions) {
+        //     this.viewport.addCallback(this.entryID, 'mousedown', (self._canvas_mousedown).bind(self));
+        //     this.viewport.addCallback(this.entryID, 'mousemove', (self._canvas_mousemove).bind(self));
+        //     this.viewport.addCallback(this.entryID, 'mouseup', (self._canvas_mouseup).bind(self));
+        //     this.viewport.addCallback(this.entryID, 'mouseleave', (self._canvas_mouseleave).bind(self));
+        // }
     }
 
     _toggleActive(event) {
@@ -1314,9 +1344,8 @@ class PointAnnotationEntry extends AbstractDataEntry {
 
     _canvas_mousedown(event) {
         if(window.uiBlocked) return;
+        super._canvas_mousedown(event);
         this.mouseDown = true;
-
-        this.freezeActionState();
 
         // check functionality
         if(window.uiControlHandler.getAction() === ACTIONS.ADD_ANNOTATION) {
@@ -1444,6 +1473,8 @@ class PointAnnotationEntry extends AbstractDataEntry {
 
         this.mouseDown = false;
         this.mouseDrag = false;
+
+        super._canvas_mouseup(event);
     }
 
     _canvas_mouseleave(event) {
@@ -1484,10 +1515,9 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
     }
 
     _setup_markup() {
-        var self = this;
         super._setup_markup();
 
-        var htStyle = {
+        let htStyle = {
             fillColor: window.styles.hoverText.box.fill,
             textColor: window.styles.hoverText.text.color,
             strokeColor: window.styles.hoverText.box.stroke.color,
@@ -1499,21 +1529,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
             5, false, this);
         this.viewport.addRenderElement(this.hoverTextElement);
 
-        // interaction handlers
-        if(!this.disableInteractions) {
-            this.viewport.addCallback(this.entryID, 'mousedown', function(event) {
-                self._canvas_mousedown(event);
-            });
-            this.viewport.addCallback(this.entryID, 'mousemove', function(event) {
-                self._canvas_mousemove(event);
-            });
-            this.viewport.addCallback(this.entryID, 'mouseup', function(event) {
-                self._canvas_mouseup(event);
-            });
-            this.viewport.addCallback(this.entryID, 'mouseleave', function(event) {
-                self._canvas_mouseleave(event);
-            });
-        }
+        super._setup_callbacks();
     }
 
     _toggleActive(event) {
@@ -1629,7 +1645,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
                                 window.styles.crosshairLines,
                                 false,
                                 1);
-            this.crosshairLines = new ElementGroup(this.entryID + '_crosshairLines', [vertLine, horzLine], 1, this);
+            this.crosshairLines = new ElementGroup(this.entryID + '_crosshairLines', [vertLine, horzLine], 1);
             this.viewport.addRenderElement(this.crosshairLines);
             this.canvas.css('cursor', 'crosshair');
 
@@ -1652,11 +1668,11 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
 
     _canvas_mousedown(event) {
         if(window.uiBlocked) return;
+        super._canvas_mousedown(event);
         this.mouseDown = true;
 
         // check functionality
         if(window.uiControlHandler.getAction() ===ACTIONS.ADD_ANNOTATION) {
-            window.dataHandler.onAction(this, 'add bounding box');
 
             // set all currently active boxes inactive
             for(var key in this.annotations) {
@@ -1746,6 +1762,7 @@ class BoundingBoxAnnotationEntry extends AbstractDataEntry {
 
     _canvas_mouseup(event) {
         if(window.uiBlocked) return;
+        super._canvas_mouseup(event);
 
         // check functionality
         if(window.uiControlHandler.getAction() === ACTIONS.ADD_ANNOTATION) {
@@ -1839,21 +1856,22 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
             5, false, this);
         this.viewport.addRenderElement(this.hoverTextElement);
 
+        super._setup_callbacks();
         // interaction handlers
-        if(!this.disableInteractions) {
-            this.viewport.addCallback(this.entryID, 'mousedown', function(event) {
-                self._canvas_mousedown(event);
-            });
-            this.viewport.addCallback(this.entryID, 'mousemove', function(event) {
-                self._canvas_mousemove(event);
-            });
-            this.viewport.addCallback(this.entryID, 'mouseup', function(event) {
-                self._canvas_mouseup(event);
-            });
-            this.viewport.addCallback(this.entryID, 'mouseleave', function(event) {
-                self._canvas_mouseleave(event);
-            });
-        }
+        // if(!this.disableInteractions) {
+        //     this.viewport.addCallback(this.entryID, 'mousedown', function(event) {
+        //         self._canvas_mousedown(event);
+        //     });
+        //     this.viewport.addCallback(this.entryID, 'mousemove', function(event) {
+        //         self._canvas_mousemove(event);
+        //     });
+        //     this.viewport.addCallback(this.entryID, 'mouseup', function(event) {
+        //         self._canvas_mouseup(event);
+        //     });
+        //     this.viewport.addCallback(this.entryID, 'mouseleave', function(event) {
+        //         self._canvas_mouseleave(event);
+        //     });
+        // }
     }
 
     _toggleActive(event) {
@@ -2000,11 +2018,15 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
             var vertLine = new LineElement(this.entryID + '_crosshairX', coords[0], 0, coords[0], window.defaultImage_h,
                                 window.styles.crosshairLines,
                                 false,
-                                1);
+                                1,
+                                false,
+                                this);
             var horzLine = new LineElement(this.entryID + '_crosshairY', 0, coords[1], window.defaultImage_w, coords[1],
                                 window.styles.crosshairLines,
                                 false,
-                                1);
+                                1,
+                                false,
+                                this);
             this.crosshairLines = new ElementGroup(this.entryID + '_crosshairLines', [vertLine, horzLine], 1, this);
             this.viewport.addRenderElement(this.crosshairLines);
             // this.canvas.css('cursor', 'crosshair');
@@ -2028,6 +2050,10 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
 
     _canvas_mousedown(event) {
         if(window.uiBlocked) return;
+        let action = window.uiControlHandler.getAction();
+        if(action===ACTIONS.ADD_ANNOTATION && this._getActivePolygon() === null) {
+            super._canvas_mousedown(event);
+        }
         this.mouseDown = true;
         this.mousePos = this.viewport.getRelativeCoordinates(event, 'validArea');
     }
@@ -2158,10 +2184,12 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
     _canvas_mouseup(event) {
         this.mouseDown = false;
         if(window.uiBlocked) return;
+        let action = window.uiControlHandler.getAction();
+        let ap = this._getActivePolygon();
 
         // check functionality
-        if(window.uiControlHandler.getAction() === ACTIONS.ADD_ANNOTATION) {
-            if(this._getActivePolygon() === null) {
+        if(action === ACTIONS.ADD_ANNOTATION) {
+            if(ap === null) {
                 // set all currently active polygons inactive
                 for(var key in this.annotations) {
                     if(this.annotations[key].isVisible()) {
@@ -2188,6 +2216,7 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
             this._deleteActiveAnnotations(event);
             // window.uiControlHandler.getAction() = ACTIONS.DO_NOTHING;
             this.numInteractions++;
+            super._canvas_mouseup(event);
 
         } else if(window.uiControlHandler.getAction() === ACTIONS.DO_NOTHING) {
             // update annotations to current label (if active and no dragging [resizing] was going on)
@@ -2204,10 +2233,12 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
                 // activate or deactivate
                 this._toggleActive(event);
                 this.numInteractions++;
+
+                super._canvas_mouseup(event);
             }
 
         } else if(window.uiControlHandler.getAction() === ACTIONS.MAGIC_WAND) {
-            window.dataHandler.onAction(this, 'Magic Wand');
+            this.freezeActionState();
             window.taskMonitor.addTask('magicWand', 'magic wand');
             window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
             try {
@@ -2224,6 +2255,8 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
                             self.render();
                             window.taskMonitor.removeTask('magicWand');
                         });
+                        super._canvas_mouseup(event);       //TODO
+                        window.dataHandler.onAction(self, 'Magic Wand');
                     } else {
                         if(coords_out !== null && typeof(coords_out['message']) === 'string') {
                             window.messager.addMessage('An error occurred trying to run magic wand (message: "'+coords_out['message'].toString()+'").', 'error', 0);
@@ -2239,7 +2272,7 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
             }
 
         } else if(window.uiControlHandler.getAction() === ACTIONS.GRAB_CUT) {
-            window.dataHandler.onAction(this, 'Grab Cut');
+            this.freezeActionState();
 
             // find clicked polygon
             let numClicked = 0;
@@ -2255,6 +2288,8 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
                         this.grabCut(coords_in).then((coords_out) => {
                             if(Array.isArray(coords_out) && Array.isArray(coords_out[0]) && coords_out[0].length >= 6) {
                                 self.annotations[key].geometry.setProperty('coordinates', coords_out[0]);
+                                super._canvas_mouseup(event);       //TODO
+                                window.dataHandler.onAction(self, 'Grab Cut');
                             } else {
                                 if(typeof(coords_out['message']) === 'string') {
                                     window.messager.addMessage('An error occurred trying to run GrabCut on selection (message: "'+coords_out['message'].toString()+'").', 'error', 0);
@@ -2291,6 +2326,8 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
                                         self.annotations[annoID].setProperty('coordinates', coords_out[0]);
                                         window.taskMonitor.removeTask('grabCut');
                                     });
+                                    super._canvas_mouseup(event);       //TODO
+                                    window.dataHandler.onAction(self, 'Grab Cut');
                                 } else {
                                     if(typeof(coords_out['message']) === 'string') {
                                         window.messager.addMessage('An error occurred trying to run GrabCut on selection (message: "'+coords_out['message'].toString()+'").', 'error', 0);
@@ -2323,6 +2360,7 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
                     let cHull = this.convexHull(this.annotations[key].geometry.getProperty('coordinates'));
                     if(Array.isArray(cHull) && cHull.length >= 6) {
                         this.annotations[key].geometry.setProperty('coordinates', cHull);
+                        super._canvas_mouseup(event);
                     }
                 }
             }
@@ -2346,6 +2384,7 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
                     let coords_out = simplifyPolygon(coords_in, window.polygonSimplificationTolerance, true);      //TODO: hyperparameters
                     if(Array.isArray(coords_out) && coords_out.length >= 6) {
                         this.annotations[key].geometry.setProperty('coordinates', coords_out);
+                        super._canvas_mouseup(event);
                     }
                 }
             }
@@ -2525,28 +2564,14 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
     }
 
     _setup_markup() {
-        var self = this;
+        // var self = this;
         super._setup_markup();
 
         // brush symbol
         this.brush = new PaintbrushElement(this.id+'_brush', null, null, 5);
         this.viewport.addRenderElement(this.brush);
 
-        // interaction handlers
-        if(!this.disableInteractions) {
-            this.viewport.addCallback(this.entryID, 'mousedown', function(event) {
-                self._canvas_mousedown(event);
-            });
-            this.viewport.addCallback(this.entryID, 'mousemove', function(event) {
-                self._canvas_mousemove(event);
-            });
-            this.viewport.addCallback(this.entryID, 'mouseup', function(event) {
-                self._canvas_mouseup(event);
-            });
-            this.viewport.addCallback(this.entryID, 'mouseleave', function(event) {
-                self._canvas_mouseleave(event);
-            });
-        }
+        super._setup_callbacks();
     }
 
     _set_default_brush() {
@@ -2587,12 +2612,14 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
                     this.segMap.clear(mousePos_abs,
                         window.uiControlHandler.segmentation_properties.brushType,
                         brushSize);
+                    this.actionName = 'clear';
                 } else {
                     this.segMap.paint(mousePos_abs,
                         window.activeClassColor,
                         window.uiControlHandler.segmentation_properties.brushType,
                         brushSize,
                         window.segmentIgnoreLabeled);
+                    this.actionName = 'paint';
                 }
             }
 
@@ -2603,6 +2630,10 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
         this.render();
     }
 
+    paint_bucket(coordinates, color, ignoreLabeled) {
+        this.segMap.paint_bucket(coordinates, color, ignoreLabeled);
+        this.submitActionState(color === null ? 'clear selected area' : 'paint bucket');
+    }
 
     fill_unlabeled(labelClass) {
         /**
@@ -2612,19 +2643,15 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
         window.dataHandler.onAction(this, 'fill unlabeled');
         let color = window.labelClassHandler.getColor(labelClass);
         this.segMap.fill_unlabeled(color);
+
+        this.submitActionState('fill unlabeled');
     }
 
 
     // callbacks
     _canvas_mousedown(event) {
         if(window.uiBlocked) return;
-        if(this.segMap.isActive) {
-            let action = window.uiControlHandler.getAction();
-            let actionText = null;
-            if(action === ACTIONS.ADD_ANNOTATION) actionText = 'paint';
-            else if(action === ACTIONS.REMOVE_ANNOTATIONS) actionText = 'erase';
-            if(actionText !== null) window.dataHandler.onAction(this, actionText);
-        } 
+        super._canvas_mousedown(event);
         this.mouseDown = true;
         this.__paint(event);
     }
@@ -2636,6 +2663,7 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
     _canvas_mouseup(event) {
         this.mouseDown = false;
         this.numInteractions++;
+        super._canvas_mouseup(event);
     }
 
     _clear_selection_polygon() {
@@ -2645,6 +2673,7 @@ class SemanticSegmentationEntry extends AbstractDataEntry {
         this.selectionPolygon = null;
         this.segMap.setActive(true, this.viewport);
         this.render();
+        this.submitActionState('clear selection');
     }
 
     _canvas_mouseleave(event) {

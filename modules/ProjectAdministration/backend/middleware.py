@@ -84,7 +84,7 @@ class ProjectConfigMiddleware:
         'setpassword',
         'exec',
         'v',
-        'getBandConfiguration'
+        'getbandconfiguration'
     ]
 
     # prohibited name prefixes
@@ -460,6 +460,15 @@ class ProjectConfigMiddleware:
             None,
             None
         )
+
+        # check if schema got created
+        valid = self.dbConnector.execute('''
+            SELECT COUNT(*) AS present
+            FROM "information_schema".schemata
+            WHERE schema_name = %s;
+        ''', (shortname,), 1)
+        if valid is None or not len(valid) or valid[0]['present'] < 1:
+            raise Exception(f'Project with shortname "{shortname}" could not be created.\nCheck for database permission errors.')
 
         # register project
         self.dbConnector.execute('''
