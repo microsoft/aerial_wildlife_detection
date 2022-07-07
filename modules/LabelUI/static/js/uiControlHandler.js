@@ -18,13 +18,14 @@ const ACTIONS = {
     // for segmentation and area selection
     PAINT_BUCKET: 7,
     ERASE_SELECTION: 8,
-    ADD_SELECT_POLYGON: 9,
-    ADD_SELECT_POLYGON_MAGNETIC: 10,
-    CONVEX_HULL: 11,
-    GRAB_CUT: 12,
-    MAGIC_WAND: 13,
-    SELECT_SIMILAR: 14,
-    SIMPLIFY_POLYGON: 15
+    ADD_SELECT_RECTANGLE: 9,
+    ADD_SELECT_POLYGON: 10,
+    ADD_SELECT_POLYGON_MAGNETIC: 11,
+    CONVEX_HULL: 12,
+    GRAB_CUT: 13,
+    MAGIC_WAND: 14,
+    SELECT_SIMILAR: 15,
+    SIMPLIFY_POLYGON: 16
 }
 
 const CURSORS = [
@@ -485,6 +486,7 @@ class UIControlHandler {
                 brush_diamond: $('<button class="btn btn-sm btn-secondary inline-control"><img src="/static/interface/img/controls/diamond.svg" style="height:18px" title="diamond brush" /></button>'),
                 brush_size: $('<input class="inline-control" type="number" id="brush-size" min="1" max="255" value="20" title="Brush size" style="width:50px" />'),
                 erase: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/erase.svg" style="height:18px" title="Erase" /></button>'),
+                select_rectangle: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/rectangle_select.svg" style="height:18px" title="Select by rectangle" /></button>'),
                 select_polygon: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/lasso.svg" style="height:18px" title="Select by polygon" /></button>'),
                 select_polygon_magnetic: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/lasso_magnetic.svg" style="height:18px" title="Select by magnetic polygon" /></button>'),
                 magic_wand: $('<button class="btn btn-sm btn-secondary inline-control active"><img src="/static/interface/img/controls/magic_wand.svg" style="height:18px" title="magic wand" /></button>'),
@@ -546,27 +548,8 @@ class UIControlHandler {
                     self.setSegmentationOpacity(parseInt(val)/255.0);
                 }
             });
-
-            // area fill tools
-            // this.segmentation_controls.select_polygon.on('click', function() {
-            //     self.setAction(ACTIONS.ADD_SELECT_POLYGON);
-            // });
-            // this.segmentation_controls.select_polygon_magnetic.on('click', function() {
-            //     self.setAction(ACTIONS.ADD_SELECT_POLYGON_MAGNETIC);
-            // });
-            // this.segmentation_controls.magic_wand.on('click', function() {
-            //     self.setAction(ACTIONS.MAGIC_WAND);
-            // });
-            // this.segmentation_controls.select_similar.on('click', function() {
-            //     self.setAction(ACTIONS.SELECT_SIMILAR);
-            // });
-            // this.segmentation_controls.paint_bucket.on('click', function() {
-            //     self.setAction(ACTIONS.PAINT_BUCKET);
-            // });
-            // this.segmentation_controls.erase_selection.on('click', function() {
-            //     self.setAction(ACTIONS.ERASE_SELECTION);
-            // });
             
+            this.toggleButtons.addButton(this.segmentation_controls.select_rectangle, (_set_action_fun(ACTIONS.ADD_SELECT_RECTANGLE)).bind(this), ACTIONS.ADD_SELECT_RECTANGLE);
             this.toggleButtons.addButton(this.segmentation_controls.select_polygon, (_set_action_fun(ACTIONS.ADD_SELECT_POLYGON)).bind(this), ACTIONS.ADD_SELECT_POLYGON);
             this.toggleButtons.addButton(this.segmentation_controls.select_polygon_magnetic, (_set_action_fun(ACTIONS.ADD_SELECT_POLYGON_MAGNETIC)).bind(this), ACTIONS.ADD_SELECT_POLYGON_MAGNETIC);
             this.toggleButtons.addButton(this.segmentation_controls.magic_wand, (_set_action_fun(ACTIONS.MAGIC_WAND)).bind(this), ACTIONS.MAGIC_WAND);
@@ -604,6 +587,7 @@ class UIControlHandler {
             brushOptionsContainer.append(segIgnoreLabeledWrapper);
             segControls.append(brushOptionsContainer);
 
+            segControls.append(this.segmentation_controls.select_rectangle);
             segControls.append(this.segmentation_controls.select_polygon);
             segControls.append(this.segmentation_controls.select_polygon_magnetic);
 

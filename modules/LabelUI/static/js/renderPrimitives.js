@@ -1028,7 +1028,7 @@ class PolygonElement extends AbstractRenderElement {
     /* interaction events */
     _mousedown_event(event, viewport, force) {
         if(!this.visible ||
-            !force && (!([ACTIONS.DO_NOTHING, ACTIONS.ADD_ANNOTATION, ACTIONS.ADD_SELECT_POLYGON, ACTIONS.ADD_SELECT_POLYGON_MAGNETIC].includes(window.uiControlHandler.getAction())))) return;
+            !force && (!([ACTIONS.DO_NOTHING, ACTIONS.ADD_ANNOTATION, ACTIONS.ADD_SELECT_RECTANGLE, ACTIONS.ADD_SELECT_POLYGON, ACTIONS.ADD_SELECT_POLYGON_MAGNETIC].includes(window.uiControlHandler.getAction())))) return;
         this.mousePos_current = viewport.getRelativeCoordinates(event, 'validArea');
         this.mouseDrag = (event.which === 1);
         let tolerance = viewport.transformCoordinates([0,0,window.annotationProximityTolerance,0], 'canvas', true)[2];
@@ -1058,7 +1058,7 @@ class PolygonElement extends AbstractRenderElement {
         let coords = viewport.getRelativeCoordinates(event, 'validArea');
 
         if(!this.visible || 
-            !force && (![ACTIONS.DO_NOTHING, ACTIONS.ADD_ANNOTATION, ACTIONS.ADD_SELECT_POLYGON, ACTIONS.ADD_SELECT_POLYGON_MAGNETIC].includes(window.uiControlHandler.getAction())
+            !force && (![ACTIONS.DO_NOTHING, ACTIONS.ADD_ANNOTATION, ACTIONS.ADD_SELECT_RECTANGLE, ACTIONS.ADD_SELECT_POLYGON, ACTIONS.ADD_SELECT_POLYGON_MAGNETIC].includes(window.uiControlHandler.getAction())
             )) return;
         if(this.mouseDrag) {
             if(this.activeHandle === 'center') {
@@ -1109,7 +1109,7 @@ class PolygonElement extends AbstractRenderElement {
         }
 
         // update cursor
-        if([ACTIONS.ADD_ANNOTATION, ACTIONS.ADD_SELECT_POLYGON, ACTIONS.ADD_SELECT_POLYGON_MAGNETIC].includes(window.uiControlHandler.getAction()) || this.activeHandle == null) {
+        if([ACTIONS.ADD_ANNOTATION, ACTIONS.ADD_SELECT_RECTANGLE, ACTIONS.ADD_SELECT_POLYGON, ACTIONS.ADD_SELECT_POLYGON_MAGNETIC].includes(window.uiControlHandler.getAction()) || this.activeHandle == null) {
             viewport.canvas.css('cursor', window.uiControlHandler.getDefaultCursor());
         } else {
             viewport.canvas.css('cursor', 'move');
@@ -1159,7 +1159,7 @@ class PolygonElement extends AbstractRenderElement {
 
     _mouseleave_event(event, viewport, force) {
         this.mouseDrag = false;
-        if(force || ([ACTIONS.ADD_ANNOTATION, ACTIONS.ADD_SELECT_POLYGON, ACTIONS.ADD_SELECT_POLYGON_MAGNETIC].includes(window.uiControlHandler.getAction()) && !window.uiControlHandler.burstMode)) {
+        if(force || ([ACTIONS.ADD_ANNOTATION, ACTIONS.ADD_SELECT_RECTANGLE, ACTIONS.ADD_SELECT_POLYGON, ACTIONS.ADD_SELECT_POLYGON_MAGNETIC].includes(window.uiControlHandler.getAction()) && !window.uiControlHandler.burstMode)) {
             window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
         }
     }
@@ -1334,6 +1334,19 @@ class RectangleElement extends PointElement {
         this.isActive = false;
     }
 
+    getProperty(propertyName) {
+        if(propertyName === 'coordinates') {
+            // transform to polygon on-the-fly
+            return [
+                this.x-this.width/2, this.y-this.height/2,
+                this.x+this.width/2, this.y-this.height/2,
+                this.x+this.width/2, this.y+this.height/2,
+                this.x-this.width/2, this.y+this.height/2
+            ];
+        }
+        return super.getProperty(propertyName);
+    }
+
     setProperty(propertyName, value) {
         super.setProperty(propertyName, value);
         if(propertyName === 'color') {
@@ -1492,7 +1505,7 @@ class RectangleElement extends PointElement {
     /* interaction events */
     _mousedown_event(event, viewport, force) {
         if(!this.visible ||
-            !force && (!([ACTIONS.DO_NOTHING, ACTIONS.ADD_ANNOTATION].includes(window.uiControlHandler.getAction())))) return;
+            !force && (!([ACTIONS.DO_NOTHING, ACTIONS.ADD_ANNOTATION, ACTIONS.ADD_SELECT_RECTANGLE].includes(window.uiControlHandler.getAction())))) return;
         this.mousePos_current = viewport.getRelativeCoordinates(event, 'validArea');
         this.mouseDrag = (event.which === 1);
         this.activeHandle = this.getClosestHandle(this.mousePos_current, Math.min(this.width, this.height)/3);
@@ -1509,9 +1522,10 @@ class RectangleElement extends PointElement {
             - if drag and close to resize handle: resize rectangle and move resize handles
             - if drag and inside rectangle: move rectangle and resize handles
         */
+        let action = window.uiControlHandler.getAction();
         if(!this.visible || 
-            !force && (!(window.uiControlHandler.getAction() === ACTIONS.DO_NOTHING || window.uiControlHandler.getAction() === ACTIONS.ADD_ANNOTATION)
-            )) return;
+            !force && (![ACTIONS.DO_NOTHING, ACTIONS.ADD_ANNOTATION, ACTIONS.ADD_SELECT_RECTANGLE].includes(action))
+        ) return;
         var coords = viewport.getRelativeCoordinates(event, 'validArea');
         // var handle = this.getClosestHandle(coords, window.annotationProximityTolerance / Math.min(viewport.canvas.width(), viewport.canvas.height()));
         if(this.mousePos_current == null) {
@@ -1602,8 +1616,7 @@ class RectangleElement extends PointElement {
     _mouseup_event(event, viewport, force) {
         this._clamp_min_box_size(viewport);
         if(!this.visible ||
-            !force && (!(window.uiControlHandler.getAction() === ACTIONS.DO_NOTHING ||
-            window.uiControlHandler.getAction() === ACTIONS.ADD_ANNOTATION))) return;
+            !force && (![ACTIONS.DO_NOTHING, ACTIONS.ADD_ANNOTATION, ACTIONS.ADD_SELECT_RECTANGLE].includes(window.uiControlHandler.getAction()))) return;
         var mousePos = viewport.getRelativeCoordinates(event, 'validArea');
         this.activeHandle = this.getClosestHandle(mousePos, Math.min(this.width, this.height)/3);
         if(this.activeHandle == null) {

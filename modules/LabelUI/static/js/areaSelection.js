@@ -24,7 +24,7 @@ class AreaSelector {
         this.dataEntry = dataEntry;
         this.id = this.dataEntry.id + '_areaSel';
         this.selectionElements = [];
-        this.activePolygon = null;
+        this.activeSelectionElement = null;
 
         this._set_listeners_active(true);   //TODO
 
@@ -125,12 +125,23 @@ class AreaSelector {
          * Adds a new selection element, unless there is a current one that is
          * not yet closed.
          */
-        if(this.activePolygon !== null && !this.activePolygon.isClosed()) return;
+        if(this.activeSelectionElement !== null && (this.activeSelectionElement instanceof PolygonElement && !this.activeSelectionElement.isClosed())) return;
 
         let element = undefined;
         let promise = null;
         let self = this;
-        if(type === 'polygon') {
+        if(type === 'rectangle') {
+            element = new RectangleElement(
+                this.dataEntry.id + '_selRect_' + (new Date()).toString(),
+                startCoordinates[0], startCoordinates[1],
+                0.0001, 0.0001,
+                SELECTION_STYLE,
+                false,
+                1000
+            );
+            element.activeHandle = 'se';
+            promise = Promise.resolve(element);
+        } else if(type === 'polygon') {
             element = new PolygonElement(
                 this.dataEntry.id + '_selPolygon_' + (new Date()).toString(),
                 startCoordinates,
@@ -158,15 +169,15 @@ class AreaSelector {
 
         promise.then(() => {
             if(element !== undefined) {
-                if(self.activePolygon !== null) {
+                if(self.activeSelectionElement !== null) {
                     // finish active element first
-                    if(self.activePolygon instanceof PolygonElement) {
-                        if(self.activePolygon.isCloseable()) {
+                    if(self.activeSelectionElement instanceof PolygonElement) {
+                        if(self.activeSelectionElement.isCloseable()) {
                             // close it
-                            self.activePolygon.closePolygon();
+                            self.activeSelectionElement.closePolygon();
                         } else {
                             // polygon was not complete; remove
-                            self.removeSelectionElement(self.activePolygon);
+                            self.removeSelectionElement(self.activeSelectionElement);
                         }
                     }
                     self._set_active_polygon(null);
@@ -186,10 +197,10 @@ class AreaSelector {
     removeSelectionElement(element) {
         let idx = this.selectionElements.indexOf(element);
         if(idx !== -1) {
-            if(this.activePolygon === this.selectionElements[idx]) {
+            if(this.activeSelectionElement === this.selectionElements[idx]) {
                 this._set_active_polygon(null);
             }
-            this.selectionElements[idx].setActive(false, this.dataEntry.viewport);
+            if(typeof(this.selectionElements[idx]) === 'object') this.selectionElements[idx].setActive(false, this.dataEntry.viewport);
             this.dataEntry.viewport.removeRenderElement(this.selectionElements[idx]);
             this.selectionElements.splice(idx, 1);
         }
@@ -198,7 +209,7 @@ class AreaSelector {
     removeActiveSelectionElements() {
         for(var s=this.selectionElements.length-1; s>=0; s--) {
             if(this.selectionElements[s].isActive) {
-                this.selectionElements[s].setActive(false, this.dataEntry.viewport);
+                if(typeof(this.selectionElements[s]) === 'object') this.selectionElements[s].setActive(false, this.dataEntry.viewport);
                 this.dataEntry.viewport.removeRenderElement(this.selectionElements[s]);
             }
         }
@@ -207,7 +218,7 @@ class AreaSelector {
 
     removeAllSelectionElements() {
         for(var s in this.selectionElements) {
-            this.selectionElements[s].setActive(false, this.dataEntry.viewport);
+            if(typeof(this.selectionElements[s]) === 'object') this.selectionElements[s].setActive(false, this.dataEntry.viewport);
             this.dataEntry.viewport.removeRenderElement(this.selectionElements[s]);
         }
         this.selectionElements = [];
@@ -215,19 +226,19 @@ class AreaSelector {
     }
 
     closeActiveSelectionElement() {
-        if(this.activePolygon === null || !this.activePolygon.isCloseable()) return;
-        this.activePolygon.closePolygon();
+        if(this.activeSelectionElement === null || !(this.activeSelectionElement instanceof PolygonElement) || !this.activeSelectionElement.isCloseable()) return;
+        this.activeSelectionElement.closePolygon();
     }
 
     _set_active_polygon(polygon) {
-        if(this.activePolygon !== null) {
+        if(this.activeSelectionElement !== null) {
             // deactivate currently active polygon first
-            this.activePolygon.setActive(false, this.dataEntry.viewport);
-            if(this.activePolygon.isCloseable()) {
-                this.activePolygon.closePolygon();
+            this.activeSelectionElement.setActive(false, this.dataEntry.viewport);
+            if(this.activeSelectionElement instanceof PolygonElement && this.activeSelectionElement.isCloseable()) {
+                this.activeSelectionElement.closePolygon();
             } else {
                 // unfinished active polygon; remove
-                let idx = this.selectionElements.indexOf(this.activePolygon);
+                let idx = this.selectionElements.indexOf(this.activeSelectionElement);
                 if(idx !== -1) {
                     this.selectionElements[idx].setActive(false, this.dataEntry.viewport);
                     this.dataEntry.viewport.removeRenderElement(this.selectionElements[idx]);
@@ -235,10 +246,10 @@ class AreaSelector {
                 }
             }
         }
-        this.activePolygon = polygon;
-        if(this.activePolygon !== null) {
+        this.activeSelectionElement = polygon;
+        if(this.activeSelectionElement !== null) {
             this.dataEntry.segMap.setActive(false, this.dataEntry.viewport);    //TODO
-            this.activePolygon.setActive(true, this.dataEntry.viewport);
+            this.activeSelectionElement.setActive(true, this.dataEntry.viewport);
         } else {
             this.dataEntry.segMap.setActive(true, this.dataEntry.viewport);    //TODO
         }
@@ -286,7 +297,8 @@ class AreaSelector {
     _canvas_mouseenter(event) {
         if(window.uiBlocked) return;
         let action = window.uiControlHandler.getAction();
-        if(![ACTIONS.ADD_SELECT_POLYGON, ACTIONS.ADD_SELECT_POLYGON_MAGNETIC, ACTIONS.PAINT_BUCKET].includes(action)) {
+        if(![ACTIONS.ADD_SELECT_RECTANGLE, ACTIONS.ADD_SELECT_POLYGON, ACTIONS.ADD_SELECT_POLYGON_MAGNETIC, ACTIONS.PAINT_BUCKET].includes(action) &&
+            (this.activeSelectionElement === null || !this.activeSelectionElement.isActive)) {
             // user changed action (e.g. to paint function); cancel active polygon and set segmentation map active instead
             this._set_active_polygon(null);
         }
@@ -302,7 +314,11 @@ class AreaSelector {
     _canvas_mousedown(event) {
         if(window.uiBlocked) return;
         let action = window.uiControlHandler.getAction();
-        if(action === ACTIONS.ADD_SELECT_POLYGON) {
+        if(action === ACTIONS.ADD_SELECT_RECTANGLE && 
+            (this.activeSelectionElement === null || !this.activeSelectionElement.isActive)) {
+            let mousePos = this.dataEntry.viewport.getRelativeCoordinates(event, 'validArea');
+            this.addSelectionElement('rectangle', mousePos);
+        } else if(action === ACTIONS.ADD_SELECT_POLYGON) {
             let mousePos = this.dataEntry.viewport.getRelativeCoordinates(event, 'validArea');
             this.addSelectionElement('polygon', mousePos);
         } else if(action === ACTIONS.ADD_SELECT_POLYGON_MAGNETIC) {
@@ -315,14 +331,14 @@ class AreaSelector {
         if(window.uiBlocked) return;
         let action = window.uiControlHandler.getAction();
         if(action === ACTIONS.DO_NOTHING &&
-            this.activePolygon !== null) {
+            this.activeSelectionElement !== null) {
             // polygon was being drawn but isn't anymore
-            if(this.activePolygon.isCloseable()) {
+            if(this.activeSelectionElement instanceof PolygonElement && this.activeSelectionElement.isCloseable()) {
                 // close it
-                this.activePolygon.closePolygon();
+                this.activeSelectionElement.closePolygon();
             } else {
                 // polygon was not complete; remove
-                this.dataEntry.viewport.removeRenderElement(this.activePolygon);
+                this.dataEntry.viewport.removeRenderElement(this.activeSelectionElement);
                 this._set_active_polygon(null);
             }
         } else if(action === ACTIONS.MAGIC_WAND) {
@@ -363,13 +379,13 @@ class AreaSelector {
                 window.showYesNoOverlay(confMarkup, callbackYes, null, 'Yes', 'Cancel')
             }
         } else if([ACTIONS.DO_NOTHING, ACTIONS.ADD_ANNOTATION].includes(action)) {
-            if(this.activePolygon !== null && this.activePolygon.isClosed()) {
+            if(this.activeSelectionElement !== null && this.activeSelectionElement instanceof PolygonElement && this.activeSelectionElement.isClosed()) {
                 // still in selection polygon mode but polygon is closed
-                if(!this.activePolygon.isActive) {
-                    if(this.activePolygon.containsPoint(mousePos)) {
-                        this.activePolygon.setActive(true, this.dataEntry.viewport);
+                if(!this.activeSelectionElement.isActive) {
+                    if(this.activeSelectionElement.containsPoint(mousePos)) {
+                        this.activeSelectionElement.setActive(true, this.dataEntry.viewport);
                     } else {
-                        this.removeSelectionElement(this.activePolygon);
+                        this.removeSelectionElement(this.activeSelectionElement);
                     }
                 }
             } else {
@@ -385,7 +401,7 @@ class AreaSelector {
             // get clicked polygon
             let numClicked = 0;
             for(var e in this.selectionElements) {
-                if(this.selectionElements[e].containsPoint(mousePos)) {
+                if(this.selectionElements[e] instanceof PolygonElement && this.selectionElements[e].containsPoint(mousePos)) {
                     numClicked++;
                     let cHull = this.convexHull(this.selectionElements[e].getProperty('coordinates'));
                     if(Array.isArray(cHull) && cHull.length >= 6) {
@@ -401,7 +417,7 @@ class AreaSelector {
             // get clicked polygon
             let numClicked = 0;
             for(var e in this.selectionElements) {
-                if(this.selectionElements[e].containsPoint(mousePos)) {
+                if(this.selectionElements[e] instanceof PolygonElement && this.selectionElements[e].containsPoint(mousePos)) {
                     numClicked++;
                     let coords_in = this.selectionElements[e].getProperty('coordinates');
                     let coords_out = simplifyPolygon(coords_in, window.polygonSimplificationTolerance, true);      //TODO: hyperparameters
@@ -428,7 +444,14 @@ class AreaSelector {
                     try {
                         this.grabCut(coords_in).then((coords_out) => {
                             if(Array.isArray(coords_out) && Array.isArray(coords_out[0]) && coords_out[0].length >= 6) {
-                                self.selectionElements[e].setProperty('coordinates', coords_out[0]);
+                                if(self.selectionElements[e] instanceof RectangleElement) {
+                                    // convert into polygon first
+                                    self.removeSelectionElement(self.selectionElements[e]);
+                                    self.addSelectionElement('polygon', coords_out[0]);
+                                    
+                                } else {
+                                    self.selectionElements[e].setProperty('coordinates', coords_out[0]);
+                                }
                             } else {
                                 if(typeof(coords_out['message']) === 'string') {
                                     window.messager.addMessage('An error occurred trying to run GrabCut on selection (message: "'+coords_out['message'].toString()+'").', 'error', 0);

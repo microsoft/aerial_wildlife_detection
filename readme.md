@@ -18,7 +18,7 @@ Exciting news: AIDE version 3.0 is on the way! This is the **nightly** build of 
 * :white_check_mark: Image rendering adjustments for Web frontend (grayscale render configuration might needs minor UI adjustments)
 * :ballot_box_with_check: Support for polygons (to be implemented: polygon union, individual vertex selection and deletion, general minor bug fixes)
 * :clock3: New models for polygons: Detectron2 detectors (Faster R-CNN & Co.) work with polygons as input; dedicated models to be implemented
-* :ballot_box_with_check: Advanced segmentation labeling tools: :white_check_mark: paint bucket; :red_circle: rectangle, :ballot_box_with_check: polygon (might need improvements); :white_check_mark: magnetic polygon; :white_check_mark: magic wand; :white_check_mark: Grab Cut; :white_check_mark: polygon simplification and convex hull; :clock3: select similar (still not working as it should)
+* :ballot_box_with_check: Advanced segmentation labeling tools: :white_check_mark: paint bucket; :ballot_box_with_check: rectangle (first version working; probably still a bit buggy), :ballot_box_with_check: polygon (might need improvements); :white_check_mark: magnetic polygon; :white_check_mark: magic wand; :white_check_mark: Grab Cut; :white_check_mark: polygon simplification and convex hull; :clock3: select similar (still not working as it should)
 * :red_circle: New design for annotation interface
 * :clock3: New Models:
   * :ballot_box_with_check: YOLOv5 for Detectron2 (first prototype working; expansion towards new model weights still missing; settings/hyperparams need GUI impl.). :white_check_mark: MegaDetector v5 configs implemented.
