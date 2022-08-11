@@ -1183,8 +1183,8 @@ if [[ $install_redis == true ]]; then
             sudo systemctl enable redis-server.service
             sudo systemctl restart redis-server.service
             log "Done."
-        else
-            #TODO
+        # else
+        #     #TODO
         fi
     fi
 else
