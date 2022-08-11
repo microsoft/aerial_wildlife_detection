@@ -433,9 +433,9 @@
             for(var f=0; f<files.length; f++) {
                 let fName = _strip_name(files[f].name);
                 if(fName.length === 0) continue;     // skip hidden files, such as ".DS_Store" from macOS
-                // let fPath = _strip_name(files[f].webkitRelativePath);      //TODO: check compatibility with other browsers
+                let fPath = _strip_name(files[f].webkitRelativePath);      //TODO: check compatibility with other browsers
                 //TODO
-                let fPath = 'files'
+                // let fPath = 'files'
                 if(!fileGroups.hasOwnProperty(fPath)) {
                     fileGroups[fPath] = [];
                 }

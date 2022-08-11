@@ -1,10 +1,11 @@
 /**
- * WorkflowMonitor, for issuing, aborting, and keeping track
- * of AI model training and inference workflows for a specific
- * project.
+ * TaskMonitor, for issuing, aborting, and keeping track
+ * of all non-AI tasks.
  * 
- * 2020-21 Benjamin Kellenberger
+ * 2021 Benjamin Kellenberger
  */
+
+//TODO: rewrite for TaskCoordinator (needs server-side extension, too)
 
 $(document).ready(function() {
     if(typeof(ProgressBar) === 'undefined') {
@@ -18,13 +19,27 @@ $(document).ready(function() {
 
 
 
-var AI_TASK_NAME_MAP = {
+var TASK_NAME_MAP = {
+    'AIController.delete_model_states': 'Delete model states',
+    'AIController.get_model_training_statistics': 'Get model training statistics',
+    'AIController.duplicate_model_state': 'Duplicate model state',
     'AIController.get_training_images': 'Collect training images',
     'AIController.get_inference_images': 'Collect inference images',
     'AIWorker.call_update_model': 'Update model',
     'AIWorker.call_train': 'Train model',
     'AIWorker.call_average_model_states': 'Combine model states',
     'AIWorker.call_inference': 'Inference',
+    'DataAdministration.verify_images': 'Verify images',
+    'DataAdministration.list_images': 'List images',
+    'DataAdministration.scan_for_images': 'Scan file server for untracked images',
+    'DataAdministration.add_existing_images': 'Add existing images to project',
+    'DataAdministration.remove_images': 'Remove images',
+    'DataAdministration.request_annotations': 'Request annotation download',
+    'DataAdministration.delete_project': 'Delete project',
+    'ModelMarketplace.shareModel': 'Share model',
+    'ModelMarketplace.importModelDatabase': 'Import model',
+    'ModelMarketplace.importModelURI': 'Import model from Web',
+    'ModelMarketplace.requestModelDownload': 'Request model download',
     'celery.chord': 'Composite task',
     'celery.chain': 'Task sequence'
 }
@@ -45,7 +60,7 @@ class Task {
         this.messages = meta['messages'];
         if(typeof(this.messages) !== 'string') this.messages = '';
         this.timeCreated = parseFloat(meta['time_created']);
-        this.taskName = AI_TASK_NAME_MAP[meta['name']];
+        this.taskName = TASK_NAME_MAP[meta['name']];
         if(this.taskName === undefined || this.taskName === null) {
             if(!isNaN(this.timeCreated)) {
                 this.taskName = new Date(this.timeCreated * 1000).toLocaleString();
@@ -256,7 +271,8 @@ class Task {
     }
 
     revokeTask() {
-        //TODO
+        //TODO: rewrite for TaskCoordinator
+        return;
         var self = this;
         return $.ajax({
             url: window.baseURL + 'abortWorkflow',
@@ -299,6 +315,8 @@ class Task {
     }
 
     deleteTask() {
+        //TODO: rewrite for TaskCoordinator
+        return
         let self = this;
         return $.ajax({
             url: window.baseURL + 'deleteWorkflowHistory',
@@ -534,8 +552,9 @@ class WorkflowMonitor {
     }
 
     _do_query(nudgeWatchdog) {
+        //TODO
         let self = this;
-        let queryURL = window.baseURL + 'status?tasks=true';
+        let queryURL = window.baseURL + 'pollStatus?tasks=true';
         if(this.queryProject) queryURL += '&project=true';
         if(nudgeWatchdog) queryURL += '&nudge_watchdog=true';
         return $.ajax({

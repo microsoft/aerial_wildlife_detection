@@ -11,6 +11,7 @@ from datetime import datetime
 from collections import defaultdict
 import re
 import difflib
+import numpy as np
 from psycopg2 import sql
 
 from constants.version import AIDE_VERSION
@@ -250,6 +251,15 @@ class COCOparser(AbstractAnnotationParser):
                         continue
                 
                 img_candidates = img_lut[candidateKey]
+
+                # create spatial index of image virtual views
+                imgViewIndex = {}
+                for ic in img_candidates:
+                    x, y = ic['y'], ic['x']
+                    if y not in imgViewIndex:
+                        imgViewIndex[y] = {}
+                    imgViewIndex[y][x] = {'id': ic['id'], 'window': [y, x, ic['height'], ic['width']]}
+
                 annos_valid = []
                 for a in range(len(anno)):
                     isUnsure = anno[a].get('iscrowd', False) and unsure
@@ -265,55 +275,57 @@ class COCOparser(AbstractAnnotationParser):
                         # close polygon if needed
                         if seg[0] != seg[-2] or seg[1] != seg[-1]:
                             seg.extend(seg[:2])
-                    
-                    # identify correct images (resp. virtual views) for annotation
-                    for i in range(len(img_candidates)):
-                        imgID = img_candidates[i]['id']
-                        if self.annotationType == 'labels':
-                            # labels apply for every virtual view anyway
+
+                    # get image(s)
+                    if self.annotationType == 'labels':
+                        # assign to all virtual views
+                        for i in range(len(img_candidates)):
+                            imgID = img_candidates[i]['id']
                             annos_valid.append([
                                 imgID,
                                 isUnsure,
                                 anno[a]['category_id']
                             ])
-                        else:
-                            # check if img encompasses annotation
-                            window = [
-                                img_candidates[i]['y'],
-                                img_candidates[i]['x'],
-                                img_candidates[i]['height'],
-                                img_candidates[i]['width']
-                            ]
+                    
+                    elif self.annotationType == 'polygons':
+                            #TODO
+                            print('not yet implemented')
+                        
+                    elif self.annotationType == 'segmentationMasks':
+                        #TODO: implement drawing segmasks from polygons
+                        raise NotImplementedError('To be implemented.')
 
-                            if self.annotationType == 'boundingBoxes':
-                                if bbox[0] < window[1]+window[3] and \
-                                    bbox[1] < window[0]+window[2] and \
-                                        bbox[0]+bbox[2] > window[1] and \
-                                            bbox[1]+bbox[3] > window[0]:
-                                    # matching image (view) found; adjust bbox if needed, convert and append
-                                    bbox_target = [
-                                        (bbox[0] - window[1]) / window[3],
-                                        (bbox[1] - window[0]) / window[2],
-                                        bbox[2] / window[3],
-                                        bbox[3] / window[2]
-                                    ]
-                                    bbox_target[0] += bbox_target[2]/2.0
-                                    bbox_target[1] += bbox_target[3]/2.0
+                    else:
+                        # retrieve correct image (resp. virtual view) for annotation
+                        imgIdx_y = np.array(list(imgViewIndex.keys()))
+                        yDiff = (bbox[1]+bbox[3]) - imgIdx_y
+                        yDiff[yDiff<0] = 1e9
+                        matchY = imgIdx_y[np.argmin(yDiff)].tolist()
 
-                                    annos_valid.append([
-                                        imgID,
-                                        isUnsure,
-                                        anno[a]['category_id'],
-                                        *bbox_target
-                                    ])
-                            
-                            elif self.annotationType == 'polygons':
-                                #TODO
-                                print('not yet implemented')
-                            
-                            elif self.annotationType == 'segmentationMasks':
-                                #TODO: implement drawing segmasks from polygons
-                                raise NotImplementedError('To be implemented.')
+                        imgIdx_x = np.array(list(imgViewIndex[matchY].keys()))
+                        xDiff = (bbox[0]+bbox[2]) - imgIdx_x
+                        xDiff[xDiff<0] = 1e9
+                        matchX = imgIdx_x[np.argmin(xDiff)].tolist()
+                        imgMeta = imgViewIndex[matchY][matchX]
+                        window = imgMeta['window']
+                        bbox_target = [
+                            (bbox[0] - window[1]) / window[3],
+                            (bbox[1] - window[0]) / window[2],
+                            bbox[2] / window[3],
+                            bbox[3] / window[2]
+                        ]
+                        bbox_target[0] += bbox_target[2]/2.0
+                        bbox_target[1] += bbox_target[3]/2.0
+
+                        if any([b < 0 for b in bbox_target]) or any([b > 1 for b in bbox_target]):
+                            continue
+
+                        annos_valid.append([
+                            imgMeta['id'],
+                            isUnsure,
+                            anno[a]['category_id'],
+                            *bbox_target
+                        ])
                
                 if len(annos_valid) or not skipEmptyImages:
                     imgs_valid.extend(annos_valid)
@@ -445,21 +457,33 @@ class COCOparser(AbstractAnnotationParser):
             categories.append(catInfo)
         
         # export images
+        imgFilenameLookup = {}
         imgIDLookup = {}
         imgSizeLookup = {}
         for img in annotations['images']:
-            imsize = [img.get('height', None), img.get('width', None)]
-            if not all([i is not None for i in imsize]):
-                try:
-                    fname = os.path.join(self.projectRoot, img['filename'])
-                    driver = drivers.get_driver(fname)
-                    imsize = driver.size(fname)[1:]
-                except:
-                    continue        #TODO
+            if img['filename'] in imgFilenameLookup:
+                meta = imgFilenameLookup[img['filename']]
+                imgIDLookup[img['id']] = meta['id']
+                isz = meta['size']
+                imgSizeLookup[img['id']] = [img.get('y', None), img.get('x', None), img.get('height', isz[0]), img.get('width', isz[1])]
+                continue
+
+            try:
+                fname = os.path.join(self.projectRoot, img['filename'])
+                driver = drivers.get_driver(fname)
+                imsize = driver.size(fname)[1:]
+            except:
+                continue        #TODO
             
             imgID = len(images) + 1
+            imgFilenameLookup[img['filename']] = {'id': imgID, 'size': imsize}
             imgIDLookup[img['id']] = imgID
-            imgSizeLookup[img['id']] = [img.get('y', None), img.get('x', None), *imsize]
+            patchSize = [img.get('height', imsize[0]), img.get('width', imsize[1])]
+            if patchSize[0] is None:
+                patchSize[0] = imsize[1]
+            if patchSize[1] is None:
+                patchSize[1] = imsize[0]
+            imgSizeLookup[img['id']] = [img.get('y', None), img.get('x', None), *patchSize]
             images.append({
                 'id': imgID,
                 'width': imsize[1],
@@ -481,10 +505,10 @@ class COCOparser(AbstractAnnotationParser):
                 # convert bounding box back to absolute XYWH format
                 imsize = imgSizeLookup[anno['image']]
                 bbox = [
-                    anno['x']*imsize[3],
-                    anno['y']*imsize[2],
-                    anno['width']*imsize[3],
-                    anno['height']*imsize[2]
+                    anno['x']*imsize[2],
+                    anno['y']*imsize[3],
+                    anno['width']*imsize[2],
+                    anno['height']*imsize[3]
                 ]
                 bbox[0] -= bbox[2]/2.0
                 bbox[1] -= bbox[3]/2.0

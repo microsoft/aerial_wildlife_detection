@@ -28,8 +28,8 @@ test_only=FALSE                     # skip installation and only do checks and t
 # -----------------------------------------------------------------------------
 
 # constants
-INSTALLER_VERSION=2.2.220629
-MIN_PG_VERSION=9.5
+INSTALLER_VERSION=2.2.220811
+MIN_PG_VERSION=10
 PG_KEY=ACCC4CF8.asc
 DEFAULT_PORT_RABBITMQ=5672
 DEFAULT_PORT_REDIS=6379
@@ -38,6 +38,8 @@ SYSTEMD_TARGET_WORKER=aide-worker                   # for AIWorker:        /etc/
 SYSTEMD_TARGET_WORKER_BEAT=aide-worker-beat         # for AIWorker (Celerybeat): /etc/systemd/system/$(SYSTEMD_TARGET_WORKER_BEAT).service
 SYSTEMD_CONFIG_WORKER=/etc/default/celeryd_aide     # for AIWorker: config script for Celery daemon
 TMPFILES_VOLATILE_DIR=/etc/tmpfiles.d/              # for setting permissions on volatile files required by Celery daemon
+
+SYSTEMD_AVAILABLE=0; [ "$(ps --no-headers -o comm 1)" == "systemd" ] && SYSTEMD_AVAILABLE=1;
 
 # modules that can be manually disabled (rest is determined by credentials)
 install_labelUI=true
@@ -1005,10 +1007,15 @@ if [[ $install_database == true ]]; then
 
         # restart PostgreSQL daemon
         sudo service postgresql restart
-        sudo systemctl enable postgresql
+
+        if [[ $SYSTEMD_AVAILABLE ]]; then
+            sudo systemctl enable postgresql
+        fi
 
         # start cluster
-        sudo systemctl start postgresql@$pg_version-main            #TODO: needed?
+        if [[ $SYSTEMD_AVAILABLE ]]; then
+            sudo systemctl start postgresql@$pg_version-main
+        fi
         sudo pg_ctlcluster $pg_version main start
     else
         # check version
@@ -1089,7 +1096,9 @@ if [[ $install_rabbitmq == true ]]; then
         log "Setting port..."
         sudo sed -i "s/^\s*#\s*NODE_PORT\s*=.*/NODE_PORT=${rabbitmqCred[4]}/g" /etc/rabbitmq/rabbitmq-env.conf
 
-        sudo systemctl enable rabbitmq-server.service
+        if [[ $SYSTEMD_AVAILABLE ]]; then
+            sudo systemctl enable rabbitmq-server.service
+        fi
         sudo service rabbitmq-server start
     fi
 
@@ -1168,11 +1177,15 @@ if [[ $install_redis == true ]]; then
         sudo sed -i "s/^\s*port\s*.*/port ${redisCred[4]}/g" /etc/redis/redis.conf
 
         # restart
-        log "Restarting service..."
-        sudo systemctl daemon-reload
-        sudo systemctl enable redis-server.service
-        sudo systemctl restart redis-server.service
-        log "Done."
+        if [[ $SYSTEMD_AVAILABLE ]]; then
+            log "Restarting service..."
+            sudo systemctl daemon-reload
+            sudo systemctl enable redis-server.service
+            sudo systemctl restart redis-server.service
+            log "Done."
+        else
+            #TODO
+        fi
     fi
 else
     log "Skipping installation..."
@@ -1409,7 +1422,7 @@ fi
 # -----------------------------------------------------------------------------
 
 log "\e[1m[11/11] \e[36mSystemd processes...\e[0m"
-if [[ $test_only == false && $yes == false && ${#install_daemon} -eq 0 && ( $install_labelUI == true || $install_aicontroller == true ) ]]; then
+if [[ $SYSTEMD_AVAILABLE && $test_only == false && $yes == false && ${#install_daemon} -eq 0 && ( $install_labelUI == true || $install_aicontroller == true ) ]]; then
     # prompt
     log "\nWould you like to install a systemd service for AIDE to start it with the operating system?"
     while true; do
@@ -1421,7 +1434,7 @@ if [[ $test_only == false && $yes == false && ${#install_daemon} -eq 0 && ( $ins
     done
 fi
 install_daemon=$(getBool $install_daemon)
-if [[ $test_only == false && $install_daemon == true && ( $install_labelUI == true || $install_aicontroller == true ) ]]; then
+if [[ $SYSTEMD_AVAILABLE && $test_only == false && $install_daemon == true && ( $install_labelUI == true || $install_aicontroller == true ) ]]; then
 
     # AIDE service group
     if [ $(getent group $aide_group) ]; then
