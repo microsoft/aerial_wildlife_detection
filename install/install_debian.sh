@@ -588,7 +588,6 @@ append_environment_args=$(getBool $append_environment_args)
 yes=$(getBool $yes)
 test_only=$(getBool $test_only)
 advanced_mode=$(getBool $advanced_mode)
-SYSTEMD_AVAILABLE=$(getBool $SYSTEMD_AVAILABLE)
 
 
 # -----------------------------------------------------------------------------
@@ -1008,12 +1007,12 @@ if [[ $install_database == true ]]; then
         # restart PostgreSQL daemon
         sudo service postgresql restart
 
-        if [[ $SYSTEMD_AVAILABLE ]]; then
+        if [[ $SYSTEMD_AVAILABLE > 0 ]]; then
             sudo systemctl enable postgresql
         fi
 
         # start cluster
-        if [[ $SYSTEMD_AVAILABLE ]]; then
+        if [[ $SYSTEMD_AVAILABLE > 0 ]]; then
             sudo systemctl start postgresql@$pg_version-main
         fi
         sudo pg_ctlcluster $pg_version main start
@@ -1096,7 +1095,7 @@ if [[ $install_rabbitmq == true ]]; then
         log "Setting port..."
         sudo sed -i "s/^\s*#\s*NODE_PORT\s*=.*/NODE_PORT=${rabbitmqCred[4]}/g" /etc/rabbitmq/rabbitmq-env.conf
 
-        if [[ $SYSTEMD_AVAILABLE ]]; then
+        if [[ $SYSTEMD_AVAILABLE > 0 ]]; then
             sudo systemctl enable rabbitmq-server.service
         fi
         sudo service rabbitmq-server start
@@ -1177,7 +1176,7 @@ if [[ $install_redis == true ]]; then
         sudo sed -i "s/^\s*port\s*.*/port ${redisCred[4]}/g" /etc/redis/redis.conf
 
         # restart
-        if [[ $SYSTEMD_AVAILABLE ]]; then
+        if [[ $SYSTEMD_AVAILABLE > 0 ]]; then
             log "Restarting service..."
             sudo systemctl daemon-reload
             sudo systemctl enable redis-server.service
