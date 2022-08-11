@@ -588,7 +588,7 @@ append_environment_args=$(getBool $append_environment_args)
 yes=$(getBool $yes)
 test_only=$(getBool $test_only)
 advanced_mode=$(getBool $advanced_mode)
-
+SYSTEMD_AVAILABLE=$(getBool $SYSTEMD_AVAILABLE)
 
 
 # -----------------------------------------------------------------------------
