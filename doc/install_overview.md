@@ -38,6 +38,16 @@ git clone https://github.com/microsoft/aerial_wildlife_detection.git && cd aeria
 ./install/install_debian.sh
 ```
 
+6. To start AIDE: open a new WSL shell (see Step 2 above) and issue these commands:
+```bash
+cd ${HOME}/aerial_wildlife_detection
+conda activate aide
+export AIDE_CONFIG_PATH=config/settings.ini
+export AIDE_MODULES=LabelUI,AIController,AIWorker,FileServer
+export PYTHONPATH=.
+./AIDE.sh start
+```
+
 #### With Docker
 
 Coming soon.
@@ -48,7 +58,14 @@ Coming soon.
 
 #### With the Installer
 
-1. Install a Python environment manager, such as [Conda](https://conda.io/) (recommended and used below) or [Virtualenv](https://virtualenv.pypa.io).
+1. Install a Python environment manager, such as [Conda](https://conda.io/) (recommended and used below) or [Virtualenv](https://virtualenv.pypa.io):
+```bash
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+chmod +x Miniconda3-latest-Linux-x86_64.sh
+./Miniconda3-latest-Linux-x86_64.sh   # follow instructions prompted
+
+source .bashrc
+```
 2. Create a new Python environment for AIDE:
 ```bash
     conda create -y -n aide python=3.8
