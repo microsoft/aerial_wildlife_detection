@@ -1662,7 +1662,23 @@ EOF
     log "\nYou can now log in with your administrator account '$adminName'."
 
 else
-    log "Skipping..."
+    if grep -qi microsoft /proc/version; then
+        log "Windows Subsystem for Linux (WSL) detected; cannot set up systemd Daemon process."
+        log "To start AIDE, follow these steps below:"
+        log "1. Open a Linux prompt: Start > type 'wsl' > select 'wsl - Run command'"
+        log "2. Activate your Python environment. For example (if you are using Conda):"
+        log "conda activate aide"
+        log "3. Issue below commands in order:"
+        log "cd $aide_root"
+        log "export AIDE_CONFIG_PATH=$config_file"
+        log "export AIDE_MODULES=$aide_modules"
+        log "export PYTHONPATH=."
+        log "./AIDE.sh start"
+    elif $SYSTEMD_AVAILABLE > 0; then
+        log "Systemd not available on this system; skipping Daemon process setup..."
+    else
+        log "Skipping..."
+    fi
 fi
 
 

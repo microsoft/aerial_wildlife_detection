@@ -33,9 +33,9 @@ function start {
     done
     if [ $launchCeleryBeat ]; then
         # folder watching interval specified; enable Celery beat
-        tempDir="$(python util/configDef.py --section=FileServer --parameter=tempfiles_dir --fallback=/tmp)/aide/celery/";
+        tempDir="$(python util/configDef.py --section=FileServer --parameter=tempfiles_dir --fallback=/tmp/aide/celery)";
         mkdir -p $tempDir;
-        celery -A celery_worker worker -B -s $tempDir --hostname aide@%h &
+        celery -A celery_worker worker -B -s $tempDir/celery --hostname aide@%h &
     else
         celery -A celery_worker worker --hostname aide@%h & 
     fi

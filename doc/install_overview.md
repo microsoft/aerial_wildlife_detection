@@ -6,11 +6,47 @@ If you have [AIDE v1](https://github.com/microsoft/aerial_wildlife_detection/tre
 
 ## New installation
 
-### Ubuntu / Debian
+### Windows
+
+_Note:_ these are preliminary instructions and still subject to extensive testing. They currently apply to Windows 11; Windows 10 will follow.
+
 
 #### With the Installer
 
-__New since AIDE version 2.1:__ AIDE now offers an interactive installation script (beta) for easy setup that even supports configuring it to launch at system boot!
+__Prerequisites:__ You need Windows 10 or greater and support for [Windows Subsystem for Linux](https://docs.microsoft.com/en-gb/windows/wsl/install-manual) to install and use AIDE on a Windows machine.
+
+1. Install the [Windows Subsystem for Linux (WSL)](https://docs.microsoft.com/en-gb/windows/wsl/install-manual). Select "Ubuntu 20.04.4 LTS" as an image in the Microsoft store.
+2. If not running, open a new WSL shell: click "Start", type "wsl", select "wsl - Run command". All the rest below must be issued in this new command window.
+3. Install [Conda](https://conda.io/) (important: download the Linux binaries); follow any instructions during the install process:
+```bash
+cd ${HOME}
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+chmod +x Miniconda3-latest-Linux-x86_64.sh
+./Miniconda3-latest-Linux-x86_64.sh   # follow instructions prompted
+
+source .bashrc
+```
+4. Create Python environment and clone AIDE repository:
+```bash
+conda create -y -n aide python=3.8
+conda activate aide
+
+git clone https://github.com/microsoft/aerial_wildlife_detection.git && cd aerial_wildlife_detection
+```
+5. Launch installer and follow the instructions:
+```bash
+./install/install_debian.sh
+```
+
+#### With Docker
+
+Coming soon.
+
+
+
+### Ubuntu / Debian
+
+#### With the Installer
 
 1. Install a Python environment manager, such as [Conda](https://conda.io/) (recommended and used below) or [Virtualenv](https://virtualenv.pypa.io).
 2. Create a new Python environment for AIDE:
