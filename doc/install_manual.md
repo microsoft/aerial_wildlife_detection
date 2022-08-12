@@ -11,7 +11,7 @@ If you have a CUDA-capable GPU it is highly recommended to install PyTorch with 
 
 ## Step-by-step installation
 
-The following installation routine had been tested on Ubuntu >= 16.04. AIDE will likely run on different OS as well, with instructions requiring corresponding adaptations.
+The following installation routine had been tested on Ubuntu >= 16.04 (20.04 recommended). AIDE will likely run on different OS as well, with instructions requiring corresponding adaptations.
 
 
 
@@ -34,7 +34,7 @@ It is strongly recommended to run AIDE in a self-contained Python environment, s
     git clone https://github.com/microsoft/aerial_wildlife_detection.git
 
     # install required libraries
-    sudo add-apt-repository -y ppa:ubuntugis/ppa && apt-get update
+    sudo add-apt-repository -y ppa:ubuntugis/ppa && sudo apt-get update
     sudo apt-get install -y build-essential libpq-dev python-dev ffmpeg libsm6 libxext6 python3-opencv gdal-bin libgdal-dev
 
     pip install -r requirements.txt
