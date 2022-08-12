@@ -28,7 +28,7 @@ test_only=FALSE                     # skip installation and only do checks and t
 # -----------------------------------------------------------------------------
 
 # constants
-INSTALLER_VERSION=2.2.220811
+INSTALLER_VERSION=2.2.220812
 MIN_PG_VERSION=10
 PG_KEY=ACCC4CF8.asc
 DEFAULT_PORT_RABBITMQ=5672
@@ -256,6 +256,7 @@ while [[ $# -gt 0 ]]; do
     \e[1m8\e[0m Remote PostgreSQL server cannot be contacted. Make sure current machine and account have access permissions to database and server.
 
 \e[1mHISTORY\e[0m
+    Aug 12, 2022: Implemented fallback for non-systemd setups (e.g., WSL); changed Postgres authentication from md5 to scram-sha-256; DB init bug fixes
     Apr 12, 2022: Various bug fixes on PostgreSQL installation and daemonization routines; made installer compatible with exotic account and machine names.
     Aug 4, 2021: Initial installer release by Benjamin Kellenberger (benjamin.kellenberger@epfl.ch)
 
@@ -999,7 +1000,7 @@ if [[ $install_database == true ]]; then
         fi 
 
         sudo sed -i "s/\s*#\s*listen_addresses\s=\s'localhost'/listen_addresses = '\*'/g" $pgConfFile
-        echo "host    $dbName             $dbAuth             0.0.0.0/0               md5" | sudo tee -a /etc/postgresql/$pg_version/main/pg_hba.conf > /dev/null
+        echo "host    $dbName             $dbAuth             0.0.0.0/0               scram-sha-256" | sudo tee -a /etc/postgresql/$pg_version/main/pg_hba.conf > /dev/null
 
         # modify port
         sudo sed -i "s/\s*port\s*=\s*[0-9]*/port = $dbPort/g" $pgConfFile
@@ -1038,7 +1039,7 @@ if [[ $install_database == true ]]; then
         log "Creating database..."
         sudo -u postgres psql -c "CREATE DATABASE \"$dbName\" WITH OWNER \"$dbUser\" CONNECTION LIMIT -1;" | tee -a $logFile
         log "Granting connection to database..."
-        sudo -u postgres psql -c "GRANT CREATE, CONNECT ON DATABASE \"$dbName\" TO \"$dbUser\";" | tee -a $logFile
+        sudo -u postgres psql -d $dbName -c "GRANT CREATE, CONNECT ON DATABASE \"$dbName\" TO \"$dbUser\";" | tee -a $logFile
         log "Creating UUID extension..."
         sudo -u postgres psql -d $dbName -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";" | tee -a $logFile
         log "Granting table privileges..."
@@ -1055,7 +1056,7 @@ else
     pgActive=$(pgStatus | grep "accepting connections")
     if [ ! ${#pgActive} ]; then
         log "\e[31m[FAIL]\e[0m"
-        abort 8 "Failed to contact database server (message: '$pgStatus'). Please make sure remote server (postgres://$dbHost:$dbPort/$dbName) is reachable by $dbUser via md5 authentication."
+        abort 8 "Failed to contact database server (message: '$pgStatus'). Please make sure remote server (postgres://$dbHost:$dbPort/$dbName) is reachable by $dbUser via scram-sha-256 authentication."
     else
         log "\e[32m[ OK ]\e[0m"
     fi

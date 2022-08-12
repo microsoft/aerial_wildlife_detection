@@ -42,7 +42,7 @@ However, for the database operation, this is not required. If you wish to skip t
     # modify authentication
     # NOTE: you might want to manually adapt these commands for increased security; the following makes postgres listen to all global connections
     sudo sed -i "s/\s*#\s*listen_addresses\s=\s'localhost'/listen_addresses = '\*'/g" /etc/postgresql/$version/main/postgresql.conf
-    echo "host    all             all             0.0.0.0/0               md5" | sudo tee -a /etc/postgresql/$version/main/pg_hba.conf > /dev/null
+    echo "host    all             all             0.0.0.0/0               scram-sha-256" | sudo tee -a /etc/postgresql/$version/main/pg_hba.conf > /dev/null
 
 
     # restart postgres and auto-launch it on boot
@@ -73,8 +73,8 @@ This needs to be done from the installation root of AIDE, with the correct envir
 ```bash
     sudo -u postgres psql -p $dbPort -c "CREATE USER $dbUser WITH PASSWORD '$dbPassword';"
     sudo -u postgres psql -p $dbPort -c "CREATE DATABASE $dbName WITH OWNER $dbUser CONNECTION LIMIT -1;"
-    sudo -u postgres psql -p $dbPort -c "GRANT CREATE, CONNECT ON DATABASE $dbName TO $dbUser;"
-    sudo -u postgres psql -p $dbPort -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
+    sudo -u postgres psql -d $dbName -p $dbPort -c "GRANT CREATE, CONNECT ON DATABASE $dbName TO $dbUser;"
+    sudo -u postgres psql -d $dbName -p $dbPort -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
 
     # NOTE: needs to be run after init
     sudo -u postgres psql -d $dbName -p $dbPort -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO $dbUser;"
