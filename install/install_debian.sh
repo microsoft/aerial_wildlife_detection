@@ -1422,7 +1422,7 @@ fi
 # -----------------------------------------------------------------------------
 
 log "\e[1m[11/11] \e[36mSystemd processes...\e[0m"
-if [[ $SYSTEMD_AVAILABLE && $test_only == false && $yes == false && ${#install_daemon} -eq 0 && ( $install_labelUI == true || $install_aicontroller == true ) ]]; then
+if [[ $SYSTEMD_AVAILABLE > 0 && $test_only == false && $yes == false && ${#install_daemon} -eq 0 && ( $install_labelUI == true || $install_aicontroller == true ) ]]; then
     # prompt
     log "\nWould you like to install a systemd service for AIDE to start it with the operating system?"
     while true; do
@@ -1434,7 +1434,7 @@ if [[ $SYSTEMD_AVAILABLE && $test_only == false && $yes == false && ${#install_d
     done
 fi
 install_daemon=$(getBool $install_daemon)
-if [[ $SYSTEMD_AVAILABLE && $test_only == false && $install_daemon == true && ( $install_labelUI == true || $install_aicontroller == true ) ]]; then
+if [[ $SYSTEMD_AVAILABLE > 0 && $test_only == false && $install_daemon == true && ( $install_labelUI == true || $install_aicontroller == true ) ]]; then
 
     # AIDE service group
     if [ $(getent group $aide_group) ]; then
