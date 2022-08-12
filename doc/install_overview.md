@@ -38,7 +38,7 @@ git clone https://github.com/microsoft/aerial_wildlife_detection.git && cd aeria
 ./install/install_debian.sh
 ```
 
-6. To start AIDE: open a new WSL shell (see Step 2 above) and issue these commands:
+6. To start AIDE: open a WSL shell if not already open (see Step 2 above how to do so) and issue these commands:
 ```bash
 cd ${HOME}/aerial_wildlife_detection
 conda activate aide
