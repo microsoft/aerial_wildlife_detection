@@ -9,7 +9,7 @@
 
 
 /* administrative schema */
-CREATE SCHEMA IF NOT EXISTS aide_admin
+CREATE SCHEMA IF NOT EXISTS "aide_admin"
     AUTHORIZATION "&user";
 
 DO $$
@@ -20,12 +20,12 @@ BEGIN
 END
 $$;
 
-CREATE TABLE IF NOT EXISTS aide_admin.version (
+CREATE TABLE IF NOT EXISTS "aide_admin".version (
     version VARCHAR UNIQUE NOT NULL,
     PRIMARY KEY (version)
 );
 
-CREATE TABLE IF NOT EXISTS aide_admin.project (
+CREATE TABLE IF NOT EXISTS "aide_admin".project (
     shortname VARCHAR UNIQUE NOT NULL,
     name VARCHAR UNIQUE NOT NULL,
     description VARCHAR,
@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS aide_admin.project (
     PRIMARY KEY(shortname)
 );
 
-CREATE TABLE IF NOT EXISTS aide_admin.user (
+CREATE TABLE IF NOT EXISTS "aide_admin".user (
     name VARCHAR UNIQUE NOT NULL,
     email VARCHAR,
     hash BYTEA,
@@ -71,18 +71,18 @@ CREATE TABLE IF NOT EXISTS aide_admin.user (
     PRIMARY KEY (name)
 );
 
-ALTER TABLE aide_admin.project DROP CONSTRAINT IF EXISTS project_user_fkey;
-ALTER TABLE aide_admin.project ADD CONSTRAINT project_user_fkey FOREIGN KEY (owner) REFERENCES aide_admin.USER (name);
+ALTER TABLE "aide_admin".project DROP CONSTRAINT IF EXISTS project_user_fkey;
+ALTER TABLE "aide_admin".project ADD CONSTRAINT project_user_fkey FOREIGN KEY (owner) REFERENCES aide_admin.USER (name);
 
-CREATE TABLE IF NOT EXISTS aide_admin.authentication (
+CREATE TABLE IF NOT EXISTS "aide_admin".authentication (
     username VARCHAR NOT NULL,
     project VARCHAR NOT NULL,
     isAdmin BOOLEAN DEFAULT FALSE,
     admitted_until TIMESTAMPTZ,
     blocked_until TIMESTAMPTZ,
     PRIMARY KEY (username, project),
-    FOREIGN KEY (username) REFERENCES aide_admin.user (name),
-    FOREIGN KEY (project) REFERENCES aide_admin.project (shortname)
+    FOREIGN KEY (username) REFERENCES "aide_admin".user (name),
+    FOREIGN KEY (project) REFERENCES "aide_admin".project (shortname)
 );
 
 
@@ -155,7 +155,7 @@ COST 4;
 
 
 -- Model marketplace
-CREATE TABLE IF NOT EXISTS aide_admin.modelMarketplace (
+CREATE TABLE IF NOT EXISTS "aide_admin".modelMarketplace (
     id UUID DEFAULT uuid_generate_v4(),
     name VARCHAR UNIQUE NOT NULL,
     description VARCHAR NOT NULL,

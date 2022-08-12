@@ -1182,8 +1182,8 @@ if [[ $install_redis == true ]]; then
             sudo systemctl enable redis-server.service
             sudo systemctl restart redis-server.service
             log "Done."
-        # else
-        #     #TODO
+        else
+            sudo service redis-server start
         fi
     fi
 else
@@ -1538,6 +1538,8 @@ EOF
         if [ ${#tempDir} -eq 0 ]; then
             tempDir="/tmp/aide/fileserver"
         fi
+        sudo mkdir -p $tempDir
+        sudo chown -R $aide_daemon_user:$aide_daemon_user $tempDir
             
         # Celery daemon config file
         if [ -f $SYSTEMD_CONFIG_WORKER ]; then
