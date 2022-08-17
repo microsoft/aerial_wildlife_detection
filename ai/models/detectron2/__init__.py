@@ -28,6 +28,8 @@ from .boundingBoxes.tridentnet.tridentnet import TridentNet
 
 from .boundingBoxes.yolov5.yolo import YOLOv5
 
+from .boundingBoxes.deepforest.deepforest import DeepForest
+
 from .segmentationMasks.deeplabv3plus.deeplabv3plus import DeepLabV3Plus
 
 from .segmentationMasks.unet.unet import Unet

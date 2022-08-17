@@ -264,7 +264,16 @@ PREDICTION_MODELS = {
                                              'predictionType': 'boundingBoxes',
                                              'canAddLabelclasses': True,
                                              'canRemoveLabelclasses': False
-                                        }, 
+                                        },
+     'ai.models.detectron2.DeepForest': {
+                                             'name': 'DeepForest (beta)',
+                                             'author': '(built-in)',
+                                             'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of the <a href="https://github.com/weecology/DeepForest" target="_blank">DeepForest</a> model family.',
+                                             'annotationType': ['boundingBoxes', 'polygons'],
+                                             'predictionType': 'boundingBoxes',
+                                             'canAddLabelclasses': True,
+                                             'canRemoveLabelclasses': False
+                                        },
      'ai.models.detectron2.DeepLabV3Plus': {
                                              'name': 'DeepLabV3+',
                                              'author': '(built-in)',
@@ -274,7 +283,7 @@ PREDICTION_MODELS = {
                                              'canAddLabelclasses': True,
                                              'canRemoveLabelclasses': True
                                         },
-          'ai.models.detectron2.Unet': {
+     'ai.models.detectron2.Unet': {
                                              'name': 'U-net (beta)',
                                              'author': '(built-in)',
                                              'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of the <a href="https://link.springer.com/content/pdf/10.1007/978-3-319-24574-4_28.pdf" target="_blank">U-net</a> semantic segmentation network.',

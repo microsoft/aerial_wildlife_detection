@@ -1,0 +1,29 @@
+{
+	"aide_model_version": 1.0,
+	"name": "DeepForest",
+	"description": "<a href=\"https://github.com/weecology/DeepForest#use-benchmark-release\" target=\"_blank\">DeepForest</a>",
+	"author": "Ben Weinstein",
+	"time_created": 1607964812,
+	"tags": [
+		"DeepForest",
+		"Aerial Images",
+		"RetinaNet",
+		"detectron2"
+	],
+	"labelclasses": [
+        "tree"
+	],
+	"annotation_type": "boundingBoxes",
+	"prediction_type": "boundingBoxes",
+	"ai_model_library": "ai.models.detectron2.DeepForest",
+	"ai_model_settings": {
+        "options": {
+            "model": {
+                "config": {
+                    "value": "boundingBoxes/deepforest/deepforest.yaml"
+                }
+            }
+		}
+    },
+	"citation_info": "<p class=\"citation\">Weinstein, B.G., Marconi, S., Aubry-Kientz, M., Vincent, G., Senyondo, H. and White, E.P., 2020. DeepForest: A Python package for RGB deep learning tree crown delineation. Methods in Ecology and Evolution, 11(12), pp.1743-1751.</p><br /><a href=\"https://github.com/weecology/DeepForest\" target=\"_blank\">DeepForest project page</a>"
+}

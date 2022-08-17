@@ -23,6 +23,7 @@ Exciting news: AIDE version 3.0 is on the way! This is the **nightly** build of 
 * :clock3: New Models:
   * :ballot_box_with_check: YOLOv5 for Detectron2 (first prototype working; expansion towards new model weights still missing; settings/hyperparams need GUI impl.). :white_check_mark: MegaDetector v5 configs implemented.
   * :ballot_box_with_check: U-net for Detectron2 (first prototype working; currently no pre-trained model states)
+  * :ballot_box_with_check: [DeepForest and BirdDetector](https://github.com/weecology/DeepForest) (first prototype working; needs to be tested)
 * :white_check_mark: Virtual views for images implemented
 * :ballot_box_with_check: Annotation im-/export: basic functionality and some parsers implemented; need more testing. More parsers (e.g., PASCAL VOC, ESRI ShapeFile, GeoJSON) to be coded.
 * :red_circle: Mapservers (WMS, WMTS, VectorTiles): to be implemented; need convention on how to store CRS, geotransform and GPS coordinates in database
@@ -111,7 +112,7 @@ See [here](doc/install_overview.md).
 AIDE ships with a set of built-in models that can be configured and customized:
 
 | Label type | AI model | Model variants / backbones | More info |
-|-|-|-|-|
+|---|---|---|---|
 | Image labels | AlexNet | AlexNet | [paper](https://arxiv.org/abs/1404.5997) |
 |  | DenseNet | DenseNet-161 | [paper](https://arxiv.org/abs/1608.06993) |
 |  | MNASNet | MNASNet | [paper](https://arxiv.org/abs/1807.11626) |
@@ -124,8 +125,11 @@ AIDE ships with a set of built-in models that can be configured and customized:
 |  | Wide ResNet | Wide ResNet-50; Wide ResNet-101 | [info](https://pytorch.org/vision/stable/models.html#wide-resnet) |
 | Bounding boxes | Faster R-CNN | with ResNet-50 (PASCAL VOC); with ResNet-50 (MS-COCO); with ResNeXt-101 FPN (MS-COCO) | [paper](https://arxiv.org/pdf/1506.01497.pdf), [implementation details](https://github.com/facebookresearch/detectron2/blob/master/MODEL_ZOO.md#faster-r-cnn) |
 |  | RetinaNet | with ResNet-50 FPN (MS-COCO); with ResNet-101 FPN (MS-COCO) | [paper](https://openaccess.thecvf.com/content_ICCV_2017/papers/Lin_Focal_Loss_for_ICCV_2017_paper.pdf), [implementation details](https://github.com/facebookresearch/detectron2/blob/master/MODEL_ZOO.md#retinanet) |
-|  | TridentNet | with ResNet-50; ResNet-101 (MS-COCO) | [paper](https://arxiv.org/abs/1901.01892), [implementation details](https://github.com/facebookresearch/detectron2/tree/master/projects/TridentNet)
+|  | TridentNet | with ResNet-50; ResNet-101 (MS-COCO) | [paper](https://arxiv.org/abs/1901.01892), [implementation details](https://github.com/facebookresearch/detectron2/tree/master/projects/TridentNet) |
+|  | YOLOv5 | with all YOLOv5 models (nano to xlarge; MS-COCO) with MegaDetector v5a and v5b | [YOLOv5](https://github.com/ultralytics/yolov5); [MegaDetector](https://github.com/microsoft/CameraTraps/blob/main/megadetector.md) |
+|  | DeepForest | with DeepForest and BirdDetector | [DeepForest](https://github.com/weecology/DeepForest) |
 | Segmentation masks | DeepLabV3+ | with modified ResNet-101 (Cityscapes) | [paper](http://openaccess.thecvf.com/content_ECCV_2018/papers/Liang-Chieh_Chen_Encoder-Decoder_with_Atrous_ECCV_2018_paper.pdf), [implementation details](https://github.com/facebookresearch/detectron2/tree/master/projects/DeepLab) |
+|  | U-net | (currently no pre-trained state) | [paper](https://link.springer.com/content/pdf/10.1007/978-3-319-24574-4_28.pdf) |
 
 
 All models can be configured in various ways through the AI model settings page in the Web browser. They all are pre-trained on [ImageNet](https://ieeexplore.ieee.org/document/5206848) unless specified otherwise.

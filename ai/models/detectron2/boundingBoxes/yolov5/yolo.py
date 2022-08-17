@@ -105,7 +105,7 @@ class YOLOv5(GenericDetectron2BoundingBoxModel):
         '''
         model, stateDict, newClasses, _ = self.initializeModel(stateDict, data)
         # modify model weights to accept new label classes
-        if True:       #TODO: adaptlen(newClasses):
+        if len(newClasses):
             
             # create temporary labelclassMap for new classes
             lcMap_new = dict(zip(newClasses, list(range(len(newClasses)))))
