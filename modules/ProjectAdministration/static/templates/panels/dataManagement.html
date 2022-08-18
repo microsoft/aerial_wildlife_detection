@@ -287,8 +287,8 @@
                     }
                     let url = data[idx]['filename'];
                     let window_box = [
-                        data[idx]['w_x'], data[idx]['w_y'],
-                        data[idx]['w_width'], data[idx]['w_height']
+                        data[idx]['w_y'], data[idx]['w_x'],
+                        data[idx]['w_height'], data[idx]['w_width']
                     ];
                     if(window_box.every(function(x){return Number.isInteger(x)})) {
                         url += '?window=' + window_box;
