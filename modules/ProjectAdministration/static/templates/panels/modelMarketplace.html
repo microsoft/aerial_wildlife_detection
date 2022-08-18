@@ -1174,26 +1174,32 @@
     }
 
     // show label class mapper upon successful import
-    function showLCmapper(modelID) {
+    function showLCmapper(modelID, callbackYes) {
         let lcMapper = new ModelLabelclassMapper(window.project, modelsMarketplace[modelID]);
         window.lcMapper = lcMapper;
-        lcMapper.loadData().then(function() {
-            window.showYesNoOverlay(lcMapper.getMarkup(),
+        return lcMapper.loadData().then(function() {
+            return window.showYesNoOverlay(lcMapper.getMarkup(),
                 function() {
-                    lcMapper.saveData().then(function(result, message, status) {
-                        loadData();
-                        if(message === 'success') {
-                            window.messager.addMessage('Label class map saved successfully.', 'success');
-                        } else if(result.hasOwnProperty('message')) {
-                            window.messager.addMessage('Could not save label class map (message: "' + result['message'] +'").', 'error', 0);
-                        }
+                    return lcMapper.saveData().then(function(result, message, status) {
+                        return loadData().then(function() {
+                            if(message === 'success') {
+                                window.messager.addMessage('Label class map saved successfully.', 'success');
+                            } else if(result.hasOwnProperty('message')) {
+                                window.messager.addMessage('Could not save label class map (message: "' + result['message'] +'").', 'error', 0);
+                            }
+                            if(typeof(callbackYes) === 'function') {
+                                return callbackYes();
+                            } else {
+                                return $.Deferred().resolve().promise();
+                            }
+                        });
                     });
                 },
                 null, 'Save', 'Cancel', 'btn-primary', 'btn-secondary', true, false);
         });
     }
 
-    function pollImport(data) {
+    function pollImport(data, showLCmapper) {
         let success = 'success';
         let message = '';
         if(data['status'] !== 0) {
@@ -1207,7 +1213,11 @@
             // model import successful; extract ID and prompt for label class mapper
             let modelID = data['marketplace_origin_id'];
             getModelsMarketplace().then(function() {
-                return showLCmapper(modelID);
+                if(showLCmapper) {
+                    return showLCmapper(modelID);
+                } else {
+                    return $.Deferred().resolve().promise();
+                }
             });
 
             message = 'Model "'+modelName+'" imported successfully.';
@@ -1228,6 +1238,7 @@
         let data = null;
         let pBar = null;
 
+        let showLCmapperFirst = false;
         if(source === 'url') {
             // import from URL
             let modelURL = $('#web-import-url-field').val();
@@ -1270,11 +1281,13 @@
 
         } else {
             if(selectedModel_id_marketplace === null || selectedModel_id_marketplace === undefined) {
-                return $.Deferred().promise();
+                return $.Deferred().resolve().promise();
             }
             modelName = modelsMarketplace[selectedModel_id_marketplace]['name'];
             modelID = modelsMarketplace[selectedModel_id_marketplace]['id'];
             data = JSON.stringify({model_id: modelID});
+
+            showLCmapperFirst = true;
         }
 
         let ajaxParams = {
@@ -1288,10 +1301,10 @@
                 let taskID = data['task_id'];
                 if(typeof(taskID) === 'string') {
                     poll_status(taskID, function(data) {
-                        pollImport(data);
+                        pollImport(data, !showLCmapperFirst);
                     },
                     function(data) {
-                        pollImport(data);
+                        pollImport(data, !showLCmapperFirst);
                     }, undefined, 1000);
                 } else {
                     let errorMessage = 'An error occurred while trying to import model "'+modelName+'" to project';
@@ -1348,9 +1361,23 @@
             return $.ajax(ajaxParams);
         }
 
-        // prompt for confirmation, then start the work
-        window.showYesNoOverlay($('<div>Proceeding will import the selected model to the project and make it the starting point for future workflows in that project.<br />Are you sure?</div>'),
-            doImportModel, null, 'Import', 'Cancel', 'btn-primary', 'btn-secondary', false, false);
+        let promptUpload = function() {
+            // prompt for confirmation, then start the work
+            window.showYesNoOverlay($('<div>Proceeding will import the selected model to the project and make it the starting point for future workflows in that project.<br />Are you sure?</div>'),
+                doImportModel, null, 'Import', 'Cancel', 'btn-primary', 'btn-secondary', false, false);
+        }
+
+        if(modelID !== undefined) {
+            window.showYesNoOverlay($('<div>Proceeding will import the selected model to the project and make it the starting point for future workflows in that project.<br />Are you sure?</div>'),
+                function() {
+                    if(showLCmapperFirst) {
+                        showLCmapper(modelID, doImportModel);
+                    } else {
+                        doImportModel();
+                    }
+                }, null, 'Import', 'Cancel', 'btn-primary', 'btn-secondary', false, false, true
+            );
+        }
     }
 
 
@@ -1573,8 +1600,6 @@
     }
 
     function loadData() {
-        //TODO: promises
-
         selectedModel_id_marketplace = null;
         selectedModel_id_project = null;
 
@@ -1583,8 +1608,9 @@
         $('#no-model-selected-project').show();
         $('#selected-model-info-project').hide();
 
-        getModelsMarketplace();
-        getModelsProject();
+        return getModelsMarketplace().then(() => {
+            return getModelsProject();
+        });
     }
 
     function getTags(source, preserveCase) {

@@ -877,6 +877,7 @@ class ProjectConfigMiddleware:
         # assemble arguments
         aiModelIDs = set()
         values = []
+        labelclasses_new = {}       # label classes in model to add new to project
         for aiModelID in mapping.keys():
             aiModelIDs.add(uuid.UUID(aiModelID))
             nextMap = mapping[aiModelID]
@@ -884,9 +885,30 @@ class ProjectConfigMiddleware:
                 # tuple order in map: (source class ID, source class name, target class ID)
                 sourceID = row[0]
                 sourceName = row[1]
-                targetID = (uuid.UUID(row[2]) if isinstance(row[2], str) else None)
+                targetID = None
+                if isinstance(row[2], str):
+                    if row[2].lower() == '$$add_new$$':
+                        # special flag to add new labelclass to project
+                        labelclasses_new[sourceName] = (uuid.UUID(aiModelID), sourceID, sourceName, targetID)
+                        continue    # we'll deal with newly added classes later
+                    else:
+                        try:
+                            targetID = uuid.UUID(row[2])
+                        except:
+                            targetID = None
                 values.append((uuid.UUID(aiModelID), sourceID, sourceName, targetID))
         
+        # add any newly added label classes to project
+        if len(labelclasses_new):
+            lc_added = self.dbConnector.insert(sql.SQL('''
+                INSERT INTO {id_lc} (name, color)
+                VALUES %s
+                RETURNING id, name;
+            ''').format(id_lc=sql.Identifier(project, 'labelclass')),
+            [(l[2],helpers.randomHexColor(),) for l in labelclasses_new.values()], 'all')       #TODO: make random colors exclusive from each other
+            for row in lc_added:
+                values.append((uuid.UUID(aiModelID), labelclasses_new[row[1]][1], labelclasses_new[row[1]][2], row[0]))
+
         # perform insertion
         self.dbConnector.insert(sql.SQL('''
             DELETE FROM {id_modellc} WHERE

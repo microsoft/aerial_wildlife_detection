@@ -3,7 +3,7 @@
  * establish a mapping between AI model state-provided label
  * classes and those present in the project.
  * 
- * 2021 Benjamin Kellenberger
+ * 2021-22 Benjamin Kellenberger
  */
 
 class ModelLabelclassMapper {
@@ -166,11 +166,7 @@ class ModelLabelclassMapper {
         });
     }
 
-    _save_labelclass_map() {
-        if(this.modelState === null || typeof(this.modelState) !== 'object') {
-            return $.Deferred().resolve().promise();
-        }
-
+    _get_labelclass_data() {
         let modelID = this.modelState['marketplace_id'];
         let mapping = [];
         for(var key in this.labelclass_map) {
@@ -181,6 +177,16 @@ class ModelLabelclassMapper {
         let data = {};
         data['mapping'] = {};
         data['mapping'][modelID] = mapping;
+
+        return data;
+    }
+
+    _save_labelclass_map() {
+        if(this.modelState === null || typeof(this.modelState) !== 'object') {
+            return $.Deferred().resolve().promise();
+        }
+
+        let data = this._get_labelclass_data();
         return $.ajax({
             url: window.baseURL + 'saveModelClassMapping',
             method: 'POST',
@@ -222,9 +228,14 @@ class ModelLabelclassMapper {
         });
     }
 
+    _get_labelclass_autoadaptation_info() {
+        if(typeof(this.autoSwitch) !== 'object') return null;
+        return this.autoSwitch.prop('checked');
+    }
+
     _save_labelclass_autoadaptation_info() {
         if(typeof(this.autoSwitch) !== 'object') return $.Deferred().resolve().promise();
-        let checked = this.autoSwitch.prop('checked');
+        let checked = this._get_labelclass_autoadaptation_info();
         return $.ajax({
             url: window.baseURL + 'saveLabelclassAutoadaptInfo?enabled=' + checked,
             method: 'POST'
@@ -247,6 +258,13 @@ class ModelLabelclassMapper {
         return $.when(this._save_labelclass_map(), this._save_labelclass_autoadaptation_info());
     }
 
+    getData() {
+        return {
+            labelclass_map: this._get_labelclass_data(),
+            auto_adapt: this._get_labelclass_autoadaptation_info()
+        }
+    }
+
     _update_disabled_selectors() {
         // make sure label classes can only be selected once
         let self = this;
@@ -260,7 +278,8 @@ class ModelLabelclassMapper {
                     !(
                         self.labelclass_map.hasOwnProperty(selID) &&
                         self.labelclass_map[selID] == val
-                    )
+                    ) &&
+                    val !== '$$add_new$$'
                 );
             });
         }
@@ -290,6 +309,13 @@ class ModelLabelclassMapper {
                 self.autoAssignModelClasses();
             });
             markup.append(autoAssign);
+            
+            // add unassigned to project button
+            let addUnassigned = $('<button class="btn btn-sm btn-primary labelclass-auto-add-button">add unassigned as new</button>');
+            addUnassigned.on('click', function() {
+                self.addUnassigned();
+            });
+            markup.append(addUnassigned);
 
             let mapTable = $('<table class="labelclass-mapper-table"><thead>' +
                 '<tr><th>Model State</th><th>Project</th></tr>' +
@@ -302,6 +328,7 @@ class ModelLabelclassMapper {
             function _create_selector(labelclass_model) {
                 let selector = $('<select id="selector__'+labelclass_model+'"></select>');
                 selector.append($('<option value="">(unassigned)</option>'));
+                selector.append($('<option value="$$add_new$$">(add to project)</option>'));
                 for(var id in self.labelclasses_project) {
                     let name = self.labelclasses_project[id];
                     selector.append($('<option value="'+id+'">'+name+'</option>'));
@@ -433,5 +460,15 @@ class ModelLabelclassMapper {
             }
         }
         this._update_disabled_selectors();
+    }
+
+    addUnassigned() {
+        for(var lcID in this.labelclasses_model) {
+            if(!this.labelclass_map.hasOwnProperty(lcID) || typeof(this.labelclass_map[lcID]) !== 'string') {
+                this.labelclass_map[lcID] = '$$add_new$$';
+                let selector = $('#selector__'+lcID);
+                selector.val('$$add_new$$');
+            }
+        }
     }
 }

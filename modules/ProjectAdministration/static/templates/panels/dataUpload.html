@@ -767,8 +767,8 @@
 
 
         function setImageBrowserSize() {
-            var height = $('#contents').height() - $('#controls').outerHeight() -
-                            $('.image-browser-view-buttons').outerHeight() - 60;    // -60 for header and margins
+            var height = Math.max($('#contents').height() - $('#controls').outerHeight() -
+                            $('.image-browser-view-buttons').outerHeight() - 60, 200);    // -60 for header and margins
             $('.list-container').css('height', height);
             $('.thumbs-container').css('height', height);
         }

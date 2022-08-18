@@ -2,7 +2,7 @@
  * Tools for showing a general overlay over the UI, e.g.
  * for session renewal.
  * 
- * 2020 Benjamin Kellenberger
+ * 2020-22 Benjamin Kellenberger
  */
 
 
@@ -49,7 +49,7 @@ window.showOverlay = function(contents, large, uiBlocked_after) {
 
 
 // Yes-No screen
-window.showYesNoOverlay = function(contents, callbackYes, callbackNo, buttonTextYes, buttonTextNo, buttonClassesYes, buttonClassesNo, large, uiBlocked_after) {
+window.showYesNoOverlay = function(contents, callbackYes, callbackNo, buttonTextYes, buttonTextNo, buttonClassesYes, buttonClassesNo, large, uiBlocked_after, keepOverlayOnYes) {
     let markup = $('<div></div>');
     if(typeof(buttonTextYes) !== 'string' || buttonTextYes.length === 0) {
         buttonTextYes = 'Yes';
@@ -73,7 +73,7 @@ window.showYesNoOverlay = function(contents, callbackYes, callbackNo, buttonText
     }
     let buttonYes = $('<button style="float:right" class="'+bclYes+'">'+buttonTextYes+'</button>');
     buttonYes.on('click', function() {
-        window.showOverlay(null);
+        if(!keepOverlayOnYes) window.showOverlay(null);
         if(typeof(callbackYes) === 'function') {
             callbackYes();
         }
