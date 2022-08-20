@@ -80,10 +80,16 @@ class DeepForest(nn.Module):
         if self.training:
             targets = []
             for i in inputs:
-                targets.append({
-                    'boxes': i['instances'].gt_boxes.tensor.to(self.device),
-                    'labels': i['instances'].gt_classes.long().to(self.device)
-                })
+                if 'instances' in i:
+                    targets.append({
+                        'boxes': i['instances'].gt_boxes.tensor.to(self.device),
+                        'labels': i['instances'].gt_classes.long().to(self.device)
+                    })
+                else:
+                    targets.append({
+                        'boxes': torch.empty((0, 4,), dtype=torch.float32, device=self.device),
+                        'labels': torch.empty((0,), dtype=torch.long, device=self.device)
+                    })
         out = self.model(images, targets)
         if not self.training:
             if len(out[0]['labels']):

@@ -292,6 +292,15 @@ PREDICTION_MODELS = {
                                              'canAddLabelclasses': True,
                                              'canRemoveLabelclasses': True
                                         },
+     'ai.models.detectron2.MaskRCNN': {
+                                             'name': 'Mask R-CNN (beta)',
+                                             'author': '(built-in)',
+                                             'description': '<a href="https://github.com/facebookresearch/detectron2" target="_blank">Detectron2</a> implementation of the <a href="http://openaccess.thecvf.com/content_ICCV_2017/papers/He_Mask_R-CNN_ICCV_2017_paper.pdf" target="_blank">Mask R-CNN</a> instance segmentation model.',
+                                             'annotationType': ['polygons'],
+                                             'predictionType': 'polygons',
+                                             'canAddLabelclasses': False,
+                                             'canRemoveLabelclasses': False
+                                        },
 
      # # PyTorch: now disabled, since they cannot handle virtual views or multispectral data
      # 'ai.models.pytorch.labels.ResNet': {

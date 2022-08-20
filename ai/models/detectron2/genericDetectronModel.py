@@ -641,6 +641,10 @@ class GenericDetectron2Model(AIModel):
                     labels = outputs.pred_classes.cpu().int()
                     scores = outputs.scores.cpu()
 
+                    # export instance masks as polygons if predicted
+                    if hasattr(outputs, 'pred_masks'):
+                        pass    #TODO: convert masks to polygons
+
                     # export bboxes if predicted
                     if hasattr(outputs, 'pred_boxes'):
                         bboxes = outputs.pred_boxes.tensor.cpu()

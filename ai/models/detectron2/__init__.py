@@ -33,3 +33,5 @@ from .boundingBoxes.deepforest.deepforest import DeepForest
 from .segmentationMasks.deeplabv3plus.deeplabv3plus import DeepLabV3Plus
 
 from .segmentationMasks.unet.unet import Unet
+
+from .instanceSegmentation.maskrcnn.maskrcnn import MaskRCNN

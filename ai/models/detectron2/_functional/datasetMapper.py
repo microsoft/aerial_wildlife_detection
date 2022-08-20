@@ -79,11 +79,17 @@ class Detectron2DatasetMapper(DatasetMapper):
                         anno['bbox'][1] -= anno['bbox'][3]/2
                         anno['bbox'][2] += anno['bbox'][0]
                         anno['bbox'][3] += anno['bbox'][1]
-                    anno['bbox'][0] *= image_shape[0]   #TODO: check order
-                    anno['bbox'][1] *= image_shape[1]   #TODO: check order
-                    anno['bbox'][2] *= image_shape[0]   #TODO: check order
-                    anno['bbox'][3] *= image_shape[1]   #TODO: check order
+                    anno['bbox'][0] *= image_shape[0]
+                    anno['bbox'][1] *= image_shape[1]
+                    anno['bbox'][2] *= image_shape[0]
+                    anno['bbox'][3] *= image_shape[1]
                     anno['bbox_mode'] = BoxMode.XYXY_ABS
+                
+                if len(anno.get('segmentation', [])):
+                    # polygons
+                    poly = anno['segmentation']
+                    poly = [(p * image_shape[idx % 2])+0.5 for idx, p in enumerate(poly)]
+                    anno['segmentation'] = [poly]
 
         if "segmentationMask" in dataset_dict:
             try:
