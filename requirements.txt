@@ -7,6 +7,7 @@ netifaces>=0.10.9
 python-dateutil
 numpy
 requests
+pytz   #TODO: obsolete since Python 3.9; replace with built-ins
 celery[redis,auth,msgpack]
 
 # image parsing
