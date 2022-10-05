@@ -71,7 +71,7 @@
     <div>
         <input type="checkbox" id="remove-missing-checkbox" />
         <label for="remove-missing-checkbox">Remove label classes not present in this list</label>
-        <p style="color:red">
+        <p style="color:red;margin-left:20px">
             WARNING: doing so also removes any annotations and predictions made with labels
             of classes that are to be removed. This step cannot be undone.<br />
             Does not work for segmentation projects.
@@ -98,7 +98,7 @@
 <script src="/static/projectAdmin/libs/jqtree/tree.jquery.js?v={{ version }}"></script>
 <script src="/static/projectAdmin/js/jscolor.js?v={{ version }}"></script>
 <script type="text/javascript">
-    let DELIMITERS = [
+    var DELIMITERS = [
         ',,', ',', ';;', ';', '::', ':', '\t', ' '  //TODO: multiple white spaces?
     ]
 

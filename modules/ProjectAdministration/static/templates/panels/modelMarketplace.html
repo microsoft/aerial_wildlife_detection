@@ -339,26 +339,25 @@
     }
 </style>
 <script src="/static/statistics/libs/chartjs/Chart.min.js?v={{ version }}"></script>
-<script src="/static/general/js/modelLabelclassMapper.js?v={{ version }}"></script>
 <script src="/static/general/js/tableWidthAdjuster.js?v={{ version }}"></script>
 <script type="text/javascript">
 
     window.save = undefined;
 
-    let PANEL_NAMES = [
+    var PANEL_NAMES = [
         'modelmarketplace',
         'projectmodels',
         'webimport',
         'uploaddisk'
     ];
 
-    let availableAImodels = {};
-    let modelsMarketplace = {};
-    let modelsProject = [];
-    let modelsMarketplaceMarkups = [];
-    let modelsProjectMarkups = [];
-    let selectedModel_id_marketplace = null;
-    let selectedModel_id_project = null;
+    var availableAImodels = {};
+    var modelsMarketplace = {};
+    var modelsProject = [];
+    var modelsMarketplaceMarkups = [];
+    var modelsProjectMarkups = [];
+    var selectedModel_id_marketplace = null;
+    var selectedModel_id_project = null;
 
     function escapeHtml(unsafe) {   // required to sanitize potentially harmful model IDs/names
         return unsafe
@@ -1199,7 +1198,7 @@
         });
     }
 
-    function pollImport(data, showLCmapper) {
+    function pollImport(data, showLCmapperEnabled) {
         let success = 'success';
         let message = '';
         if(data['status'] !== 0) {
@@ -1213,7 +1212,7 @@
             // model import successful; extract ID and prompt for label class mapper
             let modelID = data['marketplace_origin_id'];
             getModelsMarketplace().then(function() {
-                if(showLCmapper) {
+                if(showLCmapperEnabled) {
                     return showLCmapper(modelID);
                 } else {
                     return $.Deferred().resolve().promise();
@@ -1373,6 +1372,7 @@
                     if(showLCmapperFirst) {
                         showLCmapper(modelID, doImportModel);
                     } else {
+                        window.showOverlay(null);
                         doImportModel();
                     }
                 }, null, 'Import', 'Cancel', 'btn-primary', 'btn-secondary', false, false, true
@@ -1782,7 +1782,25 @@
         showPanel('modelmarketplace');
     }
 
+    var scriptLoadingReq = {
+        ProgressBar: '/static/general/js/progressbar.js?v={{ version }}',
+        ModelLabelclassMapper: '/static/general/js/modelLabelclassMapper.js?v={{ version }}',
+        poll_status: '/static/dataAdmin/js/taskPolling.js?v={{ version }}'
+    }
+
     $(document).ready(function() {
+
+        let scriptPromises = [getAvailableAImodels()];
+        for(var key in scriptLoadingReq) {
+            try {
+                eval(key);
+            } catch {
+                // script not yet loaded
+                scriptPromises.push($.getScript(scriptLoadingReq[key]));
+            }
+        }
+        let promise = $.when.apply($, scriptPromises);
+
         // adjust table layout of Marketplace and Project
         window.adjustTableWidth(
             '#marketplace-table',
@@ -1812,7 +1830,6 @@
             true
         );
 
-        var promise = getAvailableAImodels();
         promise = promise.done(function() {
             $.when(getModelsMarketplace(), getModelsProject()).done(function () {
                 setupUI();

@@ -23,7 +23,7 @@ function setupImageRendererControls() {
     window.renderConfig = get_render_config(window.bandConfig, {});
     window.renderConfig_default = get_render_config(window.bandConfig, {});
     return $.ajax({
-        url: 'getConfig',
+        url: window.baseURL + 'getConfig',
         method: 'POST',
         data: JSON.stringify({
             'parameters': [
@@ -164,7 +164,7 @@ function setupImageRendererControls() {
                     // button to reset to defaults (window.renderConfig_default)
                     let resetDefaultsBtn = $('<button class="btn btn-sm btn-warning">Reset</button>');
                     resetDefaultsBtn.on('click', function() {
-                        window.renderConfig = JSON.parse(JSON.stringify(window.renderConfig_default));
+                         JSON.parse(JSON.stringify(window.renderConfig_default));
                         // update GUI controls too
                         //TODO: implement case where not all adjustments are available
                         ['red', 'green', 'blue'].map((band) => {

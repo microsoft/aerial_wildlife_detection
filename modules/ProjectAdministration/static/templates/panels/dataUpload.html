@@ -21,7 +21,7 @@
 
                 <div id="image-import-options">
                     <div style="display:flex;flex-direction:row;">
-                        <div>
+                        <div style="min-width:280px;">
                             <div>Existing files with the same name:</div>
                             <fieldset id="existing-files">
                                 <input type="radio" id="radio-keep-existing" name="existing-files" value="keepExisting" checked />
@@ -189,17 +189,28 @@
         padding: 10px;
     }
 </style>
-<script src="/static/dataAdmin/js/imageBrowser.js?v={{ version }}"></script>
-<script src="/static/dataAdmin/js/taskPolling.js?v={{ version }}"></script>
 <script type="text/javascript">
 
     window.save = undefined;
 
+    var scriptLoadingReq = {
+        ProgressBar: '/static/general/js/progressbar.js?v={{ version }}',
+        ImageBrowser: '/static/dataAdmin/js/imageBrowser.js?v={{ version }}',
+        poll_status: '/static/dataAdmin/js/taskPolling.js?v={{ version }}'
+    }
+
     $(document).ready(function() {
 
-        if(typeof(ProgressBar) === 'undefined') {
-            $.getScript('/static/general/js/progressbar.js');
+        let scriptPromises = [];
+        for(var key in scriptLoadingReq) {
+            try {
+                eval(key);
+            } catch {
+                // script not yet loaded
+                scriptPromises.push($.getScript(scriptLoadingReq[key]));
+            }
         }
+        let promise = $.when.apply($, scriptPromises);
 
         // UI functions
         function setControlsDisabled(disabled) {
@@ -538,12 +549,12 @@
 
                 // global progress bar, status message, and stop button
                 $('#global-progress-bar').empty();
-                var pBar = new ProgressBar(true, 0, numFiles, false);
+                let pBar = new ProgressBar(true, 0, numFiles, false);
                 $('#global-progress-bar').append(pBar.getMarkup());
-                var infoBar = $('<span style="flex-shrink:0;font-size:small;">uploading... (0/0 images uploaded)</span>');
+                let infoBar = $('<span style="flex-shrink:0;font-size:small;">uploading... (0/0 images uploaded)</span>');
                 $('#global-progress-bar').append(infoBar);
                 window.stopAction = false;
-                var stopButton = $('<button class="btn btn-sm btn-danger" id="cancel-button">Cancel</button>');
+                let stopButton = $('<button class="btn btn-sm btn-danger" id="cancel-button">Cancel</button>');
                 stopButton.on('click', function() {
                     window.stopAction = true;
                     $(this).attr('disabled', true);
@@ -568,7 +579,7 @@
                 $('#global-progress-bar').append(stopButton);
                 $('#global-progress-bar').show();
 
-                let numComplete = 0;
+                let uploads_complete = {};      // works on a per-image, not per-patch basis
                 for(var fgkey in fileGroups) {
                     if(window.stopAction) {
                         // user aborted
@@ -706,17 +717,18 @@
                                     window.imageBrowser.set('url', key, imgName);
                                     window.imageBrowser.set('message', key, message);
 
-                                    // update progress bar
                                     if(result['status'] < 3) {
-                                        pBar.set(true, pBar.getValue()+1);
-                                        numComplete += 1;   //Object.keys(fileKeys).length;
-                                        infoBar.html('uploading... ('+numComplete+'/'+fileInput.files.length+' files uploaded)');
-                                        if(numComplete >= numFiles) {
-                                            pBar.set(false);
-                                        }
+                                        uploads_complete[imgName] = 1;      //TODO: technically not complete if only a single patch is uploaded
                                         window.uploadedFiles[key] = 1;
                                     }
-                                }                         
+                                }
+                                // update progress bar
+                                numComplete = (Object.keys(uploads_complete).length).toString();
+                                pBar.set(true, numComplete, numFiles);
+                                infoBar.html('uploading... ('+numComplete+'/'+numFiles+' files uploaded)');
+                                if(numComplete >= numFiles) {
+                                    pBar.set(false);
+                                }
                             // } catch(error) {
                             //     //TODO
                             //     console.log(error)
@@ -822,12 +834,14 @@
         }
 
         // get project details
-        var promise = $.get(window.baseURL + 'getProjectSettings', function(data) {
-            window.annotationType = data['settings']['annotationType'];
-            window.dataServerURI = data['settings']['dataServerURI'];
-            if(!window.dataServerURI.endsWith('/')) {
-                window.dataServerURI += '/';
-            }
+        promise = promise.done(function() {
+            return $.get(window.baseURL + 'getProjectSettings', function(data) {
+                window.annotationType = data['settings']['annotationType'];
+                window.dataServerURI = data['settings']['dataServerURI'];
+                if(!window.dataServerURI.endsWith('/')) {
+                    window.dataServerURI += '/';
+                }
+            });
         });
 
         // get valid image extensions

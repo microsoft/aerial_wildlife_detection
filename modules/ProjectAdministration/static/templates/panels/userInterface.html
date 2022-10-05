@@ -292,13 +292,6 @@
         border-radius: 10px;
     }
 </style>
-<script type="text/javascript" src="/static/interface/js/labelClassHandler.js?v={{ version }}"></script>
-<script type="text/javascript" src="/static/interface/js/dataEntry.js?v={{ version }}"></script>
-<script type="text/javascript" src="/static/interface/js/annotationPrimitives.js?v={{ version }}"></script>
-<script type="text/javascript" src="/static/interface/js/viewport/imageViewport.js?v={{ version }}"></script>
-<script type="text/javascript" src="/static/interface/js/renderPrimitives.js?v={{ version }}"></script>
-<script type="text/javascript" src="/static/interface/js/util.js?v={{ version }}"></script>
-<script type="text/javascript" src="/static/interface/js/dataHandler.js?v={{ version }}"></script>
 <script type="text/javascript">
 
     // field-to-token mapping
@@ -684,13 +677,37 @@
         });
     }
 
+    var scriptLoadingReq = {
+        LabelClass: '/static/interface/js/labelClassHandler.js?v={{ version }}',
+        AbstractDataEntry: '/static/interface/js/dataEntry.js?v={{ version }}',
+        Annotation: '/static/interface/js/annotationPrimitives.js?v={{ version }}',
+        ImageViewport: '/static/interface/js/viewport/imageViewport.js?v={{ version }}',
+        AbstractRenderElement: '/static/interface/js/renderPrimitives.js?v={{ version }}',
+        WEB_COLORS: '/static/interface/js/util.js?v={{ version }}',
+        DEFAULT_BAND_CONFIG: '/static/general/js/renderers/imageRenderer.js?v={{ version }}',
+        setupImageRendererControls: '/static/interface/js/imageRendererControls.js?v={{ version }}',
+        DataHandler: '/static/interface/js/dataHandler.js?v={{ version }}'
+    }
+
     $(document).ready(function() {
 
-        // initiate dummy data handler for preview
-        window.dataHandler = new DataHandler(null);
+        let scriptPromises = [getProjectImmutables()];
+        for(var key in scriptLoadingReq) {
+            try {
+                eval(key);
+            } catch {
+                // script not yet loaded
+                scriptPromises.push($.getScript(scriptLoadingReq[key]));
+            }
+        }
 
-        // get project immutables
-        var promise = getProjectImmutables();
+        let promise = $.when.apply($, scriptPromises).done(function() {
+            // initiate dummy data handler for preview
+            window.dataHandler = new DataHandler(null);
+
+            // image rendering
+            return setupImageRendererControls();
+        });
 
         // get current UI settings
         promise = promise.then(function() {
