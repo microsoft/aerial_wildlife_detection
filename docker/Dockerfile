@@ -2,8 +2,7 @@
 # AIDE main Dockerfile.
 #
 # 2020-22 Jaroslaw Szczegielniak, Benjamin Kellenberger
-#
-FROM pytorch/pytorch:1.10.0-cuda11.3-cudnn8-devel
+FROM pytorch/pytorch:1.12.1-cuda11.3-cudnn8-devel
 
 # Avoid warnings by switching to noninteractive
 ENV DEBIAN_FRONTEND=noninteractive

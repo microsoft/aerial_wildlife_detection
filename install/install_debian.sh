@@ -938,6 +938,7 @@ else
     sudo add-apt-repository -y ppa:ubuntugis/ppa | tee -a $log;
     sudo apt-get update | tee -a $log;
     sudo apt-get install -y build-essential wget libpq-dev python-dev ffmpeg libsm6 libxext6 python3-opencv python3-pip gdal-bin libgdal-dev | tee -a $log;
+    pip install torch torchvision --extra-index-url https://download.pytorch.org/whl/cu113 | tee -a $log;
     pip install -r $aide_root/requirements.txt | tee -a $log;
 fi
 
