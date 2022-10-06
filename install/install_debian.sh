@@ -966,6 +966,23 @@ export PYTHONPATH=$aide_root;
 
 
 # -----------------------------------------------------------------------------
+# SETTING UP FILESERVER
+# -----------------------------------------------------------------------------
+
+# note: needed prior to database setup due to imports in setupDB.py script
+log "\e[1m[08/11] \e[36mFile server...\e[0m"
+if [[ $install_fileserver == true && $test_only == false ]]; then
+    log "Creating file server directory..."
+    sudo mkdir -p $fsDir;
+    sudo chown -R $USER $fsDir;
+    log "Done."
+else
+    log "Skipping..."
+fi
+
+
+
+# -----------------------------------------------------------------------------
 # INSTALL DATABASE
 # -----------------------------------------------------------------------------
 
@@ -1207,21 +1224,6 @@ if [[ $install_redis == true ]]; then
     fi
 else
     log "Skipping installation..."
-fi
-
-
-# -----------------------------------------------------------------------------
-# SETTING UP FILESERVER
-# -----------------------------------------------------------------------------
-
-log "\e[1m[08/11] \e[36mFile server...\e[0m"
-if [[ $install_fileserver == true && $test_only == false ]]; then
-    log "Creating file server directory..."
-    sudo mkdir -p $fsDir;
-    sudo chown -R $USER $fsDir;
-    log "Done."
-else
-    log "Skipping..."
 fi
 
 
