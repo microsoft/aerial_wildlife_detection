@@ -977,6 +977,7 @@ if [[ $install_fileserver == true && $test_only == false ]]; then
     log "Creating file server directory..."
     sudo mkdir -p $fsDir;
     sudo chown -R $USER $fsDir;
+    sudo chgrp -R $aide_group $fsDir;
     log "Done."
 else
     log "Skipping..."
