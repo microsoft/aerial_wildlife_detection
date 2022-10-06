@@ -935,6 +935,21 @@ if ! $test_only ; then
 fi
 
 
+# -----------------------------------------------------------------------------
+# SETTING UP AIDE GROUP
+# -----------------------------------------------------------------------------
+
+if [ $(getent group $aide_group) ]; then
+    log "Group '$aide_group' found."
+else
+    sudo groupadd "$aide_group"
+    sudo usermod -aG $aide_group $USER;
+    sudo chgrp -R $aide_group $aide_root
+    sudo chmod g-wx $config_file_out
+    sudo chmod g+r $config_file_out
+    log "Added group '$aide_group' for AIDE services and updated permissions and ownership of AIDE config file ('$config_file_out')."
+fi
+
 
 # -----------------------------------------------------------------------------
 # INSTALL COMMON DEPENDENCIES
@@ -1459,18 +1474,6 @@ if [[ $SYSTEMD_AVAILABLE > 0 && $test_only == false && $yes == false && ${#insta
 fi
 install_daemon=$(getBool $install_daemon)
 if [[ $SYSTEMD_AVAILABLE > 0 && $test_only == false && $install_daemon == true && ( $install_labelUI == true || $install_aicontroller == true ) ]]; then
-
-    # AIDE service group
-    if [ $(getent group $aide_group) ]; then
-        log "Group '$aide_group' found."
-    else
-        sudo groupadd "$aide_group"
-        sudo usermod -aG $aide_group $USER;
-        sudo chgrp -R $aide_group $aide_root
-        sudo chmod g-wx $config_file_out
-        sudo chmod g+r $config_file_out
-        log "Added group '$aide_group' for AIDE services and updated permissions and ownership of AIDE config file ('$config_file_out')."
-    fi
 
     # config file permissions
     sudo chown $USER:$aide_group $config_file_out
