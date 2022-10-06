@@ -1710,3 +1710,6 @@ fi
 # -----------------------------------------------------------------------------
 
 log "\nInstallation of AIDE completed.\nLog written to file '$logFile'."
+log "\nIf everything went correctly AIDE should now be running and reachable in your Web browser:"
+log "\thttp://$HOSTNAME:$serverPort"
+log "Make sure port $serverPort is open accordingly."
