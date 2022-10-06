@@ -1504,7 +1504,7 @@ if [[ $SYSTEMD_AVAILABLE > 0 && $test_only == false && $install_daemon == true &
             serviceContents=$(cat <<EOF
 [Unit]
 Description=AIDE Web server
-Requires=gunicorn.socket
+#Requires=gunicorn.socket
 After=network.target
 StartLimitIntervalSec=0
 
@@ -1554,7 +1554,7 @@ EOF
             echo "d /var/run/celery 0755 $aide_daemon_user $aide_group -" | sudo tee -a tempfile_path
             echo "d /var/log/celery 0755 $aide_daemon_user $aide_group -" | sudo tee -a tempfile_path
         fi
-        if [[ ${#celery_exec} -eq 0 ]]; then
+        if [ ${#celery_exec} -eq 0 ]; then
             celery_exec="$(command -v celery)"
         fi
         tempDir=$(getConfigParam "FileServer" "tempfiles_dir");
