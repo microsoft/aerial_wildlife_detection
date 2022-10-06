@@ -1498,8 +1498,8 @@ if [[ $SYSTEMD_AVAILABLE > 0 && $test_only == false && $install_daemon == true &
         # Web server daemon
         servicePath="/etc/systemd/system/$SYSTEMD_TARGET_SERVER.service"
         if [ -f "$servicePath" ]; then
-            warn "System service for AIDE Web server ('$servicePath') already exists; replacing..."
-            sudo rm -rf $servicePath;
+            warn "System service for AIDE Web server ('$SYSTEMD_TARGET_SERVER') already exists; replacing..."
+            sudo rm -f $servicePath;
         fi
         gunicorn_exec="$(command -v gunicorn)"
         num_workers=$(getConfigParam "Server" "numWorkers");
@@ -1567,9 +1567,11 @@ EOF
             
         # Celery daemon config file
         if [ -f $SYSTEMD_CONFIG_WORKER ]; then
-            warn "Celery daemon config file ('$SYSTEMD_CONFIG_WORKER') found; will not modify it."      #TODO: modify it nonetheless
-        else
-            configContents=$(cat <<EOF
+            warn "Celery daemon config file ('$SYSTEMD_CONFIG_WORKER') found; replacing..."
+            sudo rm -f $SYSTEMD_CONFIG_WORKER;
+        fi
+
+        configContents=$(cat <<EOF
 CELERYD_NODES="aide@%h"
 CELERY_BIN="$celery_exec"
 CELERY_APP="celery_worker"
@@ -1590,13 +1592,12 @@ export AIDE_MODULES=$aide_modules
 export PYTHONPATH=$aide_root
 EOF
 )
-            echo -e "$configContents" | sudo tee $SYSTEMD_CONFIG_WORKER >> /dev/null
-        fi
+        echo -e "$configContents" | sudo tee $SYSTEMD_CONFIG_WORKER >> /dev/null
 
         # AIWorker daemon
         if [ -f "$servicePath" ]; then
             warn "System service for AIWorker ('$SYSTEMD_TARGET_WORKER') already exists; replacing..."
-            sudo rm -rf $servicePath;
+            sudo rm -f $servicePath;
         fi
         serviceContents=$(cat <<EOF
 [Unit]
@@ -1636,7 +1637,7 @@ EOF
         # AIWorker daemon celerybeat
         if [ -f "$servicePath_celerybeat" ]; then
             warn "System service for AIWorker periodic checking ('$SYSTEMD_TARGET_WORKER_BEAT') already exists; replacing..."
-            sudo rm -rf $servicePath_celerybeat;
+            sudo rm -f $servicePath_celerybeat;
         fi
         
         # celerybeat script
