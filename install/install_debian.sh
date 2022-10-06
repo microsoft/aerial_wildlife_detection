@@ -947,9 +947,11 @@ else
     sudo add-apt-repository -y ppa:ubuntugis/ppa | tee -a $log;
     sudo apt-get update | tee -a $log;
     sudo apt-get install -y build-essential wget libpq-dev python-dev ffmpeg libsm6 libxext6 python3-opencv python3-pip gdal-bin libgdal-dev | tee -a $log;
+    
+    log "Removing potential previous libraries requiring compilation..."
+    $pip uninstall -y torch torchvision torchaudio detectron2 yolov5 deepforest | tee -a $log;
     if [ "${#gpuInfo}" -gt 0 ]; then
         log "Installing PyTorch and Torchvision..."
-        $pip uninstall -y torch torchvision torchaudio detectron2 yolov5 deepforest | tee -a $log;
         $pip install torch torchvision --extra-index-url https://download.pytorch.org/whl/cu113 | tee -a $log;
     else
         log "WARNING: found no GPU; installing CPU versions of PyTorch and Torchvision..."
