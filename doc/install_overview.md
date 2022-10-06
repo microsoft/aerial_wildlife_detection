@@ -1,12 +1,23 @@
 # Installing AIDE
 
-## Migration from AIDE v1
-If you have [AIDE v1](https://github.com/microsoft/aerial_wildlife_detection/tree/v1) already running and want to upgrade its contents to AIDE v2, see [here](upgrade_from_v1.md).
+* [New installation](#new-installation)
+    * [Microsoft Windows](#microsoft-windows)
+        * [With the Installer](#with-the-installer)
+    * [Ubuntu / Debian](#ubuntu--debian)
+        * [With the Installer](#with-the-installer-1)
+        * [With Docker](#with-docker-1)
+* [Manual installation](#manual-installation)
+    * [Microsoft Windows](#microsoft-windows-1)
+    * [Ubuntu / Debian](#ubuntu--debian-1)
+* [Migration from previous versions of AIDE](#migration-from-previous-versions-of-aide)
+    * [from AIDE v1](#from-aide-v1)
+    * [from AIDE v2](#from-aide-v2)
+
 
 
 ## New installation
 
-### Windows
+### Microsoft Windows
 
 _Note:_ these are preliminary instructions and still subject to extensive testing. They currently apply to Windows 11; Windows 10 will follow.
 
@@ -118,7 +129,20 @@ If you wish to install AIDE in a self-contained environment instead of the host 
         sudo docker-compose up
     ```
 
-#### Manual installation
+### Manual installation
+
+
+#### Microsoft Windows
+
+__Prerequisites:__ You need Windows 10 or greater and support for [Windows Subsystem for Linux](https://docs.microsoft.com/en-gb/windows/wsl/install-manual) to install and use AIDE on a Windows machine.
+
+1. Install the [Windows Subsystem for Linux (WSL)](https://docs.microsoft.com/en-gb/windows/wsl/install-manual). Select "Ubuntu 20.04.4 LTS" as an image in the Microsoft store.
+2. If not running, open a new WSL shell: click "Start", type "wsl", select "wsl - Run command".
+3. Follow the instructions [here](install_manual.md) for instructions on configuring an instance of AIDE.
+4. Then, see [here](launch_aide.md) for instructions on launching an instance of AIDE. Be aware that all commands must be issued in a WSL shell as explained in Step 2 above.
+
+
+### Ubuntu / Debian
 
 See [here](install_manual.md) for instructions on configuring an instance of AIDE.
 
@@ -126,6 +150,13 @@ After that, see [here](launch_aide.md) for instructions on launching an instance
 
 
 
-### Microsoft Windows
+## Migration from previous versions of AIDE
 
-Instructions coming soon.
+### from AIDE v1
+If you have [AIDE v1](https://github.com/microsoft/aerial_wildlife_detection/tree/v1) already running and want to upgrade its contents to AIDE v3, see [here](upgrade_from_v1.md).
+
+### from AIDE v2
+1. Create a back up of your data and PostgreSQL database prior to upgrading.
+2. Clone the latest v3 repository
+3. Make sure your configuration *.ini file is correct (the same as for your existing v2 installation can be used) and that the AIDE root path is set to the new v3 repository (check `systemd` processes as well if AIDE got installed via the installer script).
+4. Restart all AIDE services. Upon next launch, the database schema will automatically be updated to v3 specifications.
