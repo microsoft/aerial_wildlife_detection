@@ -25,6 +25,7 @@ from detectron2 import model_zoo
 
 from ai.models import AIModel
 from ._functional.dataset import getDetectron2Data
+from ._functional.collation import collate
 from ._functional.datasetMapper import Detectron2DatasetMapper
 from ._functional.checkpointer import DetectionCheckpointerInMem
 from util import optionsHelper
@@ -510,6 +511,7 @@ class GenericDetectron2Model(AIModel):
             mapper=datasetMapper,
             total_batch_size=self.detectron2cfg.SOLVER.IMS_PER_BATCH*comm.get_world_size(),      #TODO: verify
             aspect_ratio_grouping=True,
+            collate_fn=collate,
             num_workers=0
         )
         numImg = len(data['images'])
@@ -616,6 +618,7 @@ class GenericDetectron2Model(AIModel):
         dataLoader = build_detection_test_loader(
             dataset=getDetectron2Data(data, stateDict['labelclassMap'], None, False, False),
             mapper=datasetMapper,
+            collate_fn=collate,
             num_workers=0
         )
         numImg = len(data['images'])

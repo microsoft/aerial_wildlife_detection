@@ -939,17 +939,18 @@ fi
 # SETTING UP AIDE GROUP
 # -----------------------------------------------------------------------------
 
-if [ $(getent group $aide_group) ]; then
-    log "Group '$aide_group' found."
-else
-    sudo groupadd "$aide_group"
+if [[ $test_only == false ]]; then
+    if [ $(getent group $aide_group) ]; then
+        log "Group '$aide_group' found."
+    else
+        sudo groupadd "$aide_group"
+    fi
     sudo usermod -aG $aide_group $USER;
     sudo chgrp -R $aide_group $aide_root
     sudo chmod g-wx $config_file_out
     sudo chmod g+r $config_file_out
-    log "Added group '$aide_group' for AIDE services and updated permissions and ownership of AIDE config file ('$config_file_out')."
+    log "Set up group '$aide_group' for AIDE services and updated permissions and ownership of AIDE config file ('$config_file_out')."
 fi
-
 
 # -----------------------------------------------------------------------------
 # INSTALL COMMON DEPENDENCIES
