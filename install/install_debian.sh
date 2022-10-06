@@ -977,6 +977,7 @@ if [[ $install_fileserver == true && $test_only == false ]]; then
     log "Creating file server directory..."
     sudo mkdir -p $fsDir;
     sudo chown -R $USER:$aide_group $fsDir;
+    sudo chmod -R 770 $fsDir;
     log "Done."
 else
     log "Skipping..."
@@ -1564,6 +1565,7 @@ EOF
         fi
         sudo mkdir -p $tempDir
         sudo chown -R $aide_daemon_user:$aide_group $tempDir
+        sudo chmod -R 770 $tempDir
             
         # Celery daemon config file
         if [ -f $SYSTEMD_CONFIG_WORKER ]; then
