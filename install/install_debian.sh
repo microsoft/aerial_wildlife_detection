@@ -1447,6 +1447,7 @@ log "\e[1m[11/11] \e[36mSystemd processes...\e[0m"
 if [[ $SYSTEMD_AVAILABLE > 0 && $test_only == false && $yes == false && ${#install_daemon} -eq 0 && ( $install_labelUI == true || $install_aicontroller == true ) ]]; then
     # prompt
     log "\nWould you like to install a systemd service for AIDE to start it with the operating system?"
+    log "Note that any existing AIDE systemd service files will be replaced with new ones."
     while true; do
         read -p "[yes/no]" yn
         case $yn in
@@ -1497,12 +1498,12 @@ if [[ $SYSTEMD_AVAILABLE > 0 && $test_only == false && $install_daemon == true &
         # Web server daemon
         servicePath="/etc/systemd/system/$SYSTEMD_TARGET_SERVER.service"
         if [ -f "$servicePath" ]; then
-            warn "System service for AIDE Web server ('$servicePath') already exists; skipping..."
-
-        else
-            gunicorn_exec="$(command -v gunicorn)"
-            num_workers=$(getConfigParam "Server" "numWorkers");
-            serviceContents=$(cat <<EOF
+            warn "System service for AIDE Web server ('$servicePath') already exists; replacing..."
+            sudo rm -rf $servicePath;
+        fi
+        gunicorn_exec="$(command -v gunicorn)"
+        num_workers=$(getConfigParam "Server" "numWorkers");
+        serviceContents=$(cat <<EOF
 [Unit]
 Description=AIDE Web server
 #Requires=gunicorn.socket
@@ -1527,12 +1528,11 @@ KillMode=mixed
 WantedBy=multi-user.target
 EOF
 )
-            echo -e "$serviceContents" | sudo tee $servicePath >> /dev/null
+        echo -e "$serviceContents" | sudo tee $servicePath >> /dev/null
 
-            sudo systemctl daemon-reload
-            sudo systemctl enable $SYSTEMD_TARGET_SERVER.service
-            sudo systemctl restart $SYSTEMD_TARGET_SERVER.service
-        fi
+        sudo systemctl daemon-reload
+        sudo systemctl enable $SYSTEMD_TARGET_SERVER.service
+        sudo systemctl restart $SYSTEMD_TARGET_SERVER.service
     else
         log "Skipping installation of AIDE Web frontend service..."
     fi
@@ -1595,9 +1595,10 @@ EOF
 
         # AIWorker daemon
         if [ -f "$servicePath" ]; then
-            warn "System service for AIWorker ('$SYSTEMD_TARGET_WORKER') already exists; skipping..."
-        else
-            serviceContents=$(cat <<EOF
+            warn "System service for AIWorker ('$SYSTEMD_TARGET_WORKER') already exists; replacing..."
+            sudo rm -rf $servicePath;
+        fi
+        serviceContents=$(cat <<EOF
 [Unit]
 Description=Celery Service for AIDE AIWorker
 After=network.target
@@ -1627,18 +1628,19 @@ Restart=always
 WantedBy=multi-user.target
 EOF
 )
-            echo -e "$serviceContents" | sudo tee $servicePath >> /dev/null
-            sudo systemctl daemon-reload
-            sudo systemctl enable $SYSTEMD_TARGET_WORKER.service
-            sudo systemctl restart $SYSTEMD_TARGET_WORKER.service
-        fi
+        echo -e "$serviceContents" | sudo tee $servicePath >> /dev/null
+        sudo systemctl daemon-reload
+        sudo systemctl enable $SYSTEMD_TARGET_WORKER.service
+        sudo systemctl restart $SYSTEMD_TARGET_WORKER.service
 
         # AIWorker daemon celerybeat
         if [ -f "$servicePath_celerybeat" ]; then
-            warn "System service for AIWorker periodic checking ('$SYSTEMD_TARGET_WORKER_BEAT') already exists; skipping..."
-        else
-            # celerybeat script
-            serviceContents_celerybeat=$(cat <<EOF
+            warn "System service for AIWorker periodic checking ('$SYSTEMD_TARGET_WORKER_BEAT') already exists; replacing..."
+            sudo rm -rf $servicePath_celerybeat;
+        fi
+        
+        # celerybeat script
+        serviceContents_celerybeat=$(cat <<EOF
 [Unit]
 Description=Celery Beat Service for AIDE AIWorker
 After=network.target
@@ -1660,11 +1662,10 @@ Restart=always
 WantedBy=multi-user.target     
 EOF
 )
-            echo -e "$serviceContents_celerybeat" | sudo tee $servicePath_celerybeat >> /dev/null
-            sudo systemctl daemon-reload
-            sudo systemctl enable $SYSTEMD_TARGET_WORKER_BEAT.service
-            sudo systemctl restart $SYSTEMD_TARGET_WORKER_BEAT.service
-        fi
+        echo -e "$serviceContents_celerybeat" | sudo tee $servicePath_celerybeat >> /dev/null
+        sudo systemctl daemon-reload
+        sudo systemctl enable $SYSTEMD_TARGET_WORKER_BEAT.service
+        sudo systemctl restart $SYSTEMD_TARGET_WORKER_BEAT.service
     else
         log "Skipping installation of AIWorker daemon..."
     fi
@@ -1682,6 +1683,7 @@ EOF
     fi
     log "\nIf everything went correctly AIDE should now be running and reachable in your Web browser:"
     log "\thttp://$HOSTNAME:$serverPort"
+    log "Make sure port $serverPort is open accordingly."
     log "\nYou can now log in with your administrator account '$adminName'."
 
 else
@@ -1711,6 +1713,3 @@ fi
 # -----------------------------------------------------------------------------
 
 log "\nInstallation of AIDE completed.\nLog written to file '$logFile'."
-log "\nIf everything went correctly AIDE should now be running and reachable in your Web browser:"
-log "\thttp://$HOSTNAME:$serverPort"
-log "Make sure port $serverPort is open accordingly."
