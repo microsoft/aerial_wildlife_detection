@@ -1488,7 +1488,7 @@ if [[ $SYSTEMD_AVAILABLE > 0 && $test_only == false && $install_daemon == true &
     fi
     sudo usermod -aG $aide_group $aide_daemon_user
     echo -e "\n# created by AIDE installer ('install_debian.sh') on $(date)." | sudo tee -a $homedir/.profile >> /dev/null;
-    echo "export AIDE_CONFIG_PATH=$aide_root" | sudo tee -a $homedir/.profile >> /dev/null;
+    echo "export AIDE_CONFIG_PATH=$config_file_out" | sudo tee -a $homedir/.profile >> /dev/null;
     echo "export AIDE_MODULES=$aide_modules" | sudo tee -a $homedir/.profile >> /dev/null;
     echo "export PYTHONPATH=$aide_root" | sudo tee -a $homedir/.profile >> /dev/null;
     sudo chown $aide_daemon_user:$aide_daemon_user $homedir/.profile;
