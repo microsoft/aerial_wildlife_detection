@@ -168,7 +168,7 @@ DOI: [10.1111/2041-210X.13489](https://doi.org/10.1111/2041-210X.13489).
 
 
 
-If you use AIDE, we would be happy to hear from you! Please send us an [E-mail](mailto:benjamin.kellenberger@epfl.ch) with a little bit of info about your use case; besides getting to know the fellow usership of our software, this also enables us to provide somewhat more tailored support for you if needed. 
+If you use AIDE, we would be happy to hear from you! Please send us an [E-mail](mailto:benjamin.kellenberger@yale.edu) with a little bit of info about your use case; besides getting to know the fellow usership of our software, this also enables us to provide somewhat more tailored support for you if needed. 
 Thank you very much.
 
 

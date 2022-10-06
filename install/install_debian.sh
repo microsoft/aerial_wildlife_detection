@@ -28,7 +28,7 @@ test_only=FALSE                     # skip installation and only do checks and t
 # -----------------------------------------------------------------------------
 
 # constants
-INSTALLER_VERSION=2.2.220812
+INSTALLER_VERSION=3.0.221006
 MIN_PG_VERSION=10
 PG_KEY=ACCC4CF8.asc
 DEFAULT_PORT_RABBITMQ=5672
@@ -256,9 +256,10 @@ while [[ $# -gt 0 ]]; do
     \e[1m8\e[0m Remote PostgreSQL server cannot be contacted. Make sure current machine and account have access permissions to database and server.
 
 \e[1mHISTORY\e[0m
+    Oct 6, 2022: Implemented more failsafety checks, pip executable lookup, PyTorch pre-installation with CUDA/CPU check
     Aug 12, 2022: Implemented fallback for non-systemd setups (e.g., WSL); changed Postgres authentication from md5 to scram-sha-256; DB init bug fixes
-    Apr 12, 2022: Various bug fixes on PostgreSQL installation and daemonization routines; made installer compatible with exotic account and machine names.
-    Aug 4, 2021: Initial installer release by Benjamin Kellenberger (benjamin.kellenberger@epfl.ch)
+    Apr 12, 2022: Various bug fixes on PostgreSQL installation and daemonization routines; made installer compatible with exotic account and machine names
+    Aug 4, 2021: Initial installer release by Benjamin Kellenberger (benjamin.kellenberger@yale.edu)
 
 $INSTALLER_VERSION                  https://github.com/microsoft/aerial_wildlife_detection              
 EOF
@@ -590,7 +591,6 @@ yes=$(getBool $yes)
 test_only=$(getBool $test_only)
 advanced_mode=$(getBool $advanced_mode)
 
-
 # -----------------------------------------------------------------------------
 # PRE-FLIGHT CHECKS
 # -----------------------------------------------------------------------------
@@ -622,13 +622,22 @@ if [ "${#apt_exec}" -eq 0 ]; then
     abort 4 "Package manager ('apt', 'aptitude') not found"
 fi
 
+# get pip executable
+pip=$(command -v pip3);
+if [ "${#pip}" -eq 0 ]; then
+    pip=$(command -v pip);
+    if [ "${#pip}" -eq 0 ]; then
+        abort 5 "Pip is missing from your Python environment. Please install it prior to launching AIDE installer."
+    fi
+fi
+
 # Python version
 if [ ${#python_exec} -eq 0 ]; then
     python_exec=$(command -v python);
 fi
 pyVer="$($python_exec --version 2>&1)"
 if [[ $pyVer != Python\ 3* ]]; then
-    abort 5 "Python executable '$python_exec' is incompatible ('$pyVer' != 'Python 3.*')"
+    abort 6 "Python executable '$python_exec' is incompatible ('$pyVer' != 'Python 3.*')"
 fi
 if [[ $python_exec == '/usr/bin/python' ]]; then
     proceed=$(warn "System Python executable specified ('$python_exec'); this is absolutely NOT recommended!" "TRUE")
@@ -643,7 +652,7 @@ if [ ${#aide_root} -eq 0 ]; then
     aide_root="$(dirname "$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )")"
 fi
 if [ ! -f $aide_root/constants/version.py ]; then
-    abort 6 "Invalid directory specified for AIDE ('$aide_root') - did you move the installation script somewhere else?"
+    abort 7 "Invalid directory specified for AIDE ('$aide_root') - did you move the installation script somewhere else?"
 fi
 
 # check for config file
@@ -938,8 +947,15 @@ else
     sudo add-apt-repository -y ppa:ubuntugis/ppa | tee -a $log;
     sudo apt-get update | tee -a $log;
     sudo apt-get install -y build-essential wget libpq-dev python-dev ffmpeg libsm6 libxext6 python3-opencv python3-pip gdal-bin libgdal-dev | tee -a $log;
-    pip install torch torchvision --extra-index-url https://download.pytorch.org/whl/cu113 | tee -a $log;
-    pip install -r $aide_root/requirements.txt | tee -a $log;
+    if [ "${#gpuInfo}" -gt 0 ]; then
+        log "Installing PyTorch and Torchvision..."
+        $pip install torch torchvision --extra-index-url https://download.pytorch.org/whl/cu113 | tee -a $log;
+    else
+        log "WARNING: found no GPU; installing CPU versions of PyTorch and Torchvision..."
+        $pip install torch torchvision --extra-index-url https://download.pytorch.org/whl/cpu | tee -a $log;
+    fi
+    log "Installing other requirements..."
+    $pip install -r $aide_root/requirements.txt | tee -a $log;
 fi
 
 export AIDE_CONFIG_PATH=$config_file_out;
@@ -1021,7 +1037,7 @@ if [[ $install_database == true ]]; then
     else
         # check version
         if (( $(echo "$psqlV < $MIN_PG_VERSION" |bc -l) )); then
-            abort 7 "Outdated PostgreSQL database found ($psqlV < 9.5). You will not be able to use this version with AIDE.\nPlease manually upgrade to a newer version (9.5 or greater)."
+            abort 8 "Outdated PostgreSQL database found ($psqlV < 9.5). You will not be able to use this version with AIDE.\nPlease manually upgrade to a newer version (9.5 or greater)."
         else
             # check port
             pgConfFile="$(sudo -u postgres psql -c 'SHOW config_file' | grep -o -E '.*\.conf')";
@@ -1057,7 +1073,7 @@ else
     pgActive=$(pgStatus | grep "accepting connections")
     if [ ! ${#pgActive} ]; then
         log "\e[31m[FAIL]\e[0m"
-        abort 8 "Failed to contact database server (message: '$pgStatus'). Please make sure remote server (postgres://$dbHost:$dbPort/$dbName) is reachable by $dbUser via scram-sha-256 authentication."
+        abort 9 "Failed to contact database server (message: '$pgStatus'). Please make sure remote server (postgres://$dbHost:$dbPort/$dbName) is reachable by $dbUser via scram-sha-256 authentication."
     else
         log "\e[32m[ OK ]\e[0m"
     fi
@@ -1284,7 +1300,7 @@ if [ ${#TEST_python} -eq 0 ]; then
     log "\e[32m[ OK ]\e[0m"
 else
     log "\e[31m[FAIL]\e[0m"
-    log "\tThe following libraries could not be imported: $TEST_python"
+    abort 10 "The following libraries could not be imported: $TEST_python"
 fi
 
 # Postgres
@@ -1294,7 +1310,7 @@ if [ ${#TEST_postgres} -gt 0 ]; then
     log "\e[32m[ OK ]\e[0m"
 else
     log "\e[31m[FAIL]\e[0m"
-    log "\tCheck that the PostgreSQL server is running on the target machine (postgres://$dbUser:****@$dbHost:$dbPort/$dbName), that it is reachable via the respective port and that user $adminName has access to it and the database '$dbName'."
+    abort 11 "Check that the PostgreSQL server is running on the target machine (postgres://$dbUser:****@$dbHost:$dbPort/$dbName), that it is reachable via the respective port and that user $adminName has access to it and the database '$dbName'."
 fi
 
 # Python DB access
@@ -1319,7 +1335,7 @@ if [ ${#TEST_python_db} -eq 0 ]; then
     log "\e[32m[ OK ]\e[0m"
 else
     log "\e[31m[FAIL]\e[0m"
-    log "\tMessage: '$TEST_python_db'"
+    abort 12 "Database access from within Python failed. Message: '$TEST_python_db'"
 fi
 
 # RabbitMQ
@@ -1335,7 +1351,7 @@ if [[ $install_redis == true ]]; then
         log "\e[32m[ OK ]\e[0m"
     else
         log "\e[31m[FAIL]\e[0m"
-        log "\tCheck that Redis is running on the target machine ($(assembleURL true ${redisCred[@]}) and that it is reachable via the respective port."
+        abort 13 "Redis server unreachable. Check that Redis is running on the target machine ($(assembleURL true ${redisCred[@]}) and that it is reachable via the respective port."
     fi
 fi
 
@@ -1347,7 +1363,7 @@ if [[ $with_gpu == true ]]; then
         log "\e[32m[ OK ]\e[0m"
     else
         log "\e[31m[FAIL]\e[0m"
-        log "\tMessage: '$TEST_python_gpu'"
+        abort 14 "GPU access from within Python failed. Message: '$TEST_python_gpu'"
     fi
 fi
 
@@ -1413,7 +1429,7 @@ if [[ $install_fileserver == false ]]; then
     fsVer="$(wget $dataServer_uri)" >> /dev/null
     if [ ${#fsVer} -eq 0 ]; then
         log "\e[31m[FAIL]\e[0m"
-        log "\tMake sure remote FileServer is running and accessible (check ports, too)."
+        abort 15 "FileServer could not be contacted. Make sure remote FileServer is running and accessible (check ports, too)."
     fi
 fi
 
