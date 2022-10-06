@@ -957,7 +957,7 @@ else
         log "WARNING: found no GPU; installing CPU versions of PyTorch and Torchvision..."
         $pip install torch torchvision --extra-index-url https://download.pytorch.org/whl/cpu | tee -a $log;
     fi
-    log "Installing other requirements..."
+    log "Installing requirements..."
     $pip install -r $aide_root/requirements.txt | tee -a $log;
 fi
 

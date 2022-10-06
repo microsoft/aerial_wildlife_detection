@@ -672,8 +672,8 @@
                                     let url = window.dataServerURI + window.project + '/files/' + imgName;
 
                                     let window_box = [
-                                        allKeys[key]['x'], allKeys[key]['y'],
-                                        allKeys[key]['width'], allKeys[key]['height']
+                                        allKeys[key]['y'], allKeys[key]['x'],
+                                        allKeys[key]['height'], allKeys[key]['width']
                                     ];
                                     if(window_box.every(function(x){return Number.isInteger(x)})) {
                                         url += '?window=' + window_box;
