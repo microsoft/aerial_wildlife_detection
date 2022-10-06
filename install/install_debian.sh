@@ -976,8 +976,7 @@ log "\e[1m[08/11] \e[36mFile server...\e[0m"
 if [[ $install_fileserver == true && $test_only == false ]]; then
     log "Creating file server directory..."
     sudo mkdir -p $fsDir;
-    sudo chown -R $USER $fsDir;
-    sudo chgrp -R $aide_group $fsDir;
+    sudo chown -R $USER:$aide_group $fsDir;
     log "Done."
 else
     log "Skipping..."
@@ -1464,6 +1463,7 @@ if [[ $SYSTEMD_AVAILABLE > 0 && $test_only == false && $install_daemon == true &
         log "Group '$aide_group' found."
     else
         sudo groupadd "$aide_group"
+        sudo usermod -aG $aide_group $USER;
         sudo chgrp -R $aide_group $aide_root
         sudo chmod g-wx $config_file_out
         sudo chmod g+r $config_file_out
@@ -1483,7 +1483,7 @@ if [[ $SYSTEMD_AVAILABLE > 0 && $test_only == false && $install_daemon == true &
         sudo passwd -l $aide_daemon_user >> /dev/null
         homedir=$( getent passwd "$aide_daemon_user" | cut -d: -f6 )
         sudo mkdir -p $homedir
-        sudo chown -R $aide_daemon_user:$aide_daemon_user $homedir
+        sudo chown -R $aide_daemon_user:$aide_group $homedir
         log "Created user account for AIDE daemon services with name '$aide_daemon_user'."
     fi
     sudo usermod -aG $aide_group $aide_daemon_user
@@ -1491,7 +1491,7 @@ if [[ $SYSTEMD_AVAILABLE > 0 && $test_only == false && $install_daemon == true &
     echo "export AIDE_CONFIG_PATH=$config_file_out" | sudo tee -a $homedir/.profile >> /dev/null;
     echo "export AIDE_MODULES=$aide_modules" | sudo tee -a $homedir/.profile >> /dev/null;
     echo "export PYTHONPATH=$aide_root" | sudo tee -a $homedir/.profile >> /dev/null;
-    sudo chown $aide_daemon_user:$aide_daemon_user $homedir/.profile;
+    sudo chown $aide_daemon_user:$aide_group $homedir/.profile;
 
     if [[ $install_labelUI == true || $install_aicontroller == true ]]; then
         # Web server daemon
@@ -1563,7 +1563,7 @@ EOF
             tempDir="/tmp/aide/fileserver"
         fi
         sudo mkdir -p $tempDir
-        sudo chown -R $aide_daemon_user:$aide_daemon_user $tempDir
+        sudo chown -R $aide_daemon_user:$aide_group $tempDir
             
         # Celery daemon config file
         if [ -f $SYSTEMD_CONFIG_WORKER ]; then
