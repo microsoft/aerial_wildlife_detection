@@ -1443,6 +1443,6 @@ class AIMiddleware():
             SET labelclass_autoupdate = %s
             WHERE shortname = %s
             RETURNING labelclass_autoupdate;
-        ''', (enabled, project), None)
+        ''', (enabled, project), 1)
 
         return result[0]['labelclass_autoupdate']

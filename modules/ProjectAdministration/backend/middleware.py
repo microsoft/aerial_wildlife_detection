@@ -839,14 +839,24 @@ class ProjectConfigMiddleware:
             libStr = sql.SQL('')
         else:
             if isinstance(aiModelID, str):
-                aiModelID = (uuid.UUID(aiModelID),)
+                try:
+                    aiModelID = (uuid.UUID(aiModelID),)
+                except:
+                    # no UUID, hence no mapping to be returned
+                    return {}
             elif isinstance(aiModelID, uuid.UUID):
                 aiModelID = (aiModelID,)
             elif isinstance(aiModelID, Iterable):
                 aiModelID = list(aiModelID)
                 for aIdx in range(len(aiModelID)):
                     if not isinstance(aiModelID[aIdx], uuid.UUID):
-                        aiModelID[aIdx] = uuid.UUID(aiModelID)
+                        try:
+                            aiModelID[aIdx] = uuid.UUID(aiModelID)
+                        except:
+                            # no UUID
+                            continue
+            if len(aiModelID) == 0:
+                return {}
             libStr = sql.SQL('WHERE marketplace_origin_id IN (%s)')
         
         response = {}
@@ -903,6 +913,7 @@ class ProjectConfigMiddleware:
             lc_added = self.dbConnector.insert(sql.SQL('''
                 INSERT INTO {id_lc} (name, color)
                 VALUES %s
+                ON CONFLICT (name) DO NOTHING
                 RETURNING id, name;
             ''').format(id_lc=sql.Identifier(project, 'labelclass')),
             [(l[2],helpers.randomHexColor(),) for l in labelclasses_new.values()], 'all')       #TODO: make random colors exclusive from each other
