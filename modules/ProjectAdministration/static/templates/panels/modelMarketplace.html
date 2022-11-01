@@ -1370,7 +1370,7 @@
         if(modelID !== undefined) {
             window.showYesNoOverlay($('<div>Proceeding will import the selected model to the project and make it the starting point for future workflows in that project.<br />Are you sure?</div>'),
                 function() {
-                    if(showLCmapperFirst) {
+                    if(showLCmapperFirst && typeof(modelsMarketplace[modelID]) === 'object') {
                         showLCmapper(modelID, doImportModel);
                     } else {
                         window.showOverlay(null);
