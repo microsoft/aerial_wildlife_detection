@@ -528,7 +528,8 @@
                         // check if model still in current project (allow re-importing if not)
                         let modelExistsInProject = false;
                         for(var p=0; p<modelsProject.length; p++) {
-                            if(modelsProject[p]['marketplace_info']['id'] === selectedModel_id_marketplace) {
+                            if(modelsProject[p]['marketplace_info']['id'] === selectedModel_id_marketplace ||
+                                modelsProject[p]['id'] === selectedModel_id_marketplace) {
                                 modelExistsInProject = true;
                                 break;
                             }

@@ -910,7 +910,7 @@ class AIMiddleware():
             shared, tags, name, description,
             citation_info, license
             FROM aide_admin.modelMarketplace
-            WHERE origin_project = %s OR origin_project IS NULL;
+            --WHERE origin_project = %s OR origin_project IS NULL;          #TODO: check effects of commenting this line
         ''', (project,), 'all')
         if result is not None and len(result):
             modelMarketplaceMeta = [] # {}
