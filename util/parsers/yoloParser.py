@@ -137,9 +137,10 @@ class YOLOparser(AbstractAnnotationParser):
         # check if YOLOv5 YAML file provided
         if len(yoloFiles['meta']):
             for metaFile in yoloFiles['meta']:
-                meta = yaml.safe_load(metaFile)
+                with open(metaFile, 'r', encoding='utf-8') as f_meta:
+                    meta = yaml.safe_load(f_meta)
                 for idx, labelclass in enumerate(meta['names']):
-                    if labelclass not in self.labelclasses and skipUnknownClasses:
+                    if labelclass not in self.labelClasses and skipUnknownClasses:
                         continue
                     labelclasses[idx] = labelclass
         
