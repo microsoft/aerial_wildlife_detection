@@ -2,7 +2,7 @@
     AIDE version identifier.
     Format:
         "<major>.<minor>.<nightly build date><suffix>"
-    
+
     where the build date is formatted as "YYMMDD".
     An optional suffix like "b" might be provided in
     case of multiple builds per day.
@@ -10,7 +10,7 @@
     2020-22 Benjamin Kellenberger
 '''
 
-AIDE_VERSION = '3.0.221102'
+AIDE_VERSION = '3.0.221126'
 
 
 MIN_FILESERVER_VERSION = '2.2.220618'       # minimum required version for FileServer, due to recent changes

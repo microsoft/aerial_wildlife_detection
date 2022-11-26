@@ -18,6 +18,7 @@ import json
 import math
 import hashlib
 import numpy as np
+from collections import defaultdict
 from datetime import datetime
 import pytz
 from uuid import UUID
@@ -511,7 +512,8 @@ class DataWorker:
         imgs_valid = {}
         imgs_warn = {}
         imgs_error = {}
-        files_aux = {}        # auxiliary files for multi-file datasets, such as image headers
+        imgs_quarantine = {}    # files that are not images but might be annotations
+        files_aux = defaultdict(dict)        # auxiliary files for multi-file datasets, such as image headers
 
         # prepare to save image(s) into AIDE project folder
         images_save = {}
@@ -522,9 +524,9 @@ class DataWorker:
             hasCustomBandConfig = meta['customBandConfig']
 
             # iterate over files and process them
-            for key in tempFiles:
-                tempFileName = tempFiles[key]['temp']
-                originalFileName = tempFiles[key]['orig']
+            for key, item in tempFiles.items():
+                tempFileName = item['temp']
+                originalFileName = item['orig']
                 if os.path.isdir(tempFileName) or not os.path.exists(tempFileName):
                     continue
 
@@ -611,16 +613,16 @@ class DataWorker:
                             raise Exception(f'Unsupported file type for image "{originalFileName}".')
                     
                     if meta['splitImages'] and meta['splitProperties'] is not None:
-                        splitProperties = meta['splitProperties']
-                        if splitProperties.get('virtualSplit', True):
+                        split_props = meta['splitProperties']
+                        if split_props.get('virtualSplit', True):
                             # obtain xy coordinates of patches
                             coords = get_split_positions(tempFileName,
-                                                splitProperties['patchSize'],
-                                                splitProperties['stride'],
-                                                splitProperties.get('tight', False),
-                                                splitProperties.get('discard_homogeneous_percentage', None),
-                                                splitProperties.get('discard_homogeneous_quantization_value', 255),
-                                                celeryUpdateInterval=self.CELERY_UPDATE_INTERVAL)
+                                        split_props['patchSize'],
+                                        split_props['stride'],
+                                        split_props.get('tight', False),
+                                        split_props.get('discard_homogeneous_percentage', None),
+                                        split_props.get('discard_homogeneous_quantization_value', 255),
+                                        celeryUpdateInterval=self.CELERY_UPDATE_INTERVAL)
                             
                             if len(coords) == 1:
                                 # only a single view; don't register x, y
@@ -636,7 +638,8 @@ class DataWorker:
                                 for coord in coords:
                                     imgs_valid[f'{key}_{coord[0]}_{coord[1]}'] = {
                                         'filename': nextFileName,
-                                        'message': f'created virtual split at position ({coord[0], coord[1]})',
+                                        'message': \
+                    f'created virtual split at position ({coord[0], coord[1]})',
                                         'status': 0,
                                         'x': coord[0],
                                         'y': coord[1],
@@ -664,29 +667,30 @@ class DataWorker:
 
                         else:
                             # split image into new patches
-                            splitProperties = meta['splitProperties']
+                            split_props = meta['splitProperties']
                             coords, filenames = split_image(tempFileName,
-                                                    splitProperties['patchSize'],
-                                                    splitProperties['stride'],
-                                                    splitProperties.get('tight', False),
-                                                    splitProperties.get('discard_homogeneous_percentage', None),
-                                                    splitProperties.get('discard_homogeneous_quantization_value', 255),
-                                                    os.path.join(destFolder, originalFileName),
-                                                    return_patches=False,
-                                                    celeryUpdateInterval=self.CELERY_UPDATE_INTERVAL
-                                                    )
-                            for f in range(len(filenames)):
-                                fn = filenames[f].replace(destFolder, '')
-                                imgs_valid[fn] = {
-                                    'filename': fn,
-                                    'message': f'created tile at position ({coords[f][0], coords[f][1]})',
+                                split_props['patchSize'],
+                                split_props['stride'],
+                                split_props.get('tight', False),
+                                split_props.get('discard_homogeneous_percentage', None),
+                                split_props.get('discard_homogeneous_quantization_value', 255),
+                                os.path.join(destFolder, originalFileName),
+                                return_patches=False,
+                                celeryUpdateInterval=self.CELERY_UPDATE_INTERVAL
+                                )
+                            for f_idx, filename in enumerate(filenames):
+                                filename = filename.replace(destFolder, '')
+                                imgs_valid[filename] = {
+                                    'filename': filename,
+                                    'message': \
+            f'created tile at position ({coords[f_idx][0], coords[f_idx][1]})',
                                     'status': 0,
                                     'x': None,
                                     'y': None,
-                                    'width': coords[f][2],
-                                    'height': coords[f][3]
+                                    'width': coords[f_idx][2],
+                                    'height': coords[f_idx][3]
                                 }
-                            
+
                             # add entry for general image
                             imgs_valid[key] = {
                                 'filename': originalFileName,
@@ -694,7 +698,7 @@ class DataWorker:
                                 'message': 'file successfully split into patches',
                                 'status': 0
                             }
-                    
+
                     elif forceConvert or targetMimeType is not None:
                         # no need to split, but need to convert image format
                         images_save[key] = {
@@ -709,12 +713,24 @@ class DataWorker:
                             'filename': nextFileName
                         }
 
-                except Exception as e:
+                    if imgKey in imgs_quarantine:
+                        # some other file(s) with same basic file name is in
+                        # quarantine; release and flag as auxiliary
+                        for q_key, q_value in imgs_quarantine[imgKey].items():
+                            files_aux[imgKey][q_key] = {
+                                'filename': q_value['filename'],
+                                'message': '(auxiliary file)',
+                                'status': 1
+                            }
+                        del imgs_quarantine[imgKey]
+
+                except Exception as exc:
                     if isLoadable:
-                        # file is loadable but cannot be imported to project (e.g., due to band configuration error)
+                        # file is loadable but cannot be imported to project
+                        # (e.g., due to band configuration error)
                         imgs_error[key] = {
                             'filename': originalFileName,
-                            'message': str(e),
+                            'message': str(exc),
                             'status': 3
                         }
                     else:
@@ -728,14 +744,14 @@ class DataWorker:
                             }
                         else:
                             # file might be an auxiliary file; we don't know yet
-                            if not imgKey in imgs_error:
-                                imgs_error[imgKey] = {}
-                            imgs_error[imgKey][key] = {
+                            if not imgKey in imgs_quarantine:
+                                imgs_quarantine[imgKey] = {}
+                            imgs_quarantine[imgKey][key] = {
                                 'filename': originalFileName,
-                                'message': str(e),
+                                'message': str(exc),
                                 'status': 3
                             }
-            
+
             # save data to project folder
             for subKey in images_save:
                 img = images_save[subKey]['image']
@@ -839,6 +855,7 @@ class DataWorker:
             for key in imgs_warn:
                 result[key] = imgs_warn[key]
                 result[key]['status'] = 2
+            #TODO: do the same for imgs_quarantine:
             for key in imgs_error:
                 # we might need to flatten hierarchy of quarantined auxiliary files that actually turned out to be errors
                 nextErrors = imgs_error[key]
