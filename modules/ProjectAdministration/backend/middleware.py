@@ -1159,7 +1159,7 @@ class ProjectConfigMiddleware:
         # stop ongoing tasks
         #TODO: make more elegant
         tc = TaskCoordinatorMiddleware(self.config, self.dbConnector)
-        tc.revokeAllJobs(project, username, includeAItasks=True)
+        tc.revoke_all_tasks(project, username, include_ai_tasks=True)
 
 
         # remove rows from database

@@ -1022,7 +1022,7 @@ class AIMiddleware():
             modelStateIDs = [modelStateIDs]
         modelStateIDs = [str(m) for m in modelStateIDs]
         process = aic_int.delete_model_states.s(project, modelStateIDs)
-        taskID = self.taskCoordinator.submitJob(project, username, process, 'AIController')
+        taskID = self.taskCoordinator.submit_task(project, username, process, 'AIController')
         return taskID
 
 
@@ -1039,7 +1039,7 @@ class AIMiddleware():
             modelStateID = uuid.UUID(modelStateID)
         
         process = aic_int.duplicate_model_state.s(project, modelStateID)
-        taskID = self.taskCoordinator.submitJob(project, username, process, 'AIController')
+        taskID = self.taskCoordinator.submit_task(project, username, process, 'AIController')
         return taskID
 
 
@@ -1061,7 +1061,7 @@ class AIMiddleware():
                 modelStateIDs = None
         
         process = aic_int.get_model_training_statistics.s(project, modelStateIDs)
-        taskID = self.taskCoordinator.submitJob(project, username, process, 'AIController')
+        taskID = self.taskCoordinator.submit_task(project, username, process, 'AIController')
         return taskID
 
 

@@ -10,9 +10,9 @@
 '''
 
 import html
+from util.parsers import PARSERS
 from . import celery_interface
 from .dataWorker import DataWorker
-from util.parsers import PARSERS
 
 
 class DataAdministrationMiddleware:
@@ -27,13 +27,25 @@ class DataAdministrationMiddleware:
 
 
 
-    def _submit_job(self, project, username, process):
-        return self.taskCoordinator.submitJob(project, username, process, 'FileServer')
+    def _submit_task(self, project, username, process):
+        return self.taskCoordinator.submit_task(project, username, process, 'FileServer')
 
 
-    
-    def pollStatus(self, project, jobID):
-        return self.taskCoordinator.pollStatus(project, jobID)
+
+    def poll_task_status(self, project, task_id):
+        return self.taskCoordinator.poll_task_status(project, task_id)
+
+
+
+    def verify_images(self, project, username, image_list=[], quick_check=False):
+        '''
+            Launches a Celery task to verify the images listed in a database for
+            integrity.
+        '''
+        # submit task
+        process = celery_interface.verifyImages.si(project, image_list, quick_check)
+        task_id = self._submit_task(project, username, process)
+        return task_id
 
 
 
@@ -85,14 +97,13 @@ class DataAdministrationMiddleware:
             annotations, etc.), as well as limited in length (images
             are sorted by date_added).
         '''
-        
-        # submit job 
+        # submit job
         process = celery_interface.listImages.si(project, folder, imageAddedRange,
                                                 lastViewedRange, viewcountRange,
                                                 numAnnoRange, numPredRange,
                                                 orderBy, order, startFrom, limit)
         
-        task_id = self._submit_job(project, username, process)
+        task_id = self._submit_task(project, username, process)
         return task_id
     
 
@@ -167,7 +178,7 @@ class DataAdministrationMiddleware:
         # submit job
         process = celery_interface.scanForImages.si(project, skipIntegrityCheck)
 
-        task_id = self._submit_job(project, username, process)
+        task_id = self._submit_task(project, username, process)
         return task_id
 
 
@@ -194,7 +205,7 @@ class DataAdministrationMiddleware:
         process = celery_interface.addExistingImages.si(project, imageList, skipIntegrityCheck,
                                                         createVirtualViews, viewParameters)
 
-        task_id = self._submit_job(project, username, process)
+        task_id = self._submit_task(project, username, process)
         return task_id
 
 
@@ -219,7 +230,7 @@ class DataAdministrationMiddleware:
                                                     forceRemove,
                                                     deleteFromDisk)
 
-        task_id = self._submit_job(project, username, process)
+        task_id = self._submit_task(project, username, process)
         return task_id
 
     
@@ -270,7 +281,7 @@ class DataAdministrationMiddleware:
 
     def requestAnnotations(self, project, username, exportFormat, dataType='annotation', authorList=None, dateRange=None, ignoreImported=True, parserArgs={}):
         '''
-            Launches a Celery job that polls the database for project data
+            Launches a Celery task that polls the database for project data
             according to the options provided, and then initializes a parser
             that exports annotations (or predictions) to a Zipfile on disk. The
             task then returns the path to that Zipfile once completed.
@@ -285,7 +296,7 @@ class DataAdministrationMiddleware:
         #                                             ignoreImported,
         #                                             parserArgs)
 
-        # submit job
+        # submit task
         process = celery_interface.requestAnnotations.si(project,
                                                     username,
                                                     exportFormat,
@@ -295,7 +306,7 @@ class DataAdministrationMiddleware:
                                                     ignoreImported,
                                                     parserArgs)
 
-        task_id = self._submit_job(project, username, process)
+        task_id = self._submit_task(project, username, process)
         return task_id
 
 
@@ -338,5 +349,5 @@ class DataAdministrationMiddleware:
                                                     segmaskFilenameOptions,
                                                     segmaskEncoding)
 
-        task_id = self._submit_job(project, username, process)
+        task_id = self._submit_task(project, username, process)
         return task_id

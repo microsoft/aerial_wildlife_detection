@@ -16,9 +16,9 @@ import json
 import html
 from bottle import static_file, request, abort
 import requests
-from .backend.middleware import DataAdministrationMiddleware
 from util.cors import enable_cors
 from util import helpers, drivers
+from .backend.middleware import DataAdministrationMiddleware
 
 
 class DataAdministrator:
@@ -105,7 +105,32 @@ class DataAdministrator:
 
     def _initBottle(self):
 
-        ''' Image management functionalities '''
+
+        @self.app.post('/<project>/verifyImages')
+        def verifyImages(project):
+            '''
+                Launches a background task that verifies image integrity and
+                entries in the database for a project. Only one such job can be
+                run at a time for a particular project.
+            '''
+            if not self.loginCheck(project=project, admin=True):
+                abort(401, 'forbidden')
+            try:
+                username = html.escape(request.get_cookie('username'))
+                image_list = request.json.get('image_list', [])
+                quick_check = request.json.get('quick_check', False)
+                result = self.middleware.verify_images(project, username,
+                                image_list, quick_check)
+                return {
+                    'status': 0,
+                    'messsage': result
+                }
+            except Exception as exc:
+                return {
+                    'status': 1,
+                    'message': str(exc)
+                }
+
         @self.app.get('/<project>/getImageFolders')
         def getImageFolders(project):
             '''
@@ -174,7 +199,6 @@ class DataAdministrator:
             else:
                 startFrom = None
             limit = (params['limit'] if 'limit' in params else None)
-            
 
             # get images
             result = self.middleware.listImages(project,
@@ -189,7 +213,6 @@ class DataAdministrator:
                                             order,
                                             startFrom,
                                             limit)
-            
             return {'response': result}
 
 
@@ -213,10 +236,9 @@ class DataAdministrator:
             '''
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
-            
             if not self.is_fileServer:
                 return self.relay_request(project, 'initiateUploadSession', 'post')
-            
+
             # gather parameters
             try:
                 username = html.escape(request.get_cookie('username'))
@@ -392,7 +414,6 @@ class DataAdministrator:
                 return {'status': 1, 'message': str(e)}
 
 
-        ''' Annotation and prediction up- and download functionalities '''
         @enable_cors
         @self.app.get('/<project>/getValidImageExtensions')
         def getValidImageExtensions(project=None):

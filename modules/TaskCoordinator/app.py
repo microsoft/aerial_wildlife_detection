@@ -45,12 +45,12 @@ class TaskCoordinator:
                 abort(401, 'forbidden')
 
             try:
-                taskID = request.json['taskID']
-                status = self.middleware.pollStatus(project, taskID)
+                task_id = request.json['taskID']
+                status = self.middleware.poll_task_status(project, task_id)
                 return {'response': status}
 
-            except Exception as e:
-                abort(400, str(e))
+            except Exception as exc:
+                abort(400, str(exc))
 
 
         #TODO:
@@ -64,12 +64,20 @@ class TaskCoordinator:
         #         abort(401, 'forbidden')
     
         #     try:
-        #         status = self.middleware.pollStatus(None, None)
+        #         status = self.middleware.poll_task_status(None, None)
         #         return {'response': status}
         #     except Exception as e:
         #         abort(400, str(e))
 
 
 
-    def submitJob(self, project, username, process, queue):
-        return self.middleware.submitJob(project, username, process, queue)
+    def submit_task(self, project, username, process, queue):
+        return self.middleware.submit_task(project, username, process, queue)
+
+
+    def poll_task_status(self, project, task_id):
+        return self.middleware.poll_task_status(project, task_id)
+
+
+    def poll_task_type(self, project, task_name, running_only=True):
+        return self.middleware.poll_task_type(project, task_name, running_only)

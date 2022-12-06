@@ -171,6 +171,7 @@ CREATE TABLE IF NOT EXISTS {id_taskHistory} (
     task_id uuid NOT NULL,
     launchedBy VARCHAR,
     abortedBy VARCHAR,
+    taskName VARCHAR,
     processDescription VARCHAR,
     timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     timeFinished TIMESTAMPTZ,

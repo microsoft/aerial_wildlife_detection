@@ -267,7 +267,7 @@ MODIFICATIONS_sql = [
     timeCreated TIMESTAMPTZ NOT NULL DEFAULT NOW();
   ''',
 
-  f'''
+  '''
     CREATE TABLE IF NOT EXISTS "aide_admin".version (
         version VARCHAR UNIQUE NOT NULL,
         PRIMARY KEY (version)
@@ -355,7 +355,8 @@ MODIFICATIONS_sql = [
             END IF;
         END;
     END $$;
-  '''
+  ''',
+  'ALTER TABLE "{schema}".taskhistory ADD COLUMN IF NOT EXISTS taskName VARCHAR;'
 ]
 
 

@@ -75,9 +75,9 @@ class DataWorker:
                     os.makedirs(destPath, exist_ok=True)
 
 
-    
-    ''' Image administration functionalities '''
-    def verifyImages(self, projects=None, quickCheck=True):
+
+    def verifyImages(self, projects=None, image_list=[], quick_check=True,
+            remove_invalid=False):
         '''
             Iterates through all provided project folders (all registered
             projects if None specified) and checks all images registered in the
@@ -87,75 +87,105 @@ class DataWorker:
                project settings
             3. Retrieves image dimensions and registers that information in
                the database (unless already there).
-            
+
             If "quickCheck" is True (default), only images that have no
             width or height registered will be checked.
         '''
+        if isinstance(projects, str):
+            projects = (projects,)
+        assert len(image_list) == 0 or projects is not None, \
+            'ERROR: project name must also be provided when image_list is given'
         print('Starting image verification...')
-        allProjects = self.dbConnector.execute(sql.SQL('''
+        all_projects = self.dbConnector.execute(sql.SQL('''
             SELECT shortname FROM "aide_admin".project;
         '''), None, 'all')
-        allProjects = set([p['shortname'] for p in allProjects])
+        all_projects = {p['shortname'] for p in all_projects}
         if projects is None:
-            projects = allProjects
+            projects = all_projects
         else:
-            projects = set(projects).intersection(allProjects)
-        
-        if not len(projects):
+            projects = set(projects).intersection(all_projects)
+        if len(projects) == 0:
             print('\tNo valid project(s) found.')
             return
 
         def _commit_updates(project, meta):
             self.dbConnector.insert(sql.SQL('''
-                INSERT INTO {} (id, width, height, corrupt)
+                INSERT INTO {} (id, filename, width, height, corrupt)
                 VALUES %s
                 ON CONFLICT(id) DO UPDATE
                 SET width=EXCLUDED.width, height=EXCLUDED.height,
                     corrupt=EXCLUDED.corrupt;
             ''').format(sql.Identifier(project, 'image')), meta)
-        
-        if quickCheck:
-            quickCheckStr = sql.SQL('WHERE width IS NULL OR height IS NULL')
-        else:
-            quickCheckStr = sql.SQL('')
 
-        for pIdx, project in projects:
-            print(f'[{pIdx+1}/{len(projects)}] Project "{project}"...')
+        options_str = ''
+        query_args = []
+        if len(image_list) > 0:
+            options_str = 'WHERE id IN %s'
+            query_args = (tuple(UUID(i) for i in image_list),)
+        if quick_check:
+            if len(options_str) == 0:
+                options_str = 'WHERE width IS NULL OR height IS NULL'
+            else:
+                options_str += ' AND (width IS NULL OR height IS NULL)'
+
+        response = {}
+
+        for p_idx, project in enumerate(projects):
+            print(f'[{p_idx+1}/{len(projects)}] Project "{project}"...')
+            response[project] = {
+                'num_checked': 0,
+                'num_valid': 0,
+                'errors': []
+            }
 
             # get all registered images
-            with self.dbConnector.execute_cursor(sql.SQL('''
-                    SELECT id, filename, width, height
-                    FROM {}
-                    {};
-                ''').format(sql.Identifier(project, 'image'), quickCheckStr), None) as cursor:
-                metadata = []
-                while True:
-                    nextImg = cursor.fetchone()
-                    if nextImg is None:
-                        break
+            with self.dbConnector.get_connection() as conn:
+                with self.dbConnector.execute_cursor(conn,
+                    sql.SQL('''
+                        SELECT id, filename, width, height
+                        FROM {}
+                        {};
+                    ''').format(
+                        sql.Identifier(project, 'image'),
+                        sql.SQL(options_str)
+                    ),
+                    query_args if len(query_args)>0 else None) as cursor:
+                    metadata = []
+                    while True:
+                        next_img = cursor.fetchone()
+                        if next_img is None:
+                            break
 
-                    # integrity checks
-                    try:
-                        # attempt to load image from disk
-                        img = drivers.load_from_disk(os.path.join(self.filesDir, project, nextImg['filename']))
-                        width, height = img.shape[2], img.shape[1]
-                        if nextImg['width'] is None or nextImg['height'] is None or \
-                            nextImg['width'] != width or nextImg['height'] != height:
-                            # update database record
-                            metadata.append((nextImg['id'], width, height, False))
+                        # integrity checks
+                        response[project]['num_checked'] += 1
+                        try:
+                            # attempt to load image from disk
+                            img = drivers.load_from_disk(
+                                os.path.join(self.filesDir, project, next_img['filename']))
+                            width, height = img.shape[2], img.shape[1]
+                            if next_img['width'] is None or next_img['height'] is None or \
+                                next_img['width'] != width or next_img['height'] != height:
+                                # update database record
+                                metadata.append((next_img['id'],
+                                    next_img['filename'], width, height, False))
+                            response[project]['num_valid'] += 1
+                        except Exception as exc:
+                            # error; mark image as corrupt
+                            metadata.append((next_img['id'], next_img['filename'],
+                                None, None, True))
+                            response[project]['errors'].append({
+                                'id': next_img['id'],
+                                'error': str(exc)
+                            })
 
-                    except:
-                        # error; mark image as corrupt
-                        metadata.append((nextImg['id'], None, None, True))
+                        if len(metadata) >= self.VERIFICATION_BATCH_SIZE:
+                            # commit to database
+                            _commit_updates(project, metadata)
+                            metadata = []
 
-                    if len(metadata) >= self.VERIFICATION_BATCH_SIZE:
-                        # commit to database
+                    if len(metadata) > 0:
                         _commit_updates(project, metadata)
-                        metadata = []
-                
-                if len(metadata):
-                    _commit_updates(project, metadata)
-
+        return response
 
 
     def listImages(self, project, folder=None, imageAddedRange=None, lastViewedRange=None,

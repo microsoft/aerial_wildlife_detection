@@ -284,7 +284,7 @@ class ModelMarketplaceMiddleware:
             to the current project.
         '''
         process = celery_interface.import_model_database.si(modelID, project, username)
-        taskID = self.taskCoordinator.submitJob(project, username, process, 'ModelMarketplace')
+        taskID = self.taskCoordinator.submit_task(project, username, process, 'ModelMarketplace')
 
         return {
             'status': 0,
@@ -309,7 +309,7 @@ class ModelMarketplaceMiddleware:
                                                     forceReimport, namePolicy, customName),         # first import to Model Marketplace...
             celery_interface.import_model_database.s(project, username)                             # ...and then to the project
         )
-        taskID = self.taskCoordinator.submitJob(project, username, process, 'ModelMarketplace')
+        taskID = self.taskCoordinator.submit_task(project, username, process, 'ModelMarketplace')
 
         return {
             'status': 0,
@@ -336,7 +336,7 @@ class ModelMarketplaceMiddleware:
                                                             public, anonymous, namePolicy, customName)
 
         process = celery_interface.import_model_database.s(modelID, project, username)
-        taskID = self.taskCoordinator.submitJob(project, username, process, 'ModelMarketplace')
+        taskID = self.taskCoordinator.submit_task(project, username, process, 'ModelMarketplace')
 
         return {
             'status': 0,
@@ -353,7 +353,7 @@ class ModelMarketplaceMiddleware:
         process = celery_interface.share_model.si(project, username, modelID, modelName,
                     modelDescription, tags,
                     public, anonymous)
-        taskID = self.taskCoordinator.submitJob(project, username, process, 'ModelMarketplace')
+        taskID = self.taskCoordinator.submit_task(project, username, process, 'ModelMarketplace')
 
         return {
             'status': 0,
@@ -434,7 +434,7 @@ class ModelMarketplaceMiddleware:
         process = celery_interface.request_model_download.si(project, username, modelID,
                                                         source, modelName,
                                                         modelDescription, modelTags)
-        taskID = self.taskCoordinator.submitJob(project, username, process, 'ModelMarketplace')
+        taskID = self.taskCoordinator.submit_task(project, username, process, 'ModelMarketplace')
 
         return {
             'status': 0,

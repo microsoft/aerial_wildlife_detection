@@ -41,6 +41,7 @@
                         <option value="golden_question_no">unset golden questions</option>
                         <!-- <option value="remove_annotations_all">remove all users' annotations</option>
                         <option value="remove_predictions_all">remove all model predictions</option> -->
+                        <option value="verify_integrity">verify image integrity</option>
                         <option value="delete_images">delete</option>
                     </select>
                     <div id="delete-options" style="display:none">
@@ -366,6 +367,16 @@
                 data = {'goldenQuestions': data};
                 url = 'setGoldenQuestions';
                 actionText = 'Successfully un-set golden questions for ' + checked.length + ' images.';
+
+            } else if(action === 'verify_integrity') {
+                data = [];
+                for(var i=0; i<checked.length; i++) {
+                    var id = checked[i].id;
+                    data.push(id);
+                }
+                data = {'image_list': data};
+                url = 'verifyImages';
+                actionText = 'Started integrity verification for ' + checked.length + ' images.';
 
             } else if(action === 'remove_annotations') {
                 error('Not yet supported.');

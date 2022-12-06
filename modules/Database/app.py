@@ -79,13 +79,13 @@ class Database():
 
     
     def canConnect(self):
-        with self._get_connection() as conn:
+        with self.get_connection() as conn:
             return conn is not None and not conn.closed
 
 
 
     @contextmanager
-    def _get_connection(self):
+    def get_connection(self):
         conn = self.connectionPool.getconn()
         conn.autocommit = True
         try:
@@ -96,7 +96,7 @@ class Database():
 
 
     def execute(self, query, arguments, numReturn=None):
-        with self._get_connection() as conn:
+        with self.get_connection() as conn:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
 
             # execute statement
@@ -130,25 +130,23 @@ class Database():
 
     
 
-    def execute_cursor(self, query, arguments):     #TODO: check for connection/memory leaks
-        with self._get_connection() as conn:
-            cursor = conn.cursor(cursor_factory=RealDictCursor)
+    def execute_cursor(self, connection, query, arguments):
+        cursor = connection.cursor(cursor_factory=RealDictCursor)
+        try:
+            cursor.execute(query, arguments)
+            connection.commit()
 
-            try:
-                cursor.execute(query, arguments)
-                conn.commit()
+            return cursor
 
-                return cursor
-
-            except Exception as e:
-                print(e)
-                if not conn.closed:
-                    conn.rollback()
+        except Exception as exc:
+            print(exc)
+            if not connection.closed:
+                connection.rollback()
 
 
 
     def insert(self, query, values, numReturn=None):
-        with self._get_connection() as conn:
+        with self.get_connection() as conn:
             cursor = conn.cursor()
             try:
                 execute_values(cursor, query, values)

@@ -29,8 +29,8 @@ def aide_internal_notify(message):
 
 
 @current_app.task(name='DataAdministration.verify_images', rate_limit=1)
-def verifyImages(projects, quickCheck=True):
-    return worker.verifyImages(projects, quickCheck)
+def verifyImages(projects, image_list=[], quick_check=True):
+    return worker.verifyImages(projects, image_list, quick_check)
 
 
 @current_app.task(name='DataAdministration.list_images')
