@@ -195,7 +195,7 @@ if __name__ == '__main__':
                         print(f'before they have been moved to the new folder ("{softlinkName}").')
                         print(f'Please create this folder and move the contents of "{v1StaticFilesDir}" to it manually.')
                     else: raise Exception('Invalid value')
-                except:
+                except Exception:
                     confirmation = None
             if confirmation:
                 os.symlink(
@@ -209,7 +209,7 @@ if __name__ == '__main__':
     try:
         # check if custom default styles are provided
         defaultStyles = json.load(open('config/default_ui_settings.json', 'r'))
-    except:
+    except Exception:
         # resort to built-in styles
         defaultStyles = json.load(open('modules/ProjectAdministration/static/json/default_ui_settings.json', 'r'))
     try:
@@ -219,13 +219,13 @@ if __name__ == '__main__':
 
             # compare with defaults
             styles = helpers.check_args(styles, defaultStyles)
-    except:
+    except Exception:
         # fallback to defaults
         styles = defaultStyles
     try:
         with open(v1Config.getProperty('Project', 'welcome_message_file', type=str, fallback='modules/LabelUI/static/templates/welcome_message.html'), 'r') as f:
             welcomeMessage = f.readlines()
-    except:
+    except Exception:
         welcomeMessage = ''
     uiSettings = {
         'enableEmptyClass': v1Config.getProperty('Project', 'enableEmptyClass', fallback='no'),
@@ -262,7 +262,7 @@ if __name__ == '__main__':
         try:
             with open(modelSettingsPath, 'r') as f:
                 modelSettings = json.load(f).dumps()
-        except:
+        except Exception:
             print('WARNING: could not parse settings defined in model settings path ("{}")'.format(modelSettingsPath))
             modelSettings = None
     else:
@@ -272,7 +272,7 @@ if __name__ == '__main__':
         try:
             with open(alCriterionSettingsPath, 'r') as f:
                 alCriterionSettings = json.load(f).dumps()
-        except:
+        except Exception:
             print('WARNING: could not parse settings defined in AL criterion settings path ("{}")'.format(alCriterionSettingsPath))
             alCriterionSettings = None
     else:

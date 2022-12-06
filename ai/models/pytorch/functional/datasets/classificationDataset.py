@@ -75,7 +75,7 @@ class LabelsDataset(Dataset):
         # load image
         try:
             img = Image.open(BytesIO(self.fileServer.getFile(imagePath))).convert('RGB')
-        except:
+        except Exception:
             print('WARNING: Image {} is corrupt and could not be loaded.'.format(imagePath))
             img = None
 

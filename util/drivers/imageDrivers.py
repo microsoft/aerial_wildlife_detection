@@ -180,7 +180,7 @@ class PILImageDriver(AbstractImageDriver):
             img.verify()
             img.close()     #TODO: needed?
             return True
-        except:
+        except Exception:
             return False
         finally:
             if hasattr(img, 'close'):
@@ -296,7 +296,7 @@ class GDALImageDriver(AbstractImageDriver):
                     with memfile.open():
                         valid = True
             return valid
-        except:
+        except Exception:
             return False
     
     @classmethod
@@ -424,7 +424,7 @@ class DICOMImageDriver(AbstractImageDriver):
             else:
                 img = cls.load_from_bytes(object)
             return isinstance(img, np.ndarray)
-        except:
+        except Exception:
             return False
     
     @classmethod

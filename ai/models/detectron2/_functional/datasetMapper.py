@@ -58,7 +58,7 @@ class Detectron2DatasetMapper(DatasetMapper):
             #     # flip along spectral dimension
             #     if image.ndim >= 3:
             #         image = np.flip(image, 2)
-        except:
+        except Exception:
             #TODO: cannot handle corrupt data input here; needs to be done earlier
             print('WARNING: Image {} is corrupt and could not be loaded.'.format(dataset_dict["file_name"]))
             image = None
@@ -99,7 +99,7 @@ class Detectron2DatasetMapper(DatasetMapper):
                     sem_seg_gt_copy = np.copy(sem_seg_gt)
                     for k, v in self.classIndexMap.items(): sem_seg_gt_copy[sem_seg_gt==k] = v
                     sem_seg_gt = sem_seg_gt_copy
-            except:
+            except Exception:
                 print('WARNING: Segmentation mask for image "{}" could not be loaded or decoded.'.format(dataset_dict["file_name"]))
                 sem_seg_gt = None
             # ORIGINAL: sem_seg_gt = utils.read_image(dataset_dict.pop("sem_seg_file_name"), "L").squeeze(2)

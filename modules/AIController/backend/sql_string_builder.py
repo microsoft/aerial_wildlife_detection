@@ -77,7 +77,7 @@ class SQLStringBuilder:
         else:
             try:
                 limitString = sql.SQL('LIMIT %s')
-            except:
+            except Exception:
                 raise ValueError('Invalid value for limit ({})'.format(limit))
 
         queryStr = sql.SQL('''

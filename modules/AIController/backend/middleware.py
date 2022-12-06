@@ -125,7 +125,7 @@ class AIMiddleware():
                 modelClass = get_class_executable(modelKey)
                 defaultOptions = modelClass.getDefaultOptions()
                 model['defaultOptions'] = defaultOptions
-            except:
+            except Exception:
                 # no default options available; append no key to signal that there's no options
                 pass
             models['prediction'][modelKey] = model
@@ -163,7 +163,7 @@ class AIMiddleware():
                 rankerClass = get_class_executable(rankerKey)
                 defaultOptions = rankerClass.getDefaultOptions()
                 ranker['defaultOptions'] = defaultOptions
-            except:
+            except Exception:
                 # no default options available; append no key to signal that there's no options
                 pass
             models['ranking'][rankerKey] = ranker
@@ -234,7 +234,7 @@ class AIMiddleware():
         ''', (project,), 1)
         try:
             aiModelLibrary = aiModelLibrary[0]['ai_model_library']
-        except:
+        except Exception:
             aiModelLibrary = None
         
         # check if AIController worker and AIWorker are connected
@@ -248,7 +248,7 @@ class AIMiddleware():
                     aicW[wk] = workers[wk]
                 if 'AIWorker' in worker['modules'] and worker['modules']['AIWorker'] == True:
                     aiwW[wk] = workers[wk]
-            except:
+            except Exception:
                 pass
         
         return {
@@ -298,7 +298,7 @@ class AIMiddleware():
             numConcurrent = numConcurrent[0]['max_num_concurrent_tasks']
             if upperCeiling > 0:
                 numConcurrent = min(numConcurrent, upperCeiling)
-        except:
+        except Exception:
             numConcurrent = upperCeiling
         
         if numConcurrent <= 0:
@@ -568,11 +568,11 @@ class AIMiddleware():
                 # try first to parse workflow
                 try:
                     workflow = json.loads(workflow)
-                except:
+                except Exception:
                     # try to convert to UUID instead
                     try:
                         workflow = uuid.UUID(workflow)
-                    except:
+                    except Exception:
                         return {
                             'status': 3,
                             'message': f'"{str(workflow)}" is not a valid workflow ID'
@@ -965,14 +965,14 @@ class AIMiddleware():
                 mID = str(r['id'])
                 try:
                     modelLibrary = modelLibraries['models']['prediction'][r['model_library']]
-                except:
+                except Exception:
                     modelLibrary = {
                         'name': '(not found)'
                     }
                 modelLibrary['id'] = r['model_library']
                 try:
                     alCriterionLibrary = modelLibraries['models']['ranking'][r['alcriterion_library']]
-                except:
+                except Exception:
                     alCriterionLibrary = {
                         'name': '(not found)'
                     }
@@ -1057,7 +1057,7 @@ class AIMiddleware():
                 if not isinstance(modelStateIDs, Iterable):
                     modelStateIDs = [modelStateIDs]
                 modelStateIDs = [str(m) for m in modelStateIDs]
-            except:
+            except Exception:
                 modelStateIDs = None
         
         process = aic_int.get_model_training_statistics.s(project, modelStateIDs)

@@ -7,9 +7,9 @@
 
 import os
 import html
-import json
-from bottle import request, response, static_file, redirect, abort, SimpleTemplate, HTTPResponse
+from bottle import request, redirect, abort, SimpleTemplate, HTTPResponse
 from constants.version import AIDE_VERSION
+from util import helpers
 from .backend.middleware import ReceptionMiddleware
 
 
@@ -24,11 +24,11 @@ class Reception:
 
         self._initBottle()
 
-    
+
     def loginCheck(self, project=None, admin=False, superuser=False, canCreateProjects=False, extend_session=False, return_all=False):
         return self.login_check(project, admin, superuser, canCreateProjects, extend_session, return_all)
 
-    
+
     def addLoginCheckFun(self, loginCheckFun):
         self.login_check = loginCheckFun
 
@@ -42,7 +42,7 @@ class Reception:
         def projects():
             try:
                 username = html.escape(request.get_cookie('username'))
-            except:
+            except Exception:
                 username = ''
             return self.proj_template.render(
                 version=AIDE_VERSION,
@@ -59,23 +59,25 @@ class Reception:
             try:
                 token = self.config.getProperty('UserHandler', 'create_account_token', type=str, fallback=None)
                 return {'response': token is None or token == ''}
-            except:
+            except Exception:
                 return {'response': False}
 
 
         @self.app.get('/getProjects')
-        def get_projects(): 
+        def get_projects():
             try:
                 if self.loginCheck():
                     username = html.escape(request.get_cookie('username'))
                 else:
                     username = ''
-            except:
+            except Exception:
                 username = ''
-            isSuperUser = self.loginCheck(superuser=True)
-
-            projectInfo = self.middleware.get_project_info(username, isSuperUser)
-            return {'projects': projectInfo}
+            is_super_user = self.loginCheck(superuser=True)
+            archived = helpers.parse_boolean(request.params.get('archived', None))
+            project_info = self.middleware.get_project_info(
+                                username, is_super_user,
+                                archived)
+            return {'projects': project_info}
 
 
         @self.app.get('/<project>/enroll/<token>')
@@ -94,7 +96,7 @@ class Reception:
                 # # try to get secret token
                 # try:
                 #     providedToken = html.escape(request.query['t'])
-                # except:
+                # except Exception:
                 #     providedToken = None
 
                 success = self.middleware.enroll_in_project(project, username, token)
@@ -128,7 +130,7 @@ class Reception:
             
             try:
                 limit = int(request.params.get('limit'))
-            except:
+            except Exception:
                 limit = 128
             imageURLs = self.middleware.getSampleImages(project, limit)
             return {'images': imageURLs}

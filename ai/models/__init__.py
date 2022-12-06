@@ -32,7 +32,7 @@ class AIModel:
         else:
             try:
                 self.options = self.getDefaultOptions()
-            except:
+            except Exception:
                 # not implemented or other error; leave it to the subclass
                 pass
 

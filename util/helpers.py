@@ -36,7 +36,7 @@ def toNumber(value):
         else:
             try:
                 return float(value)
-            except:
+            except Exception:
                 return None
     return None
 
@@ -121,7 +121,7 @@ def get_library_available(libName, checkImport=False):
             importlib.import_module(libName)
         
         return True
-    except:
+    except Exception:
         return False
 
 
@@ -218,7 +218,7 @@ def checkDemoMode(project, dbConnector):
                 return response[0]['demomode']
             else:
                 return None
-        except:
+        except Exception:
             return None
         
 
@@ -239,7 +239,7 @@ def is_fileServer(config):
         return ('fileserver' in os.environ['AIDE_MODULES'].lower() and \
             os.path.isdir(config.getProperty('FileServer', 'staticfiles_dir'))
         )
-    except:
+    except Exception:
        return False
 
 
@@ -527,7 +527,7 @@ def getPILimage(input, imageID, project, dbConnector, convertRGB=False):
             img.verify()
             img = Image.open(input)
 
-    except:
+    except Exception:
         # something failed; set "corrupt" flag to False for image
         setImageCorrupt(dbConnector, project, imageID, True)
     

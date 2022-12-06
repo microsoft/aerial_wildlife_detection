@@ -57,7 +57,7 @@ class ModelMarketplace:
                         modelIDs = modelIDs.split(',')
                     else:
                         modelIDs = None
-                except:
+                except Exception:
                     modelIDs = None
 
                 modelStates = self.middleware.getModelsMarketplace(project, username, modelIDs)
@@ -98,7 +98,7 @@ class ModelMarketplace:
                         # modelID is indeed a UUID; import from database
                         return self.middleware.importModelDatabase(project, username, modelID)
 
-                    except:
+                    except Exception:
                         # model comes from network
                         public = request.json.get('public', True)
                         anonymous = request.json.get('anonymous', False)

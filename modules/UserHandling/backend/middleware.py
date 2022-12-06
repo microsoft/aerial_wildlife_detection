@@ -293,7 +293,7 @@ class UserMiddleware():
                 if result[0]['blocked_until'] is not None:
                     blocked_until = (result[0]['blocked_until'] >= now)
                 response['enrolled'] = (admitted_until and not blocked_until)
-        except:
+        except Exception:
             # no results to fetch: user is not authenticated
             pass
     
@@ -336,7 +336,7 @@ class UserMiddleware():
         try:
             userdata = self._get_user_data(username)
             return request.get_cookie('session_token', secret=userdata['secret_token'])
-        except:
+        except Exception:
             return None
 
 

@@ -63,7 +63,7 @@ class YOLOv5(nn.Module):
                     return super(YOLOv5, self).load_state_dict(state_dict, strict=False)
                 else:
                     return status_model
-        except:
+        except Exception:
             return self.model.load_state_dict(state_dict, strict=False)
 
     

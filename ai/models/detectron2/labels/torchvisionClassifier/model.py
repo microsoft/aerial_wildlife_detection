@@ -63,7 +63,7 @@ class TorchvisionClassifier(nn.Module):
         for t in tokens:
             try:
                 layer = layer[int(t)]
-            except:
+            except Exception:
                 layer = getattr(layer, t)
         return layer
 
@@ -80,12 +80,12 @@ class TorchvisionClassifier(nn.Module):
             if idx == len(tokens)-1:
                 try:
                     item[int(t)] = layer
-                except:
+                except Exception:
                     setattr(item, t, layer)
             else:
                 try:
                     item = item[int(t)]
-                except:
+                except Exception:
                     item = getattr(item, t)
 
     

@@ -114,7 +114,7 @@ class ProjectStatistics:
             try:
                 username = html.escape(request.get_cookie('username'))
                 done = self.middleware.getUserFinished(project, username)
-            except:
+            except Exception:
                 done = False
             return {'finished': done}
 
@@ -127,15 +127,15 @@ class ProjectStatistics:
             try:
                 try:
                     type = request.query['type']
-                except:
+                except Exception:
                     type = 'image'
                 try:
                     numDaysMax = request.query['num_days']
-                except:
+                except Exception:
                     numDaysMax = 31
                 try:
                     perUser = parse_boolean(request.query['per_user'])
-                except:
+                except Exception:
                     perUser = False
                 stats = self.middleware.getTimeActivity(project, type, numDaysMax, perUser)
                 return {'result': stats}

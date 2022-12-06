@@ -5,7 +5,6 @@
 '''
 
 from psycopg2 import sql
-from modules.Database.app import Database
 from util.helpers import current_time
 
 
@@ -13,10 +12,11 @@ class ReceptionMiddleware:
 
     def __init__(self, config, dbConnector):
         self.config = config
-        self.dbConnector = dbConnector      #Database(config)
+        self.dbConnector = dbConnector
 
 
-    def get_project_info(self, username=None, isSuperUser=False):
+    def get_project_info(self, username=None, isSuperUser=False,
+        archived=None):
         '''
             Returns metadata about projects:
             - names
@@ -26,18 +26,26 @@ class ReceptionMiddleware:
             - links to stats and review page (if admin) TODO
             - etc.
         '''
+        assert archived is None or isinstance(archived, bool)
         now = current_time()
 
         if isSuperUser:
-            authStr = sql.SQL('')
+            authStr = ''
             queryVals = None
         elif username is not None:
-            authStr = sql.SQL('WHERE username = %s OR demoMode = TRUE OR isPublic = TRUE')
+            authStr = 'WHERE (username = %s OR demoMode = TRUE OR isPublic = TRUE)'
             queryVals = (username,)
         else:
-            authStr = sql.SQL('WHERE demoMode = TRUE OR isPublic = TRUE')
+            authStr = 'WHERE (demoMode = TRUE OR isPublic = TRUE)'
             queryVals = None
-        
+        if isinstance(archived, bool):
+            if len(authStr) > 0:
+                archived_str = f' AND archived = {archived}'
+            else:
+                archived_str = f'WHERE archived = {archived}'
+        else:
+            archived_str = ''
+
         queryStr = sql.SQL('''SELECT shortname, name, description, archived,
             username, isAdmin,
             admitted_until, blocked_until,
@@ -47,8 +55,10 @@ class ReceptionMiddleware:
             FROM aide_admin.project AS proj
             FULL OUTER JOIN (SELECT * FROM aide_admin.authentication
             ) AS auth ON proj.shortname = auth.project
-            {authStr};
-        ''').format(authStr=authStr)
+            {authStr}
+            {archived_str};
+        ''').format(authStr=sql.SQL(authStr),
+            archived_str=sql.SQL(archived_str))
 
         result = self.dbConnector.execute(queryStr, queryVals, 'all')
         response = {}

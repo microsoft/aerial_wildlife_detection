@@ -23,7 +23,7 @@ class DeepForest(GenericDetectron2BoundingBoxModel):
             if self.detectron2cfg.MODEL.META_ARCHITECTURE != 'DeepForest':
                 # invalid options provided
                 raise Exception('Invalid model architecture')
-        except:
+        except Exception:
             print('WARNING: provided options are not valid for DeepForest; falling back to defaults.')
             self.options = self.getDefaultOptions()
             self.detectron2cfg = self._get_config()

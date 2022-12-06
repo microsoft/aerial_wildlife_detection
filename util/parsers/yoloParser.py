@@ -79,7 +79,7 @@ class YOLOparser(AbstractAnnotationParser):
                 # valid YOLOv5 YAML file
                 yoloFiles['meta'].append(filePath)
                 continue
-            except:
+            except Exception:
                 # no YAML file; try next
                 pass
 
@@ -95,7 +95,7 @@ class YOLOparser(AbstractAnnotationParser):
                 # no errors encountered; this is a YOLO file
                 yoloFiles['annotation'][file_orig] = file_new
 
-            except:
+            except Exception:
                 # unparseable or erroneous format
                 continue
             
@@ -247,7 +247,7 @@ class YOLOparser(AbstractAnnotationParser):
                     driver = drivers.get_driver(filePath)
                     imgSize = driver.size(filePath)
                     imgSizes[filename] = imgSize
-                except:
+                except Exception:
                     # image is not loadable     #TODO: mark as corrupt in database
                     warnings.append(
                         f'Image "{filename}" could not be loaded; affected annotations skipped.'

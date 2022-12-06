@@ -27,7 +27,7 @@ class ResNet(ClassificationModel):
         try:
             # try to load defaults from JSON file first
             options = json.load(open('config/ai/model/pytorch/labels/resnet.json', 'r'))
-        except:
+        except Exception:
             # error; fall back to built-in defaults
             options = DEFAULT_OPTIONS
         return options

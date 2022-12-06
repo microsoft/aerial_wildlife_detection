@@ -48,19 +48,19 @@ class ImageQuerier:
                     'status': 0,
                     'result': result
                 }
-            
-            except Exception as e:
+
+            except Exception as exc:
                 return {
                     'status': 1,
-                    'message': str(e)
+                    'message': str(exc)
                 }
-        
+
 
         @self.app.post('/<project>/magic_wand')
         def magic_wand(project):
             # if not self.loginCheck(extend_session=True):
             #     abort(401, 'forbidden')
-            
+
             try:
                 args = request.json
                 imgPath = args['image_path']
@@ -78,18 +78,18 @@ class ImageQuerier:
                     'result': result
                 }
 
-            except Exception as e:
+            except Exception as exc:
                 return {
                     'status': 1,
-                    'message': str(e)
+                    'message': str(exc)
                 }
 
-        
+
         @self.app.post('/<project>/select_similar')
         def select_similar(project):
             # if not self.loginCheck(extend_session=True):
             #     abort(401, 'forbidden')
-            
+
             try:
                 args = request.json
                 imgPath = args['image_path']
@@ -104,21 +104,21 @@ class ImageQuerier:
                     'result': result
                 }
 
-            except Exception as e:
+            except Exception as exc:
                 return {
                     'status': 1,
-                    'message': str(e)
+                    'message': str(exc)
                 }
-        
+
 
         @self.app.post('/getBandConfiguration')
         def getBandConfiguration():
             if not self.loginCheck(canCreateProjects=True):
                 abort(401, 'forbidden')
-            
+
             try:
                 files = request.files
-                bandConfig = self.middleware.getBandConfiguration(files)
-                return {'status': 0, 'image_bands': bandConfig}
-            except Exception as e:
-                return {'status': 1, 'message': str(e)}
+                band_config = self.middleware.getBandConfiguration(files)
+                return {'status': 0, 'image_bands': band_config}
+            except Exception as exc:
+                return {'status': 1, 'message': str(exc)}

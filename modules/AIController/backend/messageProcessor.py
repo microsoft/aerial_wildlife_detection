@@ -261,7 +261,7 @@ class MessageProcessor(Thread):
                         # task got lost (e.g. due to server restart); re-add
                         try:
                             timeSubmitted = datetime.fromtimestamp(time.time() - (time.monotonic() - t['time_start']))
-                        except:
+                        except Exception:
                             timeSubmitted = current_time() #TODO: dirty hack to make failsafe with UI
                         self.messages[project][taskID] = {
                             'type': taskType,

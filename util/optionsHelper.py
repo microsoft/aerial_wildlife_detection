@@ -184,7 +184,7 @@ def get_hierarchical_value(dictObject, keys, lookFor=('value', 'id'), fallback=N
             return dictObject
         else:
             return fallback
-    except:
+    except Exception:
         return fallback
 
 
@@ -393,7 +393,7 @@ def merge_options(baseOptions, updates, allow_new_keys=True):
     base_ = substitute_definitions(base_)
     try:
         updates_ = substitute_definitions(updates_)
-    except:
+    except Exception:
         # updates do not need to be complete
         pass
 

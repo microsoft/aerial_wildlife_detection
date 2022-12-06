@@ -92,7 +92,7 @@ class COCOparser(AbstractAnnotationParser):
                 # basic supercategories are present; we assume this is indeed a valid COCO file
                 cocoFiles.append(filePath)
 
-            except:
+            except Exception:
                 # unparseable or erroneous format
                 continue
         
@@ -166,7 +166,7 @@ class COCOparser(AbstractAnnotationParser):
                     if anno['image_id'] in annotations:
                         assert all([a >= 0.0 for a in anno['bbox']])
                         annotations[anno['image_id']].append(anno)
-                except:
+                except Exception:
                     # corrupt annotation; ignore
                     pass
 
@@ -420,7 +420,7 @@ class COCOparser(AbstractAnnotationParser):
         # prepare COCO-formatted output
         try:
             url = self.config.getProperty('Server', 'host') + ':' + self.config.getProperty('Server', 'port') + f'/{self.project}'
-        except:
+        except Exception:
             url = '(unknown)'
         out = {
             'info': {
@@ -472,7 +472,7 @@ class COCOparser(AbstractAnnotationParser):
                 fname = os.path.join(self.projectRoot, img['filename'])
                 driver = drivers.get_driver(fname)
                 imsize = driver.size(fname)[1:]
-            except:
+            except Exception:
                 continue        #TODO
             
             imgID = len(images) + 1

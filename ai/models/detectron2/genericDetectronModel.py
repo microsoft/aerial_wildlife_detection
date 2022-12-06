@@ -38,7 +38,7 @@ class GenericDetectron2Model(AIModel):
         if isinstance(options, str):
             try:
                 options = json.loads(options)
-            except:
+            except Exception:
                 # something went wrong; discard options #TODO
                 options = None
 
@@ -48,7 +48,7 @@ class GenericDetectron2Model(AIModel):
                 updatedOptions = optionsHelper.merge_options(self.getDefaultOptions(), options.copy())
                 updatedOptions = optionsHelper.substitute_definitions(updatedOptions)
                 self.options = updatedOptions
-            except:
+            except Exception:
                 # something went wrong; ignore
                 pass
         
@@ -105,7 +105,7 @@ class GenericDetectron2Model(AIModel):
             # try to load from Detectron2's model zoo
             try:
                 configFile = model_zoo.get_config_file(defaultConfig)
-            except:
+            except Exception:
                 # not available; try to load locally instead
                 configFile = os.path.join(os.getcwd(), 'ai/models/detectron2/_functional/configs', defaultConfig)
                 if not os.path.exists(configFile):
@@ -115,7 +115,7 @@ class GenericDetectron2Model(AIModel):
                 cfg.merge_from_file(configFile)
             try:
                 cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(defaultConfig)
-            except:
+            except Exception:
                 pass
         return cfg
 
@@ -253,7 +253,7 @@ class GenericDetectron2Model(AIModel):
                 pretrainedMeta = MetadataCatalog.get(pretrainedDataset)
                 for idx, cID in enumerate(pretrainedMeta.thing_classes):
                     labelclassMap[cID] = idx
-            except:
+            except Exception:
                 pass
             
             if hasattr(model, 'names'):
@@ -433,7 +433,7 @@ class GenericDetectron2Model(AIModel):
 
         try:
             bandNames = data['band_config']
-        except:
+        except Exception:
             # no band names provided; assume RGB
             bandNames = ('Red', 'Green', 'Blue')
 
@@ -448,7 +448,7 @@ class GenericDetectron2Model(AIModel):
                     bandConfig = []
                     for key in ('Red', 'Green', 'Blue'):    #TODO: grayscale?
                         bandConfig.append(renderConfig['bands']['indices'][key])
-                except:
+                except Exception:
                     # fallback B: assume R-G-B
                     bandConfig = (
                         0,
@@ -457,7 +457,7 @@ class GenericDetectron2Model(AIModel):
                     )
                 #TODO: for next version of AIDE: allow model to be expanded towards new bands
                 
-            except:
+            except Exception:
                 # fallback to default R-G-B
                 bandConfig = (0, 1, 2)
         return bandConfig
@@ -503,7 +503,7 @@ class GenericDetectron2Model(AIModel):
         # try:
         #     imageFormat = self.detectron2cfg.INPUT.FORMAT
         #     assert imageFormat.upper() in ('RGB', 'BGR')
-        # except:
+        # except Exception:
         #     imageFormat = 'BGR'
         datasetMapper = Detectron2DatasetMapper(self.project, self.fileServer, transforms, True, bandConfig, classIndexMap=indexMap)
         dataLoader = build_detection_train_loader(
@@ -612,7 +612,7 @@ class GenericDetectron2Model(AIModel):
         # try:
         #     imageFormat = self.detectron2cfg.INPUT.FORMAT
         #     assert imageFormat.upper() in ('RGB', 'BGR')
-        # except:
+        # except Exception:
         #     imageFormat = 'BGR'
         datasetMapper = Detectron2DatasetMapper(self.project, self.fileServer, transforms, False, bandConfig)
         dataLoader = build_detection_test_loader(

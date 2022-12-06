@@ -206,7 +206,7 @@ class AIControllerWorker:
                     nextID = UUID(m)
                 self.dbConn.execute(queryStr_a, (nextID,))
                 self.dbConn.execute(queryStr_b, (nextID,))
-            except:
+            except Exception:
                 modelIDs_invalid.append(str(m))
         
         return modelIDs_invalid
@@ -342,7 +342,7 @@ class AIControllerWorker:
             for m in modelStateIDs:
                 try:
                     uuids.append((UUID(m),))
-                except:
+                except Exception:
                     pass
             modelStateIDs = uuids
             if not len(modelStateIDs):
@@ -402,7 +402,7 @@ class AIControllerWorker:
                     qDict = json.loads(q['stats'])
                     stats_raw[modelLib].append(qDict)
                     keys[modelLib] = keys[modelLib].union(set(qDict.keys()))
-                except:
+                except Exception:
                     stats_raw[modelLib].append({})
                     
             # assemble into series

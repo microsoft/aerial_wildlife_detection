@@ -48,7 +48,7 @@ class DBMiddleware():
         try:
             # check if custom default styles are provided
             self.defaultStyles = json.load(open('config/default_ui_settings.json', 'r'))
-        except:
+        except Exception:
             # resort to built-in styles
             self.defaultStyles = json.load(open('modules/ProjectAdministration/static/json/default_ui_settings.json', 'r'))
 
@@ -355,7 +355,7 @@ class DBMiddleware():
         for d in data:
             try:
                 uuids.append(UUID(d))
-            except:
+            except Exception:
                 imgs_malformed.append(d)
         uuids = tuple(uuids)
 
@@ -569,13 +569,13 @@ class DBMiddleware():
                 lastChecked = entry['timeCreated']
                 lastTimeRequired = entry['timeRequired']
                 if lastTimeRequired is None: lastTimeRequired = 0
-            except:
+            except Exception:
                 lastChecked = datetime.now(tz=pytz.utc)
                 lastTimeRequired = 0
 
             try:
                 numInteractions = int(entry['numInteractions'])
-            except:
+            except Exception:
                 numInteractions = 0
 
             if 'annotations' in entry and len(entry['annotations']):
@@ -596,7 +596,7 @@ class DBMiddleware():
                         elif cname == 'timeCreated':
                             try:
                                 annoValues.append(dateutil.parser.parse(annotationTokens[cname]))
-                            except:
+                            except Exception:
                                 annoValues.append(datetime.now(tz=pytz.utc))
                         elif cname == 'timeRequired':
                             timeReq = annotationTokens[cname]
@@ -802,7 +802,7 @@ class DBMiddleware():
                     imgs_set.append(tuple((user, imageID)))
                 else:
                     imgs_clear.append(imageID)
-            except:
+            except Exception:
                 imgs_error.append(b)
         imgs_error = set(imgs_error)
 

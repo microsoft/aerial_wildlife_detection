@@ -45,7 +45,7 @@ class AnnotationParser:
                 # or update for existing
                 try:
                     value = str(UUID(annotation['id']))
-                except:
+                except Exception:
                     # non-UUID conformant ID: skip 'id' field
                     continue
             

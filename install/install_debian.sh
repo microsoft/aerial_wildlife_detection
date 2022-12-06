@@ -364,7 +364,7 @@ c=configparser.ConfigParser()
 try:
     c.read('$config_file')
     print(c['$1']['$2'])
-except:
+except Exception:
     print('')
 EOF
 )
@@ -1314,7 +1314,7 @@ import importlib
 for lib in LIBS:
     try:
         importlib.import_module(lib)
-    except:
+    except Exception:
         print(lib)
 EOF
 )

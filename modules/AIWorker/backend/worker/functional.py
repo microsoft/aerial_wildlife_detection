@@ -136,7 +136,7 @@ def __load_metadata(project, dbConnector, imageIDs, loadAnnotations, modelOrigin
             renderConfig = json.loads(config[0]['render_config'])
             if renderConfig is None:
                 raise
-        except:
+        except Exception:
             # default render configuration; with adjustment to number of bands
             renderConfig = DEFAULT_RENDER_CONFIG
             renderConfig['bands']['indices'] = {
@@ -144,7 +144,7 @@ def __load_metadata(project, dbConnector, imageIDs, loadAnnotations, modelOrigin
                 'green': min(1, len(bandConfig)-1),
                 'blue': min(2, len(bandConfig)-1)
             }
-    except:
+    except Exception:
         # fallback to default
         bandConfig = DEFAULT_BAND_CONFIG
         renderConfig = DEFAULT_RENDER_CONFIG
@@ -417,7 +417,7 @@ def _call_average_model_states(project, epoch, numEpochs, modelInstance, modelLi
     try:
         model_library = queryResult[0]['model_library']
         alcriterion_library = queryResult[0]['alcriterion_library']
-    except:
+    except Exception:
         # load model library from database
         model_library, alcriterion_library = __get_ai_library_names(project, dbConnector)
     try:
@@ -565,7 +565,7 @@ def _call_inference(project, imageIDs, epoch, numEpochs, modelInstance, modelLib
                                 # segmentation masks, etc.: array of values provided; take average instead
                                 try:
                                     value = np.nanmean(np.array(value))
-                                except:
+                                except Exception:
                                     value = None
                             nextResultValues.append(value)
                         elif fn == 'confidence':
@@ -576,7 +576,7 @@ def _call_inference(project, imageIDs, epoch, numEpochs, modelInstance, modelLib
                                     # segmentation masks, etc.: array of values provided; take average instead
                                     try:
                                         value = np.nanmean(np.array(value))
-                                    except:
+                                    except Exception:
                                         value = None
                             nextResultValues.append(value)
                         else:

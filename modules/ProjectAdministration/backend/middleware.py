@@ -58,6 +58,7 @@ class ProjectConfigMiddleware:
         'getbackdrops',
         'verifyprojectname',
         'verifyprojectshort',
+        'suggestshortname',
         'newproject',
         'createproject',
         'statistics',
@@ -117,7 +118,7 @@ class ProjectConfigMiddleware:
     # this is only important for segmentation (due to anti-aliasing effects of
     # the HTML canvas, but we apply it everywhere anyway)
     MINIMAL_COLOR_OFFSET = 9
-    
+
     def __init__(self, config, dbConnector):
         self.config = config
         self.dbConnector = dbConnector
@@ -125,10 +126,13 @@ class ProjectConfigMiddleware:
         # load default UI settings
         try:
             # check if custom default styles are provided
-            self.defaultUIsettings = json.load(open('config/default_ui_settings.json', 'r'))
-        except:
+            with open('config/default_ui_settings.json', 'r', encoding='utf-8') as f_settings:
+                self.defaultUIsettings = json.load(f_settings)
+        except Exception:
             # resort to built-in styles
-            self.defaultUIsettings = json.load(open('modules/ProjectAdministration/static/json/default_ui_settings.json', 'r'))
+            with open('modules/ProjectAdministration/static/json/default_ui_settings.json',
+                        'r', encoding='utf-8') as f_ui_settings:
+                self.defaultUIsettings = json.load(f_ui_settings)
 
 
     @staticmethod
@@ -144,8 +148,8 @@ class ProjectConfigMiddleware:
                     ProjectConfigMiddleware._recursive_update(dictObject[key], target[key])
                 else:
                     dictObject[key] = target[key]
-    
-    
+
+
     def getPlatformInfo(self, project, parameters=None):
         '''
             AIDE setup-specific platform metadata.
@@ -280,7 +284,7 @@ class ProjectConfigMiddleware:
             elif param in ('band_config', 'render_config'):
                 try:
                     value = json.loads(value)
-                except:
+                except Exception:
                     value = None
             response[param] = value
 
@@ -300,7 +304,7 @@ class ProjectConfigMiddleware:
                 WHERE shortname = %s;
             ''', (newToken, project, project,), 1)
             return result[0]['secret_token']
-        except:
+        except Exception:
             # this normally should not happen, since we checked for the validity of the project
             return None
 
@@ -325,7 +329,7 @@ class ProjectConfigMiddleware:
             elif p.lower() in ('admitted_until', 'blocked_until'):
                 try:
                     queryVal = datetime.fromtimestamp(privileges[p])
-                except:
+                except Exception:
                     queryVal = None
             elif p.lower() == 'remove':
                 queryVal = None
@@ -700,7 +704,7 @@ class ProjectConfigMiddleware:
             # get or create ID for item
             try:
                 itemID = uuid.UUID(item['id'])
-            except:
+            except Exception:
                 itemID = uuid.uuid1()
                 while itemID in classes_update or itemID in classgroups_update:
                     itemID = uuid.uuid1()
@@ -841,7 +845,7 @@ class ProjectConfigMiddleware:
             if isinstance(aiModelID, str):
                 try:
                     aiModelID = (uuid.UUID(aiModelID),)
-                except:
+                except Exception:
                     # no UUID, hence no mapping to be returned
                     return {}
             elif isinstance(aiModelID, uuid.UUID):
@@ -852,7 +856,7 @@ class ProjectConfigMiddleware:
                     if not isinstance(aiModelID[aIdx], uuid.UUID):
                         try:
                             aiModelID[aIdx] = uuid.UUID(aiModelID)
-                        except:
+                        except Exception:
                             # no UUID
                             continue
             if len(aiModelID) == 0:
@@ -904,7 +908,7 @@ class ProjectConfigMiddleware:
                     else:
                         try:
                             targetID = uuid.UUID(row[2])
-                        except:
+                        except Exception:
                             targetID = None
                 values.append((uuid.UUID(aiModelID), sourceID, sourceName, targetID))
         
@@ -1022,6 +1026,50 @@ class ProjectConfigMiddleware:
             return True
 
 
+    def suggest_shortname(self, long_name):
+        '''
+            Creates and returns a shortname-compatible variant of the provided
+            "long_name" that is available (i.e., not yet used by another
+            project).
+        '''
+        if len(long_name) == 0:
+            return None
+
+        # get all current project names
+        proj_names = self.dbConnector.execute('''
+            SELECT shortname FROM aide_admin.project;
+        ''', None, 'all')
+        proj_names = {pname['shortname'] for pname in proj_names}
+
+        def _append_number(shortname):
+            if shortname not in set.union(proj_names, \
+                set(self.PROHIBITED_SHORTNAMES),
+                set(self.PROHIBITED_NAMES)):
+                return shortname
+            probe_name = shortname
+            number = 1
+            is_taken = True
+            while is_taken:
+                probe_name = f'{shortname}-{number}'
+                is_taken = probe_name in proj_names
+                number += 1
+            return probe_name
+
+        short_name = long_name.lower()
+        for prefix in self.PROHIBITED_NAME_PREFIXES:
+            if short_name.startswith(prefix):
+                short_name = short_name[1:]
+        for pattern in [
+            *self.SHORTNAME_PATTERNS_REPLACE,
+            *self.PROHIBITED_STRICT,
+            ' ']:
+            short_name = short_name.replace(pattern, '-')
+
+        # append dash and number if necessary
+        short_name = _append_number(short_name)
+        return short_name
+
+
     def getProjectArchived(self, project, username):
         '''
             Returns the "archived" flag of a project.
@@ -1102,7 +1150,7 @@ class ProjectConfigMiddleware:
         # archive project
         self.dbConnector.execute('''
             UPDATE aide_admin.project
-            SET ARCHIVED = %s
+            SET archived = %s
             WHERE shortname = %s;
         ''', (archived, project), None)
 

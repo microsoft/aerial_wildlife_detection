@@ -88,7 +88,7 @@ class SegmentationFileParser(AbstractAnnotationParser):
                 sz = drivers.GDALImageDriver.size(filePath)
                 if sz[0] in (1,3):
                     segFiles.append(file_orig)
-            except:
+            except Exception:
                 # unparseable
                 continue
         return segFiles
@@ -387,7 +387,7 @@ class SegmentationFileParser(AbstractAnnotationParser):
                 idx = lcDef['idx']
                 try:
                     color = helpers.hexToRGB(lcDef['color'])
-                except:
+                except Exception:
                     # error parsing color; this should never happen
                     color = 0
                 colorLUT[idx] = color

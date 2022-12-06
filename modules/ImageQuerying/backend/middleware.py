@@ -336,5 +336,5 @@ class ImageQueryingMiddleware:
             sz = driver.size(bio)
             return [f'Band {s+1}' for s in range(sz[0])]    #TODO: get band names from image metadata if available
 
-        except:
+        except Exception:
             return None

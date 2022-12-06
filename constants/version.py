@@ -10,7 +10,7 @@
     2020-22 Benjamin Kellenberger
 '''
 
-AIDE_VERSION = '3.0.221206'
+AIDE_VERSION = '3.0.221206b'
 
 
 MIN_FILESERVER_VERSION = '2.2.220618'       # minimum required version for FileServer, due to recent changes
@@ -34,7 +34,7 @@ def get_version_components(version=AIDE_VERSION):
             'nightly': datetime.datetime.strptime(nightly, '%y%m%d'),
             'suffix': suffix
         }
-    except:
+    except Exception:
         return None
 
 
@@ -77,7 +77,7 @@ def compare_versions(version_a, version_b):
                         return -1
         print(f'Unexpected error trying to parse versions ({version_a}; {version_b}).')
         return None
-    except:
+    except Exception:
         return None
 
 

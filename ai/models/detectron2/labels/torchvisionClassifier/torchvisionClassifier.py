@@ -24,7 +24,7 @@ class GeneralizedTorchvisionClassifier(GenericDetectron2LabelModel):
             if self.detectron2cfg.MODEL.META_ARCHITECTURE != 'TorchvisionClassifier':
                 # invalid options provided
                 raise Exception('Invalid model meta architecture')
-        except:
+        except Exception:
             print(f'[{self.project}] WARNING: provided options are not valid for the Torchvision classifier model; falling back to defaults.')
             self.options = self.getDefaultOptions()
             self.detectron2cfg = self._get_config()

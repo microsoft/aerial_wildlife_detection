@@ -254,7 +254,7 @@ class DataAdministrator:
                         splitProperties.update(json.loads(request.params.get('splitParams')))
                     else:
                         splitProperties = None
-                except:
+                except Exception:
                     splitIntoPatches = False
                     splitProperties = None
                 convertUnsupported = helpers.parse_boolean(request.params.get('convertUnsupported', True))
@@ -367,7 +367,7 @@ class DataAdministrator:
                         splitProperties.update(json.loads(props.get('splitParams', '{}')))
                     else:
                         splitProperties = None
-                except:
+                except Exception:
                     splitIntoPatches = False
                     splitProperties = None
 

@@ -26,10 +26,10 @@ class AIController:
             self.middleware = AIMiddleware(config, dbConnector, taskCoordinator, passive_mode)
             self.login_check = None
             self._initBottle()
-        except Exception as e:
+        except Exception as exc:
             if verbose_start:
                 LogDecorator.print_status('fail')
-            raise Exception(f'Could not launch AIController (message: "{str(e)}").')
+            raise Exception(f'Could not launch AIController (message: "{str(exc)}").')
 
         if verbose_start:
             LogDecorator.print_status('ok')
@@ -55,14 +55,14 @@ class AIController:
             '''
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
-            
+
             try:
-                latestOnly = bool(request.params.get('latest_only'))
-            except:
-                latestOnly = False
-            
-            return {'modelStates': self.middleware.listModelStates(project, latestOnly) }
-        
+                latest_only = bool(request.params.get('latest_only'))
+            except Exception:
+                latest_only = False
+
+            return {'modelStates': self.middleware.listModelStates(project, latest_only)}
+
 
         @self.app.post('/<project>/deleteModelStates')
         def delete_model_states(project):
@@ -72,7 +72,7 @@ class AIController:
             '''
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
-            
+
             try:
                 username = html.escape(request.get_cookie('username'))
                 modelStateIDs = request.json['model_ids']
@@ -82,13 +82,13 @@ class AIController:
                     'task_id': taskID
                 }
 
-            except Exception as e:
+            except Exception as exc:
                 return {
                     'status': 1,
-                    'message': str(e)
+                    'message': str(exc)
                 }
 
-        
+
         @self.app.post('/<project>/duplicateModelState')
         def duplicate_model_state(project):
             '''
@@ -98,7 +98,7 @@ class AIController:
             '''
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
-            
+
             try:
                 username = html.escape(request.get_cookie('username'))
                 modelStateID = request.json['model_id']
@@ -108,10 +108,10 @@ class AIController:
                     'task_id': taskID
                 }
 
-            except Exception as e:
+            except Exception as exc:
                 return {
                     'status': 1,
-                    'message': str(e)
+                    'message': str(exc)
                 }
 
 
@@ -125,20 +125,20 @@ class AIController:
             '''
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
-            
+
             try:
                 username = html.escape(request.get_cookie('username'))
                 #TODO: permit filtering for model state IDs (change to POST?)
-                taskID = self.middleware.getModelTrainingStatistics(project, username, modelStateIDs=None)
+                task_id = self.middleware.getModelTrainingStatistics(project, username, modelStateIDs=None)
                 return {
                     'status': 0,
-                    'task_id': taskID
+                    'task_id': task_id
                 }
 
-            except Exception as e:
+            except Exception as exc:
                 return {
                     'status': 1,
-                    'message': str(e)
+                    'message': str(exc)
                 }
 
 
@@ -157,12 +157,13 @@ class AIController:
                 result = self.middleware.launch_task(project, params['workflow'], username)
                 return result
 
-            except Exception as e:
+            except Exception as exc:
                 return { 'status': 1,
-                        'message': str(e) }
+                        'message': str(exc)
+                }
 
 
-        
+
         @self.app.post('/<project>/abortWorkflow')
         def abort_workflow(project):
             if not self.loginCheck(project=project, admin=True):
@@ -170,14 +171,15 @@ class AIController:
             try:
                 username = html.escape(request.get_cookie('username'))
                 params = request.json
-                taskID = params['taskID']
-                self.middleware.revoke_task(project, taskID, username)
+                task_id = params['taskID']
+                self.middleware.revoke_task(project, task_id, username)
 
                 return { 'status': 0 }
 
-            except Exception as e:
+            except Exception as exc:
                 return { 'status': 1,
-                        'message': str(e) }
+                        'message': str(exc)
+                }
 
 
 
@@ -191,12 +193,13 @@ class AIController:
 
                 return { 'status': 0 }
 
-            except Exception as e:
+            except Exception as exc:
                 return { 'status': 1,
-                        'message': str(e) }
+                        'message': str(exc)
+                }
 
 
-        
+
         @self.app.get('/<project>/status')
         def check_status(project):
             '''
@@ -213,8 +216,8 @@ class AIController:
                     status = self.middleware.check_status(
                         project,
                         queryProject, queryTasks, queryWorkers, nudgeWatchdog, recheckAutotrainSettings)
-                except Exception as e:
-                    status = str(e)
+                except Exception as exc:
+                    status = str(exc)
                 return { 'status' : status }
 
             else:
@@ -230,14 +233,14 @@ class AIController:
             '''
             if not self.loginCheck(project, admin=True):
                 abort(401, 'unauthorized')
-            
+
             try:
                 workflows = self.middleware.getSavedWorkflows(project)
                 return { 'workflows': workflows }
-            except Exception as e:
-                return { 'status': str(e) }
+            except Exception as exc:
+                return { 'status': str(exc) }
 
-        
+
 
         @self.app.post('/<project>/saveWorkflow')
         def save_workflow(project):
@@ -250,7 +253,7 @@ class AIController:
             '''
             if not self.loginCheck(project, admin=True):
                 abort(401, 'unauthorized')
-            
+
             try:
                 username = html.escape(request.get_cookie('username'))
                 workflow = request.json['workflow']
@@ -258,21 +261,21 @@ class AIController:
                 try:
                     # for updating existing workflows
                     workflowID = request.json['workflow_id']
-                except:
+                except Exception:
                     workflowID = None
                 try:
                     setDefault = request.json['set_default']
-                except:
+                except Exception:
                     setDefault = False
-                
+
                 status = self.middleware.saveWorkflow(project, username, workflow, workflowID, workflowName, setDefault)
                 return { 'response': status }
 
-            except Exception as e:
-                return { 'response': {'status':1, 'message':str(e)} }
+            except Exception as exc:
+                return { 'response': {'status':1, 'message':str(exc)} }
 
 
-        
+
         @self.app.post('/<project>/setDefaultWorkflow')
         def set_default_workflow(project):
             '''
@@ -281,15 +284,15 @@ class AIController:
             '''
             if not self.loginCheck(project, admin=True):
                 abort(401, 'unauthorized')
-            
+
             try:
                 workflowID = request.json['workflow_id']
-                
+
                 status = self.middleware.setDefaultWorkflow(project, workflowID)
                 return status
 
-            except Exception as e:
-                return {'status':1, 'message':str(e)}
+            except Exception as exc:
+                return {'status':1, 'message':str(exc)}
 
 
 
@@ -302,15 +305,15 @@ class AIController:
             '''
             if not self.loginCheck(project, admin=True):
                 abort(401, 'unauthorized')
-            
+
             try:
                 username = html.escape(request.get_cookie('username'))
                 workflowID = request.json['workflow_id']
                 status = self.middleware.deleteWorkflow(project, username, workflowID)
                 return status
 
-            except Exception as e:
-                return {'status':1, 'message':str(e)}
+            except Exception as exc:
+                return {'status':1, 'message':str(exc)}
 
 
 
@@ -323,17 +326,17 @@ class AIController:
             '''
             if not self.loginCheck(project, admin=True):
                 abort(401, 'unauthorized')
-            
+
             try:
                 workflowID = request.json['workflow_id']
                 revokeRunning = (request.json['revoke_running'] if 'revoke_running' in request.json else False)
                 status = self.middleware.deleteWorkflow_history(project, workflowID, revokeRunning)
                 return status
 
-            except Exception as e:
-                return {'status':1, 'message':str(e)}
+            except Exception as exc:
+                return {'status':1, 'message':str(exc)}
 
-        
+
 
         @self.app.get('/<project>/getAImodelTrainingInfo')
         def get_ai_model_training_info(project):
@@ -348,16 +351,16 @@ class AIController:
         '''
             if not self.loginCheck(project, admin=True):
                 abort(401, 'unauthorized')
-            
+
             try:
                 status = self.middleware.get_ai_model_training_info(project)
                 return {'response': status}
 
-            except Exception as e:
-                return {'status':1, 'message':str(e)}
+            except Exception as exc:
+                return {'status':1, 'message':str(exc)}
 
 
-    
+
         @self.app.get('/<project>/getAvailableAImodels')
         def get_available_ai_models(project):
             '''
@@ -367,7 +370,7 @@ class AIController:
             '''
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'unauthorized')
-            
+
             return self.middleware.getAvailableAImodels(project)
 
 
@@ -380,7 +383,7 @@ class AIController:
             '''
             if not self.loginCheck(canCreateProjects=True):
                 abort(401, 'unauthorized')
-            
+
             return self.middleware.getAvailableAImodels(None)
 
 
@@ -396,31 +399,31 @@ class AIController:
             '''
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'unauthorized')
-            
+
             try:
                 modelOptions = request.json['options']
                 try:
                     modelLibrary = request.json['ai_model_library']
-                except:
+                except Exception:
                     modelLibrary = None
                 status = self.middleware.verifyAImodelOptions(project, modelOptions, modelLibrary)
                 return {'status': status}
-            except Exception as e:
-                return {'status': 1, 'message': str(e)}
+            except Exception as exc:
+                return {'status': 1, 'message': str(exc)}
 
 
-        
+
         @self.app.post('/<project>/saveAImodelSettings')
         def save_model_settings(project):
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'unauthorized')
-            
+
             try:
                 settings = request.json['settings']
                 response = self.middleware.updateAImodelSettings(project, settings)
                 return {'status': 0, 'message': response}
-            except Exception as e:
-                return {'status': 1, 'message': str(e)}
+            except Exception as exc:
+                return {'status': 1, 'message': str(exc)}
 
 
 
@@ -428,27 +431,27 @@ class AIController:
         def get_labelclass_autoadapt_info(project):
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'unauthorized')
-            
+
             try:
                 try:
                     modelID = request.params.get('model_id')
-                except:
+                except Exception:
                     modelID = None
                 response = self.middleware.getLabelclassAutoadaptInfo(project, modelID)
                 return {'status': 0, 'message': response}
-            except Exception as e:
-                return {'status': 1, 'message': str(e)}
+            except Exception as exc:
+                return {'status': 1, 'message': str(exc)}
 
 
-        
+
         @self.app.post('/<project>/saveLabelclassAutoadaptInfo')
         def save_labelclass_autoadapt_info(project):
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'unauthorized')
-            
+
             try:
                 enabled = parse_boolean(request.params.get('enabled'))
                 response = self.middleware.setLabelclassAutoadaptEnabled(project, enabled)
                 return {'status': 0, 'message': response}
-            except Exception as e:
-                return {'status': 1, 'message': str(e)}
+            except Exception as exc:
+                return {'status': 1, 'message': str(exc)}

@@ -137,7 +137,7 @@ def get_drivers_by_mime_type(mimeType, omit_fallback=False):
         init_drivers(False)
     try:
         return DRIVERS['mime_type'][mimeType]
-    except:
+    except Exception:
         return FALLBACK_DRIVERS
 
 
@@ -147,7 +147,7 @@ def get_drivers_by_extension(ext, omit_fallback=False):
         init_drivers(False)
     try:
         return DRIVERS['extension'][ext.lower()]
-    except:
+    except Exception:
         return FALLBACK_DRIVERS
 
 
@@ -244,7 +244,7 @@ def load_from_disk(filePath, override_extension=None, return_driver=False, windo
             if return_driver:
                 result.append(driver)
             return tuple(result) if len(result) > 1 else result[0]
-        except:
+        except Exception:
             pass
     # no driver was able to load the file
     raise Exception(f'None of the available drivers could load file "{filePath}".')
@@ -267,7 +267,7 @@ def load_from_bytes(bytea, return_mime_type=False, return_driver=False, window=N
             if return_driver:
                 result.append(driver)
             return tuple(result) if len(result) > 1 else result[0]
-        except:
+        except Exception:
             pass
     # no driver was able to load the file
     raise Exception(f'None of the available drivers could load bytes (guessed MIME type: "{mimeType}").')

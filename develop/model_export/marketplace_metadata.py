@@ -76,7 +76,7 @@ def parse_argument(arg_name, arg, target_type=str, check_for_file_path=True):
                 try:
                     with open(arg, 'r') as f:
                         arg = f.readlines()
-                except:
+                except Exception:
                     raise Exception(f'Argument "{arg_name}" set to file "{arg}", but file could not be loaded.')
 
         if target_type is str:

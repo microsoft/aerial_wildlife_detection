@@ -97,7 +97,7 @@ class Watchdog(Thread):
                                 project = task['kwargs']['project']
                                 if project == self.project:
                                     tasks_orphaned.add(dbKey)
-                            except:
+                            except Exception:
                                 continue
         
         # vice-versa: check running tasks and re-enable them if flagged as orphaned in DB
@@ -118,7 +118,7 @@ class Watchdog(Thread):
                     if project == self.project and taskID not in tasksRunning_db:
                         tasks_resurrected.add(taskID)
                         self.runningTasks.append(taskID)
-                except:
+                except Exception:
                     continue
         
         tasks_orphaned = tasks_orphaned.difference(tasks_resurrected)
@@ -295,7 +295,7 @@ class Watchdog(Thread):
                                 maxNumImages_inference=self.properties['maxnumimages_inference'],
                                 maxNumWorkers_inference=self.config.getProperty('AIController', 'maxNumWorkers_inference', type=int, fallback=-1))  #TODO: replace by project-specific argument
                             
-                    except:
+                    except Exception:
                         # error in case auto-launched task is already ongoing; ignore
                         pass
             

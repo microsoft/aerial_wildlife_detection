@@ -126,7 +126,7 @@ def main():
 
     try:
         stateDict, _, modelOriginID, _ = __load_model_state(args.project, modelLibrary, dbConnector)    #TODO: load latest unless override is specified?
-    except:
+    except Exception:
         stateDict = None
         modelOriginID = None
 

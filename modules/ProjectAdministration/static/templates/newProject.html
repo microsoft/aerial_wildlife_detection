@@ -119,6 +119,7 @@
             window.customBandConfiguration = false;
             window.bandsMatch = false;
             window.aiModels = {};
+            window.shortnameModified = false;   // set to true once user provided input to shortname field
 
             function getAvailableAImodels() {
                 return $.ajax({
@@ -306,6 +307,30 @@
                 });
             }
 
+            function suggestShortname() {
+                if(window.shortnameModified) return;
+                let projName = $('#project-name-field').val();
+                if(window.shortnameSuggestionTimeout !== undefined) {
+                    clearTimeout(window.shortnameSuggestionTimeout);
+                    window.shortnameSuggestionTimeout = undefined;
+                }
+                window.shortnameSuggestionTimeout = setTimeout(function() {
+                    $.ajax({
+                        url: '/suggestShortname?name=' + projName,
+                        method: 'GET',
+                        success: function(data) {
+                            if(data.hasOwnProperty('shortname') &&
+                                typeof(data['shortname']) === 'string') {
+                                    $('#project-shortname-field').val(data['shortname']);
+                                    checkNameAvailable('verifyProjectShort',
+                                        { shorthand: data['shortname'] },
+                                        $('#project-shortname-availability'));
+                                }
+                        }
+                    });
+                }, 400);
+            }
+
             function getAnnoPredTypes() {
                 // annotation and prediction type
                 let annoType = $('input[name="annotation-type"]:checked').val();
@@ -359,7 +384,7 @@
                  *  bands the image has as well as the band labels. Populates
                  *  the band label table accordingly.
                  */
-                if(typeof(file) !== 'object' || !file.hasOwnProperty('name')) return;
+                if(typeof(file) !== 'object' || file.name === undefined) return;
 
                 $('#file-parsing-progress').show();
                 let tbody = $('#band-assignment-tbody');
@@ -603,16 +628,25 @@
                     updateAImodelsTable();
 
                     // name and shortname availability
-                    $('#project-name-field').on('focusout', checkValuesCorrect);
+                    $('#project-name-field').on({
+                        'focusout': function() {
+                            checkValuesCorrect();
+                        },
+                        'input': function() {
+                            suggestShortname();
+                        }
+                    });
                     $('#project-shortname-field').on('focusout', function() {
+                        let value = $('#project-shortname-field').val();
+                        window.shortnameModified = (value.length > 0);
                         var promise = checkValuesCorrect();
-                        promise = promise.then(function() {
-                            if(window.projShortnameAvailable) {
-                                $('#project-shorthand-title').html($('#project-shortname-field').val());
-                            } else {
-                                $('#project-shorthand-title').html('');
-                            }
-                        });
+                        // promise = promise.then(function() {
+                        //     if(window.projShortnameAvailable) {
+                        //         $('#project-shorthand-title').html(value);
+                        //     } else {
+                        //         $('#project-shorthand-title').html('');
+                        //     }
+                        // });
                     });
 
                     $('input[name="annotation-type"]').on('input', function() {

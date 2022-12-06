@@ -22,7 +22,7 @@ class LogDecorator:
     def get_ljust_offset():
         try:
             return os.get_terminal_size().columns - 6
-        except:
+        except Exception:
             return 74
 
     @staticmethod

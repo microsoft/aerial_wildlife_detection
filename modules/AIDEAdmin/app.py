@@ -58,7 +58,7 @@ class AIDEAdmin:
                     return self.panelTemplates[panel].render(
                         version=AIDE_VERSION
                     )
-                except:
+                except Exception:
                     abort(404, 'not found')
             else:
                 abort(401, 'forbidden')
@@ -83,7 +83,7 @@ class AIDEAdmin:
             # render configuration template
             try:
                 username = html.escape(request.get_cookie('username'))
-            except:
+            except Exception:
                 return redirect('/login?redirect=/admin')
 
             return self.adminTemplate.render(
@@ -97,7 +97,7 @@ class AIDEAdmin:
                 if not self.loginCheck(superuser=True):
                     return redirect('/')
                 return {'details': self.middleware.getServiceDetails()}
-            except:
+            except Exception:
                 abort(404, 'not found')
 
         
@@ -107,7 +107,7 @@ class AIDEAdmin:
                 if not self.loginCheck(superuser=True):
                     return redirect('/')
                 return {'details': self.middleware.getCeleryWorkerDetails()}
-            except:
+            except Exception:
                 abort(404, 'not found')
 
 

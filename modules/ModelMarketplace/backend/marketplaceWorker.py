@@ -340,7 +340,7 @@ class ModelMarketplaceWorker:
         timeCreated = (modelDefinition['time_created'] if 'time_created' in modelDefinition else None)
         try:
             timeCreated = datetime.fromtimestamp(timeCreated)
-        except:
+        except Exception:
             timeCreated = current_time()
 
         # try to launch model with data
@@ -359,7 +359,7 @@ class ModelMarketplaceWorker:
                     if 'options' in optionMeta:
                         modelOptions = optionMeta['options']
                     #TODO: parse warnings and errors
-                except:
+                except Exception:
                     # model library does not support option verification
                     pass      
                 if isinstance(modelOptions, dict):
@@ -708,7 +708,7 @@ class ModelMarketplaceWorker:
         # try to parse modelID as UUID
         try:
             modelID = UUID(modelID)
-        except:
+        except Exception:
             # need to load model from built-ins
             pass
         

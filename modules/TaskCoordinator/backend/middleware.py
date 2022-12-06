@@ -159,7 +159,7 @@ class TaskCoordinatorMiddleware:
                             if not include_ai_tasks and not isAItask(task_type):  #TODO
                                 continue
                             task_id.append(task['id'])
-                        except Exception as _:
+                        except Exception:
                             continue
 
         # filter tasks if needed
@@ -252,7 +252,7 @@ class TaskCoordinatorMiddleware:
             status['status'] = msg['status']
             status['meta'] = info
 
-        except Exception as _:
+        except Exception:
             status = {}
 
         return status

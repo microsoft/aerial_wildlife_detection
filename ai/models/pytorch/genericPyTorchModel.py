@@ -35,26 +35,26 @@ class GenericPyTorchModel(AIModel):
             try:
                 updatedOptions = optionsHelper.substitute_definitions(options.copy())
                 self.options = updatedOptions
-            except:
+            except Exception:
                 # something went wrong; ignore
                 pass
 
         # retrieve executables
         try:
             self.model_class = get_class_executable(optionsHelper.get_hierarchical_value(self.options, ['options', 'model', 'class']))
-        except:
+        except Exception:
             self.model_class = None
         try:
             self.criterion_class = get_class_executable(optionsHelper.get_hierarchical_value(self.options, ['options', 'train', 'criterion', 'class']))
-        except:
+        except Exception:
             self.criterion_class = None
         try:
             self.optim_class = get_class_executable(optionsHelper.get_hierarchical_value(self.options, ['options', 'train', 'optim']))
-        except:
+        except Exception:
             self.optim_class = SGD
         try:
             self.dataset_class = get_class_executable(optionsHelper.get_hierarchical_value(self.options, ['options', 'dataset']))
-        except:
+        except Exception:
             self.dataset_class = None
 
 
@@ -253,19 +253,19 @@ class GenericPyTorchModel_Legacy(AIModel):
         # retrieve executables
         try:
             self.model_class = get_class_executable(self.options['model']['class'])
-        except:
+        except Exception:
             self.model_class = None
         try:
             self.criterion_class = get_class_executable(self.options['train']['criterion']['class'])
-        except:
+        except Exception:
             self.criterion_class = None
         try:
             self.optim_class = get_class_executable(self.options['train']['optim']['class'])
-        except:
+        except Exception:
             self.optim_class = SGD
         try:
             self.dataset_class = get_class_executable(self.options['dataset']['class'])
-        except:
+        except Exception:
             self.dataset_class = None
 
 

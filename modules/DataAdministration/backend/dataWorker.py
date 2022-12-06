@@ -231,7 +231,7 @@ class DataWorker:
             if not isinstance(startFrom, UUID):
                 try:
                     startFrom = UUID(startFrom)
-                except:
+                except Exception:
                     startFrom = None
             if startFrom is not None:
                 filterStr += ' AND img.id > %s '
@@ -259,7 +259,7 @@ class DataWorker:
         elif isinstance(limit, str):
             try:
                 limit = int(limit)
-            except:
+            except Exception:
                 limit = self.NUM_IMAGES_LIMIT
         elif not isinstance(limit, int):
             limit = self.NUM_IMAGES_LIMIT
@@ -367,7 +367,7 @@ class DataWorker:
             bandConfig = json.loads(projectProps['band_config'])
             bandNum = tuple(set((len(bandConfig),)))
             customBandConfig = True         # for non-RGB images
-        except:
+        except Exception:
             bandNum = (1,3)
             customBandConfig = False
 
@@ -418,13 +418,13 @@ class DataWorker:
             try:
                 meta = json.load(open(tempDir_metaFile, 'r'))
                 self.uploadSessions[sessionID] = meta    
-            except:
+            except Exception:
                 return False
         try:
             assert self.uploadSessions[sessionID]['project'] == project
             assert self.uploadSessions[sessionID]['user'] == user
             return True
-        except:
+        except Exception:
             return False
 
 
@@ -605,7 +605,7 @@ class DataWorker:
                     try:
                         driver = drivers.get_driver(tempFileName)
                         sz = driver.size(tempFileName)
-                    except:
+                    except Exception:
                         raise Exception(f'"{originalFileName}" does not appear to be a valid image file.')
 
                     # loading succeeded; move entries about potential header files from imgs_error to files_aux
@@ -831,7 +831,7 @@ class DataWorker:
                                     'message': 'Image "{}" already existed on disk and has been overwritten.\n'.format(newFileName) + \
                                                 'All metadata (views, annotations, predictions) has been removed from the database.'
                                 }
-                            except:
+                            except Exception:
                                 imgs_warn[subKey] = {
                                     'filename': newFileName,
                                     'message': 'Image "{}" already existed on disk but could not be overwritten.\n'.format(newFileName) + \
@@ -1013,7 +1013,7 @@ class DataWorker:
             bandConfig = json.loads(bandConfig[0]['band_config'])
             bandNum = set((len(bandConfig),))
             hasCustomBandConfig = True
-        except:
+        except Exception:
             # no custom render configuration specified; assume default no. bands
             # of one (grayscale) or three (RGB)
             bandNum = set((1, 3))
@@ -1059,7 +1059,7 @@ class DataWorker:
                             pixelArray = drivers.load_from_disk(os.path.join(projectFolder, imgs_candidates[i]))
                             drivers.save_to_disk(pixelArray, os.path.join(projectFolder, imgs_candidates[i]))
                             imgs_valid.append(imgs_candidates[i])
-                        except:
+                        except Exception:
                             # unloadable, not a valid image
                             continue
                 else:
@@ -1099,7 +1099,7 @@ class DataWorker:
                     # if convertImage:
                     #     drivers.save_to_disk(pixelArray, os.path.join(projectFolder, imgs_candidates[i]))
                     imgs_valid.append(imgs_candidates[i])
-                except:
+                except Exception:
                     # unloadable; not a valid image
                     continue
             
@@ -1189,7 +1189,7 @@ class DataWorker:
                                 coord[2], coord[3]
                             ))
 
-                except:
+                except Exception:
                     # could not determine image size
                     continue        #TODO: error log?
 
@@ -1204,7 +1204,7 @@ class DataWorker:
                     dbValues.append((
                         img, None, None, sz[1], sz[2]
                     ))
-                except:
+                except Exception:
                     # could not determine image size
                     continue        #TODO: error log?
 
@@ -1587,11 +1587,11 @@ class DataWorker:
                 segmaskFilenameOptions['baseName'] = 'filename'
             try:
                 segmaskFilenameOptions['prefix'] = str(segmaskFilenameOptions['prefix'])
-            except:
+            except Exception:
                 segmaskFilenameOptions['prefix'] = ''
             try:
                 segmaskFilenameOptions['suffix'] = str(segmaskFilenameOptions['suffix'])
-            except:
+            except Exception:
                 segmaskFilenameOptions['suffix'] = ''
 
             for char in FILENAMES_PROHIBITED_CHARS:
@@ -1643,7 +1643,7 @@ class DataWorker:
                             # convert to RGB format
                             indexedColors.extend(hexToRGB(color))
 
-                except:
+                except Exception:
                     # an error occurred; don't convert segmentation mask to indexed colors
                     indexedColors = None
             else:

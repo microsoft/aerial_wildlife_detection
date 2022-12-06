@@ -50,7 +50,7 @@ class Config():
                 return fallback
             else:
                 return value
-        except:
+        except Exception:
             return fallback
 
 
@@ -89,7 +89,7 @@ if __name__ == '__main__':
                 type=float
             else:
                 type=None
-        except:
+        except Exception:
             type=None
 
         print(Config().getProperty(args.section, args.parameter, type=type, fallback=args.fallback))

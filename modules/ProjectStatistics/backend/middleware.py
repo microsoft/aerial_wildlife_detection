@@ -134,15 +134,15 @@ class ProjectStatisticsMiddleware:
         tp, fp, fn = float(tp), float(fp), float(fn)
         try:
             precision = tp / (tp + fp)
-        except:
+        except Exception:
             precision = 0.0
         try:
             recall = tp / (tp + fn)
-        except:
+        except Exception:
             recall = 0.0
         try:
             f1 = 2 * precision * recall / (precision + recall)
-        except:
+        except Exception:
             f1 = 0.0
         return precision, recall, f1
 

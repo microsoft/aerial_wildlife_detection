@@ -66,7 +66,7 @@ class GenericDetectron2LabelModel(GenericDetectron2Model):
         # try:
         #     imageFormat = self.detectron2cfg.INPUT.FORMAT
         #     assert imageFormat.upper() in ('RGB', 'BGR')
-        # except:
+        # except Exception:
         #     imageFormat = 'BGR'
         datasetMapper = Detectron2DatasetMapper(self.project, self.fileServer, transforms, False, bandConfig)
         dataLoader = build_detection_test_loader(
@@ -84,7 +84,7 @@ class GenericDetectron2LabelModel(GenericDetectron2Model):
             for idx in tqdm(range(numImgs)):
                 try:
                     batch = next(dataLoaderIter)
-                except:
+                except Exception:
                     break
 
                 outputs = model(batch)

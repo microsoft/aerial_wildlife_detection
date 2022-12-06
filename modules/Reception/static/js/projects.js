@@ -25,7 +25,11 @@ function setProjectArchived(project, archived) {
         }),
         success: function(response) {
             if(response['status'] === 0) {
-                window.messager.addMessage('Project archival status changed successfully.', 'success');
+                if(archived) {
+                    window.messager.addMessage('Project archived successfully.', 'success');
+                } else {
+                    window.messager.addMessage('Project unarchived successfully.', 'success');
+                }
             } else {
                 let message = 'An error occurred while changing project archival status';
                 if(typeof(response['message']) === 'string') {
@@ -50,14 +54,26 @@ function setProjectArchived(project, archived) {
     });
 }
 
-function loadProjectInfo() {
+function loadProjectInfo(archived_status) {
     let projDiv = $('#projects');
     let projArchivedDiv = $('#projects-archived-tbody');
+    let url = 'getProjects';
+    if(typeof(archived_status) === 'boolean') {
+        url += '?archived=' + archived_status;
+    }
     return $.ajax({
-        url: 'getProjects',
+        url: url,
         method: 'GET',
         success: function(data) {
             if(data.hasOwnProperty('projects')) {
+                if(archived_status === true) {
+                    projArchivedDiv.empty();
+                } else if(archived_status === false) {
+                    projDiv.empty();
+                } else {
+                    projDiv.empty();
+                    projArchivedDiv.empty();
+                }
                 projects = {};
                 for(var key in data['projects']) {
                     let projName = data['projects'][key]['name'];
@@ -77,26 +93,31 @@ function loadProjectInfo() {
                     if(archived) {
                         // append to separate table
                         let markup = $('<tr id="archivedEntry_'+key+'"></tr>');
+                        projArchivedDiv.append(markup);
                         markup.append($('<td><a href="' + key + '">' + projName + '</a></td>'));
 
-                        //TODO: implement correctly
-                        // if(isOwner || role === 'super user') {
-                        //     // only owners and super users are allowed to unarchive a project
-                        //     let unarchive = $('<td></td>');
-                        //     let unarchiveBtn = $('<button class="btn btn-sm btn-primary unarchive-button">Unarchive</button>');
-                        //     unarchiveBtn.on('click', function() {
-                        //         setProjectArchived(key, false);
-                        //     });
-                        //     unarchive.append(unarchiveBtn);
-                        //     markup.append(unarchive);
-                        // } else {
-                        //     markup.append($('<td></td>'));
-                        // }
+                        if(isOwner || role === 'super user') {
+                            // only owners and super users are allowed to unarchive a project
+                            let unarchive = $('<td></td>');
+                            let unarchiveBtn = $('<button id="unarchive_'+key+'" class="btn btn-sm btn-primary unarchive-button">Unarchive</button>');
+                            $(projArchivedDiv).on('click', '#unarchive_'+key, function() {
+                                let projID = $(this).attr('id').replace('unarchive_', '');
+                                setProjectArchived(projID, false).then(function() {
+                                    markup.slideUp(400, function() {
+                                        markup.remove();
+                                    });
+                                    loadProjectInfo(false);
+                                });
+                            });
+                            unarchive.append(unarchiveBtn);
+                            markup.append(unarchive);
+                        } else {
+                            markup.append($('<td></td>'));
+                        }
                         markup.append($('<td></td>'));
-                        ///TODO
-                        projArchivedDiv.append(markup);
 
                     } else {
+                        let markup = $('<div class="project-entry" id="projectEntry_' + key + '"></div>');
                         if(role === 'super user' || role === 'admin' || role === 'member') {
                         } else {
                             role = 'not a member';
@@ -110,14 +131,19 @@ function loadProjectInfo() {
                             if(data['projects'][key]['aiModelSelected'] && !demoMode) {
                                 adminButtons += '<a href="' + key + '/configuration/aiModel" class="btn btn-sm btn-info">AI model</a>';
                             }
-                            // //TODO: implement correctly:
-                            // if(isOwner) {
-                            //     let archiveButton = '<button class="btn btn-sm btn-warning" id="archive_'+key+'">Archive</button>';
-                            //     $(archiveButton).on('click', function() {
-                            //         setProjectArchived(key, true);
-                            //     })
-                            //     adminButtons += archiveButton;
-                            // }
+                            if(isOwner) {
+                                let archiveButton = '<button class="btn btn-sm btn-warning" id="archive_'+key+'">Archive</button>';
+                                $(projDiv).on('click', '#archive_'+key, function() {
+                                    let projID = $(this).attr('id').replace('archive_', '');
+                                    setProjectArchived(projID, true).then(function() {
+                                        markup.slideUp(400, function() {
+                                            markup.remove();
+                                        });
+                                        loadProjectInfo(true);
+                                    });
+                                });
+                                adminButtons += archiveButton;
+                            }
                             adminButtons += '</span>';
                             userAdmitted = true;
                             var authDescr = $('<p style="display:inline">You are <b>' + role + '</b> in this project.</p>');
@@ -125,18 +151,15 @@ function loadProjectInfo() {
                             var authDescr = $('<p style="display:inline">You are allowed to view (but not label) the images in this project.</p>');
                         }
                         
+                        let labelButtonText = 'Start labeling';
                         if(demoMode) {
                             labelButtonText = 'Explore';
-                        } else {
-                            labelButtonText = 'Start labeling';
                         }
-
                         var labelButton = '<a href="' + key + '/interface" class="btn btn-primary label-button">'+labelButtonText+'</a>';
                         if(!userAdmitted || !data['projects'][key]['interface_enabled']) {
                             labelButton = '<div class="btn btn-secondary label-button" style="cursor:not-allowed;" disabled="disabled">(interface disabled)</div>';
                         }
 
-                        var markup = $('<div class="project-entry" id="projectEntry_' + key + '"></div>');
                         markup.append($('<h2><a href="' + key + '">' + projName + '</a></h2>'));
                         markup.append($('<span class="label-type">'+ labelTypes +'</span>'));
                         markup.append($('<p>' + projDescr + '</p>'));

@@ -55,7 +55,7 @@ class SegmentationDataset(Dataset):
         try:
             img = Image.open(BytesIO(self.fileServer.getFile(imagePath))).convert('RGB')
             imageSize = img.size
-        except:
+        except Exception:
             print(f'WARNING: Image "{imagePath}" is corrupt and could not be loaded.')
             img = None
             imageSize = None
@@ -77,7 +77,7 @@ class SegmentationDataset(Dataset):
 
                 segmentationMask = Image.fromarray(raster)
 
-            except:
+            except Exception:
                 print(f'WARNING: Segmentation mask for image "{imagePath}" could not be loaded or decoded.')
                 segmentationMask = None
         else:

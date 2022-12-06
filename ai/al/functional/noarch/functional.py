@@ -43,7 +43,7 @@ def _max_confidence(prediction):
         else:
             try:
                 maxVal = float(prediction['logits'])
-            except:
+            except Exception:
                 maxVal = None
     elif 'confidence' in prediction:
         if isinstance(prediction['confidence'], Iterable):
@@ -51,7 +51,7 @@ def _max_confidence(prediction):
         else:
             try:
                 maxVal = float(prediction['confidence'])
-            except:
+            except Exception:
                 maxVal = None
     else:
         maxVal = None

@@ -224,11 +224,11 @@ class AdminMiddleware:
             ), None, 1)
             try:
                 projects[project]['first_checked'] = stats[0]['first_checked'].timestamp()
-            except:
+            except Exception:
                 projects[project]['first_checked'] = None
             try:
                 projects[project]['last_checked'] = stats[0]['last_checked'].timestamp()
-            except:
+            except Exception:
                 projects[project]['last_checked'] = None
 
         return projects

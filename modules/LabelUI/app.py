@@ -104,7 +104,7 @@ class LabelUI():
             # render interface template
             try:
                 username = html.escape(request.get_cookie('username'))
-            except:
+            except Exception:
                 username = ''
             return self.interface_template.render(username=username,
                 version=AIDE_VERSION,
@@ -134,7 +134,7 @@ class LabelUI():
             if self.loginCheck(project=project):
                 try:
                     showHidden = parse_boolean(request.params['show_hidden'])
-                except:
+                except Exception:
                     showHidden = False
                 classDefs = {
                     'classes': self.middleware.getClassDefinitions(project, showHidden)
@@ -153,7 +153,7 @@ class LabelUI():
 
                 try:
                     username = html.escape(request.get_cookie('username'))
-                except:
+                except Exception:
                     username = ''
                 dataIDs = request.json['imageIDs']
                 json = self.middleware.getBatch_fixed(project, username, dataIDs, hideGoldenQuestionInfo)
@@ -171,19 +171,19 @@ class LabelUI():
 
                 try:
                     username = html.escape(request.get_cookie('username'))
-                except:
+                except Exception:
                     username = ''
                 try:
                     limit = int(request.query['limit'])
-                except:
+                except Exception:
                     limit = None
                 try:
                     order = int(request.query['order'])
-                except:
+                except Exception:
                     order = 'unlabeled'
                 try:
                     subset = int(request.query['subset'])
-                except:
+                except Exception:
                     subset = 'default'  
                 json = self.middleware.getBatch_auto(project=project, username=username, order=order, subset=subset, limit=limit, hideGoldenQuestionInfo=hideGoldenQuestionInfo)
 
@@ -205,7 +205,7 @@ class LabelUI():
                 users = request.json['users']
                 if not len(users):
                     users = [username]
-            except:
+            except Exception:
                 users = [username]
 
             if not self.loginCheck(project=project, admin=True):
@@ -242,7 +242,7 @@ class LabelUI():
             # check if user requests to see other user names; only permitted if admin
             try:
                 users = request.json['users']
-            except:
+            except Exception:
                 # no users provided; restrict to current account
                 users = [username]
             
@@ -253,11 +253,11 @@ class LabelUI():
 
             try:
                 skipEmpty = request.json['skipEmpty']
-            except:
+            except Exception:
                 skipEmpty = False
             try:
                 goldenQuestionsOnly = request.json['goldenQuestionsOnly']
-            except:
+            except Exception:
                 goldenQuestionsOnly = False
 
             # query and return
@@ -322,7 +322,7 @@ class LabelUI():
                     submissions_ = []
                     for key in submissions.keys():
                         submissions_.append(tuple((UUID(key), bool(submissions[key]),)))
-                except:
+                except Exception:
                     abort(400, 'malformed submissions')
 
                 response = self.middleware.setGoldenQuestions(project, tuple(submissions_))

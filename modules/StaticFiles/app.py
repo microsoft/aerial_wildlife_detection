@@ -75,7 +75,7 @@ class StaticFileServer:
         def get_backdrops():
             try:
                 return {'info': json.load(open('modules/StaticFiles/static/img/backdrops/backdrops.json', 'r'))}
-            except:
+            except Exception:
                 abort(500)
 
 

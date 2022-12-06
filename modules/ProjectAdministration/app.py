@@ -79,7 +79,7 @@ class ProjectConfigurator:
                         version=AIDE_VERSION,
                         project=project
                     )
-                except:
+                except Exception:
                     abort(404, 'not found')
             else:
                 abort(401, 'forbidden')
@@ -94,7 +94,7 @@ class ProjectConfigurator:
                 projectData = self.middleware.getProjectInfo(project, ['name', 'description', 'interface_enabled', 'demomode'])
                 if projectData is None:
                     return self.__redirect()
-            except:
+            except Exception:
                 return self.__redirect()
 
             if not self.loginCheck(project=project, extend_session=True):
@@ -103,7 +103,7 @@ class ProjectConfigurator:
             # render overview template
             try:
                 username = html.escape(request.get_cookie('username'))
-            except:
+            except Exception:
                 username = ''
             
             return self.projLandPage_template.render(
@@ -135,7 +135,7 @@ class ProjectConfigurator:
             # render configuration template
             try:
                 username = html.escape(request.get_cookie('username'))
-            except:
+            except Exception:
                 username = ''
 
             return self.projSetup_template.render(
@@ -168,7 +168,7 @@ class ProjectConfigurator:
             # render configuration template
             try:
                 username = html.escape(request.get_cookie('username'))
-            except:
+            except Exception:
                 username = ''
 
             if panel is None:
@@ -198,12 +198,12 @@ class ProjectConfigurator:
                 try:
                     data = request.json
                     params = data['parameters']
-                except:
+                except Exception:
                     params = None
 
                 projData = self.middleware.getPlatformInfo(project, params)
                 return { 'settings': projData }
-            except:
+            except Exception:
                 abort(400, 'bad request')
 
         
@@ -225,12 +225,12 @@ class ProjectConfigurator:
                 try:
                     data = request.json
                     params = data['parameters']
-                except:
+                except Exception:
                     params = None
 
                 projData = self.middleware.getProjectInfo(project, params)
                 return { 'settings': projData }
-            except:
+            except Exception:
                 abort(400, 'bad request')
 
 
@@ -245,7 +245,7 @@ class ProjectConfigurator:
                     return {'success': isValid}
                 else:
                     abort(400, 'bad request')
-            except:
+            except Exception:
                 abort(400, 'bad request')
 
 
@@ -274,7 +274,7 @@ class ProjectConfigurator:
                 # parse AI model state ID if provided
                 try:
                     aiModelID = request.params.get('modelID')
-                except:
+                except Exception:
                     aiModelID = None
                 response = self.middleware.getModelToProjectClassMapping(project, aiModelID)
                 return {
@@ -309,7 +309,7 @@ class ProjectConfigurator:
             try:
                 newToken = self.middleware.renewSecretToken(project)
                 return {'secret_token': newToken}
-            except:
+            except Exception:
                 abort(400, 'bad request')
 
 
@@ -428,7 +428,7 @@ class ProjectConfigurator:
                     available = False
                 return { 'available': available }
 
-            except:
+            except Exception:
                 abort(400, 'bad request')
 
         
@@ -438,14 +438,31 @@ class ProjectConfigurator:
                 abort(401, 'forbidden')
             
             try:
-                projName = html.escape(request.query['shorthand'])
-                if len(projName):
-                    available = self.middleware.getProjectShortNameAvailable(projName)
+                proj_name = html.escape(request.query['shorthand'])
+                if len(proj_name) > 0:
+                    available = self.middleware.getProjectShortNameAvailable(proj_name)
                 else:
                     available = False
                 return { 'available': available }
 
-            except:
+            except Exception:
+                abort(400, 'bad request')
+
+
+        @self.app.get('/suggestShortname')
+        def suggest_shortname():
+            if not self.loginCheck(canCreateProjects=True):
+                abort(401, 'forbidden')
+            try:
+                proj_name = html.escape(request.query['name'])
+                if len(proj_name) > 0:
+                    shortname = self.middleware.suggest_shortname(proj_name)
+                else:
+                    shortname = None
+                return {
+                    'shortname': shortname
+                }
+            except Exception:
                 abort(400, 'bad request')
 
         
@@ -459,7 +476,7 @@ class ProjectConfigurator:
                 result = self.middleware.getProjectArchived(project, username)
                 return result
                 
-            except:
+            except Exception:
                 abort(400, 'bad request')
 
 
@@ -467,14 +484,14 @@ class ProjectConfigurator:
         def set_project_archived(project):
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
-            
+
             try:
                 username = html.escape(request.get_cookie('username'))
                 archived = request.json['archived']
                 result = self.middleware.setProjectArchived(project, username, archived)
                 return result
-                
-            except:
+
+            except Exception:
                 abort(400, 'bad request')
 
 
@@ -498,5 +515,5 @@ class ProjectConfigurator:
                 result = self.middleware.deleteProject(project, username, deleteFiles)
                 return result
                 
-            except:
+            except Exception:
                 abort(400, 'bad request')

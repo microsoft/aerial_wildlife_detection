@@ -136,7 +136,7 @@ class UserHandler():
             try:
                 try:
                     username = html.escape(request.get_cookie('username'))
-                except:
+                except Exception:
                     username = None
                 if not self.checkAuthenticated(project=project):
                     abort(401, 'not permitted')
@@ -144,7 +144,7 @@ class UserHandler():
                 return {
                     'permissions': self.middleware.getUserPermissions(project, username)
                 }
-            except:
+            except Exception:
                 abort(400, 'bad request')
 
 
@@ -154,7 +154,7 @@ class UserHandler():
             if project is None:
                 try:
                     project = request.json['project']
-                except:
+                except Exception:
                     # no project specified (all users); need be superuser for this
                     project = None
 
@@ -198,7 +198,7 @@ class UserHandler():
             # check if token is required; if it is and wrong token provided, show login screen instead
             try:
                 targetToken = html.escape(self.config.getProperty('UserHandler', 'create_account_token'))
-            except:
+            except Exception:
                 # no secret token defined
                 targetToken = None
             if targetToken is not None and not(targetToken == ''):
@@ -212,7 +212,7 @@ class UserHandler():
                         # response = static_file('templates/newAccountScreen.html', root=self.staticDir)
                     else:
                         page = redirect('/login')
-                except:
+                except Exception:
                     page = redirect('/login')
             else:
                 # no token required
@@ -233,10 +233,10 @@ class UserHandler():
             email = ''
             try:
                 username = html.escape(self._parse_parameter(request.forms, 'username'))
-            except: pass
+            except Exception: pass
             try:
                 email = html.escape(self._parse_parameter(request.forms, 'email'))
-            except: pass
+            except Exception: pass
             try:
                 return { 'response': self.middleware.accountExists(username, email) }
             except Exception as e:
@@ -263,7 +263,7 @@ class UserHandler():
 
                 return { 'authentication': self.middleware.getAuthentication(username, project) }
 
-            except:
+            except Exception:
                 return { 'authentication': {
                         'canCreateProjects': False,
                         'isSuperUser': False
@@ -309,12 +309,12 @@ class UserHandler():
         try:
             username = html.escape(request.get_cookie('username'))
             sessionToken = self.middleware.decryptSessionToken(username, request)
-        except:
+        except Exception:
             pass
         
         try:
             return self.middleware.isAuthenticated(username, sessionToken, project, admin, superuser, canCreateProjects, extend_session, return_all)
-        except:
+        except Exception:
             return False
 
 

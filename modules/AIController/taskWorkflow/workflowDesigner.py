@@ -109,7 +109,7 @@ def verify_model_options(modelClass, options):
             return bool(response['valid'])
         else:
             return True
-    except:
+    except Exception:
         return True
 
 
@@ -311,7 +311,7 @@ def create_celery_task(project, taskDesc, isFirstTask, verifyOnly=False, modelCl
             task = get_inference_signature(project, taskDesc['kwargs'], isFirstTask, modelClass)
         else:
             task = None
-    except:
+    except Exception:
         task = None
     if verifyOnly:
         return (task is not None)
@@ -398,7 +398,7 @@ class WorkflowDesigner:
             modelClass = get_class_executable(projDefaults['ai_model_library'])
             # if hasattr(modelClass, 'verifyOptions'):
             #     response = modelClass.verifyOptions(modelOptions)
-        except:
+        except Exception:
             modelClass = None
 
         # expand task specifications with repeaters

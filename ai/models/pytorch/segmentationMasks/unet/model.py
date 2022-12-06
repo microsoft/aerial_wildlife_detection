@@ -28,7 +28,7 @@ class UNet(SegmentationModel):
         try:
             # try to load defaults from JSON file first
             options = json.load(open('config/ai/model/pytorch/segmentationMasks/unet.json', 'r'))
-        except:
+        except Exception:
             # error; fall back to built-in defaults
             options = DEFAULT_OPTIONS
         return options
