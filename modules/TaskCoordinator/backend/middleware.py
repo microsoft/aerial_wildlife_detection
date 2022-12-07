@@ -33,10 +33,10 @@ class TaskCoordinatorMiddleware:
         '''
         # add to database
         self.dbConnector.execute(sql.SQL('''
-                INSERT INTO {} (task_id, launchedBy, processName, processDescription)
-                VALUES (%s, %s, %s);
+                INSERT INTO {} (task_id, launchedBy, taskName, processDescription)
+                VALUES (%s, %s, %s, %s);
             ''').format(sql.Identifier(project, 'taskhistory')),
-            (task_id, username, task_name, task_description)
+            (uuid.UUID(task_id), username, task_name, task_description)
         )
 
         # cache locally
