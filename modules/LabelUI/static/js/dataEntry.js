@@ -2239,7 +2239,7 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
 
         } else if(window.uiControlHandler.getAction() === ACTIONS.MAGIC_WAND) {
             this.freezeActionState();
-            window.taskMonitor.addTask('magicWand', 'magic wand');
+            window.jobIndicator.addJob('magicWand', 'magic wand');
             window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
             try {
                 let tolerance = window.magicWandTolerance;
@@ -2253,7 +2253,7 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
                         self._createAnnotation(event, false).then((annoID) => {
                             self.annotations[annoID].setProperty('coordinates', coords_out);
                             self.render();
-                            window.taskMonitor.removeTask('magicWand');
+                            window.jobIndicator.removeJob('magicWand');
                         });
                         super._canvas_mouseup(event);       //TODO
                         window.dataHandler.onAction(self, 'Magic Wand');
@@ -2264,11 +2264,11 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
                             window.messager.addMessage('No area found with magic wand.', 'regular');
                         }
                     }
-                    window.taskMonitor.removeTask('magicWand');
+                    window.jobIndicator.removeJob('magicWand');
                 });
             } catch(error) {
                 window.messager.addMessage('An error occurred trying to run magic wand (message: "'+error.toString()+'").', 'error', 0);
-                window.taskMonitor.removeTask('magicWand');
+                window.jobIndicator.removeJob('magicWand');
             }
 
         } else if(window.uiControlHandler.getAction() === ACTIONS.GRAB_CUT) {
@@ -2305,11 +2305,11 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
             }
             if(!numClicked) {
                 // no selection element clicked; apply magic wand first
-                window.taskMonitor.addTask('magicWand_gc_pre', 'magic wand');
+                window.jobIndicator.addJob('magicWand_gc_pre', 'magic wand');
                 let mousePos = this.viewport.getRelativeCoordinates(event, 'validArea');
                 let self = this;
                 this.magicWand(this.fileName, mousePos, window.magicWandTolerance, window.magicWandRadius, false).then((coords_out) => {
-                    window.taskMonitor.removeTask('magicWand_gc_pre');
+                    window.jobIndicator.removeJob('magicWand_gc_pre');
                     if(Array.isArray(coords_out) && coords_out.length >= 6) {
                         return coords_out;
                     } else {
@@ -2324,7 +2324,7 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
                                 if(Array.isArray(coords_out) && Array.isArray(coords_out[0]) && coords_out[0].length >= 6) {
                                     self._createAnnotation(event, false).then((annoID) => {
                                         self.annotations[annoID].setProperty('coordinates', coords_out[0]);
-                                        window.taskMonitor.removeTask('grabCut');
+                                        window.jobIndicator.removeJob('grabCut');
                                     });
                                     super._canvas_mouseup(event);       //TODO
                                     window.dataHandler.onAction(self, 'Grab Cut');
@@ -2334,12 +2334,12 @@ class PolygonAnnotationEntry extends AbstractDataEntry {
                                     } else {
                                         window.messager.addMessage('No refinement found by GrabCut.', 'regular');
                                     }
-                                    window.taskMonitor.removeTask('grabCut');
+                                    window.jobIndicator.removeJob('grabCut');
                                 }
                             });
                         } catch(error) {
                             window.messager.addMessage('An error occurred trying to run GrabCut on selection (message: "'+error.toString()+'").', 'error', 0);
-                            window.taskMonitor.removeTask('grabCut');
+                            window.jobIndicator.removeJob('grabCut');
                         }
                     } else {
                         window.messager.addMessage('No refinement found by GrabCut.', 'regular');

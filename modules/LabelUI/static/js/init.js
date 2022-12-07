@@ -376,7 +376,7 @@ $(document).ready(function() {
 
     // task monitor
     promise = promise.then(function() {
-        window.taskMonitor = new TaskMonitor($('#task-panel'));
+        window.jobIndicator = new JobIndicator($('#task-panel'));
     });
 
     // AI backend

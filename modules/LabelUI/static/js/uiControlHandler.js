@@ -276,9 +276,9 @@ class UIControlHandler {
                     // special routine for Polygons: use GrabCut for active polygons, or else set action
                     if(self.dataHandler.getNumActiveAnnotations()) {
                         // at least one element is active; perform GrabCut directly
-                        window.taskMonitor.addTask('grabCut', 'Grab Cut');
+                        window.jobIndicator.addJob('grabCut', 'Grab Cut');
                         self.dataHandler.grabCutOnActiveAnnotations().then(function() {
-                            window.taskMonitor.removeTask('grabCut');
+                            window.jobIndicator.removeJob('grabCut');
                         });
                     } else {
                         // no element active (yet); only set action

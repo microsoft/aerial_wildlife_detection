@@ -151,7 +151,7 @@ class AreaSelector {
             );
             promise = Promise.resolve(element);
         } else if(type === 'magnetic_polygon') {
-            window.taskMonitor.addTask('edgeImage', 'finding edges');
+            window.jobIndicator.addJob('edgeImage', 'finding edges');
             promise = this.dataEntry.renderer.get_edge_image(true)
             .then((edgeMap) => {
                 element = new MagneticPolygonElement(
@@ -162,7 +162,7 @@ class AreaSelector {
                     false,
                     1000
                 );
-                window.taskMonitor.removeTask('edgeImage');
+                window.jobIndicator.removeJob('edgeImage');
                 return element;
             });
         }
@@ -438,7 +438,7 @@ class AreaSelector {
                     // clicked into selection element; apply GrabCut
                     numClicked++;
                     // window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
-                    window.taskMonitor.addTask('grabCut', 'Grab Cut');
+                    window.jobIndicator.addJob('grabCut', 'Grab Cut');
                     let coords_in = this.selectionElements[e].getProperty('coordinates');
                     let self = this;
                     try {
@@ -459,20 +459,20 @@ class AreaSelector {
                                     window.messager.addMessage('No refinement found by GrabCut.', 'regular');
                                 }
                             }
-                            window.taskMonitor.removeTask('grabCut');
+                            window.jobIndicator.removeJob('grabCut');
                         });
                     } catch(error) {
                         window.messager.addMessage('An error occurred trying to run GrabCut on selection (message: "'+error.toString()+'").', 'error', 0);
-                        window.taskMonitor.removeTask('grabCut');
+                        window.jobIndicator.removeJob('grabCut');
                     }
                 }
             }
             if(!numClicked) {
                 // no selection element clicked; apply magic wand first
-                window.taskMonitor.addTask('magicWand_gc_pre', 'magic wand');
+                window.jobIndicator.addJob('magicWand_gc_pre', 'magic wand');
                 let self = this;
                 this.magicWand(this.dataEntry.fileName, mousePos, window.magicWandTolerance, window.magicWandRadius, false).then((coords_out) => {
-                    window.taskMonitor.removeTask('magicWand_gc_pre');
+                    window.jobIndicator.removeJob('magicWand_gc_pre');
                     if(Array.isArray(coords_out) && coords_out.length >= 6) {
                         return coords_out;
                     } else {
@@ -493,11 +493,11 @@ class AreaSelector {
                                         window.messager.addMessage('No refinement found by GrabCut.', 'regular');
                                     }
                                 }
-                                window.taskMonitor.removeTask('grabCut');
+                                window.jobIndicator.removeJob('grabCut');
                             });
                         } catch(error) {
                             window.messager.addMessage('An error occurred trying to run GrabCut on selection (message: "'+error.toString()+'").', 'error', 0);
-                            window.taskMonitor.removeTask('grabCut');
+                            window.jobIndicator.removeJob('grabCut');
                         }
                     } else {
                         window.messager.addMessage('No refinement found by GrabCut.', 'regular');
@@ -506,7 +506,7 @@ class AreaSelector {
             }
         } else if(action === ACTIONS.MAGIC_WAND) {
             // window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
-            window.taskMonitor.addTask('magicWand', 'magic wand');
+            window.jobIndicator.addJob('magicWand', 'magic wand');
             try {
                 let tolerance = window.magicWandTolerance;
                 let maxRadius = window.magicWandRadius;
@@ -530,15 +530,15 @@ class AreaSelector {
                             window.messager.addMessage('No area found with magic wand.', 'regular');
                         }
                     }
-                    window.taskMonitor.removeTask('magicWand');
+                    window.jobIndicator.removeJob('magicWand');
                 });
             } catch(error) {
                 window.messager.addMessage('An error occurred trying to run magic wand (message: "'+error.toString()+'").', 'error', 0);
-                window.taskMonitor.removeTask('magicWand');
+                window.jobIndicator.removeJob('magicWand');
             }
         } else if(action === ACTIONS.SELECT_SIMILAR) {
             // window.uiControlHandler.setAction(ACTIONS.DO_NOTHING);
-            window.taskMonitor.addTask('selSim', 'select similar');
+            window.jobIndicator.addJob('selSim', 'select similar');
             try {
                 //TODO: hyperparameters
                 let tolerance = .25;     //TODO: quantile
@@ -560,14 +560,14 @@ class AreaSelector {
                                 self.addSelectionElement('polygon', coords_similar[c]);
                             }
                         }
-                        window.taskMonitor.removeTask('selSim');
+                        window.jobIndicator.removeJob('selSim');
                     });
                 } else {
                     // no polygon clicked; use magic wand first
                     let mwCoords = null;
-                    window.taskMonitor.addTask('magicWand_pre', 'magic wand');
+                    window.jobIndicator.addJob('magicWand_pre', 'magic wand');
                     this.magicWand(this.dataEntry.fileName, mousePos, window.magicWandTolerance, window.magicWandRadius, false).then((coords_out) => {
-                        window.taskMonitor.removeTask('magicWand_pre');
+                        window.jobIndicator.removeJob('magicWand_pre');
                         if(Array.isArray(coords_out) && coords_out.length >= 6) {
                             mwCoords = coords_out;
                             return coords_out;
@@ -578,7 +578,7 @@ class AreaSelector {
                     .then((seed_polygon) => {
                         if(seed_polygon === null) {
                             // nothing found
-                            window.taskMonitor.removeTask('selSim');
+                            window.jobIndicator.removeJob('selSim');
                         } else {
                             // something found; now select similar
                             self.selectSimilar(self.dataEntry.fileName, seed_polygon, tolerance, numMax).then((coords_similar) => {
@@ -591,14 +591,14 @@ class AreaSelector {
                                         self.addSelectionElement('polygon', coords_similar[c]);
                                     }
                                 }
-                                window.taskMonitor.removeTask('selSim');
+                                window.jobIndicator.removeJob('selSim');
                             });
                         }
                     });
                 }
             } catch(error) {
                 window.messager.addMessage('An error occurred trying to find similar regions (message: "'+error.toString()+'").', 'error', 0);
-                window.taskMonitor.removeTask('selSim');
+                window.jobIndicator.removeJob('selSim');
             }
         }
 

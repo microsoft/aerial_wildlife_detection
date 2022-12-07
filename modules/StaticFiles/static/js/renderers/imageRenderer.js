@@ -510,7 +510,7 @@ class ImageRenderer {
     _render_image(force) {
         let self = this;
         if(force || this.renderPromise === null) {
-            if(window.taskMonitor !== undefined) window.taskMonitor.addTask(this.source.toString(), 'rendering');
+            if(window.jobIndicator !== undefined) window.jobIndicator.addJob(this.source.toString(), 'rendering');
             this.renderPromise = new Promise((resolve) => {
                 // band selection
                 let bands = [       //TODO: grayscale
@@ -564,7 +564,7 @@ class ImageRenderer {
                 self.canvas.width = imageData.width;
                 self.canvas.height = imageData.height;
                 self.canvas.getContext('2d').putImageData(imageData, 0, 0);
-                if(window.taskMonitor !== undefined) window.taskMonitor.removeTask(self.source.toString());
+                if(window.jobIndicator !== undefined) window.jobIndicator.removeJob(self.source.toString());
             });
         }
         return this.renderPromise;
@@ -589,7 +589,7 @@ class ImageRenderer {
          * resolution with all bands is used to calculate the edges.
          */
         if(this.edgeImage === undefined) {
-            window.taskMonitor.addTask('edgeImage', 'finding edges');
+            window.jobIndicator.addJob('edgeImage', 'finding edges');
             let numBands = this.getNumBands();
             let width = this.getWidth();
             let height = this.getHeight();
@@ -626,7 +626,7 @@ class ImageRenderer {
                     return calculate_edges(arr, numBands, width, height, false)
                     .then((edges) => {
                         self.edgeImage = edges;
-                        window.taskMonitor.removeTask('edgeImage');
+                        window.jobIndicator.removeJob('edgeImage');
                         return resolve(edges);
                     });
                 });
