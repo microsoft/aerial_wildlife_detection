@@ -297,7 +297,7 @@ class SegmentationFileParser(AbstractAnnotationParser):
                         arr_out.shape[0],       #TODO: order
                         arr_out.shape[1]
                     ))
-                
+
             # insert
             if len(imgs_insert):
                 dbInsert = self.dbConnector.insert(sql.SQL('''
@@ -310,7 +310,7 @@ class SegmentationFileParser(AbstractAnnotationParser):
                     importedAnnotations[row[0]].append(row[1])
 
         # register new / update existing label classes
-        if (not skipUnknownClasses and len(labelclasses_new)) or len(labelclasses_update):
+        if (not skipUnknownClasses and len(labelclasses_new)) > 0 or len(labelclasses_update) > 0:
             lcColors = set(lcLUT_color.keys())
             lcVals = []
             if not skipUnknownClasses:
@@ -334,7 +334,7 @@ class SegmentationFileParser(AbstractAnnotationParser):
             ''').format(sql.Identifier(self.project, 'labelclass')),
             tuple(lcVals))
 
-        if len(labelclasses_dropped):
+        if len(labelclasses_dropped) > 0:
             warnings.append('The following label class indices and/or RGB colors were identified but could not be added to the project: {}.\nPixels annotated with those classes were set to zero.'.format(
                 ', '.join(str(l) for l in labelclasses_dropped)
             ))
@@ -411,7 +411,7 @@ class SegmentationFileParser(AbstractAnnotationParser):
         # iterate over packets of images and write out segmentation data,
         # combining virtual views
         files_exported = []
-        for filename in img_lut.keys():
+        for filename, img_views in img_lut.items():
             # get total image file properties
             with rasterio.open(os.path.join(self.projectRoot, filename)) as src:
                 sz = [src.count, src.height, src.width]
@@ -420,7 +420,7 @@ class SegmentationFileParser(AbstractAnnotationParser):
             
             destFiles = {}      # username: file name
 
-            for imgView in img_lut[filename]:
+            for imgView in img_views:
                 imgID = imgView['id']
                 fname, _ = os.path.splitext(filename)
 
@@ -452,14 +452,14 @@ class SegmentationFileParser(AbstractAnnotationParser):
                     if exportColors:
                         raster_raw = raster_raw.squeeze()
                         raster = np.zeros((3, *raster_raw.shape[:2]), dtype=rasterio.ubyte)
-                        lcIdx = np.unique(raster_raw).tolist()
-                        for lc in lcIdx:
-                            if lc not in colorLUT:
+                        lc_indices = np.unique(raster_raw).tolist()
+                        for lc_idx in lc_indices:
+                            if lc_idx not in colorLUT:
                                 continue
-                            val = colorLUT[lc]
-                            valid = (raster_raw == lc)
-                            for v in range(3):
-                                raster[v,valid] = val[v]
+                            val = colorLUT[lc_idx]
+                            valid = (raster_raw == lc_idx)
+                            for value in range(3):
+                                raster[value,valid] = val[value]
                     else:
                         raster = raster_raw
 
@@ -467,10 +467,9 @@ class SegmentationFileParser(AbstractAnnotationParser):
                     window = Window(
                         imgView['y'],
                         imgView['x'],
-                        imgView['height'],
-                        imgView['width']
+                        imgView['width'],
+                        imgView['height']
                     )
-
                     with rasterio.open(
                         tempDest, 'w',
                         driver='GTiff',
@@ -479,14 +478,13 @@ class SegmentationFileParser(AbstractAnnotationParser):
                         transform=transform, crs=crs,
                         dtype=rasterio.ubyte) as dst:
                         dst.write(raster, window=window, indexes=list(range(1,len(raster)+1)))
-                    
+
             # move all temp files into zipfile
-            for key in destFiles:
-                destFilename = destFiles[key]
-                tempDest = os.path.join(self.tempDir, 'segmentation_export', now, destFilename)
-                destination.write(tempDest, destFilename)
+            for dest_filename in destFiles.values():
+                temp_dest = os.path.join(self.tempDir, 'segmentation_export', now, dest_filename)
+                destination.write(temp_dest, dest_filename)
                 os.remove(tempDest)
-                files_exported.append(destFilename)
+                files_exported.append(dest_filename)
 
         shutil.rmtree(os.path.join(self.tempDir, 'segmentation_export', now))
 

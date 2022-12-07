@@ -190,7 +190,7 @@ class DataWorker:
 
     def listImages(self, project, folder=None, imageAddedRange=None, lastViewedRange=None,
             viewcountRange=None, numAnnoRange=None, numPredRange=None,
-            orderBy=None, order='desc', startFrom=None, limit=None):
+            orderBy=None, order='desc', startFrom=None, limit=None, offset=None):
         '''
             Returns a list of images, with ID, filename,
             date image was added, viewcount, number of annotations,
@@ -266,7 +266,22 @@ class DataWorker:
         limit = max(min(limit, self.NUM_IMAGES_LIMIT), 1)
         limitStr = sql.SQL('LIMIT %s')
         queryArgs.append(limit)
-        
+
+        offsetStr = sql.SQL('')
+        if isinstance(offset, float):
+            if not math.isnan(offset):
+                offset = int(offset)
+            else:
+                offset = None
+        elif isinstance(offset, str):
+            try:
+                offset = int(offset)
+            except Exception:
+                offset = None
+        if isinstance(offset, int):
+            offsetStr = sql.SQL('OFFSET %s')
+            queryArgs.append(offset)
+
         queryStr = sql.SQL('''
             SELECT img.id, filename,
                 img.x AS w_x, img.y AS w_y, img.width AS w_width, img.height AS w_height,
@@ -298,6 +313,7 @@ class DataWorker:
             {filter}
             {order}
             {limit}
+            {offset}
         ''').format(
             id_img=sql.Identifier(project, 'image'),
             id_iu=sql.Identifier(project, 'image_user'),
@@ -305,12 +321,13 @@ class DataWorker:
             id_pred=sql.Identifier(project, 'prediction'),
             filter=filterStr,
             order=orderStr,
-            limit=limitStr
+            limit=limitStr,
+            offset=offsetStr
         )
 
         result = self.dbConnector.execute(queryStr, tuple(queryArgs), 'all')
-        for idx in range(len(result)):
-            result[idx]['id'] = str(result[idx]['id'])
+        for idx, row in enumerate(result):
+            result[idx]['id'] = str(row['id'])
         return result
 
 

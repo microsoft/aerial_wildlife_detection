@@ -149,11 +149,11 @@ class DataAdministrator:
                     'status': 0,
                     'tree': result
                 }
-            
-            except Exception as e:
+
+            except Exception as exc:
                 return {
                     'status': 1,
-                    'message': str(e)
+                    'message': str(exc)
                 }
 
 
@@ -173,7 +173,7 @@ class DataAdministrator:
             username = html.escape(request.get_cookie('username'))
             params = request.json
 
-            folder = (params['folder'] if 'folder' in params else None)
+            folder = params.get('folder', None)
 
             imageAddedRange = self._parse_range(params, 'imageAddedRange',
                                             datetime.time.min,
@@ -190,7 +190,7 @@ class DataAdministrator:
             numPredRange = self._parse_range(params, 'numPredRange',
                                             0,
                                             1e9)
-            orderBy = (params['orderBy'] if 'orderBy' in params else None)
+            orderBy = params.get('orderBy', None)
             order = (params['order'].lower() if 'order' in params else None)
             if 'start_from' in params:
                 startFrom = params['start_from']
@@ -198,7 +198,8 @@ class DataAdministrator:
                     startFrom = uuid.UUID(startFrom)
             else:
                 startFrom = None
-            limit = (params['limit'] if 'limit' in params else None)
+            limit = params.get('limit', None)
+            offset = params.get('offset', None)
 
             # get images
             result = self.middleware.listImages(project,
@@ -212,7 +213,8 @@ class DataAdministrator:
                                             orderBy,
                                             order,
                                             startFrom,
-                                            limit)
+                                            limit,
+                                            offset)
             return {'response': result}
 
 

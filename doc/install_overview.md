@@ -42,7 +42,7 @@ source .bashrc
 conda create -y -n aide python=3.8
 conda activate aide
 
-git clone https://github.com/microsoft/aerial_wildlife_detection.git && cd aerial_wildlife_detection
+git clone https://github.com/microsoft/aerial_wildlife_detection.git --branch v3.0 && cd aerial_wildlife_detection
 ```
 5. Launch installer and follow the instructions:
 ```bash
@@ -84,7 +84,7 @@ source .bashrc
 ```
 3. Clone the AIDE repository:
 ```bash
-git clone https://github.com/microsoft/aerial_wildlife_detection.git && cd aerial_wildlife_detection/
+git clone https://github.com/microsoft/aerial_wildlife_detection.git --branch v3.0 && cd aerial_wildlife_detection/
 ```
 4. Launch installer and follow the instructions:
 ```bash
@@ -108,7 +108,7 @@ If you wish to install AIDE in a self-contained environment instead of the host 
     sudo apt-get update && sudo apt-get install -y nvidia-container-toolkit
     sudo systemctl restart docker
 ```
-3. Clone the AIDE repository: `git clone https://github.com/microsoft/aerial_wildlife_detection.git && cd aerial_wildlife_detection/`
+3. Clone the AIDE repository: `git clone https://github.com/microsoft/aerial_wildlife_detection.git --branch v3.0 && cd aerial_wildlife_detection/`
 4. **Important:** modify the `docker/settings.ini` file and replace the default super user credentials (section `[Project]`) with new values. Make sure to review and update the other default settings as well, if needed.
 5. Install:
     ```bash

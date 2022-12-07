@@ -23,7 +23,7 @@
                     <br />
                     <label for="limit-to" style="width:80px">Limit to:</label>
                     <input type="number" id="limit-to" min="0" value="100" style="width:150px" />
-                    <span>images</span>
+                    <span>images at a time</span>
 
                     <button id="update-image-browser" class="btn btn-sm btn-primary" style="float:right">Update</button>
                 </div>
@@ -182,8 +182,8 @@
                 ]
             });
             window.imageBrowser.setTrailingButton(true,
-                                                false,       //TODO: disabled until "show more" function is properly implemented
-                                                'more...',
+                                                false,
+                                                'load more',
                                                 onClickMore);
             window.imageBrowser.on('imageCheck', function(event) {
                 _imageBrowser_event(event);
@@ -199,22 +199,11 @@
 
         function updateImageBrowser(replaceImages, showPopupMessage) {
             // keep track of latest value for "show more" button
-            if(!replaceImages) {
-                try {
-                    var numEntries = window.imageBrowser.getNumEntries();
-                    if(numEntries > 0) {
-                        var lastEntryID = window.imageBrowser.getEntry(numEntries-1)['id'];
-                        if(lastEntryID !== null && lastEntryID !== undefined) {
-                            params['start_from'] = lastEntryID;
-                        }
-                    }
-                } catch {}
-            } else {
+            if(replaceImages) {
                 // temporarily clear existing items while we await result
                 window.imageBrowser.setImages(null);
                 window.imageBrowser.setLoadingOverlay(true, 'Loading...');
             }
-
 
             // parse filter parameters
             let limitTo = parseInt($('#limit-to').val());
@@ -231,47 +220,15 @@
                 }
             }
 
-            params = {
+            let params = {
                 folder: folder,
                 orderBy: orderBy,
                 order: order,
                 limit: limitTo
             };
-            
-
-            //TODO: params['start_from'] = null;
-
-            // if(forceRefresh ||
-            //     window.latestStartingPoint === undefined ||
-            //     window.latestStartingPoint['field'] !== orderBy ||
-            //     window.latestStartingPoint['order'] !== order) {
-            //     // user modified ordering; restart from zero
-            //     window.latestStartingPoint = {
-            //         field: orderBy,
-            //         order: order
-            //     }
-            //     if(order === 'asc') {
-            //         window.latestStartingPoint['val'] = -Number.MAX_VALUE;  //TODO: adapt for non-numeric ordering...
-            //     } else {
-            //         window.latestStartingPoint['val'] = Number.MAX_VALUE;
-            //     }
-            // } else {
-            //     // user did not modify ordering; continue
-            //     //TODO: implement server-side-wise
-            //     if(order === 'asc') {
-            //         params['range'] = {
-            //             field: orderBy,
-            //             min: window.latestStartingPoint['val'],
-            //             max: Number.MAX_VALUE
-            //         }
-            //     } else {
-            //         params['range'] = {
-            //             field: orderBy,
-            //             min: -Number.MAX_VALUE,
-            //             max: window.latestStartingPoint['val']
-            //         }
-            //     }
-            // }
+            if(!replaceImages) {
+                params['offset'] = Object.keys(window.imageBrowser.getEntries()).length;
+            }
 
             function _update_browser_populate(data) {
                 // assemble table            
@@ -315,6 +272,7 @@
                     // append
                     window.imageBrowser.addImages(images);
                 }
+                window.imageBrowser.setTrailingButton(true);
                 window.imageBrowser.setLoadingOverlay(false);
 
                 if(showPopupMessage) {

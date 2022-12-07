@@ -7,7 +7,7 @@
 
     Usage:
         python debug/test_model_local.py [project] [mode]
-    
+
     With:
         - "project": shortname of the project to be used for
           testing
@@ -117,7 +117,7 @@ def main():
                 print('WARNING: custom model library specified differs from the one currently set in project. Model settings will be set to None.')
                 modelSettings = None
 
-        except Exception as e:
+        except Exception:
             print(f'WARNING: model library override provided ("{args.modelLibrary}"), but could not be imported. Falling back to project default ("{modelLibrary}").')
         
     # initialize instance

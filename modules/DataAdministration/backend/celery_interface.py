@@ -36,10 +36,10 @@ def verifyImages(projects, image_list=[], quick_check=True):
 @current_app.task(name='DataAdministration.list_images')
 def listImages(project, folder=None, imageAddedRange=None, lastViewedRange=None,
         viewcountRange=None, numAnnoRange=None, numPredRange=None,
-        orderBy=None, order='desc', startFrom=None, limit=None):
+        orderBy=None, order='desc', startFrom=None, limit=None, offset=None):
     return worker.listImages(project, folder, imageAddedRange, lastViewedRange,
         viewcountRange, numAnnoRange, numPredRange,
-        orderBy, order, startFrom, limit)
+        orderBy, order, startFrom, limit, offset)
 
 
 @current_app.task(name='DataAdministration.scan_for_images')
