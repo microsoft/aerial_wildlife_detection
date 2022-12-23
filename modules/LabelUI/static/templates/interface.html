@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="/static/interface/css/interface.css?v={{ version }}" />
     <link rel="stylesheet" href="/static/general/css/messaging.css?v={{ version }}" />
     <link rel="stylesheet" href="/static/interface/css/jobIndicator.css?v={{ version }}"></script>
+    <link rel="stylesheet" href="/static/taskCoordinator/css/taskMonitor.css?v={{ version }}" />
     <link rel="stylesheet" href="/static/aiController/css/workflowMonitor.css?v={{ version }}" />
     <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
     <script src="https://unpkg.com/mathjs@9.5.1/lib/browser/math.js"></script>
@@ -36,6 +37,7 @@
     <script src="/static/general/js/overlay.js?v={{ version }}"></script>
     <script src="/static/general/js/progressbar.js?v={{ version }}"></script>
     <script src="/static/interface/js/jobIndicator.js?v={{ version }}"></script>
+    <script src="/static/taskCoordinator/js/taskMonitor.js?v={{ version }}"></script>
     <script src="/static/aiController/js/workflowMonitor.js?v={{ version }}"></script>
     <script type="text/javascript" src="/static/interface/js/uitutorial.js?v={{ version }}"></script>
     <script type="text/javascript" src="/static/interface/js/init.js?v={{ version }}"></script>
@@ -70,9 +72,23 @@
                     </li>
                 </ul>
                 <ul class="nav navbar-nav ml-auto">
-                    <li class="nav-item dropdown float-right">
+                    <li class="nav-item">
                         <button class="btn btn-sm btn-info" onclick="javascript:window.showTutorial();">Help</button>
+                    </li>
 
+                    <!-- <li class="nav-item dropdown">
+                        <button class="dropdown-toggle btn btn-secondary" id="task-minipanel" data-toggle="dropdown" href="#" style="color:white;font-weight:bold;height:31px">
+                            <img src="/static/dataAdmin/img/listView.svg" height="12" />
+                        </button>
+                        <div class="dropdown-menu" role="menu" aria-labelledby="task-minipanel" style="padding:10px">
+                            <h3 id="task-panel-header">Tasks</h3>
+                            <div class="grad-border-h"></div>
+                            <div class="container" id="task-monitor" style="max-height:330px;overflow-y:auto;"></div>
+                            <div class="grad-border-h" style="position:absolute;top:100px"></div>
+                        </div>
+                    </li> -->
+
+                    <li class="nav-item dropdown">
                         <button class="dropdown-toggle btn btn-secondary" id="navbar-config-dropdown" data-toggle="dropdown" href="#" style="color:white;font-weight:bold;height:31px">
                             <img src="/static/interface/img/controls/gear.svg" style="height:20px;margin-bottom:10px" />
                         </button>
@@ -204,8 +220,8 @@
             <!-- Mini message entry -->
             <div id="footer-message-panel" style="display:none;"></div>
 
-            <!-- Task panel -->
-            <div id="task-panel"></div>
+            <!-- Job panel -->
+            <div id="job-panel"></div>
 
             <!-- Collapsible AI worker panel -->
             <div id="ai-worker-panel" class="ai-worker-panel">

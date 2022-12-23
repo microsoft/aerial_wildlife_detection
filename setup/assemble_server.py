@@ -1,10 +1,8 @@
 '''
-    Creates and assembles the Bottle app with the individual
-    AIDE modules.
-    Can also be used as a dry run and to perform pre-flight
-    checks (verbose start; database migration, etc.).
+    Creates and assembles the Bottle app with the individual AIDE modules. Can also be used as a dry
+    run and to perform pre-flight checks (verbose start; database migration, etc.).
 
-    2021 Benjamin Kellenberger
+    2021-22 Benjamin Kellenberger
 '''
 
 import os
@@ -15,36 +13,44 @@ import bottle
 from bottle import Bottle
 from util.helpers import LogDecorator
 from util.configDef import Config
+from util import drivers
 from setup.setupDB import add_update_superuser
 from setup.migrate_aide import migrate_aide
 from modules import REGISTERED_MODULES, Database
-from util import drivers
 from constants.version import AIDE_VERSION
 
 
-def _verify_unique(instances, moduleClass):
+def _verify_unique(instances, module_class):
     '''
-        Compares the newly requested module, address and port against
-        already launched modules on this instance.
-        Raises an Exception if another module from the same type has already been launched on this instance
+        Compares the newly requested module, address and port against already launched modules on
+        this instance. Raises an Exception if another module from the same type has already been
+        launched on this instance
     '''
     for key in instances.keys():
         instance = instances[key]
-        if moduleClass.__class__.__name__ == instance.__class__.__name__:
-            raise Exception('Module {} already launched on this server.'.format(moduleClass.__class__.__name__))
-            
+        if module_class.__class__.__name__ == instance.__class__.__name__:
+            raise Exception(
+                f'Module {module_class.__class__.__name__} already launched on this server.')
 
 
-def assemble_server(verbose_start=True, check_v1_config=True, migrate_database=True, force_migrate=False, passive_mode=False):
 
+def assemble_server(verbose_start=True,
+                    check_v1_config=True,
+                    migrate_database=True,
+                    force_migrate=False,
+                    passive_mode=False):
+    '''
+        Initializes all AIDE modules and furnishes them with helpers where needed. Does not start a
+        server by itself.
+    '''
     # force verbosity if any of the pre-flight checks is enabled
     verbose_start = any((verbose_start, check_v1_config, migrate_database))
 
     instance_args = os.environ['AIDE_MODULES'].split(',')
 
     if verbose_start:
-        configPath = os.environ['AIDE_CONFIG_PATH']
-        aideModules = ', '.join(instance_args)
+        config_path = os.environ['AIDE_CONFIG_PATH']
+        aide_modules = ', '.join(instance_args)
 
         print(f'''\033[96m
 #################################       
@@ -53,34 +59,33 @@ def assemble_server(verbose_start=True, check_v1_config=True, migrate_database=T
   ## ##    ##  ##     ## ##             {platform.platform()}
  ##   ##   ##  ##     ## ##             
 ##     ##  ##  ##     ## ######         [config]
-#########  ##  ##     ## ##             .> {configPath}
+#########  ##  ##     ## ##             .> {config_path}
 ##     ##  ##  ##     ## ##             
 ##     ## #### ########  ########       [modules]
-                                        .> {aideModules}
+                                        .> {aide_modules}
 #################################\033[0m
 ''')
 
-
-    statusOffset = LogDecorator.get_ljust_offset()
+    status_offset = LogDecorator.get_ljust_offset()
 
     # load configuration
     config = Config(None, verbose_start)
     bottle.BaseRequest.MEMFILE_MAX = 1024**3    #TODO: make hyperparameter in config?
 
     # connect to database
-    dbConnector = Database(config, verbose_start)
+    db_connector = Database(config, verbose_start)
 
     if check_v1_config:
         # check if config file points to unmigrated v1 project
-        print('Checking database...'.ljust(statusOffset), end='')
-        hasAdminTable = dbConnector.execute('''
+        print('Checking database...'.ljust(status_offset), end='')
+        has_admin_table = db_connector.execute('''
                 SELECT EXISTS (
                     SELECT FROM information_schema.tables 
                     WHERE table_schema = 'aide_admin'
                     AND table_name = 'project'
                 );
             ''', None, 1)
-        if not hasAdminTable[0]['exists']:
+        if not has_admin_table[0]['exists']:
             # not (yet) migrated, raise Exception with instructions to ensure compatibility
             LogDecorator.print_status('fail')
             print(f'''
@@ -100,15 +105,15 @@ def assemble_server(verbose_start=True, check_v1_config=True, migrate_database=T
             LogDecorator.print_status('ok')
 
         # check if projects have been migrated
-        print('Checking projects...'.ljust(statusOffset), end='')
-        dbSchema = config.getProperty('Database', 'schema', str, None)
-        if dbSchema is not None:
-            isMigrated = dbConnector.execute('''
+        print('Checking projects...'.ljust(status_offset), end='')
+        db_schema = config.getProperty('Database', 'schema', str, None)
+        if db_schema is not None:
+            is_migrated = db_connector.execute('''
                     SELECT COUNT(*) AS cnt
                     FROM aide_admin.project
                     WHERE shortname = %s;
-                ''', (dbSchema,), 1)
-            if isMigrated is not None and len(isMigrated) and isMigrated[0]['cnt'] == 0:
+                ''', (db_schema,), 1)
+            if is_migrated is not None and is_migrated[0]['cnt'] == 0:
                 LogDecorator.print_status('warn')
                 print(f'''
         WARNING: the selected configuration .ini file
@@ -117,7 +122,7 @@ def assemble_server(verbose_start=True, check_v1_config=True, migrate_database=T
         Details:
             database host: {config.getProperty('Database', 'host')}
             database name: {config.getProperty('Database', 'name')}
-            schema:        {dbSchema}
+            schema:        {db_schema}
 
         If you wish to continue using AIDE v2 for this project, you have to upgrade it
         to v2 accordingly.
@@ -132,24 +137,25 @@ def assemble_server(verbose_start=True, check_v1_config=True, migrate_database=T
 
     if migrate_database:
         # bring AIDE up-to-date
-        print('Updating database...'.ljust(statusOffset), end='')
+        print('Updating database...'.ljust(status_offset), end='')
         warnings, errors = migrate_aide(force_migrate)
-        if len(warnings) or len(errors):
-            if len(errors):
+        if len(warnings) > 0 or len(errors) > 0:
+            if len(errors) > 0:
                 LogDecorator.print_status('fail')
             else:
                 LogDecorator.print_status('warn')
 
-            print(f'Warnings and/or errors occurred while updating AIDE to the latest version ({AIDE_VERSION}):')
+            print('Warnings and/or errors occurred while updating AIDE to the latest version ' + \
+                f'({AIDE_VERSION}):')
             print('\nWarnings:')
-            for w in warnings:
-                print(f'\t"{w}"')
-            
+            for warning in warnings:
+                print(f'\t"{warning}"')
+
             print('\nErrors:')
-            for e in errors:
-                print(f'\t"{e}"')
-            
-            if len(errors):
+            for error in errors:
+                print(f'\t"{error}"')
+
+            if len(errors) > 0:
                 sys.exit(2)
 
         else:
@@ -157,21 +163,23 @@ def assemble_server(verbose_start=True, check_v1_config=True, migrate_database=T
 
     # add/modify superuser credentials if needed
     try:
-        result = add_update_superuser(config, dbConnector)
+        result = add_update_superuser(config, db_connector)
         if result['new_account']:
             print('New super user credentials found in configuration file and added to database:')
             print('\tName:   ' + result['details']['name'])
             print('\tE-mail: ' + result['details']['email'])
             print('\tPassword: ****')
         elif len(result['changes']):
-            print('Super user account details changed for account name "{}". New credentials:'.format(result['details']['name']))
+            print('Super user account details changed for account name "{}".'.format(
+                result['details']['name']) + ' New credentials:')
             print('\tName:   ' + result['details']['name'])
-            print('\tE-mail: ' + result['details']['email'] + (' (changed)' if result['changes'].get('adminEmail', False) else ''))
-            print('\tPassword: ****' + (' (changed)' if result['changes'].get('adminPassword', False) else ''))
-    except Exception as e:
+            print('\tE-mail: ' + result['details']['email'] + \
+                (' (changed)' if result['changes'].get('adminEmail', False) else ''))
+            print('\tPassword: ****' + \
+                (' (changed)' if result['changes'].get('adminPassword', False) else ''))
+    except Exception as exc:
         # no superuser credentials provided; ignore
-        print(e)    #TODO
-        pass
+        print(exc)    #TODO
 
     # load drivers
     drivers.init_drivers(verbose_start)
@@ -183,68 +191,71 @@ def assemble_server(verbose_start=True, check_v1_config=True, migrate_database=T
     instances = {}
 
     # "singletons"
-    dbConnector = REGISTERED_MODULES['Database'](config, verbose_start)
-    userHandler = REGISTERED_MODULES['UserHandler'](config, app, dbConnector)
-    taskCoordinator = REGISTERED_MODULES['TaskCoordinator'](config, app, dbConnector, verbose_start)
-    taskCoordinator.addLoginCheckFun(userHandler.checkAuthenticated)
+    db_connector = REGISTERED_MODULES['Database'](config, verbose_start)
+    user_handler = REGISTERED_MODULES['UserHandler'](config, app, db_connector)
+    task_coordinator = REGISTERED_MODULES['TaskCoordinator'](config, app, db_connector)
+    task_coordinator.addLoginCheckFun(user_handler.checkAuthenticated)
 
-    for i in instance_args:
+    for inst_arg in instance_args:
 
-        moduleName = i.strip()
-        if moduleName == 'UserHandler':
+        module_name = inst_arg.strip()
+        if module_name == 'UserHandler':
             continue
 
-        moduleClass = REGISTERED_MODULES[moduleName]
-        
+        module_class = REGISTERED_MODULES[module_name]
+
         # verify
-        _verify_unique(instances, moduleClass)
+        _verify_unique(instances, module_class)
 
         # create instance
-        if moduleName == 'AIController':
-            instance = moduleClass(config, app, dbConnector, taskCoordinator, verbose_start, passive_mode)
+        if module_name == 'AIController':
+            instance = module_class(config, app, db_connector, task_coordinator, verbose_start,
+                                                                                    passive_mode)
         else:
-            instance = moduleClass(config, app, dbConnector, verbose_start)
-        instances[moduleName] = instance
+            instance = module_class(config, app, db_connector, verbose_start)
+        instances[module_name] = instance
 
         # add authentication functionality
         if hasattr(instance, 'addLoginCheckFun'):
-            instance.addLoginCheckFun(userHandler.checkAuthenticated)
+            instance.addLoginCheckFun(user_handler.checkAuthenticated)
 
-        
         # launch project meta modules
-        if moduleName == 'LabelUI':
-            aideAdmin = REGISTERED_MODULES['AIDEAdmin'](config, app, dbConnector, verbose_start)
-            aideAdmin.addLoginCheckFun(userHandler.checkAuthenticated)
-            reception = REGISTERED_MODULES['Reception'](config, app, dbConnector)
-            reception.addLoginCheckFun(userHandler.checkAuthenticated)
-            configurator = REGISTERED_MODULES['ProjectConfigurator'](config, app, dbConnector)
-            configurator.addLoginCheckFun(userHandler.checkAuthenticated)
-            statistics = REGISTERED_MODULES['ProjectStatistics'](config, app, dbConnector)
-            statistics.addLoginCheckFun(userHandler.checkAuthenticated)
-            imageQuerier = REGISTERED_MODULES['ImageQuerier'](config, app, dbConnector)             #TODO: allow running on FileServer too
-            imageQuerier.addLoginCheckFun(userHandler.checkAuthenticated)
+        if module_name == 'LabelUI':
+            aide_admin = REGISTERED_MODULES['AIDEAdmin'](config, app, db_connector, verbose_start)
+            aide_admin.addLoginCheckFun(user_handler.checkAuthenticated)
+            reception = REGISTERED_MODULES['Reception'](config, app, db_connector)
+            reception.addLoginCheckFun(user_handler.checkAuthenticated)
+            configurator = REGISTERED_MODULES['ProjectConfigurator'](config, app, db_connector)
+            configurator.addLoginCheckFun(user_handler.checkAuthenticated)
+            statistics = REGISTERED_MODULES['ProjectStatistics'](config, app, db_connector)
+            statistics.addLoginCheckFun(user_handler.checkAuthenticated)
+            #TODO: allow running ImageQuerier on FileServer too
+            image_querier = REGISTERED_MODULES['ImageQuerier'](config, app, db_connector)
+            image_querier.addLoginCheckFun(user_handler.checkAuthenticated)
 
-        elif moduleName == 'FileServer':
-            from modules.DataAdministration.backend import celery_interface as daa_int
+        elif module_name == 'FileServer':
+            from modules.DataAdministration.backend import celery_interface #as daa_int
 
-        elif moduleName == 'AIController':
-            from modules.AIController.backend import celery_interface as aic_int
+        elif module_name == 'AIController':
+            from modules.AIController.backend import celery_interface #as aic_int
 
             # launch model marketplace with AIController
-            modelMarketplace = REGISTERED_MODULES['ModelMarketplace'](config, app, dbConnector, taskCoordinator)
-            modelMarketplace.addLoginCheckFun(userHandler.checkAuthenticated)
+            model_marketplace = REGISTERED_MODULES['ModelMarketplace'](config, app, db_connector,
+                                                                                task_coordinator)
+            model_marketplace.addLoginCheckFun(user_handler.checkAuthenticated)
 
-        elif moduleName == 'AIWorker':
-            from modules.AIWorker.backend import celery_interface as aiw_int
+        elif module_name == 'AIWorker':
+            from modules.AIWorker.backend import celery_interface #as aiw_int
 
 
         # launch globally required modules
-        dataAdmin = REGISTERED_MODULES['DataAdministrator'](config, app, dbConnector, taskCoordinator)
-        dataAdmin.addLoginCheckFun(userHandler.checkAuthenticated)
+        data_admin = REGISTERED_MODULES['DataAdministrator'](config, app, db_connector,
+                                                                                task_coordinator)
+        data_admin.addLoginCheckFun(user_handler.checkAuthenticated)
 
-        staticFiles = REGISTERED_MODULES['StaticFileServer'](config, app, dbConnector)
-        staticFiles.addLoginCheckFun(userHandler.checkAuthenticated)
-    
+        static_files = REGISTERED_MODULES['StaticFileServer'](config, app, db_connector)
+        static_files.addLoginCheckFun(user_handler.checkAuthenticated)
+
     if verbose_start:
         print('\n')
 
@@ -254,32 +265,33 @@ def assemble_server(verbose_start=True, check_v1_config=True, migrate_database=T
 
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description='Launch AIDE server (single-threaded) or perform pre-flight checks.')
+    parser = argparse.ArgumentParser(
+        description='Launch AIDE server (single-threaded) or perform pre-flight checks.')
     parser.add_argument('--launch', type=int, default=0,
-                        help='If set to 1, a single-threaded server (typically Python WSGI ref.) will be launched.')
+        help='If set to 1, a single-threaded server (typically Python WSGI ref.) will be launched.')
     parser.add_argument('--check_v1', type=int, default=1,
-                        help='Set to 1 to check database for unmigrated AIDE v1 setup.')
+        help='Set to 1 to check database for unmigrated AIDE v1 setup.')
     parser.add_argument('--migrate_db', type=int, default=1,
-                        help='Set to 1 to upgrade database with latest changes for AIDE setup.')
+        help='Set to 1 to upgrade database with latest changes for AIDE setup.')
     parser.add_argument('--force_migrate', type=int, default=0,
-                        help='If set to 1, database upgrade will be enforced even if AIDE versions already match.')
+        help='If set to 1, database upgrade will be enforced even if AIDE versions already match.')
     parser.add_argument('--verbose', type=int, default=1,
-                        help='Set to 1 to print launch information to console.')
+        help='Set to 1 to print launch information to console.')
     args = parser.parse_args()
 
     try:
-        app = assemble_server(args.verbose, args.check_v1, args.migrate_db, args.force_migrate, not bool(args.launch))
-    except Exception as e:
-        print(e)
+        aide_app = assemble_server(args.verbose, args.check_v1, args.migrate_db, args.force_migrate,
+                                                                            not bool(args.launch))
+    except Exception as global_exc:
+        print(global_exc)
         sys.exit(1)
 
     if bool(args.launch):
         if args.verbose:
             print('Launching server...')
-        config = Config(False)
-        host = config.getProperty('Server', 'host')
-        port = config.getProperty('Server', 'port')
-        app.run(host=host, port=port)
-    
+        server_config = Config(False)
+        host = server_config.getProperty('Server', 'host')
+        port = server_config.getProperty('Server', 'port')
+        aide_app.run(host=host, port=port)
     else:
         sys.exit(0)

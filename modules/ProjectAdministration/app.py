@@ -91,7 +91,10 @@ class ProjectConfigurator:
 
             # get project data (and check if project exists)
             try:
-                projectData = self.middleware.getProjectInfo(project, ['name', 'description', 'interface_enabled', 'demomode'])
+                is_admin = self.loginCheck(project=project, admin=True)
+                projectData = self.middleware.getProjectInfo(project,
+                                    ['name', 'description', 'interface_enabled', 'demomode'],
+                                    is_admin)
                 if projectData is None:
                     return self.__redirect()
             except Exception:
@@ -118,11 +121,13 @@ class ProjectConfigurator:
         def send_project_setup_page(project):
 
             #TODO
-            if not self.loginCheck():
+            if not self.loginCheck(canCreateProjects=True):
                 return self.__redirect(loginPage=True, redirect='/' + project + '/setup')
 
             # get project data (and check if project exists)
-            projectData = self.middleware.getProjectInfo(project, ['name', 'description', 'interface_enabled', 'demomode'])
+            projectData = self.middleware.getProjectInfo(project,
+                                        ['name', 'description', 'interface_enabled', 'demomode'],
+                                        True)
             if projectData is None:
                 return self.__redirect()
 
@@ -147,23 +152,22 @@ class ProjectConfigurator:
 
         @self.app.route('/<project>/configuration/<panel>')
         def send_project_config_panel(project, panel=None):
-            
             #TODO
             if not self.loginCheck():
                 if panel is None:
                     panel = 'overview'
                 return self.__redirect(loginPage=True, redirect=f'/{project}/configuration/{panel}')
 
-            # get project data (and check if project exists)
-            projectData = self.middleware.getProjectInfo(project, ['name', 'description', 'interface_enabled', 'demomode'])
-            if projectData is None:
-                return self.__redirect()
-
             if not self.loginCheck(project=project, extend_session=True):
                 return redirect('/')
 
             if not self.loginCheck(project=project, admin=True, extend_session=True):
                 return redirect('/' + project + '/interface')
+
+            # get project data (and check if project exists)
+            project_data = self.middleware.getProjectInfo(project, ['name'], True)
+            if project_data is None or 'name' not in project_data:
+                return self.__redirect()
 
             # render configuration template
             try:
@@ -178,7 +182,7 @@ class ProjectConfigurator:
                     version=AIDE_VERSION,
                     panel=panel,
                     projectShortname=project,
-                    projectTitle=projectData['name'],
+                    projectTitle=project_data['name'],
                     username=username)
 
 
@@ -187,7 +191,7 @@ class ProjectConfigurator:
             # compatibility for deprecated configuration panel access
             return send_project_config_panel(project)
 
-        
+
         @self.app.get('/<project>/getPlatformInfo')
         @self.app.post('/<project>/getPlatformInfo')
         def get_platform_info(project):
@@ -218,7 +222,7 @@ class ProjectConfigurator:
         @self.app.get('/<project>/getConfig')
         @self.app.post('/<project>/getConfig')
         def get_project_configuration(project):
-            if not self.loginCheck(project=project, admin=True):
+            if not self.loginCheck(project=project):
                 abort(401, 'forbidden')
             try:
                 # parse subset of configuration parameters (if provided)
@@ -228,8 +232,9 @@ class ProjectConfigurator:
                 except Exception:
                     params = None
 
-                projData = self.middleware.getProjectInfo(project, params)
-                return { 'settings': projData }
+                is_admin = self.loginCheck(project=project, admin=True)
+                proj_data = self.middleware.getProjectInfo(project, params, is_admin)
+                return { 'settings': proj_data }
             except Exception:
                 abort(400, 'bad request')
 
@@ -330,8 +335,10 @@ class ProjectConfigurator:
                 'is_admin': False
             }
 
+            is_admin = self.loginCheck(project=project, admin=True)
+
             # project-specific permissions
-            config = self.middleware.getProjectInfo(project)
+            config = self.middleware.getProjectInfo(project, None, is_admin)
             if config['demomode']:
                 permissions['can_view'] = True
                 permissions['can_label'] = config['interface_enabled'] and not config['archived']

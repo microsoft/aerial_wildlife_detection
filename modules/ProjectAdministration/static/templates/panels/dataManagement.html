@@ -113,7 +113,7 @@
 </style>
 <script src="/static/dataAdmin/js/imageBrowser.js?v={{ version }}"></script>
 <script src="/static/general/js/fileDirectoryBrowser.js?v={{ version }}"></script>
-<script src="/static/dataAdmin/js/taskPolling.js?v={{ version }}"></script>
+<script src="/static/taskCoordinator/js/taskPolling.js?v={{ version }}"></script>
 <script src="/static/general/js/tableWidthAdjuster.js?v={{ version }}"></script>
 <script type="text/javascript">
 
@@ -231,6 +231,7 @@
             }
 
             function _update_browser_populate(data) {
+                data = data['result'];
                 // assemble table            
                 images = [];
                 for(var idx=0; idx<data.length; idx++) {

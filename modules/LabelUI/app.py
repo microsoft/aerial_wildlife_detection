@@ -1,7 +1,7 @@
 '''
     Main Bottle and routings for the LabelUI web frontend.
 
-    2019-21 Benjamin Kellenberger
+    2019-22 Benjamin Kellenberger
 '''
 
 import os
@@ -83,10 +83,6 @@ class LabelUI():
             # check if user logged in
             if not self.loginCheck(project=project):
                 return self.__redirect_login_page(project + '/interface')
-            
-            # check if user is enrolled in project; redirect if not
-            if not self.loginCheck(project=project):
-                return redirect('/' + project)      #TODO: verify
 
             # get project data (and check if project exists)
             projectData = self.middleware.getProjectInfo(project)

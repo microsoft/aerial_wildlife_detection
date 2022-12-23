@@ -89,3 +89,51 @@
     display: inline-flex;
     margin-right: 10px;
 }
+
+/* AI controller window */
+.ai-worker-panel {
+    position: absolute;
+    right: 90px;
+    width: 550px;
+    z-index: 1000;
+}
+#ai-worker-minipanel {
+    display: flex;
+    flex-direction: row;
+    float: right;
+    height: 100%;
+    color: white;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.minipanel-span {
+    margin-top: auto;
+    margin-bottom: auto;
+    margin-left: 20px;
+}
+
+#ai-minipanel-status {
+    flex: 2;
+    margin-top: auto;
+    margin-bottom: auto;
+    display: inline-flex;
+    flex-direction: column;
+}
+
+#ai-worker-panel {
+    display: none;
+    position: absolute;
+    bottom: 40px;
+    height: 400px;
+    max-height:400px;
+    padding: 20px;
+    color: white;
+    background: #575352F0;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+}
+
+#ai-worker-panel-header {
+    cursor: pointer;
+}

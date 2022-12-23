@@ -3,15 +3,13 @@
     Also contains a number of static files that are general
     to AIDE as a whole.
 
-    2019-21 Benjamin Kellenberger
+    2019-22 Benjamin Kellenberger
 '''
 
 import os
 import json
-import requests
 from bottle import static_file, abort, SimpleTemplate
 from constants.version import AIDE_VERSION
-from util.helpers import is_localhost
 
 
 class StaticFileServer:
@@ -23,6 +21,7 @@ class StaticFileServer:
         'dataAdmin': 'modules/DataAdministration/static',
         'projectAdmin': 'modules/ProjectAdministration/static',
         'statistics': 'modules/ProjectStatistics/static',
+        'taskCoordinator': 'modules/TaskCoordinator/static',
         'aiController': 'modules/AIController/static'
     }
 

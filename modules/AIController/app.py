@@ -129,7 +129,8 @@ class AIController:
             try:
                 username = html.escape(request.get_cookie('username'))
                 #TODO: permit filtering for model state IDs (change to POST?)
-                task_id = self.middleware.getModelTrainingStatistics(project, username, modelStateIDs=None)
+                task_id = self.middleware.getModelTrainingStatistics(project,
+                                                username, modelStateIDs=None)
                 return {
                     'status': 0,
                     'task_id': task_id
@@ -154,7 +155,8 @@ class AIController:
             try:
                 username = html.escape(request.get_cookie('username'))
                 params = request.json
-                result = self.middleware.launch_task(project, params['workflow'], username)
+                result = self.middleware.launch_task(project,
+                                                params['workflow'], username)
                 return result
 
             except Exception as exc:
@@ -208,14 +210,15 @@ class AIController:
             '''
             if self.loginCheck(project=project):
                 try:
-                    queryProject = 'project' in request.query
-                    queryTasks = 'tasks' in request.query
-                    queryWorkers = 'workers' in request.query
-                    nudgeWatchdog = 'nudge_watchdog' in request.query
-                    recheckAutotrainSettings = 'recheck_autotrain_settings' in request.query
+                    query_project = 'project' in request.query
+                    query_tasks = 'tasks' in request.query
+                    query_workers = 'workers' in request.query
+                    nudge_watchdog = 'nudge_watchdog' in request.query
+                    recheck_autotrain = 'recheck_autotrain_settings' in request.query
                     status = self.middleware.check_status(
                         project,
-                        queryProject, queryTasks, queryWorkers, nudgeWatchdog, recheckAutotrainSettings)
+                        query_project, query_tasks, query_workers,
+                        nudge_watchdog, recheck_autotrain)
                 except Exception as exc:
                     status = str(exc)
                 return { 'status' : status }
@@ -257,18 +260,14 @@ class AIController:
             try:
                 username = html.escape(request.get_cookie('username'))
                 workflow = request.json['workflow']
-                workflowName = request.json['workflow_name']
-                try:
-                    # for updating existing workflows
-                    workflowID = request.json['workflow_id']
-                except Exception:
-                    workflowID = None
-                try:
-                    setDefault = request.json['set_default']
-                except Exception:
-                    setDefault = False
+                workflow_name = request.json['workflow_name']
 
-                status = self.middleware.saveWorkflow(project, username, workflow, workflowID, workflowName, setDefault)
+                # for updating existing workflows
+                workflow_id = request.json.get('workflow_id', None)
+                set_default = request.json.get('set_default', False)
+
+                status = self.middleware.saveWorkflow(project, username,
+                    workflow, workflow_id, workflow_name, set_default)
                 return { 'response': status }
 
             except Exception as exc:
@@ -286,9 +285,10 @@ class AIController:
                 abort(401, 'unauthorized')
 
             try:
-                workflowID = request.json['workflow_id']
+                workflow_id = request.json['workflow_id']
 
-                status = self.middleware.setDefaultWorkflow(project, workflowID)
+                status = self.middleware.setDefaultWorkflow(project,
+                                                                workflow_id)
                 return status
 
             except Exception as exc:
@@ -308,8 +308,9 @@ class AIController:
 
             try:
                 username = html.escape(request.get_cookie('username'))
-                workflowID = request.json['workflow_id']
-                status = self.middleware.deleteWorkflow(project, username, workflowID)
+                workflow_id = request.json['workflow_id']
+                status = self.middleware.deleteWorkflow(project, username,
+                                                                workflow_id)
                 return status
 
             except Exception as exc:
@@ -328,9 +329,10 @@ class AIController:
                 abort(401, 'unauthorized')
 
             try:
-                workflowID = request.json['workflow_id']
-                revokeRunning = (request.json['revoke_running'] if 'revoke_running' in request.json else False)
-                status = self.middleware.deleteWorkflow_history(project, workflowID, revokeRunning)
+                workflow_id = request.json['workflow_id']
+                revoke_running = request.json.get('revoke_running', False)
+                status = self.middleware.deleteWorkflow_history(project,
+                                                    workflow_id, revoke_running)
                 return status
 
             except Exception as exc:
@@ -361,8 +363,9 @@ class AIController:
 
 
 
+        @self.app.get('/getAvailableAImodels')
         @self.app.get('/<project>/getAvailableAImodels')
-        def get_available_ai_models(project):
+        def get_available_ai_models(project=None):
             '''
                 Returns all available AI models (class, name) that are
                 installed in this instance of AIDE and compatible with
@@ -372,19 +375,6 @@ class AIController:
                 abort(401, 'unauthorized')
 
             return self.middleware.getAvailableAImodels(project)
-
-
-
-        @self.app.get('/getAvailableAImodels')
-        def get_available_ai_models():
-            '''
-                Returns all available AI models (class, name) that are
-                installed in this instance of AIDE.
-            '''
-            if not self.loginCheck(canCreateProjects=True):
-                abort(401, 'unauthorized')
-
-            return self.middleware.getAvailableAImodels(None)
 
 
 

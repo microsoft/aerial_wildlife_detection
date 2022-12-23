@@ -356,7 +356,12 @@ MODIFICATIONS_sql = [
         END;
     END $$;
   ''',
-  'ALTER TABLE "{schema}".taskhistory ADD COLUMN IF NOT EXISTS taskName VARCHAR;'
+  'ALTER TABLE "{schema}".taskhistory ADD COLUMN IF NOT EXISTS taskName VARCHAR;',
+  '''
+  UPDATE "{schema}".taskhistory
+    SET taskName = SUBSTRING(processDescription, 0, POSITION('(' IN processDescription))
+    WHERE taskName IS NULL;
+  '''
 ]
 
 

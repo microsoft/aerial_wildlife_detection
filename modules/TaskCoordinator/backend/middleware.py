@@ -204,7 +204,7 @@ class TaskCoordinatorMiddleware:
 
 
 
-    def poll_task_status(self, project, task_id):
+    def poll_task_status(self, project, task_ids=None):
         '''
             Queries the dict of registered tasks and polls the respective task
             for status updates, resp. final results. Returns the respective
@@ -215,44 +215,52 @@ class TaskCoordinatorMiddleware:
             added accordingly. If the task can still not be found, an exception
             is thrown.
         '''
-        status = {}
+        if task_ids is None or len(task_ids) == 0:
+            # query all tasks for project
+            task_ids = tuple(self._poll_database(project))
+        elif isinstance(task_ids, str):
+            task_ids = (task_ids,)
 
-        if project not in self.tasks or task_id not in self.tasks[project]:
+        if project not in self.tasks or any(t not in self.tasks[project] for t in task_ids):
             self._poll_database(project)
 
-        #TODO: we temporarily allow querying all tasks without checking...
-        # if project not in self.tasks:
-        #     raise Exception(f'Project {project} not found.')
-        # if task_id not in self.tasks[project]:
-        #     raise Exception('Task with ID {} does not exist.'.format(task_id))
-
-        # poll status
-        try:
-            msg = self.celery_app.backend.get_task_meta(task_id)
-            if msg['status'] == celery.states.FAILURE:
-                # append failure message
-                if 'meta' in msg:
-                    info = { 'message': html.escape(str(msg['meta']))}
-                elif 'result' in msg:
-                    info = { 'message': html.escape(str(msg['result']))}
+        # poll statuses
+        statuses = {}
+        for task_id in task_ids:
+            if task_id not in self.tasks[project]:
+                statuses[task_id] = {}
+                continue
+            try:
+                msg = self.celery_app.backend.get_task_meta(task_id)
+                status = {
+                    'status': msg['status']
+                }
+                if msg['status'] == celery.states.FAILURE:
+                    # append failure message
+                    if 'meta' in msg:
+                        info = { 'message': html.escape(str(msg['meta']))}
+                    elif 'result' in msg:
+                        info = { 'message': html.escape(str(msg['result']))}
+                    else:
+                        info = { 'message': 'an unknown error occurred'}
+                    self._update_task(project, task_id, aborted_by=None, result=info)
                 else:
-                    info = { 'message': 'an unknown error occurred'}
-                self._update_task(project, task_id, aborted_by=None, result=info)
+                    info = msg['result']
 
-            else:
-                info = msg['result']
+                    # check if ongoing and remove if done
+                    result = AsyncResult(task_id)
+                    if result.ready():
+                        result_data = result.get()
+                        result.forget()
+                        self._update_task(project, task_id, aborted_by=None, result=result_data)
+                        status['result'] = result_data
+                status['meta'] = info
+                statuses[task_id] = status
+            except Exception as exc:
+                print('debug')      #TODO
+                statuses[task_id] = {
+                    'status': 'ERROR',
+                    'message': str(exc)
+                }
 
-                # check if ongoing and remove if done
-                result = AsyncResult(task_id)
-                if result.ready():
-                    status['result'] = result.get()
-                    result.forget()
-                    self._update_task(project, task_id, aborted_by=None, result=status['result'])
-
-            status['status'] = msg['status']
-            status['meta'] = info
-
-        except Exception:
-            status = {}
-
-        return status
+        return statuses

@@ -1,9 +1,8 @@
 '''
-    Module responsible for Celery task status polling
-    of various other modules that make use of the message
-    queue system.
+    Module responsible for Celery task status polling of various other modules that make use of the
+    message queue system.
 
-    2020-21 Benjamin Kellenberger
+    2020-22 Benjamin Kellenberger
 '''
 
 from bottle import request, abort
@@ -12,24 +11,25 @@ from .backend.middleware import TaskCoordinatorMiddleware
 
 class TaskCoordinator:
 
-    def __init__(self, config, app, dbConnector, verbose_start=False):
+    def __init__(self, config, app, db_connector):
         self.config = config
         self.app = app
-        self.middleware = TaskCoordinatorMiddleware(self.config, dbConnector)
-        
+        self.middleware = TaskCoordinatorMiddleware(self.config, db_connector)
+
         self.login_check = None
-        self._initBottle()
+        self._init_bottle()
 
 
-    def loginCheck(self, project=None, admin=False, superuser=False, canCreateProjects=False, extend_session=False):
-        return self.login_check(project, admin, superuser, canCreateProjects, extend_session)
+    def loginCheck(self, project=None, admin=False, superuser=False,
+                    can_create_projects=False, extend_session=False):
+        return self.login_check(project, admin, superuser, can_create_projects, extend_session)
 
 
     def addLoginCheckFun(self, loginCheckFun):
         self.login_check = loginCheckFun
 
 
-    def _initBottle(self):
+    def _init_bottle(self):
 
         ''' Status polling '''
         @self.app.post('/<project>/pollStatus')
@@ -45,7 +45,7 @@ class TaskCoordinator:
                 abort(401, 'forbidden')
 
             try:
-                task_id = request.json['taskID']
+                task_id = request.json.get('taskID', None)
                 status = self.middleware.poll_task_status(project, task_id)
                 return {'response': status}
 

@@ -196,7 +196,7 @@
     var scriptLoadingReq = {
         ProgressBar: '/static/general/js/progressbar.js?v={{ version }}',
         ImageBrowser: '/static/dataAdmin/js/imageBrowser.js?v={{ version }}',
-        poll_status: '/static/dataAdmin/js/taskPolling.js?v={{ version }}'
+        poll_status: '/static/taskCoordinator/js/taskPolling.js?v={{ version }}'
     }
 
     $(document).ready(function() {
@@ -222,16 +222,9 @@
 
         // untracked functions
         function _update_browser_scanUntracked(data) {
-            if(typeof(data) === 'object' && data.hasOwnProperty('response')) {
-                data = data['response'];
-                if(data.hasOwnProperty('meta') && data['meta'].hasOwnProperty('done')) {
-                    // task still ongoing; update progress bar
-                    let progressStr = 'checking images (' + data['meta']['done'] + '/' + data['meta']['total'] + ') ...'
-                    window.imageBrowser.setLoadingOverlay(true, progressStr, data['meta']['done'], data['meta']['total']);
-                }
-
-            } else if(Array.isArray(data)) {
+            if(data.hasOwnProperty('result') && Array.isArray(data['result'])) {
                 // task finished
+                data = data['result'];
                 var imgs = [];
                 for(var i=0; i<data.length; i++) {
                     imgs.push({
@@ -239,7 +232,6 @@
                         imageURL: window.dataServerURI + window.project + '/files/' + data[i]
                     });
                 }
-                
                 window.untrackedFiles = imgs;
 
                 // add them in chunks
@@ -255,6 +247,13 @@
                     window.messager.addMessage('Found ' + data.length + ' untracked images on file server.', 'success');
                 } else {
                     window.messager.addMessage('No untracked images have been found.');
+                }
+            } else {
+                data = data['response'];
+                if(data.hasOwnProperty('meta') && data['meta'].hasOwnProperty('done')) {
+                    // task still ongoing; update progress bar
+                    let progressStr = 'checking images (' + data['meta']['done'] + '/' + data['meta']['total'] + ') ...'
+                    window.imageBrowser.setLoadingOverlay(true, progressStr, data['meta']['done'], data['meta']['total']);
                 }
             }
         }
@@ -342,9 +341,12 @@
 
             function _poll_add_untracked(data) {
                 //TODO: temporary buggy solution:
-                if(Array.isArray(data) && data.length > 1 && data[1].length > 0) {
-                    window.messager.addMessage(imgList.length + ' images added successfully.', 'success');
-                    updateUntrackedCount();
+                if(data.hasOwnProperty('result')) {
+                    data = data['result'];
+                    if(Array.isArray(data) && data.length > 1 && data[1].length > 0) {
+                        window.messager.addMessage(imgList.length + ' images added successfully.', 'success');
+                        updateUntrackedCount();
+                    }
                 }
             }
 

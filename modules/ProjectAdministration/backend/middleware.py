@@ -219,17 +219,21 @@ class ProjectConfigMiddleware:
             return None
 
 
-    def getProjectInfo(self, project, parameters=None):
+    def getProjectInfo(self, project, parameters=None, is_admin=False):
 
         # parse parameters (if provided) and compare with mutable entries
-        allParams = set([
+        public_params = set([
             'name',
             'description',
             'ispublic',
-            'secret_token',
             'demomode',
             'interface_enabled',
             'archived',
+            'band_config',
+            'render_config'
+        ])
+        admin_params = set([
+            'secret_token',
             'ui_settings',
             'segmentation_ignore_unlabeled',
             'ai_model_enabled',
@@ -243,31 +247,35 @@ class ProjectConfigMiddleware:
             'inference_chunk_size',
             'max_num_concurrent_tasks',
             'watch_folder_enabled',
-            'watch_folder_remove_missing_enabled',
-            'band_config',
-            'render_config'
+            'watch_folder_remove_missing_enabled'
         ])
+        all_params = set.union(public_params, admin_params)
         if parameters is not None and parameters != '*':
             if isinstance(parameters, str):
                 parameters = [parameters.lower()]
             else:
                 parameters = [p.lower() for p in parameters]
             parameters = set(parameters)
-            parameters.intersection_update(allParams)
-            parameters.add('archived')
-            parameters = list(parameters)
+            if is_admin:
+                parameters.intersection_update(all_params)
+            else:
+                parameters.intersection_update(public_params)
+        elif is_admin:
+            parameters = all_params
         else:
-            parameters = allParams
+            parameters = public_params
+        if 'interface_enabled' in parameters:
+            parameters.add('archived')
         parameters = list(parameters)
-        sqlParameters = ','.join(parameters)
+        sql_parameters = ','.join(parameters)
 
-        queryStr = sql.SQL('''
+        query_str = sql.SQL('''
         SELECT {} FROM aide_admin.project
         WHERE shortname = %s;
         ''').format(
-            sql.SQL(sqlParameters)
+            sql.SQL(sql_parameters)
         )
-        result = self.dbConnector.execute(queryStr, (project,), 1)
+        result = self.dbConnector.execute(query_str, (project,), 1)
         result = result[0]
 
         # assemble response

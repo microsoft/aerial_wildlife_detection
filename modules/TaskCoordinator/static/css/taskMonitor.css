@@ -1,0 +1,11 @@
+#task-panel {
+    position: absolute;
+    top: 100px;
+    width: 350px;
+    right: 200px;
+}
+
+.task-panel {
+    color: white;
+    background: #575352F0;
+}

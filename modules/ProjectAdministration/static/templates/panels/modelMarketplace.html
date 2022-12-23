@@ -214,7 +214,7 @@
 <link rel="stylesheet" href="/static/projectAdmin/libs/jqtree/jqtree_custom.css?v={{ version }}" />
 <link rel="stylesheet" href="/static/general/css/modelLabelclassMapper.css?v={{ version }}" />
 <script src="/static/projectAdmin/libs/jqtree/tree.jquery.js?v={{ version }}"></script>
-<script src="/static/dataAdmin/js/taskPolling.js?v={{ version }}"></script>
+<script src="/static/taskCoordinator/js/taskPolling.js?v={{ version }}"></script>
 <style>
     #options-container {
         margin-bottom: 5px;
@@ -800,6 +800,36 @@
         });
     }
 
+    function on_message(data, modelName, actionName) {
+        let message = null;
+        let status = null;
+        if(typeof(modelName) !== 'string' || modelName.length === 0) {
+            modelName = '';
+        } else {
+            modelName = ' "' + modelName + '"';
+        }
+        if(['FAILURE', 'ERROR'].includes(data['status'])) {
+            message = 'An error occurred while trying to ' + actionName + ' selected model' +
+                        modelName;
+            if(data['message'] !== undefined) {
+                message += ' (message: "'+data['message'] + '")';
+            }
+            message += '.';
+            status = 'error';
+        } else if(data.hasOwnProperty('result')) {
+            message = 'Model' + modelName + ' ' + actionName + 'd successfully.';
+            status = 'success';
+        }
+        loadData().then(function() {
+            window.setUIblocked(false);
+            window.showLoadingOverlay(false);
+            if(message !== null) {
+                window.messager.addMessage(message, status,
+                    status === 'success'? undefined : 0);
+            } // else result pending
+        });
+    }
+
     function shareModel(fromProject) {
         let params = null;
         let modelName = null;
@@ -831,27 +861,9 @@
             };
         }
 
-        function _pollShare(data) {
-            let success = 'success';
-            let message = '';
-            if(data['status'] !== 0) {
-                success = 'error';
-                message = 'An error occurred while trying to share model "'+modelName+'" to project';
-                if(data['message'] !== undefined) {
-                    message += ' (message: "'+data['message'] + '")';
-                }
-                message += '.';
-            } else {
-                message = 'Model "'+modelName+'" shared successfully.';
-            }
-            if(message.length > 0)
-                window.messager.addMessage(message, success, (success === 'success' ? undefined : 0));
-            else
-                window.messager.addMessage('An unknown error occurred while trying to share model "'+modelName+'" to project', 'error', 0);
-            loadData();
-        }
-
         let doShareModel = function() {
+            window.setUIblocked(true);
+            window.showLoadingOverlay(true);
             return $.ajax({
                 url: window.baseURL + 'shareModel',
                 method: 'POST',
@@ -862,10 +874,10 @@
                     let taskID = data['task_id'];
                     if(typeof(taskID) === 'string') {
                         poll_status(taskID, function(data) {
-                            _pollShare(data);
+                            on_message(data, modelName, 'share');
                         },
                         function(data) {
-                            _pollShare(data);
+                            on_message(data, modelName, 'share');
                         }, undefined, 1000);
                     }
                 },
@@ -924,30 +936,11 @@
         }
 
         let doReshareModel = function() {
+            window.setUIblocked(true);
+            window.showLoadingOverlay(true);
             params = {
                 model_id: modelID
             };
-
-            function _pollReshare(data) {
-                let success = 'success';
-                let message = '';
-                if(data['status'] !== 0) {
-                    success = 'error';
-                    message = 'An error occurred while trying to re-share model "'+modelName+'" to project';
-                    if(data['message'] !== undefined) {
-                        message += ' (message: "'+data['message'] + '")';
-                    }
-                    message += '.';
-                } else {
-                    message = 'Model "'+modelName+'" re-shared successfully.';
-                }
-                if(message.length > 0)
-                    window.messager.addMessage(message, success, (success === 'success' ? undefined : 0));
-                else
-                    window.messager.addMessage('An unknown error occurred while trying to re-share model "'+modelName+'" to project', 'error', 0);
-                loadData();
-            }
-
             return $.ajax({
                 url: window.baseURL + 'reshareModel',
                 method: 'POST',
@@ -958,10 +951,10 @@
                     let taskID = data['task_id'];
                     if(typeof(taskID) === 'string') {
                         poll_status(taskID, function(data) {
-                            _pollReshare(data);
+                            on_message(data, modelName, 're-share');
                         },
                         function(data) {
-                            _pollReshare(data);
+                            on_message(data, modelName, 're-share');
                         }, undefined, 1000);
                     }
                 },
@@ -1004,6 +997,8 @@
         }
 
         let doUnshareModel = function() {
+            window.setUIblocked(true);
+            window.showLoadingOverlay(true);
             return $.ajax({
                 url: window.baseURL + 'unshareModel',
                 method: 'POST',
@@ -1019,11 +1014,16 @@
                         success = 'error';
                         duration = 0;
                     }
-                    loadData();
-                    window.messager.addMessage(message, success, duration);
+                    loadData().then(function() {
+                        window.setUIblocked(false);
+                        window.showLoadingOverlay(false);
+                        window.messager.addMessage(message, success, duration);
+                    });
                 },
                 error: function(xhr, status, error) {
                     console.error(error);
+                    window.setUIblocked(false);
+                    window.showLoadingOverlay(false);
                     if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
                         window.messager.addMessage('An error occurred while trying to hide model "' + modelName + '" from Model Marketplace (message: "' + error + '").', 'error', 0);
                     }
@@ -1044,9 +1044,11 @@
 
     function deleteModel(fromProject) {
         let modelID = null;
+        let modelName = null;
         if(fromProject) {
             try {
                 modelID = modelsProject[selectedModel_id_project]['id'];
+                modelName = modelsProject[selectedModel_id_project]['marketplace_info']['name'];
             } catch {
                 return $.Deferred().promise();
             }
@@ -1055,21 +1057,9 @@
             return $.Deferred().resolve().promise();
         }
 
-        let _on_message = function(data) {
-            if(data.hasOwnProperty('status') && data['status'] === 'FAILURE') {
-                // error
-                let message = '(an unknown error occurred)';
-                if(data.hasOwnProperty('meta') && data['meta'].hasOwnProperty('message')) {
-                    message = 'an error occurred trying to delete model state (' + data['meta']['message'] + ').';
-                }
-                window.messager.addMessage(message, 'error', 0);
-            } else {
-                loadData();
-                window.messager.addMessage('Successfully deleted model state from project.', 'success');
-            }
-        }
-
         let _do_delete = function() {
+            window.setUIblocked(true);
+            window.showLoadingOverlay(true);
             return $.ajax({
                 url: window.baseURL + 'deleteModelStates',
                 method: 'POST',
@@ -1080,10 +1070,10 @@
                     let taskID = data['task_id'];
                     if(typeof(taskID) === 'string') {
                         poll_status(taskID, function(data) {
-                            _on_message(data);
+                            on_message(data, modelName, 'delete');
                         },
                         function(data) {
-                            _on_message(data);
+                            on_message(data, modelName, 'delete');
                         }, undefined, 1000);
                     } else {
                         if(data.hasOwnProperty('message')) {
@@ -1117,22 +1107,11 @@
             return $.Deferred().promise();
         }
         let selModel = modelsProject[selectedModel_id_project]['id'];
-
-        let _on_message = function(data) {
-            if(data.hasOwnProperty('status') && data['status'] === 'FAILURE') {
-                // error
-                let message = '(an unknown error occurred)';
-                if(data.hasOwnProperty('meta') && data['meta'].hasOwnProperty('message')) {
-                    message = 'an error occurred trying to set model state as current (' + data['meta']['message'] + ').';
-                }
-                window.messager.addMessage(message, 'error', 0);
-            } else {
-                loadData();
-                window.messager.addMessage('Successfully set model state as current.', 'success');
-            }
-        }
+        let modelName = modelsProject[selectedModel_id_project]['marketplace_info']['name'];
 
         let _do_duplicate = function() {
+            window.setUIblocked(true);
+            window.showLoadingOverlay(true);
             return $.ajax({
                 url: window.baseURL + 'duplicateModelState',
                 method: 'POST',
@@ -1143,10 +1122,10 @@
                     let taskID = data['task_id'];
                     if(typeof(taskID) === 'string') {
                         poll_status(taskID, function(data) {
-                            _on_message(data);
+                            on_message(data, modelName, 'prioritize');
                         },
                         function(data) {
-                            _on_message(data);
+                            on_message(data, modelName, 'prioritize');
                         }, undefined, 1000);
                     } else {
                         if(data.hasOwnProperty('message')) {
@@ -1170,11 +1149,11 @@
         }
 
         window.showYesNoOverlay($('<div>Are you sure you would like to set the selected model state as current?<br />This will duplicate the model state and will cause the next AI model workflow to start from it accordingly.</div>'),
-        _do_duplicate, null, 'Proceed', 'Cancel', 'btn-primary', 'btn-secondary', false, false);
+            _do_duplicate, null, 'Proceed', 'Cancel', 'btn-primary', 'btn-secondary', false, false);
     }
 
     // show label class mapper upon successful import
-    function showLCmapper(modelID, callbackYes) {
+    function showLCmapper(modelID, callbackYes, callbackCancel) {
         let lcMapper = new ModelLabelclassMapper(window.project, modelsMarketplace[modelID]);
         window.lcMapper = lcMapper;
         return lcMapper.loadData().then(function() {
@@ -1195,38 +1174,84 @@
                         });
                     });
                 },
-                null, 'Save', 'Cancel', 'btn-primary', 'btn-secondary', true, false);
+                function() {
+                    if(typeof(callbackCancel) === 'function') {
+                        return callbackCancel();
+                    } else {
+                        return $.Deferred().resolve().promise();
+                    }
+                },
+                'Save', 'Cancel', 'btn-primary', 'btn-secondary', true, false);
         });
     }
 
-    function pollImport(data, showLCmapperEnabled) {
-        let success = 'success';
+    function rollbackImport(modelID, modelName) {
+        return $.ajax({
+            url: window.baseURL + 'deleteModelStates',
+            method: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            data: JSON.stringify({'model_ids': modelID}),
+            success: function(data) {
+                on_message(data, modelName, 'import aborte');   //TODO
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+                if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                    window.messager.addMessage('An error occurred while trying to abort model import (message: "' + error + '").', 'error', 0);
+                }
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return rollbackImport(modelID, modelName);
+                    });
+                }
+            }
+        })
+    }
+
+    function pollImport(data, modelID, modelName, showLCmapperEnabled) {
+        function _finalize() {
+            return loadData().then(function() {
+                window.setUIblocked(false);
+                window.showLoadingOverlay(false);
+            });
+        }
+
+        let status = 'success';
         let message = '';
-        if(data['status'] !== 0) {
-            success = 'error';
+        if(data.hasOwnProperty('result')) {
+            // model import successful; extract ID and prompt for label class mapper
+            let modelID = data['result']['marketplace_origin_id'];
+            message = 'Model "'+modelName+'" imported successfully.';
+            getModelsMarketplace().then(function() {
+                if(showLCmapperEnabled) {
+                    return showLCmapper(modelID, function() {
+                        window.messager.addMessage(message, status);
+                        return _finalize();
+                    },
+                    function() {
+                        // user clicked "Cancel": rollback import
+                        return rollbackImport(modelID, modelName);
+                    });
+                } else {
+                    window.messager.addMessage(message, status);
+                    return _finalize();
+                }
+            });
+        } else if(['FAILURE', 'ERROR'].includes(data['status'])) {
+            status = 'error';
             message = 'An error occurred while trying to import model "'+modelName+'" to project';
             if(data['message'] !== undefined) {
                 message += ' (message: "'+data['message'] + '")';
             }
             message += '.';
-        } else {
-            // model import successful; extract ID and prompt for label class mapper
-            let modelID = data['marketplace_origin_id'];
-            getModelsMarketplace().then(function() {
-                if(showLCmapperEnabled) {
-                    return showLCmapper(modelID);
-                } else {
-                    return $.Deferred().resolve().promise();
-                }
-            });
-
-            message = 'Model "'+modelName+'" imported successfully.';
+            window.messager.addMessage(
+                'An error occurred while trying to import model "'+modelName+'" to project.',
+                'error', 0);
+            return _finalize();
         }
-        if(message.length > 0)
-            window.messager.addMessage(message, success, (success === 'success' ? undefined : 0));
-        else
-            window.messager.addMessage('An unknown error occurred while trying to import model "'+modelName+'" to project.', 'error', 0);
-        loadData();
     }
 
 
@@ -1303,10 +1328,10 @@
                 let taskID = data['task_id'];
                 if(typeof(taskID) === 'string') {
                     poll_status(taskID, function(data) {
-                        pollImport(data, !showLCmapperFirst);
+                        pollImport(data, modelID, modelName, !showLCmapperFirst);
                     },
                     function(data) {
-                        pollImport(data, !showLCmapperFirst);
+                        pollImport(data, modelID, modelName, !showLCmapperFirst);
                     }, undefined, 1000);
                 } else {
                     let errorMessage = 'An error occurred while trying to import model "'+modelName+'" to project';
@@ -1359,7 +1384,8 @@
 
         let doImportModel = function() {
             if(modelID === undefined) return $.Deferred().promise();
-
+            window.setUIblocked(true);
+            window.showLoadingOverlay(true);
             return $.ajax(ajaxParams);
         }
 
@@ -1367,11 +1393,15 @@
             window.showYesNoOverlay($('<div>Proceeding will import the selected model to the project and make it the starting point for future workflows in that project.<br />Are you sure?</div>'),
                 function() {
                     if(showLCmapperFirst && !(selectedModel_id_marketplace.startsWith('aide'))) {
-                        // only show mapper in advance if it's a model already in the database
-                        showLCmapper(selectedModel_id_marketplace, doImportModel);
+                        // only show mapper in advance if model state is already in the database
+                        showLCmapper(selectedModel_id_marketplace, doImportModel, function() {
+                            window.setUIblocked(false);
+                            window.showLoadingOverlay(false);
+                            window.messager.addMessage('Model import aborted.', 'info');
+                        });
                     } else {
-                        window.showOverlay(null);
-                        doImportModel();
+                        // window.showOverlay(null);
+                        return doImportModel();
                     }
                 }, null, 'Import', 'Cancel', 'btn-primary', 'btn-secondary', false, false, true
             );
@@ -1410,9 +1440,7 @@
                 return;
             }
             let result = null;
-            if(typeof(data) === 'string') {
-                result = data;
-            } else if(data.hasOwnProperty('result') && typeof(data['result']) === 'string') {
+            if(data.hasOwnProperty('result') && typeof(data['result']) === 'string') {
                 result = data['result'];
             }
             if(result !== null) {
@@ -1783,7 +1811,7 @@
     var scriptLoadingReq = {
         ProgressBar: '/static/general/js/progressbar.js?v={{ version }}',
         ModelLabelclassMapper: '/static/general/js/modelLabelclassMapper.js?v={{ version }}',
-        poll_status: '/static/dataAdmin/js/taskPolling.js?v={{ version }}'
+        poll_status: '/static/taskCoordinator/js/taskPolling.js?v={{ version }}'
     }
 
     $(document).ready(function() {

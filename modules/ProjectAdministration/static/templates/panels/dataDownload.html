@@ -174,7 +174,7 @@
     }
 </style>
 <script type="text/javascript" src="/static/general/libs/datetimepicker/jquery.datetimepicker.js?v={{ version }}"></script>
-<script src="/static/dataAdmin/js/taskPolling.js?v={{ version }}"></script>
+<script src="/static/taskCoordinator/js/taskPolling.js?v={{ version }}"></script>
 <script type="text/javascript">
 
     window.save = undefined;
@@ -220,8 +220,9 @@
 
         function _setDownloadEntry(data, taskID) {
             var msgCell = $($('#'+taskID).find('.file-message')[0]);
-            if(typeof(data) === 'string') {
+            if(data.hasOwnProperty('result') && typeof(data['result']) === 'string') {
                 // download link sent
+                data = data['result'];
                 let href = window.baseURL + 'downloadData/' + data;
                 msgCell.empty();
                 msgCell.append($('<a href="' + href + '" target="_blank">'+data+'</a>'));

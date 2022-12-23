@@ -374,14 +374,18 @@ $(document).ready(function() {
         }
     });
 
-    // task monitor
+    // small server-side job indicator
     promise = promise.then(function() {
-        window.jobIndicator = new JobIndicator($('#task-panel'));
+        window.jobIndicator = new JobIndicator($('#job-panel'));
     });
 
-    // AI backend
+    // Task monitor
     promise = promise.then(function() {
+        // general task monitor TODO
+        // window.taskMonitor = new TaskMonitor($('#task-monitor'), $('#task-minipanel'), window.isAdmin, 10000);
+
         if(window.aiControllerURI != null && ! window.demoMode && (window.aiModelAvailable || window.isAdmin)) {
+            // AI task monitor
             window.wfMonitor = new WorkflowMonitor($('#ai-task-monitor'), $('#ai-minipanel-status'), window.isAdmin, window.aiModelAvailable, 1000, 10000, 10000);    //TODO: query intervals
             $('#ai-worker-minipanel').click(function() {
                 $('#ai-worker-panel').slideToggle();

@@ -30,7 +30,7 @@ var AI_TASK_NAME_MAP = {
 }
 
 
-class Task {
+class WorkflowTask {
 
     constructor(meta, number, isRootTask, showAdminFunctionalities) {
         this.id = meta['id'];
@@ -61,7 +61,7 @@ class Task {
         if(meta.hasOwnProperty('children')) {
             for(var c=0; c<meta['children'].length; c++) {
                 let childMeta = meta['children'][c];
-                let childTask = new Task(childMeta, (c+1), false, this.showAdminFunctionalities);
+                let childTask = new WorkflowTask(childMeta, (c+1), false, this.showAdminFunctionalities);
                 this.childTasksMap[childMeta['id']] = this.childTasks.length;
                 this.childTasks.push(childTask);
             }
@@ -479,7 +479,6 @@ class WorkflowMonitor {
     _setup_markup() {
         var self = this;
         this.domElement_main.empty();
-        //TODO: make prettier; add triangles
         this.runningTasksContainer = $('<div class="task-list" id="running-tasks-list"></div>');
         let rwHead = $('<h3 class="task-list-header">Running workflows</h3>');
         rwHead.click(function() {
@@ -559,7 +558,7 @@ class WorkflowMonitor {
                     let task = self.tasks[taskID];
                     if(task === undefined) {
                         // new task found
-                        task = new Task(tasks[t], undefined, true, self.showAdminFunctionalities);
+                        task = new WorkflowTask(tasks[t], undefined, true, self.showAdminFunctionalities);
                         self.tasks[taskID] = task;
                         if(task.taskFinished() || task.taskFailed() || task.taskSuccessful()) {
                             self.finishedTasksContainer.append(task.markup);

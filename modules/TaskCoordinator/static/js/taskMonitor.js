@@ -1,11 +1,9 @@
 /**
- * TaskMonitor, for issuing, aborting, and keeping track
- * of all non-AI tasks.
- * 
- * 2021 Benjamin Kellenberger
+ * TaskMonitor, for issuing, aborting, and keeping track of all non-AI tasks.
+ *
+ * 2021-22 Benjamin Kellenberger
  */
 
-//TODO: rewrite for TaskCoordinator (needs server-side extension, too)
 
 $(document).ready(function() {
     if(typeof(ProgressBar) === 'undefined') {
@@ -36,6 +34,7 @@ var TASK_NAME_MAP = {
     'DataAdministration.remove_images': 'Remove images',
     'DataAdministration.request_annotations': 'Request annotation download',
     'DataAdministration.delete_project': 'Delete project',
+    'DataAdministration.verify_images': 'Verify image integrity',
     'ModelMarketplace.shareModel': 'Share model',
     'ModelMarketplace.importModelDatabase': 'Import model',
     'ModelMarketplace.importModelURI': 'Import model from Web',
@@ -452,17 +451,6 @@ class Task {
         let progress = Math.max(0, Math.min(this.done / this.total, 1.0));
         if(isNaN(progress)) progress = 0.0;
         return progress;
-        // for(var c=0; c<this.childTasks.length; c++) {
-        //     let childProgress = this.childTasks[c].getProgress();
-        //     if(!isNaN(childProgress)) {
-        //         if(!isNaN(progress)) {
-        //             progress = Math.min(progress, childProgress);
-        //         } else {
-        //             progress = childProgress;
-        //         }
-        //     }
-        // }
-        // return progress;
     }
 
     showDetails(visible) {
@@ -472,105 +460,60 @@ class Task {
 }
 
 
-class WorkflowMonitor {
+class TaskMonitor {
 
-    constructor(domElement_main, domElement_footer, showAdminFunctionalities, queryProject,
-        queryInterval_active, queryInterval_idle, queryInterval_error) {
+    constructor(domElement_main, domElement_footer, showAdminFunctionalities,
+        queryInterval) {
             
         this.domElement_main = domElement_main;
         this.domElement_footer = domElement_footer;
         this.showAdminFunctionalities = showAdminFunctionalities;
-        this.queryProject = queryProject;       // tasks are always queried
-        this.queryIntervals = {
-            'idle': (!isNaN(parseFloat(queryInterval_idle)) ? parseFloat(queryInterval_idle) : 10000),
-            'active': (!isNaN(parseFloat(queryInterval_active)) ? parseFloat(queryInterval_active) : 1000),
-            'error': (!isNaN(parseFloat(queryInterval_error)) ? parseFloat(queryInterval_error) : 10000)
-        };
-        this.queryInterval = queryInterval_active;
+        this.queryInterval = (!isNaN(parseFloat(queryInterval)) ? parseFloat(queryInterval) : 1000);
 
         this.tasks = {};
 
         this._setup_markup();
-        this.setQueryInterval(this.queryIntervals['active'], true);
     }
 
     _setup_markup() {
         var self = this;
         this.domElement_main.empty();
-        //TODO: make prettier; add triangles
         this.runningTasksContainer = $('<div class="task-list" id="running-tasks-list"></div>');
-        let rwHead = $('<h3 class="task-list-header">Running workflows</h3>');
-        rwHead.click(function() {
-            self.runningTasksContainer.slideToggle();
-        })
-        this.domElement_main.append(rwHead);
         this.domElement_main.append(this.runningTasksContainer);
         this.finishedTasksContainer = $('<div class="task-list" id="finished-tasks-list"></div>');
-        let fwHead = $('<h3 class="task-list-header">Finished workflows</h3>');
-        fwHead.click(function() {
+        let ftHead = $('<h4 class="task-list-header">Finished tasks</h4>');
+        ftHead.click(function() {
             self.finishedTasksContainer.slideToggle();
         });
-        let fwHeadContainer = $('<div></div>');
-        fwHeadContainer.append(fwHead);
-        let deleteAll = $('<button class="btn btn-sm btn-danger">Delete all</button>');
-        deleteAll.on('click', function() {
-            self.deleteAllWorkflows(false);
-        });
-        fwHeadContainer.append(deleteAll);
-        this.domElement_main.append(fwHeadContainer);
+        let ftHeadContainer = $('<div></div>');
+        ftHeadContainer.append(ftHead);
+        // let deleteAll = $('<button class="btn btn-sm btn-danger">Delete all</button>');
+        // deleteAll.on('click', function() {
+        //     self.deleteAllWorkflows(false);
+        // });
+        // ftHeadContainer.append(deleteAll);
+        this.domElement_main.append(ftHeadContainer);
         this.domElement_main.append(this.finishedTasksContainer);
-
-        // footer
-        if(typeof(this.domElement_footer) === 'object') {
-            this.domElement_footer = $(this.domElement_footer);
-            let footerContainer = $('<table class="footer-container"></table>');
-
-            // progress bar for running tasks
-            this.runningTasksPbar = new ProgressBar(true, 0, 0, false);
-            let rtDiv = $('<tr class="footer-pbar-inline"></tr>');
-            rtDiv.append($('<td class="footer-span">running tasks:</td>'));
-            let rtCell = $('<td class="footer-pbar-cell"></td>');
-            rtCell.append(this.runningTasksPbar.getMarkup());
-            this.runningTasksPlaceholder = $('<span>(none)</span>');
-            rtCell.append(this.runningTasksPlaceholder);
-            rtDiv.append(rtCell);
-            footerContainer.append(rtDiv);
-
-            // progress bar for # annotated images until auto re-training
-            this.autoTrainPbar = new ProgressBar(false, 0, 0, false);
-            let atDiv = $('<tr class="footer-pbar-inline"></tr>');
-            atDiv.append($('<td class="footer-span">images until re-train:</td>'));
-            let atCell = $('<td class="footer-pbar-cell"></td>');
-            atCell.append(this.autoTrainPbar.getMarkup());
-            this.autoTrainPlaceholder = $('<span>(auto-training disabled)</span>');
-            atCell.append(this.autoTrainPlaceholder);
-            atDiv.append(atCell);
-            footerContainer.append(atDiv);
-
-            this.domElement_footer.append(footerContainer);
-        }
     }
 
-    _do_query(nudgeWatchdog) {
+    _do_query() {
         //TODO
         let self = this;
-        let queryURL = window.baseURL + 'pollStatus?tasks=true';
-        if(this.queryProject) queryURL += '&project=true';
-        if(nudgeWatchdog) queryURL += '&nudge_watchdog=true';
+        let queryURL = window.baseURL + 'pollStatus';
         return $.ajax({
             url: queryURL,
             method: 'GET',
             success: function(data) {
-
+                debugger;
                 // running tasks
                 let totalProgress = 0;
                 let targetProgress = 0;
                 let tasks = data['status']['tasks'];
                 if(tasks === undefined || tasks === null || (Array.isArray(tasks) && tasks.length === 0)) {
                     tasks = [];
-                    self.setQueryInterval(self.queryIntervals['idle'], false);
+                    // self.setQueryInterval(self.queryIntervals['idle'], false);
                 } else {
-                    self.setQueryInterval(self.queryIntervals['active'], false);
+                    // self.setQueryInterval(self.queryIntervals['active'], false);
                 }
                 let numActiveTasks = 0;
                 for(var t=0; t<tasks.length; t++) {
@@ -607,9 +550,9 @@ class WorkflowMonitor {
                     }
                 }
                 if(numActiveTasks > 0) {
-                    self.setQueryInterval(self.queryIntervals['active'], false);
+                    // self.setQueryInterval(self.queryIntervals['active'], false);
                 } else {
-                    self.setQueryInterval(self.queryIntervals['idle'], false);
+                    // self.setQueryInterval(self.queryIntervals['idle'], false);
                     totalProgress = 0;
                 }
                 let taskSuffix = (numActiveTasks === 1 ? ' task' : ' tasks');
@@ -630,10 +573,8 @@ class WorkflowMonitor {
                                 placeholderText = numAnnotated+'/'+numNext;
                             }
                         }
-                        self._set_footer_progress('autotrain', (autoTrainingEnabled && numNext>0), numAnnotated, numNext, false, placeholderText);
                     }
                 } catch {
-                    self._set_footer_progress('autotrain', false);
                 }
             },
             error: function(xhr, status, error) {
@@ -641,111 +582,29 @@ class WorkflowMonitor {
                 console.error(error);
                 self.setQueryInterval(self.queryIntervals['error'], false);
                 return window.renewSessionRequest(xhr, function() {
-                    self._query_workflows(nudgeWatchdog);
+                    self._query_auto();
                 });
             }
         });
     }
 
-    _query_workflows(nudgeWatchdog) {
+    _query_auto() {
         let self = this;
-        let promise = this._do_query(nudgeWatchdog);
+        let promise = this._do_query();
         return promise.done(function() {
             if(self.queryInterval > 0) {
                 setTimeout(function() {
-                    self._query_workflows(nudgeWatchdog);
+                    self._query_auto();
                 }, self.queryInterval);
             }
         });
     }
 
-    _set_footer_progress(target, visible, current, max, indefinite, placeholderText) {
-        let pBar = null;
-        let placeholder = null;
-        if(target === 'tasks') {
-            pBar = this.runningTasksPbar;
-            placeholder = this.runningTasksPlaceholder;
-        } else {
-            pBar = this.autoTrainPbar;
-            placeholder = this.autoTrainPlaceholder;
-        }
-        if(typeof(pBar) !== 'object') return;
-        
-        if(typeof(current) !== 'number' && !indefinite) {
-            pBar.set(visible, 0, 0, false);
-        } else {
-            pBar.set(visible, current, max, indefinite);
-        }
-
-        if(typeof(placeholderText) === 'string') {
-            placeholder.html(placeholderText);
-            placeholder.show();
-        } else {
-            placeholder.hide();
-        }
-    }
-
-    setQueryInterval(interval, startQuerying) {
-        if(typeof(interval) === 'string' && this.queryIntervals.hasOwnProperty(interval)) {
-            this.queryInterval = this.queryIntervals[interval];
-        } else if(!isNaN(parseFloat(interval))) {
-            this.queryInterval = interval;
-        }
-        if(startQuerying && this.queryInterval > 100) {
-            this._query_workflows();
-        }
-    }
-
     startQuerying() {
-        this.setQueryInterval('active', true);
+        this._query_auto();
     }
 
-    queryNow(nudgeWatchdog) {
-        return this._do_query(nudgeWatchdog);
-    }
-
-    deleteAllWorkflows(abortRunning) {
-        let self = this;
-        return $.ajax({
-            url: window.baseURL + 'deleteWorkflowHistory',
-            method: 'POST',
-            contentType: 'application/json; charset=utf-8',
-            dataType: 'json',
-            data: JSON.stringify({
-                workflow_id: 'all',
-                revoke_running: abortRunning
-            }),
-            success: function(data) {
-                let message = 'Workflows successfully deleted.'
-                let success = 'success';
-                let duration = undefined;
-                if(data['status'] !== 0) {
-                    message = 'Workflow could not be deleted';
-                    if(typeof(data['message']) === 'string') {
-                        message += ' (message: "' + data['message'] + '")';
-                    }
-                    message += '.';
-                    success = 'error';
-                    duration = 0;
-                }
-                // reload workflows
-                self.tasks = {};
-                self.finishedTasksContainer.empty();
-                self.queryNow().then(function() {
-                    window.messager.addMessage(message, success, duration);
-                });
-            },
-            error: function(xhr, status, error) {
-                console.error(error);
-                window.messager.addMessage('Workflows could not be deleted (message: "'+error+'").', 'error', 0);
-            },
-            statusCode: {
-                401: function(xhr) {
-                    return window.renewSessionRequest(xhr, function() {
-                        return self.deleteAllWorkflows(abortRunning);
-                    });
-                }
-            }
-        });
+    queryNow() {
+        return this._do_query();
     }
 }

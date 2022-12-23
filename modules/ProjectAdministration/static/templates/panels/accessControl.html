@@ -213,7 +213,7 @@
         let users = [];
         let uList = $('#users-list');
         uList.children().each(function() {
-            let chckbx = $('#'+$(this).attr('id')+'__select');
+            let chckbx = $('[id="'+$(this).attr('id')+'__select"]');
             if($(this).is(':visible') && chckbx.prop('checked')) {
                 users.push($(this).attr('id'));
             }

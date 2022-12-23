@@ -1,4 +1,4 @@
-#task-panel {
+#job-panel {
     display: flex;
     float: left;
     width: 200px;
@@ -7,7 +7,7 @@
     margin-top: 10px;
 }
 
-#task-panel span {
+#job-panel span {
     text-overflow: ellipsis;
     width: 120px;
     display: block;
@@ -15,7 +15,7 @@
     overflow: hidden;
 }
 
-#task-panel .progressbar {
+#job-panel .progressbar {
     width: 100px !important;
     margin-top: 5px;
 }

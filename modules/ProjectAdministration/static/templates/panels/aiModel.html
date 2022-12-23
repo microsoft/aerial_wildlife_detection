@@ -81,7 +81,7 @@
         overflow-x: scroll;
     }
 </style>
-<script src="/static/dataAdmin/js/taskPolling.js?v={{ version }}"></script>
+<script src="/static/taskCoordinator/js/taskPolling.js?v={{ version }}"></script>
 <script src="/static/statistics/libs/chartjs/Chart.min.js?v={{ version }}"></script>
 <script src="/static/general/js/tableWidthAdjuster.js?v={{ version }}"></script>
 <script type="text/javascript">
@@ -185,6 +185,7 @@
                 success = false;
             }
             if(success) {
+                data = data['result'];
                 let hasChart = false;
                 if(data.hasOwnProperty('series')) {
                     // assemble line charts for each model library
@@ -282,8 +283,8 @@
                 $('#loading-placeholder').hide();
                 $('#no-data-placeholder').hide();
                 let message = 'An unknown error occurred trying to load model training statistics.';
-                if(typeof(data['message']) === 'string' && data['message'].length > 0) {
-                    message = 'An error occurred trying to load model training statistics (message: "' + data['message'] + '").';
+                if(typeof(data['meta']['message']) === 'string' && data['meta']['message'].length > 0) {
+                    message = 'An error occurred trying to load model training statistics (message: "' + data['meta']['message'] + '").';
                 }
                 window.messager.addMessage(mesage, 'error', 0);
             }
