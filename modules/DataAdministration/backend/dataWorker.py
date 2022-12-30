@@ -27,7 +27,7 @@ from PIL import Image
 from psycopg2 import sql
 from celery import current_task
 from modules.LabelUI.backend.annotation_sql_tokens import QueryStrings_annotation, QueryStrings_prediction
-from util.helpers import FILENAMES_PROHIBITED_CHARS, listDirectory, base64ToImage, hexToRGB, slugify, current_time, is_fileServer
+from util.helpers import FILENAMES_PROHIBITED_CHARS, list_directory, base64ToImage, hexToRGB, slugify, current_time, is_fileServer
 from util.imageSharding import get_split_positions, split_image
 from util import drivers, parsers
 
@@ -1040,7 +1040,7 @@ class DataWorker:
         if (not os.path.isdir(projectFolder)) and (not os.path.islink(projectFolder)):
             # no folder exists for the project (should not happen due to broadcast at project creation)
             return []
-        imgs_disk = listDirectory(projectFolder, recursive=True)
+        imgs_disk = list_directory(projectFolder, recursive=True)
         
         # get all existing file paths from database
         imgs_database = set()
@@ -1373,7 +1373,7 @@ class DataWorker:
         projectFolder = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), project)
         if (not os.path.isdir(projectFolder)) and (not os.path.islink(projectFolder)):
             return []
-        imgs_disk = listDirectory(projectFolder, recursive=True)
+        imgs_disk = list_directory(projectFolder, recursive=True)
         imgs_disk = set(imgs_disk)
         
         # get orphaned images

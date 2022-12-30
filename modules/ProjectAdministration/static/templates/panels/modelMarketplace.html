@@ -1334,6 +1334,8 @@
                         pollImport(data, modelID, modelName, !showLCmapperFirst);
                     }, undefined, 1000);
                 } else {
+                    window.setUIblocked(false);
+                    window.showLoadingOverlay(false);
                     let errorMessage = 'An error occurred while trying to import model "'+modelName+'" to project';
                     if(typeof(data['message']) === 'string') {
                         errorMessage += ' (message: "' + data['message'] + '")';
@@ -1343,6 +1345,8 @@
                 }
             },
             error: function(xhr, status, error) {
+                window.setUIblocked(false);
+                window.showLoadingOverlay(false);
                 console.error(error);
                 if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
                     window.messager.addMessage('An error occurred while trying to import model to project (message: "' + error + '").', 'error', 0);

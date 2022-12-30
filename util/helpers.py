@@ -10,16 +10,19 @@ import importlib
 import unicodedata
 import random
 import re
+import decimal
+import uuid
 from collections.abc import Iterable
+import json
 from datetime import datetime
-import pytz
 import socket
 from urllib.parse import urlsplit
-import netifaces
-import requests
 import html
 import base64
 import numpy as np
+import pytz
+import netifaces
+import requests
 from PIL import Image, ImageColor
 from psycopg2 import sql
 
@@ -27,28 +30,33 @@ from util.logDecorator import LogDecorator
 from util import drivers
 
 
-def toNumber(value):
-    if isinstance(value, int) or isinstance(value, float):
+def to_number(value):
+    '''
+        Auto-converts objects to either int or float; returns Nonen if unparseable.
+    '''
+    if isinstance(value, (int, float)):
         return value
-    elif isinstance(value, str):
+    if isinstance(value, str):
         if value.isdigit():
             return int(value)
-        else:
-            try:
-                return float(value)
-            except Exception:
-                return None
+        try:
+            return float(value)
+        except Exception:
+            return None
     return None
 
 
 def array_split(arr, size):
-     arrs = []
-     while len(arr) > size:
-         pice = arr[:size]
-         arrs.append(pice)
-         arr = arr[size:]
-     arrs.append(arr)
-     return arrs
+    '''
+        Receives a list and divides it into sublists of given size.
+    '''
+    arrs = []
+    while len(arr) > size:
+        pice = arr[:size]
+        arrs.append(pice)
+        arr = arr[size:]
+    arrs.append(arr)
+    return arrs
 
 
 
@@ -59,24 +67,23 @@ def current_time():
     return datetime.now(tz=pytz.utc)
 
 
-def is_binary(filePath):
+def is_binary(file_path):
     '''
-        Returns True if the file is a binary file, False if it is a text file.
-        Raises an Exception if the file could not be found.
-        Source: https://stackoverflow.com/questions/898669/how-can-i-detect-if-a-file-is-binary-non-text-in-python
+        Returns True if the file is a binary file, False if it is a text file. Raises an Exception
+        if the file could not be found. Source:
+        https://stackoverflow.com/questions/898669/how-can-i-detect-if-a-file-is-binary-non-text-in-python
     '''
     textchars = bytearray({7,8,9,10,12,13,27} | set(range(0x20, 0x100)) - {0x7f})
-    with open(filePath, 'rb') as f:
+    with open(file_path, 'rb') as f:
         return bool(f.read(1024).translate(None, textchars))
 
 
 def slugify(value, allow_unicode=False):
     '''
-        Taken from https://github.com/django/django/blob/master/django/utils/text.py
-        Convert to ASCII if 'allow_unicode' is False. Convert spaces or repeated
-        dashes to single dashes. Remove characters that aren't alphanumerics,
-        underscores, or hyphens. Convert to lowercase. Also strip leading and
-        trailing whitespace, dashes, and underscores.
+        Taken from https://github.com/django/django/blob/master/django/utils/text.py Convert to
+        ASCII if 'allow_unicode' is False. Convert spaces or repeated dashes to single dashes.
+        Remove characters that aren't alphanumerics, underscores, or hyphens. Convert to lowercase.
+        Also strip leading and trailing whitespace, dashes, and underscores.
     '''
     value = str(value)
     if allow_unicode:
@@ -90,43 +97,41 @@ def slugify(value, allow_unicode=False):
 
 def get_class_executable(path):
     '''
-        Loads a Python class path (e.g. package.subpackage.classFile.className)
-        and returns the class executable (under 'className').
+        Loads a Python class path (e.g. package.subpackage.classFile.className) and returns the
+        class executable (under 'className').
     '''
-    
     # split classPath into path and executable name
     idx = path.rfind('.')
-    classPath, executableName = path[0:idx], path[idx+1:]
-    execFile = importlib.import_module(classPath)
-    return getattr(execFile, executableName)
+    class_path, executable_name = path[0:idx], path[idx+1:]
+    exec_file = importlib.import_module(class_path)
+    return getattr(exec_file, executable_name)
 
 
 
-def get_library_available(libName, checkImport=False):
+def get_library_available(lib_name, check_import=False):
     '''
-        Checks whether a Python library is available and returns a bool
-        accordingly. Library names can be dot-separated as common in
-        Python imports. If "checkImport" is True, the library is attempt-
-        ed to be actually imported; if this fails, False is returned.
+        Checks whether a Python library is available and returns a bool accordingly. Library names
+        can be dot-separated as common in Python imports. If "checkImport" is True, the library is
+        attempt- ed to be actually imported; if this fails, False is returned.
     '''
     try:
         if sys.version_info[1] <= 3:
-            if importlib.find_loader(libName) is None:
+            if importlib.util.find_spec(lib_name) is None:
                 raise Exception('')
         else:
-            if importlib.util.find_spec(libName) is None:
+            if importlib.util.find_spec(lib_name) is None:
                 raise Exception('')
-        
-        if checkImport:
-            importlib.import_module(libName)
-        
+
+        if check_import:
+            importlib.import_module(lib_name)
+
         return True
     except Exception:
         return False
 
 
 
-def check_args(options, defaultOptions):
+def check_args(options, default_options):
     '''
         Compares a dictionary of objects ('options') with a set of 'defaultOptions'
         options and copies entries from the default set to the provided options
@@ -142,9 +147,9 @@ def check_args(options, defaultOptions):
                 options[key] = __check(options[key], default[key])
         return options
     if options is None or not isinstance(options, dict):
-        return defaultOptions
+        return default_options
     else:
-        return __check(options, defaultOptions)
+        return __check(options, default_options)
 
 
 
@@ -155,14 +160,14 @@ def parse_boolean(boolean):
     '''
     if isinstance(boolean, bool):
         return boolean
-    elif isinstance(boolean, int):
+    if isinstance(boolean, int):
         return bool(boolean)
-    elif isinstance(boolean, str):
+    if isinstance(boolean, str):
         boolean = boolean.lower()
         if boolean.startswith('t') or boolean == '1' or boolean.startswith('y'):
             return True
-        else:
-            return False
+        return False
+    return False
 
 
 def parse_parameters(data, params, absent_ok=True, escape=True, none_ok=True):
@@ -179,48 +184,66 @@ def parse_parameters(data, params, absent_ok=True, escape=True, none_ok=True):
 
         Also returns a list of the keys that were eventually added.
     '''
-    outputVals = []
-    outputKeys = []
-    for idx in range(len(params)):
-        if isinstance(params[idx], str):
-            nextKey = params[idx]
-            dataType = str
+    output_vals = []
+    output_keys = []
+    for param in params:
+        if isinstance(param, str):
+            next_key = param
+            data_type = str
         else:
-            nextKey = params[idx][0]
-            dataType = params[idx][1]
-        
-        if not nextKey in data and absent_ok:
+            next_key = param[0]
+            data_type = param[1]
+
+        if not next_key in data and absent_ok:
             continue
 
-        value = data[nextKey]
+        value = data[next_key]
         if escape and isinstance(value, str):
             value = html.escape(value)
         if not none_ok and value is not None:
-            value = dataType(value)
-        outputVals.append(value)
-        outputKeys.append(nextKey)
-    return outputVals, outputKeys
+            value = data_type(value)
+        output_vals.append(value)
+        output_keys.append(next_key)
+    return output_vals, output_keys
 
 
+class CustomJSONEncoder(json.JSONEncoder):
+    '''
+        Encoder for JSON serialization that auto-converts common, non-encodeable data types like
+        UUID, Decimal, etc.
+    '''
+    def default(self, o):
+        if isinstance(o, uuid.UUID):
+            return str(o)
+        if isinstance(o, decimal.Decimal):
+            return float(o)
+        return json.JSONEncoder.default(self, o)
 
-def checkDemoMode(project, dbConnector):
-        '''
-            Returns a bool indicating whether the project is in demo mode.
-            Returns None if the project does not exist.
-        '''
-        try:
-            response = dbConnector.execute('''
-                SELECT demoMode FROM aide_admin.project
-                WHERE shortname = %s;''',
-                (project,),
-                1)
-            if len(response):
-                return response[0]['demomode']
-            else:
-                return None
-        except Exception:
-            return None
-        
+
+def json_dumps(*args, **kwargs):
+    '''
+        Custom JSON dump to string function that can auto-convert objects to strings.
+    '''
+    return json.dumps(*args, ensure_ascii=False, cls=CustomJSONEncoder, **kwargs).encode('utf8')
+
+
+def check_demo_mode(project, db_connector):
+    '''
+        Returns a bool indicating whether the project is in demo mode. Returns None if the
+        project does not exist.
+    '''
+    try:
+        response = db_connector.execute('''
+            SELECT demoMode FROM aide_admin.project
+            WHERE shortname = %s;''',
+            (project,),
+            1)
+        if len(response) > 0:
+            return response[0]['demomode']
+        return None
+    except Exception:
+        return None
+
 
 
 def is_fileServer(config):
@@ -234,17 +257,19 @@ def is_fileServer(config):
         - environment variable "AIDE_MODULES" must be set to contain
           the string "FileServer" (check is performed without case)
     '''
-
     try:
+        fs_dir = config.getProperty('FileServer', 'staticfiles_dir')
         return ('fileserver' in os.environ['AIDE_MODULES'].lower() and \
-            os.path.isdir(config.getProperty('FileServer', 'staticfiles_dir'))
+            (os.path.isdir(fs_dir) or \
+                (os.path.islink(fs_dir) and os.path.exists(os.readlink(fs_dir)))
+            )
         )
     except Exception:
-       return False
+        return False
 
 
 
-def is_localhost(baseURI):
+def is_localhost(base_uri):
     '''
         Receives a URI and checks whether it points to this
         host ("localhost", "/", same socket name, etc.).
@@ -256,67 +281,67 @@ def is_localhost(baseURI):
     interfaces = netifaces.interfaces()
     for i in interfaces:
         iface = netifaces.ifaddresses(i).get(netifaces.AF_INET)
-        if iface != None:
+        if iface is not None:
             for j in iface:
                 localhosts.append(j['addr'])
-    
-    baseURI_fragments = urlsplit(baseURI)
-    baseURI_stripped = baseURI_fragments.netloc
-    for l in localhosts:
-        if baseURI_stripped.startswith(l):
+
+    base_uri_fragments = urlsplit(base_uri)
+    base_uri_stripped = base_uri_fragments.netloc
+    for host in localhosts:
+        if base_uri_stripped.startswith(host):
             return True
-    
-    # also check for local addresses that do not even specify the hostname (e.g. '/files' or just 'files')
-    if not baseURI.startswith('http'):
+
+    # also check for local addresses that do not even specify the hostname (e.g. '/files' or just
+    # 'files')
+    if not base_uri.startswith('http'):
         return True
-    
+
     # all checks failed; file server is running on another machine
     return False
 
 
 
-def isAItask(taskName):
+def is_ai_task(task_name):
     '''
-        Returns True if the taskName (str) is part of the AI
-        task chain, or False if not (e.g., another type of task).
+        Returns True if the taskName (str) is part of the AI task chain, or False if not (e.g.,
+        another type of task).
     '''
-    tn = str(taskName).lower()
-    return tn.startswith('aiworker') or \
-        tn in ('aicontroller.get_training_images', 'aicontroller.get_inference_images')
+    task_n = str(task_name).lower()
+    return task_n.startswith('aiworker') or \
+        task_n in ('aicontroller.get_training_images', 'aicontroller.get_inference_images')
 
 
 
-def listDirectory(baseDir, recursive=False, images_only=True):
+def list_directory(base_dir, recursive=False, images_only=True):
     '''
-        Similar to glob's recursive file listing, but
-        implemented so that circular softlinks are avoided.
-        Removes the baseDir part (with trailing separator)
-        from the files returned.
+        Similar to glob's recursive file listing, but implemented so that circular softlinks are
+        avoided. Removes the base_dir part (with trailing separator) from the files returned.
     '''
-    if not images_only and not len(drivers.VALID_IMAGE_EXTENSIONS):
+    if not images_only and len(drivers.VALID_IMAGE_EXTENSIONS) == 0:
         drivers.init_drivers(False)      # should not be required
     files_disk = set()
-    if not baseDir.endswith(os.sep):
-        baseDir += os.sep
-    def _scan_recursively(imgs, baseDir, fileDir, recursive):
-        files = os.listdir(fileDir)
-        for f in files:
-            path = os.path.join(fileDir, f)
-            if os.path.isfile(path) and (not images_only or os.path.splitext(f)[1].lower() in drivers.VALID_IMAGE_EXTENSIONS):
+    if not base_dir.endswith(os.sep):
+        base_dir += os.sep
+    def _scan_recursively(imgs, base_dir, file_dir, recursive):
+        files = os.listdir(file_dir)
+        for file in files:
+            path = os.path.join(file_dir, file)
+            ext = os.path.splitext(file)[1].lower()
+            if os.path.isfile(path) and (not images_only or ext in drivers.VALID_IMAGE_EXTENSIONS):
                 imgs.add(path)
             elif os.path.islink(path):
-                if os.readlink(path) in baseDir:
+                if os.readlink(path) in base_dir:
                     # circular link; avoid
                     continue
                 elif recursive:
-                    imgs = _scan_recursively(imgs, baseDir, path, True)
+                    imgs = _scan_recursively(imgs, base_dir, path, True)
             elif os.path.isdir(path) and recursive:
-                imgs = _scan_recursively(imgs, baseDir, path, True)
+                imgs = _scan_recursively(imgs, base_dir, path, True)
         return imgs
 
-    files_scanned = _scan_recursively(set(), baseDir, baseDir, recursive)
-    for f in files_scanned:
-        files_disk.add(f.replace(baseDir, ''))
+    files_scanned = _scan_recursively(set(), base_dir, base_dir, recursive)
+    for file in files_scanned:
+        files_disk.add(file.replace(base_dir, ''))
     return files_disk
 
 

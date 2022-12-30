@@ -1,3 +1,5 @@
+#!/bin/sh
+
 # Launches or terminates AIDE with all the correct modules,
 # including Celery, if required.
 # The information on which modules and services to run come
@@ -5,7 +7,12 @@
 # * AIDE_CONFIG_PATH
 # * AIDE_MODULES
 # 
-# 2020-21 Benjamin Kellenberger
+# 2020-22 Benjamin Kellenberger
+
+python_exec=$3
+if [ ${#python_exec} = 0 ]; then
+    python_exec=$(command -v python)
+fi
 
 function start {
 
@@ -25,7 +32,7 @@ function start {
     for i in "${ADDR[@]}"; do
         module="$(echo "$i" | tr '[:upper:]' '[:lower:]')";
         if [ "$module" == "fileserver" ]; then
-            folderWatchInterval=$(python util/configDef.py --section=FileServer --parameter=watch_folder_interval --fallback=60);
+            folderWatchInterval=$($python_exec util/configDef.py --section=FileServer --parameter=watch_folder_interval --fallback=60);
             if [ $folderWatchInterval -gt 0 ]; then
                 launchCeleryBeat=true;
             fi
@@ -33,11 +40,11 @@ function start {
     done
     if [ $launchCeleryBeat ]; then
         # folder watching interval specified; enable Celery beat
-        tempDir="$(python util/configDef.py --section=FileServer --parameter=tempfiles_dir --fallback=/tmp/aide/celery)";
+        tempDir="$($python_exec util/configDef.py --section=FileServer --parameter=tempfiles_dir --fallback=/tmp/aide/celery)";
         mkdir -p $tempDir;
-        celery -A celery_worker worker -B -s $tempDir/celery --hostname aide@%h &
+        $python_exec -m celery -A celery_worker worker -B -s $tempDir --hostname aide@%h &
     else
-        celery -A celery_worker worker --hostname aide@%h & 
+        $python_exec -m celery -A celery_worker worker --hostname aide@%h & 
     fi
     # fi
 
@@ -52,13 +59,13 @@ function start {
 
     if [ $numHTTPmodules -gt 0 ]; then
         # perform verbose pre-flight checks
-        python setup/assemble_server.py --migrate_db 1
+        $python_exec setup/assemble_server.py --migrate_db 1
 
         if [ $? -eq 0 ]; then
             # pre-flight checks succeeded; get host and port from configuration file
-            host=$(python util/configDef.py --section=Server --parameter=host)
-            port=$(python util/configDef.py --section=Server --parameter=port)
-            numWorkers=$(python util/configDef.py --section=Server --parameter=numWorkers --type=int --fallback=6)
+            host=$($python_exec util/configDef.py --section=Server --parameter=host)
+            port=$($python_exec util/configDef.py --section=Server --parameter=port)
+            numWorkers=$($python_exec util/configDef.py --section=Server --parameter=numWorkers --type=int --fallback=6)
 
             debug="$(echo "$2" | tr '[:upper:]' '[:lower:]')";
             if [ "$debug" == "debug" ]; then
@@ -66,7 +73,7 @@ function start {
             else
                 debug="";
             fi
-            gunicorn application:app --bind=$host:$port --workers=$numWorkers $debug
+            $python_exec -m gunicorn application:app --bind=$host:$port --workers=$numWorkers $debug
         else
             echo -e "\033[0;31mPre-flight checks failed; aborting launch of AIDE.\033[0m"
         fi
@@ -76,7 +83,7 @@ function start {
 }
 
 function stop {
-    celery -A celery_worker control shutdown;
+    $python_exec -m celery -A celery_worker control shutdown;
     pkill gunicorn;
 }
 
@@ -94,5 +101,5 @@ elif [ "$mode" == "restart" ]; then
 elif [ "$mode" == "stop" ]; then
     stop;
 else
-    echo "Usage: AIDE.sh {start|restart|stop} [debug]"
+    echo "Usage: AIDE.sh {start|restart|stop} [debug] [python_exec]"
 fi

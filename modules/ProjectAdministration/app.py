@@ -9,9 +9,8 @@
 import os
 import html
 import json
-from urllib.parse import urljoin
 import bottle
-from bottle import request, response, static_file, redirect, abort, SimpleTemplate
+from bottle import request, redirect, abort, SimpleTemplate
 from constants.version import AIDE_VERSION
 from .backend.middleware import ProjectConfigMiddleware
 
@@ -21,13 +20,13 @@ class ProjectConfigurator:
     def __init__(self, config, app, dbConnector, verbose_start=False):
         self.config = config
         self.app = app
-        self.staticDir = 'modules/ProjectAdministration/static'
+        self.static_dir = 'modules/ProjectAdministration/static'
         self.middleware = ProjectConfigMiddleware(config, dbConnector)
 
         self.login_check = None
 
         self._initBottle()
-    
+
 
     def loginCheck(self, project=None, admin=False, superuser=False, canCreateProjects=False, extend_session=False, return_all=False):
         return self.login_check(project, admin, superuser, canCreateProjects, extend_session, return_all)
@@ -36,7 +35,7 @@ class ProjectConfigurator:
     def addLoginCheckFun(self, loginCheckFun):
         self.login_check = loginCheckFun
 
-    
+
     def __redirect(self, loginPage=False, redirect=None):
         location = ('/login' if loginPage else '/')
         if loginPage and redirect is not None:
@@ -46,29 +45,33 @@ class ProjectConfigurator:
         response.set_header('Location', location)
         return response
 
-    
+
     def _initBottle(self):
 
         # read project configuration templates
-        with open(os.path.abspath(os.path.join(self.staticDir, 'templates/projectLandingPage.html')), 'r', encoding='utf-8') as f:
-            self.projLandPage_template = SimpleTemplate(f.read())
+        with open(os.path.abspath(os.path.join(self.static_dir,
+                'templates/projectLandingPage.html')), 'r', encoding='utf-8') as f_template:
+            self.projLandPage_template = SimpleTemplate(f_template.read())
 
-        with open(os.path.abspath(os.path.join(self.staticDir, 'templates/projectConfiguration.html')), 'r', encoding='utf-8') as f:
-            self.projConf_template = SimpleTemplate(f.read())
+        with open(os.path.abspath(os.path.join(self.static_dir,
+                'templates/projectConfiguration.html')), 'r', encoding='utf-8') as f_template:
+            self.projConf_template = SimpleTemplate(f_template.read())
 
-        with open(os.path.abspath(os.path.join(self.staticDir, 'templates/projectConfigWizard.html')), 'r', encoding='utf-8') as f:
-            self.projSetup_template = SimpleTemplate(f.read())
-            
-        
+        with open(os.path.abspath(os.path.join(self.static_dir,
+                'templates/projectConfigWizard.html')), 'r', encoding='utf-8') as f_template:
+            self.projSetup_template = SimpleTemplate(f_template.read())
+
+
         self.panelTemplates = {}
-        panelNames = os.listdir(os.path.join(self.staticDir, 'templates/panels'))
-        for pn in panelNames:
-            pnName, ext = os.path.splitext(pn)
+        panel_files = os.listdir(os.path.join(self.static_dir, 'templates/panels'))
+        for panel_file in panel_files:
+            panel_name, ext = os.path.splitext(panel_file)
             if ext.lower().startswith('.htm'):
-                with open(os.path.join(self.staticDir, 'templates/panels', pn), 'r', encoding='utf-8') as f:
-                    self.panelTemplates[pnName] = SimpleTemplate(f.read())
+                with open(os.path.join(self.static_dir, 'templates/panels', panel_file), 'r',
+                    encoding='utf-8') as f_panel:
+                    self.panelTemplates[panel_name] = SimpleTemplate(f_panel.read())
 
-        
+
         @self.app.route('/<project>/config/panels/<panel>')
         def send_static_panel(project, panel):
             if not self.loginCheck(project=project):
@@ -199,25 +202,21 @@ class ProjectConfigurator:
                 abort(401, 'forbidden')
             try:
                 # parse subset of configuration parameters (if provided)
-                try:
-                    data = request.json
-                    params = data['parameters']
-                except Exception:
-                    params = None
+                params = None if request.json is None else request.json.get('parameters', None)
 
-                projData = self.middleware.getPlatformInfo(project, params)
-                return { 'settings': projData }
+                proj_data = self.middleware.getPlatformInfo(project, params)
+                return { 'settings': proj_data }
             except Exception:
                 abort(400, 'bad request')
 
-        
+
         @self.app.get('/<project>/getProjectImmutables')
         @self.app.post('/<project>/getProjectImmutables')
         def get_project_immutables(project):
             if not self.loginCheck(project, admin=True):
                 abort(401, 'forbidden')
             return {'immutables': self.middleware.getProjectImmutables(project)}
-            
+
 
         @self.app.get('/<project>/getConfig')
         @self.app.post('/<project>/getConfig')

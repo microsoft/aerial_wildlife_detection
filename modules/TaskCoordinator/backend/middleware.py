@@ -9,7 +9,7 @@ import celery
 from celery import current_app
 from celery.result import AsyncResult
 
-from util.helpers import isAItask
+from util.helpers import is_ai_task
 
 
 class TaskCoordinatorMiddleware:
@@ -156,7 +156,7 @@ class TaskCoordinatorMiddleware:
                             if task_project != project:
                                 continue
                             task_type = task['name']
-                            if not include_ai_tasks and not isAItask(task_type):  #TODO
+                            if not include_ai_tasks and not is_ai_task(task_type):  #TODO
                                 continue
                             task_id.append(task['id'])
                         except Exception:

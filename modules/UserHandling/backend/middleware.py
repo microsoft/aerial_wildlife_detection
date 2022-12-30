@@ -11,7 +11,7 @@ import hashlib
 from threading import Thread
 from psycopg2 import sql
 from datetime import timedelta
-from util.helpers import current_time, checkDemoMode
+from util.helpers import current_time, check_demo_mode
 import secrets
 import bcrypt
 from bottle import request, response, abort
@@ -328,8 +328,8 @@ class UserMiddleware():
         # return result[0]['cnt'] == 1
 
 
-    def checkDemoMode(self, project):
-        return checkDemoMode(project, self.dbConnector)
+    def check_demo_mode(self, project):
+        return check_demo_mode(project, self.dbConnector)
 
 
     def decryptSessionToken(self, username, request):
@@ -388,7 +388,7 @@ class UserMiddleware():
             If 'return_all' is True, all individual flags (instead of just a single bool) is returned.
         '''
 
-        demoMode = checkDemoMode(project, self.dbConnector)
+        demoMode = check_demo_mode(project, self.dbConnector)
 
         if return_all:
             returnVals = {}
@@ -489,7 +489,7 @@ class UserMiddleware():
 
         try:
             # demo mode
-            response['demoMode'] = checkDemoMode(project, self.dbConnector)
+            response['demoMode'] = check_demo_mode(project, self.dbConnector)
 
             # rest
             queryStr = sql.SQL('SELECT * FROM {id_auth} WHERE project = %s AND username = %s').format(

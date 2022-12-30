@@ -11,6 +11,8 @@ import platform
 import argparse
 import bottle
 from bottle import Bottle
+
+from util import helpers
 from util.helpers import LogDecorator
 from util.configDef import Config
 from util import drivers
@@ -186,6 +188,9 @@ def assemble_server(verbose_start=True,
 
     # prepare bottle
     app = Bottle()
+
+    # monkey-patch JSON encoder
+    app.plugins[0].json_dumps = helpers.json_dumps
 
     # parse requested instances
     instances = {}

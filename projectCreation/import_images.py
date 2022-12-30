@@ -17,7 +17,7 @@ import argparse
 from psycopg2 import sql
 
 from modules.DataAdministration.backend.dataWorker import DataWorker
-from util.helpers import listDirectory
+from util.helpers import list_directory
 from util import drivers
 
 
@@ -76,7 +76,7 @@ if __name__ == '__main__':
 
     # locate all files in folder
     print('Locating files...')
-    files = list(listDirectory(args.image_folder, recursive=True, images_only=False))
+    files = list(list_directory(args.image_folder, recursive=True, images_only=False))
 
     print('Creating import session...')
     dw = DataWorker(config, dbConn, True)
@@ -87,7 +87,7 @@ if __name__ == '__main__':
                             )
 
     imgs = set()
-    imgFiles = listDirectory(args.image_folder, recursive=True)
+    imgFiles = list_directory(args.image_folder, recursive=True)
     imgFiles = list(imgFiles)
     for i in tqdm(imgFiles):
         if os.path.isdir(i):

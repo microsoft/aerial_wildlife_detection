@@ -238,13 +238,14 @@ class ModelMarketplaceMiddleware:
                     continue
 
                 stateID = str(r['id'])
-                values = {}
-                for key in r.keys():
-                    if isinstance(r[key], UUID):
-                        values[key] = str(r[key])
-                    else:
-                        values[key] = r[key]
-                
+                values = r
+                # values = {}
+                # for key in r.keys():
+                #     if isinstance(r[key], UUID):
+                #         values[key] = str(r[key])
+                #     else:
+                #         values[key] = r[key]
+
                 # check if model has already been imported into project
                 if stateID in modelsProject:
                     values['time_imported'] = modelsProject[stateID].timestamp()
@@ -262,7 +263,7 @@ class ModelMarketplaceMiddleware:
             stateID = str(builtins[key]['id'])
             if stateID not in builtinStates:
                 matchingStates[stateID] = builtins[key]
-            
+
         # matchingStates = {**matchingStates, **builtins}
 
         return matchingStates

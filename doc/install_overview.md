@@ -64,12 +64,57 @@ export PYTHONPATH=.
 Coming soon.
 
 
+### macOS
+
+_Note:_ these are preliminary instructions and still subject to extensive testing.
+
+#### With the Installer
+
+1. Install [Homebrew](https://brew.sh/):
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+2. Clone the AIDE repository:
+```bash
+git clone https://github.com/microsoft/aerial_wildlife_detection.git --branch v3.0 && cd aerial_wildlife_detection/
+```
+3. Launch installer and follow the instructions:
+```bash
+    ./install/install_darwin.sh
+```
+4. To start AIDE:
+```bash
+cd ${HOME}/aerial_wildlife_detection
+export AIDE_CONFIG_PATH=config/settings.ini
+export AIDE_MODULES=LabelUI,AIController,AIWorker,FileServer
+export PYTHONPATH=.
+./AIDE.sh start 0 python3.8
+```
+
+_NOTES:_
+* The macOS installer uses Homebrew instead of Conda and installs a dedicated version of Python
+  (3.8). You _can_ use Conda as well by providing an extra flag to the installation script:
+  `--python_exec=/path/to/python`. Don't forget to provide this path to the `AIDE.sh` script as
+  well.
+* Launch Agents (_i.e._, starting AIDE services upon login) are under development and not yet
+  supported.
+* The entire script has been tested on an Apple Silicon-based machine, but not yet under the x86
+  architecture. It likely still contains lots of bugs, so treat it as an alpha.
+* macOS 11 or greater is strongly recommended.
+* Both the default `zsh` and `bash` should work.
+
+
+#### With Docker
+
+Coming soon.
+
 
 ### Ubuntu / Debian
 
 #### With the Installer
 
-1. Install a Python environment manager, such as [Conda](https://conda.io/) (recommended and used below) or [Virtualenv](https://virtualenv.pypa.io):
+1. Install a Python environment manager, such as [Conda](https://conda.io/) (recommended and used
+   below) or [Virtualenv](https://virtualenv.pypa.io):
 ```bash
 wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 chmod +x Miniconda3-latest-Linux-x86_64.sh
@@ -91,15 +136,18 @@ git clone https://github.com/microsoft/aerial_wildlife_detection.git --branch v3
     ./install/install_debian.sh
 ```
 
-__Tip:__ the installer also supports more advanced configurations; you can check it out by calling `./install/install_debian.sh --help`.
+__Tip:__ the installer also supports more advanced configurations; you can check it out by calling
+`./install/install_debian.sh --help`.
 
 
 
 #### With Docker
 
-If you wish to install AIDE in a self-contained environment instead of the host operating system, you can do so with Docker:
+If you wish to install AIDE in a self-contained environment instead of the host operating system,
+you can do so with Docker:
 
-1. Download and install [Docker](https://docs.docker.com/engine/install) as well as [Docker Compose](https://docs.docker.com/compose/install)
+1. Download and install [Docker](https://docs.docker.com/engine/install) as well as [Docker
+   Compose](https://docs.docker.com/compose/install)
 2. If you want to use a GPU, you have to install the NVIDIA container toolkit:
 ```bash
     distribution=$(. /etc/os-release;echo $ID$VERSION_ID)

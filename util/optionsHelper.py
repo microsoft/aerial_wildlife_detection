@@ -330,7 +330,7 @@ def verify_options(options, autoCorrect=False):
                         if thisID not in valid_IDs:
                             errors.append(f'Selected option "{thisID}" for entry {key} could not be found in available options.')
                 else:
-                    value = helpers.toNumber(options[key])
+                    value = helpers.to_number(options[key])
                     if value is not None:
                         # numerical value
                         if valueType is not None and valueType not in  ('number', 'int', 'float'):
@@ -338,13 +338,13 @@ def verify_options(options, autoCorrect=False):
                         else:
                             # check if there's a min-max range
                             if 'min' in options:
-                                minVal = helpers.toNumber(options['min'])
+                                minVal = helpers.to_number(options['min'])
                                 if minVal is not None and value < minVal:
                                     warnings.append(f'Value "{value}" for entry {key} is smaller than specified minimum {minVal}.')
                                     if autoCorrect:
                                         value = minVal
                             if 'max' in options:
-                                maxVal = helpers.toNumber(options['max'])
+                                maxVal = helpers.to_number(options['max'])
                                 if maxVal is not None and value > maxVal:
                                     warnings.append(f'Value "{value}" for entry {key} is larger than specified maximum {maxVal}.')
                                     if autoCorrect:

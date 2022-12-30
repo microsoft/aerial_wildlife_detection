@@ -1,0 +1,37 @@
+# requirements with CPU-only package versions
+bottle>=0.12
+gunicorn>=19.9.0
+psycopg2-binary>=2.8.2
+tqdm>=4.32.1
+bcrypt>=3.1.6
+netifaces>=0.10.9
+python-dateutil
+numpy
+requests
+pytz   #TODO: obsolete since Python 3.9; replace with built-ins
+celery[redis,auth,msgpack]
+
+# image parsing
+scipy>=1.7.3
+python-magic>=0.4.24
+Pillow>=2.2.1
+rasterio>=1.2.3
+pydicom>=2.2.2
+imantics>=0.1.12
+scikit-image>=0.19.0
+scikit-learn>=1.0.1
+
+# for the AI backend
+opencv-python
+--find-links https://download.pytorch.org/whl/torch_stable.html
+torch
+torchvision
+
+# Detectron2
+git+https://github.com/facebookresearch/detectron2.git
+
+# YOLOv5
+yolov5
+
+# DeepForest
+git+https://github.com/weecology/DeepForest.git

@@ -2,7 +2,7 @@
     This class deals with all tasks related to the Model Marketplace,
     including model sharing, im-/export, download preparation, etc.
 
-    2020-21 Benjamin Kellenberger
+    2020-22 Benjamin Kellenberger
 '''
 
 import os
@@ -49,7 +49,7 @@ class ModelMarketplaceWorker:
         os.makedirs(self.tempDir, exist_ok=True)
         self._init_available_ai_models()
 
-    
+
 
     def _init_available_ai_models(self):
         '''
@@ -64,24 +64,23 @@ class ModelMarketplaceWorker:
                 self.availableModels.add(key)
 
 
-    
-    def getModelIdByName(self, modelName):
+
+    def getModelIdByName(self, model_name):
         '''
             Returns the ID of a model in the Model Marketplace under
             a given name, or None if it does not exist.
         '''
-        assert isinstance(modelName, str) and len(modelName.strip()) > 0, \
-            f'Invalid model name "{str(modelName)}".'
+        assert isinstance(model_name, str) and len(model_name.strip()) > 0, \
+            f'Invalid model name "{str(model_name)}".'
 
-        modelID = self.dbConnector.execute('''
+        model_id = self.dbConnector.execute('''
             SELECT id
             FROM "aide_admin".modelmarketplace
             WHERE name = %s;
-        ''', (modelName.strip(),), 1)
-        if modelID is not None and len(modelID):
-            return modelID[0]['id']
-        else:
-            return None
+        ''', (model_name.strip(),), 1)
+        if model_id is not None and len(model_id) > 0:
+            return model_id[0]['id']
+        return None
 
 
 
@@ -221,8 +220,8 @@ class ModelMarketplaceWorker:
                     modelDefinition = json.load(io.BytesIO(modelDefinition))
                 elif isinstance(modelDefinition, str):
                     modelDefinition = json.loads(modelDefinition)
-            except Exception as e:
-                raise Exception(f'Invalid model state definition file (message: "{e}").')
+            except Exception as exc:
+                raise Exception(f'Invalid model state definition file (message: "{exc}").') from exc
 
         if stateDict is not None and not isinstance(stateDict, bytes):
             raise Exception('Invalid model state dict provided (not a binary file).')

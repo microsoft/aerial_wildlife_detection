@@ -47,7 +47,7 @@ class ModelMarketplace:
         def get_models_marketplace(project):
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
-            
+
             try:
                 username = html.escape(request.get_cookie('username'))
 
@@ -72,57 +72,60 @@ class ModelMarketplace:
                 abort(401, 'forbidden')
             
             try:
-                modelName = request.params.get('name')
-                
-                available = (self.middleware.getModelIdByName(modelName) is None)
-                return {'status': 0, 'available': available}
-            except Exception as e:
-                return {'status': 1, 'message': str(e)}
+                model_name = request.params.get('name')
 
-        
+                available = (self.middleware.getModelIdByName(model_name) is None)
+                return {'status': 0, 'available': available}
+            except Exception as exc:
+                return {'status': 1, 'message': str(exc)}
+
+
         @self.app.post('/<project>/importModel')
         def import_model(project):
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
-            
+
             try:
                 # get data
                 username = html.escape(request.get_cookie('username'))
 
                 if request.json is not None:
 
-                    modelID = str(request.json['model_id'])
+                    model_id = str(request.json['model_id'])
                     try:
-                        modelID = uuid.UUID(modelID)
+                        model_id = uuid.UUID(model_id)
 
-                        # modelID is indeed a UUID; import from database
-                        return self.middleware.importModelDatabase(project, username, modelID)
+                        # model_id is indeed a UUID; import from database
+                        return self.middleware.importModelDatabase(project, username, model_id)
 
                     except Exception:
                         # model comes from network
                         public = request.json.get('public', True)
                         anonymous = request.json.get('anonymous', False)
 
-                        namePolicy = request.json.get('name_policy', 'skip')
-                        customName = request.json.get('custom_name', None)
+                        name_policy = request.json.get('name_policy', 'skip')
+                        custom_name = request.json.get('custom_name', None)
 
-                        forceReimport = not(modelID.strip().lower().startswith('aide://'))
+                        force_reimport = not model_id.strip().lower().startswith('aide://')
 
-                        return self.middleware.importModelURI(project, username, modelID, public, anonymous, forceReimport, namePolicy, customName)
-                
+                        return self.middleware.importModelURI(project, username, model_id, public,
+                                                                anonymous, force_reimport,
+                                                                name_policy, custom_name)
+
                 else:
                     # file upload
                     file = request.files.get(list(request.files.keys())[0])
                     public = parse_boolean(request.params.get('public', True))
                     anonymous = parse_boolean(request.params.get('anonymous', False))
 
-                    namePolicy = request.params.get('name_policy', 'skip')
-                    customName = request.params.get('custom_name', None)
+                    name_policy = request.params.get('name_policy', 'skip')
+                    custom_name = request.params.get('custom_name', None)
 
-                    return self.middleware.importModelFile(project, username, file, public, anonymous, namePolicy, customName)
+                    return self.middleware.importModelFile(project, username, file, public,
+                                                                anonymous, name_policy, custom_name)
 
-            except Exception as e:
-                return {'status': 1, 'message': str(e)}
+            except Exception as exc:
+                return {'status': 1, 'message': str(exc)}
 
 
         @self.app.post('/<project>/requestModelDownload')

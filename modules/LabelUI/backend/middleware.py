@@ -346,7 +346,7 @@ class DBMiddleware():
 
         # query
         projImmutables = self.get_project_immutables(project)
-        demoMode = helpers.checkDemoMode(project, self.dbConnector)
+        demoMode = helpers.check_demo_mode(project, self.dbConnector)
         queryStr = self.sqlBuilder.getFixedImagesQueryString(project, projImmutables['annotationType'], projImmutables['predictionType'], demoMode)
 
         # verify provided UUIDs
@@ -398,7 +398,7 @@ class DBMiddleware():
         '''
         # query
         projImmutables = self.get_project_immutables(project)
-        demoMode = helpers.checkDemoMode(project, self.dbConnector)
+        demoMode = helpers.check_demo_mode(project, self.dbConnector)
         queryStr = self.sqlBuilder.getNextBatchQueryString(project, projImmutables['annotationType'], projImmutables['predictionType'], order, subset, demoMode)
 
         # limit (TODO: make 128 a hyperparameter)
@@ -546,7 +546,7 @@ class DBMiddleware():
         '''
             Sends user-provided annotations to the database.
         '''
-        if helpers.checkDemoMode(project, self.dbConnector):
+        if helpers.check_demo_mode(project, self.dbConnector):
             return 1
 
         projImmutables = self.get_project_immutables(project)
