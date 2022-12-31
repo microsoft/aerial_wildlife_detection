@@ -35,34 +35,38 @@ MARKETPLACE_METADATA = {
 
 def add_meta_args(parser, add_labelclasses=True):
     parser.add_argument('--model-name', type=str,
-                        help='Name of the model as it will appear in the AIDE Model Marketplace.')
+        help='Name of the model as it will appear in the AIDE Model Marketplace.')
     parser.add_argument('--description', type=str,
-                        help='Model description. Can either be a text or a path to a text file.')
+        help='Model description. Can either be a text or a path to a text file.')
     parser.add_argument('--author', type=str,
-                        help='Author name of the model. If omitted, the current system\'s user account name will be used.')
+        help='Author name of the model. ' + \
+            'If omitted, the current system\'s user account name will be used.')
     parser.add_argument('--tags', nargs='?',
-                        help='Tags to add to Model Marketplace instance. Can be a list of strings or a path to a text or JSON file.')
+        help='Tags to add to Model Marketplace instance. ' + \
+            'Can be a list of strings or a path to a text or JSON file.')
     parser.add_argument('--citation-info', type=str,
-                        help='Citation information for model; supports basic HTML tags. Can be a string or a path to a text file.')
+        help='Citation information for model; supports basic HTML tags. ' + \
+            'Can be a string or a path to a text file.')
     parser.add_argument('--license', type=str,
-                        help='License information. Can be a string or a path to a text file.')
+        help='License information. Can be a string or a path to a text file.')
     if add_labelclasses:
         parser.add_argument('--labelclasses', nargs='?',
-                            help='Labelclasses. Can be a list of names or a path to a text or JSON file defining classes.')
-    
+            help='Labelclasses. ' + \
+                'Can be a list of names or a path to a text or JSON file defining classes.')
+
     return parser
 
 
 
 def parse_argument(arg_name, arg, target_type=str, check_for_file_path=True):
-    def _extract_list_from_dict(input):
+    def _extract_list_from_dict(input_object):
         # need list but got JSON dict; try to find longest list in keys
-        keys = [key for key in input.keys() if isinstance(input[key], list)]
-        listSizes = [len(input[key]) for key in keys]
-        if not len(listSizes):
+        keys = [key for key in input_object.keys() if isinstance(input_object[key], list)]
+        list_sizes = [len(input_object[key]) for key in keys]
+        if len(list_sizes) == 0:
             raise Exception(f'Argument "{arg_name}" points to JSON file, but no list found within.')
-        largest = np.argmax(listSizes)
-        return input[keys[largest.tolist()]]
+        largest = np.argmax(list_sizes)
+        return input_object[keys[largest.tolist()]]
 
     if isinstance(arg, str):
         if target_type is not str:
@@ -71,13 +75,15 @@ def parse_argument(arg_name, arg, target_type=str, check_for_file_path=True):
             # load file
             _, ext = os.path.splitext(arg)
             if ext.lower() == '.json':
-                arg = json.load(open(arg, 'r'))
+                with open(arg, 'r', encoding='utf-8') as f_json:
+                    arg = json.load(f_json)
             else:
                 try:
-                    with open(arg, 'r') as f:
-                        arg = f.readlines()
-                except Exception:
-                    raise Exception(f'Argument "{arg_name}" set to file "{arg}", but file could not be loaded.')
+                    with open(arg, 'r', encoding='utf-8') as f_plain:
+                        arg = f_plain.readlines()
+                except Exception as exc:
+                    raise Exception(f'Argument "{arg_name}" set to file "{arg}", ' +\
+                        'but file could not be loaded.') from exc
 
         if target_type is str:
             if isinstance(arg, dict):
@@ -85,46 +91,51 @@ def parse_argument(arg_name, arg, target_type=str, check_for_file_path=True):
             elif isinstance(arg, list):
                 arg = '\n'.join(arg)
             return arg
-        
-        elif target_type is list:
+
+        if target_type is list:
             # extract list
             if isinstance(arg, dict):
                 return _extract_list_from_dict(arg)
-            elif isinstance(arg, list):
+            if isinstance(arg, list):
                 return arg
 
     elif isinstance(arg, list):
         if target_type is list:
             return arg
-        elif target_type is str:
+        if target_type is str:
             return '\n'.join(arg)
 
 
 
-def assemble_marketplace_metadata(modelLibrary, labelclasses: list, modelName: str, description=None, author=None, tags=[], citation_info=None, license=None):
-    
-    assert modelLibrary in PREDICTION_MODELS, 'Model library "{}" could not be found. Must be one of: {}'.format(
-        modelLibrary,
-        ' '.join(list(PREDICTION_MODELS.keys()))
-    )
-    assert len(modelName), 'Model name must not be empty'
+def assemble_marketplace_metadata(model_library,
+                                    labelclasses: list,
+                                    model_name: str,
+                                    description: str=None,
+                                    author: str=None,
+                                    tags: list=[],
+                                    citation_info: str=None,
+                                    license_info: str=None) -> dict:
+    assert model_library in PREDICTION_MODELS, \
+        f'Model library "{model_library}" could not be found. ' + \
+            f'Must be one of: {" ".join(list(PREDICTION_MODELS.keys()))}'
+    assert len(model_name), 'Model name must not be empty'
     assert len(labelclasses), 'Label class list must not be empty'
     if not isinstance(author, str):
         author = os.getlogin()
         print(f'Warning: no author name provided; replaced with "{author}".')
 
-    modelLibraryMeta = PREDICTION_MODELS[modelLibrary]
+    model_library_meta = PREDICTION_MODELS[model_library]
 
     meta = MARKETPLACE_METADATA.copy()
-    meta['name'] = modelName
+    meta['name'] = model_name
     meta['description'] = description
-    meta['ai_model_library'] = modelLibrary
-    meta['annotation_type'] = modelLibraryMeta['annotationType']
-    meta['prediction_type'] = modelLibraryMeta['predictionType']
+    meta['ai_model_library'] = model_library
+    meta['annotation_type'] = model_library_meta['annotationType']
+    meta['prediction_type'] = model_library_meta['predictionType']
     meta['author'] = author
     meta['tags'] = tags if isinstance(tags, list) else []
     meta['citation_info'] = citation_info
-    meta['license'] = license
+    meta['license'] = license_info
     meta['time_created'] = datetime.now().timestamp()
 
     return meta

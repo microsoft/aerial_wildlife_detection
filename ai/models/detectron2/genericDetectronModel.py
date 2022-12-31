@@ -24,11 +24,11 @@ from detectron2.utils.events import EventStorage
 from detectron2 import model_zoo
 
 from ai.models import AIModel
+from util import optionsHelper
 from ._functional.dataset import getDetectron2Data
 from ._functional.collation import collate
 from ._functional.datasetMapper import Detectron2DatasetMapper
 from ._functional.checkpointer import DetectionCheckpointerInMem
-from util import optionsHelper
 
 
 class GenericDetectron2Model(AIModel):
@@ -67,19 +67,19 @@ class GenericDetectron2Model(AIModel):
 
 
     @classmethod
-    def parse_aide_config(cls, config, overrideDetectron2cfg=None):
+    def parse_aide_config(cls, config, override_detectron2cfg=None):
         detectron2cfg = get_cfg()
         detectron2cfg.set_new_allowed(True)
-        if overrideDetectron2cfg is not None:
-            detectron2cfg.update(overrideDetectron2cfg)
+        if override_detectron2cfg is not None:
+            detectron2cfg.update(override_detectron2cfg)
         if isinstance(config, dict):
             for key in config.keys():
                 if isinstance(key, str) and key.startswith('DETECTRON2.'):
                     value = optionsHelper.get_hierarchical_value(config[key], ['value', 'id'])
                     if isinstance(value, list):
-                        for v in range(len(value)):
-                            value[v] = optionsHelper.get_hierarchical_value(value[v], ['value', 'id'])
-                    
+                        for idx, val in enumerate(value):
+                            value[idx] = optionsHelper.get_hierarchical_value(val, ['value', 'id'])
+
                     # copy over to Detectron2 configuration
                     tokens = key.split('.')
                     attr = detectron2cfg
@@ -94,27 +94,29 @@ class GenericDetectron2Model(AIModel):
         return detectron2cfg
 
 
-    
+
     def _get_config(self):
         cfg = get_cfg()
         cfg.set_new_allowed(True)
 
         # augment and initialize Detectron2 cfg with selected model
-        defaultConfig = optionsHelper.get_hierarchical_value(self.options, ['options', 'model', 'config', 'value', 'id'])
-        if isinstance(defaultConfig, str):
+        default_config = optionsHelper.get_hierarchical_value(self.options,
+                                                    ['options', 'model', 'config', 'value', 'id'])
+        if isinstance(default_config, str):
             # try to load from Detectron2's model zoo
             try:
-                configFile = model_zoo.get_config_file(defaultConfig)
+                config_file = model_zoo.get_config_file(default_config)
             except Exception:
                 # not available; try to load locally instead
-                configFile = os.path.join(os.getcwd(), 'ai/models/detectron2/_functional/configs', defaultConfig)
-                if not os.path.exists(configFile):
-                    configFile = None
-            
-            if configFile is not None:
-                cfg.merge_from_file(configFile)
+                config_file = os.path.join(os.getcwd(),
+                                        'ai/models/detectron2/_functional/configs', default_config)
+                if not os.path.exists(config_file):
+                    config_file = None
+
+            if config_file is not None:
+                cfg.merge_from_file(config_file)
             try:
-                cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(defaultConfig)
+                cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url(default_config)
             except Exception:
                 pass
         return cfg
@@ -122,15 +124,17 @@ class GenericDetectron2Model(AIModel):
 
 
     @classmethod
-    def _load_default_options(cls, jsonFilePath, defaultOptions):
+    def _load_default_options(cls, json_file_path, default_options):
         try:
             # try to load defaults from JSON file first
-            options = json.load(open(jsonFilePath, 'r'))
-        except Exception as e:
+            with open(json_file_path, 'r', encoding='utf-8') as f_opts:
+                options = json.load(f_opts)
+        except Exception as exc:
             # error; fall back to built-in defaults
-            print(f'Error reading default options file "{jsonFilePath}" (message: "{str(e)}"), falling back to built-in options.')
-            options = defaultOptions
-        
+            print(f'Error reading default options file "{json_file_path}" ' + \
+                f'(message: "{str(exc)}"), falling back to built-in options.')
+            options = default_options
+
         # expand options
         options = optionsHelper.substitute_definitions(options)
 
@@ -140,54 +144,56 @@ class GenericDetectron2Model(AIModel):
 
     @classmethod
     def verifyOptions(cls, options):
-        defaultOptions = cls.getDefaultOptions()
+        default_options = cls.getDefaultOptions()
         if options is None:
             return {
                 'valid': True,
-                'options': defaultOptions
+                'options': default_options
             }
         try:
             if isinstance(options, str):
                 options = json.loads(options)
             options = optionsHelper.substitute_definitions(options)
-        except Exception as e:
+        except Exception as exc:
             return {
                 'valid': False,
-                'errors': [f'Options are not in a proper format (message: {str(e)}).']
+                'errors': [f'Options are not in a proper format (message: {str(exc)}).']
             }
         try:
             # mandatory field: model config
-            modelConfig = optionsHelper.get_hierarchical_value(options, ['options', 'model', 'config', 'value'])
-            if modelConfig is None:
+            model_config = optionsHelper.get_hierarchical_value(options,
+                                                        ['options', 'model', 'config', 'value'])
+            if model_config is None:
                 raise Exception('missing model type field in options.')
 
-            opts, warnings, errors = optionsHelper.verify_options(options['options'], autoCorrect=True)
+            opts, warnings, errors = optionsHelper.verify_options(options['options'],
+                                                                        autoCorrect=True)
             options['options'] = opts
             return {
-                'valid': not len(errors),
+                'valid': len(errors) == 0,
                 'warnings': warnings,
                 'errors': errors,
                 'options': options
             }
-        except Exception as e:
+        except Exception as exc:
             return {
                 'valid': False,
-                'errors': [f'An error occurred trying to verify options (message: {str(e)}).']
+                'errors': [f'An error occurred trying to verify options (message: {str(exc)}).']
             }
-    
 
-    def loadModelWeights(self, model, stateDict, forceNewModel):
+
+    def loadModelWeights(self, model, state_dict, force_new_model):
         checkpointer = DetectionCheckpointerInMem(model)
-        if 'model' in stateDict and not forceNewModel:
+        if 'model' in state_dict and not force_new_model:
             # trained weights available
-            checkpointer.loadFromObject(stateDict)
+            checkpointer.loadFromObject(state_dict)
         else:
             # fresh model; initialize from Detectron2 weights
             checkpointer.load(self.detectron2cfg.MODEL.WEIGHTS)
-    
-    
 
-    def initializeModel(self, stateDict, data, revertProjectToStateMap=False):
+
+
+    def initializeModel(self, state_dict, data, revert_project_to_state_map=False):
         '''
             Loads Bytes object "stateDict" through torch and looks for a Detectron2
             config to initialize the model structure, optionally with pre-trained
@@ -205,88 +211,94 @@ class GenericDetectron2Model(AIModel):
             mentation.
         '''
         # check if user has forced creating a new model
-        forceNewModel = optionsHelper.get_hierarchical_value(self.options, ['options', 'model', 'force', 'value'], fallback=False)
-        if isinstance(forceNewModel, bool) and forceNewModel:
+        force_new_model = optionsHelper.get_hierarchical_value(self.options,
+                                                            ['options', 'model', 'force', 'value'],
+                                                            fallback=False)
+        if isinstance(force_new_model, bool) and force_new_model:
             # print warning and reset flag
             print(f'[{self.project}] User has selected to force recreating a brand-new model.')
-            optionsHelper.set_hierarchical_value(self.options, ['options', 'model', 'force', 'value'], False)
+            optionsHelper.set_hierarchical_value(self.options,
+                                                    ['options', 'model', 'force', 'value'],
+                                                    False)
         else:
-            forceNewModel = False
+            force_new_model = False
 
         # load state dict
-        if stateDict is not None and not forceNewModel:
-            if not isinstance(stateDict, dict):
-                stateDict = torch.load(io.BytesIO(stateDict), map_location='cpu')
+        if state_dict is not None and not force_new_model:
+            if not isinstance(state_dict, dict):
+                state_dict = torch.load(io.BytesIO(state_dict), map_location='cpu')
         else:
-            stateDict = {}
+            state_dict = {}
 
         # retrieve Detectron2 cfg
-        if 'detectron2cfg' in stateDict and not forceNewModel:
+        if 'detectron2cfg' in state_dict and not force_new_model:
             # medium priority: model overrides
             self.detectron2cfg.set_new_allowed(True)
-            self.detectron2cfg.update(CfgNode(stateDict['detectron2cfg']))
+            self.detectron2cfg.update(CfgNode(state_dict['detectron2cfg']))
 
         # top priority: AIDE config overrides
         self.detectron2cfg = self.parse_aide_config(self.options, self.detectron2cfg)
 
-        stateDict['detectron2cfg'] = self.detectron2cfg
-        
+        state_dict['detectron2cfg'] = self.detectron2cfg
+
         # check if CUDA is available; set to CPU temporarily if not
         if not torch.cuda.is_available():
             self.detectron2cfg.MODEL.DEVICE = 'cpu'
 
         # construct model and load state
         model = detectron2.modeling.build_model(self.detectron2cfg)
-        self.loadModelWeights(model, stateDict, forceNewModel)
-        
+        self.loadModelWeights(model, state_dict, force_new_model)
+
         # load or create labelclass map
-        if 'labelclassMap' in stateDict and not forceNewModel:
-            labelclassMap = stateDict['labelclassMap']
+        if 'labelclassMap' in state_dict and not force_new_model:
+            labelclass_map = state_dict['labelclassMap']
         else:
-            labelclassMap = {}
-        
+            labelclass_map = {}
+
             # add existing label classes; any non-UUID entry will be discarded during prediction
             try:
-                pretrainedDataset = self.detectron2cfg.DATASETS.TRAIN
-                if isinstance(pretrainedDataset, list) or isinstance(pretrainedDataset, tuple) and len(pretrainedDataset):
-                    pretrainedDataset = pretrainedDataset[0]
-                pretrainedMeta = MetadataCatalog.get(pretrainedDataset)
-                for idx, cID in enumerate(pretrainedMeta.thing_classes):
-                    labelclassMap[cID] = idx
+                pretrained_dataset = self.detectron2cfg.DATASETS.TRAIN
+                if isinstance(pretrained_dataset, list) or \
+                    isinstance(pretrained_dataset, tuple) and \
+                    len(pretrained_dataset) > 0:
+                    pretrained_dataset = pretrained_dataset[0]
+                pretrained_meta = MetadataCatalog.get(pretrained_dataset)
+                for idx, class_id in enumerate(pretrained_meta.thing_classes):
+                    labelclass_map[class_id] = class_id
             except Exception:
                 pass
-            
+
             if hasattr(model, 'names'):
                 # YOLOv5 format; get names from there
-                for idx, cID in enumerate(model.names):
-                    labelclassMap[cID] = idx
+                for idx, class_id in enumerate(model.names):
+                    labelclass_map[class_id] = idx
 
         # check data for new label classes
-        projectToStateMap = {}
-        newClasses = []
-        for lcID in data['labelClasses']:
-            if lcID not in labelclassMap:
+        project_to_state_map = {}
+        new_classes = []
+        for labelclass_id, labelclass_meta in data['labelClasses'].items():
+            if labelclass_id not in labelclass_map:
                 # check if original label class got re-mapped
-                lcMap_origin_id = data['labelClasses'][lcID].get('labelclass_id_model', None)
-                if lcMap_origin_id is None or lcMap_origin_id not in labelclassMap:
+                lc_map_origin_id = labelclass_meta.get('labelclass_id_model', None)
+                if lc_map_origin_id is None or lc_map_origin_id not in labelclass_map:
                     # no remapping done; class really is new
-                    newClasses.append(lcID)
+                    new_classes.append(labelclass_id)
                 else:
                     # class has been re-mapped
-                    if revertProjectToStateMap:
-                        projectToStateMap[lcMap_origin_id] = lcID
+                    if revert_project_to_state_map:
+                        project_to_state_map[lc_map_origin_id] = labelclass_id
                     else:
-                        projectToStateMap[lcID] = lcMap_origin_id
-        stateDict['labelclassMap'] = labelclassMap
+                        project_to_state_map[labelclass_id] = lc_map_origin_id
+        state_dict['labelclassMap'] = labelclass_map
 
-        # parallelize model (if architecture supports it)   #TODO: try out whether/how well this works
+        # parallelize model (if architecture supports it). TODO: try out whether/how well this works
         distributed = comm.get_world_size() > 1
         if distributed:
             model = DistributedDataParallel(
                 model, device_ids=[comm.get_local_rank()], broadcast_buffers=False
             )
 
-        return model, stateDict, newClasses, projectToStateMap
+        return model, state_dict, new_classes, project_to_state_map
 
 
 

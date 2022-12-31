@@ -29,7 +29,7 @@ test_only=false                     # skip installation and only do checks and t
 # -----------------------------------------------------------------------------
 
 # constants
-INSTALLER_VERSION=3.0.221230
+INSTALLER_VERSION=3.0.221231
 PYTHON_VERSION=3.8
 MIN_PG_VERSION=10
 DEFAULT_PORT_RABBITMQ=5672
@@ -261,7 +261,7 @@ ${ESC}[1mEXIT STATUS${ESC}[0m
     ${ESC}[1m8${ESC}[0m Remote PostgreSQL server cannot be contacted. Make sure current machine and account have access permissions to database and server.
 
 ${ESC}[1mHISTORY${ESC}[0m
-    Dec 30, 2022: Initial macOS installer release by Benjamin Kellenberger (benjamin.kellenberger@yale.edu), based off Debian installer
+    Dec 31, 2022: Initial macOS installer release by Benjamin Kellenberger (benjamin.kellenberger@yale.edu), based off Debian installer
 
 $INSTALLER_VERSION                  https://github.com/microsoft/aerial_wildlife_detection              
 EOF
@@ -1751,14 +1751,14 @@ fi
 #     log "\nYou can now log in with your administrator account '$adminName'."
 
 # else
-    # log "To start AIDE, follow these steps below:"
-    # log "1. Open a Terminal window: /Applications/Terminal"
-    # log "2. Issue below commands in order:"
-    # log "cd $aide_root"
-    # log "export AIDE_CONFIG_PATH=$config_file"
-    # log "export AIDE_MODULES=$aide_modules"
-    # log "export PYTHONPATH=."
-    # log "./AIDE.sh start 0 $python_exec"
+    log "To start AIDE, follow these steps below:"
+    log "1. Open a Terminal window: /Applications/Terminal"
+    log "2. Issue below commands in order:"
+    log "cd $aide_root"
+    log "export AIDE_CONFIG_PATH=$config_file"
+    log "export AIDE_MODULES=$aide_modules"
+    log "export PYTHONPATH=."
+    log "./AIDE.sh start 0 $python_exec"
 # fi
 
 
