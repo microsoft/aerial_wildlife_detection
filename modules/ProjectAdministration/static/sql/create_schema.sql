@@ -30,6 +30,16 @@ CREATE TABLE IF NOT EXISTS {id_image} (
     PRIMARY KEY (id),
     UNIQUE (filename,x,y,width,height)
 );
+DO $$
+BEGIN
+    IF (SELECT COUNT(1) FROM information_schema.routines
+        WHERE routine_name='postgis_version') > 0 AND (
+            SELECT COUNT(1) FROM information_schema.columns
+            WHERE table_schema=%s AND table_name='image' AND column_name='extent'
+        ) = 0
+    THEN PERFORM AddGeometryColumn(%s, 'image', 'extent', %s, 'POLYGON', 2, true);
+    END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS {id_iu} (
     username VARCHAR NOT NULL,

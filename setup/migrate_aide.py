@@ -1,8 +1,8 @@
 '''
     Run this file whenever you update AIDE to bring your existing project setup up-to-date
     with respect to changes due to newer versions.
-    
-    2019-21 Benjamin Kellenberger
+
+    2019-22 Benjamin Kellenberger
 '''
 
 import os
@@ -12,7 +12,8 @@ from constants import version
 
 
 MODIFICATIONS_sql = [
-    'ALTER TABLE "{schema}".annotation ADD COLUMN IF NOT EXISTS meta VARCHAR; ALTER TABLE "{schema}".image_user ADD COLUMN IF NOT EXISTS meta VARCHAR;',
+    '''ALTER TABLE "{schema}".annotation ADD COLUMN IF NOT EXISTS meta VARCHAR;
+        ALTER TABLE "{schema}".image_user ADD COLUMN IF NOT EXISTS meta VARCHAR;''',
     'ALTER TABLE "{schema}".labelclass ADD COLUMN IF NOT EXISTS keystroke SMALLINT UNIQUE;',
     'ALTER TABLE "{schema}".image ADD COLUMN IF NOT EXISTS last_requested TIMESTAMPTZ;',
 
@@ -351,7 +352,7 @@ MODIFICATIONS_sql = [
             )
             THEN
                 ALTER TABLE "{schema}".image DROP CONSTRAINT IF EXISTS image_filename_key;
-                ALTER TABLE "{schema}".image ADD CONSTRAINT image_filename_unique  UNIQUE (filename,x,y,width,height);
+                ALTER TABLE "{schema}".image ADD CONSTRAINT image_filename_unique UNIQUE (filename,x,y,width,height);
             END IF;
         END;
     END $$;
@@ -361,6 +362,20 @@ MODIFICATIONS_sql = [
   UPDATE "{schema}".taskhistory
     SET taskName = SUBSTRING(processDescription, 0, POSITION('(' IN processDescription))
     WHERE taskName IS NULL;
+  ''',
+
+  # PostGIS
+  '''
+    DO $$
+    BEGIN
+        IF (SELECT COUNT(1) FROM information_schema.routines
+            WHERE routine_name='postgis_version') > 0 AND (
+                SELECT COUNT(1) FROM information_schema.columns
+                WHERE table_schema='{schema}' AND table_name='image' AND column_name='extent'
+            ) = 0
+        THEN PERFORM AddGeometryColumn('{schema}', 'image', 'extent', 4326, 'POLYGON', 2, true);
+        END IF;
+    END $$;
   '''
 ]
 
@@ -369,7 +384,7 @@ MODIFICATIONS_sql = [
 def migrate_aide(forceMigrate=False):
     from modules import Database, UserHandling
     from util.configDef import Config
-    
+
     config = Config()
     dbConn = Database(config)
     if not dbConn.canConnect():

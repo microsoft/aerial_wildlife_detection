@@ -26,7 +26,7 @@ Exciting news: AIDE version 3.0 is on the way! This is the **nightly** build of 
   * :ballot_box_with_check: [DeepForest and BirdDetector](https://github.com/weecology/DeepForest) (first prototype working; needs to be tested)
 * :white_check_mark: Virtual views for images implemented
 * :ballot_box_with_check: Annotation im-/export: basic functionality and some parsers implemented; need more testing. More parsers (e.g., PASCAL VOC, ESRI ShapeFile, GeoJSON) to be coded.
-* :red_circle: Mapservers (WMS, WMTS, VectorTiles): to be implemented; need convention on how to store CRS, geotransform and GPS coordinates in database
+* :ballot_box_with_check: Mapservers (WMS, WMTS, VectorTiles): to be implemented; started implementing PostGIS functionality for images
 
 More functionality might come and will be added to this list as implementations progress.
 

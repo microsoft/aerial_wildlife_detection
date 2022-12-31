@@ -29,7 +29,7 @@ from celery import current_task
 from modules.LabelUI.backend.annotation_sql_tokens import QueryStrings_annotation, QueryStrings_prediction
 from util.helpers import FILENAMES_PROHIBITED_CHARS, list_directory, base64ToImage, hexToRGB, slugify, current_time, is_fileServer
 from util.imageSharding import get_split_positions, split_image
-from util import drivers, parsers
+from util import drivers, parsers, geospatial
 
 
 class DataWorker:
@@ -413,13 +413,13 @@ class DataWorker:
         tempDir_metaFile = os.path.join(self.tempDir, project, 'upload_sessions')
         os.makedirs(tempDir_metaFile, exist_ok=True)
         json.dump(sessionMeta, open(os.path.join(tempDir_metaFile, sessionID+'.json'), 'w'))
-       
+
         # cache for faster access
         self.uploadSessions[sessionID] = sessionMeta
 
         return sessionID
 
-    
+
 
     def verifySessionAccess(self, project, user, sessionID):
         '''
@@ -526,16 +526,20 @@ class DataWorker:
         # verify access
         assert self.verifySessionAccess(project, username, sessionID), \
                     'Upload session does not exist or user has no access to it'
-        
+
+        now = slugify(current_time())
+
         # load session metadata
         meta = self.uploadSessions[sessionID]
 
-        now = slugify(current_time())
+        # load geospatial project metadata
+        srid = geospatial.get_srid(self.dbConnector, project)
 
         # temp dir to save raw files to
         tempRoot = os.path.join(meta['sessionDir'], 'files')
 
-        destFolder = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), project) + os.sep
+        destFolder = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'),
+                                    project) + os.sep
 
         # save all files to temp dir temporarily
         tempFiles = {}
@@ -544,15 +548,16 @@ class DataWorker:
             nextFileName = nextUpload.raw_filename
             if nextFileName.startswith('/') or nextFileName.startswith('\\'):
                 nextFileName = nextFileName[1:]
-            
+
             # save to disk
-            tempFileName = os.path.join(tempRoot, nextFileName)
-            parent, _ = os.path.split(tempFileName)
+            temp_file_name = os.path.join(tempRoot, nextFileName)
+            parent, _ = os.path.split(temp_file_name)
             os.makedirs(parent, exist_ok=True)
-            nextUpload.save(open(tempFileName, 'wb'))
+            with open(temp_file_name, 'wb') as f_temp:
+                nextUpload.save(f_temp)
             tempFiles[key] = {
                 'orig': nextFileName,
-                'temp': tempFileName
+                'temp': temp_file_name
             }
 
         result = {}
@@ -587,7 +592,7 @@ class DataWorker:
                     # file already exists; check policy
                     if meta['existingFiles'] == 'keepExisting':
                         # rename new file
-                        while(os.path.exists(destPath)):
+                        while os.path.exists(destPath):
                             # rename file
                             fn, ext = os.path.splitext(nextFileName)
                             match = self.countPattern.search(fn)
@@ -606,7 +611,7 @@ class DataWorker:
                                         originalFileName, nextFileName
                                     )
                                 }
-                    
+
                     elif meta['existingFiles'] == 'skipExisting':
                         # ignore new file
                         imgs_warn[key] = {
@@ -669,7 +674,7 @@ class DataWorker:
                                         split_props.get('tight', False),
                                         split_props.get('discard_homogeneous_percentage', None),
                                         split_props.get('discard_homogeneous_quantization_value', 255),
-                                        celeryUpdateInterval=self.CELERY_UPDATE_INTERVAL)
+                                        celery_update_interval=self.CELERY_UPDATE_INTERVAL)
                             
                             if len(coords) == 1:
                                 # only a single view; don't register x, y
@@ -723,14 +728,14 @@ class DataWorker:
                                 split_props.get('discard_homogeneous_quantization_value', 255),
                                 os.path.join(destFolder, originalFileName),
                                 return_patches=False,
-                                celeryUpdateInterval=self.CELERY_UPDATE_INTERVAL
+                                celery_update_interval=self.CELERY_UPDATE_INTERVAL
                                 )
                             for f_idx, filename in enumerate(filenames):
                                 filename = filename.replace(destFolder, '')
                                 imgs_valid[filename] = {
                                     'filename': filename,
-                                    'message': \
-            f'created tile at position ({coords[f_idx][0], coords[f_idx][1]})',
+                                    'message': 'created tile at position ' + \
+                                        f'({coords[f_idx][0], coords[f_idx][1]})',
                                     'status': 0,
                                     'x': None,
                                     'y': None,
@@ -800,20 +805,20 @@ class DataWorker:
                             }
 
             # save data to project folder
-            for subKey in images_save:
-                img = images_save[subKey]['image']
-                newFileName = images_save[subKey]['filename']
+            for sub_key, sub_img in images_save.items():
+                img = sub_img['image']
+                new_filename = sub_img['filename']
                 try:
-                    destPath = os.path.join(destFolder, newFileName)
-                    parent, _ = os.path.split(destPath)
+                    dest_path = os.path.join(destFolder, new_filename)
+                    parent, _ = os.path.split(dest_path)
                     if len(parent):
                         os.makedirs(parent, exist_ok=True)
 
-                    if os.path.exists(destPath):
+                    if os.path.exists(dest_path):
                         # file already exists; check policy
                         if meta['existingFiles'] == 'replaceExisting':
                             # overwrite new file; first remove metadata
-                            queryStr = sql.SQL('''
+                            query_str = sql.SQL('''
                                 DELETE FROM {id_iu}
                                 WHERE image IN (
                                     SELECT id FROM {id_img}
@@ -837,21 +842,21 @@ class DataWorker:
                                 id_pred=sql.Identifier(project, 'prediction'),
                                 id_img=sql.Identifier(project, 'image')
                             )
-                            self.dbConnector.execute(queryStr,
-                                tuple([newFileName]*4), None)
+                            self.dbConnector.execute(query_str,
+                                tuple([new_filename]*4), None)
 
                             # remove file
                             try:
                                 os.remove(destPath)
-                                imgs_warn[subKey] = {
-                                    'filename': newFileName,
-                                    'message': 'Image "{}" already existed on disk and has been overwritten.\n'.format(newFileName) + \
+                                imgs_warn[sub_key] = {
+                                    'filename': new_filename,
+                                    'message': f'Image "{new_filename}" already existed on disk and has been overwritten.\n' + \
                                                 'All metadata (views, annotations, predictions) has been removed from the database.'
                                 }
                             except Exception:
-                                imgs_warn[subKey] = {
-                                    'filename': newFileName,
-                                    'message': 'Image "{}" already existed on disk but could not be overwritten.\n'.format(newFileName) + \
+                                imgs_warn[sub_key] = {
+                                    'filename': new_filename,
+                                    'message': f'Image "{new_filename}" already existed on disk but could not be overwritten.\n' + \
                                                 'All metadata (views, annotations, predictions) has been removed from the database.'
                                 }
 
@@ -860,79 +865,131 @@ class DataWorker:
                         shutil.copyfile(img, destPath)
                     else:
                         drivers.save_to_disk(img, destPath)
-                    if subKey not in imgs_valid:
-                        imgs_valid[subKey] = {
-                            'filename': newFileName,
+                    if sub_key not in imgs_valid:
+                        imgs_valid[sub_key] = {
+                            'filename': new_filename,
                             'message': 'upload successful'
                         }
-                except Exception as e:
-                    imgs_error[subKey] = {
-                        'filename': newFileName,
-                        'message': str(e),
+                except Exception as exc:
+                    imgs_error[sub_key] = {
+                        'filename': new_filename,
+                        'message': str(exc),
                         'status': 3
                     }
 
-            # register valid images in database
-            if len(imgs_valid):
-                queryStr = sql.SQL('''
-                    INSERT INTO {id_img} (filename, x, y, width, height)
-                    VALUES %s
-                    ON CONFLICT (filename, x, y, width, height) DO NOTHING;
-                ''').format(
-                    id_img=sql.Identifier(project, 'image')
-                )
-                self.dbConnector.insert(queryStr,
-                    [
-                        (
-                            imgs_valid[key]['filename'],
-                            imgs_valid[key].get('x', None),
-                            imgs_valid[key].get('y', None),
-                            imgs_valid[key].get('width', None),
-                            imgs_valid[key].get('height', None)
+            if len(imgs_valid) > 0:
+                if srid is not None:
+                    # retrieve geospatial information
+                    for img_valid in imgs_valid.values():
+                        if img_valid.get('filename', None) is None or \
+                            not img_valid.get('register', True):
+                            continue
+                        window = None
+                        if 'x' in img_valid:
+                            window = [
+                                img_valid['y'], img_valid['x'],
+                                img_valid['height'], img_valid['width']
+                            ]
+                        extent = geospatial.calc_extent(
+                            os.path.join(
+                                destFolder,
+                                img_valid['filename']
+                            ),
+                            srid,
+                            window=window
                         )
-                        for key in imgs_valid.keys()
-                        if imgs_valid[key]['filename'] is not None \
-                            and imgs_valid[key].get('register', True)
-                    ]
-                )
+                        #TODO: remove images if extent is None and flag is set
+                        img_valid['extent'] = extent
 
-            for key in imgs_valid:
-                result[key] = imgs_valid[key]
+                        # register image in database
+                        query_str = sql.SQL('''
+                            INSERT INTO {id_img} (filename, x, y, width, height, extent)
+                            VALUES (%s, %s, %s, %s, %s,
+                                ST_MakeEnvelope(%s, %s, %s, %s, %s)
+                            )
+                            ON CONFLICT (filename, x, y, width, height) DO UPDATE
+                            SET x=EXCLUDED.x, y=EXCLUDED.y,
+                                width=EXCLUDED.width, height=EXCLUDED.height,
+                                extent=EXCLUDED.extent;
+                        ''').format(
+                            id_img=sql.Identifier(project, 'image')
+                        )
+                        self.dbConnector.execute(query_str,
+                            (
+                                img_valid['filename'],
+                                img_valid.get('x', None),
+                                img_valid.get('y', None),
+                                img_valid.get('width', None),
+                                img_valid.get('height', None),
+                                *extent,
+                                srid
+                            )
+                        )
+                else:
+                    # register valid images in database without geospatial info
+                    query_str = sql.SQL('''
+                        INSERT INTO {id_img} (filename, x, y, width, height)
+                        VALUES %s
+                        ON CONFLICT (filename, x, y, width, height) DO UPDATE
+                        SET x=EXCLUDED.x, y=EXCLUDED.y,
+                            width=EXCLUDED.width, height=EXCLUDED.height;
+                    ''').format(
+                        id_img=sql.Identifier(project, 'image')
+                    )
+                    self.dbConnector.insert(query_str,
+                        [
+                            (
+                                img_val['filename'],
+                                img_val.get('x', None),
+                                img_val.get('y', None),
+                                img_val.get('width', None),
+                                img_val.get('height', None)
+                            )
+                            for img_val in imgs_valid.values()
+                            if img_val['filename'] is not None \
+                                and img_val.get('register', True)
+                        ]
+                    )
+
+            for key, img_meta in imgs_valid.items():
+                result[key] = img_meta
                 result[key]['status'] = 0
-            for key in imgs_warn:
-                result[key] = imgs_warn[key]
+            for key, img_meta in imgs_warn.items():
+                result[key] = img_meta
                 result[key]['status'] = 2
             #TODO: do the same for imgs_quarantine:
-            for key in imgs_error:
-                # we might need to flatten hierarchy of quarantined auxiliary files that actually turned out to be errors
-                nextErrors = imgs_error[key]
-                if nextErrors.get('status', None) is None:
+            for key, img_meta in imgs_error.items():
+                # we might need to flatten hierarchy of quarantined auxiliary files that actually
+                # turned out to be errors
+                next_errors = img_meta
+                if next_errors.get('status', None) is None:
                     # flatten
-                    for subKey in nextErrors:
-                        result[subKey] = nextErrors[subKey]
-                        result[subKey]['status'] = 3
+                    for sub_key, sub_meta in next_errors.items():
+                        result[sub_key] = sub_meta
+                        result[sub_key]['status'] = 3
                 else:
                     # regular errors
-                    result[key] = nextErrors
+                    result[key] = next_errors
                     result[key]['status'] = 3
 
             # add auxiliary files as valid
-            for key in files_aux:
-                for subkey in files_aux[key]:
+            for aux_meta in files_aux.values():
+                for subkey in aux_meta:
                     result[subkey] = {
                         'status': 1,
-                        'filename': files_aux[key][subkey]['filename'],
+                        'filename': aux_meta[subkey]['filename'],
                         'message': '(auxiliary file)'
                     }
-        
+
         # dump list of uploaded and imported images to temporary file
-        with open(os.path.join(meta['sessionDir'], 'uploads', now+'.txt'), 'w') as f:
-            for key in tempFiles.keys():
+        uploads_path = os.path.join(meta['sessionDir'], 'uploads', now+'.txt')
+        with open(uploads_path, 'w', encoding='utf-8') as f_upload:
+            for key, item in tempFiles.items():
                 dest = '-1'
                 if key in images_save:
                     dest = images_save[key]['filename']
-                f.write('{};;{}\n'.format(
-                    tempFiles[key]['orig'],
+                f_upload.write('{};;{}\n'.format(
+                    item['orig'],
                     dest
                 ))
 
@@ -940,12 +997,12 @@ class DataWorker:
         # count number of files uploaded and check if it matches the expected number.
         filesUploaded = {}
         for file in glob.glob(os.path.join(meta['sessionDir'], 'uploads/*.txt')):
-            with open(file, 'r') as f:
-                lines = f.readlines()
+            with open(file, 'r', encoding='utf-8') as f_uploads:
+                lines = f_uploads.readlines()
             for line in lines:
                 uploadFilename, projectFilename = line.strip().split(';;')
                 filesUploaded[uploadFilename] = projectFilename         #TODO: assert key isn't present already
-        
+
         if len(filesUploaded) >= meta['numFiles']:
             # all files seem to have been uploaded
             if meta['parseAnnotations']:
@@ -975,13 +1032,13 @@ class DataWorker:
                         SELECT id, filename, x, y, width, height FROM {}
                         WHERE id IN %s;
                     ''').format(sql.Identifier(project, 'image')),
-                    (tuple([(i,) for i in parseResult['result'].keys()]),),
+                    (tuple((i,) for i in parseResult['result'].keys()),),
                     'all')
                     for fn in fileNames:
                         numAnno = len(parseResult['result'][fn['id']])
                         fileName = fn['filename']
                         window = [fn['y'], fn['x'], fn['height'], fn['width']]
-                        if all([w is not None for w in window]):
+                        if all(w is not None for w in window):
                             fileName += '?window={},{},{},{}'.format(*window)
                         if fileName not in result:
                             result[fileName] = {
@@ -990,11 +1047,12 @@ class DataWorker:
                                 'message': f'{numAnno} annotation(s) successfully imported.'
                             }
                         else:
-                            result[fileName]['message'] += f'\n{numAnno} annotation(s) successfully imported.'
+                            result[fileName]['message'] += \
+                                f'\n{numAnno} annotation(s) successfully imported.'
                     #TODO: parser warnings and errors
 
             #TODO: create log file to download for user
-        
+
             # remove temp files
             shutil.rmtree(tempRoot)
 
@@ -1131,8 +1189,9 @@ class DataWorker:
         return imgs_valid
 
 
-    def addExistingImages(self, project, imageList=None, convertSemiSupported=False, convertToRGBifPossible=False, skipIntegrityCheck=False,
-         createVirtualViews=False, viewParameters=None):
+    def addExistingImages(self, project, imageList=None, convertSemiSupported=False,
+                            convertToRGBifPossible=False, skipIntegrityCheck=False,
+                            createVirtualViews=False, viewParameters=None):
         '''
             Scans the project folder on the file system for images that are
             physically saved, but not (yet) added to the database. Adds them to
@@ -1156,51 +1215,58 @@ class DataWorker:
         '''
         current_task.update_state(meta={'message': 'locating images...'})
 
+        # load geospatial project metadata
+        srid = geospatial.get_srid(self.dbConnector, project)
+
         # get all images on disk that are not in database
-        imgs_candidates = self.scanForImages(project, convertSemiSupported, convertToRGBifPossible, skipIntegrityCheck)
+        imgs_candidates = self.scanForImages(project,
+                                            convertSemiSupported,
+                                            convertToRGBifPossible,
+                                            skipIntegrityCheck)
 
         if imageList is None or (isinstance(imageList, str) and imageList.lower() == 'all'):
             imgs_add = imgs_candidates
         else:
             if isinstance(imageList, dict):
                 imageList = list(imageList.keys())
-            for i in range(len(imageList)):
-                if imageList[i].startswith('/'):
-                    imageList[i] = imageList[i][1:]
+            for idx, img in enumerate(imageList):
+                if img.startswith('/'):
+                    imageList[idx] = img[1:]
             imgs_add = list(set(imgs_candidates).intersection(set(imageList)))
 
-        if not len(imgs_add):
+        if len(imgs_add) == 0:
             return 0, []
 
-        dbValues = []
+        db_values = []
         if createVirtualViews:
             # split each image into virtual views
             current_task.update_state(meta={'message': 'creating virtual views...'})
-            projectFolder = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'), project)
+            project_folder = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'),
+                                            project)
             for img in imgs_add:
                 try:
-                    fpath = os.path.join(projectFolder, img)
+                    fpath = os.path.join(project_folder, img)
                     driver = drivers.get_driver(fpath)
-                    sz = driver.size(fpath)
+                    size = driver.size(fpath)
 
                     # create virtual views
                     coords = get_split_positions(fpath,
-                                        viewParameters['patchSize'],
-                                        viewParameters['stride'],
-                                        viewParameters.get('tight', False),
-                                        viewParameters.get('discard_homogeneous_percentage', None),
-                                        viewParameters.get('discard_homogeneous_quantization_value', 255),
-                                        celeryUpdateInterval=self.CELERY_UPDATE_INTERVAL)
-                    
+                                viewParameters['patchSize'],
+                                viewParameters['stride'],
+                                viewParameters.get('tight', False),
+                                viewParameters.get('discard_homogeneous_percentage', None),
+                                viewParameters.get('discard_homogeneous_quantization_value', 255),
+                                celery_update_interval=self.CELERY_UPDATE_INTERVAL)
+
                     if len(coords) == 1:
                         # only a single view; don't register x, y
-                        dbValues.append((
-                            img, None, None, sz[1], sz[2]
+                        db_values.append((
+                            img, None, None, size[1], size[2]
                         ))
 
                     else:
                         for coord in coords:
-                            dbValues.append((
+                            db_values.append((
                                 img,
                                 coord[0], coord[1],
                                 coord[2], coord[3]
@@ -1215,34 +1281,73 @@ class DataWorker:
             current_task.update_state(meta={'message': 'verifying images...'})
             for img in imgs_add:
                 try:
-                    fpath = os.path.join(projectFolder, img)
+                    fpath = os.path.join(project_folder, img)
                     driver = drivers.get_driver(fpath)
-                    sz = driver.size(fpath)
-                    dbValues.append((
-                        img, None, None, sz[1], sz[2]
+                    size = driver.size(fpath)
+                    db_values.append((
+                        img, None, None, size[1], size[2]
                     ))
                 except Exception:
                     # could not determine image size
                     continue        #TODO: error log?
 
-        # add to database
         current_task.update_state(meta={'message': 'registering images...'})
-        queryStr = sql.SQL('''
-            INSERT INTO {id_img} (filename, x, y, width, height)
-            VALUES %s;
-        ''').format(
-            id_img=sql.Identifier(project, 'image')
-        )
-        self.dbConnector.insert(queryStr, tuple(dbValues))
+        if srid is not None:
+            # retrieve geospatial information
+            for img_meta in db_values:
+                window = None
+                if img_meta[1] is not None:
+                    # x coordinate specified; entry is patch
+                    window = img_meta[1:]
+                extent = geospatial.calc_extent(
+                    os.path.join(project_folder, img_meta[0]),
+                    srid,
+                    window=window
+                )
+                if extent is not None:
+                    # register image in database with geospatial extent
+                    query_str = sql.SQL('''
+                        INSERT INTO {id_img} (filename, x, y, width, height, extent)
+                        VALUES (%s, %s, %s, %s, %s,
+                            ST_MakeEnvelope(%s, %s, %s, %s, %s)
+                        );
+                    ''').format(
+                        id_img=sql.Identifier(project, 'image')
+                    )
+                    self.dbConnector.execute(query_str,
+                        (
+                            *img_meta,
+                            *extent,
+                            srid
+                        )
+                    )
+                else:
+                    # register image in database without geospatial extent
+                    query_str = sql.SQL('''
+                        INSERT INTO {id_img} (filename, x, y, width, height)
+                        VALUES (%s, %s, %s, %s);
+                    ''').format(
+                        id_img=sql.Identifier(project, 'image')
+                    )
+                    self.dbConnector.execute(query_str, img_meta)
+        else:
+            # no geospatial properties registered for project; add to database directly
+            query_str = sql.SQL('''
+                INSERT INTO {id_img} (filename, x, y, width, height)
+                VALUES %s;
+            ''').format(
+                id_img=sql.Identifier(project, 'image')
+            )
+            self.dbConnector.insert(query_str, tuple(db_values))
 
         # get IDs of newly added images     #TODO: virtual views?
-        queryStr = sql.SQL('''
+        query_str = sql.SQL('''
             SELECT id, filename FROM {id_img}
             WHERE filename IN %s;
         ''').format(
             id_img=sql.Identifier(project, 'image')
         )
-        result = self.dbConnector.execute(queryStr, (tuple(imgs_add),), 'all')
+        result = self.dbConnector.execute(query_str, (tuple(imgs_add),), 'all')
 
         status = (0 if result is not None and len(result) else 1)  #TODO
         return status, result

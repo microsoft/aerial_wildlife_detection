@@ -15,7 +15,7 @@ python_exec=                        # alternative Python executable (will use de
 aide_root=                          # directory of AIDE source code
 append_environment_args=false       # append the "AIDE_CONFIG_PATH" environment variable too user profile
 with_gpu=false                      # enable or disable installation of GPU libraries
-pg_version=15                       # PostgreSQL version
+pg_version=14                       # PostgreSQL version
 tcp_keepalive=TRUE                  # set TCP/IP keepalive timer
 install_daemon=                     # install systemd daemon
 yes=false                           # skip all confirmations
@@ -1071,6 +1071,7 @@ if [[ $install_database = true ]]; then
 
         # install and configure PostgreSQL
         brew install postgresql@$pg_version | tee -a $log;
+        initdb $homebrew_dir/var/postgresql@$pg_version | tee -a $log;
         $pg_path/bin/createuser -s postgres
 
         pg_conf_file=$homebrew_path/var/postgresql@$pg_version/postgresql.conf

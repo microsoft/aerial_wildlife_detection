@@ -10,15 +10,21 @@
     2020-22 Benjamin Kellenberger
 '''
 
-AIDE_VERSION = '3.0.221223'
-
-
-MIN_FILESERVER_VERSION = '2.2.220618'       # minimum required version for FileServer, due to recent changes
-
-
 import datetime
 
+AIDE_VERSION = '3.0.221231'
+
+# minimum required version for FileServer, due to recent changes
+MIN_FILESERVER_VERSION = '2.2.220618'
+
+# model marketplace format version exported by the current AIDE implementation
+MODEL_MARKETPLACE_VERSION = 1.0
+
+
 def get_version_components(version=AIDE_VERSION):
+    '''
+        Returns dict of major, minor, nightly, suffix components of AIDE version string
+    '''
     try:
         tokens = version.split('.')
         suffix = tokens[-1][-1]
@@ -56,31 +62,20 @@ def compare_versions(version_a, version_b):
 
         if t_a['major'] > t_b['major']:
             return 1
-        elif t_a['major'] < t_b['major']:
+        if t_a['major'] < t_b['major']:
             return -1
-        else:
-            if t_a['minor'] > t_b['minor']:
-                return 1
-            elif t_a['minor'] < t_b['minor']:
-                return -1
-            else:
-                if t_a['nightly'] > t_b['nightly']:
-                    return 1
-                elif t_a['nightly'] < t_b['nightly']:
-                    return -1
-                else:
-                    if t_a['suffix'] is not None and t_b['suffix'] is not None:
-                        return (1 if t_a['suffix'] > t_b['suffix'] else -1)
-                    elif t_a['suffix'] is not None:
-                        return 1
-                    else:
-                        return -1
-        print(f'Unexpected error trying to parse versions ({version_a}; {version_b}).')
-        return None
+        if t_a['minor'] > t_b['minor']:
+            return 1
+        if t_a['minor'] < t_b['minor']:
+            return -1
+        if t_a['nightly'] > t_b['nightly']:
+            return 1
+        if t_a['nightly'] < t_b['nightly']:
+            return -1
+        if t_a['suffix'] is not None and t_b['suffix'] is not None:
+            return (1 if t_a['suffix'] > t_b['suffix'] else -1)
+        if t_a['suffix'] is not None:
+            return 1
+        return -1
     except Exception:
         return None
-
-
-
-# model marketplace format version exported by the current AIDE implementation
-MODEL_MARKETPLACE_VERSION = 1.0

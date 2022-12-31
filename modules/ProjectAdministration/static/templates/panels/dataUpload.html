@@ -404,6 +404,13 @@
                     console.error(error);    //TODO
                     updateUntrackedCount();
                     window.messager.addMessage('An error occurred while trying to add existing images (message: "' + error + '").', 'error', 0);
+                },
+                statusCode: {
+                    401: function(xhr) {
+                        return window.renewSessionRequest(xhr, function() {
+                            return _do_add_untracked(imgList);
+                        });
+                    }
                 }
             });
         }
@@ -541,7 +548,14 @@
                     data: formData,
                     cache: false,
                     contentType: false,
-                    processData: false
+                    processData: false,
+                    statusCode: {
+                        401: function(xhr) {
+                            return window.renewSessionRequest(xhr, function() {
+                                return _init_upload_session();
+                            });
+                        }
+                    }
                 });
             }
 

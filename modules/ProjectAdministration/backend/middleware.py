@@ -119,6 +119,9 @@ class ProjectConfigMiddleware:
     # the HTML canvas, but we apply it everywhere anyway)
     MINIMAL_COLOR_OFFSET = 9
 
+    # default spatial reference system for image extent geometry columns (WGS84)
+    DEFAULT_SRID = 4326
+
     def __init__(self, config, dbConnector):
         self.config = config
         self.dbConnector = dbConnector
@@ -425,10 +428,10 @@ class ProjectConfigMiddleware:
             raise Exception('Project shortname "{}" unavailable.'.format(shortname))
 
         # load base SQL
-        with open('modules/ProjectAdministration/static/sql/create_schema.sql', 'r') as f:
-            queryStr = sql.SQL(f.read())
+        with open('modules/ProjectAdministration/static/sql/create_schema.sql', 'r',
+                encoding='utf-8') as f_sql:
+            queryStr = sql.SQL(f_sql.read())
 
-        
         # determine annotation and prediction types and add fields accordingly
         annotationFields = list(getattr(Fields_annotation, properties['annotationType']).value)
         predictionFields = list(getattr(Fields_prediction, properties['predictionType']).value)
@@ -466,10 +469,12 @@ class ProjectConfigMiddleware:
                 id_workflowHistory=sql.Identifier(shortname, 'workflowhistory'),
                 id_filehierarchy=sql.Identifier(shortname, 'filehierarchy'),
                 id_taskHistory=sql.Identifier(shortname, 'taskhistory'),
-                annotation_fields=sql.SQL(', ').join([sql.SQL(field) for field in annotationFields]),
-                prediction_fields=sql.SQL(', ').join([sql.SQL(field) for field in predictionFields])
+                annotation_fields=sql.SQL(', ').join(
+                    [sql.SQL(field) for field in annotationFields]),
+                prediction_fields=sql.SQL(', ').join(
+                    [sql.SQL(field) for field in predictionFields])
             ),
-            None,
+            (shortname, shortname, properties.get('srid', self.DEFAULT_SRID),),
             None
         )
 
@@ -479,8 +484,9 @@ class ProjectConfigMiddleware:
             FROM "information_schema".schemata
             WHERE schema_name = %s;
         ''', (shortname,), 1)
-        if valid is None or not len(valid) or valid[0]['present'] < 1:
-            raise Exception(f'Project with shortname "{shortname}" could not be created.\nCheck for database permission errors.')
+        if valid is None or len(valid) == 0 or valid[0]['present'] < 1:
+            raise Exception(f'Project with shortname "{shortname}" could not be created.' + \
+                '\nCheck for database permission errors.')
 
         # register project
         self.dbConnector.execute('''

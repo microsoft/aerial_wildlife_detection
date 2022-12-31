@@ -407,18 +407,16 @@ class ProjectConfigurator:
                 username = html.escape(request.get_cookie('username'))
 
                 # check provided properties
-                projSettings = request.json
-                success = self.middleware.createProject(username, projSettings)
+                proj_settings = request.json
+                success = self.middleware.createProject(username, proj_settings)
 
-            except Exception as e:
-                abort(400, str(e))
+            except Exception as exc:
+                abort(400, str(exc))
 
             if success:
                 return {'success':True}
-            else:
-                abort(500, 'An unknown error occurred.')
+            abort(500, 'An unknown error occurred.')
 
-            
 
 
         @self.app.get('/verifyProjectName')

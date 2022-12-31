@@ -25,24 +25,25 @@ class FileServer():
             if verbose_start:
                 helpers.LogDecorator.print_status('fail')
             raise Exception('Not a valid FileServer instance.')
-        
+
         self.login_check = None
         try:
-            self.staticDir = self.config.getProperty('FileServer', 'staticfiles_dir')
-            self.staticAddressSuffix = self.config.getProperty('FileServer', 'staticfiles_uri_addendum', type=str, fallback='').strip()
+            self.static_dir = self.config.getProperty('FileServer', 'staticfiles_dir')
+            self.static_address_suffix = self.config.getProperty('FileServer',
+                                        'staticfiles_uri_addendum', type=str, fallback='').strip()
 
             assert GDALImageDriver.init_is_available()  #TODO
 
             self._initBottle()
-        except Exception as e:
+        except Exception as exc:
             if verbose_start:
                 helpers.LogDecorator.print_status('fail')
-            raise Exception(f'Could not launch FileServer (message: "{str(e)}").')
+            raise Exception(f'Could not launch FileServer (message: "{str(exc)}").') from exc
 
         if verbose_start:
             helpers.LogDecorator.print_status('ok')
 
-    
+
     def loginCheck(self, project=None, admin=False, superuser=False, canCreateProjects=False, extend_session=False):
         return self.login_check(project, admin, superuser, canCreateProjects, extend_session)
 
@@ -55,25 +56,25 @@ class FileServer():
 
         ''' static routing to files '''
         @enable_cors
-        @self.app.route(os.path.join('/', self.staticAddressSuffix, '/<project>/files/<path:path>'))
+        @self.app.route(os.path.join('/', self.static_address_suffix, '/<project>/files/<path:path>'))
         def send_file(project, path):
             window = request.params.get('window', None)
             if window is not None:
                 # load from disk and crop
                 if isinstance(window, str):
                     window = [int(w) for w in window.strip().split(',')]
-                filePath = os.path.join(self.staticDir, project, path)
-                bytes = GDALImageDriver.disk_to_bytes(filePath, window=window)
-                clen = len(bytes)
+                file_path = os.path.join(self.static_dir, project, path)
+                bytes_arr = GDALImageDriver.disk_to_bytes(file_path, window=window)
+                clen = len(bytes_arr)
 
                 headers = {}
                 headers['Content-type'] = 'image/tiff'        #TODO
                 headers['Content-Disposition'] = f'attachment; filename="{path}"'
-                
+
                 ranges = request.environ.get('HTTP_RANGE')
                 if 'HTTP_RANGE' in request.environ:
                     # need to send bytes in chunks
-                    fhandle = BytesIO(bytes)
+                    fhandle = BytesIO(bytes_arr)
                     ranges = list(parse_range_header(request.environ['HTTP_RANGE'], clen))
                     offset, end = ranges[0]
                     headers['Content-Range'] = f'bytes {offset}-{end-1}/{clen}'
@@ -81,11 +82,11 @@ class FileServer():
                     fhandle = _file_iter_range(fhandle, offset, end-offset)
                     return HTTPResponse(fhandle, status=206, **headers)
 
-                return HTTPResponse(bytes, status=200, **headers)
+                return HTTPResponse(bytes_arr, status=200, **headers)
 
             else:
                 # full image; return static file directly
-                return static_file(path, root=os.path.join(self.staticDir, project))
+                return static_file(path, root=os.path.join(self.static_dir, project))
 
 
         @enable_cors
@@ -98,8 +99,8 @@ class FileServer():
             '''
             if not self.loginCheck(extend_session=True):
                 abort(401, 'forbidden')
-            
+
             return {
-                'staticfiles_dir': self.staticDir,
-                'staticfiles_uri_addendum': self.staticAddressSuffix
+                'staticfiles_dir': self.static_dir,
+                'staticfiles_uri_addendum': self.static_address_suffix
             }

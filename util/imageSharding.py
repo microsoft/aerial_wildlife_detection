@@ -11,12 +11,14 @@ from tqdm import tqdm
 from celery import current_task
 
 from util import drivers
-drivers.init_drivers()
 from util.drivers.imageDrivers import normalize_image
+drivers.init_drivers()
 
 
 
-def get_split_positions(array, patchSize, stride=None, tight=True, discard_homogeneous_percentage=None, discard_homogeneous_quantization_value=255, celeryUpdateInterval=-1):
+def get_split_positions(array, patch_size, stride=None, tight=True,
+                        discard_homogeneous_percentage=None,
+                        discard_homogeneous_quantization_value=255, celery_update_interval=-1):
     '''
         Receives one of:
             - a NumPy ndarray of size (BxWxH)
@@ -26,11 +28,11 @@ def get_split_positions(array, patchSize, stride=None, tight=True, discard_homog
         patches. The splitting raster can be customized through the parameters.
         Inputs:
             - array:        The NumPy ndarray to be split into patches.
-            - patchSize:    Either an int or a tuple of (width, height) of
+            - patch_size:   Either an int or a tuple of (width, height) of
                             the patch dimensions.
             - stride:       The offsets of each patch with respect to its
                             immediate neighbor. Can be one of the following: -
-                            None: strides are set to the values in "patchSize" -
+                            None: strides are set to the values in "patch_size" -
                             int:  equal stride in both x and y direction - tuple
                             of (x, y) ints for both direction
             - tight:        If True, the last patches in x and y direction might
@@ -51,7 +53,7 @@ def get_split_positions(array, patchSize, stride=None, tight=True, discard_homog
                             evaluation. Smaller values clump more diverse pixels
                             together; larger values require pixels to be more
                             similar to be considered identical.
-        
+
         Returns:
             - coords:       A list of N tuples containing the (left, top, width,
                             height) pixel coordinates of the top left corner of
@@ -60,90 +62,92 @@ def get_split_positions(array, patchSize, stride=None, tight=True, discard_homog
     if not isinstance(array, np.ndarray):
         # get image size from disk or bytes
         driver = drivers.get_driver(array)
-        sz = driver.size(array)
+        size = driver.size(array)
     else:
-        sz = array.shape
-    
+        size = array.shape
+
     # assertions
-    assert len(sz) == 3, f'Invalid number of dimensions for input, got {len(sz)}, expected 3 (BxWxH)'
-    if isinstance(patchSize, int):
-        patchSize = min(patchSize, max(sz[1], sz[2]))
-        patchSize = (patchSize, patchSize)
-    elif isinstance(patchSize, tuple) or isinstance(patchSize, list):
-        if len(patchSize)==1:
-            patchSize = (patchSize, patchSize)
-        assert isinstance(patchSize[0], int), f'"{str(patchSize[0])}" is not an integer value.'
-        assert isinstance(patchSize[1], int), f'"{str(patchSize[1])}" is not an integer value.'
+    assert len(size) == 3, \
+        f'Invalid number of dimensions for input, got {len(size)}, expected 3 (BxWxH)'
+    if isinstance(patch_size, int):
+        patch_size = min(patch_size, max(size[1], size[2]))
+        patch_size = (patch_size, patch_size)
+    elif isinstance(patch_size, (tuple, list)):
+        if len(patch_size)==1:
+            patch_size = (patch_size, patch_size)
+        assert isinstance(patch_size[0], int), f'"{str(patch_size[0])}" is not an integer value.'
+        assert isinstance(patch_size[1], int), f'"{str(patch_size[1])}" is not an integer value.'
         # need to flip patch size as NumPy indexes height first
-        patchSize = (max(1,min(patchSize[1], sz[1])), max(1,min(patchSize[0], sz[2])))
+        patch_size = (max(1,min(patch_size[1], size[1])), max(1,min(patch_size[0], size[2])))
     if stride is None:
-        stride = patchSize
+        stride = patch_size
     elif isinstance(stride, int):
-        stride = min(stride, max(sz[1], sz[2]))
+        stride = min(stride, max(size[1], size[2]))
         stride = (stride, stride)
-    elif isinstance(stride, tuple) or isinstance(stride, list):
+    elif isinstance(stride, (tuple, list)):
         if len(stride)==1:
             stride = (stride, stride)
         assert isinstance(stride[0], int), f'"{str(stride[0])}" is not an integer value.'
         assert isinstance(stride[1], int), f'"{str(stride[1])}" is not an integer value.'
         # ditto for stride
-        stride = (max(1,min(stride[1], sz[1])), max(1,min(stride[0], sz[2])))
-    if isinstance(discard_homogeneous_percentage, float) or isinstance(discard_homogeneous_percentage, int):
+        stride = (max(1,min(stride[1], size[1])), max(1,min(stride[0], size[2])))
+    if isinstance(discard_homogeneous_percentage, (float, int)):
         discard_homogeneous_percentage = max(0.001, min(100, discard_homogeneous_percentage))
     else:
         discard_homogeneous_percentage = None
-    if not isinstance(discard_homogeneous_quantization_value, int) and not isinstance(discard_homogeneous_quantization_value, float):
+    if not isinstance(discard_homogeneous_quantization_value, (float, int)):
         discard_homogeneous_quantization_value = 255
     else:
-        discard_homogeneous_quantization_value = max(1, min(255, discard_homogeneous_quantization_value))
+        discard_homogeneous_quantization_value = max(1, \
+            min(255, discard_homogeneous_quantization_value))
 
     if not hasattr(current_task, 'update_state'):
-        celeryUpdateInterval = -1
-    elif celeryUpdateInterval >= 0:
-        celeryUpdateMsg = 'determining view locations'
+        celery_update_interval = -1
+    elif celery_update_interval >= 0:
+        celery_update_msg = 'determining view locations'
         if isinstance(array, str):
-            celeryUpdateMsg += f' ("{array}")'
+            celery_update_msg += f' ("{array}")'
 
     # define crop locations
-    xLoc = list(range(0, sz[1], stride[0]))
-    yLoc = list(range(0, sz[2], stride[1]))
+    xLoc = list(range(0, size[1], stride[0]))
+    yLoc = list(range(0, size[2], stride[1]))
     if tight:
         # limit to image borders
-        maxX = sz[1] - patchSize[0]
-        maxY = sz[2] - patchSize[1]
+        maxX = size[1] - patch_size[0]
+        maxY = size[2] - patch_size[1]
         xLoc[-1] = maxX
         yLoc[-1] = maxY
     else:
         # add extra steps if required
-        while xLoc[-1] + patchSize[0] < sz[1]:
+        while xLoc[-1] + patch_size[0] < size[1]:
             xLoc.append(xLoc[-1] + stride[0])
-        while yLoc[-1] + patchSize[1] < sz[2]:
+        while yLoc[-1] + patch_size[1] < size[2]:
             yLoc.append(yLoc[-1] + stride[1])
-    
+
     if len(xLoc) <= 1 and len(yLoc) <= 1:
         # patch size is greater than image size; return image
-        return [(0, 0, sz[1], sz[2])]
-    
+        return [(0, 0, size[1], size[2])]
+
     # do the cropping
-    numCoords = len(xLoc)*len(yLoc)
-    tbar = tqdm(range(numCoords))
+    num_coords = len(xLoc)*len(yLoc)
+    tbar = tqdm(range(num_coords))
     if discard_homogeneous_percentage is not None:
         print('Locating split positions, discarding empty patches...')
     coords = []
     count = 0
     for x in range(len(xLoc)):
         for y in range(len(yLoc)):
-            if celeryUpdateInterval >= 0 and not count % celeryUpdateInterval:
+            if celery_update_interval >= 0 and count % celery_update_interval != 0:
                 current_task.update_state(
                     meta={
-                        'message': celeryUpdateMsg,
+                        'message': celery_update_msg,
                         'done': count,
-                        'total': numCoords
+                        'total': num_coords
                     }
                 )
             count += 1
             pos = (int(xLoc[x]), int(yLoc[y]))
-            end = (min(pos[0]+patchSize[0], sz[1]), min(pos[1]+patchSize[1], sz[2]))
+            end = (min(pos[0]+patch_size[0], size[1]), min(pos[1]+patch_size[1], size[2]))
             if discard_homogeneous_percentage is not None:
                 # get most frequent pixel value across bands and check percentage of it
                 if isinstance(array, np.ndarray):
@@ -166,7 +170,7 @@ def get_split_positions(array, patchSize, stride=None, tight=True, discard_homog
             coord = (pos[0], pos[1], end[0]-pos[0], end[1]-pos[1])
             coords.append(coord)
             tbar.update(1)
-    
+
     if discard_homogeneous_percentage is not None:
         tbar.close()
 
@@ -174,8 +178,9 @@ def get_split_positions(array, patchSize, stride=None, tight=True, discard_homog
 
 
 
-def split_image(array, patchSize, stride=None, tight=True, discard_homogeneous_percentage=None, discard_homogeneous_quantization_value=255, save_root=None, return_patches=True,
-    celeryUpdateInterval=-1):
+def split_image(array, patch_size, stride=None, tight=True, discard_homogeneous_percentage=None,
+                discard_homogeneous_quantization_value=255, save_root=None, return_patches=True,
+                celery_update_interval=-1):
     '''
         Receives one of:
             - a NumPy ndarray of size (BxWxH)
@@ -184,11 +189,11 @@ def split_image(array, patchSize, stride=None, tight=True, discard_homogeneous_p
         and splits it into patches on a regular grid. The splitting raster can
         be customized through the parameters. Inputs:
             - array:        The NumPy ndarray to be split into patches.
-            - patchSize:    Either an int or a tuple of (width, height) of
+            - patch_size:   Either an int or a tuple of (width, height) of
                             the patch dimensions.
             - stride:       The offsets of each patch with respect to its
                             immediate neighbor. Can be one of the following: -
-                            None: strides are set to the values in "patchSize" -
+                            None: strides are set to the values in "patch_size" -
                             int:  equal stride in both x and y direction - tuple
                             of (x, y) ints for both direction
             - tight:        If True, the last patches in x and y direction might
@@ -219,7 +224,7 @@ def split_image(array, patchSize, stride=None, tight=True, discard_homogeneous_p
                             Bool, set to True to load patches into a list of
                             NumPy ndarrays. Cannot be False if "save_root" is
                             None.
-        
+
         Returns:
             - patches:      A list of N NumPy ndarrays containing all the
                             patches cropped from the input "array". Only
@@ -229,27 +234,28 @@ def split_image(array, patchSize, stride=None, tight=True, discard_homogeneous_p
     '''
     assert (isinstance(save_root, str) and isinstance(array, str)) or return_patches, \
         'either "return_patches" must be True or "save_root" defined'
-    
-    if not hasattr(current_task, 'update_state'):
-        celeryUpdateInterval = -1
-    elif celeryUpdateInterval >= 0:
-        celeryUpdateMsg = 'splitting image'
-        if isinstance(array, str):
-            celeryUpdateMsg += f' ("{array}")'
 
-    coords = get_split_positions(array, patchSize, stride, tight,
-                                discard_homogeneous_percentage, discard_homogeneous_quantization_value,
-                                celeryUpdateInterval=celeryUpdateInterval)
-    
+    if not hasattr(current_task, 'update_state'):
+        celery_update_interval = -1
+    elif celery_update_interval >= 0:
+        celery_update_msg = 'splitting image'
+        if isinstance(array, str):
+            celery_update_msg += f' ("{array}")'
+
+    coords = get_split_positions(array, patch_size, stride, tight,
+                                discard_homogeneous_percentage,
+                                discard_homogeneous_quantization_value,
+                                celery_update_interval=celery_update_interval)
+
     if not isinstance(array, np.ndarray):
         # get image size from disk or bytes
         driver = drivers.get_driver(array)
-        sz = driver.size(array)
+        size = driver.size(array)
     else:
-        sz = array.shape
+        size = array.shape
 
     if isinstance(save_root, str):
-        rootFilename, ext = os.path.splitext(save_root)
+        root_filename, ext = os.path.splitext(save_root)
         parent, _ = os.path.split(save_root)
         os.makedirs(parent, exist_ok=True)
 
@@ -257,28 +263,28 @@ def split_image(array, patchSize, stride=None, tight=True, discard_homogeneous_p
     patches = []
     filenames = []
     for idx, pos in enumerate(tqdm(coords)):
-        end = (min(pos[0]+patchSize[0], sz[1]), min(pos[1]+patchSize[1], sz[2]))
+        end = (min(pos[0]+patch_size[0], size[1]), min(pos[1]+patch_size[1], size[2]))
         arr_patch = driver.load(array, window=[pos[1], pos[0], end[1]-pos[1], end[0]-pos[0]])
         if return_patches:
             patches.append(arr_patch)       #TODO: save to disk already here to prevent memory overflow with large images
         if save_root is not None:
             # get new patch filename
-            fname = f'{rootFilename}_{pos[0]}_{pos[1]}{ext}'
+            fname = f'{root_filename}_{pos[0]}_{pos[1]}{ext}'
             driver.save_to_disk(arr_patch, fname)
             filenames.append(fname)
-        
-        if celeryUpdateInterval >= 0 and not idx+1 % celeryUpdateInterval:
+
+        if celery_update_interval >= 0 and idx+1 % celery_update_interval != 0:
             current_task.update_state(
                 meta={
-                    'message': celeryUpdateMsg,
+                    'message': celery_update_msg,
                     'done': idx+1,
                     'total': len(coords)
                 }
             )
 
-    returnArgs = [coords]
+    return_args = [coords]
     if return_patches:
-        returnArgs.append(patches)
+        return_args.append(patches)
     if save_root is not None:
-        returnArgs.append(filenames)
-    return tuple(returnArgs)
+        return_args.append(filenames)
+    return tuple(return_args)

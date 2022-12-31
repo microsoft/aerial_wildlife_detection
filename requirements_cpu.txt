@@ -16,6 +16,7 @@ scipy>=1.7.3
 python-magic>=0.4.24
 Pillow>=2.2.1
 rasterio>=1.2.3
+pyproj>=3.4.1
 pydicom>=2.2.2
 imantics>=0.1.12
 scikit-image>=0.19.0
