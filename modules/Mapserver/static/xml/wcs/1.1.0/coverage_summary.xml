@@ -1,0 +1,12 @@
+<CoverageSummary>
+    <ows:Title>{title}</ows:Title>
+    <ows:Abstract>{abstract}</ows:Abstract>
+    <ows:WGS84BoundingBox dimensions="2">
+    <ows:LowerCorner>{bbox_west} {bbox_south}</ows:LowerCorner>
+    <ows:UpperCorner>{bbox_east} {bbox_north}</ows:UpperCorner>
+    </ows:WGS84BoundingBox>
+    <SupportedCRS>urn:ogc:def:crs:epsg::{srid}</SupportedCRS>
+    <SupportedFormat>image/tiff</SupportedFormat>
+    {identifier}
+    {children}
+</CoverageSummary>

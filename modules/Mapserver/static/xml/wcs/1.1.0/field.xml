@@ -1,0 +1,14 @@
+<Field>
+    <ows:Title>{title}</ows:Title>
+    <Identifier>{identifier}</Identifier>
+    <Definition>
+        <ows:AnyValue/>
+    </Definition>
+    <InterpolationMethods>
+        <InterpolationMethod>bilinear</InterpolationMethod>
+        <Default>nearest neighbor</Default>
+    </InterpolationMethods>
+    <Axis identifier="bands">
+        <AvailableKeys>{band_keys}</AvailableKeys>
+    </Axis>
+</Field>

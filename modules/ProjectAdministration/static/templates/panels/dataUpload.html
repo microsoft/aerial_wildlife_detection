@@ -1,4 +1,4 @@
-<!-- 2020-22 Benjamin Kellenberger -->
+<!-- 2020-23 Benjamin Kellenberger -->
 <div>
     <h2>Data upload</h2>
     <div id="controls">
@@ -505,7 +505,7 @@
                 }
                 if($('#discard-empty-chck').prop('checked')) {
                     let perc = parseFloat($('#discard-empty-percentage').val());
-                    if(!isNaN(perc) && perc > 0 && perc < 100) {
+                    if(!isNaN(perc) && perc > 0 && perc <= 100) {
                         splitParams['discard_homogeneous_percentage'] = perc;
                     }
                     let quantVal = parseFloat($('#discard-empty-quantization-value').val());
@@ -688,8 +688,8 @@
                                     let url = window.dataServerURI + window.project + '/files/' + imgName;
 
                                     let window_box = [
-                                        allKeys[key]['y'], allKeys[key]['x'],
-                                        allKeys[key]['height'], allKeys[key]['width']
+                                        allKeys[key]['x'], allKeys[key]['y'],
+                                        allKeys[key]['width'], allKeys[key]['height']
                                     ];
                                     if(window_box.every(function(x){return Number.isInteger(x)})) {
                                         url += '?window=' + window_box;

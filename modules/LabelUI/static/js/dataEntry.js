@@ -1,7 +1,7 @@
 /*
     Definition of a data entry, as shown on a grid on the screen.
 
-    2019-22 Benjamin Kellenberger
+    2019-23 Benjamin Kellenberger
  */
 
 class AbstractDataEntry {
@@ -12,7 +12,7 @@ class AbstractDataEntry {
         this.entryID = entryID;
         this.canvasID = entryID + '_canvas';
         this.fileName = properties['fileName'];
-        this.window = [properties['w_y'], properties['w_x'], properties['w_height'], properties['w_width']];       // for virtual views
+        this.window = [properties['w_x'], properties['w_y'], properties['w_width'], properties['w_height']];       // for virtual views
         if(!this.window.every(function(v){return Number.isInteger(v)})) {
             this.window = null;
         } else {

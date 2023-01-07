@@ -2,7 +2,7 @@
     Run this file whenever you update AIDE to bring your existing project setup up-to-date
     with respect to changes due to newer versions.
 
-    2019-22 Benjamin Kellenberger
+    2019-23 Benjamin Kellenberger
 '''
 
 import os
@@ -376,7 +376,9 @@ MODIFICATIONS_sql = [
         THEN PERFORM AddGeometryColumn('{schema}', 'image', 'extent', 4326, 'POLYGON', 2, true);
         END IF;
     END $$;
-  '''
+  ''',
+  'ALTER TABLE "{schema}".image ADD COLUMN IF NOT EXISTS affine_transform REAL[];',
+  'ALTER TABLE "aide_admin".project ADD COLUMN IF NOT EXISTS mapserver_settings JSON;'
 ]
 
 

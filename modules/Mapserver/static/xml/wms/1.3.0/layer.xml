@@ -1,0 +1,16 @@
+<Layer queryable="0">
+    <Title>{title}</Title>
+    <Name>{name}</Name>
+    <Abstract>{abstract}</Abstract>
+    <CRS>EPSG:{srid}</CRS>
+    <BoundingBox CRS="EPSG:{srid}" minx="{bbox_south}" miny="{bbox_west}" maxx="{bbox_north}" maxy="{bbox_east}" />
+    <Style>
+        <Title>{title}</Title>
+        <Name>{name}</Name>
+        <Abstract>{abstract}</Abstract>
+        <LegendURL width="16" height="16">
+        <Format>image/x-icon</Format>
+        <OnlineResource xlink:href="http://localhost:8080/favicon.ico" xlink:type="simple"/>
+        </LegendURL>
+    </Style>
+</Layer>

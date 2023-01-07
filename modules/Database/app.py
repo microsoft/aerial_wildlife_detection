@@ -1,15 +1,16 @@
 '''
     Database connection functionality.
 
-    2019-21 Benjamin Kellenberger
+    2019-23 Benjamin Kellenberger
 '''
 
+from typing import Iterable
 from contextlib import contextmanager
 import psycopg2
 from psycopg2.pool import ThreadedConnectionPool
 from psycopg2.extras import RealDictCursor, execute_values
-psycopg2.extras.register_uuid()
 from util.helpers import LogDecorator
+psycopg2.extras.register_uuid()
 
 
 class Database():
@@ -31,8 +32,8 @@ class Database():
             if self.user is None or self.password is None:
                 # load from credentials file instead
                 credentials = config.getProperty('Database', 'credentials')
-                with open(credentials, 'r') as c:
-                    lines = c.readlines()
+                with open(credentials, 'r', encoding='utf-8') as cred:
+                    lines = cred.readlines()
                     for line in lines:
                         line = line.lstrip().rstrip('\r').rstrip('\n')
                         if line.startswith('#') or line.startswith(';'):
@@ -47,27 +48,29 @@ class Database():
                                 self.password = line[idx:]
 
             # self.user = self.user.lower()
-        except Exception as e:
+        except Exception as exc:
             if verbose_start:
                 LogDecorator.print_status('fail')
-            raise Exception(f'Incomplete database credentials provided in configuration file (message: "{str(e)}").')
+            raise Exception('Incomplete database credentials provided in configuration file ' + \
+                f'(message: "{str(exc)}").') from exc
 
         try:
-            self._createConnectionPool()
-        except Exception as e:
+            self._create_connection_pool()
+        except Exception as exc:
             if verbose_start:
                 LogDecorator.print_status('fail')
-            raise Exception(f'Could not connect to database (message: "{str(e)}").')
+            raise Exception(f'Could not connect to database (message: "{str(exc)}").') from exc
 
         if verbose_start:
             LogDecorator.print_status('ok')
 
 
 
-    def _createConnectionPool(self):
-        self.connectionPool = ThreadedConnectionPool(
+    def _create_connection_pool(self):
+        self.connection_pool = ThreadedConnectionPool(
             0,
-            max(2, self.config.getProperty('Database', 'max_num_connections', type=int, fallback=20)),  # 2 connections are needed as minimum for retrying of execution
+            max(2, self.config.getProperty('Database', 'max_num_connections', type=int,
+                    fallback=20)),  # 2 connections are needed as minimum for retrying of execution
             host=self.host,
             database=self.database,
             port=self.port,
@@ -77,7 +80,7 @@ class Database():
         )
 
 
-    
+
     def canConnect(self):
         with self.get_connection() as conn:
             return conn is not None and not conn.closed
@@ -86,16 +89,18 @@ class Database():
 
     @contextmanager
     def get_connection(self):
-        conn = self.connectionPool.getconn()
+        conn = self.connection_pool.getconn()
         conn.autocommit = True
         try:
             yield conn
         finally:
-            self.connectionPool.putconn(conn)       #, close=False)
+            self.connection_pool.putconn(conn)       #, close=False)
 
 
 
     def execute(self, query, arguments, numReturn=None):
+        if isinstance(arguments, Iterable) and len(arguments) == 0:
+            arguments = None
         with self.get_connection() as conn:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
 
@@ -105,32 +110,33 @@ class Database():
                 conn.commit()
 
                 # get results
-                returnValues = []
+                return_values = []
                 if numReturn is None:
                     return None
-                
-                elif numReturn == 'all':
-                    returnValues = cursor.fetchall()
-                    return returnValues
 
-                else:
-                    for _ in range(numReturn):
-                        rv = cursor.fetchone()
-                        if rv is None:
-                            return returnValues
-                        returnValues.append(rv)
-                    return returnValues
+                if numReturn == 'all':
+                    return_values = cursor.fetchall()
+                    return return_values
 
-            except Exception as e:
-                print(e)
+                for _ in range(numReturn):
+                    return_val = cursor.fetchone()
+                    if return_val is None:
+                        return return_values
+                    return_values.append(return_val)
+                return return_values
+
+            except Exception as exc:
+                print(exc)
                 if not conn.closed:
                     conn.rollback()
-            
+
             return None
 
-    
+
 
     def execute_cursor(self, connection, query, arguments):
+        if isinstance(arguments, Iterable) and len(arguments) == 0:
+            arguments = None
         cursor = connection.cursor(cursor_factory=RealDictCursor)
         try:
             cursor.execute(query, arguments)
@@ -153,24 +159,23 @@ class Database():
                 conn.commit()
 
                 # get results
-                returnValues = []
+                return_values = []
                 if numReturn is None:
                     # cursor.close()
                     return None
-                
-                elif numReturn == 'all':
-                    returnValues = cursor.fetchall()
+
+                if numReturn == 'all':
+                    return_values = cursor.fetchall()
                     return returnValues
 
-                else:
-                    for _ in range(numReturn):
-                        rv = cursor.fetchone()
-                        if rv is None:
-                            return returnValues
-                        returnValues.append(rv)
-                    return returnValues
+                for _ in range(numReturn):
+                    return_val = cursor.fetchone()
+                    if return_val is None:
+                        return return_values
+                    return_values.append(return_val)
+                return return_values
 
-            except Exception as e:
-                print(e)
+            except Exception as exc:
+                print(exc)
                 if not conn.closed:
                     conn.rollback()

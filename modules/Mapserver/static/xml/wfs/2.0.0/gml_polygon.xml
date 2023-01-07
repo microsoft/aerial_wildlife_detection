@@ -1,0 +1,13 @@
+<geometry>
+    <gml:MultiSurface gml:id="{anno_id}_geometry" srsName="urn:ogc:def:crs:EPSG::{srid}">
+        <gml:surfaceMember>
+            <gml:Polygon gml:id="{anno_id}_polygon" srsName="urn:ogc:def:crs:EPSG::{srid}">
+                <gml:exterior>
+                    <gml:LinearRing>
+                        <gml:coordinates>{coords}</gml:coordinates>
+                    </gml:LinearRing>
+                </gml:exterior>
+            </gml:Polygon>
+        </gml:surfaceMember>
+    </gml:MultiSurface>
+</geometry>

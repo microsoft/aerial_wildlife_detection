@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CoverageDescriptions xmlns="http://www.opengis.net/wcs/1.1" xmlns:ows="http://www.opengis.net/ows/1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ogc="http://www.opengis.net/ogc" xsi:schemaLocation="http://www.opengis.net/wcs/1.1 http://schemas.opengis.net/wcs/1.1/wcsDescribeCoverage.xsd http://www.opengis.net/ows/1.1 http://schemas.opengis.net/ows/1.1.0/owsAll.xsd">
+  <CoverageDescription>
+    <ows:Title>{title}</ows:Title>
+    <ows:Abstract>{abstract}</ows:Abstract>
+    <Identifier>{identifier}</Identifier>
+    <Domain>
+      <SpatialDomain>
+        <!-- <ows:BoundingBox crs="urn:ogc:def:crs:OGC::imageCRS" dimensions="2">
+          <ows:LowerCorner>0 0</ows:LowerCorner>
+          <ows:UpperCorner>2560 1600</ows:UpperCorner>
+        </ows:BoundingBox> -->
+        <ows:BoundingBox crs="urn:ogc:def:crs:epsg::{srid}" dimensions="2">
+          <ows:LowerCorner>{bbox_south} {bbox_west}</ows:LowerCorner>
+          <ows:UpperCorner>{bbox_north} {bbox_east}</ows:UpperCorner>
+        </ows:BoundingBox>
+        <ows:WGS84BoundingBox dimensions="2">
+          <ows:LowerCorner>{bbox_west} {bbox_south}</ows:LowerCorner>
+          <ows:UpperCorner>{bbox_east} {bbox_north}</ows:UpperCorner>
+        </ows:WGS84BoundingBox>
+        <GridCRS>
+          <GridBaseCRS>urn:ogc:def:crs:epsg::{srid}</GridBaseCRS>
+          <GridType>urn:ogc:def:method:WCS:1.1:2dSimpleGrid</GridType>
+          <GridOrigin>{bbox_west} {bbox_north}</GridOrigin>
+          <GridOffsets>0.001 -0.0001</GridOffsets>
+          <GridCS>urn:ogc:def:cs:OGC:0.0:Grid2dSquareCS</GridCS>
+        </GridCRS>
+      </SpatialDomain>
+    </Domain>
+    <Range>
+      {fields}
+    </Range>
+    <SupportedCRS>urn:ogc:def:crs:epsg::{srid}</SupportedCRS>
+    <SupportedFormat>image/tiff</SupportedFormat>
+  </CoverageDescription>
+</CoverageDescriptions>

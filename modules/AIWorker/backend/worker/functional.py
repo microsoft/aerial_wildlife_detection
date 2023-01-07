@@ -19,7 +19,7 @@
        it calls the very same function the AIController instance delegated and
        processes it (functions below).
 
-    2019-22 Benjamin Kellenberger
+    2019-23 Benjamin Kellenberger
 '''
 
 import base64
@@ -162,7 +162,7 @@ def __load_metadata(project, dbConnector, imageIDs, loadAnnotations, modelOrigin
                 # append window to filename for correct loading
                 if r.get('x', None) is not None and r.get('y', None) is not None:
                     r['filename'] += '?window={},{},{},{}'.format(
-                        r['y'], r['x'], r['height'], r['width']
+                        r['x'], r['y'], r['width'], r['height']
                     )
                 imageMeta[r['id']] = r
 

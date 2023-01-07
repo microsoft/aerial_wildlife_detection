@@ -7,15 +7,15 @@
     An optional suffix like "b" might be provided in
     case of multiple builds per day.
 
-    2020-22 Benjamin Kellenberger
+    2020-23 Benjamin Kellenberger
 '''
 
 import datetime
 
-AIDE_VERSION = '3.0.221231'
+AIDE_VERSION = '3.0.230107'
 
 # minimum required version for FileServer, due to recent changes
-MIN_FILESERVER_VERSION = '2.2.220618'
+MIN_FILESERVER_VERSION = '3.0.230107'
 
 # model marketplace format version exported by the current AIDE implementation
 MODEL_MARKETPLACE_VERSION = 1.0

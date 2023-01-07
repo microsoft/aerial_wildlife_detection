@@ -1,0 +1,382 @@
+<div>
+    <div id="mapserver-settings">Loading...</div>
+    <p>
+        More info:
+        <ul>
+            <li><b>WFS:</b> <a href="https://www.ogc.org/standards/wfs" target="_blank">Web Feature
+            Service</a>, serves vector data (points, polygons, bounding boxes) of annotations and/or
+            predictions (if available in project), and image outlines.</li>
+            <li><b>WMS:</b> <a href="https://www.ogc.org/standards/wms" target="_blank">Web Map
+            Service</a>, serves pre-rendered RGB images and segmentation masks (if available in
+            project)</li>
+            <li><b>WCS:</b> <a href="https://www.ogc.org/standards/wcs" target="_blank">Web Coverage
+            Service</a>, serves images in unmodified format (including multi-band, if available) and
+            segmentation masks with raw label class indices as values (if available in project)</li>
+        </ul>
+    </p>
+</div>
+<style>
+    .url-field {
+        font-family: monospace;
+        font-weight: bold;
+        font-size: 12pt;
+        text-align: center;
+        width: 100%;
+        background: #AAAAAA;
+        border: 1.5px solid white;
+        border-radius: 5px;
+    }
+    #layers {
+        display: none;
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+    .layer-container {
+        padding: 10px;
+        margin-bottom: 20px;
+    }
+    .service-container {
+        padding: 10px;
+        padding-left: 20px;
+        background: #606060;
+        border-radius: 10px;
+    }
+    .service-options-container {
+        display: none;
+        padding-left: 20px;
+    }
+</style>
+<script type="text/javascript">
+    var DEFAULT_SETTINGS = {
+        'enabled': false,
+        'layers': {
+            'image-outlines': {
+                'name': 'Image outlines',
+                'services': {
+                    'wfs': {
+                        'enabled': false,
+                        'acl': {
+                            'non_admin': false
+                        }
+                    }
+                }
+            },
+            'images': {
+                'name': 'Images',
+                'services': {
+                    'wms': {
+                        'enabled': false,
+                        'acl': {
+                            'non_admin': false
+                        },
+                        'options': {
+                            'render_config': DEFAULT_RENDER_CONFIG
+                        }
+                    },
+                    'wcs': {
+                        'enabled': false,
+                        'acl': {
+                            'non_admin': false
+                        }
+                    }
+                }
+            }
+        }
+    }
+    var DEFAULT_SERVICES_ANNOTATION = {
+        'segmentationmasks': {
+            'wms': {
+                'enabled': false,
+                'acl': {
+                    'non_admin': false
+                }
+            },
+            'wcs': {
+                'enabled': false,
+                'acl': {
+                    'non_admin': false
+                }
+            }
+        },
+        'default': {
+            'wfs': {
+                'enabled': false,
+                'acl': {
+                    'non_admin': false
+                }
+            }
+        }
+    }
+
+    function getCheckboxMarkup(checkboxID, checkboxTitle, checked) {
+        if(typeof(checked) === 'boolean' && checked === true) {
+            checked = 'checked="checked"';
+        } else {
+            checked = '';
+        }
+        return $(`
+            <div class="custom-control custom-switch" style="cursor:pointer">
+                <input type="checkbox" class="custom-control-input" id="${checkboxID}" ${checked}/>
+                <label class="custom-control-label" for="${checkboxID}">${checkboxTitle}</label>
+            </div>
+        `);
+    }
+
+    function addLayerMarkup(parent, layerID, properties) {
+        let layerName = properties.hasOwnProperty('name') ? properties['name'] : layerID;
+        let layerEnabled = properties.hasOwnProperty('enabled') ? properties['enabled'] : false;
+        let markup = $(`<div class="layer-container" id=${layerID}></div>`);
+        parent.append(markup);
+        markup.append(`<h3>${layerName}</h3>`);
+        let servicesContainer = $('<div class="service-container"></div>');
+        markup.append(servicesContainer);
+        if(layerEnabled) servicesContainer.show();
+        let services = properties['services'];
+        for(var serviceName in services) {
+            let serviceID = `${layerID}_${serviceName}`;
+            let serviceProps = services[serviceName];
+            let serviceEnabled = serviceProps['enabled'];
+            let onlyAdmins = !serviceProps['acl']['non_admin'];
+            let checkedProp = '';
+            if(onlyAdmins) {
+                checkedProp = 'checked="checked"';
+            }
+            let optionsMarkup = $(`<div></div>`);
+            servicesContainer.append(optionsMarkup);
+            optionsMarkup.append(getCheckboxMarkup(`${serviceID}_enabled`, `<h4>${serviceName.toUpperCase()}</h4>`, serviceEnabled));
+            let serviceOptsContainer = $(`
+                <div class="service-options-container" id="${serviceID}_opts">
+                    <input type="radio" id="${serviceID}_admin" name="${serviceID}_acl" value="${serviceID}_admin" ${checkedProp} />
+                    <label for="${serviceID}_admin">Project administrators only</label><br />
+                    <input type="radio" id="${serviceID}_nonAdmin" name="${serviceID}_acl" value="${serviceID}_nonAdmin" />
+                    <label for="${serviceID}_nonAdmin">All members</label><br />
+                </div>
+            `);
+            optionsMarkup.append(serviceOptsContainer);
+            if(serviceEnabled) serviceOptsContainer.show();
+            if(serviceProps.hasOwnProperty('options')) {
+                let serviceOpts = serviceProps['options'];
+                if(serviceOpts.hasOwnProperty('render_config')) {
+                    // image WMS render configuration. TODO: ugly compatibility solution with
+                    //existing render config UI; re-write latter
+                    $(`[id="${serviceID}_opts"]`).append($('<div id="rendering-controls-container"></div>'));
+                    setupImageRendererControls($('#rendering-controls-container'));
+                }
+            }
+            $(`[id="${serviceID}_enabled"]`).on('click', function() {
+                if($(this).prop('checked')) {
+                    $(`[id="${serviceID}_opts"]`).slideDown();
+                } else {
+                    $(`[id="${serviceID}_opts"]`).slideUp();
+                }
+            });
+        }
+    }
+
+    function setupMarkup(settings) {
+        let markup = $('<div></div>');
+        $('#mapserver-settings').empty();
+        $('#mapserver-settings').append(markup);
+
+        markup.append(getCheckboxMarkup('mapserver-enabled', '<h2>Enable Mapserver</h2>', settings['enabled']));
+
+        let layerContainer = $('<div id="layers"></div>');
+        markup.append(layerContainer);
+
+        //TODO: make more elegant
+        let mapserverURL = window.location.href.replace('/configuration/', '/');
+        layerContainer.append($(`
+            <div style="margin:10px">
+                <span>Mapserver URL:</span><br />
+                <input type="text" class="url-field" readonly value="${mapserverURL}"/>
+            </div>
+        `));
+
+        for(var layerID in settings['layers']) {
+            let layerSettings = settings['layers'][layerID];
+            addLayerMarkup(layerContainer, layerID, layerSettings);
+        }
+        
+        $('#mapserver-enabled').on('click', function() {
+            if($(this).prop('checked')) {
+                $('#layers').slideDown();
+            } else {
+                $('#layers').slideUp();
+            }
+        });
+        if(settings['enabled']) layerContainer.show();
+    }
+
+    function loadSettings() {
+        return $.ajax({
+            url: window.baseURL + 'getConfig',
+            method: 'POST',
+            data: JSON.stringify({
+                'parameters': [
+                    'band_config',
+                    'render_config'
+                ]
+            }),
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            success: function(data) {
+                console.log(data);
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+                if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                    window.messager.addMessage('An error occurred while trying to retrieve Mapserver settings (message: "' + error + '").', 'error', 0);
+                }
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return loadSettings();
+                    });
+                }
+            }
+        })
+    }
+
+    function saveSettings() {
+        if(window.mapserver_settings === undefined) return;
+        window.mapserver_settings['enabled'] = $('#mapserver-enabled').prop('checked');
+        for(var layer in window.mapserver_settings['layers']) {
+            let services = window.mapserver_settings['layers'][layer]['services'];
+            for(var service in services) {
+                let serviceEnabledID = `${layer}_${service}_enabled`;
+                services[service]['enabled'] = $(`[id="${serviceEnabledID}"]`).prop('checked');
+                let serviceNonAdminID = `${layer}_${service}_nonAdmin`;
+                services[service]['non_admin'] = $(`[id="${serviceNonAdminID}"]`).prop('checked');
+            }
+        }
+        //TODO: image WMS renderer
+    
+        return $.ajax({
+            url: window.baseURL + 'saveProjectConfiguration',
+            method: 'POST',
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            data: JSON.stringify({
+                'mapserver_settings': window.mapserver_settings
+            }),
+            success: function(data) {
+                if(data.hasOwnProperty('success') && data['success']) {
+                    return loadSettings().done(function() {
+                        return $.Deferred().promise();
+                    });
+                } else {
+                    // something went wrong
+                    console.error(data);
+                    window.messager.addMessage('An unknown error occurred while saving Mapserver settings.', 'error', 0);
+                    return $.Deferred().promise();
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error(error);
+                if(typeof(xhr) === 'object' && xhr.hasOwnProperty('status') && xhr['status'] !== 401) {
+                    window.messager.addMessage(`An error occurred while trying to save Mapserver settings (message: "${error}").`, 'error', 0);
+                }
+            },
+            statusCode: {
+                401: function(xhr) {
+                    return window.renewSessionRequest(xhr, function() {
+                        return saveValues();
+                    });
+                }
+            }
+        });
+    }
+
+    window.save = function() {
+        return saveSettings();
+    }
+
+    $(document).ready(function() {
+
+        // check if Mapserver available
+        let promise = $.ajax({
+            url: window.baseURL + 'mapserver/version',
+            method: 'GET',
+            success: function(data) {
+                let hasPostGIS = false;
+                let isSpatialProject = false;
+                if(typeof(data) === 'object') {
+                    hasPostGIS = typeof(data['PostGIS']) === 'string';
+                    isSpatialProject = typeof(data['srid']) === 'number' || typeof(data['srid']) === 'string';
+                }
+
+                if(!hasPostGIS) {
+                    $('#mapserver-settings').empty();
+                    $('#mapserver-settings').append($(`
+                        <div style="color:red">Mapserver not available in this installation of AIDE.</div>
+                    `));
+                } else if(!isSpatialProject) {
+                    $('#mapserver-settings').empty();
+                    $('#mapserver-settings').append($(`
+                        <div style="color:red">No geospatial project: Mapserver not available</div>
+                    `));
+                }
+                data['available'] = hasPostGIS && isSpatialProject;
+            }
+        });
+
+        promise = promise.done(function(data) {
+            if(data['available']) {
+                // load project settings
+                return $.ajax({
+                    url: window.baseURL + 'getConfig',
+                    method: 'POST',
+                    data: JSON.stringify({
+                        'parameters': [
+                            'annotationtype',
+                            'predictiontype',
+                            'mapserver_settings'
+                        ]
+                    }),
+                    contentType: 'application/json; charset=utf-8',
+                    dataType: 'json',
+                    success: function(response) {
+                        response = response['settings'];
+
+                        // assemble default settings based on project metadata
+                        let settings = DEFAULT_SETTINGS;
+                        let annoType = response['annotationtype'].toLowerCase();
+                        let annoServices = DEFAULT_SERVICES_ANNOTATION['default'];
+                        if(DEFAULT_SERVICES_ANNOTATION.hasOwnProperty(annoType)) {
+                            annoServices = DEFAULT_SERVICES_ANNOTATION[annoType]
+                        }
+                        settings['layers']['annotation'] = {
+                            'name': 'User annotations',
+                            'services': annoServices
+                        }
+                        let predType = response['predictiontype'].toLowerCase();
+                        let predServices = DEFAULT_SERVICES_ANNOTATION['default'];
+                        if(DEFAULT_SERVICES_ANNOTATION.hasOwnProperty(predType)) {
+                            predServices = DEFAULT_SERVICES_ANNOTATION[annoType]
+                        }
+                        settings['layers']['prediction'] = {
+                            'name': 'Model predictions',
+                            'services': predServices
+                        }
+
+                        // update with actual project settings
+                        if(typeof(response['mapserver_settings']) === 'object') {
+                            settings = {...settings, ...response['mapserver_settings']};
+                        }
+
+                        // populate page
+                        setupMarkup(settings);
+
+                        window.mapserver_settings = settings;
+                    }
+                });
+            }
+            return $.Deferred().resolve().promise();
+        });
+
+        promise.done(function() {
+            window.showLoadingOverlay(false);
+        });
+    });
+</script>

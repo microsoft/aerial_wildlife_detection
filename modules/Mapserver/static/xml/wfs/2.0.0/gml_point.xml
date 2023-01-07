@@ -1,0 +1,5 @@
+<location>
+    <gml:Point gml:id="{anno_id}_geometry" srsName="urn:ogc:def:crs:EPSG::{srid}" srsDimension="2">
+        <gml:pos>{coords}</gml:pos>
+    </gml:Point>
+</location>

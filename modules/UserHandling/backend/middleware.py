@@ -2,12 +2,13 @@
     Provides functionality for checking login details,
     session validity, and the like.
 
-    2019-22 Benjamin Kellenberger
+    2019-23 Benjamin Kellenberger
 '''
 
 import os
 import functools
 import hashlib
+import re
 from threading import Thread
 from psycopg2 import sql
 from datetime import timedelta
@@ -25,7 +26,7 @@ class UserMiddleware():
 
     CSRF_TOKEN_NAME = '_csrf_token'
     CSRF_TOKEN_AGE = 600
-    CSRF_SECRET_FALLBACK = '!ftU$_4FnJ6eA2uN'   # fallback for CSRF secret; used if not defined in config
+    CSRF_SECRET_FALLBACK = '!ftU$_4FnJ6eA2uN'   # fallback for CSRF secret if not defined in config
 
 
     def __init__(self, config, dbConnector):
@@ -33,8 +34,13 @@ class UserMiddleware():
         self.dbConnector = dbConnector      #Database(config)
 
         self.usersLoggedIn = {}    # username -> {timestamp, sessionToken}
-    
-        self.csrfSecret = self.config.getProperty('UserHandler', 'csrf_secret', type=str, fallback=self.CSRF_SECRET_FALLBACK)
+
+        self.csrfSecret = self.config.getProperty('UserHandler', 'csrf_secret', type=str,
+                                                    fallback=self.CSRF_SECRET_FALLBACK)
+
+        self.account_name_test = re.compile('^[A-Za-z0-9_-]*')
+        self.email_test = re.compile(
+                            r'([A-Za-z0-9]+[.-_])*[A-Za-z0-9]+@[A-Za-z0-9-]+(\.[A-Z|a-z]{2,})+')
 
 
     def _current_time(self):
@@ -146,21 +152,26 @@ class UserMiddleware():
         #TODO: feedback that everything is ok?
 
 
-    def _check_account_exists(self, username, email):
-        response = {
-            'username': True,
-            'email': True
-        }
-        if username is None or not len(username): username = ''
-        if email is None or not len(email): email = ''
-        result = self.dbConnector.execute('SELECT COUNT(name) AS c FROM aide_admin.user WHERE name = %s UNION ALL SELECT COUNT(name) AS c FROM aide_admin.user WHERE email = %s',
+    def _check_account_name_validity(self, username: str, email: str) -> tuple:
+        username_valid = re.fullmatch(self.account_name_test, username) is not None
+        email_valid = re.fullmatch(self.email_test, email) is not None
+        return username_valid, email_valid
+
+
+    def _check_account_available(self, username: str, email: str) -> tuple:
+        username_available, email_available = self._check_account_name_validity(username, email)
+        if not username_available and not email_available:
+            return username_available, email_available
+
+        result = self.dbConnector.execute('''
+            SELECT COUNT(name) AS c FROM aide_admin.user
+            WHERE name = %s UNION ALL
+            SELECT COUNT(name) AS c FROM aide_admin.user WHERE email = %s''',
                 (username,email,),
                 numReturn=2)
-
-        response['username'] = (result[0]['c'] > 0)
-        response['email'] = (result[1]['c'] > 0)
-
-        return response
+        username_available = username_available and (result[0]['c'] == 0)
+        email_available = email_available and (result[1]['c'] == 0)
+        return username_available, email_available
 
 
     def _check_logged_in(self, username, sessionToken):
@@ -541,29 +552,28 @@ class UserMiddleware():
             self._invalidate_session(username)
 
 
-    def accountExists(self, username, email):
-        return self._check_account_exists(username, email)
+    def account_available(self, username, email):
+        return self._check_account_available(username, email)
 
 
     def createAccount(self, username, password, email):
-        accExstChck = self._check_account_exists(username, email)
-        if accExstChck['username'] or accExstChck['email']:
+        username_available, email_available = self._check_account_available(username, email)
+        if not username_available or not email_available:
             raise AccountExistsException(username)
 
-        else:
-            hash = self._create_hash(password.encode('utf8'))
+        passwd_hash = self._create_hash(password.encode('utf8'))
 
-            queryStr = '''
-                INSERT INTO aide_admin.user (name, email, hash)
-                VALUES (%s, %s, %s);
-            '''
-            self.dbConnector.execute(queryStr,
-            (username, email, hash,),
-            numReturn=None)
-            sessionToken, timestamp, expires = self._init_or_extend_session(username)
-            return sessionToken, timestamp, expires
+        query_str = '''
+            INSERT INTO aide_admin.user (name, email, hash)
+            VALUES (%s, %s, %s);
+        '''
+        self.dbConnector.execute(query_str,
+        (username, email, passwd_hash,),
+        numReturn=None)
+        session_token, timestamp, expires = self._init_or_extend_session(username)
+        return session_token, timestamp, expires
 
-    
+
     def getUserNames(self, project=None):
         if not project:
             queryStr = 'SELECT name FROM aide_admin.user'

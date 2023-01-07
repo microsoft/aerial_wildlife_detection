@@ -108,6 +108,8 @@ venv.bak/
 .vscode
 .VSCodeCounter
 
+# macOS
+.DS_Store
 
 # site configuration
 #config/

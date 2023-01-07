@@ -1,0 +1,16 @@
+<Layer>
+    <Title>{title}</Title>
+    <Name>{name}</Name>
+    <Abstract>{abstract}</Abstract>
+    <CRS>CRS:84</CRS>
+    <CRS>EPSG:{srid}</CRS>
+    <EX_GeographicBoundingBox>
+        <westBoundLongitude>{bbox_west}</westBoundLongitude>
+        <eastBoundLongitude>{bbox_east}</eastBoundLongitude>
+        <southBoundLatitude>{bbox_south}</southBoundLatitude>
+        <northBoundLatitude>{bbox_north}</northBoundLatitude>
+    </EX_GeographicBoundingBox>
+    <BoundingBox CRS="EPSG:{srid}" minx="{bbox_south}" miny="{bbox_west}" maxx="{bbox_north}" maxy="{bbox_east}" />
+    <BoundingBox CRS="CRS:84" minx="{bbox_west}" miny="{bbox_south}" maxx="{bbox_east}" maxy="{bbox_north}" />
+    {layers}
+</Layer>

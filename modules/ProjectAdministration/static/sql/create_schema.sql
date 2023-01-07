@@ -4,7 +4,7 @@
     Requires substitutions for identifiers and annotation/prediction
     type fields.
 
-    2019-22 Benjamin Kellenberger
+    2019-23 Benjamin Kellenberger
 */
 
 
@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS {id_image} (
     y INTEGER,
     width INTEGER,
     height INTEGER,
+    affine_transform REAL[],
     PRIMARY KEY (id),
     UNIQUE (filename,x,y,width,height)
 );

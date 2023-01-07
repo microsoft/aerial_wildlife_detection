@@ -4,7 +4,7 @@
     for downloading, or scanning directories for
     untracked images.
 
-    2020-22 Benjamin Kellenberger
+    2020-23 Benjamin Kellenberger
 '''
 
 import os
@@ -446,7 +446,7 @@ class DataWorker:
 
 
 
-    def uploadData(self, project, username, sessionID, files):
+    def uploadData(self, project, username, session_id, files):
         '''
             Receives a dict of files (bottle.py file format), verifies their
             file extension and checks if they are loadable by PIL. If they are,
@@ -524,16 +524,16 @@ class DataWorker:
             and error messages for those that were not.
         '''
         # verify access
-        assert self.verifySessionAccess(project, username, sessionID), \
+        assert self.verifySessionAccess(project, username, session_id), \
                     'Upload session does not exist or user has no access to it'
 
         now = slugify(current_time())
 
         # load session metadata
-        meta = self.uploadSessions[sessionID]
+        meta = self.uploadSessions[session_id]
 
         # load geospatial project metadata
-        srid = geospatial.get_srid(self.dbConnector, project)
+        srid = geospatial.get_project_srid(self.dbConnector, project)
 
         # temp dir to save raw files to
         tempRoot = os.path.join(meta['sessionDir'], 'files')
@@ -626,9 +626,11 @@ class DataWorker:
                     pixelArray = None       # only load image if absolutely necessary
                     try:
                         driver = drivers.get_driver(tempFileName)
-                        sz = driver.size(tempFileName)
-                    except Exception:
-                        raise Exception(f'"{originalFileName}" does not appear to be a valid image file.')
+                        size = driver.size(tempFileName)
+                    except Exception as exc:
+                        raise Exception(
+                            f'"{originalFileName}" does not appear to be a valid image file.') \
+                            from exc
 
                     # loading succeeded; move entries about potential header files from imgs_error to files_aux
                     isLoadable = True
@@ -636,18 +638,18 @@ class DataWorker:
                     if imgKey in imgs_error:
                         files_aux[imgKey] = imgs_error[imgKey]
                         del imgs_error[imgKey]
-                    
-                    bandNum_current = sz[0]
+
+                    bandNum_current = size[0]
                     if bandNum_current not in bandNum:
                         raise Exception(f'Image "{originalFileName}" has invalid number of bands (expected: {str(bandNum)}, actual: {str(bandNum_current)}).')
-                    elif bandNum_current == 1 and not hasCustomBandConfig:
+                    if bandNum_current == 1 and not hasCustomBandConfig:
                         # project expects RGB data but image is grayscale; replicate for maximum compatibility
                         pixelArray = drivers.load_from_disk(tempFileName)
                         pixelArray = np.concatenate((pixelArray, pixelArray, pixelArray), 0)
                         forceConvert = True         # set to True to force saving file to disk instead of simply copying it
 
                     targetMimeType = None
-                    if ext not in drivers.SUPPORTED_DATA_EXTENSIONS:
+                    if ext.lower() not in drivers.SUPPORTED_DATA_EXTENSIONS:
                         # file is supported by drivers but not by Web front end
                         if meta['convertUnsupported']:
                             # replace file name extension and add warning message
@@ -663,7 +665,7 @@ class DataWorker:
                         else:
                             # skip and add error message
                             raise Exception(f'Unsupported file type for image "{originalFileName}".')
-                    
+
                     if meta['splitImages'] and meta['splitProperties'] is not None:
                         split_props = meta['splitProperties']
                         if split_props.get('virtualSplit', True):
@@ -682,8 +684,8 @@ class DataWorker:
                                     'filename': nextFileName,
                                     'message': 'Image was too small to be split into tiles and hence registered as a whole',
                                     'status': 0,
-                                    'width': coords[0][2],
-                                    'height': coords[0][3]
+                                    'width': coords[0][3],
+                                    'height': coords[0][2]
                                 }
 
                             else:
@@ -693,13 +695,14 @@ class DataWorker:
                                         'message': \
                     f'created virtual split at position ({coord[0], coord[1]})',
                                         'status': 0,
-                                        'x': coord[0],
-                                        'y': coord[1],
-                                        'width': coord[2],
-                                        'height': coord[3]
+                                        'x': coord[1],
+                                        'y': coord[0],
+                                        'width': coord[3],
+                                        'height': coord[2]
                                     }
                                 imgs_valid[key] = {
-                                    'filename': None,       # avoid main image being registered in database
+                                    'filename': None,
+                                    'register': False,
                                     'message': f'Image split into {len(coords)} tiles',
                                     'status': 0
                                 }
@@ -707,14 +710,18 @@ class DataWorker:
                                 # no need to split, but need to convert image format
                                 images_save[key] = {
                                     'image': pixelArray,
-                                    'filename': nextFileName
+                                    'filename': nextFileName,
+                                    'width': size[2],
+                                    'height': size[1]
                                 }
 
                             else:
                                 # no split and no conversion required; move file directly
                                 images_save[key] = {
                                     'image': tempFileName,
-                                    'filename': nextFileName
+                                    'filename': nextFileName,
+                                    'width': size[2],
+                                    'height': size[1]
                                 }
 
                         else:
@@ -739,8 +746,8 @@ class DataWorker:
                                     'status': 0,
                                     'x': None,
                                     'y': None,
-                                    'width': coords[f_idx][2],
-                                    'height': coords[f_idx][3]
+                                    'width': coords[f_idx][3],
+                                    'height': coords[f_idx][2]
                                 }
 
                             # add entry for general image
@@ -755,14 +762,18 @@ class DataWorker:
                         # no need to split, but need to convert image format
                         images_save[key] = {
                             'image': pixelArray,
-                            'filename': nextFileName
+                            'filename': nextFileName,
+                            'width': size[2],
+                            'height': size[1]
                         }
 
                     else:
                         # no split and no conversion required; move file directly
                         images_save[key] = {
                             'image': tempFileName,
-                            'filename': nextFileName
+                            'filename': nextFileName,
+                            'width': size[2],
+                            'height': size[1]
                         }
 
                     if imgKey in imgs_quarantine:
@@ -868,7 +879,9 @@ class DataWorker:
                     if sub_key not in imgs_valid:
                         imgs_valid[sub_key] = {
                             'filename': new_filename,
-                            'message': 'upload successful'
+                            'message': 'upload successful',
+                            'width': sub_img.get('width', None),
+                            'height': sub_img.get('height', None)
                         }
                 except Exception as exc:
                     imgs_error[sub_key] = {
@@ -890,41 +903,76 @@ class DataWorker:
                                 img_valid['y'], img_valid['x'],
                                 img_valid['height'], img_valid['width']
                             ]
-                        extent = geospatial.calc_extent(
+                        geo_meta = geospatial.get_geospatial_metadata(
                             os.path.join(
                                 destFolder,
                                 img_valid['filename']
                             ),
                             srid,
-                            window=window
+                            window=window,
+                            transform_if_needed=False
                         )
-                        #TODO: remove images if extent is None and flag is set
-                        img_valid['extent'] = extent
+                        has_geodata = geo_meta.get('extent', None) is not None \
+                                        and geo_meta.get('transform', None) is not None
+                        try:
+                            transform = list(geo_meta['transform'].to_gdal())
+                        except Exception:
+                            has_geodata = False
+                        if img_valid.get('width', None) is None:
+                            img_valid['width'] = geo_meta['width']
+                            img_valid['height'] = geo_meta['height']
 
                         # register image in database
-                        query_str = sql.SQL('''
-                            INSERT INTO {id_img} (filename, x, y, width, height, extent)
-                            VALUES (%s, %s, %s, %s, %s,
-                                ST_MakeEnvelope(%s, %s, %s, %s, %s)
+                        if has_geodata:
+                            extent = geo_meta['extent']
+                            query_str = sql.SQL('''
+                                INSERT INTO {id_img}
+                                (filename, x, y, width, height, affine_transform, extent)
+                                VALUES (%s, %s, %s, %s, %s, %s,
+                                    ST_MakeEnvelope(%s, %s, %s, %s, %s)
+                                )
+                                ON CONFLICT (filename, x, y, width, height) DO UPDATE
+                                SET x=EXCLUDED.x, y=EXCLUDED.y,
+                                    width=EXCLUDED.width, height=EXCLUDED.height,
+                                    affine_transform=EXCLUDED.affine_transform,
+                                    extent=EXCLUDED.extent;
+                            ''').format(
+                                id_img=sql.Identifier(project, 'image')
                             )
-                            ON CONFLICT (filename, x, y, width, height) DO UPDATE
-                            SET x=EXCLUDED.x, y=EXCLUDED.y,
-                                width=EXCLUDED.width, height=EXCLUDED.height,
-                                extent=EXCLUDED.extent;
-                        ''').format(
-                            id_img=sql.Identifier(project, 'image')
-                        )
-                        self.dbConnector.execute(query_str,
-                            (
-                                img_valid['filename'],
-                                img_valid.get('x', None),
-                                img_valid.get('y', None),
-                                img_valid.get('width', None),
-                                img_valid.get('height', None),
-                                *extent,
-                                srid
+                            self.dbConnector.execute(query_str,
+                                (
+                                    img_valid['filename'],
+                                    img_valid.get('x', None),
+                                    img_valid.get('y', None),
+                                    img_valid.get('width', None),
+                                    img_valid.get('height', None),
+                                    transform,
+                                    *extent,
+                                    srid
+                                )
                             )
-                        )
+                        else:
+                            # no geodata found
+                            #TODO: skip images if srid is defined?
+                            query_str = sql.SQL('''
+                                INSERT INTO {id_img}
+                                (filename, x, y, width, height)
+                                VALUES (%s, %s, %s, %s, %s)
+                                ON CONFLICT (filename, x, y, width, height) DO UPDATE
+                                SET x=EXCLUDED.x, y=EXCLUDED.y,
+                                    width=EXCLUDED.width, height=EXCLUDED.height;
+                            ''').format(
+                                id_img=sql.Identifier(project, 'image')
+                            )
+                            self.dbConnector.execute(query_str,
+                                (
+                                    img_valid['filename'],
+                                    img_valid.get('x', None),
+                                    img_valid.get('y', None),
+                                    img_valid.get('width', None),
+                                    img_valid.get('height', None)
+                                )
+                            )
                 else:
                     # register valid images in database without geospatial info
                     query_str = sql.SQL('''
@@ -1037,7 +1085,7 @@ class DataWorker:
                     for fn in fileNames:
                         numAnno = len(parseResult['result'][fn['id']])
                         fileName = fn['filename']
-                        window = [fn['y'], fn['x'], fn['height'], fn['width']]
+                        window = [fn['x'], fn['y'], fn['width'], fn['height']]
                         if all(w is not None for w in window):
                             fileName += '?window={},{},{},{}'.format(*window)
                         if fileName not in result:
@@ -1216,7 +1264,7 @@ class DataWorker:
         current_task.update_state(meta={'message': 'locating images...'})
 
         # load geospatial project metadata
-        srid = geospatial.get_srid(self.dbConnector, project)
+        srid = geospatial.get_project_srid(self.dbConnector, project)
 
         # get all images on disk that are not in database
         imgs_candidates = self.scanForImages(project,
@@ -1299,16 +1347,25 @@ class DataWorker:
                 if img_meta[1] is not None:
                     # x coordinate specified; entry is patch
                     window = img_meta[1:]
-                extent = geospatial.calc_extent(
+                geo_meta = geospatial.get_geospatial_metadata(
                     os.path.join(project_folder, img_meta[0]),
                     srid,
-                    window=window
+                    window=window,
+                    transform_if_needed=False
                 )
-                if extent is not None:
-                    # register image in database with geospatial extent
+                has_geodata = geo_meta.get('extent', None) is not None \
+                                and geo_meta.get('transform', None) is not None
+                try:
+                    transform = list(geo_meta['transform'].to_gdal())
+                except Exception:
+                    has_geodata = False
+                if has_geodata:
+                    # register image in database with geospatial metadata
+                    extent = geo_meta['extent']
                     query_str = sql.SQL('''
-                        INSERT INTO {id_img} (filename, x, y, width, height, extent)
-                        VALUES (%s, %s, %s, %s, %s,
+                        INSERT INTO {id_img}
+                        (filename, x, y, width, height, affine_transform, extent)
+                        VALUES (%s, %s, %s, %s, %s, %s,
                             ST_MakeEnvelope(%s, %s, %s, %s, %s)
                         );
                     ''').format(
@@ -1317,15 +1374,16 @@ class DataWorker:
                     self.dbConnector.execute(query_str,
                         (
                             *img_meta,
+                            transform,
                             *extent,
                             srid
                         )
                     )
                 else:
-                    # register image in database without geospatial extent
+                    # register image in database without geospatial metadata
                     query_str = sql.SQL('''
                         INSERT INTO {id_img} (filename, x, y, width, height)
-                        VALUES (%s, %s, %s, %s);
+                        VALUES (%s, %s, %s, %s, %s);
                     ''').format(
                         id_img=sql.Identifier(project, 'image')
                     )

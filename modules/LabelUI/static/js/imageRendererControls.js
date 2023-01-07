@@ -2,7 +2,7 @@
  * Image renderer driver selection, as well as UI functionality to adjust how
  * images are rendered.
  *
- * 2021 Benjamin Kellenberger
+ * 2021-23 Benjamin Kellenberger
  */
 
 async function rerenderAll() {
@@ -16,7 +16,7 @@ async function rerenderAll() {
 }
 
 
-function setupImageRendererControls() {
+function setupImageRendererControls(parentDiv, showApplyButtons) {
 
     // get image format for project and select renderer appropriately.
     window.bandConfig = get_band_config([]);
@@ -152,41 +152,43 @@ function setupImageRendererControls() {
                 // append to UI if any controls allowed
                 if(markup.children().length) {
 
-                    let buttonContainer = $('<div style="float:right"></div>');
+                    if(showApplyButtons) {
+                        let buttonContainer = $('<div style="float:right"></div>');
 
-                    // button to apply
-                    let applyBtn = $('<button class="btn btn-sm btn-primary" style="margin-right:5px">Apply</button>');
-                    applyBtn.on('click', function() {
-                        rerenderAll();
-                    });
-                    buttonContainer.append(applyBtn);
-
-                    // button to reset to defaults (window.renderConfig_default)
-                    let resetDefaultsBtn = $('<button class="btn btn-sm btn-warning">Reset</button>');
-                    resetDefaultsBtn.on('click', function() {
-                         JSON.parse(JSON.stringify(window.renderConfig_default));
-                        // update GUI controls too
-                        //TODO: implement case where not all adjustments are available
-                        ['red', 'green', 'blue'].map((band) => {
-                            $('#band-select-'+band).val(window.renderConfig['bands']['indices'][band].toString());
+                        // button to apply
+                        let applyBtn = $('<button class="btn btn-sm btn-primary" style="margin-right:5px">Apply</button>');
+                        applyBtn.on('click', function() {
+                            rerenderAll();
                         });
-                        ['min', 'max'].map((valID) => {
-                            let val = get_render_config_val(window.renderConfig, ['contrast', 'percentile', valID], 0.0);
-                            $('#contrast-stretch-perc-'+valID).val(val);
+                        buttonContainer.append(applyBtn);
+
+                        // button to reset to defaults (window.renderConfig_default)
+                        let resetDefaultsBtn = $('<button class="btn btn-sm btn-warning">Reset</button>');
+                        resetDefaultsBtn.on('click', function() {
+                            JSON.parse(JSON.stringify(window.renderConfig_default));
+                            // update GUI controls too
+                            //TODO: implement case where not all adjustments are available
+                            ['red', 'green', 'blue'].map((band) => {
+                                $('#band-select-'+band).val(window.renderConfig['bands']['indices'][band].toString());
+                            });
+                            ['min', 'max'].map((valID) => {
+                                let val = get_render_config_val(window.renderConfig, ['contrast', 'percentile', valID], 0.0);
+                                $('#contrast-stretch-perc-'+valID).val(val);
+                            });
+                            let val = 128 + get_render_config_val(window.renderConfig, 'brightness', 0);
+                            $('#render-brightness-slider').val(val)
+                            $('#render-brightness-slider').trigger('input');    // to set percentage field
+
+                            $('#render-grayscale-checkbox').prop('checked', get_render_config_val(window.renderConfig, 'grayscale', false));
+                            $('#render-white-black-checkbox').prop('checked', get_render_config_val(window.renderConfig, 'white_on_black', false));
+
+                            rerenderAll();
                         });
-                        let val = 128 + get_render_config_val(window.renderConfig, 'brightness', 0);
-                        $('#render-brightness-slider').val(val)
-                        $('#render-brightness-slider').trigger('input');    // to set percentage field
+                        buttonContainer.append(resetDefaultsBtn);
+                        markup.append(buttonContainer);
+                    }
 
-                        $('#render-grayscale-checkbox').prop('checked', get_render_config_val(window.renderConfig, 'grayscale', false));
-                        $('#render-white-black-checkbox').prop('checked', get_render_config_val(window.renderConfig, 'white_on_black', false));
-
-                        rerenderAll();
-                    });
-                    buttonContainer.append(resetDefaultsBtn);
-                    markup.append(buttonContainer);
-
-                    $('#rendering-controls-container').append(markup);
+                    $(parentDiv).append(markup);
                 } else {
                     $('#toolbox-tab-image').hide();  //TODO
                 }

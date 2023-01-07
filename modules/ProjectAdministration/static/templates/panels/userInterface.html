@@ -100,8 +100,9 @@
 
     <div id="display-styles-group" class="settings-group">
         <h3>Display styles</h3>
+        <h4>Images</h4>
+        <div id="rendering-controls-container"></div>
 
-        <!-- TODO: think about how to design this... maybe with preview? -->
         <div id="styles-panel">
             <div>
                 <div id="styles-points" style="display:none">
@@ -706,7 +707,7 @@
             window.dataHandler = new DataHandler(null);
 
             // image rendering
-            return setupImageRendererControls();
+            return setupImageRendererControls($('#rendering-controls-container'), false);
         });
 
         // get current UI settings

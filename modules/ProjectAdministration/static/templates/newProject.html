@@ -93,6 +93,18 @@
                 top: 170px;
                 cursor: pointer;
             }
+            #advanced-container {
+                border-radius: 10px;
+                padding: 20px;
+                background: #434343;
+                border: 1px solid #aaa;
+            }
+            input[type=search] {
+                border-radius: 20px;
+                margin-left: 30px;
+                padding-left: 20px;
+                width: 250px;
+            }
         </style>
         <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
@@ -114,10 +126,13 @@
             ];
 
             // globals
+            window.dataServerURI = '{{ data_server_uri }}';
+
             window.projNameAvailable = false;
             window.projShortnameAvailable = false;
             window.customBandConfiguration = false;
             window.bandsMatch = false;
+            window.geospatial = false;
             window.aiModels = {};
             window.shortnameModified = false;   // set to true once user provided input to shortname field
 
@@ -345,6 +360,156 @@
             }
 
             /**
+             * Advanced image properties
+             */
+            function parseParamsFromFile(file) {
+                /**
+                 *  Parses a provided file and tries to retrieve the number of bands and band
+                 *  labels, as well as the CRS (if available). Populates the advanced properties'
+                 *  fields accordingly.
+                 */
+                if(typeof(file) !== 'object' || file.name === undefined) return;
+
+                $('#file-parsing-progress').show();
+
+                let bands_tbody = $('#band-assignment-tbody');
+                let crs_tbody = $('#crs-tbody');
+
+                let _query_server = function() {
+                    let formData = new FormData();
+                    formData.append(file.name, file);
+                    return $.ajax({
+                        url: '/getImageMetadata',
+                        method: 'POST',
+                        data: formData,
+                        cache: false,
+                        contentType: false,
+                        processData: false,
+                        success: function(response) {
+                            console.log(response)
+                            if(response.hasOwnProperty('meta')) {
+                                meta = response['meta'];
+
+                                // image bands (and names)
+                                let bands = meta['descriptions'];
+                                if(Array.isArray(bands) && bands.length > 0) {
+                                    bands_tbody.empty();
+                                    for(var b=0; b<bands.length; b++) {
+                                        addBand(bands[b]);
+                                    }
+                                    updateDefaultBandSelectors();
+                                    // make custom band selection panel visible
+                                    window.customBandConfiguration = true;
+                                    $('#multiband').prop('checked', true);
+                                    $('#multiband-container').slideDown();
+                                }
+
+                                // CRS
+                                crs_tbody.empty();
+                                let crs = meta['crs'];
+                                if(typeof(crs) === 'string') {
+                                    // look up CRS
+                                    return findCRS(crs);
+                                }
+                            } else {
+                                window.messager.addMessage('Unsupported file(s).', 'error', 0);
+                            }
+                            $('#file-parsing-progress').hide();
+                        },
+                        error: function(xhr, status, error) {
+                            console.error(error);
+                            window.messager.addMessage('Could not retrieve spatial reference system', 'error', 0);
+                            $('#file-parsing-progress').hide();
+                        },
+                        statusCode: {
+                            401: function(xhr) {
+                                return window.renewSessionRequest(xhr, function() {
+                                    parseParamsFromFile(searchString);
+                                });
+                            }
+                        }
+                    });
+                }
+                
+                //TODO: we always query the server now
+                return _query_server();
+                // // get renderer according to MIME type
+                // try {
+                //     let rendererClass = getParserByMIMEtype(file.type);
+                //     let renderer = new rendererClass(file);
+                //     renderer.load_image().then(() => {
+                //         let numBands = renderer.getNumBands(true);
+                //         if(typeof(numBands) === 'number') {
+                //             tbody.empty();
+                //             if(numBands >= 3) {
+                //                 for(var b=1; b<=numBands; b++) {
+                //                     addBand('Band ' + b);
+                //                 }
+                //             } else {
+                //                 // less than three bands; assign first as grayscale
+                //                 addBand(0, 'Grayscale');
+                //             }
+                //             updateDefaultBandSelectors();
+                //         } else {
+                //             // image could not be parsed; see if it is
+                //             // semi-supported (send to server for parsing)
+                //             return _query_server();
+                //         }
+                //         $('#file-parsing-progress').hide();
+                //     });
+
+                // } catch {
+                //     // file could not be loaded locally; try via server
+                //     _query_server();
+                // }
+            }
+
+            function findCRS(searchString) {
+                if(typeof(searchString) !== 'string' || searchString.length === 0) return;
+                return $.ajax({
+                    url: window.dataServerURI + 'parseCRS?crs='+searchString,
+                    method: 'GET',
+                    success: function(response) {
+                        response = response['meta'];
+                        if(typeof(response) === 'object') {
+                            // populate table
+                            if(!response['available']) {
+                                window.messager.addMessage(
+                                    'Reference system "' +
+                                    response['name'] + '(EPSG:' + response['id']['code'] + ') ' +
+                                    'found, but not available.',
+                                    'error',
+                                    0
+                                );
+                                
+                            }
+                            let crs_tbody = $('#crs-tbody');
+                            crs_tbody.empty();
+                            crs_tbody.append($('<tr>' +
+                                '<td>'+response['name']+'</td>' +
+                                '<td>'+response['description']+'</td>' +
+                                '<td id="epsg-code">'+response['id']['code']+'</td>'));
+
+                            window.geospatial = true;
+                            $('#geospatial').prop('checked', true);
+                            $('#crs-container').slideDown();
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error(error);
+                        window.messager.addMessage('Could not retrieve spatial reference system', 'error', 0);
+                    },
+                    statusCode: {
+                        401: function(xhr) {
+                            return window.renewSessionRequest(xhr, function() {
+                                findCRS(searchString);
+                            });
+                        }
+                    }
+                });
+            }
+
+            /**
              *  Functionality for image band configuration
              */
             function addBand(bandName, selected) {
@@ -376,79 +541,6 @@
                 bandSelectorCell.append(bandSelector);
                 trow.append(bandSelectorCell);
                 tbody.append(trow);
-            }
-
-            function autoSuggestBandsFromFile(file) {
-                /**
-                 *  Parses a provided file and tries to retrieve the number of
-                 *  bands the image has as well as the band labels. Populates
-                 *  the band label table accordingly.
-                 */
-                if(typeof(file) !== 'object' || file.name === undefined) return;
-
-                $('#file-parsing-progress').show();
-                let tbody = $('#band-assignment-tbody');
-
-                let _query_server = function() {
-                    let formData = new FormData();
-                    formData.append(file.name, file);
-                    return $.ajax({
-                        url: '/getBandConfiguration',
-                        method: 'POST',
-                        data: formData,
-                        cache: false,
-                        contentType: false,
-                        processData: false,
-                        success: function(response) {
-                            let bands = response['image_bands'];
-                            if(Array.isArray(bands) && bands.length > 0) {
-                                tbody.empty();
-                                for(var b=0; b<bands.length; b++) {
-                                    addBand(bands[b]);
-                                }
-                                updateDefaultBandSelectors();
-                            } else {
-                                window.messager.addMessage('Selected file(s) appear to be unsupported by AIDE.', 'error', 0);
-                            }
-                            $('#file-parsing-progress').hide();
-                        },
-                        error: function(xhr, status, error) {
-                            return window.renewSessionRequest(xhr, function() {
-                                _query_server();
-                            });
-                        }
-                    });
-                }
-                
-                // get renderer according to MIME type
-                try {
-                    let rendererClass = getParserByMIMEtype(file.type);
-                    let renderer = new rendererClass(file);
-                    renderer.load_image().then(() => {
-                        let numBands = renderer.getNumBands(true);
-                        if(typeof(numBands) === 'number') {
-                            tbody.empty();
-                            if(numBands >= 3) {
-                                for(var b=1; b<=numBands; b++) {
-                                    addBand('Band ' + b);
-                                }
-                            } else {
-                                // less than three bands; assign first as grayscale
-                                addBand(0, 'Grayscale');
-                            }
-                            updateDefaultBandSelectors();
-                        } else {
-                            // image could not be parsed; see if it is
-                            // semi-supported (send to server for parsing)
-                            return _query_server();
-                        }
-                        $('#file-parsing-progress').hide();
-                    });
-
-                } catch {
-                    // file could not be loaded locally; try via server
-                    _query_server();
-                }
             }
 
             function _getSelectorID(band) {
@@ -564,8 +656,13 @@
                             data['render_config'] = parseBandSelector();
                             data['band_config'] = data['render_config']['bands']['labels'];
                         }
+                        if(window.geospatial) {
+                            let epsg_code = $('#epsg-code').html();
+                            if(typeof(epsg_code) === 'string' && epsg_code.length > 0) {
+                                data['srid'] = epsg_code;
+                            }
+                        }
 
-                        
                         return $.ajax({
                             url: '/createProject',
                             method: 'POST',
@@ -675,9 +772,18 @@
                         updateAImodelsTable();
                         updateDefaultBandSelectors();
                     });
+                    $('#geospatial').on('input', function() {
+                        window.geospatial = $(this).prop('checked');
+                        if(window.geospatial) {
+                            $('#crs-container').slideDown();
+                        } else {
+                            $('#crs-container').slideUp();
+                        }
+                        //TODO
+                    });
                     $('#image-sample-file').on('change', function() {
                         let file = this.files[0];
-                        autoSuggestBandsFromFile(file);
+                        parseParamsFromFile(file);
                     });
                     $('#band-assignment-add-row').on('click', function() {
                         addBand();
@@ -689,7 +795,12 @@
                     });
                     updateDefaultBandSelectors();
 
-                    $('#create-project-button').click(function() {
+                    // CRS
+                    $('#find-crs').on('click', function() {
+                        findCRS($('#crs-search-field').val());
+                    });
+
+                    $('#create-project-button').on('click', function() {
                         doCreateProject();
                     });
 
@@ -781,6 +892,11 @@
                                         </td>
                                     </tr>
                                     <tr>
+                                        <td></td>
+                                        <td style="font-size:11px">Project shortname may only contain Latin letters, numbers, hyphens and underscores.</td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
                                         <td>
                                             <label for="project-description-field">Short description</label>
                                         </td>
@@ -868,8 +984,18 @@
                             </div>
                         </div>
 
+                        <h2>Advanced</h2>
+                        <div class="settings-container" id="advanced-container">
+                            <div>
+                                <label for="image-sample-file">Auto-detect from image:</label>
+                                    <input type="file" id="image-sample-file" />
+                                    <div id="file-parsing-progress" style="display:none;float:right">
+                                        <div id="file-parsing-progress-bar"></div>
+                                        <span>reading image...</span>
+                                    </div>
+                            </div>
 
-                        <div class="settings-container">
+                            <!-- mult-band images -->
                             <div class="custom-control custom-switch" style="cursor:pointer">
                                 <input type="checkbox" class="custom-control-input" id="multiband">
                                 <label class="custom-control-label" for="multiband">
@@ -881,15 +1007,8 @@
                                 Note that the number of bands will be fixed for this project and that any image with a different band count will be ignored during data import.
                                 Also note that enabling multi-band image support might limit the number of AI models you can use in this project.
                             </p>
-
                             <div id="multiband-container" style="display:none">
                                 <h3>Band configuration:</h3>
-                                <label for="image-sample-file">Parse from file:</label>
-                                <input type="file" id="image-sample-file" />
-                                <div id="file-parsing-progress" style="display:none;float:right">
-                                    <div id="file-parsing-progress-bar"></div>
-                                    <span>reading image...</span>
-                                </div>
                                 <table>
                                     <thead>
                                         <tr>
@@ -903,8 +1022,37 @@
                                 </table>
                                 <button id="band-assignment-add-row" class="btn btn-sm btn-primary">+</button>
                             </div>
-                        </div>
 
+                            <br />
+
+                            <!-- geospatial images -->
+                            <div class="custom-control custom-switch" style="cursor:pointer">
+                                <input type="checkbox" class="custom-control-input" id="geospatial">
+                                <label class="custom-control-label" for="geospatial">
+                                    <h2>Geospatial images <span class="warning">*</span></h2>
+                                </label>
+                            </div>
+                            <p style="font-size:9pt;font-style:italic">
+                                AIDE provides extended functionality for geospatial images. As a
+                                prerequisite, they must all be geocoded in the same spatial reference system.
+                            </p>
+                            <div id="crs-container" style="display:none">
+                                <h3>Spatial reference system:</h3>
+                                <input type="search" id="crs-search-field" placeholder="Name, EPSG code, WKT, …" />
+                                <button class="btn btn-sm btn-primary" id="find-crs">Find</button>
+                                <br />
+                                <table style="margin-top:10px">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Description</th>
+                                            <th>EPSG code</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="crs-tbody"></tbody>
+                                </table>
+                            </div>
+                        </div>
 
                         <div class="warning" style="margin-top:20px;">
                             * Note: Values are required and cannot be changed once the project has been created.

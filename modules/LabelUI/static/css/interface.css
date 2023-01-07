@@ -1,7 +1,7 @@
 /*
     Main interface stylesheet.
 
-    2019-2022 Benjamin Kellenberger
+    2019-2023 Benjamin Kellenberger
 */
 
 body {
@@ -25,7 +25,11 @@ h2 {
 }
 
 h3 {
-    font-size: 16px;
+    font-size: 1.2rem;  /* 16px; */
+}
+
+h4 {
+    font-size: 1.1rem;  /* 13px; */
 }
 
 #page-container {

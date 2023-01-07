@@ -140,8 +140,8 @@
     
             var checkAccountValid = function() {
                 // check if username and password are valid
-                var currName = $('#username').val();
-                var currEmail = $('#email').val();
+                var currName = $('#username').val().trim();
+                var currEmail = $('#email').val().trim();
                 if((currName != null && currName.length > 0) || (currEmail != null && currEmail.length > 0)) {
                     $.ajax({
                         url: 'accountExists',
@@ -153,26 +153,29 @@
                         },
                         success: function(data) {
                             var msg = '';
-                            if(data['response']['username'] === true) {
+                            if(data['response']['username'] === true && currName.length > 0) {
                                 msg = 'Name unavailable';
                             }
-                            if(data['response']['email'] === true) {
-                                msg = 'E-mail address already registered';
+                            if(data['response']['email'] === true && currEmail.length > 0) {
+                                msg = 'E-mail address invalid or already registered';
                             }
-    
-                            if(msg.length) {
+                            if(msg.length > 0) {
                                 $('#account-exists-message').html(msg);
                                 $('#account-exists-message').css('color', 'red');
                                 $('#account-exists-message').css('display', 'inline');
                                 $('#submit-button').prop("disabled",true);
                             } else {
-                                $('#account-exists-message').html('OK');
-                                $('#account-exists-message').css('color', 'green');
-                                $('#account-exists-message').css('display', 'inline');
-                                if(!checkOK()) {
-                                    $('#submit-button').prop("disabled",true);
+                                if(currName.length > 0 && currEmail.length > 0) {
+                                    $('#account-exists-message').html('OK');
+                                    $('#account-exists-message').css('color', 'green');
+                                    $('#account-exists-message').css('display', 'inline');
+                                    if(!checkOK()) {
+                                        $('#submit-button').prop("disabled",true);
+                                    } else {
+                                        $('#submit-button').prop("disabled",false);
+                                    }
                                 } else {
-                                    $('#submit-button').prop("disabled",false);
+                                    $('#submit-button').prop("disabled",true);
                                 }
                             }
                         },
@@ -307,6 +310,8 @@
                     <label for="email" class="col-sm">E-Mail Address:</label>
                     <input type="email" name="email" id="email" required class="col-sm" />
                 </div>
+
+                <div>Username may only contain Latin letters, numbers, hyphens and underscores.</div>
 
                 <div id="password-security-warning" style="display:none"></div>
 

@@ -2,7 +2,7 @@
     Contains functionality to split a NumPy ndarray image into shards (patches)
     on a regular grid.
 
-    2020-22 Benjamin Kellenberger
+    2020-23 Benjamin Kellenberger
 '''
 
 import os
@@ -21,43 +21,36 @@ def get_split_positions(array, patch_size, stride=None, tight=True,
                         discard_homogeneous_quantization_value=255, celery_update_interval=-1):
     '''
         Receives one of:
-            - a NumPy ndarray of size (BxWxH)
+            - a NumPy ndarray of size (BxHxW)
             - a str, denoting the file path of an image
             - a bytes or BytesIO object, containing image data
-        and returns a list of [left, top, width, height] coordinates of split
-        patches. The splitting raster can be customized through the parameters.
-        Inputs:
+        and returns a list of [top, left, height, width] coordinates of split patches. The splitting
+        raster can be customized through the parameters. Inputs:
             - array:        The NumPy ndarray to be split into patches.
-            - patch_size:   Either an int or a tuple of (width, height) of
+            - patch_size:   Either an int or a tuple of (height, width) of
                             the patch dimensions.
             - stride:       The offsets of each patch with respect to its
-                            immediate neighbor. Can be one of the following: -
-                            None: strides are set to the values in "patch_size" -
-                            int:  equal stride in both x and y direction - tuple
-                            of (x, y) ints for both direction
+                            immediate neighbor. Can be one of the following: - None: strides are set
+                            to the values in "patch_size" - int:  equal stride in both height and
+                            width direction - tuple of (height, width) ints for both direction
             - tight:        If True, the last patches in x and y direction might
-                            be shifted towards the left (resp. top) if needed,
-                            so that none of the patches exceeds the image
-                            boundaries. If False, patches might exceed the image
-                            boundaries and contain black borders (filled with
-                            all-zeros).
+                            be shifted towards the left (resp. top) if needed, so that none of the
+                            patches exceeds the image boundaries. If False, patches might exceed the
+                            image boundaries and contain black borders (filled with all-zeros).
             - discard_homogeneous_percentage:
-                            If float or int, any patch with this or more percent
-                            of pixels that have the same values across all bands
-                            will be discarded. Useful to get rid of e.g.
-                            bordering patches in slanted satellite stripes. If
-                            <= 0, >= 100 or None, no patch will be discarded.
+                            If float or int, any patch with this or more percent of pixels that have
+                            the same values across all bands will be discarded. Useful to get rid of
+                            e.g. bordering patches in slanted satellite stripes. If <= 0, >= 100 or
+                            None, no patch will be discarded.
             - discard_homogeneous_quantization_value:
-                            Int in [1, 255]. Defines the number of color bins
-                            used for quantization during pixel homogeneity
-                            evaluation. Smaller values clump more diverse pixels
-                            together; larger values require pixels to be more
-                            similar to be considered identical.
+                            Int in [1, 255]. Defines the number of color bins used for quantization
+                            during pixel homogeneity evaluation. Smaller values clump more diverse
+                            pixels together; larger values require pixels to be more similar to be
+                            considered identical.
 
         Returns:
-            - coords:       A list of N tuples containing the (left, top, width,
-                            height) pixel coordinates of the top left corner of
-                            the patches.
+            - coords:       A list of N tuples containing the (top, left, height, width) pixel
+                            coordinates of the top left corner of the patches.
     '''
     if not isinstance(array, np.ndarray):
         # get image size from disk or bytes
@@ -109,34 +102,34 @@ def get_split_positions(array, patch_size, stride=None, tight=True,
             celery_update_msg += f' ("{array}")'
 
     # define crop locations
-    xLoc = list(range(0, size[1], stride[0]))
-    yLoc = list(range(0, size[2], stride[1]))
+    x_locs = list(range(0, size[2], stride[1]))
+    y_locs = list(range(0, size[1], stride[0]))
     if tight:
         # limit to image borders
-        maxX = size[1] - patch_size[0]
-        maxY = size[2] - patch_size[1]
-        xLoc[-1] = maxX
-        yLoc[-1] = maxY
+        max_x = size[2] - patch_size[1]
+        max_y = size[1] - patch_size[0]
+        x_locs[-1] = max_x
+        y_locs[-1] = max_y
     else:
         # add extra steps if required
-        while xLoc[-1] + patch_size[0] < size[1]:
-            xLoc.append(xLoc[-1] + stride[0])
-        while yLoc[-1] + patch_size[1] < size[2]:
-            yLoc.append(yLoc[-1] + stride[1])
+        while x_locs[-1] + patch_size[1] < size[2]:
+            x_locs.append(x_locs[-1] + stride[1])
+        while y_locs[-1] + patch_size[0] < size[1]:
+            y_locs.append(y_locs[-1] + stride[0])
 
-    if len(xLoc) <= 1 and len(yLoc) <= 1:
+    if len(x_locs) <= 1 and len(y_locs) <= 1:
         # patch size is greater than image size; return image
         return [(0, 0, size[1], size[2])]
 
     # do the cropping
-    num_coords = len(xLoc)*len(yLoc)
+    num_coords = len(x_locs)*len(y_locs)
     tbar = tqdm(range(num_coords))
     if discard_homogeneous_percentage is not None:
         print('Locating split positions, discarding empty patches...')
     coords = []
     count = 0
-    for x in range(len(xLoc)):
-        for y in range(len(yLoc)):
+    for x_loc in x_locs:
+        for y_loc in y_locs:
             if celery_update_interval >= 0 and count % celery_update_interval != 0:
                 current_task.update_state(
                     meta={
@@ -146,24 +139,27 @@ def get_split_positions(array, patch_size, stride=None, tight=True,
                     }
                 )
             count += 1
-            pos = (int(xLoc[x]), int(yLoc[y]))
+            pos = (int(y_loc), int(x_loc))
             end = (min(pos[0]+patch_size[0], size[1]), min(pos[1]+patch_size[1], size[2]))
             if discard_homogeneous_percentage is not None:
                 # get most frequent pixel value across bands and check percentage of it
                 if isinstance(array, np.ndarray):
                     arr_patch = array[:,pos[0]:end[0],pos[1]:end[1]]
                 else:
-                    arr_patch = driver.load(array, window=[pos[1], pos[0], end[1]-pos[1], end[0]-pos[0]])
+                    arr_patch = driver.load(array, \
+                                        window=[pos[1], pos[0], end[1]-pos[1], end[0]-pos[0]])
                 if discard_homogeneous_percentage > 99.999999:
                     # looking for a single value in images only; speed up process
-                    if all([len(np.unique(arr_patch[a,...]))==1 for a in range(len(arr_patch))]):
+                    if all(len(np.unique(arr_patch[a,...]))==1 for a in range(len(arr_patch))):
                         tbar.update(1)
                         continue
 
                 else:
                     psz = arr_patch.shape
-                    arr_patch_int = normalize_image(arr_patch, color_range=discard_homogeneous_quantization_value)
-                    _, counts = np.unique(np.reshape(arr_patch_int, (psz[0], -1)), axis=1, return_counts=True)
+                    arr_patch_int = normalize_image(arr_patch,
+                                        color_range=discard_homogeneous_quantization_value)
+                    _, counts = np.unique(np.reshape(arr_patch_int, (psz[0], -1)),
+                                        axis=1, return_counts=True)
                     if np.max(counts) > discard_homogeneous_percentage/100.0*(psz[1]*psz[2]):
                         tbar.update(1)
                         continue
@@ -183,7 +179,7 @@ def split_image(array, patch_size, stride=None, tight=True, discard_homogeneous_
                 celery_update_interval=-1):
     '''
         Receives one of:
-            - a NumPy ndarray of size (BxWxH)
+            - a NumPy ndarray of size (BxHxW)
             - a str, denoting the file path of an image
             - a bytes or BytesIO object, containing image data
         and splits it into patches on a regular grid. The splitting raster can
@@ -263,13 +259,14 @@ def split_image(array, patch_size, stride=None, tight=True, discard_homogeneous_
     patches = []
     filenames = []
     for idx, pos in enumerate(tqdm(coords)):
-        end = (min(pos[0]+patch_size[0], size[1]), min(pos[1]+patch_size[1], size[2]))
+        end = (min(pos[0]+patch_size[1], size[1]), min(pos[1]+patch_size[0], size[2]))
         arr_patch = driver.load(array, window=[pos[1], pos[0], end[1]-pos[1], end[0]-pos[0]])
         if return_patches:
-            patches.append(arr_patch)       #TODO: save to disk already here to prevent memory overflow with large images
+            #TODO: save to disk already here to prevent memory overflow with large images
+            patches.append(arr_patch)
         if save_root is not None:
             # get new patch filename
-            fname = f'{root_filename}_{pos[0]}_{pos[1]}{ext}'
+            fname = f'{root_filename}_{pos[1]}_{pos[0]}{ext}'
             driver.save_to_disk(arr_patch, fname)
             filenames.append(fname)
 

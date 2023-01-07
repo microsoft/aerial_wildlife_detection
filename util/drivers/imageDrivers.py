@@ -1,7 +1,7 @@
 '''
     Utilities to load images of various formats.
 
-    2021-22 Benjamin Kellenberger
+    2021-23 Benjamin Kellenberger
 '''
 
 from io import BytesIO
@@ -363,6 +363,7 @@ class GDALImageDriver(AbstractImageDriver):
                 f_raster = memfile.open()
         with f_raster:
             profile = f_raster.profile
+            profile['descriptions'] = f_raster.descriptions
             if window is not None:
                 profile['bounds'] = f_raster.window_bounds(window)
                 profile['transform'] = f_raster.window_transform(window)

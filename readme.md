@@ -26,7 +26,16 @@ Exciting news: AIDE version 3.0 is on the way! This is the **nightly** build of 
   * :ballot_box_with_check: [DeepForest and BirdDetector](https://github.com/weecology/DeepForest) (first prototype working; needs to be tested)
 * :white_check_mark: Virtual views for images implemented
 * :ballot_box_with_check: Annotation im-/export: basic functionality and some parsers implemented; need more testing. More parsers (e.g., PASCAL VOC, ESRI ShapeFile, GeoJSON) to be coded.
-* :ballot_box_with_check: Mapservers (WMS, WMTS, VectorTiles): to be implemented; started implementing PostGIS functionality for images
+* :ballot_box_with_check: support for geospatial projects
+  * :ballot_box_with_check: image upload stores SRID and image extent
+  * :clock3: currently no action in case of project and image SRID mismatch
+  * Mapservers: basic versions running.
+    * :ballot_box_with_check: basic WMS, WCS, WFS implemented, although still in alpha
+    * :clock3: missing: custom SRID, more service versions, extended parameters, GeoJSON output for WFS, general failsafety
+    * :clock3: project config page implemented; options not yet used (all services on by default; insufficient authentication check, also for demo projects)
+    * :clock3: needs extensive testing
+
+
 
 More functionality might come and will be added to this list as implementations progress.
 

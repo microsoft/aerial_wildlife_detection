@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema targetNamespace="{online_resource_href}"
+	xmlns="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified"
+	xmlns:gml="http://www.opengis.net/gml/3.2">
+	{elements}
+</schema>

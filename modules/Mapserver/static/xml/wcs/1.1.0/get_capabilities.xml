@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Capabilities xmlns="http://www.opengis.net/wcs/1.1" xmlns:ows="http://www.opengis.net/ows/1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ogc="http://www.opengis.net/ogc" version="1.1.0" updateSequence="20121123T120000Z" xsi:schemaLocation="http://www.opengis.net/wcs/1.1 http://schemas.opengis.net/wcs/1.1/wcsGetCapabilities.xsd http://www.opengis.net/ows/1.1 http://schemas.opengis.net/ows/1.1.0/owsAll.xsd">
+  <ows:ServiceIdentification>
+    <ows:Name>{name}</ows:Name>
+    <ows:Title>{title}</ows:Title>
+    <ows:Abstract>{abstract}</ows:Abstract>
+    <ows:Keywords>
+      {keywords}
+    </ows:Keywords>
+    <ows:ServiceType codeSpace="http://www.opengeospatial.org/">WCS</ows:ServiceType>
+    <ows:ServiceTypeVersion>1.1.0</ows:ServiceTypeVersion>
+    <ows:Fees>None</ows:Fees>
+    <ows:AccessConstraints>None</ows:AccessConstraints>
+  </ows:ServiceIdentification>
+  <ows:ServiceProvider>
+    <ows:ProviderName></ows:ProviderName>
+    <ows:ProviderSite xlink:type="simple" xlink:href="{online_resource_href}"/>
+    <ows:ServiceContact>
+    <ows:IndividualName>{contact_name}</ows:IndividualName>
+    <ows:PositionName></ows:PositionName>
+    <ows:ContactInfo>
+    <ows:Phone>
+    <ows:Voice>{contact_voice}</ows:Voice>
+    <ows:Facsimile>{contact_fax}</ows:Facsimile>
+    </ows:Phone>
+      <ows:Address>
+      <ows:DeliveryPoint>{contact_address}</ows:DeliveryPoint>
+      <ows:City>{contact_city}</ows:City>
+      <ows:AdministrativeArea></ows:AdministrativeArea>
+      <ows:PostalCode>{contact_postcode}</ows:PostalCode>
+      <ows:Country>{contact_country}</ows:Country>
+      <ows:ElectronicMailAddress>{contact_email}</ows:ElectronicMailAddress>
+    </ows:Address>
+    <ows:OnlineResource xlink:type="simple" xlink:href="{online_resource_href}"/>
+    <ows:HoursOfService></ows:HoursOfService>
+    <ows:ContactInstructions></ows:ContactInstructions>
+    </ows:ContactInfo>
+    <ows:Role>Service provider</ows:Role>
+    </ows:ServiceContact>
+  </ows:ServiceProvider>
+  <ows:OperationsMetadata>
+    <ows:Operation name="GetCapabilities">
+      <ows:DCP>
+        <ows:HTTP>
+          <ows:Get xlink:type="simple" xlink:href="{base_href}?"/>
+          <ows:Post xlink:type="simple" xlink:href="{base_href}"/>
+        </ows:HTTP>
+      </ows:DCP>
+      <ows:Parameter name="service">
+        <ows:AllowedValues>
+          <ows:Value>WCS</ows:Value>
+        </ows:AllowedValues>
+      </ows:Parameter>
+      <ows:Parameter name="version">
+        <ows:AllowedValues>
+          <ows:Value>1.1.0</ows:Value>
+        </ows:AllowedValues>
+      </ows:Parameter>
+    </ows:Operation>
+    <ows:Operation name="DescribeCoverage">
+      <ows:DCP>
+        <ows:HTTP>
+          <ows:Get xlink:type="simple" xlink:href="{base_href}?"/>
+          <ows:Post xlink:type="simple" xlink:href="{base_href}"/>
+        </ows:HTTP>
+      </ows:DCP>
+      <ows:Parameter name="service">
+        <ows:AllowedValues>
+          <ows:Value>WCS</ows:Value>
+        </ows:AllowedValues>
+      </ows:Parameter>
+      <ows:Parameter name="version">
+        <ows:AllowedValues>
+          <ows:Value>1.1.0</ows:Value>
+        </ows:AllowedValues>
+      </ows:Parameter>
+      <ows:Parameter name="identifiers">
+        <ows:AllowedValues>
+          {identifiers}
+        </ows:AllowedValues>
+      </ows:Parameter>
+    </ows:Operation>
+    <ows:Operation name="GetCoverage">
+      <ows:DCP>
+        <ows:HTTP>
+          <ows:Get xlink:type="simple" xlink:href="{base_href}?"/>
+          <ows:Post xlink:type="simple" xlink:href="{base_href}"/>
+        </ows:HTTP>
+      </ows:DCP>
+    <ows:Parameter name="service">
+      <ows:AllowedValues>
+        <ows:Value>WCS</ows:Value>
+      </ows:AllowedValues>
+    </ows:Parameter>
+    <ows:Parameter name="version">
+      <ows:AllowedValues>
+        <ows:Value>1.1.0</ows:Value>
+      </ows:AllowedValues>
+    </ows:Parameter>
+    <ows:Parameter name="InterpolationType">
+      <ows:AllowedValues>
+        <ows:Value>NEAREST_NEIGHBOUR</ows:Value>
+        <ows:Value>BILINEAR</ows:Value>
+      </ows:AllowedValues>
+    </ows:Parameter>
+    <ows:Parameter name="format">
+      <ows:AllowedValues>
+        <ows:Value>image/tiff</ows:Value>
+        <ows:Value>image/png</ows:Value>
+        <ows:Value>image/jpeg</ows:Value>
+      </ows:AllowedValues>
+    </ows:Parameter>
+    <ows:Parameter name="store">
+      <ows:AllowedValues>
+        <ows:Value>false</ows:Value>
+      </ows:AllowedValues>
+    </ows:Parameter>
+    </ows:Operation>
+  </ows:OperationsMetadata>
+  <Contents>
+    {project_meta}
+  </Contents>
+</Capabilities>

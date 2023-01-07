@@ -1,0 +1,13 @@
+<FeatureType>
+    <Name>{name}</Name>
+    <Title>{title}</Title>
+    <Abstract>{abstract}</Abstract>
+    <DefaultCRS>urn:ogc:def:crs:EPSG::{srid}</DefaultCRS>
+    <OutputFormats>
+    <Format>application/xml; subtype="gml/3.2.1"</Format>
+    </OutputFormats>
+    <ows:WGS84BoundingBox>
+        <ows:LowerCorner>{bbox_west} {bbox_south}</ows:LowerCorner>
+        <ows:UpperCorner>{bbox_east} {bbox_north}</ows:UpperCorner>
+    </ows:WGS84BoundingBox>
+</FeatureType>

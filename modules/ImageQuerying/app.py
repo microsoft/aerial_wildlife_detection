@@ -2,7 +2,7 @@
     Performs immediate image querying operations, such as area selection
     (GrabCut, etc.).
 
-    2021-22 Benjamin Kellenberger
+    2021-23 Benjamin Kellenberger
 '''
 
 from bottle import request, abort
@@ -11,15 +11,15 @@ from .backend.middleware import ImageQueryingMiddleware
 
 class ImageQuerier:
 
-    def __init__(self, config, app, dbConnector, verbose_start=False):
+    def __init__(self, config, app, db_connector, verbose_start=False):
         self.config = config
         self.app = app
 
         self.login_check = None
 
-        self.middleware = ImageQueryingMiddleware(config, dbConnector)
+        self.middleware = ImageQueryingMiddleware(config, db_connector)
         self._initBottle()
-    
+
 
     def loginCheck(self, project=None, admin=False, superuser=False, canCreateProjects=False, extend_session=False):
         return self.login_check(project, admin, superuser, canCreateProjects, extend_session)
@@ -27,7 +27,7 @@ class ImageQuerier:
 
     def addLoginCheckFun(self, loginCheckFun):
         self.login_check = loginCheckFun
-    
+
 
     def _initBottle(self):
 
@@ -35,15 +35,19 @@ class ImageQuerier:
         def grab_cut(project):
             # if not self.loginCheck(extend_session=True):
             #     abort(401, 'forbidden')
-            
+
             try:
                 args = request.json
-                imgPath = args['image_path']
+                img_path = args['image_path']
                 coords = args['coordinates']
-                returnPolygon = args.get('return_polygon', False)
-                numIter = args.get('num_iter', 5)
+                return_polygon = args.get('return_polygon', False)
+                num_iter = args.get('num_iter', 5)
 
-                result = self.middleware.grabCut(project, imgPath, coords, returnPolygon, numIter)
+                result = self.middleware.grabCut(project,
+                                                img_path,
+                                                coords,
+                                                return_polygon,
+                                                num_iter)
                 return {
                     'status': 0,
                     'result': result
@@ -63,16 +67,21 @@ class ImageQuerier:
 
             try:
                 args = request.json
-                imgPath = args['image_path']
-                seedCoords = args['seed_coordinates']
+                img_path = args['image_path']
+                seed_coords = args['seed_coordinates']
                 tolerance = args.get('tolerance', 32)
-                maxRadius = args.get('max_radius', None)
-                if maxRadius <= 0:
+                max_radius = args.get('max_radius', None)
+                if max_radius <= 0:
                     # no restriction in space
-                    maxRadius = None
-                rgbOnly = args.get('rgb_only', False)
+                    max_radius = None
+                rgb_only = args.get('rgb_only', False)
 
-                result = self.middleware.magicWand(project, imgPath, seedCoords, tolerance, maxRadius, rgbOnly)
+                result = self.middleware.magicWand(project,
+                                                img_path,
+                                                seed_coords,
+                                                tolerance,
+                                                max_radius,
+                                                rgb_only)
                 return {
                     'status': 0,
                     'result': result
@@ -92,13 +101,18 @@ class ImageQuerier:
 
             try:
                 args = request.json
-                imgPath = args['image_path']
-                seedPolygon = args['seed_polygon']
+                img_path = args['image_path']
+                seed_polygon = args['seed_polygon']
                 tolerance = args.get('tolerance', 32)
-                returnPolygon = args.get('return_polygon', False)
-                numMax = args.get('num_max', 1e9)
+                return_polygon = args.get('return_polygon', False)
+                num_max = args.get('num_max', 1e9)
 
-                result = self.middleware.select_similar(project, imgPath, seedPolygon, tolerance, returnPolygon, numMax)
+                result = self.middleware.select_similar(project,
+                                                        img_path,
+                                                        seed_polygon,
+                                                        tolerance,
+                                                        return_polygon,
+                                                        num_max)
                 return {
                     'status': 0,
                     'result': result
@@ -111,14 +125,15 @@ class ImageQuerier:
                 }
 
 
-        @self.app.post('/getBandConfiguration')
-        def getBandConfiguration():
+        #TODO: image metadata parsing; move to more suitable place than ImageQuerying
+        @self.app.post('/getImageMetadata')
+        def get_image_metadata():
             if not self.loginCheck(canCreateProjects=True):
                 abort(401, 'forbidden')
 
             try:
                 files = request.files
-                band_config = self.middleware.getBandConfiguration(files)
-                return {'status': 0, 'image_bands': band_config}
+                meta = self.middleware.get_image_metadata(files)
+                return {'status': 0, 'meta': meta}
             except Exception as exc:
                 return {'status': 1, 'message': str(exc)}

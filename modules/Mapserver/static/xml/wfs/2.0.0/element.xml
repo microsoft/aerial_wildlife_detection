@@ -1,0 +1,11 @@
+<element name="{elem_name}"/>
+<complexType name="{elem_name}">
+    <complexContent>
+        <extension base="gml:AbstractFeatureType">
+            <sequence>
+                {meta_fields}
+                <element ref="{gml_geometry_type}"/>
+            </sequence>
+        </extension>
+    </complexContent>
+</complexType>

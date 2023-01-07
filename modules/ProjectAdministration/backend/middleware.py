@@ -2,7 +2,7 @@
     Middleware layer between the project configuration front-end
     and the database.
 
-    2019-22 Benjamin Kellenberger
+    2019-23 Benjamin Kellenberger
 '''
 
 import os
@@ -18,9 +18,8 @@ from bottle import request
 
 from modules.DataAdministration.backend import celery_interface as fileServer_interface
 from modules.TaskCoordinator.backend.middleware import TaskCoordinatorMiddleware
-from .db_fields import Fields_annotation, Fields_prediction
 from util import helpers
-
+from .db_fields import Fields_annotation, Fields_prediction
 
 class ProjectConfigMiddleware:
 
@@ -85,7 +84,9 @@ class ProjectConfigMiddleware:
         'setpassword',
         'exec',
         'v',
-        'getbandconfiguration'
+        'getbandconfiguration',
+        'parseCRS',
+        'mapserver'
     ]
 
     # prohibited name prefixes
@@ -125,6 +126,9 @@ class ProjectConfigMiddleware:
     def __init__(self, config, dbConnector):
         self.config = config
         self.dbConnector = dbConnector
+
+        self.project_shortname_check = re.compile('^[A-Za-z0-9_-]*')
+        self.project_shortname_postgres_check = re.compile(r'(^(pg_|[0-9]).*|.*(\$|\s)+.*)')
 
         # load default UI settings
         try:
@@ -236,6 +240,8 @@ class ProjectConfigMiddleware:
             'render_config'
         ])
         admin_params = set([
+            'annotationtype',
+            'predictiontype',
             'secret_token',
             'ui_settings',
             'segmentation_ignore_unlabeled',
@@ -250,7 +256,8 @@ class ProjectConfigMiddleware:
             'inference_chunk_size',
             'max_num_concurrent_tasks',
             'watch_folder_enabled',
-            'watch_folder_remove_missing_enabled'
+            'watch_folder_remove_missing_enabled',
+            'mapserver_settings'
         ])
         all_params = set.union(public_params, admin_params)
         if parameters is not None and parameters != '*':
@@ -618,8 +625,13 @@ class ProjectConfigMiddleware:
             ('ui_settings', str),
             ('interface_enabled', bool),
             ('watch_folder_enabled', bool),
-            ('watch_folder_remove_missing_enabled', bool)
+            ('watch_folder_remove_missing_enabled', bool),
+            ('mapserver_settings', str)
         ]
+
+        #TODO: kind of a dirty hack
+        if 'mapserver_settings' in projectSettings:
+            projectSettings['mapserver_settings'] = json.dumps(projectSettings['mapserver_settings'])
 
         vals, params = helpers.parse_parameters(projectSettings, fieldNames, absent_ok=True, escape=False)
         vals.append(project)
@@ -990,32 +1002,38 @@ class ProjectConfigMiddleware:
             return result[0]['result'] != 1
 
 
-    def getProjectShortNameAvailable(self, projectName):
+    def getProjectShortNameAvailable(self, project_name: str):
         '''
             Returns True if the provided project shortname is available.
             In essence, "available" means that a database schema with the given
             name can be created (this includes Postgres schema name conventions).
             Returns False otherwise.
         '''
-        if not isinstance(projectName, str):
+        if not isinstance(project_name, str):
             return False
-        projectName_stripped = projectName.strip().lower()
-        if not len(projectName_stripped):
+        project_name_stripped = project_name.strip().lower()
+        if len(project_name_stripped) == 0:
+            return False
+
+        # check if name conforms to allowed characters
+        if re.fullmatch(self.project_shortname_check, project_name_stripped) is None:
             return False
 
         # check if name matches prohibited AIDE keywords; replace where possible
-        if projectName_stripped in self.PROHIBITED_STRICT or any([p in projectName_stripped for p in self.PROHIBITED_STRICT]):
+        if project_name_stripped in self.PROHIBITED_STRICT or \
+            any(p in project_name_stripped for p in self.PROHIBITED_STRICT):
             return False
-        if projectName_stripped in self.PROHIBITED_NAMES or projectName_stripped in self.PROHIBITED_SHORTNAMES:
+        if project_name_stripped in self.PROHIBITED_NAMES or \
+            project_name_stripped in self.PROHIBITED_SHORTNAMES:
             return False
-        if any([projectName_stripped.startswith(p) for p in self.PROHIBITED_NAME_PREFIXES]):
+        if any(project_name_stripped.startswith(pat) for pat in self.PROHIBITED_NAME_PREFIXES):
             return False
-        for p in self.SHORTNAME_PATTERNS_REPLACE:
-            projectName = projectName.replace(p, '_')
+        for pat in self.SHORTNAME_PATTERNS_REPLACE:
+            project_name = project_name.replace(pat, '_')
 
         # check if provided name is valid as per Postgres conventions
-        matches = re.findall('(^(pg_|[0-9]).*|.*(\$|\s)+.*)', projectName)
-        if len(matches):
+        matches = re.findall(self.project_shortname_postgres_check, project_name)
+        if len(matches) > 0:
             return False
 
         # check if project shorthand already exists in database
@@ -1026,18 +1044,17 @@ class ProjectConfigMiddleware:
             SELECT 1 FROM aide_admin.project
             WHERE shortname ilike %s;
             ''',
-            (projectName,projectName,),
+            (project_name,project_name,),
             2)
 
-        if result is None or not len(result):
+        if result is None or len(result) == 0:
             return True
 
         if len(result) == 2:
             return result[0]['result'] != 1 and result[1]['result'] != 1
-        elif len(result) == 1:
+        if len(result) == 1:
             return result[0]['result'] != 1
-        else:
-            return True
+        return True
 
 
     def suggest_shortname(self, long_name):

@@ -2,7 +2,7 @@
     Creates and assembles the Bottle app with the individual AIDE modules. Can also be used as a dry
     run and to perform pre-flight checks (verbose start; database migration, etc.).
 
-    2021-22 Benjamin Kellenberger
+    2021-23 Benjamin Kellenberger
 '''
 
 import os
@@ -237,6 +237,8 @@ def assemble_server(verbose_start=True,
             #TODO: allow running ImageQuerier on FileServer too
             image_querier = REGISTERED_MODULES['ImageQuerier'](config, app, db_connector)
             image_querier.addLoginCheckFun(user_handler.checkAuthenticated)
+            #TODO: ditto for Mapserver
+            mapserver = REGISTERED_MODULES['Mapserver'](config, app, db_connector, user_handler)
 
         elif module_name == 'FileServer':
             from modules.DataAdministration.backend import celery_interface #as daa_int

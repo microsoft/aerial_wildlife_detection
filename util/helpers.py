@@ -1,7 +1,7 @@
 '''
     Miscellaneous helper functions.
 
-    2019-22 Benjamin Kellenberger
+    2019-23 Benjamin Kellenberger
 '''
 
 import os
@@ -555,7 +555,6 @@ def getPILimage(input, imageID, project, dbConnector, convertRGB=False):
     except Exception:
         # something failed; set "corrupt" flag to False for image
         setImageCorrupt(dbConnector, project, imageID, True)
-    
     finally:
         return img
 
@@ -563,15 +562,16 @@ def getPILimage(input, imageID, project, dbConnector, convertRGB=False):
 
 def download_file(url, local_filename=None):
     '''
-        Source: https://stackoverflow.com/questions/16694907/download-large-file-in-python-with-requests
+        Source:
+        https://stackoverflow.com/questions/16694907/download-large-file-in-python-with-requests
     '''
     if local_filename is None:
         local_filename = url.split('/')[-1]
-    with requests.get(url, stream=True) as r:
-        r.raise_for_status()
-        with open(local_filename, 'wb') as f:
-            for chunk in r.iter_content(chunk_size=8192): 
-                f.write(chunk)
+    with requests.get(url, stream=True, timeout=180) as req:
+        req.raise_for_status()
+        with open(local_filename, 'wb') as f_req:
+            for chunk in req.iter_content(chunk_size=8192):
+                f_req.write(chunk)
     return local_filename
 
 

@@ -1,7 +1,7 @@
 '''
     Serves files, such as images, from a local directory.
 
-    2019-22 Benjamin Kellenberger
+    2019-23 Benjamin Kellenberger
 '''
 
 import os
@@ -84,9 +84,8 @@ class FileServer():
 
                 return HTTPResponse(bytes_arr, status=200, **headers)
 
-            else:
-                # full image; return static file directly
-                return static_file(path, root=os.path.join(self.static_dir, project))
+            # full image; return static file directly
+            return static_file(path, root=os.path.join(self.static_dir, project))
 
 
         @enable_cors

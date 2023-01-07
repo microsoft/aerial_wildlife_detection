@@ -3,7 +3,7 @@
     handling project setup, data import requests, etc.
     Also handles creation of new projects.
 
-    2019-22 Benjamin Kellenberger
+    2019-23 Benjamin Kellenberger
 '''
 
 import os
@@ -62,14 +62,14 @@ class ProjectConfigurator:
             self.projSetup_template = SimpleTemplate(f_template.read())
 
 
-        self.panelTemplates = {}
+        self.panel_templates = {}
         panel_files = os.listdir(os.path.join(self.static_dir, 'templates/panels'))
         for panel_file in panel_files:
             panel_name, ext = os.path.splitext(panel_file)
             if ext.lower().startswith('.htm'):
                 with open(os.path.join(self.static_dir, 'templates/panels', panel_file), 'r',
                     encoding='utf-8') as f_panel:
-                    self.panelTemplates[panel_name] = SimpleTemplate(f_panel.read())
+                    self.panel_templates[panel_name] = SimpleTemplate(f_panel.read())
 
 
         @self.app.route('/<project>/config/panels/<panel>')
@@ -78,7 +78,7 @@ class ProjectConfigurator:
                 abort(401, 'forbidden')
             if self.loginCheck(project=project, admin=True):
                 try:
-                    return self.panelTemplates[panel].render(
+                    return self.panel_templates[panel].render(
                         version=AIDE_VERSION,
                         project=project
                     )
@@ -95,10 +95,10 @@ class ProjectConfigurator:
             # get project data (and check if project exists)
             try:
                 is_admin = self.loginCheck(project=project, admin=True)
-                projectData = self.middleware.getProjectInfo(project,
+                project_data = self.middleware.getProjectInfo(project,
                                     ['name', 'description', 'interface_enabled', 'demomode'],
                                     is_admin)
-                if projectData is None:
+                if project_data is None:
                     return self.__redirect()
             except Exception:
                 return self.__redirect()
@@ -111,12 +111,12 @@ class ProjectConfigurator:
                 username = html.escape(request.get_cookie('username'))
             except Exception:
                 username = ''
-            
+
             return self.projLandPage_template.render(
                 version=AIDE_VERSION,
                 projectShortname=project,
-                projectTitle=projectData['name'],
-                projectDescription=projectData['description'],
+                projectTitle=project_data['name'],
+                projectDescription=project_data['description'],
                 username=username)
 
 
@@ -128,10 +128,10 @@ class ProjectConfigurator:
                 return self.__redirect(loginPage=True, redirect='/' + project + '/setup')
 
             # get project data (and check if project exists)
-            projectData = self.middleware.getProjectInfo(project,
+            project_data = self.middleware.getProjectInfo(project,
                                         ['name', 'description', 'interface_enabled', 'demomode'],
                                         True)
-            if projectData is None:
+            if project_data is None:
                 return self.__redirect()
 
             if not self.loginCheck(project=project, extend_session=True):
@@ -149,7 +149,7 @@ class ProjectConfigurator:
             return self.projSetup_template.render(
                     version=AIDE_VERSION,
                     projectShortname=project,
-                    projectTitle=projectData['name'],
+                    projectTitle=project_data['name'],
                     username=username)
 
 
@@ -244,9 +244,9 @@ class ProjectConfigurator:
                 abort(401, 'forbidden')
             try:
                 settings = request.json
-                isValid = self.middleware.updateProjectSettings(project, settings)
-                if isValid:
-                    return {'success': isValid}
+                is_valid = self.middleware.updateProjectSettings(project, settings)
+                if is_valid:
+                    return {'success': is_valid}
                 else:
                     abort(400, 'bad request')
             except Exception:
@@ -260,36 +260,33 @@ class ProjectConfigurator:
             try:
                 params = request.json
                 classdef = params['classes']
-                removeMissing = params.get('remove_missing', False)
+                remove_missing = params.get('remove_missing', False)
                 if isinstance(classdef, str):
                     # re-parse JSON (might happen in case of single quotes)
                     classdef = json.loads(classdef)
-                warnings = self.middleware.updateClassDefinitions(project, classdef, removeMissing)
+                warnings = self.middleware.updateClassDefinitions(project, classdef, remove_missing)
                 return {'status': 0, 'warnings': warnings}
-            except Exception as e:
-                abort(400, str(e))
+            except Exception as exc:
+                abort(400, str(exc))
 
-        
+
         @self.app.get('/<project>/getModelClassMapping')
         def get_model_to_project_class_mapping(project):
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
             try:
                 # parse AI model state ID if provided
-                try:
-                    aiModelID = request.params.get('modelID')
-                except Exception:
-                    aiModelID = None
-                response = self.middleware.getModelToProjectClassMapping(project, aiModelID)
+                ai_model_id = request.params.get('modelID', None)
+                response = self.middleware.getModelToProjectClassMapping(project, ai_model_id)
                 return {
                     'status': 0,
                     'response': response
                 }
 
-            except Exception as e:
-                abort(400, str(e))
+            except Exception as exc:
+                abort(400, str(exc))
 
-            
+
         @self.app.post('/<project>/saveModelClassMapping')
         def save_model_to_project_class_mapping(project):
             if not self.loginCheck(project=project, admin=True):
@@ -302,17 +299,17 @@ class ProjectConfigurator:
                     'status': status
                 }
 
-            except Exception as e:
-                abort(400, str(e))
+            except Exception as exc:
+                abort(400, str(exc))
 
-        
+
         @self.app.post('/<project>/renewSecretToken')
         def renew_secret_token(project):
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
             try:
-                newToken = self.middleware.renewSecretToken(project)
-                return {'secret_token': newToken}
+                new_token = self.middleware.renewSecretToken(project)
+                return {'secret_token': new_token}
             except Exception:
                 abort(400, 'bad request')
 
@@ -321,7 +318,7 @@ class ProjectConfigurator:
         def get_project_users(project):
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
-            
+
             users = self.middleware.getProjectUsers(project)
             return {'users':users}
 
@@ -341,59 +338,67 @@ class ProjectConfigurator:
             if config['demomode']:
                 permissions['can_view'] = True
                 permissions['can_label'] = config['interface_enabled'] and not config['archived']
-            isPublic = config['ispublic']
-            if not isPublic and not self.loginCheck(project=project):
-                # pretend project does not exist (TODO: suboptimal solution; does not properly hide project from view)
+            is_public = config['ispublic']
+            if not is_public and not self.loginCheck(project=project):
+                # pretend project does not exist (TODO: suboptimal solution; does not properly hide
+                # project from view)
                 abort(404, 'not found')
 
             # user-specific permissions
-            userPrivileges = self.loginCheck(project=project, return_all=True)
-            if userPrivileges is None or userPrivileges is False:
+            user_privileges = self.loginCheck(project=project, return_all=True)
+            if user_privileges is None or user_privileges is False:
                 # user not logged in; only demo mode projects allowed
                 permissions['can_view'] = config['demomode']
                 permissions['can_label'] = config['demomode']
                 permissions['is_admin'] = False
 
-            elif userPrivileges['logged_in']:
-                permissions['can_view'] = (config['demomode'] or isPublic or userPrivileges['project']['enrolled'])
-                permissions['can_label'] = config['interface_enabled'] and not config['archived'] and (config['demomode'] or userPrivileges['project']['enrolled'])
-                permissions['is_admin'] = userPrivileges['project']['isAdmin']
-            
+            elif user_privileges['logged_in']:
+                permissions['can_view'] = (config['demomode'] or is_public or \
+                    user_privileges['project']['enrolled'])
+                permissions['can_label'] = config['interface_enabled'] and \
+                    not config['archived'] and \
+                        (config['demomode'] or user_privileges['project']['enrolled'])
+                permissions['is_admin'] = user_privileges['project']['isAdmin']
+
             return {'permissions': permissions}
 
-        
+
         @self.app.post('/<project>/setPermissions')
         def set_permissions(project):
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
-            
+
             try:
-                userList = request.json['users']
+                user_list = request.json['users']
                 privileges = request.json['privileges']
 
-                return self.middleware.setPermissions(project, userList, privileges)
+                return self.middleware.setPermissions(project, user_list, privileges)
 
-            except Exception as e:
+            except Exception as exc:
                 return {
                     'status': 1,
-                    'message': str(e)
+                    'message': str(exc)
                 }
 
 
-        ''' Project creation '''
-        with open(os.path.abspath(os.path.join('modules/ProjectAdministration/static/templates/newProject.html')), 'r', encoding='utf-8') as f:
-            self.newProject_template = SimpleTemplate(f.read())
+        # Project creation
+        with open(os.path.abspath(
+            'modules/ProjectAdministration/static/templates/newProject.html'
+            ), 'r', encoding='utf-8') as f_template:
+            self.new_project_template = SimpleTemplate(f_template.read())
 
         @self.app.route('/newProject')
         def new_project_page():
             if not self.loginCheck():
                 return redirect('/')
-            # if not self.loginCheck(canCreateProjects=True):
-            #     abort(401, 'forbidden')
+            if not self.loginCheck(canCreateProjects=True):
+                abort(401, 'forbidden')
+
             username = html.escape(request.get_cookie('username'))
-            return self.newProject_template.render(
+            return self.new_project_template.render(
                 version=AIDE_VERSION,
-                username=username
+                username=username,
+                data_server_uri=self.config.getProperty('Server', 'dataServer_uri', fallback='/')
             )
 
 
@@ -423,11 +428,11 @@ class ProjectConfigurator:
         def check_project_name_valid():
             if not self.loginCheck(canCreateProjects=True):
                 abort(401, 'forbidden')
-            
+
             try:
-                projName = html.escape(request.query['name'])
-                if len(projName):
-                    available = self.middleware.getProjectNameAvailable(projName)
+                proj_name = html.escape(request.query['name'])
+                if len(proj_name) > 0:
+                    available = self.middleware.getProjectNameAvailable(proj_name)
                 else:
                     available = False
                 return { 'available': available }
@@ -435,12 +440,12 @@ class ProjectConfigurator:
             except Exception:
                 abort(400, 'bad request')
 
-        
+
         @self.app.get('/verifyProjectShort')
         def check_project_shortname_valid():
             if not self.loginCheck(canCreateProjects=True):
                 abort(401, 'forbidden')
-            
+
             try:
                 proj_name = html.escape(request.query['shorthand'])
                 if len(proj_name) > 0:
@@ -469,17 +474,17 @@ class ProjectConfigurator:
             except Exception:
                 abort(400, 'bad request')
 
-        
+
         @self.app.get('/<project>/isArchived')
         def is_archived(project):
             if not self.loginCheck(project=project):
                 abort(401, 'forbidden')
-            
+
             try:
                 username = html.escape(request.get_cookie('username'))
                 result = self.middleware.getProjectArchived(project, username)
                 return result
-                
+
             except Exception:
                 abort(400, 'bad request')
 
@@ -503,21 +508,21 @@ class ProjectConfigurator:
         def delete_project(project):
             if not self.loginCheck(project=project, admin=True):
                 abort(401, 'forbidden')
-            
+
             try:
                 username = html.escape(request.get_cookie('username'))
 
                 # verify user-provided project name
-                projNameUser = request.json['projName']
-                if projNameUser != project:
+                proj_name_user = request.json['projName']
+                if proj_name_user != project:
                     return {
                         'status': 2,
                         'message': 'User-provided project name does not match actual project name.'
                     }
-                deleteFiles = request.json['deleteFiles']
+                delete_files = request.json['deleteFiles']
 
-                result = self.middleware.deleteProject(project, username, deleteFiles)
+                result = self.middleware.deleteProject(project, username, delete_files)
                 return result
-                
+
             except Exception:
                 abort(400, 'bad request')

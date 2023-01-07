@@ -1,7 +1,7 @@
 /*
     Sets up the frontend and loads all required parameters in correct order.
 
-    2019-22 Benjamin Kellenberger
+    2019-23 Benjamin Kellenberger
 */
 
 $(document).ready(function() {
@@ -396,7 +396,7 @@ $(document).ready(function() {
 
     // image rendering
     promise = promise.then(function() {
-        return setupImageRendererControls();
+        return setupImageRendererControls($('#rendering-controls-container'), true);
     });
 
     // load image batch

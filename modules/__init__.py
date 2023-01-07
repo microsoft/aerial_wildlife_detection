@@ -2,7 +2,7 @@
     Register modules here. Module-specific parameters in the config .ini file
     can be added under a section with the same name as the module.
 
-    2019-2021 Benjamin Kellenberger
+    2019-2023 Benjamin Kellenberger
 '''
 
 # set up Celery configuration
@@ -21,6 +21,7 @@ from .AIDEAdmin.app import AIDEAdmin
 from .ModelMarketplace.app import ModelMarketplace
 from .TaskCoordinator.app import TaskCoordinator
 from .ImageQuerying.app import ImageQuerier
+from .Mapserver.app import Mapserver
 
 
 #TODO
@@ -43,5 +44,6 @@ REGISTERED_MODULES = {
     'AIDEAdmin': AIDEAdmin,
     'ModelMarketplace': ModelMarketplace,
     'TaskCoordinator': TaskCoordinator,
-    'ImageQuerier': ImageQuerier
+    'ImageQuerier': ImageQuerier,
+    'Mapserver': Mapserver
 }
