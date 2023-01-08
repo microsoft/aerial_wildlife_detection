@@ -188,12 +188,21 @@ class WebImageParser {
         if(forceReload || this.imageLoadingPromise === null) {
             let self = this;
             if(this.sourceType === 'uri') {
+                // we now perform band selection on the server; add bands directly
+                let bands = [       //TODO: grayscale
+                    window.renderConfig['bands']['indices']['red'],
+                    window.renderConfig['bands']['indices']['green'],
+                    window.renderConfig['bands']['indices']['blue']
+                ];
+                let source = self.source +
+                    (self.source.includes('?') ? '&' : '?') + 'bands=' +
+                        `${bands[0]},${bands[1]},${bands[2]}`;
                 self.imageLoadingPromise = new Promise(resolve => {
                     self.image = new Image();
                     self.image.addEventListener('load', () => {
                         return resolve(self.image);
                     });
-                    self.image.src = self.source;
+                    self.image.src = source;
                 });
             } else if(this.sourceType === 'blob') {
                 //TODO: untested
@@ -307,11 +316,20 @@ class TIFFImageParser extends WebImageParser {
     load_image(forceReload) {
         let self = this;
         if(!forceReload && self.imageLoadingPromise !== null) {
-            return self.imageLoadingPromise;
+            return $.Deferred().resolve().promise();    //self.imageLoadingPromise;
         } else {
             self.size = [];
             if(self.sourceType === 'uri') {
-                self.imageLoadingPromise = GeoTIFF.fromUrl(self.source);
+                // we now perform band selection on the server; add bands directly
+                let bands = [       //TODO: grayscale
+                    window.renderConfig['bands']['indices']['red'],
+                    window.renderConfig['bands']['indices']['green'],
+                    window.renderConfig['bands']['indices']['blue']
+                ];
+                let source = self.source +
+                    (self.source.includes('?') ? '&' : '?') + 'bands=' +
+                        `${bands[0]},${bands[1]},${bands[2]}`;
+                self.imageLoadingPromise = GeoTIFF.fromUrl(source);
             } else if(self.sourceType === 'blob') {
                 self.imageLoadingPromise = GeoTIFF.fromBlob(self.source);
             }
@@ -470,11 +488,11 @@ class ImageRenderer {
         this.parser = new parserClass(this.source);
     }
 
-    load_image() {
+    load_image(force) {
         let self = this;
-        return this.parser.load_image()
+        return this.parser.load_image(force)
         .then(() => {
-            return self._render_image(false);
+            return self._render_image(force);
         });
     }
 
@@ -511,6 +529,7 @@ class ImageRenderer {
         let self = this;
         if(force || this.renderPromise === null) {
             if(window.jobIndicator !== undefined) window.jobIndicator.addJob(this.source.toString(), 'rendering');
+            
             this.renderPromise = new Promise((resolve) => {
                 // band selection
                 let bands = [       //TODO: grayscale
@@ -519,8 +538,7 @@ class ImageRenderer {
                     window.renderConfig['bands']['indices']['blue']
                 ];
                 return resolve(self.parser.get_image_array(bands));
-            })
-            .then((arr) => {
+            }).then((arr) => {
                 // contrast stretch
                 let perc_min = Math.max(0, parseInt(get_render_config_val(window.renderConfig, ['contrast', 'percentile', 'min'], 0)));
                 let perc_max = Math.min(100, parseInt(get_render_config_val(window.renderConfig, ['contrast', 'percentile', 'max'], 100)));
@@ -636,11 +654,17 @@ class ImageRenderer {
         }
     }
 
-    async rerenderImage() {
+    async rerenderImage(forceReloadImage) {
         let self = this;
-        this._render_image(true).then(() => {
-            self.viewport.render();
-        });
+        if(forceReloadImage) {
+            this.load_image(true).then(() => {
+                self.viewport.render();
+            });
+        } else {
+            this._render_image(true).then(() => {
+                self.viewport.render();
+            });
+        }
     }
 
     getNumBands() {

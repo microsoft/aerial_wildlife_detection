@@ -15,7 +15,8 @@ Exciting news: AIDE version 3.0 is on the way! This is the **nightly** build of 
   * :white_check_mark: TIFF image parsing: :white_check_mark: Web frontend works (might need testing with exotic TIFFs); :white_check_mark: backend works
   * :clock3: DICOM image parsing: :red_circle: Web frontend to be implemented (Daikon library); :clock3: backend prototype works (cannot save images; no metadata is kept)
 * :white_check_mark: Support for auto-conversion of semi-supported image formats. In AIDE v3.0 and above, some image formats may be supported by the new ImageDriver framework but not by the Web front-end. These are denoted as "semi-supported" and will be automatically renamed and converted upon upload to a fully supported format (currently TIFF). First tests work for e.g. ERDAS Imagine files (*.img), as well as formats consisting of multiple files like headers, but more tests are needed.
-Also: (i.) need to pre-select bands on server side; (ii.) annotation interface loads image three times.
+  * :ballot_box_with_check: Implemented band selection on server side; currently causes warning messages and needs testing
+  * :clock3: Annotation interface loads image up to three times for some reasons (Promise chains?)
 * :white_check_mark: Image rendering adjustments for Web frontend (grayscale render configuration might needs minor UI adjustments)
 * :ballot_box_with_check: Support for polygons (to be implemented: polygon union, individual vertex selection and deletion, general minor bug fixes)
 * :clock3: New models for polygons: Detectron2 detectors (Faster R-CNN & Co.) work with polygons as input; dedicated models to be implemented
@@ -31,7 +32,7 @@ Also: (i.) need to pre-select bands on server side; (ii.) annotation interface l
   * :clock3: currently no action in case of project and image SRID mismatch
   * Mapservers: basic versions running.
     * :ballot_box_with_check: basic WMS, WCS, WFS implemented, although still in alpha
-    * :clock3: missing: custom SRID, more service versions, extended parameters, GeoJSON output for WFS, general failsafety
+    * :clock3: missing: custom SRID (currently fails with non-WGS84), more service versions, extended parameters, GeoJSON output for WFS, general failsafety
     * :clock3: project config page implemented; options not yet used (all services on by default; insufficient authentication check, also for demo projects)
     * :clock3: needs extensive testing
 

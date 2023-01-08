@@ -36,7 +36,7 @@ def get_project_srid(db_connector: Database,
     srid = db_connector.execute('''
         SELECT Find_SRID(%s, 'image', 'extent') AS srid;
     ''', (project,), 1)
-    return srid[0]['srid'] if len(srid) > 0 else None
+    return srid[0]['srid'] if srid is not None and len(srid) > 0 else None
 
 
 def to_crs(srid: object) -> pyproj.CRS:

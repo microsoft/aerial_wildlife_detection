@@ -9,10 +9,16 @@ from io import BytesIO
 from bottle import static_file, request, abort, _file_iter_range, parse_range_header, HTTPResponse
 from util.cors import enable_cors
 from util import helpers
-from util.drivers import GDALImageDriver        #TODO
+from util.drivers import is_web_compatible, GDALImageDriver        #TODO
 
 
 class FileServer():
+
+    DEFAULT_IMAGE_KWARGS = {
+        'driver': 'GTiff',
+        'compress': 'lzw'
+    }
+    DEFAULT_IMAGE_MIME_TYPE = 'image/tiff'
 
     def __init__(self, config, app, dbConnector, verbose_start=False):
         self.config = config
@@ -58,17 +64,29 @@ class FileServer():
         @enable_cors
         @self.app.route(os.path.join('/', self.static_address_suffix, '/<project>/files/<path:path>'))
         def send_file(project, path):
+            file_path = os.path.join(self.static_dir, project, path)
+            need_conversion = not is_web_compatible(file_path)
             window = request.params.get('window', None)
-            if window is not None:
+            bands = request.params.get('bands', None)
+            if need_conversion or window is not None or bands is not None:
                 # load from disk and crop
+                driver_kwargs = {}
                 if isinstance(window, str):
                     window = [int(w) for w in window.strip().split(',')]
-                file_path = os.path.join(self.static_dir, project, path)
-                bytes_arr = GDALImageDriver.disk_to_bytes(file_path, window=window)
+                    driver_kwargs['window'] = window
+                if isinstance(bands, str):
+                    bands = [int(band) for band in bands.strip().split(',')]
+                    driver_kwargs['bands'] = bands
+
+                # check if file needs conversion
+                if need_conversion:
+                    driver_kwargs.update(self.DEFAULT_IMAGE_KWARGS)
+
+                bytes_arr = GDALImageDriver.disk_to_bytes(file_path, **driver_kwargs)
                 clen = len(bytes_arr)
 
                 headers = {}
-                headers['Content-type'] = 'image/tiff'        #TODO
+                # headers['Content-type'] = mime_type
                 headers['Content-Disposition'] = f'attachment; filename="{path}"'
 
                 ranges = request.environ.get('HTTP_RANGE')
@@ -85,6 +103,7 @@ class FileServer():
                 return HTTPResponse(bytes_arr, status=200, **headers)
 
             # full image; return static file directly
+            #TODO: only go this route if fully-supported image (i.e., parseable by client)
             return static_file(path, root=os.path.join(self.static_dir, project))
 
 

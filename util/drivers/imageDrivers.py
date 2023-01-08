@@ -11,7 +11,19 @@ import numpy as np
 mimetypes.init()
 
 
-def bytea_to_bytesio(bytea):
+DEFAULT_IMAGE_METADATA = {
+    'dtpye': '',
+    'width': 0,
+    'height': 0,
+    'count': 0,
+    'descriptions': (),
+    'bounds': None,
+    'transform': None,
+    'crs': None
+}
+
+
+def bytea_to_bytesio(bytea: object) -> BytesIO:
     '''
         Returns a BytesIO wrapper around a given byte array (or the object itself if it already is a
         BytesIO instance). TODO: double definition, also in __init__ file...
@@ -26,19 +38,26 @@ def bytea_to_bytesio(bytea):
 
 
 
-def bytesio_to_bytea(bytes_io):
+def bytesio_to_bytea(bytes_io: object) -> bytes:
     '''
         Returns a byte array from a BytesIO wrapper.
     '''
     if isinstance(bytes_io, BytesIO):
         bytes_io.seek(0)
         return bytes_io.getvalue()
-    else:
-        return bytes_io
+    return bytes_io
 
 
+def band_selection(img: np.array, bands: tuple=(1,2,3)) -> np.array:
+    '''
+        Band selection. Band indices start at 0.
+    '''
+    if bands is None:
+        return img
+    return img.take(bands, axis=0)
 
-def normalize_image(img, band_axis=0, color_range=255):
+
+def normalize_image(img: np.array, band_axis: int=0, color_range: object=255) -> np.array:
     '''
         Receives an image in np.array format and normalizes it into a [0, 255] uint8 image.
         Parameter "band_axis" determines in which axis the image bands can be found. Parameter
@@ -112,7 +131,7 @@ class AbstractImageDriver:
             Returns metadata for a given object (either a str or bytes array), such as geospatial
             registration info.
         '''
-        raise NotImplementedError('Not implemented for abstract base class.')
+        return DEFAULT_IMAGE_METADATA
 
     @classmethod
     def size(cls, obj):
@@ -210,6 +229,18 @@ class PILImageDriver(AbstractImageDriver):
     )
 
     @classmethod
+    def _load(cls, obj, **kwargs):
+        img = None
+        if isinstance(obj, str):
+            img = cls.loader.open(obj)
+        else:
+            img = cls.loader.open(bytea_to_bytesio(obj))
+        if 'window' in kwargs and kwargs['window'] is not None:
+            # crop
+            img = img.crop(*kwargs['window'])
+        return img
+
+    @classmethod
     def init_is_available(cls):
         from PIL import Image
         cls.loader = Image
@@ -219,10 +250,7 @@ class PILImageDriver(AbstractImageDriver):
     def is_loadable(cls, obj):
         img = None
         try:
-            if isinstance(obj, str):
-                img = cls.loader.open(obj)
-            else:
-                img = cls.loader.open(bytea_to_bytesio(obj))
+            img = cls._load(obj)
             img.verify()
             img.close()     #TODO: needed?
             return True
@@ -233,11 +261,20 @@ class PILImageDriver(AbstractImageDriver):
                 img.close()
 
     @classmethod
+    def metadata(cls, obj, **kwargs):
+        meta = DEFAULT_IMAGE_METADATA
+        img = cls._load(obj, kwargs)
+        meta.update({
+            'dtype': 'uint8',       #TODO
+            'count': img.layers,
+            'width': img.width,
+            'height': img.height
+        })
+        return meta
+
+    @classmethod
     def size(cls, obj):
-        if isinstance(obj, str):
-            img = cls.loader.open(obj)
-        else:
-            img = cls.loader.open(bytea_to_bytesio(obj))
+        img = cls._load(obj)
         size = [len(img.getbands()), img.height, img.width]
         img.close()
         return size
@@ -324,9 +361,12 @@ class GDALImageDriver(AbstractImageDriver):
         from rasterio.windows import Window
         cls.window = Window
 
-        # filter "NotGeoreferencedWarning"      #TODO: test
+        # filter warnings
         import warnings
         warnings.filterwarnings("ignore", category=rasterio.errors.NotGeoreferencedWarning)
+        from rasterio import logging
+        log = logging.getLogger()
+        log.setLevel(logging.ERROR)
         return True
 
     @classmethod
@@ -349,6 +389,7 @@ class GDALImageDriver(AbstractImageDriver):
             Returns metadata for a given object (str, bytes array, rasterio.Dataset), such as
             geospatial registration info.
         '''
+        meta = DEFAULT_IMAGE_METADATA
         if 'window' in kwargs and kwargs['window'] is not None:
             # crop
             window = cls.window(*kwargs['window'])
@@ -374,7 +415,8 @@ class GDALImageDriver(AbstractImageDriver):
                     f_raster.bounds.right,
                     f_raster.bounds.top
                 )
-        return profile
+        meta.update(profile)
+        return meta
 
     @classmethod
     def size(cls, obj):
@@ -396,10 +438,17 @@ class GDALImageDriver(AbstractImageDriver):
             window = None
         with cls.driver.open(file_path, 'r') as f_raster:
             raster = f_raster.read(window=window, boundless=True)
+            return_args = [raster]
             if kwargs.get('return_metadata', False):
                 profile = cls.metadata(f_raster, window=window)
-                return raster, profile
-        return raster
+                return_args.append(profile)
+
+            bands = kwargs.get('bands', None)
+            if bands is not None:
+                raster = band_selection(raster, bands)
+                profile['count'] = len(bands)
+
+            return tuple(return_args)
 
     @classmethod
     def load_from_bytes(cls, bytea, **kwargs):
@@ -411,10 +460,16 @@ class GDALImageDriver(AbstractImageDriver):
         with cls.memfile(bytesio_to_bytea(bytea)) as memfile:
             with memfile.open() as f_raster:
                 raster = f_raster.read(window=window, boundless=True)
+                return_args = [raster]
                 if kwargs.get('return_metadata', False):
                     profile = cls.metadata(f_raster, window=window)
-                    return raster, profile
-        return raster
+                    return_args.append(profile)
+                bands = kwargs.get('bands', None)
+                if bands is not None:
+                    raster = band_selection(raster, bands)
+                    profile['count'] = len(bands)
+
+                return tuple(return_args)
 
     @classmethod
     def save_to_disk(cls, array, file_path, **kwargs):
@@ -433,6 +488,10 @@ class GDALImageDriver(AbstractImageDriver):
         if 'transform' not in out_meta:
             # add identity transform to suppress "NotGeoreferencedWarning"
             out_meta['transform'] = cls.driver.Affine.identity()
+        bands = kwargs.get('bands', None)
+        if bands is not None:
+            array = band_selection(array, bands)
+            out_meta['count'] = len(bands)
         with cls.driver.open(file_path, 'w', **out_meta) as dest_img:
             dest_img.write(array)
 
@@ -454,7 +513,8 @@ class GDALImageDriver(AbstractImageDriver):
             # add identity transform to suppress "NotGeoreferencedWarning"
             out_meta['transform'] = cls.driver.Affine.identity()
         with cls.memfile() as memfile:
-            memfile.write(array)
+            with memfile.open(**out_meta) as f_mem:
+                f_mem.write(array)
         return memfile
 
     @classmethod
@@ -466,16 +526,26 @@ class GDALImageDriver(AbstractImageDriver):
             window = None
         with cls.driver.open(file_path, 'r') as f_raster:
             data = f_raster.read(window=window, boundless=True)
-            profile = f_raster.profile
+            profile, meta = f_raster.profile, f_raster.meta
         if window is not None:
             profile['width'] = window.width
             profile['height'] = window.height
 
+        meta.update(kwargs)
+
+        bands = kwargs.get('bands', None)
+        if bands is not None:
+            data = band_selection(data, bands)
+            profile['count'] = len(bands)
+            meta['count'] = len(bands)
+
         with cls.memfile() as memfile:
-            with memfile.open(**profile) as rst:
+            with memfile.open(**meta) as rst:
                 rst.write(data)
             memfile.seek(0)
             bytes_arr = memfile.read()
+        if kwargs.get('return_metadata', False):
+            return bytes_arr, profile
         return bytes_arr
 
 

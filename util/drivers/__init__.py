@@ -1,7 +1,7 @@
 '''
     Utilities to load data (images, etc.) of various formats.
 
-    2021 Benjamin Kellenberger
+    2021-23 Benjamin Kellenberger
 '''
 
 import re
@@ -288,6 +288,19 @@ def save_to_disk(array, filePath, **kwargs):
         driver.save_to_disk(array, filePath, **kwargs)
         break
 
+
+
+def is_web_compatible(file_path: str) -> bool:
+    '''
+        Checks a file's extension and returns whether it is compatible with AIDE's Web frontend.
+        Tries based on the MIME type if extension is nonconclusive.
+    '''
+    _, ext = os.path.splitext(file_path)
+    if len(ext) == 0:
+        # guess MIME type
+        mime_type = magic.from_file(file_path, mime=True)
+        return mime_type.lower() in SUPPORTED_DATA_MIME_TYPES
+    return ext.lower() in SUPPORTED_DATA_EXTENSIONS
 
 
 if __name__ == '__main__':

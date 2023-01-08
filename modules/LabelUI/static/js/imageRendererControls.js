@@ -5,13 +5,13 @@
  * 2021-23 Benjamin Kellenberger
  */
 
-async function rerenderAll() {
+async function rerenderAll(forceReloadImage) {
     /**
      * Calls all image renderers to re-render (e.g., if render config values
      * changed).
      */
     for(var e in window.dataHandler.dataEntries) {
-        window.dataHandler.dataEntries[e].renderer.rerenderImage();
+        window.dataHandler.dataEntries[e].renderer.rerenderImage(forceReloadImage);
     }
 }
 
@@ -158,7 +158,7 @@ function setupImageRendererControls(parentDiv, showApplyButtons) {
                         // button to apply
                         let applyBtn = $('<button class="btn btn-sm btn-primary" style="margin-right:5px">Apply</button>');
                         applyBtn.on('click', function() {
-                            rerenderAll();
+                            rerenderAll(true);      //TODO: only force reload if band config changed
                         });
                         buttonContainer.append(applyBtn);
 
@@ -182,7 +182,7 @@ function setupImageRendererControls(parentDiv, showApplyButtons) {
                             $('#render-grayscale-checkbox').prop('checked', get_render_config_val(window.renderConfig, 'grayscale', false));
                             $('#render-white-black-checkbox').prop('checked', get_render_config_val(window.renderConfig, 'white_on_black', false));
 
-                            rerenderAll();
+                            rerenderAll(true);      //TODO: only force reload if band config changed
                         });
                         buttonContainer.append(resetDefaultsBtn);
                         markup.append(buttonContainer);
