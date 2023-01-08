@@ -50,10 +50,29 @@ class DataWorker:
             raise Exception('Not a FileServer instance.')
 
         self.filesDir = self.config.getProperty('FileServer', 'staticfiles_dir')
-        self.tempDir = self.config.getProperty('FileServer', 'tempfiles_dir', type=str, fallback=tempfile.gettempdir())
+        self.tempDir = self.config.getProperty('FileServer', 'tempfiles_dir', type=str,
+                                                fallback=tempfile.gettempdir())
 
         self.uploadSessions = {}
 
+
+    def _get_geospatial_metadata(self, project_srid: int,
+                                        file_path: str,
+                                        window: tuple=None) -> tuple:
+        geo_meta = geospatial.get_geospatial_metadata(
+            file_path,
+            project_srid,
+            window=window,
+            transform_if_needed=False
+        )
+        try:
+            extent = geo_meta.get('extent', None)
+            transform = list(geo_meta['transform'].to_gdal())
+            size = (geo_meta['width'], geo_meta['height'])
+            crs = geo_meta['crs']
+            return transform, extent, size, crs
+        except Exception:
+            return None, None, None, None
 
 
     def aide_internal_notify(self, message):
@@ -893,7 +912,7 @@ class DataWorker:
             if len(imgs_valid) > 0:
                 if srid is not None:
                     # retrieve geospatial information
-                    for img_valid in imgs_valid.values():
+                    for img_key, img_valid in imgs_valid.items():
                         if img_valid.get('filename', None) is None or \
                             not img_valid.get('register', True):
                             continue
@@ -903,76 +922,62 @@ class DataWorker:
                                 img_valid['y'], img_valid['x'],
                                 img_valid['height'], img_valid['width']
                             ]
-                        geo_meta = geospatial.get_geospatial_metadata(
-                            os.path.join(
-                                destFolder,
-                                img_valid['filename']
-                            ),
-                            srid,
-                            window=window,
-                            transform_if_needed=False
-                        )
-                        has_geodata = geo_meta.get('extent', None) is not None \
-                                        and geo_meta.get('transform', None) is not None
-                        try:
-                            transform = list(geo_meta['transform'].to_gdal())
-                        except Exception:
-                            has_geodata = False
-                        if img_valid.get('width', None) is None:
-                            img_valid['width'] = geo_meta['width']
-                            img_valid['height'] = geo_meta['height']
+                        file_path = os.path.join(destFolder, img_valid['filename'])
+                        transform, extent, img_size, img_crs = self._get_geospatial_metadata(srid,
+                                                                                        file_path,
+                                                                                        window)
+                        if not geospatial.crs_match(srid, img_crs):
+                            # CRS mismatch
+                            #TODO: remove from imgs_valid
+                            imgs_error[img_key] = {
+                                'filename': img_valid['filename'],
+                                'message': \
+                                    f'Spatial reference system mismatch ({img_crs} != {srid})',
+                                'status': 3
+                            }
+                            continue
 
-                        # register image in database
-                        if has_geodata:
-                            extent = geo_meta['extent']
-                            query_str = sql.SQL('''
-                                INSERT INTO {id_img}
-                                (filename, x, y, width, height, affine_transform, extent)
-                                VALUES (%s, %s, %s, %s, %s, %s,
-                                    ST_MakeEnvelope(%s, %s, %s, %s, %s)
-                                )
-                                ON CONFLICT (filename, x, y, width, height) DO UPDATE
-                                SET x=EXCLUDED.x, y=EXCLUDED.y,
-                                    width=EXCLUDED.width, height=EXCLUDED.height,
-                                    affine_transform=EXCLUDED.affine_transform,
-                                    extent=EXCLUDED.extent;
-                            ''').format(
-                                id_img=sql.Identifier(project, 'image')
+                        if any(item is None for item in (transform, extent, img_size)):
+                            # no geospatial image
+                            #TODO: remove from imgs_valid
+                            imgs_error[img_key] = {
+                                'filename': img_valid['filename'],
+                                'message': 'No or incomplete spatial information',
+                                'status': 3
+                            }
+                            continue
+
+                        # valid geodata; add image
+                        img_valid['width'] = img_size[0]
+                        img_valid['height'] = img_size[1]
+
+                        query_str = sql.SQL('''
+                            INSERT INTO {id_img}
+                            (filename, x, y, width, height, affine_transform, extent)
+                            VALUES (%s, %s, %s, %s, %s, %s,
+                                ST_MakeEnvelope(%s, %s, %s, %s, %s)
                             )
-                            self.dbConnector.execute(query_str,
-                                (
-                                    img_valid['filename'],
-                                    img_valid.get('x', None),
-                                    img_valid.get('y', None),
-                                    img_valid.get('width', None),
-                                    img_valid.get('height', None),
-                                    transform,
-                                    *extent,
-                                    srid
-                                )
+                            ON CONFLICT (filename, x, y, width, height) DO UPDATE
+                            SET x=EXCLUDED.x, y=EXCLUDED.y,
+                                width=EXCLUDED.width, height=EXCLUDED.height,
+                                affine_transform=EXCLUDED.affine_transform,
+                                extent=EXCLUDED.extent;
+                        ''').format(
+                            id_img=sql.Identifier(project, 'image')
+                        )
+                        self.dbConnector.execute(query_str,
+                            (
+                                img_valid['filename'],
+                                img_valid.get('x', None),
+                                img_valid.get('y', None),
+                                img_valid.get('width', None),
+                                img_valid.get('height', None),
+                                transform,
+                                *extent,
+                                srid
                             )
-                        else:
-                            # no geodata found
-                            #TODO: skip images if srid is defined?
-                            query_str = sql.SQL('''
-                                INSERT INTO {id_img}
-                                (filename, x, y, width, height)
-                                VALUES (%s, %s, %s, %s, %s)
-                                ON CONFLICT (filename, x, y, width, height) DO UPDATE
-                                SET x=EXCLUDED.x, y=EXCLUDED.y,
-                                    width=EXCLUDED.width, height=EXCLUDED.height;
-                            ''').format(
-                                id_img=sql.Identifier(project, 'image')
-                            )
-                            self.dbConnector.execute(query_str,
-                                (
-                                    img_valid['filename'],
-                                    img_valid.get('x', None),
-                                    img_valid.get('y', None),
-                                    img_valid.get('width', None),
-                                    img_valid.get('height', None)
-                                )
-                            )
+                        )
+    
                 else:
                     # register valid images in database without geospatial info
                     query_str = sql.SQL('''
@@ -1285,12 +1290,13 @@ class DataWorker:
         if len(imgs_add) == 0:
             return 0, []
 
+        project_folder = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'),
+                                            project)
+
         db_values = []
         if createVirtualViews:
             # split each image into virtual views
             current_task.update_state(meta={'message': 'creating virtual views...'})
-            project_folder = os.path.join(self.config.getProperty('FileServer', 'staticfiles_dir'),
-                                            project)
             for img in imgs_add:
                 try:
                     fpath = os.path.join(project_folder, img)
@@ -1347,47 +1353,37 @@ class DataWorker:
                 if img_meta[1] is not None:
                     # x coordinate specified; entry is patch
                     window = img_meta[1:]
-                geo_meta = geospatial.get_geospatial_metadata(
-                    os.path.join(project_folder, img_meta[0]),
-                    srid,
-                    window=window,
-                    transform_if_needed=False
+
+                file_path = os.path.join(project_folder, img_meta[0])
+                transform, extent, img_size, img_crs = self._get_geospatial_metadata(srid,
+                                                                                    file_path,
+                                                                                    window)
+                if not geospatial.crs_match(srid, img_crs):
+                    # CRS mismatch
+                    continue
+                if any(item is None for item in (transform, extent, img_size)):
+                    # no geospatial image
+                    continue
+                #TODO: messages about invalid images
+
+                # image valid; register image in database with geospatial metadata
+                query_str = sql.SQL('''
+                    INSERT INTO {id_img}
+                    (filename, x, y, width, height, affine_transform, extent)
+                    VALUES (%s, %s, %s, %s, %s, %s,
+                        ST_MakeEnvelope(%s, %s, %s, %s, %s)
+                    );
+                ''').format(
+                    id_img=sql.Identifier(project, 'image')
                 )
-                has_geodata = geo_meta.get('extent', None) is not None \
-                                and geo_meta.get('transform', None) is not None
-                try:
-                    transform = list(geo_meta['transform'].to_gdal())
-                except Exception:
-                    has_geodata = False
-                if has_geodata:
-                    # register image in database with geospatial metadata
-                    extent = geo_meta['extent']
-                    query_str = sql.SQL('''
-                        INSERT INTO {id_img}
-                        (filename, x, y, width, height, affine_transform, extent)
-                        VALUES (%s, %s, %s, %s, %s, %s,
-                            ST_MakeEnvelope(%s, %s, %s, %s, %s)
-                        );
-                    ''').format(
-                        id_img=sql.Identifier(project, 'image')
+                self.dbConnector.execute(query_str,
+                    (
+                        *img_meta,
+                        transform,
+                        *extent,
+                        srid
                     )
-                    self.dbConnector.execute(query_str,
-                        (
-                            *img_meta,
-                            transform,
-                            *extent,
-                            srid
-                        )
-                    )
-                else:
-                    # register image in database without geospatial metadata
-                    query_str = sql.SQL('''
-                        INSERT INTO {id_img} (filename, x, y, width, height)
-                        VALUES (%s, %s, %s, %s, %s);
-                    ''').format(
-                        id_img=sql.Identifier(project, 'image')
-                    )
-                    self.dbConnector.execute(query_str, img_meta)
+                )
         else:
             # no geospatial properties registered for project; add to database directly
             query_str = sql.SQL('''

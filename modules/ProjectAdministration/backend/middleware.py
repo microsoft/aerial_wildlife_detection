@@ -481,7 +481,7 @@ class ProjectConfigMiddleware:
                 prediction_fields=sql.SQL(', ').join(
                     [sql.SQL(field) for field in predictionFields])
             ),
-            (shortname, shortname, properties.get('srid', self.DEFAULT_SRID),),
+            (shortname, shortname, properties.get('srid', None),),
             None
         )
 

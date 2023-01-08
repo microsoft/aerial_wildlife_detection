@@ -409,7 +409,9 @@
                                 let crs = meta['crs'];
                                 if(typeof(crs) === 'string') {
                                     // look up CRS
-                                    return findCRS(crs);
+                                    return findCRS(crs).then(function() {
+                                        $('#file-parsing-progress').hide();
+                                    });
                                 }
                             } else {
                                 window.messager.addMessage('Unsupported file(s).', 'error', 0);
@@ -473,26 +475,35 @@
                         response = response['meta'];
                         if(typeof(response) === 'object') {
                             // populate table
+                            let auth_code = response['id'];
+                            let code_str = `${auth_code['authority']}:${auth_code['code']}`
+                            if(auth_code['authority'] === 'EPSG') {
+                                code_str = `<a href="https://epsg.io/${auth_code['code']}"
+                                        target="_blank">${code_str}</a>`
+                            }
                             if(!response['available']) {
                                 window.messager.addMessage(
-                                    'Reference system "' +
-                                    response['name'] + '(EPSG:' + response['id']['code'] + ') ' +
-                                    'found, but not available.',
+                                    `Reference system "${response['name']}"
+                                    (EPSG:${response['id']['code']}) found, but not available`,
                                     'error',
                                     0
                                 );
                                 
-                            }
-                            let crs_tbody = $('#crs-tbody');
-                            crs_tbody.empty();
-                            crs_tbody.append($('<tr>' +
-                                '<td>'+response['name']+'</td>' +
-                                '<td>'+response['description']+'</td>' +
-                                '<td id="epsg-code">'+response['id']['code']+'</td>'));
+                            } else {
+                                let crs_tbody = $('#crs-tbody');
+                                crs_tbody.empty();
+                                crs_tbody.append($(`
+                                    <tr>
+                                        <td>${response['name']}</td>
+                                        <td>${code_str}</td>
+                                        <td>${response['wkt']}</td>
+                                `))
 
-                            window.geospatial = true;
-                            $('#geospatial').prop('checked', true);
-                            $('#crs-container').slideDown();
+                                window.geospatial = true;
+                                window.epsg_code = auth_code['code'];
+                                $('#geospatial').prop('checked', true);
+                                $('#crs-container').slideDown();
+                            }
                         }
                     },
                     error: function(xhr, status, error) {
@@ -657,10 +668,7 @@
                             data['band_config'] = data['render_config']['bands']['labels'];
                         }
                         if(window.geospatial) {
-                            let epsg_code = $('#epsg-code').html();
-                            if(typeof(epsg_code) === 'string' && epsg_code.length > 0) {
-                                data['srid'] = epsg_code;
-                            }
+                            data['srid'] = window.epsg_code;
                         }
 
                         return $.ajax({
@@ -1045,8 +1053,8 @@
                                     <thead>
                                         <tr>
                                             <th>Name</th>
-                                            <th>Description</th>
-                                            <th>EPSG code</th>
+                                            <th>Authority code</th>
+                                            <th>Well-known text (WKT)</th>
                                         </tr>
                                     </thead>
                                     <tbody id="crs-tbody"></tbody>

@@ -85,6 +85,16 @@ def to_srid(crs: object) -> int:
     return None
 
 
+def crs_match(crs_a: object, crs_b: object, exact: bool=False) -> bool:
+    '''
+        Returns True if two given CRS (id, string, pyproj/rasterio CRS) are equal and False
+        otherwise (also if either or both could not be parsed).
+    '''
+    if exact:
+        return to_crs(crs_a).is_exact_same(to_crs(crs_b))
+    return to_crs(crs_a).equals(to_crs(crs_b))
+
+
 def get_geospatial_metadata(file_name: str,
                             srid: int=4326,
                             window: tuple=None,

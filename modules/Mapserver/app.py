@@ -5,9 +5,9 @@
 '''
 
 import os
-import requests
 import html
 from urllib.parse import urljoin, urlparse
+import requests
 from bottle import request, response, abort
 
 from modules.Mapserver.backend.middleware import MapserverMiddleware
@@ -31,7 +31,7 @@ class Mapserver:
         if verbose_start:
             print('Mapserver'.ljust(helpers.LogDecorator.get_ljust_offset()), end='')
 
-        self.postgis_version = geospatial.get_postgis_version(self.db_connector)
+        self.postgis_version = self.middleware.postgis_version
         try:
             self._init_bottle()
         except Exception as exc:
@@ -118,7 +118,7 @@ class Mapserver:
                 return {'status': 2, 'message': 'PostGIS not configured.'}
             try:
                 crs = request.params.get('crs')
-                crs_meta = self.middleware.get_crs_info(crs)
+                crs_meta = self.middleware.find_crs_info(crs)
                 return {'status': 0, 'meta': crs_meta}
             except Exception as exc:
                 return {'status': 1, 'message': str(exc)}

@@ -12,7 +12,7 @@
 
 import datetime
 
-AIDE_VERSION = '3.0.230107'
+AIDE_VERSION = '3.0.230108'
 
 # minimum required version for FileServer, due to recent changes
 MIN_FILESERVER_VERSION = '3.0.230107'

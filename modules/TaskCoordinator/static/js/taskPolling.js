@@ -2,7 +2,7 @@
     Helper functions to poll for tasks dispatched
     through Celery.
 
-    2020-22 Benjamin Kellenberger
+    2020-23 Benjamin Kellenberger
 */
 
 if(window.baseURL === undefined) window.baseURL = '';
@@ -35,7 +35,7 @@ function poll_status(taskID, successHandle, errorHandle, progressHandle, timeout
                             return successHandle(data);
                         } catch {}
                     }
-                } else if(data.hasOwnProperty('status') &&
+                } else if(typeof(data['status']) === 'string' &&
                         data['status'].toLowerCase() === 'failure') {
                     clearInterval(tHandle);
                     if(errorHandle !== undefined && errorHandle !== null) {

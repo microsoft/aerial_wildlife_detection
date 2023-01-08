@@ -8,6 +8,7 @@ from typing import Tuple, Iterable
 import time
 import json
 from psycopg2 import sql
+from pyproj.crs import CRS
 
 from modules.Database.app import Database
 from util.configDef import Config
@@ -27,6 +28,8 @@ class MapserverMiddleware:
     def __init__(self, config: Config, db_connector: Database) -> None:
         self.config = config
         self.db_connector = db_connector
+
+        self.postgis_version = geospatial.get_postgis_version(self.db_connector)
 
         self.services = {}
         self._init_services()
@@ -274,3 +277,35 @@ class MapserverMiddleware:
                             projects,
                             username,
                             base_url)
+
+
+    def find_crs_info(self, search_string: str) -> dict:
+        '''
+            Helper function to retrieve a coordinate reference system (CRS) based on a search
+            string. Also checks if CRS is available in PostGIS.
+        '''
+        crs_info = {
+            'name': '',
+            'id': {},
+            'wkt': '',
+            'available': False
+        }
+
+        if isinstance(search_string, int):
+            crs = CRS.from_epsg(search_string)
+        else:
+            crs = CRS.from_user_input(search_string.strip())
+
+        # no exceptions raised; CRS exists
+        authority, epsg = crs.to_authority()
+        crs_info.update(crs.to_json_dict())
+        crs_info['wkt'] = crs.to_wkt('WKT2_2019_SIMPLIFIED', pretty=True)
+
+        # check against database for availability
+        if self.postgis_version is not None:
+            query = self.db_connector.execute(sql.SQL('''
+                SELECT COUNT(*) AS available FROM spatial_ref_sys
+                WHERE auth_name = %s AND auth_srid = %s;
+            '''), (authority, epsg,), 1)
+            crs_info['available'] = query[0]['available'] > 0
+        return crs_info

@@ -166,7 +166,7 @@ class Database():
 
                 if numReturn == 'all':
                     return_values = cursor.fetchall()
-                    return returnValues
+                    return return_values
 
                 for _ in range(numReturn):
                     return_val = cursor.fetchone()
