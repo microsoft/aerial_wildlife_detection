@@ -532,6 +532,8 @@ class GDALImageDriver(AbstractImageDriver):
         if window is not None:
             profile['width'] = window.width
             profile['height'] = window.height
+            meta['width'] = window.width
+            meta['height'] = window.height
 
         meta.update(kwargs)
 

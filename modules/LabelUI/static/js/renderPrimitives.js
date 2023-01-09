@@ -2170,7 +2170,7 @@ class SegmentationElement extends AbstractRenderElement {
         if(width && height) {
             this.setSize([width, height]);
         }
-        this.ctx = this.canvas.getContext('2d');
+        this.ctx = this.canvas.getContext('2d', {willReadFrequently: true});
         this.ctx.imageSmoothingEnabled = false;
         this.ctx.filter = 'url(#remove-alpha)';
         

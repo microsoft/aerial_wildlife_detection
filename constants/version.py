@@ -12,10 +12,10 @@
 
 import datetime
 
-AIDE_VERSION = '3.0.230109'
+AIDE_VERSION = '3.0.230109b'
 
 # minimum required version for FileServer, due to recent changes
-MIN_FILESERVER_VERSION = '3.0.230109'
+MIN_FILESERVER_VERSION = '3.0.230109b'
 
 # model marketplace format version exported by the current AIDE implementation
 MODEL_MARKETPLACE_VERSION = 1.0
