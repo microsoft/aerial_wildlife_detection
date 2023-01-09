@@ -438,17 +438,18 @@ class GDALImageDriver(AbstractImageDriver):
             window = None
         with cls.driver.open(file_path, 'r') as f_raster:
             raster = f_raster.read(window=window, boundless=True)
-            return_args = [raster]
-            if kwargs.get('return_metadata', False):
+            return_metadata = kwargs.get('return_metadata', False)
+            if return_metadata:
                 profile = cls.metadata(f_raster, window=window)
-                return_args.append(profile)
 
             bands = kwargs.get('bands', None)
             if bands is not None:
                 raster = band_selection(raster, bands)
                 profile['count'] = len(bands)
 
-            return tuple(return_args)
+            if return_metadata:
+                return raster, profile
+            return raster
 
     @classmethod
     def load_from_bytes(cls, bytea, **kwargs):
@@ -460,16 +461,17 @@ class GDALImageDriver(AbstractImageDriver):
         with cls.memfile(bytesio_to_bytea(bytea)) as memfile:
             with memfile.open() as f_raster:
                 raster = f_raster.read(window=window, boundless=True)
-                return_args = [raster]
-                if kwargs.get('return_metadata', False):
+                return_metadata = kwargs.get('return_metadata', False)
+                if return_metadata:
                     profile = cls.metadata(f_raster, window=window)
-                    return_args.append(profile)
                 bands = kwargs.get('bands', None)
                 if bands is not None:
                     raster = band_selection(raster, bands)
                     profile['count'] = len(bands)
 
-                return tuple(return_args)
+                if return_metadata:
+                    return raster, profile
+                return raster
 
     @classmethod
     def save_to_disk(cls, array, file_path, **kwargs):

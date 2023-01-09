@@ -1,7 +1,7 @@
 /**
  * TaskMonitor, for issuing, aborting, and keeping track of all non-AI tasks.
  *
- * 2021-22 Benjamin Kellenberger
+ * 2021-23 Benjamin Kellenberger
  */
 
 
@@ -504,7 +504,6 @@ class TaskMonitor {
             url: queryURL,
             method: 'GET',
             success: function(data) {
-                debugger;
                 // running tasks
                 let totalProgress = 0;
                 let targetProgress = 0;

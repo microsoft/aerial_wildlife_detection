@@ -1,7 +1,7 @@
 /**
  * Render primitives for drawing on a canvas.
  * 
- * 2019-2022 Benjamin Kellenberger
+ * 2019-2023 Benjamin Kellenberger
  */
 
 function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
@@ -257,6 +257,7 @@ class ImageElement extends AbstractRenderElement {
                     // calculate image bounds
                     self.imageSize = [0, 0];
                     if(self.image instanceof ImageRenderer) {
+                        self.imageSize = [self.image.getWidth(), self.image.getHeight()];
                         self.image.load_image().then(() => {
                             self.imageSize = [self.image.getWidth(), self.image.getHeight()];
         

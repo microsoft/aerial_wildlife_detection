@@ -10,10 +10,10 @@ from scipy.ndimage.morphology import binary_fill_holes, binary_dilation
 from scipy.spatial.distance import cdist
 from detectron2.structures.masks import polygons_to_bitmask
 
-from . import regionProcessing
 from modules.AIWorker.backend import fileserver     #TODO: make generally accessible?
 from util import drivers
 from util.drivers.imageDrivers import normalize_image
+from . import regionProcessing
 
 
 class ImageQueryingMiddleware:
@@ -24,10 +24,10 @@ class ImageQueryingMiddleware:
 
         # initialize local file server for image retrieval
         self.fileServer = fileserver.FileServer(self.config)
-    
 
 
-    def _load_image_for_project(self, project, imgPath, bands='all'):
+
+    def _load_image_for_project(self, project, img_path, bands='all'):
         '''
             Loads an image for a given project and path into a NumPy ndarray (as
             per image drivers). Optionally performs band selection, with
@@ -37,47 +37,46 @@ class ImageQueryingMiddleware:
             - list/tuple:   select bands in order at given index
             Returns a NumPy ndarray of the image of size HxWxB
         '''
-        assert isinstance(imgPath, str), f'Invalid image path provided ("{str(imgPath)}")'
-        img = self.fileServer.getImage(project, imgPath)
+        assert isinstance(img_path, str), f'Invalid image path provided ("{str(img_path)}")'
+        img = self.fileServer.getImage(project, img_path)
 
         if bands is None or bands == 'all':
             img = np.transpose(img, axes=(1,2,0))
             return img
-        
-        elif isinstance(bands, list) or isinstance(bands, tuple):
+
+        if isinstance(bands, (list, tuple)):
             img = np.stack(
                 [img[b,...] for b in bands], -1
             )
             return img
-        
-        elif isinstance(bands, str):
+
+        if isinstance(bands, str):
             if img.shape[0] == 1:
                 # grayscale image
                 img = np.stack([img[b,...] for b in [0,0,0]], -1)
                 return img
 
             if bands.lower() == 'rgb':
-                bandKeys = ('red', 'green', 'blue')
+                band_keys = ('red', 'green', 'blue')
             elif bands.lower() == 'bgr':
-                bandKeys = ('blue', 'green', 'red')
+                band_keys = ('blue', 'green', 'red')
 
             # get render config for project
-            numBands = img.shape[0]
-            renderConfig = self.dbConnector.execute('''
+            num_bands = img.shape[0]
+            render_config = self.dbConnector.execute('''
                     SELECT render_config
                     FROM aide_admin.project
                     WHERE shortname = %s;
                 ''', (project,), 1)
-            renderConfig = json.loads(renderConfig[0]['render_config'])
-            indices = renderConfig['bands']['indices']
+            render_config = json.loads(render_config[0]['render_config'])
+            indices = render_config['bands']['indices']
             bands = []
-            for key in bandKeys:
-                bands.append(min(indices[key], numBands-1))
+            for key in band_keys:
+                bands.append(min(indices[key], num_bands-1))
             img = np.stack([img[b,...] for b in bands], -1)
             return img
 
-        else:
-            raise Exception(f'Invalid specifier provided for bands ("{bands}").')
+        raise Exception(f'Invalid specifier provided for bands ("{bands}").')
 
 
 
