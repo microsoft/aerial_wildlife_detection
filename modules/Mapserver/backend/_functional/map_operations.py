@@ -27,23 +27,23 @@ def render_array(array: np.array,
     '''
     # grayscale
     if render_config.get('grayscale', False):
-        array = np.mean(array, 0, keepdims=True)
+        array = np.nanmean(array, 0, keepdims=True)
     # band-specific
     multiplier = 255 if to_uint8 else 1
     for band in range(len(array)):
         if render_config.get('white_on_black', False):
-            array[band,...] = np.max(array[band,...]) - array[band,...]
+            array[band,...] = np.nanmax(array[band,...]) - array[band,...]
         if 'percentile' in render_config.get('contrast', {}):
             percentiles = render_config['contrast']['percentile']
-            band_min = np.percentile(array[band,...], percentiles['min'])
-            band_max = np.percentile(array[band,...], percentiles['max'])
+            band_min = np.nanpercentile(array[band,...], percentiles['min'])
+            band_max = np.nanpercentile(array[band,...], percentiles['max'])
             array[band,...] = multiplier * (array[band,...] - band_min) / (band_max - band_min)
         elif to_uint8:
-            band_min, band_max = np.min(array[band,...]), np.max(array[band,...])
+            band_min, band_max = np.nanmin(array[band,...]), np.nanmax(array[band,...])
             array[band,...] = multiplier * (array[band,...] - band_min) / (band_max - band_min)
     array += render_config.get('brightness', 0)
     if to_uint8:
-        array = array.astype(np.uint8)
+        array = np.nan_to_num(array, 0).astype(np.uint8)
     return array
 
 
@@ -128,7 +128,7 @@ def get_map_images(db_connector: Database,
                 dataset.close()
     else:
         # no image intersects with queried extent
-        return None     #TODO
+        return bytes()     #TODO
 
 
 def get_map_segmentation(db_connector: Database,
@@ -167,7 +167,7 @@ def get_map_segmentation(db_connector: Database,
     meta = db_connector.execute(query_str,
         (username, *bbox, srid), 'all')
     if len(meta) == 0:
-        return None     #TODO
+        return bytes()     #TODO
 
     driver = rasterio.driver_from_extension(image_ext)
 
@@ -200,7 +200,7 @@ def get_map_segmentation(db_connector: Database,
                 rio_datasets.append(memfile.open())
 
         if len(rio_datasets) == 0:
-            return None     #TODO
+            return bytes()     #TODO
 
         # merge
         arr, transform = rasterio.merge.merge(datasets=rio_datasets,
