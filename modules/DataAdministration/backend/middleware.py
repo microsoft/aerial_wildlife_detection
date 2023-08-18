@@ -1,15 +1,17 @@
 '''
-    Middleware layer for the data administration
-    module.
-    Responsible for the following tasks and operations:
-    - image management: upload and deletion to and from disk
-    - annotation and prediction management: up- and download
-      of annotations and model predictions
+    Middleware layer for the data administration module. Responsible for the following tasks and
+    operations:
 
-    2020-22 Benjamin Kellenberger
+        - image management: upload and deletion to and from disk
+        - annotation and prediction management: up- and download of annotations and model
+          predictions
+
+    2020-23 Benjamin Kellenberger
 '''
 
 import html
+from psycopg2 import sql
+
 from util.parsers import PARSERS
 from . import celery_interface
 from .dataWorker import DataWorker
@@ -51,34 +53,33 @@ class DataAdministrationMiddleware:
 
     def getImageFolders(self, project):
         '''
-            Returns a dict representing a hierarchical directory
-            tree under which the images are stored for a specific
-            project.
+            Returns a dict representing a hierarchical directory tree under which the images are
+            stored for a specific project.
         '''
 
-        def _integrateBranch(tree, members):
-            if not len(members):
+        def _integrate_branch(tree, members):
+            if len(members) == 0:
                 return tree
-            elif members[0] not in tree:
+            if members[0] not in tree:
                 tree[members[0]] = {}
             if len(members)>1:
-                tree[members[0]] = _integrateBranch(tree[members[0]], members[1:])
+                tree[members[0]] = _integrate_branch(tree[members[0]], members[1:])
             return tree
 
         tree = {}
-        folderNames = self.dbConnector.execute('''
-            SELECT folder FROM "{schema}".fileHierarchy
+        folder_names = self.dbConnector.execute(sql.SQL('''
+            SELECT folder FROM {}
             ORDER BY folder ASC;
-        '''.format(
-            schema=html.escape(project)
+        ''').format(
+            sql.Identifier(html.escape(project), 'fileHierarchy')
         ), None, 'all')
-        if folderNames is not None and len(folderNames):
-            for f in folderNames:
-                folder = f['folder']
-                if folder is None or not len(folder):
+        if folder_names is not None and len(folder_names):
+            for folder_name in folder_names:
+                folder = folder_name['folder']
+                if folder is None or len(folder) == 0:
                     continue
                 parents = folder.strip('/').split('/')
-                tree = _integrateBranch(tree, parents)
+                tree = _integrate_branch(tree, parents)
         return tree
 
 
@@ -103,10 +104,10 @@ class DataAdministrationMiddleware:
                                                 numAnnoRange, numPredRange,
                                                 orderBy, order, startFrom,
                                                 limit, offset)
-        
+
         task_id = self._submit_task(project, username, process)
         return task_id
-    
+
 
 
     def createUploadSession(self, project, user, numFiles, uploadImages=True,
@@ -147,7 +148,7 @@ class DataAdministrationMiddleware:
         '''
         return self.dataWorker.verifySessionAccess(project, user, sessionID)
 
-    
+
 
     def uploadData(self, project, username, sessionID, files):
         '''
@@ -209,6 +210,26 @@ class DataAdministrationMiddleware:
         task_id = self._submit_task(project, username, process)
         return task_id
 
+
+    def create_image_overviews(self,
+                                project,
+                                username,
+                                image_ids,
+                                scale_factors=(2,4,8,16),
+                                method='nearest'):
+        '''
+            Launches a Celery task to create image overviews (image pyramids) for geospatial images.
+            Project must have a spatial reference (SRID) defined; otherwise the method returns
+            without any changes.
+        '''
+        # submit job
+        process = celery_interface.create_image_overviews.si(image_ids,
+                                                            project,
+                                                            scale_factors,
+                                                            method)
+
+        task_id = self._submit_task(project, username, process)
+        return task_id
 
     
     def removeImages(self, project, username, imageList, forceRemove=False, deleteFromDisk=False):

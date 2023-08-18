@@ -55,7 +55,7 @@ class UserHandler():
         @self.app.route('/doLogin', method='POST')
         @self.app.route('/<project>/doLogin', method='POST')
         def do_login(project=None):
-            self.middleware.csrf_check(request.forms.get('_csrf_token'))
+            self.middleware.csrf_check(request.forms.get('_csrf_token'))        #TODO: causes issues with Mapserver
 
             # check provided credentials
             try:

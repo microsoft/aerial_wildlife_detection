@@ -2,7 +2,7 @@
     Base model trainer for models implemented towards the Detectron2 library
     (https://github.com/facebookresearch/detectron2).
 
-    2020-22 Benjamin Kellenberger
+    2020-23 Benjamin Kellenberger
 '''
 
 import os
@@ -264,7 +264,7 @@ class GenericDetectron2Model(AIModel):
                     pretrained_dataset = pretrained_dataset[0]
                 pretrained_meta = MetadataCatalog.get(pretrained_dataset)
                 for idx, class_id in enumerate(pretrained_meta.thing_classes):
-                    labelclass_map[class_id] = class_id
+                    labelclass_map[class_id] = idx
             except Exception:
                 pass
 

@@ -1,7 +1,7 @@
 '''
     YOLOv5 specifier for Detectron2 model trainer in AIDE.
 
-    2022 Benjamin Kellenberger
+    2022-23 Benjamin Kellenberger
 '''
 
 import os

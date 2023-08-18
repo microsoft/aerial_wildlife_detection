@@ -2,7 +2,7 @@
     Wrapper for the Celery message broker concerning
     the Model Marketplace module.
 
-    2020-21 Benjamin Kellenberger
+    2020-23 Benjamin Kellenberger
 '''
 
 import os
@@ -21,9 +21,11 @@ worker = ModelMarketplaceWorker(config, Database(config))
 @current_app.task(name='ModelMarketplace.shareModel')
 def share_model(project, username, modelID, modelName,
                     modelDescription, tags,
+                    citation_info, license,
                     public, anonymous):
     return worker.shareModel(project, username, modelID, modelName,
                     modelDescription, tags,
+                    citation_info, license,
                     public, anonymous)
 
 

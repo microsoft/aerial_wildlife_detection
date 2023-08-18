@@ -2,7 +2,7 @@
     This class deals with all tasks related to the Model Marketplace,
     including model sharing, im-/export, download preparation, etc.
 
-    2020-22 Benjamin Kellenberger
+    2020-23 Benjamin Kellenberger
 '''
 
 import os
@@ -668,12 +668,13 @@ class ModelMarketplaceWorker:
         sharedModelID = self.dbConnector.execute(sql.SQL('''
             INSERT INTO aide_admin.modelMarketplace
             (name, description, tags, labelclasses, author, statedict,
+            citation_info, license,
             model_library, alCriterion_library,
             origin_project, origin_uuid, public, anonymous)
 
             SELECT %s, %s, %s, %s, %s, statedict,
-            model_library, alCriterion_library,
             %s, %s,
+            model_library, alCriterion_library,
             %s, id, %s, %s
             FROM {id_cnnstate} AS cnnS
             WHERE id = %s
@@ -681,6 +682,7 @@ class ModelMarketplaceWorker:
         ''').format(
             id_cnnstate=sql.Identifier(project, 'cnnstate')
         ), (modelName, modelDescription, tags, labelclasses, username,
+            citationInfo, license,
             project, public, anonymous, modelID))
 
         return {

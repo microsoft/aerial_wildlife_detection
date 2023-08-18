@@ -1,17 +1,14 @@
 '''
     RetinaNet specifier for Detectron2 model trainer in AIDE.
 
-    2020-21 Benjamin Kellenberger
+    2020-23 Benjamin Kellenberger
 '''
 
-import json
 import torch
-from detectron2 import model_zoo
 
 from ai.models.detectron2.genericDetectronModel import GenericDetectron2Model
 from ai.models.detectron2.boundingBoxes.genericDetectronBBoxModel import GenericDetectron2BoundingBoxModel
 from ai.models.detectron2.boundingBoxes.retinanet import DEFAULT_OPTIONS
-from util import optionsHelper
 
 
 class RetinaNet(GenericDetectron2BoundingBoxModel):

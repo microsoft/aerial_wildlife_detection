@@ -4,10 +4,15 @@
     2023 Benjamin Kellenberger
 '''
 
+import os
+from typing import Iterable
 import re
 from psycopg2 import sql
 import pyproj
 import rasterio
+from rasterio.enums import Resampling
+from tqdm import tqdm
+
 from modules.Database.app import Database
 from util.drivers import GDALImageDriver
 
@@ -184,3 +189,24 @@ def get_project_extent(db_connector: Database, project: str) -> tuple:
         ).strip().split(' ')
         return tuple(float(ext) for ext in extent)
     return None
+
+
+def create_image_overviews(image_paths: Iterable,
+                                scale_factors: tuple=(2,4,8,16),
+                                method: Resampling=Resampling.nearest,
+                                verbose: bool=False) -> None:
+    '''
+        Receives one or more images and calculates overviews (image pyramids) for them.
+    '''
+    if isinstance(method, str):
+        method = getattr(Resampling, method.lower())
+    else:
+        assert method in Resampling, f'Invalid resampling method "{method}"'
+    if isinstance(image_paths, str):
+        image_paths = (image_paths,)
+    iter_obj = tqdm(image_paths) if verbose else image_paths
+    for image_path in iter_obj:
+        if os.path.exists(image_path):
+            with rasterio.open(image_path, 'r+') as f_img:
+                f_img.build_overviews(scale_factors, method)
+                f_img.update_tags(ns='rio_overview', resampling=method._name_)

@@ -8,24 +8,26 @@
 '''
 
 import os
+from typing import Iterable
 import io
 import re
 import shutil
 import glob
 import tempfile
 import zipfile
+from uuid import UUID
+from collections import defaultdict
+from datetime import datetime
 import json
 import math
 import hashlib
 import numpy as np
-from collections import defaultdict
-from datetime import datetime
 import pytz
-from uuid import UUID
 from tqdm import tqdm
 from PIL import Image
 from psycopg2 import sql
 from celery import current_task
+
 from modules.LabelUI.backend.annotation_sql_tokens import QueryStrings_annotation, QueryStrings_prediction
 from util.helpers import FILENAMES_PROHIBITED_CHARS, list_directory, base64ToImage, hexToRGB, slugify, current_time, is_fileServer
 from util.imageSharding import get_split_positions, split_image
@@ -1109,6 +1111,9 @@ class DataWorker:
             # remove temp files
             shutil.rmtree(tempRoot)
 
+            # # calculate image overviews     TODO: make dedicated Celery task
+            # self.calculate_image_overviews(project, None)
+
         return result
 
 
@@ -1510,8 +1515,8 @@ class DataWorker:
                             os.remove(filePath)
 
             # convert UUID
-            for idx in range(len(imgs_del)):
-                imgs_del[idx]['id'] = str(imgs_del[idx]['id'])
+            for idx, img_del in enumerate(imgs_del):
+                imgs_del[idx]['id'] = str(img_del['id'])
 
         return imgs_del
 
@@ -1558,6 +1563,46 @@ class DataWorker:
         ), tuple([tuple(imgs_orphaned)] * 4), None)
 
         return imgs_orphaned
+
+
+
+    def create_image_overviews(self, image_ids: Iterable,
+                                        project: str,
+                                        scale_factors: tuple=(2,4,8,16),
+                                        method: str='nearest') -> None:
+        '''
+            For geospatial projects: calculate image overviews (image pyramids) to accelerate e.g.
+            Mapserver operations.
+        '''
+        # load geospatial project metadata
+        srid = geospatial.get_project_srid(self.dbConnector, project)
+
+        if srid is None:
+            # no geospatial project; abort
+            return []
+
+        if image_ids is None:
+            # perform calculations for all images
+            img_query_str = ''
+            query_args = None
+        else:
+            img_query_str = f'WHERE id IN ({",".join(["%s" for _ in image_ids])})'
+            query_args = tuple(UUID(img_id) for img_id in image_ids)
+
+        query = self.dbConnector.execute(sql.SQL('''
+            SELECT id, filename
+            FROM {id_img}
+            {query_str};
+        ''').format(
+            id_img=sql.Identifier(project, 'image'),
+            query_str=sql.SQL(img_query_str)
+        ), query_args, 'all')
+        if query is None or len(query) == 0:
+            return []
+        image_ids = [str(row['id']) for row in query]
+        filenames = [os.path.join(self.filesDir, project, row['filename']) for row in query]
+        geospatial.create_image_overviews(filenames, scale_factors, method, True)
+        return image_ids
 
 
 

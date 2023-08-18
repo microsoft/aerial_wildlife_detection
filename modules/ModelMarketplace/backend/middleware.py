@@ -2,7 +2,7 @@
     Handles administration (sharing, uploading, selecting, etc.)
     of model states through the model marketplace.
 
-    2020-21 Benjamin Kellenberger
+    2020-23 Benjamin Kellenberger
 '''
 
 import os
@@ -347,12 +347,14 @@ class ModelMarketplaceMiddleware:
 
 
     def shareModel(self, project, username, modelID, modelName, modelDescription, tags,
+                   citation_info, license,
                     public, anonymous):
         '''
             Shares a model from a given project on the Model Marketplace.
         '''
         process = celery_interface.share_model.si(project, username, modelID, modelName,
                     modelDescription, tags,
+                    citation_info, license,
                     public, anonymous)
         taskID = self.taskCoordinator.submit_task(project, username, process, 'ModelMarketplace')
 

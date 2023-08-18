@@ -1,21 +1,18 @@
 '''
-    Wrapper for the Celery message broker concerning
-    the data management module.
-    This module may require some longer running tasks,
-    such as the preparation of data to download, or
-    the scanning of a directory for untracked images.
-    These jobs are dispatched as Celery tasks.
-    Function "init_celery_dispatcher" is to be initia-
-    lized at launch time with a Celery app instance.
+    Wrapper for the Celery message broker concerning the data management module. This module may
+    require some longer running tasks, such as the preparation of data to download, or the scanning
+    of a directory for untracked images. These jobs are dispatched as Celery tasks. Function
+    "init_celery_dispatcher" is to be initia- lized at launch time with a Celery app instance.
 
-    2020-22 Benjamin Kellenberger
+    2020-23 Benjamin Kellenberger
 '''
 
 import os
 from celery import current_app
-from .dataWorker import DataWorker
+
 from modules.Database.app import Database
 from util.configDef import Config
+from .dataWorker import DataWorker
 
 
 # initialize dataWorker
@@ -53,6 +50,15 @@ def addExistingImages(project, imageList=None, skipIntegrityCheck=False,
     return worker.addExistingImages(project, imageList, skipIntegrityCheck=skipIntegrityCheck,
         createVirtualViews=createVirtualViews, viewParameters=viewParameters)
 
+@current_app.task(name='DataAdministration.create_image_overviews')
+def create_image_overviews(image_ids,
+                            project,
+                            scale_factors=(2,4,8,16),
+                            method='nearest'):
+    return worker.create_image_overviews(image_ids,
+                                        project,
+                                        scale_factors,
+                                        method)
 
 @current_app.task(name='DataAdministration.remove_images')
 def removeImages(project, imageList, forceRemove=False, deleteFromDisk=False):
