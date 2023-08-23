@@ -236,11 +236,7 @@ class LabelUI():
             username = html.escape(request.get_cookie('username'))
 
             # check if user requests to see other user names; only permitted if admin
-            try:
-                users = request.json['users']
-            except Exception:
-                # no users provided; restrict to current account
-                users = [username]
+            users = request.json.get('users', [username])
             
 
             if not self.loginCheck(project=project, admin=True):

@@ -257,7 +257,16 @@
                     },
                     success: function(data) {
                         //TODO: data parsing needed?
-                        window.location.href = '/';
+                        // check for redirect
+                        let redirect = '/';
+                        let redirect_idx = window.location.href.indexOf('?redirect=');
+                        if(redirect_idx > 0) {
+                            let target_url = window.location.href.substring(redirect_idx+10);
+                            if(target_url.length > 0) {
+                                redirect += target_url;
+                            }
+                        }
+                        window.location.href = redirect;
                     },
                     error: function(xhr, response, blank) {
                         //TODO: ditto?

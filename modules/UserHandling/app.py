@@ -22,7 +22,12 @@ class UserHandler():
 
         self.index_uri = self.config.getProperty('Server', 'index_uri', type=str, fallback='/')
 
-        self._initBottle()
+        create_account_token = self.config.getProperty('UserHandler',
+                                                       'create_account_token',
+                                                       type=str,
+                                                       fallback='')
+        self.create_account_public = int(len(create_account_token.strip()) == 0)
+        self._init_bottle()
 
 
     def _parse_parameter(self, request_instance, param):
@@ -31,14 +36,20 @@ class UserHandler():
         return request_instance.get(param)
 
 
-    def _initBottle(self):
+    def _init_bottle(self):
 
         # read templates
-        with open(os.path.abspath(os.path.join(self.static_dir, 'templates/loginScreen.html')), 'r', encoding='utf-8') as f:
-            self.login_screen_template = SimpleTemplate(f.read())
-        
-        with open(os.path.abspath(os.path.join(self.static_dir, 'templates/newAccountScreen.html')), 'r', encoding='utf-8') as f:
-            self.new_account_screen_template = SimpleTemplate(f.read())
+        with open(os.path.abspath(os.path.join(self.static_dir,
+                                               'templates/loginScreen.html')),
+                  'r',
+                  encoding='utf-8') as f_login:
+            self.login_screen_template = SimpleTemplate(f_login.read())
+
+        with open(os.path.abspath(os.path.join(self.static_dir,
+                                               'templates/newAccountScreen.html')),
+                  'r',
+                  encoding='utf-8') as f_newaccount:
+            self.new_account_screen_template = SimpleTemplate(f_newaccount.read())
 
 
         @self.app.route('/login')
@@ -47,11 +58,11 @@ class UserHandler():
         def show_login_page():
             return self.login_screen_template.render(
                 version=AIDE_VERSION,
-                _csrf_token=request.csrf_token
+                _csrf_token=request.csrf_token,
+                show_create_account=self.create_account_public
             )
-            # return static_file('loginScreen.html', root=os.path.join(self.static_dir, 'templates'))
 
-        
+
         @self.app.route('/doLogin', method='POST')
         @self.app.route('/<project>/doLogin', method='POST')
         def do_login(project=None):
