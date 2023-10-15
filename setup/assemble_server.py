@@ -166,19 +166,20 @@ def assemble_server(verbose_start=True,
     # add/modify superuser credentials if needed
     try:
         result = add_update_superuser(config, db_connector)
-        if result['new_account']:
-            print('New super user credentials found in configuration file and added to database:')
-            print('\tName:   ' + result['details']['name'])
-            print('\tE-mail: ' + result['details']['email'])
-            print('\tPassword: ****')
-        elif len(result['changes']):
-            print('Super user account details changed for account name "{}".'.format(
-                result['details']['name']) + ' New credentials:')
-            print('\tName:   ' + result['details']['name'])
-            print('\tE-mail: ' + result['details']['email'] + \
-                (' (changed)' if result['changes'].get('adminEmail', False) else ''))
-            print('\tPassword: ****' + \
-                (' (changed)' if result['changes'].get('adminPassword', False) else ''))
+        if result is not None:
+            if result['new_account']:
+                print('New super user credentials in configuration file added to database:')
+                print('\tName:   ' + result['details']['name'])
+                print('\tE-mail: ' + result['details']['email'])
+                print('\tPassword: ****')
+            elif len(result['changes']):
+                print('Super user account details changed for account name "{}".'.format(
+                    result['details']['name']) + ' New credentials:')
+                print('\tName:   ' + result['details']['name'])
+                print('\tE-mail: ' + result['details']['email'] + \
+                    (' (changed)' if result['changes'].get('adminEmail', False) else ''))
+                print('\tPassword: ****' + \
+                    (' (changed)' if result['changes'].get('adminPassword', False) else ''))
     except Exception as exc:
         # no superuser credentials provided; ignore
         print(exc)    #TODO

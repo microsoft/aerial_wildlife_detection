@@ -2,7 +2,7 @@
     Label parser for annotations in MS-COCO format:
     https://cocodataset.org/#format-data
 
-    2022 Benjamin Kellenberger
+    2022-23 Benjamin Kellenberger
 '''
 
 import os
@@ -51,7 +51,7 @@ class COCOparser(AbstractAnnotationParser):
                 <label for="mark_iscrowd_as_unsure">mark 'iscrowd' annotations as unsure</label>
             </div>
             '''
-        
+
         else:
             return '''
             <div>
@@ -117,7 +117,7 @@ class COCOparser(AbstractAnnotationParser):
 
         now = helpers.current_time()
 
-        uploadedImages = set([f for f in fileDict.keys() if fileDict[f] != '-1'])
+        uploaded_images = frozenset(f for f in fileDict.keys() if fileDict[f] != '-1')
 
         dbFieldNames = []
         if self.annotationType == 'boundingBoxes':
@@ -138,33 +138,34 @@ class COCOparser(AbstractAnnotationParser):
                 'warnings': [],
                 'errors': ['No valid MS-COCO annotation file found.']
             }
-        
+
         # iterate over identified COCO files
         for cf in cocoFiles:
             meta = json.load(open(cf, 'r'))
 
             # gather label classes. Format: COCO id: (name, supercategory (if present))
             labelClasses = dict(zip([c['id'] for c in meta['categories']],
-                                [(c['name'], c.get('supercategory', None)) for c in meta['categories']]))
-            
+                                [(c['name'], c.get('supercategory', None))
+                                    for c in meta['categories']]))
+
             if skipUnknownClasses:
-                lcNames = set([l[0] for l in labelClasses.values()])
+                lcNames = set(l[0] for l in labelClasses.values())
                 lcIntersection = set(self.labelClasses.keys()).intersection(lcNames)
-                if not len(lcIntersection):
+                if len(lcIntersection) == 0:
                     errors.append(f'"{cf}": no common label classes with project found.')
                     continue
 
             # assemble image file LUT
-            images = dict(zip([i['file_name'] for i in meta['images']], [i for i in meta['images']]))
+            images = dict(zip([i['file_name'] for i in meta['images']], meta['images']))
 
             # assemble annotation LUT
             annotations = {}
-            for imgKey in images.values():
-                annotations[imgKey['id']] = []
+            for img_key in images.values():
+                annotations[img_key['id']] = []
             for anno in meta['annotations']:
                 try:
                     if anno['image_id'] in annotations:
-                        assert all([a >= 0.0 for a in anno['bbox']])
+                        assert all(a >= 0.0 for a in anno['bbox'])
                         annotations[anno['image_id']].append(anno)
                 except Exception:
                     # corrupt annotation; ignore
@@ -180,8 +181,8 @@ class COCOparser(AbstractAnnotationParser):
                 fKey = re.sub(self.FILE_SUB_PATTERN, '', fKey, flags=re.IGNORECASE)        # replace "<base folder>/(labels|annotations)/*" with "%/*" for search in database with "LIKE" expression
                 fKey = os.path.splitext(fKey)[0]
 
-                if len(uploadedImages):
-                    candidates = difflib.get_close_matches(fKey, uploadedImages, n=1)
+                if len(uploaded_images) > 0:
+                    candidates = difflib.get_close_matches(fKey, uploaded_images, n=1)
                     if len(candidates):
                         fKey = fileDict[candidates[0]]      # use new, potentially overwritten file name
                 imgCandidates[key] = fKey
@@ -220,21 +221,21 @@ class COCOparser(AbstractAnnotationParser):
                 img_lut[row['labelname']].append(row)
 
             # filter valid images: found in database, with valid annotation, and not blacklisted
-            for key in images.keys():
-                imgCOCOmeta = images[key]
+            for key, imgCOCOmeta in images.items():
                 imgCOCOid = imgCOCOmeta['id']
 
                 candidateKey = imgCandidates[key]
                 if candidateKey not in img_lut:
                     # image got blacklisted or has not been found in database
                     warnings.append(
-                        f'Image with ID {imgCOCOid} ({key}) could not be found or contains previously imported annotations; skipped.'
+                        f'Image with ID {imgCOCOid} ({key}) ' + \
+                        'could not be found or contains previously imported annotations; skipped.'
                     )
                     continue
-                
+
                 # get corresponding annotations
                 anno = annotations.get(imgCOCOid, None)
-                if anno is None or not len(anno):
+                if anno is None or len(anno) == 0:
                     warnings.append(
                         f'Image with ID {imgCOCOid} ({key}): no annotations registered.'
                     )
@@ -244,34 +245,38 @@ class COCOparser(AbstractAnnotationParser):
                 if skipUnknownClasses:
                     # check for validity of label classes
                     anno = [a for a in anno if a['category_id'] in labelClasses]
-                    if not len(anno):
+                    if len(anno) == 0:
                         warnings.append(
-                            f'"Image with ID {imgCOCOid} ({key}): annotations contain label classes that are not registered in project.'
+                            f'"Image with ID {imgCOCOid} ({key}): ' + \
+                            'annotations contain label classes that are not registered in project.'
                         )
                         continue
-                
+
                 img_candidates = img_lut[candidateKey]
 
                 # create spatial index of image virtual views
                 imgViewIndex = {}
                 for ic in img_candidates:
-                    x, y = ic['y'], ic['x']
+                    x, y = ic['x'], ic['y']
                     if y not in imgViewIndex:
                         imgViewIndex[y] = {}
-                    imgViewIndex[y][x] = {'id': ic['id'], 'window': [y, x, ic['height'], ic['width']]}
+                    imgViewIndex[y][x] = {'id': ic['id'],
+                                          'window': [y, x, ic['height'], ic['width']]}
 
                 annos_valid = []
-                for a in range(len(anno)):
-                    isUnsure = anno[a].get('iscrowd', False) and unsure
+                for entry in anno:
+                    isUnsure = entry.get('iscrowd', False) and unsure
                     if self.annotationType == 'boundingBoxes':
-                        bbox = [float(v) for v in anno[a]['bbox']]
-                        assert len(bbox) == 4, f'invalid number of bounding box coordinates ({len(bbox)} != 4)'
-                    
+                        bbox = [float(v) for v in entry['bbox']]
+                        assert len(bbox) == 4, \
+                            f'invalid number of bounding box coordinates ({len(bbox)} != 4)'
+
                     elif self.annotationType == 'polygons':
                         # we parse the segmentation information for that
-                        seg = [float(v) for v in anno[a]['segmentation']]
-                        assert len(seg) % 2 == 0 and len(seg) >= 6, f'invalid number of coordinates for polygon encountered'
-                        
+                        seg = [float(v) for v in entry['segmentation']]
+                        assert len(seg) % 2 == 0 and len(seg) >= 6, \
+                            'invalid number of coordinates for polygon encountered'
+
                         # close polygon if needed
                         if seg[0] != seg[-2] or seg[1] != seg[-1]:
                             seg.extend(seg[:2])
@@ -279,18 +284,18 @@ class COCOparser(AbstractAnnotationParser):
                     # get image(s)
                     if self.annotationType == 'labels':
                         # assign to all virtual views
-                        for i in range(len(img_candidates)):
-                            imgID = img_candidates[i]['id']
+                        for candidate in img_candidates:
+                            img_id = candidate['id']
                             annos_valid.append([
-                                imgID,
+                                img_id,
                                 isUnsure,
-                                anno[a]['category_id']
+                                entry['category_id']
                             ])
-                    
+
                     elif self.annotationType == 'polygons':
                             #TODO
                             print('not yet implemented')
-                        
+
                     elif self.annotationType == 'segmentationMasks':
                         #TODO: implement drawing segmasks from polygons
                         raise NotImplementedError('To be implemented.')
@@ -317,17 +322,17 @@ class COCOparser(AbstractAnnotationParser):
                         bbox_target[0] += bbox_target[2]/2.0
                         bbox_target[1] += bbox_target[3]/2.0
 
-                        if any([b < 0 for b in bbox_target]) or any([b > 1 for b in bbox_target]):
+                        if any(b < 0 for b in bbox_target) or any(b > 1 for b in bbox_target):
                             continue
 
                         annos_valid.append([
                             imgMeta['id'],
                             isUnsure,
-                            anno[a]['category_id'],
+                            entry['category_id'],
                             *bbox_target
                         ])
-               
-                if len(annos_valid) or not skipEmptyImages:
+
+                if len(annos_valid) > 0 or not skipEmptyImages:
                     imgs_valid.extend(annos_valid)
 
             # add new label classes
@@ -366,7 +371,7 @@ class COCOparser(AbstractAnnotationParser):
             # update LUT
             self._init_labelclasses()
                 
-            if len(imgs_valid):
+            if len(imgs_valid) > 0:
                 for i in range(len(imgs_valid)):
                     # replace label class names with UUIDs
                     labelName = labelClasses[imgs_valid[i][2]][0]
@@ -382,8 +387,8 @@ class COCOparser(AbstractAnnotationParser):
                     id_anno=sql.Identifier(self.project, 'annotation'),
                     annoFields=sql.SQL(','.join(dbFieldNames))
                 ),
-                tuple([(targetAccount, i[0], now, -1, i[1],
-                    *i[2:]) for i in imgs_valid]), 'all')
+                tuple((targetAccount, i[0], now, -1, i[1],
+                    *i[2:]) for i in imgs_valid), 'all')
                 for row in result:
                     importedAnnotations[row[0]].append(row[1])
 
@@ -455,7 +460,7 @@ class COCOparser(AbstractAnnotationParser):
             if lc['labelclassgroup'] is not None and lc['labelclassgroup'] in lcGroups:
                 catInfo['supercategory'] = lcGroups[lc['labelclassgroup']]
             categories.append(catInfo)
-        
+
         # export images
         imgFilenameLookup = {}
         imgIDLookup = {}
@@ -465,7 +470,10 @@ class COCOparser(AbstractAnnotationParser):
                 meta = imgFilenameLookup[img['filename']]
                 imgIDLookup[img['id']] = meta['id']
                 isz = meta['size']
-                imgSizeLookup[img['id']] = [img.get('y', None), img.get('x', None), img.get('height', isz[0]), img.get('width', isz[1])]
+                imgSizeLookup[img['id']] = [img.get('y', None),
+                                            img.get('x', None),
+                                            img.get('height', isz[0]),
+                                            img.get('width', isz[1])]
                 continue
 
             try:
@@ -474,29 +482,29 @@ class COCOparser(AbstractAnnotationParser):
                 imsize = driver.size(fname)[1:]
             except Exception:
                 continue        #TODO
-            
-            imgID = len(images) + 1
-            imgFilenameLookup[img['filename']] = {'id': imgID, 'size': imsize}
-            imgIDLookup[img['id']] = imgID
-            patchSize = [img.get('height', imsize[0]), img.get('width', imsize[1])]
-            if patchSize[0] is None:
-                patchSize[0] = imsize[1]
-            if patchSize[1] is None:
-                patchSize[1] = imsize[0]
-            imgSizeLookup[img['id']] = [img.get('y', None), img.get('x', None), *patchSize]
+
+            img_id = len(images) + 1
+            imgFilenameLookup[img['filename']] = {'id': img_id, 'size': imsize}
+            imgIDLookup[img['id']] = img_id
+            patch_size = [img.get('height', imsize[0]), img.get('width', imsize[1])]
+            if patch_size[0] is None:
+                patch_size[0] = imsize[1]
+            if patch_size[1] is None:
+                patch_size[1] = imsize[0]
+            imgSizeLookup[img['id']] = [img.get('y', None), img.get('x', None), *patch_size]
             images.append({
-                'id': imgID,
+                'id': img_id,
                 'width': imsize[1],
                 'height': imsize[0],
                 'file_name': img['filename'],
                 #TODO: license & Co.: https://cocodataset.org/#format-data
             })
-        
+
         # export annotations
         for anno in annotations['annotations']:
-            annoID = len(annotations) + 1
-            annoInfo = {
-                'id': annoID,
+            anno_id = len(annotations_out) + 1
+            anno_info = {
+                'id': anno_id,
                 'image_id': imgIDLookup[anno['image']],
                 'category_id': categoryLookup[anno['label']],
                 'iscrowd': anno.get('unsure', False) if markUnsureAsIscrowd else False
@@ -505,10 +513,10 @@ class COCOparser(AbstractAnnotationParser):
                 # convert bounding box back to absolute XYWH format
                 imsize = imgSizeLookup[anno['image']]
                 bbox = [
-                    anno['x']*imsize[2],
-                    anno['y']*imsize[3],
-                    anno['width']*imsize[2],
-                    anno['height']*imsize[3]
+                    anno['x']*imsize[3],
+                    anno['y']*imsize[2],
+                    anno['width']*imsize[3],
+                    anno['height']*imsize[2]
                 ]
                 bbox[0] -= bbox[2]/2.0
                 bbox[1] -= bbox[3]/2.0
@@ -518,28 +526,28 @@ class COCOparser(AbstractAnnotationParser):
                     bbox[0] += imsize[1]
                     bbox[1] += imsize[0]
 
-                annoInfo['bbox'] = bbox
-                annoInfo['area'] = bbox[2]*bbox[3]
-            
+                anno_info['bbox'] = bbox
+                anno_info['area'] = bbox[2]*bbox[3]
+
             elif self.annotationType == 'polygons':
                 # convert coordinates to absolute format
                 imsize = imgSizeLookup[anno['image']]
-                isView = imsize[0] is not None and imsize[1] is not None
+                is_view = imsize[0] is not None and imsize[1] is not None
                 coords = anno['coordinates']
-                for c in range(len(coords)):
-                    coords[c] *= imsize[2+(c+1)%2]
-                    if isView:
+                for cidx in range(len(coords)):
+                    coords[cidx] *= imsize[2+(cidx+1)%2]
+                    if is_view:
                         # virtual view; shift coordinates
-                        coords[c] += imsize[(c+1)%2]
+                        coords[cidx] += imsize[(cidx+1)%2]
 
-                annoInfo['segmentation'] = coords
-                annoInfo['area'] = polygon_area(coords[1::2], coords[::2]).tolist()
-            
+                anno_info['segmentation'] = coords
+                anno_info['area'] = polygon_area(coords[1::2], coords[::2]).tolist()
+
             elif self.annotationType == 'segmentationMasks':
                 #TODO
                 raise NotImplementedError('To be implemented.')
 
-            annotations_out.append(annoInfo)
+            annotations_out.append(anno_info)
 
         # assemble everything into JSON file
         out['categories'] = categories

@@ -420,6 +420,8 @@ def hexToRGB(hexString):
         and returns a tuple of (Red, Green, Blue) values in the
         range of [0, 255].
     '''
+    if hexString is None:
+        return None
     assert isinstance(hexString, str), f'ERROR: "{str(hexString)}" is not a valid string.'
     if not hexString.startswith('#'):
         hexString = '#' + hexString
