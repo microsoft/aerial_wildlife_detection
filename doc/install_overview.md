@@ -15,7 +15,7 @@ __New since AIDE version 2.1:__ AIDE now offers an interactive installation scri
 1. Install a Python environment manager, such as [Conda](https://conda.io/) (recommended and used below) or [Virtualenv](https://virtualenv.pypa.io).
 2. Create a new Python environment for AIDE:
 ```bash
-    conda create -y -n aide python=3.8
+    conda create -y -n aide python=3.9
     conda activate aide
 ```
 3. Clone the AIDE repository:

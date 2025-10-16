@@ -44,7 +44,7 @@ It is strongly recommended to run AIDE in a self-contained Python environment, s
     targetDir=/path/to/desired/source/folder
 
     # create environment (requires conda or miniconda)
-    conda create -y -n aide python=3.8
+    conda create -y -n aide python=3.9
     conda activate aide
 
     # download AIDE source code

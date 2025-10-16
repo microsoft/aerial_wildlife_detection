@@ -6,16 +6,18 @@ bcrypt>=3.1.6
 netifaces>=0.10.9
 python-dateutil
 Pillow>=2.2.1
-numpy
-requests
-celery[redis,auth,msgpack]
+numpy==2.0.2
+requests==2.32.5
+celery[redis,auth,msgpack]==5.5.3
 
 # for the AI backend
-opencv-python
+opencv-python==4.12.0.88
+--no-index
 --find-links https://download.pytorch.org/whl/torch_stable.html
-torch==1.9.0+cu111
-torchvision==0.10.0+cu111
+torch==2.2.0+cu118
+torchvision==0.17.0+cu118
 
 # Detectron2
+--no-index
 --find-links https://dl.fbaipublicfiles.com/detectron2/wheels/cu111/torch1.9/index.html
-detectron2
+detectron2==0.6+cu111
