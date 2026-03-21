@@ -18,5 +18,4 @@ torch==1.9.0+cu111
 torchvision==0.10.0+cu111
 
 # Detectron2
---find-links https://dl.fbaipublicfiles.com/detectron2/wheels/cu111/torch1.9/index.html
-detectron2
+git+https://github.com/facebookresearch/detectron2.git
