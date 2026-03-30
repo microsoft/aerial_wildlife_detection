@@ -15,7 +15,7 @@ importlib-metadata==4.13.0  # https://github.com/python/importlib_metadata/issue
 # for the AI backend
 opencv-python
 --find-links https://download.pytorch.org/whl/torch_stable.html
-torch==2.2.0
+torch==2.8.0
 torchvision==0.10.0+cu111
 
 # Detectron2
