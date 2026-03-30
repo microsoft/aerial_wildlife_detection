@@ -7,7 +7,7 @@ netifaces>=0.10.9
 python-dateutil
 Pillow>=2.2.1
 numpy==2.0.2
-requests==2.32.5
+requests==2.33.0
 celery[redis,auth,msgpack]==5.5.3
 
 # for the AI backend
