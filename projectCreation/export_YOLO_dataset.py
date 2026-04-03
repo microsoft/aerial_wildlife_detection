@@ -29,6 +29,8 @@ if __name__ == '__main__':
                     help='Manual specification of the directory of the settings.ini file; only considered if environment variable unset (default: "config/settings.ini").')
     parser.add_argument('--target_folder', type=str, default='export', const=1, nargs='?',
                     help='Export directory for the annotation text files.')
+    parser.add_argument('--points', type=int, default=0,
+                    help='Whether to export from point annotations (default: 0).')
     parser.add_argument('--export_annotations', type=int, default=1,
                     help='Whether to export annotations (default: 1).')
     parser.add_argument('--include_empty', type=int, default=0,
@@ -75,9 +77,11 @@ if __name__ == '__main__':
         raise Exception(f'Project with name "{args.project}" could not be found in database.')
     annotationType = annotationType[0]['annotationtype']
     exportAnnotations = args.export_annotations
+    
     if exportAnnotations and not (annotationType == 'boundingBoxes'):
-        print('Warning: project annotations are not bounding boxes; skipping annotation export...')
-        exportAnnotations = False
+        if not (args.points and annotationType == 'points'):
+            print('Warning: project annotations are not bounding boxes or points; skipping annotation export...')
+            exportAnnotations = False
 
 
     # query label definition
@@ -152,27 +156,33 @@ if __name__ == '__main__':
                 label = labeldef[nextItem['label']][1]      # store label index
                 x = nextItem['x']
                 y = nextItem['y']
-                w = nextItem['width']
-                h = nextItem['height']
+                
+                if not args.points:
+                    w = nextItem['width']
+                    h = nextItem['height']
 
                 # append
                 if not imgName in output:
                     output[imgName] = []
-                output[imgName].append('{} {} {} {} {}\n'.format(str(label), x, y, w, h))
+                
+                if not args.points:
+                    output[imgName].append('{} {} {} {} {}\n'.format(str(label), x, y, w, h))
+                else:
+                    output[imgName].append('{} {} {}\n'.format(str(label), x, y))
         else:
             print('No annotated images found in database.')
         
         if args.include_empty:
             # also query for viewed but unannotated images
             
-            if args.export_golden:
+            if args.exclude_golden:
                 gqStr = sql.SQL('and isGoldenQuestion is NOT TRUE')
             else:
                 gqStr = sql.SQL('')
             
             queryStr = sql.SQL('''
                 SELECT filename FROM {id_iu} AS iu
-                JOIN (SELECT id AS imID, filename FROM {id_img}) AS img
+                JOIN (SELECT id AS imID, filename, isGoldenQuestion FROM {id_img}) AS img
                 ON iu.image = img.imID
                 WHERE image NOT IN (
                     SELECT image FROM {id_anno}
