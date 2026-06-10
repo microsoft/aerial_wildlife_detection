@@ -14,7 +14,7 @@ celery[redis,auth,msgpack]==5.5.3
 opencv-python==4.12.0.88
 --no-index
 --find-links https://download.pytorch.org/whl/torch_stable.html
-torch==2.2.0+cu118
+torch==2.12.0
 torchvision==0.17.0+cu118
 
 # Detectron2
